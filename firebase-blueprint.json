@@ -1,0 +1,287 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier" },
+        "name": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "Email address" },
+        "role": { "type": "string", "enum": ["MASTER", "GESTOR", "GERENTE", "SUPORTE", "DIGITADOR", "SIMULACAO"], "description": "User role" },
+        "active": { "type": "boolean", "description": "Whether user is active" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "email", "role", "active", "createdAt", "updatedAt"]
+    },
+    "Promoter": {
+      "title": "Promoter",
+      "description": "A credit promoter partner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier" },
+        "name": { "type": "string", "description": "Promoter name" },
+        "active": { "type": "boolean", "description": "Active status" },
+        "observation": { "type": "string", "description": "Optional notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "active", "createdAt", "updatedAt"]
+    },
+    "Bank": {
+      "title": "Bank",
+      "description": "A financial institution",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "name": { "type": "string", "description": "Bank name" },
+        "code": { "type": "string", "description": "Bank code (e.g. 336)" },
+        "active": { "type": "boolean", "description": "Active status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "active", "createdAt", "updatedAt"]
+    },
+    "BankPromoter": {
+      "title": "BankPromoter",
+      "description": "Matrix relation between Bank and Promoter",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Relation id" },
+        "bankId": { "type": "string", "description": "Bank id reference" },
+        "promoterId": { "type": "string", "description": "Promoter id reference" },
+        "active": { "type": "boolean", "description": "Relation active state" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "bankId", "promoterId", "active", "createdAt", "updatedAt"]
+    },
+    "Partner": {
+      "title": "Partner",
+      "description": "A promoter partner user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "fullName": { "type": "string", "description": "Partner full name" },
+        "login": { "type": "string", "description": "Unique partner login (e.g., NAME@12345)" },
+        "promoterId": { "type": "string", "description": "Promoter id reference" },
+        "active": { "type": "boolean", "description": "Active status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "fullName", "login", "promoterId", "active", "createdAt", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A financial product (e.g., Portabilidade, Novo, etc.)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "name": { "type": "string", "description": "Product name" },
+        "description": { "type": "string", "description": "Description" },
+        "type": { "type": "string", "description": "Product type classification" },
+        "allowsMultipleAde": { "type": "boolean", "description": "Whether multiple ADE IDs are allowed" },
+        "requiresPortabilityRelation": { "type": "boolean", "description": "Linked to portability" },
+        "active": { "type": "boolean", "description": "Active status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "active", "createdAt", "updatedAt"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Client profile receiving loan services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "cpf": { "type": "string", "description": "CPF number (11 digits)" },
+        "fullName": { "type": "string", "description": "Full name" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "email": { "type": "string", "description": "Email address" },
+        "observation": { "type": "string", "description": "Optional notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "cpf", "fullName", "createdAt", "updatedAt"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Consignado / portability loan proposal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "proposalNumber": { "type": "string", "description": "Formatted proposal number" },
+        "clientId": { "type": "string", "description": "Client reference" },
+        "productId": { "type": "string", "description": "Product reference" },
+        "bankId": { "type": "string", "description": "Bank reference" },
+        "promoterId": { "type": "string", "description": "Promoter reference" },
+        "partnerId": { "type": "string", "description": "Partner reference" },
+        "digitizerId": { "type": "string", "description": "User id of digitizer who processed this" },
+        "statusId": { "type": "string", "description": "ProposalStatus reference" },
+        "currentResponsible": { "type": "string", "description": "Currently responsible party" },
+        "portabilitySlaStartedAt": { "type": "string", "format": "date-time", "description": "SLA start timestamp" },
+        "notes": { "type": "string", "description": "Notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" },
+        "paidAt": { "type": "string", "format": "date-time", "description": "Payout timestamp" }
+      },
+      "required": ["id", "proposalNumber", "clientId", "productId", "bankId", "promoterId", "partnerId", "statusId", "currentResponsible", "createdAt", "updatedAt"]
+    },
+    "ProposalRelation": {
+      "title": "ProposalRelation",
+      "description": "Portabilidade -> Refin relationship",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Relation unique id" },
+        "portabilityProposalId": { "type": "string", "description": "Portabilidade proposal reference" },
+        "refinProposalId": { "type": "string", "description": "Refin proposal reference" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "portabilityProposalId", "refinProposalId", "createdAt"]
+    },
+    "ProposalStatus": {
+      "title": "ProposalStatus",
+      "description": "State / step in the kanban workflow",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "name": { "type": "string", "description": "Status name in Portuguese" },
+        "code": { "type": "string", "description": "Status slug identifier" },
+        "order": { "type": "number", "description": "Execution order index" },
+        "responsibleGroup": { "type": "string", "description": "Responsible team/agent" },
+        "responsible": { "type": "string", "description": "Responsible role name" },
+        "active": { "type": "boolean", "description": "Active status" },
+        "slaHours": { "type": "number", "description": "SLA in hours" },
+        "finalStatus": { "type": "boolean", "description": "Whether this status is final (terminal)" },
+        "manualChangeAllowed": { "type": "boolean", "description": "Allowed to change manually" },
+        "automaticChangeAllowed": { "type": "boolean", "description": "Allowed to change automatically" },
+        "color": { "type": "string", "description": "Color hex representing status visual" }
+      },
+      "required": ["id", "name", "code", "order", "responsibleGroup", "responsible", "active", "slaHours", "finalStatus", "manualChangeAllowed", "automaticChangeAllowed", "color"]
+    },
+    "ProposalStatusHistory": {
+      "title": "ProposalStatusHistory",
+      "description": "Audit trail of proposal status changes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "History id" },
+        "proposalId": { "type": "string", "description": "Proposal reference" },
+        "userId": { "type": "string", "description": "User id making the change" },
+        "userName": { "type": "string", "description": "User display name" },
+        "previousStatusId": { "type": "string", "description": "Previous status reference" },
+        "previousStatusName": { "type": "string", "description": "Previous status name text" },
+        "newStatusId": { "type": "string", "description": "New status reference" },
+        "newStatusName": { "type": "string", "description": "New status name text" },
+        "action": { "type": "string", "description": "Description of action" },
+        "observation": { "type": "string", "description": "User notes during change" },
+        "origin": { "type": "string", "description": "SYSTEM or MANUAL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "proposalId", "newStatusId", "newStatusName", "action", "origin", "createdAt"]
+    },
+    "Pending": {
+      "title": "Pending",
+      "description": "A pending item / issue block in a proposal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Pending item id" },
+        "proposalId": { "type": "string", "description": "Proposal reference" },
+        "clientId": { "type": "string", "description": "Client reference" },
+        "responsibleUserName": { "type": "string", "description": "Responsible user display name" },
+        "responsibleGroup": { "type": "string", "description": "Responsible team name" },
+        "type": { "type": "string", "description": "Type of pending block (e.g. DOCUMENTACAO)" },
+        "description": { "type": "string", "description": "Explanation of issue" },
+        "openedAt": { "type": "string", "format": "date-time", "description": "Open timestamp" },
+        "status": { "type": "string", "enum": ["ABERTA", "RESOLVIDA"], "description": "Current state" },
+        "resolvedAt": { "type": "string", "format": "date-time", "description": "Resolved timestamp" },
+        "resolvedBy": { "type": "string", "description": "User resolving the pending block" }
+      },
+      "required": ["id", "proposalId", "clientId", "responsibleGroup", "type", "description", "openedAt", "status"]
+    },
+    "Holiday": {
+      "title": "Holiday",
+      "description": "A scheduled calendar holiday (non-business day)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique id" },
+        "date": { "type": "string", "description": "Date format YYYY-MM-DD" },
+        "name": { "type": "string", "description": "Holiday label" },
+        "active": { "type": "boolean", "description": "Active state" }
+      },
+      "required": ["id", "date", "name", "active"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "App alert notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Notification id" },
+        "proposalId": { "type": "string", "description": "Optional proposal reference" },
+        "title": { "type": "string", "description": "Alert title" },
+        "message": { "type": "string", "description": "Alert body" },
+        "type": { "type": "string", "description": "Type of alert" },
+        "priority": { "type": "string", "enum": ["NORMAL", "ATENCAO", "URGENTE"], "description": "Priority indicator" },
+        "read": { "type": "boolean", "description": "Read status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "title", "message", "type", "priority", "read", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Security and operation audit trail logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Audit unique id" },
+        "userId": { "type": "string", "description": "User id of agent" },
+        "userName": { "type": "string", "description": "Display name of agent" },
+        "userRole": { "type": "string", "description": "Role of agent" },
+        "action": { "type": "string", "description": "Action performed code" },
+        "entity": { "type": "string", "description": "Entity affected name" },
+        "entityId": { "type": "string", "description": "Id of entity affected" },
+        "previousData": { "type": "string", "description": "JSON string of original state" },
+        "newData": { "type": "string", "description": "JSON string of new state" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Operation timestamp" }
+      },
+      "required": ["id", "action", "entity", "createdAt"]
+    },
+    "SimulationRequest": {
+      "title": "SimulationRequest",
+      "description": "Credit loan simulation requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Simulation unique id" },
+        "cpf": { "type": "string", "description": "Client CPF" },
+        "partnerId": { "type": "string", "description": "Partner reference" },
+        "createdById": { "type": "string", "description": "User reference" },
+        "status": { "type": "string", "description": "Status text" },
+        "matchedProposalId": { "type": "string", "description": "Matched proposal id reference" },
+        "matchedProposalNumber": { "type": "string", "description": "Matched proposal number reference" },
+        "matchedDigitizerId": { "type": "string", "description": "Matched digitizer user reference" },
+        "matchedDigitizerName": { "type": "string", "description": "Matched digitizer name" },
+        "matchedAt": { "type": "string", "format": "date-time", "description": "Match timestamp" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "cpf", "partnerId", "createdById", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "System operational users" },
+    "/promoters/{promoterId}": { "schema": "Promoter", "description": "Registered promoters" },
+    "/banks/{bankId}": { "schema": "Bank", "description": "Registered financial banks" },
+    "/bank_promoters/{bpId}": { "schema": "BankPromoter", "description": "Bank and Promoter allowed mapping" },
+    "/partners/{partnerId}": { "schema": "Partner", "description": "Promoter partner logins and codes" },
+    "/products/{productId}": { "schema": "Product", "description": "Operational loan products" },
+    "/clients/{clientId}": { "schema": "Client", "description": "Loan borrower clients" },
+    "/proposals/{proposalId}": { "schema": "Proposal", "description": "Consignado / portability proposals" },
+    "/proposal_relations/{relationId}": { "schema": "ProposalRelation", "description": "Connections between portability proposals and refinancing" },
+    "/statuses/{statusId}": { "schema": "ProposalStatus", "description": "Steps in the kanban flow" },
+    "/history/{historyId}": { "schema": "ProposalStatusHistory", "description": "Change log for proposal statuses" },
+    "/pendings/{pendingId}": { "schema": "Pending", "description": "Documental or approval blockages" },
+    "/holidays/{holidayId}": { "schema": "Holiday", "description": "Calendar of non-working dates" },
+    "/notifications/{notifId}": { "schema": "Notification", "description": "System-generated alerts for users" },
+    "/audit_logs/{auditId}": { "schema": "AuditLog", "description": "Operations and access logs" },
+    "/simulation_requests/{simId}": { "schema": "SimulationRequest", "description": "Presales loan analysis simulation requests" }
+  }
+}

@@ -1,0 +1,2126 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
+import {
+  Calculator,
+  Plus,
+  Search,
+  Filter,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Send,
+  Sparkles,
+  User,
+  Building2,
+  Calendar,
+  AlertTriangle,
+  RotateCcw,
+  Copy,
+  Check,
+  ArrowRight,
+  TrendingUp,
+  FileCheck2,
+  ExternalLink,
+  ShieldCheck,
+  Trash2,
+  ShieldAlert,
+  Download,
+  ListFilter,
+  Info,
+  ChevronRight,
+  BarChart2,
+  Users,
+  Hourglass,
+  FileSpreadsheet,
+} from 'lucide-react';
+import { StorageService } from '../../services/storageService';
+import { SimulationRequest, SimulationStatus, Partner, User as UserType } from '../../types';
+import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
+import { SimulationImportModal } from './SimulationImportModal';
+
+interface SimulationViewProps {
+  onOpenProposalDetail?: (proposalId: string) => void;
+}
+
+type TabType = 'VISAO_GERAL' | 'AGUARDANDO_DIGITACAO' | 'DASHBOARD_ANALISES';
+
+export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDetail }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
+  const [simulations, setSimulations] = useState<SimulationRequest[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const activeUser = StorageService.getActiveUser();
+
+  // Filter states
+  const [cpfSearch, setCpfSearch] = useState('');
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('TODOS');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Modals state
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [newCpf, setNewCpf] = useState('');
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [partnerQuery, setPartnerQuery] = useState('');
+  const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [initialStatus, setInitialStatus] = useState<SimulationStatus>('SIMULAÇÃO ENVIADA');
+  const [initialRejectionReason, setInitialRejectionReason] = useState<string>('');
+
+  // Duplicate Warning State
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    pendingSim: SimulationRequest;
+    cleanCpf: string;
+    partnerId: string;
+  } | null>(null);
+
+  // Status Change Confirmation Modal
+  const [statusModalTarget, setStatusModalTarget] = useState<SimulationRequest | null>(null);
+  const [selectedTargetStatus, setSelectedTargetStatus] = useState<SimulationStatus>('DIGITADA PELA MESA');
+  const [selectedAdeNumber, setSelectedAdeNumber] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Single Deletion Modal
+  const [deleteModalTarget, setDeleteModalTarget] = useState<SimulationRequest | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Bulk Deletion Modal
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteReason, setBulkDeleteReason] = useState('');
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
+
+  // Detail Modal
+  const [detailTarget, setDetailTarget] = useState<SimulationRequest | null>(null);
+
+  // Copy feedback
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const comboboxRef = useRef<HTMLDivElement>(null);
+
+  const loadData = () => {
+    setSimulations(StorageService.getSimulationRequests());
+    setPartners(StorageService.getPartners().filter(p => p.active));
+    setUsers(StorageService.getUsers());
+  };
+
+  useEffect(() => {
+    loadData();
+    const handleUpdate = () => loadData();
+    window.addEventListener('credit_gestao_storage_update', handleUpdate);
+    return () => window.removeEventListener('credit_gestao_storage_update', handleUpdate);
+  }, []);
+
+  // Close combobox when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
+        setIsPartnerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtered partners for autocomplete combobox
+  const filteredPartnerOptions = useMemo(() => {
+    if (!partnerQuery.trim()) return partners;
+
+    const query = partnerQuery.trim().toLowerCase();
+    return partners.filter(p => {
+      const code = extractPartnerCode(p.login).toLowerCase();
+      const login = p.login.toLowerCase();
+      const name = p.fullName.toLowerCase();
+
+      return code.includes(query) || login.includes(query) || name.includes(query);
+    });
+  }, [partners, partnerQuery]);
+
+  // Format CPF as typing in modal
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+
+    // Apply visual mask 000.000.000-00
+    if (value.length > 9) {
+      value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`;
+    } else if (value.length > 6) {
+      value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`;
+    } else if (value.length > 3) {
+      value = `${value.slice(0, 3)}.${value.slice(3)}`;
+    }
+    setNewCpf(value);
+    setModalError(null);
+  };
+
+  const handleOpenNewModal = () => {
+    setModalError(null);
+    setNewCpf('');
+    setSelectedPartner(null);
+    setPartnerQuery('');
+    setDuplicateWarning(null);
+    setInitialStatus('SIMULAÇÃO ENVIADA');
+    setInitialRejectionReason('');
+    setIsNewModalOpen(true);
+  };
+
+  const executeCreateSimulation = (
+    cleanCpf: string,
+    partnerId: string,
+    statusOverride?: SimulationStatus,
+    reasonOverride?: string
+  ) => {
+    try {
+      StorageService.createSimulationRequest({
+        cpf: cleanCpf,
+        partnerId,
+        status: statusOverride || initialStatus,
+        rejectionReason: reasonOverride || initialRejectionReason,
+      });
+
+      setIsNewModalOpen(false);
+      setNewCpf('');
+      setSelectedPartner(null);
+      setPartnerQuery('');
+      setDuplicateWarning(null);
+      setInitialStatus('SIMULAÇÃO ENVIADA');
+      setInitialRejectionReason('');
+    } catch (err: any) {
+      setModalError(err.message || 'Erro ao registrar solicitação de simulação.');
+    }
+  };
+
+  const handleSubmitSimulation = (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+
+    const cleanCpf = normalizeCpf(newCpf);
+    if (!cleanCpf || cleanCpf.length !== 11) {
+      setModalError('Informe um CPF válido com exatamente 11 dígitos.');
+      return;
+    }
+
+    if (!isValidCpf(cleanCpf)) {
+      setModalError('CPF com formato inválido. Verifique os dígitos digitados.');
+      return;
+    }
+
+    if (!selectedPartner) {
+      setModalError('Selecione um parceiro válido na lista de pesquisa.');
+      return;
+    }
+
+    // Check for existing pending duplicate
+    const existingPending = StorageService.checkExistingPendingSimulation(cleanCpf, selectedPartner.id);
+    if (existingPending) {
+      setDuplicateWarning({
+        pendingSim: existingPending,
+        cleanCpf,
+        partnerId: selectedPartner.id,
+      });
+      return;
+    }
+
+    executeCreateSimulation(cleanCpf, selectedPartner.id);
+  };
+
+  const handleConfirmStatusChange = () => {
+    if (!statusModalTarget) return;
+
+    try {
+      StorageService.updateSimulationRequestStatus(
+        statusModalTarget.id,
+        selectedTargetStatus,
+        {
+          reason: rejectionReason || (selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'Inviabilidade de crédito / sem margem ou política de crédito' : 'Alteração manual de status'),
+          proposalNumber: selectedAdeNumber,
+        }
+      );
+      setStatusModalTarget(null);
+      setRejectionReason('');
+      setSelectedAdeNumber('');
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+      window.dispatchEvent(new Event('proposalsUpdated'));
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteModalTarget) return;
+    setDeleteError(null);
+
+    try {
+      StorageService.deleteSimulationRequest(deleteModalTarget.id, deleteReason || 'Exclusão solicitada');
+      setDeleteModalTarget(null);
+      setDeleteReason('');
+      setSelectedIds(prev => prev.filter(id => id !== deleteModalTarget.id));
+    } catch (err: any) {
+      setDeleteError(err.message || 'Erro ao excluir solicitação de simulação.');
+    }
+  };
+
+  const handleConfirmBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setBulkDeleteError(null);
+
+    const result = StorageService.bulkDeleteSimulationRequests(
+      selectedIds,
+      bulkDeleteReason || 'Exclusão em massa de simulações'
+    );
+
+    if (result.errors.length > 0) {
+      setBulkDeleteError(result.errors.join(' | '));
+    }
+
+    if (result.successCount > 0) {
+      setSelectedIds([]);
+      if (result.errors.length === 0) {
+        setIsBulkDeleteModalOpen(false);
+        setBulkDeleteReason('');
+      }
+    }
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Metrics calculation
+  const metrics = useMemo(() => {
+    const total = simulations.length;
+    const enviadas = simulations.filter(s => s.status === 'SIMULAÇÃO ENVIADA').length;
+    const naoPassivel = simulations.filter(s => s.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO').length;
+    const digitadas = simulations.filter(s => s.status === 'DIGITADA PELA MESA').length;
+    const perdidas = simulations.filter(s => s.status === 'PERDIDA (NÃO DIGITADA)').length;
+
+    // Taxa de conversão: Digitadas sobre o total de simulações cadastradas
+    const taxaConversao = total > 0 ? (digitadas / total) * 100 : 0;
+
+    return {
+      total,
+      enviadas,
+      naoPassivel,
+      digitadas,
+      perdidas,
+      taxaConversao: taxaConversao.toFixed(1),
+    };
+  }, [simulations]);
+
+  // Filtered simulations
+  const filteredSimulations = useMemo(() => {
+    const cleanSearch = normalizeCpf(cpfSearch);
+
+    return simulations.filter(sim => {
+      // CPF Filter
+      if (cleanSearch) {
+        if (!normalizeCpf(sim.cpf).includes(cleanSearch)) return false;
+      }
+
+      // Partner Filter
+      if (selectedPartnerId && sim.partnerId !== selectedPartnerId) {
+        return false;
+      }
+
+      // User Filter
+      if (selectedUserId && sim.createdById !== selectedUserId) {
+        return false;
+      }
+
+      // Status Filter
+      if (selectedStatus !== 'TODOS' && sim.status !== selectedStatus) {
+        return false;
+      }
+
+      // Date Range Filter
+      if (startDate) {
+        const simDate = new Date(sim.createdAt).toISOString().split('T')[0];
+        if (simDate < startDate) return false;
+      }
+      if (endDate) {
+        const simDate = new Date(sim.createdAt).toISOString().split('T')[0];
+        if (simDate > endDate) return false;
+      }
+
+      return true;
+    });
+  }, [simulations, cpfSearch, selectedPartnerId, selectedUserId, selectedStatus, startDate, endDate]);
+
+  // Aguardando Digitação (Fila da Mesa - sorted oldest first)
+  const pendingQueueSimulations = useMemo(() => {
+    return simulations
+      .filter(s => s.status === 'SIMULAÇÃO ENVIADA')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [simulations]);
+
+  // Partner Analysis
+  const partnerStats = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        partner: Partner;
+        enviadas: number;
+        digitadas: number;
+        naoPassivel: number;
+        perdidas: number;
+        total: number;
+      }
+    >();
+
+    simulations.forEach(sim => {
+      const partner = partners.find(p => p.id === sim.partnerId);
+      if (!partner) return;
+
+      const current = map.get(partner.id) || {
+        partner,
+        enviadas: 0,
+        digitadas: 0,
+        naoPassivel: 0,
+        perdidas: 0,
+        total: 0,
+      };
+
+      current.total++;
+      if (sim.status === 'SIMULAÇÃO ENVIADA') current.enviadas++;
+      else if (sim.status === 'DIGITADA PELA MESA') current.digitadas++;
+      else if (sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO') current.naoPassivel++;
+      else if (sim.status === 'PERDIDA (NÃO DIGITADA)') current.perdidas++;
+
+      map.set(partner.id, current);
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [simulations, partners]);
+
+  // Responsável Analysis
+  const userStats = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        user: UserType;
+        enviadas: number;
+        digitadas: number;
+        naoPassivel: number;
+        perdidas: number;
+        total: number;
+      }
+    >();
+
+    simulations.forEach(sim => {
+      const user = users.find(u => u.id === sim.createdById);
+      if (!user) return;
+
+      const current = map.get(user.id) || {
+        user,
+        enviadas: 0,
+        digitadas: 0,
+        naoPassivel: 0,
+        perdidas: 0,
+        total: 0,
+      };
+
+      current.total++;
+      if (sim.status === 'SIMULAÇÃO ENVIADA') current.enviadas++;
+      else if (sim.status === 'DIGITADA PELA MESA') current.digitadas++;
+      else if (sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO') current.naoPassivel++;
+      else if (sim.status === 'PERDIDA (NÃO DIGITADA)') current.perdidas++;
+
+      map.set(user.id, current);
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [simulations, users]);
+
+  // Average Time calculation for matched simulations
+  const averageMatchTime = useMemo(() => {
+    const matched = simulations.filter(s => s.status === 'DIGITADA PELA MESA' && s.matchedAt);
+    if (matched.length === 0) return '0 min';
+
+    let totalMs = 0;
+    matched.forEach(s => {
+      const start = new Date(s.createdAt).getTime();
+      const end = new Date(s.matchedAt!).getTime();
+      if (end >= start) totalMs += end - start;
+    });
+
+    const avgMinutes = Math.round(totalMs / matched.length / (1000 * 60));
+    if (avgMinutes < 60) return `${avgMinutes} min`;
+    const hours = Math.floor(avgMinutes / 60);
+    const mins = avgMinutes % 60;
+    return `${hours}h ${mins}min`;
+  }, [simulations]);
+
+  // Helpers for elapsed time and SLA aging (72h Max)
+  const getElapsedTimeInfo = (createdAt: string, matchedAt?: string, status?: string) => {
+    const startTime = new Date(createdAt).getTime();
+    const endTime = matchedAt ? new Date(matchedAt).getTime() : Date.now();
+    const diffMs = Math.max(0, endTime - startTime);
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+
+    let text = `${diffMins} min`;
+    if (diffMins >= 60) {
+      const h = Math.floor(diffMins / 60);
+      const m = diffMins % 60;
+      text = `${h}h ${m}min`;
+    }
+
+    // SLA Maximum: 72 hours (4320 mins)
+    const MAX_SLA_MINS = 72 * 60;
+    const remainingMins = Math.max(0, MAX_SLA_MINS - diffMins);
+
+    let remainingText = '';
+    if (status === 'PERDIDA (NÃO DIGITADA)' || diffMins >= MAX_SLA_MINS) {
+      remainingText = 'Expirado (72h)';
+    } else {
+      const remH = Math.floor(remainingMins / 60);
+      const remM = remainingMins % 60;
+      remainingText = `${remH}h ${remM}m restantes`;
+    }
+
+    // SLA Colors based on 72h max limit
+    let badgeClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+    if (!matchedAt && status !== 'DIGITADA PELA MESA' && status !== 'NÃO PASSÍVEL DE CONTRATAÇÃO') {
+      if (status === 'PERDIDA (NÃO DIGITADA)' || diffMins >= MAX_SLA_MINS) {
+        badgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+      } else if (diffMins > 60 * 60) { // > 60 hours
+        badgeClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse';
+      } else if (diffMins > 48 * 60) { // > 48 hours
+        badgeClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+      } else if (diffMins > 24 * 60) { // > 24 hours
+        badgeClass = 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800';
+      }
+    }
+
+    return { text, diffMins, remainingText, remainingMins, badgeClass };
+  };
+
+  const clearFilters = () => {
+    setCpfSearch('');
+    setSelectedPartnerId('');
+    setSelectedUserId('');
+    setSelectedStatus('TODOS');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const hasActiveFilters =
+    cpfSearch || selectedPartnerId || selectedUserId || selectedStatus !== 'TODOS' || startDate || endDate;
+
+  // Bulk Selection Handlers
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredSimulations.map(s => s.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelectRow = (id: string) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]));
+  };
+
+  // CSV Export
+  const handleExportCsv = () => {
+    const dataToExport = filteredSimulations;
+    if (dataToExport.length === 0) {
+      alert('Nenhuma solicitação encontrada para exportação.');
+      return;
+    }
+
+    const headers = [
+      'CPF',
+      'PARCEIRO_LOGIN',
+      'PARCEIRO_NOME',
+      'RESPONSAVEL',
+      'DATA_HORA_SOLICITACAO',
+      'STATUS',
+      'ADE_PROPOSTA',
+      'DIGITADOR',
+      'DATA_HORA_DIGITACAO',
+      'TEMPO_ATE_DIGITACAO',
+    ];
+
+    const rows = dataToExport.map(s => {
+      const partner = partners.find(p => p.id === s.partnerId);
+      const creator = users.find(u => u.id === s.createdById);
+      const elapsed = getElapsedTimeInfo(s.createdAt, s.matchedAt);
+
+      return [
+        `"${formatCpf(s.cpf)}"`,
+        `"${partner?.login || ''}"`,
+        `"${partner?.fullName || ''}"`,
+        `"${creator?.name || ''}"`,
+        `"${new Date(s.createdAt).toLocaleString('pt-BR')}"`,
+        `"${s.status}"`,
+        `"${s.matchedProposalNumber || ''}"`,
+        `"${s.matchedDigitizerName || ''}"`,
+        `"${s.matchedAt ? new Date(s.matchedAt).toLocaleString('pt-BR') : ''}"`,
+        `"${elapsed.text}"`,
+      ].join(';');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Central_Simulacoes_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Audit log
+    StorageService.addAuditLog({
+      action: 'EXPORTAR_CENTRAL_SIMULACOES',
+      entity: 'SimulationRequest',
+      entityId: 'EXPORT',
+      newData: JSON.stringify({
+        quantity: dataToExport.length,
+        exportedBy: activeUser.name,
+      }),
+    });
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <Calculator className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                Central de Simulações
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Controle de solicitações por CPF + Parceiro e identificação automática de propostas digitadas pela mesa
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={handleExportCsv}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Exportar CSV</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg transition-all cursor-pointer border border-emerald-200 dark:border-emerald-800"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Importar em Lote</span>
+          </button>
+
+          <button
+            id="btn-nova-simulacao"
+            onClick={handleOpenNewModal}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span>+ NOVA SIMULAÇÃO</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 text-xs font-medium">
+        <button
+          onClick={() => setActiveTab('VISAO_GERAL')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'VISAO_GERAL'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <ListFilter className="h-4 w-4" />
+          <span>Visão Geral & Solicitações</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 font-semibold">
+            {simulations.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'AGUARDANDO_DIGITACAO'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Clock className="h-4 w-4 text-amber-500" />
+          <span>Fila da Mesa (Aguardando Digitação)</span>
+          {metrics.enviadas > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
+              {metrics.enviadas}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('DASHBOARD_ANALISES')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'DASHBOARD_ANALISES'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <BarChart2 className="h-4 w-4" />
+          <span>Dashboard & Análise por Parceiro/Usuário</span>
+        </button>
+      </div>
+
+      {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
+      {activeTab === 'VISAO_GERAL' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Metric / KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            {/* Card 1: Simulações Enviadas */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Cadastradas
+                </span>
+                <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Send className="h-3 w-3" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{metrics.total}</span>
+                <span className="text-[10px] text-slate-500">total</span>
+              </div>
+              <div className="mt-1 text-[10px] text-slate-400 font-medium">Cadastradas no sistema</div>
+            </div>
+
+            {/* Card 2: Aguardando Digitação */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Aguardando
+                </span>
+                <div className="h-6 w-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Clock className="h-3 w-3" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{metrics.enviadas}</span>
+                <span className="text-[10px] text-slate-500">na fila</span>
+              </div>
+              <div className="mt-1 text-[10px] text-amber-600/80 font-medium">Prazo até 72h</div>
+            </div>
+
+            {/* Card 3: Digitadas pela Mesa */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Digitadas
+                </span>
+                <div className="h-6 w-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Sparkles className="h-3 w-3" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{metrics.digitadas}</span>
+                <span className="text-[10px] text-slate-500">convertidas</span>
+              </div>
+              <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                Vínculo automático ADE
+              </div>
+            </div>
+
+            {/* Card 4: Não Passíveis */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                  Não Passíveis
+                </span>
+                <div className="h-6 w-6 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <XCircle className="h-3 w-3" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{metrics.naoPassivel}</span>
+                <span className="text-[10px] text-slate-500">inviáveis</span>
+              </div>
+              <div className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 font-medium">Sem margem / política</div>
+            </div>
+
+            {/* Card 5: Perdidas (Não Digitadas em 72h) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Perdidas (72h)
+                </span>
+                <div className="h-6 w-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                  <AlertTriangle className="h-3 w-3 text-rose-500" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-slate-700 dark:text-slate-300">{metrics.perdidas}</span>
+                <span className="text-[10px] text-slate-500">expiradas</span>
+              </div>
+              <div className="mt-1 text-[10px] text-slate-500 font-medium">Sem digitação em 72h</div>
+            </div>
+
+            {/* Card 6: Taxa de Conversão */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Conversão
+                </span>
+                <div className="h-6 w-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <TrendingUp className="h-3 w-3" />
+                </div>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{metrics.taxaConversao}%</span>
+                <span className="text-[10px] text-slate-500">
+                  ({metrics.digitadas}/{metrics.total})
+                </span>
+              </div>
+              <div className="mt-1.5 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                <div
+                  className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Number(metrics.taxaConversao))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Toolbar */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* Search CPF */}
+              <div className="lg:col-span-2">
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Buscar CPF
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={cpfSearch}
+                    onChange={e => setCpfSearch(e.target.value)}
+                    placeholder="Ex: 01138777498 ou 011.387..."
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Partner Filter */}
+              <div>
+                <PartnerSearchSelect
+                  partners={partners}
+                  selectedPartnerId={selectedPartnerId}
+                  onSelectPartner={setSelectedPartnerId}
+                  label="Parceiro"
+                  placeholder="Buscar código ou nome..."
+                  allowAll
+                  allLabel="Todos os Parceiros"
+                />
+              </div>
+
+              {/* Responsável Filter */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Responsável
+                </label>
+                <select
+                  value={selectedUserId}
+                  onChange={e => setSelectedUserId(e.target.value)}
+                  className="w-full px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Todos os Usuários</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={e => setSelectedStatus(e.target.value)}
+                  className="w-full px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="TODOS">Todos os Status</option>
+                  <option value="SIMULAÇÃO ENVIADA">SIMULAÇÃO ENVIADA</option>
+                  <option value="DIGITADA PELA MESA">DIGITADA PELA MESA</option>
+                  <option value="NÃO PASSÍVEL DE CONTRATAÇÃO">NÃO PASSÍVEL DE CONTRATAÇÃO</option>
+                  <option value="PERDIDA (NÃO DIGITADA)">PERDIDA (NÃO DIGITADA)</option>
+                </select>
+              </div>
+
+              {/* Date Filter */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Data Inicial
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Data Final
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Mostrando <strong>{filteredSimulations.length}</strong> de <strong>{simulations.length}</strong> solicitações
+                </span>
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Limpar Filtros
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Bulk Actions Bar */}
+          {selectedIds.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center justify-between animate-in fade-in">
+              <div className="flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
+                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                <span>
+                  <strong>{selectedIds.length}</strong> solicitação(ões) selecionada(s)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedIds([])}
+                  className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
+                >
+                  Desmarcar Todas
+                </button>
+                <button
+                  onClick={() => {
+                    setBulkDeleteError(null);
+                    setBulkDeleteReason('');
+                    setIsBulkDeleteModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer transition-all"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Excluir Selecionados ({selectedIds.length})</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main Table */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-3 py-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredSimulations.length > 0 &&
+                          selectedIds.length === filteredSimulations.length
+                        }
+                        onChange={handleSelectAll}
+                        className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="px-4 py-3">CPF DO CLIENTE</th>
+                    <th className="px-4 py-3">PARCEIRO</th>
+                    <th className="px-4 py-3">RESPONSÁVEL</th>
+                    <th className="px-4 py-3">DATA/HORA SOLICITAÇÃO</th>
+                    <th className="px-4 py-3">STATUS</th>
+                    <th className="px-4 py-3">ADE / PROPOSTA</th>
+                    <th className="px-4 py-3">DIGITADOR</th>
+                    <th className="px-4 py-3">TEMPO ATÉ DIGITAÇÃO</th>
+                    <th className="px-4 py-3 text-right">AÇÕES</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredSimulations.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
+                        <Calculator className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                        <p className="font-medium text-sm">Nenhuma solicitação de simulação encontrada.</p>
+                        <p className="text-xs mt-1">Clique no botão "+ NOVA SIMULAÇÃO" para cadastrar.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSimulations.map(sim => {
+                      const partner = partners.find(p => p.id === sim.partnerId);
+                      const creator = users.find(u => u.id === sim.createdById);
+                      const isCopied = copiedId === sim.id;
+                      const isSelected = selectedIds.includes(sim.id);
+                      const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt);
+
+                      return (
+                        <tr
+                          key={sim.id}
+                          className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
+                            isSelected ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <td className="px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectRow(sim.id)}
+                              className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
+
+                          {/* CPF */}
+                          <td className="px-4 py-3 font-mono font-medium text-slate-900 dark:text-slate-100">
+                            <div className="flex items-center gap-1.5">
+                              <span>{formatCpf(sim.cpf)}</span>
+                              <button
+                                title="Copiar CPF"
+                                onClick={() => copyToClipboard(sim.cpf, sim.id)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
+                              >
+                                {isCopied ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Partner */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                {partner?.login || 'DESCONHECIDO'}
+                              </span>
+                              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={partner?.fullName}>
+                                {partner?.fullName}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Responsável */}
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5 text-slate-400" />
+                              <span>{creator?.name || 'Sistema'}</span>
+                            </div>
+                          </td>
+
+                          {/* Data de Cadastro */}
+                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {new Date(sim.createdAt).toLocaleString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+
+                          {/* Status - Interactive Selector */}
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={sim.status}
+                                onChange={(e) => {
+                                  const val = e.target.value as SimulationStatus;
+                                  if (val === 'DIGITADA PELA MESA' || val === 'NÃO PASSÍVEL DE CONTRATAÇÃO') {
+                                    setStatusModalTarget(sim);
+                                    setSelectedTargetStatus(val);
+                                    setRejectionReason(val === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'Inviabilidade de crédito / sem margem ou política de crédito' : '');
+                                    setSelectedAdeNumber(sim.matchedProposalNumber || '');
+                                  } else {
+                                    try {
+                                      StorageService.updateSimulationRequestStatus(sim.id, val);
+                                      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+                                      window.dispatchEvent(new Event('proposalsUpdated'));
+                                      loadData();
+                                    } catch (err: any) {
+                                      alert(err.message);
+                                    }
+                                  }
+                                }}
+                                className={`text-[11px] font-bold rounded-lg px-2 py-1 border cursor-pointer focus:outline-hidden transition-colors ${
+                                  sim.status === 'SIMULAÇÃO ENVIADA'
+                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                    : sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
+                                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                    : sim.status === 'DIGITADA PELA MESA'
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                                }`}
+                              >
+                                <option value="SIMULAÇÃO ENVIADA" className="bg-white text-slate-900">
+                                  Enviada (Pendente)
+                                </option>
+                                <option value="NÃO PASSÍVEL DE CONTRATAÇÃO" className="bg-white text-slate-900">
+                                  Inviável (Recusada)
+                                </option>
+                                <option value="DIGITADA PELA MESA" className="bg-white text-slate-900">
+                                  Digitada pela Mesa
+                                </option>
+                                <option value="PERDIDA (NÃO DIGITADA)" className="bg-white text-slate-900">
+                                  Perdida (72h)
+                                </option>
+                              </select>
+                            </div>
+                          </td>
+
+                          {/* ADE / Proposta */}
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {sim.matchedProposalNumber ? (
+                              <button
+                                onClick={() => {
+                                  if (sim.matchedProposalId && onOpenProposalDetail) {
+                                    onOpenProposalDetail(sim.matchedProposalId);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:underline cursor-pointer"
+                              >
+                                <FileCheck2 className="h-3 w-3" />
+                                {sim.matchedProposalNumber}
+                                {onOpenProposalDetail && <ExternalLink className="h-2.5 w-2.5 opacity-60" />}
+                              </button>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+
+                          {/* Digitador */}
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                            {sim.matchedDigitizerName ? (
+                              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                {sim.matchedDigitizerName}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+
+                          {/* Tempo até digitação / Tempo aguardando */}
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${elapsed.badgeClass}`}
+                            >
+                              <Clock className="h-3 w-3" />
+                              {elapsed.text}
+                            </span>
+                          </td>
+
+                          {/* Ações */}
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Ver Detalhes */}
+                              <button
+                                title="Ver Detalhes e Histórico"
+                                onClick={() => setDetailTarget(sim)}
+                                className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Info className="h-3.5 w-3.5" />
+                              </button>
+
+                              {StorageService.canChangeSimulationStatus(activeUser, sim) && (
+                                <button
+                                  onClick={() => {
+                                    setStatusModalTarget(sim);
+                                    setSelectedTargetStatus(
+                                      sim.status === 'DIGITADA PELA MESA' || sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
+                                        ? sim.status
+                                        : 'DIGITADA PELA MESA'
+                                    );
+                                    setSelectedAdeNumber(sim.matchedProposalNumber || '');
+                                    setRejectionReason(sim.rejectionReason || '');
+                                  }}
+                                  className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 rounded-md transition-colors cursor-pointer border border-blue-200 dark:border-blue-800 flex items-center gap-1"
+                                >
+                                  <span>Definir Status</span>
+                                </button>
+                              )}
+
+                              {StorageService.canDeleteSimulationRequest(activeUser, sim) && (
+                                <button
+                                  title="Excluir Solicitação"
+                                  onClick={() => {
+                                    setDeleteModalTarget(sim);
+                                    setDeleteReason('');
+                                    setDeleteError(null);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: FILA DA MESA (AGUARDANDO DIGITAÇÃO) */}
+      {activeTab === 'AGUARDANDO_DIGITACAO' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Clock className="h-5 w-5 text-amber-600 shrink-0" />
+              <div>
+                <h3 className="font-bold text-sm">Fila de Acompanhamento da Mesa (Prazo 72h)</h3>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Exibindo exclusivamente simulações pendentes (SIMULAÇÃO ENVIADA), ordenadas pela mais antiga primeiro.
+                  Após <strong>72 horas sem digitação</strong>, o status muda automaticamente para <strong>PERDIDA (NÃO DIGITADA)</strong>.
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 bg-amber-600 text-white font-bold rounded-lg text-xs shrink-0">
+              {pendingQueueSimulations.length} pendente(s)
+            </span>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                <tr>
+                  <th className="px-4 py-3">POSIÇÃO</th>
+                  <th className="px-4 py-3">CPF DO CLIENTE</th>
+                  <th className="px-4 py-3">PARCEIRO</th>
+                  <th className="px-4 py-3">RESPONSÁVEL</th>
+                  <th className="px-4 py-3">DATA/HORA SOLICITAÇÃO</th>
+                  <th className="px-4 py-3">TEMPO DECORRIDO</th>
+                  <th className="px-4 py-3">TEMPO RESTANTE (SLA 72H)</th>
+                  <th className="px-4 py-3 text-right">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {pendingQueueSimulations.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                      <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500 opacity-60" />
+                      <p className="font-semibold text-sm text-slate-700 dark:text-slate-300">Fila zerada!</p>
+                      <p className="text-xs">Não existem solicitações de simulação aguardando digitação no momento.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  pendingQueueSimulations.map((sim, index) => {
+                    const partner = partners.find(p => p.id === sim.partnerId);
+                    const creator = users.find(u => u.id === sim.createdById);
+                    const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status);
+
+                    return (
+                      <tr key={sim.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-3 font-bold text-slate-400">#{index + 1}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                          {formatCpf(sim.cpf)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md mr-1.5">
+                            {partner?.login}
+                          </span>
+                          <span className="text-slate-500">{partner?.fullName}</span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{creator?.name}</td>
+                        <td className="px-4 py-3 text-slate-500">
+                          {new Date(sim.createdAt).toLocaleString('pt-BR')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${elapsed.badgeClass}`}
+                          >
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                            {elapsed.text}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${elapsed.badgeClass}`}
+                          >
+                            <Hourglass className="h-3.5 w-3.5 shrink-0" />
+                            {elapsed.remainingText}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              setStatusModalTarget(sim);
+                              setRejectionReason('');
+                            }}
+                            className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md border border-rose-200 dark:border-rose-900/60 cursor-pointer"
+                          >
+                            Inviabilizar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: DASHBOARD & ANÁLISES */}
+      {activeTab === 'DASHBOARD_ANALISES' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Top Summary Banner */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-blue-600" />
+              Funil de Conversão & Tempo Médio
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                <div className="text-xs text-slate-500">Total de Simulações Enviadas</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{metrics.total}</div>
+                <div className="text-[11px] text-blue-600 mt-1">100% das solicitações registradas</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                <div className="text-xs text-slate-500">Digitadas pela Mesa (Identificadas)</div>
+                <div className="text-2xl font-bold text-emerald-600 mt-1">{metrics.digitadas}</div>
+                <div className="text-[11px] text-emerald-600 mt-1">{metrics.taxaConversao}% taxa de conversão</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                <div className="text-xs text-slate-500">Tempo Médio até Digitação</div>
+                <div className="text-2xl font-bold text-indigo-600 mt-1">{averageMatchTime}</div>
+                <div className="text-[11px] text-indigo-600 mt-1">Tempo entre solicitação e ADE digitada</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Análise por Parceiro */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              Análise de Simulações por Parceiro
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-4 py-3">PARCEIRO</th>
+                    <th className="px-4 py-3 text-center">CADASTRADAS</th>
+                    <th className="px-4 py-3 text-center">AGUARDANDO</th>
+                    <th className="px-4 py-3 text-center text-emerald-600">DIGITADAS</th>
+                    <th className="px-4 py-3 text-center text-rose-600">NÃO PASSÍVEIS</th>
+                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS (72H)</th>
+                    <th className="px-4 py-3 text-right">TAXA CONVERSÃO (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {partnerStats.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                        Nenhum dado por parceiro registrado.
+                      </td>
+                    </tr>
+                  ) : (
+                    partnerStats.map(stat => {
+                      const conv = stat.total > 0 ? ((stat.digitadas / stat.total) * 100).toFixed(1) : '0.0';
+                      return (
+                        <tr key={stat.partner.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                          <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                            <span className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md mr-2">
+                              {stat.partner.login}
+                            </span>
+                            <span>{stat.partner.fullName}</span>
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold">{stat.total}</td>
+                          <td className="px-4 py-3 text-center text-amber-600 font-medium">{stat.enviadas}</td>
+                          <td className="px-4 py-3 text-center text-emerald-600 font-bold">{stat.digitadas}</td>
+                          <td className="px-4 py-3 text-center text-rose-600 font-medium">{stat.naoPassivel}</td>
+                          <td className="px-4 py-3 text-center text-slate-600 font-semibold">{stat.perdidas}</td>
+                          <td className="px-4 py-3 text-right font-bold text-indigo-600">{conv}%</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Análise por Responsável */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-600" />
+              Análise de Simulações por Responsável (Usuário Criador)
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-4 py-3">RESPONSÁVEL</th>
+                    <th className="px-4 py-3">PERFIL / ROLE</th>
+                    <th className="px-4 py-3 text-center">CADASTRADAS</th>
+                    <th className="px-4 py-3 text-center text-emerald-600">DIGITADAS</th>
+                    <th className="px-4 py-3 text-center text-rose-600">NÃO PASSÍVEIS</th>
+                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS (72H)</th>
+                    <th className="px-4 py-3 text-right">TAXA CONVERSÃO (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {userStats.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                        Nenhum dado por usuário registrado.
+                      </td>
+                    </tr>
+                  ) : (
+                    userStats.map(stat => {
+                      const conv = stat.total > 0 ? ((stat.digitadas / stat.total) * 100).toFixed(1) : '0.0';
+                      return (
+                        <tr key={stat.user.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                            {stat.user.name}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{stat.user.role}</td>
+                          <td className="px-4 py-3 text-center font-bold">{stat.total}</td>
+                          <td className="px-4 py-3 text-center text-emerald-600 font-bold">{stat.digitadas}</td>
+                          <td className="px-4 py-3 text-center text-rose-600 font-medium">{stat.naoPassivel}</td>
+                          <td className="px-4 py-3 text-center text-slate-600 font-semibold">{stat.perdidas}</td>
+                          <td className="px-4 py-3 text-right font-bold text-indigo-600">{conv}%</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Nova Simulação (com Combobox de Parceiro e Alerta de Duplicidade) */}
+      {isNewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                  <Calculator className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Nova Solicitação de Simulação
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Informe o CPF do cliente e pesquise o parceiro solicitante
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsNewModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* AVISO DE DUPLICIDADE (SE HOUVER) */}
+            {duplicateWarning ? (
+              <div className="mt-5 space-y-4">
+                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-sm text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+                    Solicitação Pendente em Duplicidade Detectada
+                  </div>
+                  <p>
+                    Já existe uma solicitação de simulação para este CPF e parceiro aguardando digitação.
+                  </p>
+                  <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-amber-200/60 font-mono text-[11px] space-y-1">
+                    <div>CPF: <strong>{formatCpf(duplicateWarning.cleanCpf)}</strong></div>
+                    <div>Parceiro: <strong>{selectedPartner?.login} — {selectedPartner?.fullName}</strong></div>
+                    <div>Cadastrado em: <strong>{new Date(duplicateWarning.pendingSim.createdAt).toLocaleString('pt-BR')}</strong></div>
+                  </div>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Deseja cancelar ou continuar registrando uma nova solicitação mesmo assim?
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateWarning(null)}
+                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-200 cursor-pointer"
+                  >
+                    CANCELAR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => executeCreateSimulation(duplicateWarning.cleanCpf, duplicateWarning.partnerId)}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer transition-all"
+                  >
+                    CONTINUAR
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitSimulation} className="mt-5 space-y-4">
+                {modalError && (
+                  <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{modalError}</span>
+                  </div>
+                )}
+
+                {/* 1. CPF DO CLIENTE */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    CPF DO CLIENTE <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={newCpf}
+                    onChange={handleCpfChange}
+                    placeholder="000.000.000-00"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    O CPF é normalizado e validado automaticamente.
+                  </p>
+                </div>
+
+                {/* 2. PARCEIRO — AUTOCOMPLETE COMBOBOX */}
+                <div ref={comboboxRef} className="relative">
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    PARCEIRO <span className="text-rose-500">*</span>
+                  </label>
+
+                  {selectedPartner ? (
+                    <div className="flex items-center justify-between p-2.5 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                          {selectedPartner.login}
+                        </span>
+                        <span className="text-xs font-medium text-slate-900 dark:text-slate-100">
+                          {selectedPartner.fullName}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPartner(null);
+                          setPartnerQuery('');
+                          setIsPartnerDropdownOpen(true);
+                        }}
+                        className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                        title="Limpar seleção de parceiro"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          value={partnerQuery}
+                          onChange={e => {
+                            setPartnerQuery(e.target.value);
+                            setIsPartnerDropdownOpen(true);
+                            setModalError(null);
+                          }}
+                          onFocus={() => setIsPartnerDropdownOpen(true)}
+                          placeholder="Digite o código, login ou nome do parceiro..."
+                          className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {isPartnerDropdownOpen && (
+                        <div className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl divide-y divide-slate-100 dark:divide-slate-800">
+                          {filteredPartnerOptions.length === 0 ? (
+                            <div className="p-3 text-xs text-slate-400 text-center">
+                              Nenhum parceiro encontrado.
+                            </div>
+                          ) : (
+                            filteredPartnerOptions.map(p => (
+                              <button
+                                type="button"
+                                key={p.id}
+                                onClick={() => {
+                                  setSelectedPartner(p);
+                                  setIsPartnerDropdownOpen(false);
+                                  setModalError(null);
+                                }}
+                                className="w-full text-left p-2.5 hover:bg-blue-50 dark:hover:bg-slate-800 flex items-center justify-between cursor-pointer transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-xs text-slate-800 dark:text-slate-200">
+                                    {p.login}
+                                  </span>
+                                  <span className="text-xs text-slate-800 dark:text-slate-200 font-medium">
+                                    {p.fullName}
+                                  </span>
+                                </div>
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Pesquise por código (ex: 16740), login (ex: KAUAI@16740) ou nome do parceiro.
+                  </p>
+                </div>
+
+                {/* 3. STATUS DA SIMULAÇÃO */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    STATUS DA SIMULAÇÃO <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setInitialStatus('SIMULAÇÃO ENVIADA')}
+                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 cursor-pointer transition-all ${
+                        initialStatus === 'SIMULAÇÃO ENVIADA'
+                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className={`h-3 w-3 rounded-full ${initialStatus === 'SIMULAÇÃO ENVIADA' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      <div>
+                        <div className="text-xs font-bold">SIMULAÇÃO ENVIADA</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Aguardando digitação pela mesa</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setInitialStatus('NÃO PASSÍVEL DE CONTRATAÇÃO')}
+                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 cursor-pointer transition-all ${
+                        initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
+                          ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 font-bold shadow-xs'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className={`h-3 w-3 rounded-full ${initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'bg-rose-500' : 'bg-slate-300'}`} />
+                      <div>
+                        <div className="text-xs font-bold">INVIÁVEL / NÃO PASSÍVEL</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Sem margem / política reprovada</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* MOTIVO DE INVIABILIDADE (Se selecionado) */}
+                {initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && (
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-150">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      MOTIVO DA INVIABILIDADE (OPCIONAL)
+                    </label>
+                    <input
+                      type="text"
+                      value={initialRejectionReason}
+                      onChange={e => setInitialRejectionReason(e.target.value)}
+                      placeholder="Ex: Cliente sem margem disponível / Idade fora da política"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                    />
+                  </div>
+                )}
+
+                {/* Info de Automobilismo / Auditoria */}
+                <div className="p-3.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-slate-700 dark:text-slate-300 text-xs space-y-1">
+                  <div className="flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-300">
+                    <ShieldCheck className="h-4 w-4 text-blue-600" />
+                    Preenchimento Automático do Sistema
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                    • <strong>Responsável:</strong> {activeUser.name} ({activeUser.role})
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                    • <strong>Status Selecionado:</strong> {initialStatus}
+                  </div>
+                  {initialStatus === 'SIMULAÇÃO ENVIADA' && (
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                      • <strong>Vínculo Automático:</strong> O sistema mudará para <strong>DIGITADA PELA MESA</strong> assim que a proposta for digitada.
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                  >
+                    Registrar Simulação
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Seletor de Status da Simulação */}
+      {statusModalTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center gap-3 text-blue-600 mb-3">
+              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center">
+                <Calculator className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Definir Status da Simulação
+                </h3>
+                <p className="text-xs text-slate-500">
+                  CPF: <strong className="font-mono">{formatCpf(statusModalTarget.cpf)}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 my-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Selecione o Novo Status
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTargetStatus('DIGITADA PELA MESA')}
+                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
+                      selectedTargetStatus === 'DIGITADA PELA MESA'
+                        ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                        DIGITADA PELA MESA (Enviada com Sucesso)
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Proposta gerada e vinculada à simulação.
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTargetStatus('NÃO PASSÍVEL DE CONTRATAÇÃO')}
+                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
+                      selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
+                        ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 ring-2 ring-rose-500/20'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+                        <XCircle className="h-4 w-4" />
+                        NÃO PASSÍVEL DE CONTRATAÇÃO (Inviável)
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Sem margem, reprovado em política ou inviável.
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTargetStatus('SIMULAÇÃO ENVIADA')}
+                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
+                      selectedTargetStatus === 'SIMULAÇÃO ENVIADA'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/20'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
+                        <Clock className="h-4 w-4" />
+                        SIMULAÇÃO ENVIADA (Pendente)
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Aguardando retorno da mesa de digitação.
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {selectedTargetStatus === 'DIGITADA PELA MESA' && (
+                <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-lg space-y-2">
+                  <label className="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                    Número da ADE / Proposta Vinculada (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedAdeNumber}
+                    onChange={e => setSelectedAdeNumber(e.target.value)}
+                    placeholder="Ex: 833085808"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                    Ao informar a ADE, a simulação ficará vinculada à proposta no sistema.
+                  </p>
+                </div>
+              )}
+
+              {selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && (
+                <div className="p-3 bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 rounded-lg space-y-2">
+                  <label className="block text-[11px] font-bold text-rose-800 dark:text-rose-300">
+                    Motivo da Inviabilidade
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={e => setRejectionReason(e.target.value)}
+                    placeholder="Ex: Cliente sem margem consignável disponível no momento..."
+                    rows={2}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setStatusModalTarget(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmStatusChange}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                Salvar Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Excluir Solicitação de Simulação (Individual) */}
+      {deleteModalTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center gap-3 text-rose-600 mb-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Excluir Solicitação
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Ação irreversível com registro em auditoria
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="mb-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+              Tem certeza que deseja excluir permanentemente a solicitação de simulação do CPF{' '}
+              <strong>{formatCpf(deleteModalTarget.cpf)}</strong>?
+            </p>
+
+            <div className="mt-4">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Motivo da Exclusão (Opcional)
+              </label>
+              <textarea
+                value={deleteReason}
+                onChange={e => setDeleteReason(e.target.value)}
+                placeholder="Ex: Cadastro em duplicidade / solicitação incorreta..."
+                rows={2}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteModalTarget(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                Confirmar Exclusão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Exclusão em Massa (Bulk Delete) */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center gap-3 text-rose-600 mb-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Exclusão em Massa ({selectedIds.length})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Remoção permanente de múltiplas solicitações
+                </p>
+              </div>
+            </div>
+
+            {bulkDeleteError && (
+              <div className="mb-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{bulkDeleteError}</span>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+              Confirma a exclusão em massa de <strong>{selectedIds.length}</strong> solicitação(ões) de simulação selecionada(s)?
+            </p>
+
+            <div className="mt-4">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Motivo da Exclusão em Massa (Opcional)
+              </label>
+              <textarea
+                value={bulkDeleteReason}
+                onChange={e => setBulkDeleteReason(e.target.value)}
+                placeholder="Ex: Limpeza de solicitações de simulação antigas / duplicadas..."
+                rows={2}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBulkDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                Confirmar Exclusão em Massa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Detalhes da Solicitação */}
+      {detailTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                  <Info className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Detalhes da Simulação
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">ID: {detailTarget.id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDetailTarget(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div>
+                  <span className="text-slate-400 block text-[10px]">CPF DO CLIENTE</span>
+                  <span className="font-mono font-bold text-sm">{formatCpf(detailTarget.cpf)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">PARCEIRO</span>
+                  <span className="font-mono font-bold text-xs">
+                    {partners.find(p => p.id === detailTarget.partnerId)?.login}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">RESPONSÁVEL</span>
+                  <span className="font-semibold">{users.find(u => u.id === detailTarget.createdById)?.name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">DATA SOLICITAÇÃO</span>
+                  <span>{new Date(detailTarget.createdAt).toLocaleString('pt-BR')}</span>
+                </div>
+              </div>
+
+              {/* Timeline Flow */}
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
+                <h4 className="font-bold text-slate-800 dark:text-slate-200">Linha do Tempo da Simulação</h4>
+
+                <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
+                  {/* Step 1 */}
+                  <div className="relative pl-7">
+                    <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-blue-600 border-2 border-white dark:border-slate-900" />
+                    <div className="font-bold text-slate-900 dark:text-slate-100">SIMULAÇÃO ENVIADA</div>
+                    <div className="text-[11px] text-slate-500">
+                      Cadastrado em {new Date(detailTarget.createdAt).toLocaleString('pt-BR')} por{' '}
+                      {users.find(u => u.id === detailTarget.createdById)?.name}
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="relative pl-7">
+                    {detailTarget.status === 'DIGITADA PELA MESA' ? (
+                      <>
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
+                        <div className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          DIGITADA PELA MESA
+                          <span className="px-1.5 py-0.2 text-[9px] bg-emerald-100 text-emerald-800 font-bold rounded-xs">
+                            AUTOMÁTICO PELO SISTEMA
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 space-y-0.5">
+                          <div>
+                            ADE Gerada: <strong>{detailTarget.matchedProposalNumber}</strong>
+                          </div>
+                          <div>
+                            Digitador Responsável: <strong>{detailTarget.matchedDigitizerName}</strong>
+                          </div>
+                          <div>
+                            Data da Vínculação:{' '}
+                            <strong>
+                              {detailTarget.matchedAt ? new Date(detailTarget.matchedAt).toLocaleString('pt-BR') : '-'}
+                            </strong>
+                          </div>
+                        </div>
+                      </>
+                    ) : detailTarget.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? (
+                      <>
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-rose-500 border-2 border-white dark:border-slate-900" />
+                        <div className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                          NÃO PASSÍVEL DE CONTRATAÇÃO
+                          <span className="px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-800 font-bold rounded-xs">
+                            ALTERAÇÃO MANUAL
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Atualizado em {new Date(detailTarget.updatedAt).toLocaleString('pt-BR')}
+                        </div>
+                      </>
+                    ) : detailTarget.status === 'PERDIDA (NÃO DIGITADA)' ? (
+                      <>
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-slate-500 border-2 border-white dark:border-slate-900" />
+                        <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          PERDIDA (NÃO DIGITADA)
+                          <span className="px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold rounded-xs">
+                            EXPIRAÇÃO AUTOMÁTICA 72H
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Prazo máximo de 72 horas excedido sem digitação da proposta. Expirado em {new Date(detailTarget.updatedAt).toLocaleString('pt-BR')}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-white dark:border-slate-900" />
+                        <div className="font-semibold text-slate-400">Aguardando Identificação da Mesa...</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDetailTarget(null)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-200 cursor-pointer"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Importação de Simulações em Lote */}
+      <SimulationImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportCompleted={() => loadData()}
+      />
+    </div>
+  );
+};
