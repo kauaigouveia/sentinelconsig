@@ -951,7 +951,7 @@ export class StorageService {
 
   public static getActiveUser(): User {
     let user = this.get<User>(STORAGE_KEYS.ACTIVE_USER, INITIAL_USERS[0]);
-    if (user.id === 'u-master' || user.role === 'MASTER') {
+    if (user.id === 'u-master') {
       if (user.name !== 'Kauai Gouveia' || user.email !== 'kauaigouveia@gmail.com') {
         user = { ...user, name: 'Kauai Gouveia', email: 'kauaigouveia@gmail.com' };
         this.set(STORAGE_KEYS.ACTIVE_USER, user);
@@ -987,7 +987,7 @@ export class StorageService {
       return u;
     });
 
-    const masterIdx = users.findIndex(u => u.id === 'u-master' || u.role === 'MASTER');
+    const masterIdx = users.findIndex(u => u.id === 'u-master');
     if (masterIdx !== -1) {
       if (users[masterIdx].name !== 'Kauai Gouveia' || users[masterIdx].email !== 'kauaigouveia@gmail.com') {
         users[masterIdx] = {
