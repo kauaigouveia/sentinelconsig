@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { AutomationService } from '../../services/automationService';
-import { formatCpf, formatDate, extractPartnerCode } from '../../lib/utils';
+import { formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
 import { Proposal } from '../../types';
 import { ProposalDetailModal } from './ProposalDetailModal';
 
@@ -83,6 +83,9 @@ export const PortabilityView: React.FC = () => {
     c => c.status?.code === 'SALDO_RETORNADO'
   );
 
+  const totalSaldoPortabilidade = proposals.reduce((acc, p) => acc + (p.contractBalance || 0), 0);
+  const totalTrocoPortabilidade = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+
   const currentList =
     activeTab === 'TODAS'
       ? classified
@@ -115,6 +118,24 @@ export const PortabilityView: React.FC = () => {
           <Play className="h-3.5 w-3.5" />
           <span>Executar Verificação de Saldo (Vercel Cron)</span>
         </button>
+      </div>
+
+      {/* Financial Summary Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3 flex items-center justify-between shadow-2xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-indigo-700">Saldo Total em Portabilidade</span>
+            <p className="text-xl font-black text-indigo-900 mt-0.5">{formatCurrency(totalSaldoPortabilidade)}</p>
+            <span className="text-[10px] text-indigo-600">Soma dos saldos devedores informados</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex items-center justify-between shadow-2xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-emerald-700">Troco / Líquido Previsto</span>
+            <p className="text-xl font-black text-emerald-900 mt-0.5">{formatCurrency(totalTrocoPortabilidade)}</p>
+            <span className="text-[10px] text-emerald-600">Valor a ser liberado ao cliente</span>
+          </div>
+        </div>
       </div>
 
       {/* Cron Feedback Banner */}
@@ -199,6 +220,7 @@ export const PortabilityView: React.FC = () => {
                 <th className="px-4 py-3">CPF</th>
                 <th className="px-4 py-3">Banco / Promotora</th>
                 <th className="px-4 py-3">Parceiro</th>
+                <th className="px-4 py-3">Valores</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">SLA Dias Úteis (Meta: 5d)</th>
                 <th className="px-4 py-3 text-center">Ações</th>
@@ -207,7 +229,7 @@ export const PortabilityView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium">
               {currentList.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-slate-400">
+                  <td colSpan={9} className="py-10 text-center text-slate-400">
                     Nenhuma portabilidade nesta categoria.
                   </td>
                 </tr>
@@ -239,6 +261,21 @@ export const PortabilityView: React.FC = () => {
                         <span className="text-slate-400 text-[10px] block">
                           {partner?.login}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.contractBalance ? (
+                          <span className="text-[11px] font-bold text-indigo-700 block">
+                            Saldo: {formatCurrency(p.contractBalance)}
+                          </span>
+                        ) : null}
+                        {p.disbursedValue ? (
+                          <span className="text-[10px] text-emerald-600 block">
+                            Troco: {formatCurrency(p.disbursedValue)}
+                          </span>
+                        ) : null}
+                        {!p.contractBalance && !p.disbursedValue && (
+                          <span className="text-slate-400 text-[10px]">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span

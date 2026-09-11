@@ -15,9 +15,11 @@ import {
   Shield,
   MessageSquare,
   Trash2,
+  Edit3,
+  DollarSign,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { formatDate, formatCpf, extractPartnerCode } from '../../lib/utils';
+import { formatDate, formatCpf, extractPartnerCode, formatCurrency, parseCurrency } from '../../lib/utils';
 import { Proposal, Status, PendencyType, PendencyPriority } from '../../types';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 
@@ -74,6 +76,40 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
   // New Comment Form
   const [commentText, setCommentText] = useState('');
+
+  // Financial values editing
+  const [isEditingFinancials, setIsEditingFinancials] = useState(false);
+  const [editDisbursedStr, setEditDisbursedStr] = useState(
+    proposal.disbursedValue !== undefined ? String(proposal.disbursedValue) : ''
+  );
+  const [editBalanceStr, setEditBalanceStr] = useState(
+    proposal.contractBalance !== undefined ? String(proposal.contractBalance) : ''
+  );
+  const [financialsSuccess, setFinancialsSuccess] = useState(false);
+
+  const handleSaveFinancials = () => {
+    const parsedDisbursed = editDisbursedStr.trim() ? parseCurrency(editDisbursedStr) : undefined;
+    const parsedBalance = editBalanceStr.trim() ? parseCurrency(editBalanceStr) : undefined;
+
+    try {
+      StorageService.updateProposalFinancials(
+        proposal.id,
+        {
+          disbursedValue: parsedDisbursed,
+          contractBalance: parsedBalance,
+        },
+        'MANUAL'
+      );
+      setFinancialsSuccess(true);
+      setTimeout(() => {
+        setFinancialsSuccess(false);
+        setIsEditingFinancials(false);
+        onProposalUpdated();
+      }, 800);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao atualizar valores da proposta.');
+    }
+  };
 
   const handleUpdateStatus = () => {
     if (selectedStatusId === proposal.statusId && !statusObservation) return;
@@ -242,6 +278,77 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Financial Information Bar */}
+        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-500">
+                Valor Liberado Cliente:
+              </span>
+              <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                {proposal.disbursedValue !== undefined ? formatCurrency(proposal.disbursedValue) : 'Não informado'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-500">
+                Saldo Contrato (Portabilidade):
+              </span>
+              <span className="font-mono font-bold text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                {proposal.contractBalance !== undefined ? formatCurrency(proposal.contractBalance) : 'Não informado'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsEditingFinancials(prev => !prev)}
+            className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-slate-300 hover:border-blue-400 px-2.5 py-1 rounded-md transition-colors"
+          >
+            <Edit3 className="h-3 w-3" />
+            <span>{isEditingFinancials ? 'Cancelar Edição' : 'Ajustar Valores'}</span>
+          </button>
+        </div>
+
+        {/* Financial Inline Form */}
+        {isEditingFinancials && (
+          <div className="px-6 py-3 bg-blue-50/60 border-b border-blue-200 flex flex-wrap items-end gap-3 text-xs">
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                Valor Liberado para Cliente (R$)
+              </label>
+              <input
+                type="text"
+                value={editDisbursedStr}
+                onChange={e => setEditDisbursedStr(e.target.value)}
+                placeholder="Ex: 1.250,00"
+                className="w-36 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                Saldo do Contrato / Quitação (R$)
+              </label>
+              <input
+                type="text"
+                value={editBalanceStr}
+                onChange={e => setEditBalanceStr(e.target.value)}
+                placeholder="Ex: 15.420,00"
+                className="w-36 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+              />
+            </div>
+            <button
+              onClick={handleSaveFinancials}
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Salvar Valores</span>
+            </button>
+            {financialsSuccess && (
+              <span className="text-emerald-700 font-bold text-xs py-1">Valores atualizados com sucesso!</span>
+            )}
+          </div>
+        )}
 
         {/* Related Portability Banner if exists */}
         {relatedPort && (

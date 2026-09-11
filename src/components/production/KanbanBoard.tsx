@@ -19,7 +19,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { formatCpf, extractPartnerCode, formatDate } from '../../lib/utils';
+import { formatCpf, extractPartnerCode, formatDate, formatCurrency } from '../../lib/utils';
 import { Proposal, Status, ResponsibleAlçada } from '../../types';
 import { ProposalDetailModal } from './ProposalDetailModal';
 
@@ -409,6 +409,22 @@ export const KanbanBoard: React.FC = () => {
                               {partner?.login}
                             </span>
                           </div>
+
+                          {/* Financial Values Pill */}
+                          {(p.disbursedValue || p.contractBalance) && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 text-[10px]">
+                              {p.disbursedValue ? (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                                  Lib: {formatCurrency(p.disbursedValue)}
+                                </span>
+                              ) : null}
+                              {p.contractBalance ? (
+                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium border border-indigo-200">
+                                  Saldo: {formatCurrency(p.contractBalance)}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
 
                           {/* SLA Operational Deadline Visual Progress Bar */}
                           <div className="pt-1.5 border-t border-slate-100 space-y-1">

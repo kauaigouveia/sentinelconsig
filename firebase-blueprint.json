@@ -120,6 +120,8 @@
         "digitizerId": { "type": "string", "description": "User id of digitizer who processed this" },
         "statusId": { "type": "string", "description": "ProposalStatus reference" },
         "currentResponsible": { "type": "string", "description": "Currently responsible party" },
+        "disbursedValue": { "type": "number", "description": "Net disbursed loan value released to client" },
+        "contractBalance": { "type": "number", "description": "Contract debt balance for portability" },
         "portabilitySlaStartedAt": { "type": "string", "format": "date-time", "description": "SLA start timestamp" },
         "notes": { "type": "string", "description": "Notes" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },

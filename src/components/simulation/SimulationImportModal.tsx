@@ -10,10 +10,19 @@ import {
   Calculator,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils, writeFile as xlsxWriteFile } from 'xlsx';
 import { StorageService } from '../../services/storageService';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { Partner } from '../../types';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
+
+const getSafeXlsx = () => {
+  const mod = (XLSX as any) || {};
+  const read = xlsxRead || mod.read || mod.default?.read || (window as any)?.XLSX?.read;
+  const utils = xlsxUtils || mod.utils || mod.default?.utils || (window as any)?.XLSX?.utils;
+  const writeFile = xlsxWriteFile || mod.writeFile || mod.default?.writeFile || (window as any)?.XLSX?.writeFile;
+  return { read, utils, writeFile };
+};
 
 interface SimulationImportModalProps {
   isOpen: boolean;
@@ -131,10 +140,18 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
     reader.onload = evt => {
       try {
         const buffer = evt.target?.result;
-        const wb = XLSX.read(buffer, { type: 'array' });
-        const wsName = wb.SheetNames[0];
+        const { read, utils } = getSafeXlsx();
+        if (!read || !utils) {
+          throw new Error('Não foi possível carregar os módulos da biblioteca XLSX.');
+        }
+
+        const wb = read(buffer, { type: 'array' });
+        const wsName = wb?.SheetNames?.[0];
+        if (!wsName || !wb?.Sheets?.[wsName]) {
+          throw new Error('Nenhuma planilha encontrada no arquivo.');
+        }
         const ws = wb.Sheets[wsName];
-        const rawJson = XLSX.utils.sheet_to_json(ws);
+        const rawJson = utils.sheet_to_json(ws);
         if (rawJson.length === 0) {
           setErrorMsg('A planilha selecionada está vazia.');
           return;
@@ -173,10 +190,16 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
       { 'CPF CLIENTE': '987.654.321-00', 'PARCEIRO (LOGIN / CÓDIGO)': '16690' },
       { 'CPF CLIENTE': '111.222.333-44', 'PARCEIRO (LOGIN / CÓDIGO)': 'FOX@16715' },
     ];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Simulacoes');
-    XLSX.writeFile(wb, 'MODELO_IMPORTACAO_SIMULACOES.xlsx');
+    const { utils, writeFile } = getSafeXlsx();
+    if (!utils || !writeFile) {
+      alert('Biblioteca XLSX não pôde ser carregada.');
+      return;
+    }
+
+    const ws = utils.json_to_sheet(templateData);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Simulacoes');
+    writeFile(wb, 'MODELO_IMPORTACAO_SIMULACOES.xlsx');
   };
 
   // Confirm Import

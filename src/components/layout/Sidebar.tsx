@@ -339,6 +339,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               <span>Status do Sistema</span>
             </button>
             <button
+              id="nav-admin-import-status"
+              onClick={() => onNavigate('admin-import-status')}
+              className={navItemClass('admin-import-status')}
+            >
+              <Upload className="h-4 w-4 text-emerald-500" />
+              <span>Importar Status Bancos</span>
+            </button>
+            <button
               id="nav-admin-calendario"
               onClick={() => onNavigate('admin-calendario')}
               className={navItemClass('admin-calendario')}

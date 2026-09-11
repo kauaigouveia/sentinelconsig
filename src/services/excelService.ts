@@ -1,7 +1,24 @@
 import * as XLSX from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils, writeFile as xlsxWriteFile } from 'xlsx';
 import { StorageService } from './storageService';
-import { extractPartnerCode, normalizeCpf, formatCpf, formatDateOnly, isValidCpf } from '../lib/utils';
+import {
+  extractPartnerCode,
+  normalizeCpf,
+  formatCpf,
+  formatDateOnly,
+  isValidCpf,
+  parseCurrency,
+  formatCurrency,
+} from '../lib/utils';
 import { Proposal } from '../types';
+
+const getXlsxSafe = () => {
+  const mod = (XLSX as any) || {};
+  const read = xlsxRead || mod.read || mod.default?.read || (window as any)?.XLSX?.read;
+  const utils = xlsxUtils || mod.utils || mod.default?.utils || (window as any)?.XLSX?.utils;
+  const writeFile = xlsxWriteFile || mod.writeFile || mod.default?.writeFile || (window as any)?.XLSX?.writeFile;
+  return { read, utils, writeFile };
+};
 
 export interface ImportPreviewRow {
   rowNumber: number;
@@ -22,6 +39,14 @@ export interface ImportPreviewRow {
   rawPromoter: string;
   matchedPromoterId?: string;
   matchedPromoterName?: string;
+  rawDisbursedValue?: string;
+  disbursedValue?: number;
+  rawContractBalance?: string;
+  contractBalance?: number;
+  isExistingProposal?: boolean;
+  existingProposalId?: string;
+  financialDifferenceDetected?: boolean;
+  financialDiffDetails?: string;
   isLegacyInterpretation: boolean;
   legacyInterpretationText?: string;
   isValid: boolean;
@@ -45,14 +70,37 @@ export class ExcelService {
    * and legacy bank-promoter interpretation.
    */
   public static async parseAndAnalyzeFile(file: File): Promise<ImportAnalysisResult> {
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
+    let rawRows: any[][] = [];
+    const { read, utils } = getXlsxSafe();
 
-    // Read as 2D array of strings
-    const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-    if (rawRows.length < 2) {
+    if (read && utils) {
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = read(data, { type: 'array' });
+        const firstSheetName = workbook?.SheetNames?.[0];
+        if (firstSheetName && workbook?.Sheets?.[firstSheetName]) {
+          const worksheet = workbook.Sheets[firstSheetName];
+          rawRows = utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        }
+      } catch (excelErr) {
+        console.warn('Erro ao processar XLSX no ExcelService, tentando leitor de texto:', excelErr);
+      }
+    }
+
+    if (!rawRows || rawRows.length < 2) {
+      try {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length >= 2) {
+          const sep = lines[0].includes(';') ? ';' : (lines[0].includes('\t') ? '\t' : ',');
+          rawRows = lines.map(line => line.split(sep).map(col => col.replace(/^["']|["']$/g, '').trim()));
+        }
+      } catch (textErr) {
+        console.warn('Erro ao ler arquivo de texto no ExcelService:', textErr);
+      }
+    }
+
+    if (!rawRows || rawRows.length < 2) {
       throw new Error('A planilha está vazia ou não contém dados suficientes.');
     }
 
@@ -79,6 +127,11 @@ export class ExcelService {
       const rawProduct = columnMap.product >= 0 ? String(row[columnMap.product]).trim() : '';
       let rawBank = columnMap.bank >= 0 ? String(row[columnMap.bank]).trim() : '';
       let rawPromoter = columnMap.promoter >= 0 ? String(row[columnMap.promoter]).trim() : '';
+      const rawDisbursed = columnMap.disbursed >= 0 ? String(row[columnMap.disbursed]).trim() : '';
+      const rawContractBalance = columnMap.contractBalance >= 0 ? String(row[columnMap.contractBalance]).trim() : '';
+
+      const disbursedValue = rawDisbursed ? parseCurrency(rawDisbursed) : undefined;
+      const contractBalance = rawContractBalance ? parseCurrency(rawContractBalance) : undefined;
 
       const errors: string[] = [];
       let isLegacy = false;
@@ -116,8 +169,13 @@ export class ExcelService {
         errors.push('ADE/Proposta não informada.');
       }
 
-      // Duplicate check (ADE check against existing database & within file)
+      // Duplicate & Financial update check
       let isDuplicate = false;
+      let isExistingProposal = false;
+      let existingProposalId: string | undefined;
+      let financialDifferenceDetected = false;
+      let financialDiffDetails: string | undefined;
+
       if (rawAde) {
         const cleanAdeUpper = rawAde.toUpperCase();
         if (seenAdesInFile.has(cleanAdeUpper)) {
@@ -129,8 +187,34 @@ export class ExcelService {
 
         const dbDup = existingProposals.find(p => p.proposalNumber.toUpperCase() === cleanAdeUpper);
         if (dbDup) {
-          isDuplicate = true;
-          errors.push(`Esta proposta já está cadastrada no sistema (ADE ${rawAde}).`);
+          isExistingProposal = true;
+          existingProposalId = dbDup.id;
+
+          // Check if spreadsheet contains financial values that differ from current proposal in DB
+          const hasFinancialsInRow = disbursedValue !== undefined || contractBalance !== undefined;
+          const disbursedDiff = disbursedValue !== undefined && disbursedValue !== dbDup.disbursedValue;
+          const contractDiff = contractBalance !== undefined && contractBalance !== dbDup.contractBalance;
+
+          if (hasFinancialsInRow && (disbursedDiff || contractDiff)) {
+            financialDifferenceDetected = true;
+            const diffParts: string[] = [];
+            if (disbursedDiff) {
+              diffParts.push(
+                `Liberado: ${dbDup.disbursedValue !== undefined ? formatCurrency(dbDup.disbursedValue) : 'Não informado'} -> ${formatCurrency(disbursedValue)}`
+              );
+            }
+            if (contractDiff) {
+              diffParts.push(
+                `Saldo: ${dbDup.contractBalance !== undefined ? formatCurrency(dbDup.contractBalance) : 'Não informado'} -> ${formatCurrency(contractBalance)}`
+              );
+            }
+            financialDiffDetails = `Proposta existente com atualização de valores (${diffParts.join(' | ')})`;
+            // Not a blocking fatal duplicate: It can be updated!
+            isDuplicate = false;
+          } else {
+            isDuplicate = true;
+            errors.push(`Esta proposta já está cadastrada no sistema (ADE ${rawAde}) com os mesmos valores.`);
+          }
         }
       }
 
@@ -253,6 +337,14 @@ export class ExcelService {
         rawPromoter,
         matchedPromoterId,
         matchedPromoterName,
+        rawDisbursedValue: rawDisbursed,
+        disbursedValue,
+        rawContractBalance: rawContractBalance,
+        contractBalance,
+        isExistingProposal,
+        existingProposalId,
+        financialDifferenceDetected,
+        financialDiffDetails,
         isLegacyInterpretation: isLegacy,
         legacyInterpretationText: legacyText,
         isValid,
@@ -269,6 +361,8 @@ export class ExcelService {
       Produto: headers[columnMap.product] || 'Não detectada',
       Banco: headers[columnMap.bank] || 'Não detectada',
       Promotora: headers[columnMap.promoter] || 'Não detectada',
+      'Valor Liberado': headers[columnMap.disbursed] || 'Não detectada',
+      'Saldo Contrato': headers[columnMap.contractBalance] || 'Não detectada',
     };
 
     const invalidRows = previewRows.filter(r => !r.isValid && !r.isDuplicate);
@@ -316,7 +410,7 @@ export class ExcelService {
   /**
    * Executes the batch import of valid rows
    */
-  public static executeImport(validRows: ImportPreviewRow[]): { importedCount: number; errors: string[] } {
+  public static executeImport(validRows: ImportPreviewRow[], fileName?: string): { importedCount: number; errors: string[] } {
     const errors: string[] = [];
     let importedCount = 0;
     const activeUser = StorageService.getActiveUser();
@@ -325,13 +419,29 @@ export class ExcelService {
 
     for (const row of validRows) {
       try {
+        // If this is an existing proposal with updated financial values, update its financials!
+        if (row.isExistingProposal && row.existingProposalId) {
+          StorageService.updateProposalFinancials(
+            row.existingProposalId,
+            {
+              disbursedValue: row.disbursedValue,
+              contractBalance: row.contractBalance,
+            },
+            'IMPORTACAO',
+            fileName
+          );
+          successfulAdes.push(row.proposalNumber);
+          importedCount++;
+          continue;
+        }
+
         // 1. Get or create Client (one client can have multiple proposals!)
         const client = StorageService.getOrCreateClient({
           cpf: row.normalizedCpf,
           fullName: row.fullName,
         });
 
-        // 2. Create Proposal
+        // 2. Create Proposal with financial values
         StorageService.createProposal(
           {
             proposalNumber: row.proposalNumber,
@@ -341,6 +451,8 @@ export class ExcelService {
             promoterId: row.matchedPromoterId!,
             partnerId: row.matchedPartnerId!,
             digitizerId: activeUser.id,
+            disbursedValue: row.disbursedValue,
+            contractBalance: row.contractBalance,
             notes: row.isLegacyInterpretation ? row.legacyInterpretationText : undefined,
           },
           'IMPORTACAO'
@@ -402,6 +514,8 @@ export class ExcelService {
     product: number;
     bank: number;
     promoter: number;
+    disbursed: number;
+    contractBalance: number;
   } {
     const map = {
       cpf: -1,
@@ -411,6 +525,8 @@ export class ExcelService {
       product: -1,
       bank: -1,
       promoter: -1,
+      disbursed: -1,
+      contractBalance: -1,
     };
 
     headers.forEach((h, idx) => {
@@ -442,6 +558,30 @@ export class ExcelService {
       }
       if (clean.includes('PROMOTORA') || clean.includes('PROMOTORA DE VÍNCULO') || clean.includes('PROMOTORA DE VINCULO')) {
         if (map.promoter === -1) map.promoter = idx;
+      }
+      if (
+        clean.includes('LIBERADO') ||
+        clean.includes('VLR LIBERADO') ||
+        clean.includes('VALOR LIBERADO') ||
+        clean.includes('VALOR CLIENTE') ||
+        clean.includes('TROCO') ||
+        clean.includes('VALOR LIQUIDO') ||
+        clean.includes('VALOR LÍQUIDO') ||
+        clean.includes('LIQUIDO') ||
+        clean.includes('LÍQUIDO')
+      ) {
+        if (map.disbursed === -1) map.disbursed = idx;
+      }
+      if (
+        clean.includes('SALDO') ||
+        clean.includes('DEVEDOR') ||
+        clean.includes('QUITACAO') ||
+        clean.includes('QUITAÇÃO') ||
+        clean.includes('SALDO DO CONTRATO') ||
+        clean.includes('SALDO CONTRATO') ||
+        clean.includes('VALOR DO SALDO')
+      ) {
+        if (map.contractBalance === -1) map.contractBalance = idx;
       }
     });
 
@@ -480,11 +620,12 @@ export class ExcelService {
       };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(dataRows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Propostas');
+    const { utils, writeFile } = getXlsxSafe();
+    const worksheet = utils.json_to_sheet(dataRows);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Propostas');
 
-    XLSX.writeFile(workbook, fileName);
+    writeFile(workbook, fileName);
 
     // Log the export
     StorageService.addExportLog({
@@ -536,6 +677,8 @@ export class ExcelService {
       if (selectedColumns.includes('TELEFONE')) row['TELEFONE'] = client?.phone || '';
       if (selectedColumns.includes('EMAIL')) row['E-MAIL'] = client?.email || '';
       if (selectedColumns.includes('PRODUTO')) row['PRODUTO'] = product?.name || '';
+      if (selectedColumns.includes('VALOR_LIBERADO')) row['VALOR LIBERADO'] = p.disbursedValue !== undefined ? formatCurrency(p.disbursedValue) : '';
+      if (selectedColumns.includes('SALDO_CONTRATO')) row['SALDO DO CONTRATO'] = p.contractBalance !== undefined ? formatCurrency(p.contractBalance) : '';
       if (selectedColumns.includes('BANCO')) row['BANCO'] = bank?.name || '';
       if (selectedColumns.includes('PROMOTORA')) row['PROMOTORA'] = promoter?.name || '';
       if (selectedColumns.includes('PARCEIRO')) row['PARCEIRO'] = partner?.fullName || '';
@@ -551,14 +694,15 @@ export class ExcelService {
       return row;
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(dataRows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório');
+    const { utils, writeFile } = getXlsxSafe();
+    const worksheet = utils.json_to_sheet(dataRows);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Relatório');
 
     if (format === 'CSV') {
-      XLSX.writeFile(workbook, fileName, { bookType: 'csv' });
+      writeFile(workbook, fileName, { bookType: 'csv' });
     } else {
-      XLSX.writeFile(workbook, fileName);
+      writeFile(workbook, fileName);
     }
 
     StorageService.addExportLog({

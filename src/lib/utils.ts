@@ -218,11 +218,55 @@ export function getAgingBucket(createdAt: string): string {
 /**
  * Formats a number as BRL currency (R$ 1.234,56)
  */
-export function formatCurrency(value: number): string {
+export function formatCurrency(value?: number | null): string {
+  if (value === undefined || value === null || isNaN(Number(value))) {
+    return 'R$ 0,00';
+  }
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value || 0);
+  }).format(Number(value));
+}
+
+/**
+ * Parses any currency string or numeric representation to a clean number.
+ * Supports: "R$ 12.345,67", "12.345,67", "12345,67", "12345.67", 12345.67
+ */
+export function parseCurrency(val: any): number | undefined {
+  if (val === undefined || val === null || val === '') return undefined;
+  if (typeof val === 'number') {
+    return isNaN(val) ? undefined : val;
+  }
+  const str = String(val).trim();
+  if (!str) return undefined;
+
+  // Strip currency symbols and letters, keeping digits, dots, commas, minus
+  const clean = str.replace(/[^\d.,-]/g, '').trim();
+  if (!clean) return undefined;
+
+  // Check format: Brazilian (1.234,56) vs US (1,234.56)
+  if (clean.includes(',') && clean.includes('.')) {
+    if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+      // 1.234,56
+      const numStr = clean.replace(/\./g, '').replace(',', '.');
+      const n = parseFloat(numStr);
+      return isNaN(n) ? undefined : n;
+    } else {
+      // 1,234.56
+      const numStr = clean.replace(/,/g, '');
+      const n = parseFloat(numStr);
+      return isNaN(n) ? undefined : n;
+    }
+  } else if (clean.includes(',')) {
+    // 1234,56
+    const numStr = clean.replace(',', '.');
+    const n = parseFloat(numStr);
+    return isNaN(n) ? undefined : n;
+  } else {
+    // 1234.56 or 1234
+    const n = parseFloat(clean);
+    return isNaN(n) ? undefined : n;
+  }
 }
 
 /**

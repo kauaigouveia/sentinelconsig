@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ExcelService, ImportAnalysisResult, ImportPreviewRow } from '../../services/excelService';
-import { formatCpf } from '../../lib/utils';
+import { formatCpf, formatCurrency } from '../../lib/utils';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
@@ -77,7 +77,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
     setIsImporting(true);
     try {
-      const { importedCount, errors } = ExcelService.executeImport(analysisResult.validRows);
+      const { importedCount, errors } = ExcelService.executeImport(analysisResult.validRows, analysisResult.fileName);
       if (errors.length > 0) {
         setErrorMsg(`Importado parcialmente (${importedCount}). Erros: ${errors.join('; ')}`);
       } else {
@@ -274,6 +274,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         <th className="px-3 py-2">Produto</th>
                         <th className="px-3 py-2">Banco</th>
                         <th className="px-3 py-2">Promotora</th>
+                        <th className="px-3 py-2">Valores (Liberado / Saldo)</th>
                         <th className="px-3 py-2">Status / Detalhes</th>
                       </tr>
                     </thead>
@@ -299,12 +300,41 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                           <td className="px-3 py-2">{row.matchedProductName || row.rawProduct}</td>
                           <td className="px-3 py-2">{row.matchedBankName || row.rawBank}</td>
                           <td className="px-3 py-2">{row.matchedPromoterName || row.rawPromoter}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="flex flex-col text-[11px]">
+                              {row.disbursedValue !== undefined ? (
+                                <span className="font-semibold text-emerald-700">
+                                  Lib: {formatCurrency(row.disbursedValue)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">Lib: -</span>
+                              )}
+                              {row.contractBalance !== undefined ? (
+                                <span className="font-semibold text-indigo-700">
+                                  Saldo: {formatCurrency(row.contractBalance)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">Saldo: -</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-2">
                             {row.isValid ? (
-                              <div className="flex flex-col">
-                                <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
-                                  <CheckCircle2 className="h-3 w-3" /> Válida
-                                </span>
+                              <div className="flex flex-col gap-0.5">
+                                {row.financialDifferenceDetected ? (
+                                  <span className="inline-flex items-center gap-1 text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                    <Sparkles className="h-3 w-3" /> Atualizar Valores
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                                    <CheckCircle2 className="h-3 w-3" /> Válida
+                                  </span>
+                                )}
+                                {row.financialDiffDetails && (
+                                  <span className="text-[10px] text-blue-700 font-medium">
+                                    {row.financialDiffDetails}
+                                  </span>
+                                )}
                                 {row.isLegacyInterpretation && (
                                   <span className="text-[10px] text-blue-600 font-medium">
                                     {row.legacyInterpretationText}

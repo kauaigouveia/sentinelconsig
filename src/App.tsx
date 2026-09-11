@@ -19,6 +19,7 @@ import { StatusManagement } from './components/admin/StatusManagement';
 import { HolidayManagement } from './components/admin/HolidayManagement';
 import { AuditLogView } from './components/admin/AuditLogView';
 import { UserManagement } from './components/admin/UserManagement';
+import { StatusImport } from './components/admin/StatusImport';
 import { SimulationView } from './components/simulation/SimulationView';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
@@ -387,6 +388,10 @@ export default function App() {
           {currentView === 'admin-calendario' && <HolidayManagement />}
 
           {currentView === 'admin-auditoria' && <AuditLogView />}
+
+          {currentView === 'admin-import-status' && (
+            <StatusImport onNavigate={handleNavigate} />
+          )}
         </main>
       </div>
 

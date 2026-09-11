@@ -14,7 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { normalizeCpf, formatCpf, extractPartnerCode, isValidCpf } from '../../lib/utils';
+import { normalizeCpf, formatCpf, extractPartnerCode, isValidCpf, parseCurrency, formatCurrency } from '../../lib/utils';
 import { Product, Bank, Promoter, Partner, Client } from '../../types';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
 
@@ -24,6 +24,8 @@ interface AdeRow {
   productId: string;
   bankId: string;
   promoterId: string;
+  disbursedValue?: string | number; // Valor liberado cliente
+  contractBalance?: string | number; // Saldo do contrato (portabilidade)
   notes?: string;
   linkWithPortabilityIndex?: number; // link to another row in this batch
 }
@@ -346,6 +348,14 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             bankId: row.bankId,
             promoterId: row.promoterId,
             partnerId: selectedPartnerId,
+            disbursedValue:
+              row.disbursedValue !== undefined && row.disbursedValue !== ''
+                ? parseCurrency(row.disbursedValue)
+                : undefined,
+            contractBalance:
+              row.contractBalance !== undefined && row.contractBalance !== ''
+                ? parseCurrency(row.contractBalance)
+                : undefined,
             notes: row.notes,
           });
           createdProposalMap.set(i, prop);
@@ -385,6 +395,14 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             bankId: row.bankId,
             promoterId: row.promoterId,
             partnerId: selectedPartnerId,
+            disbursedValue:
+              row.disbursedValue !== undefined && row.disbursedValue !== ''
+                ? parseCurrency(row.disbursedValue)
+                : undefined,
+            contractBalance:
+              row.contractBalance !== undefined && row.contractBalance !== ''
+                ? parseCurrency(row.contractBalance)
+                : undefined,
             notes: row.notes,
             relatedPortabilityId: relatedPortabilityId,
           });
@@ -637,6 +655,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                     <th className="px-3 py-2.5">Produto *</th>
                     <th className="px-3 py-2.5">Banco *</th>
                     <th className="px-3 py-2.5">Promotora Habilitada *</th>
+                    <th className="px-3 py-2.5 min-w-[130px]">Valor Liberado (R$)</th>
+                    <th className="px-3 py-2.5 min-w-[140px]">Saldo Contrato (R$)</th>
                     <th className="px-3 py-2.5">Vínculo Refin/Port</th>
                     {mode === 'COMPLETO' && <th className="px-3 py-2.5">Observações</th>}
                     <th className="px-3 py-2.5 w-12 text-center">Ações</th>
@@ -647,6 +667,10 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                     const allowedPromoters = StorageService.getPromotersForBank(row.bankId);
                     const selectedProd = products.find(p => p.id === row.productId);
                     const isRefinPort = selectedProd?.name === 'REFIN DA PORTABILIDADE';
+                    const isPort =
+                      selectedProd?.name === 'PORTABILIDADE' ||
+                      selectedProd?.type === 'PORTABILIDADE' ||
+                      selectedProd?.name?.toUpperCase().includes('PORT');
 
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/80">
@@ -700,6 +724,48 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                               </option>
                             ))}
                           </select>
+                        </td>
+
+                        {/* Valor Liberado */}
+                        <td className="px-3 py-2">
+                          <div className="relative rounded-md">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold text-slate-400">
+                              R$
+                            </span>
+                            <input
+                              type="text"
+                              value={row.disbursedValue ?? ''}
+                              onChange={e => handleUpdateRow(idx, 'disbursedValue', e.target.value)}
+                              placeholder="0,00"
+                              title="Valor liberado para o cliente"
+                              className="w-full rounded-md border border-slate-300 bg-white pl-7 pr-2 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-hidden"
+                            />
+                          </div>
+                        </td>
+
+                        {/* Saldo Contrato (Destacado em Portabilidade) */}
+                        <td className="px-3 py-2">
+                          <div className="relative rounded-md">
+                            <span
+                              className={`pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold ${
+                                isPort ? 'text-purple-600' : 'text-slate-400'
+                              }`}
+                            >
+                              R$
+                            </span>
+                            <input
+                              type="text"
+                              value={row.contractBalance ?? ''}
+                              onChange={e => handleUpdateRow(idx, 'contractBalance', e.target.value)}
+                              placeholder={isPort ? 'Saldo devedor' : 'Opcional'}
+                              title={isPort ? 'Informe o saldo do contrato a ser portado' : 'Saldo do contrato'}
+                              className={`w-full rounded-md border pl-7 pr-2 py-1.5 text-xs font-semibold focus:outline-hidden transition-all ${
+                                isPort
+                                  ? 'border-purple-300 bg-purple-50/70 text-purple-950 placeholder-purple-400 focus:border-purple-500 ring-1 ring-purple-200'
+                                  : 'border-slate-300 bg-white text-slate-900 focus:border-blue-500'
+                              }`}
+                            />
+                          </div>
                         </td>
 
                         <td className="px-3 py-2">

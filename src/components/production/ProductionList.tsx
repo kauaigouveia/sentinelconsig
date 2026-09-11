@@ -28,7 +28,7 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { normalizeCpf, formatCpf, formatDate, extractPartnerCode } from '../../lib/utils';
+import { normalizeCpf, formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
 import { Proposal, ResponsibleAlçada } from '../../types';
 import { BulkStatusModal } from './BulkStatusModal';
 import { ExcelExportModal } from './ExcelExportModal';
@@ -760,6 +760,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                   <th className="px-3 py-3">CPF</th>
                   <th className="px-3 py-3">Produto</th>
                   <th className="px-3 py-3">Banco / Promotora</th>
+                  <th className="px-3 py-3">Valores</th>
                   <th className="px-3 py-3">Parceiro</th>
                   <th className="px-3 py-3">Alçada</th>
                   <th className="px-3 py-3">Status Atual</th>
@@ -842,6 +843,24 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       <td className="px-3 py-3 text-slate-600">
                         <span className="font-semibold text-slate-800">{bank?.name}</span>
                         <span className="text-slate-400 block text-[11px]">{promoter?.name}</span>
+                      </td>
+
+                      {/* Valores Financeiros */}
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex flex-col text-[11px]">
+                          {p.disbursedValue !== undefined ? (
+                            <span className="font-semibold text-emerald-700">
+                              Lib: {formatCurrency(p.disbursedValue)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Lib: -</span>
+                          )}
+                          {p.contractBalance !== undefined ? (
+                            <span className="font-semibold text-indigo-700">
+                              Saldo: {formatCurrency(p.contractBalance)}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
 
                       {/* Parceiro */}

@@ -9,9 +9,10 @@ import {
   AlertCircle,
   Search,
   Eye,
+  DollarSign,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { formatCpf, formatDate, extractPartnerCode } from '../../lib/utils';
+import { formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
 import { Proposal } from '../../types';
 import { ProposalDetailModal } from '../production/ProposalDetailModal';
 
@@ -51,6 +52,10 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
     const s = statuses.find(st => st.id === p.statusId);
     return s?.code === 'PAGO';
   });
+
+  const totalDisbursedHoje = digitadasHoje.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+  const totalDisbursedGeral = myProposals.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+  const totalDisbursedPago = pagas.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
 
   return (
     <div className="space-y-5">
@@ -98,7 +103,9 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
         <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-2xs">
           <span className="text-[10px] font-bold uppercase text-blue-700">Digitadas Hoje</span>
           <p className="text-2xl font-black text-blue-800 mt-1">{digitadasHoje.length}</p>
-          <span className="text-[10px] text-blue-600">Produção do dia</span>
+          <span className="text-[10px] text-blue-600 font-semibold block">
+            {formatCurrency(totalDisbursedHoje)}
+          </span>
         </div>
 
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-2xs">
@@ -110,13 +117,17 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs">
           <span className="text-[10px] font-bold uppercase text-emerald-700">Pagas</span>
           <p className="text-2xl font-black text-emerald-800 mt-1">{pagas.length}</p>
-          <span className="text-[10px] text-emerald-600">Finalizadas com sucesso</span>
+          <span className="text-[10px] text-emerald-600 font-semibold block">
+            {formatCurrency(totalDisbursedPago)} creditado
+          </span>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
           <span className="text-[10px] font-bold uppercase text-slate-400">Total Digitadas</span>
           <p className="text-2xl font-black text-slate-900 mt-1">{myProposals.length}</p>
-          <span className="text-[10px] text-slate-500">Histórico acumulado</span>
+          <span className="text-[10px] text-slate-500 font-semibold block">
+            {formatCurrency(totalDisbursedGeral)} volume
+          </span>
         </div>
       </div>
 
@@ -136,6 +147,7 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
                 <th className="px-4 py-3">Produto</th>
                 <th className="px-4 py-3">Banco</th>
                 <th className="px-4 py-3">Parceiro</th>
+                <th className="px-4 py-3">Valores</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
@@ -168,6 +180,21 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
                       <span className="text-slate-400 text-[10px] block">
                         {partner?.login}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.disbursedValue ? (
+                        <span className="font-bold text-emerald-700 block">
+                          Lib: {formatCurrency(p.disbursedValue)}
+                        </span>
+                      ) : null}
+                      {p.contractBalance ? (
+                        <span className="text-[10px] text-indigo-600 block">
+                          Saldo: {formatCurrency(p.contractBalance)}
+                        </span>
+                      ) : null}
+                      {!p.disbursedValue && !p.contractBalance && (
+                        <span className="text-slate-400 text-[10px]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span

@@ -11,6 +11,8 @@ import {
   Shield,
   Layers,
   ArrowRight,
+  DollarSign,
+  Coins,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -27,6 +29,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { AutomationService } from '../../services/automationService';
 import { ResponsibleAlçada } from '../../types';
+import { formatCurrency } from '../../lib/utils';
 
 interface ControlTowerProps {
   onNavigateToProductionWithFilter: (filter: {
@@ -76,6 +79,18 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
     if (info.statusBadge === 'URGENTE' || info.businessDays === info.targetDays) portNo5Dia++;
     if (info.statusBadge === 'ESTOURADO' || info.businessDays > info.targetDays) portAtrasadas++;
   });
+
+  // Financial values calculations
+  const totalDisbursed = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+  const totalDisbursedPaid = proposals
+    .filter(p => {
+      const s = statuses.find(st => st.id === p.statusId);
+      return s?.code === 'PAGO';
+    })
+    .reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+
+  const totalBalanceCip = portInCip.reduce((acc, p) => acc + (p.contractBalance || 0), 0);
+  const totalDisbursedCip = portInCip.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
 
   // Alçadas breakdown
   const alcadas: Record<ResponsibleAlçada, number> = {
@@ -147,6 +162,44 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
         <p className="text-xs text-slate-500">
           Visão holística da produção, SLAs, gargalos e distribuição de responsabilidades por alçada
         </p>
+      </div>
+
+      {/* Financial Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 flex items-center justify-between shadow-2xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-emerald-700">Volume Liberado Pago (R$)</span>
+            <p className="text-xl font-black text-emerald-900 mt-0.5">{formatCurrency(totalDisbursedPaid)}</p>
+            <span className="text-[10px] text-emerald-600 font-semibold">{pagas} propostas concluídas</span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+            <DollarSign className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3.5 flex items-center justify-between shadow-2xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-blue-700">Volume Total em Esteira (R$)</span>
+            <p className="text-xl font-black text-blue-900 mt-0.5">{formatCurrency(totalDisbursed)}</p>
+            <span className="text-[10px] text-blue-600 font-semibold">{total} propostas cadastradas</span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-3.5 flex items-center justify-between shadow-2xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase text-purple-700">Saldo Retido em CIP (R$)</span>
+            <p className="text-xl font-black text-purple-900 mt-0.5">{formatCurrency(totalBalanceCip)}</p>
+            <span className="text-[10px] text-purple-600 font-semibold">
+              Troco previsto: {formatCurrency(totalDisbursedCip)}
+            </span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center">
+            <Coins className="h-5 w-5" />
+          </div>
+        </div>
       </div>
 
       {/* KPI Stats Cards */}

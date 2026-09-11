@@ -326,6 +326,8 @@ const INITIAL_PROPOSALS: Proposal[] = [
     digitizerId: 'u-digitador',
     statusId: 'st-3', // AGUARDAR RETORNO CIP (alçada BANCO)
     currentResponsible: 'BANCO',
+    contractBalance: 14850.00,
+    disbursedValue: 0,
     portabilitySlaStartedAt: fourBusinessDaysAgo,
     notes: 'Portabilidade C6 Bank - DG via parceiro KAUAI@16740',
     createdAt: fourBusinessDaysAgo,
@@ -342,6 +344,7 @@ const INITIAL_PROPOSALS: Proposal[] = [
     digitizerId: 'u-digitador',
     statusId: 'st-4', // AGUARDAR PORTABILIDADE (relacionada com 833085808!)
     currentResponsible: 'SISTEMA',
+    disbursedValue: 4320.50,
     notes: 'Refin da Portabilidade vinculado à ADE 833085808',
     createdAt: fourBusinessDaysAgo,
     updatedAt: fourBusinessDaysAgo,
@@ -357,6 +360,8 @@ const INITIAL_PROPOSALS: Proposal[] = [
     digitizerId: 'u-digitador',
     statusId: 'st-1', // AGUARDAR FORMALIZAÇÃO
     currentResponsible: 'CLIENTE',
+    contractBalance: 8750.00,
+    disbursedValue: 0,
     notes: 'Portabilidade ICRED - DG',
     createdAt: twoDaysAgo,
     updatedAt: twoDaysAgo,
@@ -372,6 +377,7 @@ const INITIAL_PROPOSALS: Proposal[] = [
     digitizerId: 'u-digitador',
     statusId: 'st-1', // AGUARDAR FORMALIZAÇÃO
     currentResponsible: 'CLIENTE',
+    disbursedValue: 2150.00,
     notes: 'Refin vinculado a 1db778ec...',
     createdAt: twoDaysAgo,
     updatedAt: twoDaysAgo,
@@ -387,6 +393,7 @@ const INITIAL_PROPOSALS: Proposal[] = [
     digitizerId: 'u-digitador',
     statusId: 'st-7', // PENDENTE ANEXO DOCUMENTAÇÃO
     currentResponsible: 'NOSSA EQUIPE',
+    disbursedValue: 12500.00,
     notes: 'Aguardando comprovante de residência atualizado',
     createdAt: twoDaysAgo,
     updatedAt: oneDayAgo,
@@ -402,6 +409,7 @@ const INITIAL_PROPOSALS: Proposal[] = [
     digitizerId: 'u-digitador',
     statusId: 'st-9', // PAGO
     currentResponsible: 'SISTEMA',
+    disbursedValue: 8000.00,
     paidAt: oneDayAgo,
     notes: 'Cartão consignado emitido e pago',
     createdAt: fourBusinessDaysAgo,
@@ -638,37 +646,10 @@ export class StorageService {
     try {
       const data = localStorage.getItem(key);
       if (!data || data === 'undefined' || data === 'null') {
-        if (Array.isArray(defaultValue)) {
-          const currentPartnerId = this.getCurrentPartnerId();
-          const stamped = defaultValue.map(item => {
-            if (item && typeof item === 'object') {
-              return { ...item, partnerId: item.partnerId || currentPartnerId };
-            }
-            return item;
-          });
-          return stamped as unknown as T;
-        }
         return defaultValue;
       }
       const parsed = JSON.parse(data);
       if (parsed === null || parsed === undefined) return defaultValue;
-      if (Array.isArray(defaultValue)) {
-        if (!Array.isArray(parsed)) return defaultValue;
-        const currentPartnerId = this.getCurrentPartnerId();
-        const filtered = parsed.filter(item => {
-          if (item && typeof item === 'object') {
-            return !item.partnerId || item.partnerId === currentPartnerId;
-          }
-          return true;
-        });
-        const stamped = filtered.map(item => {
-          if (item && typeof item === 'object') {
-            return { ...item, partnerId: item.partnerId || currentPartnerId };
-          }
-          return item;
-        });
-        return stamped as unknown as T;
-      }
       return parsed;
     } catch {
       return defaultValue;
@@ -677,8 +658,6 @@ export class StorageService {
 
   private static set<T>(key: string, value: T): void {
     try {
-      let finalValue = value;
-      const currentPartnerId = this.getCurrentPartnerId();
       const colName = this.KEY_TO_COLLECTION[key];
       
       // Grab oldArray BEFORE updating localStorage to detect deletions and modifications
@@ -687,49 +666,17 @@ export class StorageService {
         oldArray = this.get<any[]>(key, []);
       }
 
-      let stampedNewArray: any[] = [];
-
-      if (Array.isArray(value)) {
-        const rawStored = localStorage.getItem(key);
-        let allItems: any[] = [];
-        try {
-          if (rawStored) {
-            const parsed = JSON.parse(rawStored);
-            if (Array.isArray(parsed)) {
-              allItems = parsed;
-            }
-          }
-        } catch {}
-
-        stampedNewArray = (value as any[]).map(item => {
-          if (item && typeof item === 'object') {
-            return { ...item, partnerId: item.partnerId || currentPartnerId };
-          }
-          return item;
-        });
-
-        const otherPartnersItems = allItems.filter(item => {
-          if (item && typeof item === 'object') {
-            return item.partnerId && item.partnerId !== currentPartnerId;
-          }
-          return false;
-        });
-
-        finalValue = [...otherPartnersItems, ...stampedNewArray] as unknown as T;
-      }
-
-      localStorage.setItem(key, JSON.stringify(finalValue));
+      localStorage.setItem(key, JSON.stringify(value));
 
       if (colName && Array.isArray(value)) {
-        const oldMap = new Map<string, any>(oldArray.map(item => [item.id, item]));
-        const newMap = new Map<string, any>(stampedNewArray.map(item => [item.id, item]));
+        const oldMap = new Map<string, any>(oldArray.map(item => [item?.id, item]));
+        const newMap = new Map<string, any>((value as any[]).map(item => [item?.id, item]));
 
-        for (const newItem of stampedNewArray) {
+        for (const newItem of (value as any[])) {
           if (newItem && newItem.id) {
-            const stampedItem = { ...newItem, partnerId: newItem.partnerId || currentPartnerId };
             const oldItem = oldMap.get(newItem.id);
-            if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(stampedItem)) {
-              const cleaned = cleanObjectForFirestore(stampedItem);
+            if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+              const cleaned = cleanObjectForFirestore(newItem);
               setDoc(doc(db, colName, newItem.id), cleaned).catch(err => {
                 console.warn(`Firestore sync write error on ${colName}/${newItem.id}:`, err);
               });
@@ -738,7 +685,7 @@ export class StorageService {
         }
 
         for (const oldItem of oldArray) {
-          if (oldItem && oldItem.id && oldItem.partnerId === currentPartnerId && !newMap.has(oldItem.id)) {
+          if (oldItem && oldItem.id && !newMap.has(oldItem.id)) {
             deleteDoc(doc(db, colName, oldItem.id)).catch(err => {
               console.warn(`Firestore sync delete error on ${colName}/${oldItem.id}:`, err);
             });
@@ -764,43 +711,50 @@ export class StorageService {
 
   public static async loadFromFirestore(): Promise<void> {
     const collectionsToLoad = Object.entries(this.KEY_TO_COLLECTION);
-    const currentPartnerId = this.getCurrentPartnerId();
     let hasData = false;
 
     for (const [key, colName] of collectionsToLoad) {
       try {
-        const q = query(collection(db, colName), where('partnerId', '==', currentPartnerId));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(collection(db, colName));
         
-        const items: any[] = [];
         if (!querySnapshot.empty) {
-          querySnapshot.forEach((doc) => {
-            items.push(doc.data());
+          const items: any[] = [];
+          querySnapshot.forEach((docSnap) => {
+            const docData = docSnap.data();
+            if (docData) {
+              items.push(docData);
+            }
           });
-          hasData = true;
+          
+          if (items.length > 0) {
+            hasData = true;
 
-          const rawStored = localStorage.getItem(key);
-          let otherItems: any[] = [];
-          if (rawStored) {
-            try {
-              const parsed = JSON.parse(rawStored);
-              if (Array.isArray(parsed)) {
-                otherItems = parsed.filter(item => item && item.partnerId && item.partnerId !== currentPartnerId);
-              }
-            } catch {}
+            // Merge with local items by id to ensure no unsynced local data is lost
+            const rawStored = localStorage.getItem(key);
+            let localItems: any[] = [];
+            if (rawStored) {
+              try {
+                const parsed = JSON.parse(rawStored);
+                if (Array.isArray(parsed)) {
+                  localItems = parsed;
+                }
+              } catch {}
+            }
+
+            const remoteIds = new Set(items.map(it => it.id));
+            const uniqueLocal = localItems.filter(it => it && it.id && !remoteIds.has(it.id));
+            const merged = [...items, ...uniqueLocal];
+
+            localStorage.setItem(key, JSON.stringify(merged));
           }
-
-          const merged = [...otherItems, ...items];
-          localStorage.setItem(key, JSON.stringify(merged));
         } else {
           // If Firestore is empty for this specific collection, seed local data so it gets uploaded
           const localData = this.get<any[]>(key, []);
           if (localData.length > 0) {
-            console.log(`Firestore has no records for ${colName} (partner: ${currentPartnerId}). Seeding local data...`);
+            console.log(`Firestore has no records for ${colName}. Seeding local data...`);
             for (const item of localData) {
               if (item && item.id) {
-                const stamped = { ...item, partnerId: item.partnerId || currentPartnerId };
-                await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(stamped));
+                await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(item));
               }
             }
           }
@@ -819,34 +773,22 @@ export class StorageService {
     this.unsubscribeRealTimeListeners();
 
     const collectionsToListen = Object.entries(this.KEY_TO_COLLECTION);
-    const currentPartnerId = this.getCurrentPartnerId();
 
     const unsubscribes = collectionsToListen.map(([key, colName]) => {
-      const q = query(collection(db, colName), where('partnerId', '==', currentPartnerId));
-      
-      return onSnapshot(q, (snapshot) => {
-        const items: any[] = [];
-        snapshot.forEach((doc) => {
-          items.push(doc.data());
-        });
-
-        // Merge with other partners' data already in localStorage
-        const rawStored = localStorage.getItem(key);
-        let otherItems: any[] = [];
-        if (rawStored) {
-          try {
-            const parsed = JSON.parse(rawStored);
-            if (Array.isArray(parsed)) {
-              otherItems = parsed.filter(item => item && item.partnerId && item.partnerId !== currentPartnerId);
+      return onSnapshot(collection(db, colName), (snapshot) => {
+        if (!snapshot.empty) {
+          const items: any[] = [];
+          snapshot.forEach((docSnap) => {
+            const docData = docSnap.data();
+            if (docData) {
+              items.push(docData);
             }
-          } catch {}
+          });
+
+          localStorage.setItem(key, JSON.stringify(items));
+          window.dispatchEvent(new Event('credit_gestao_storage_update'));
+          if (onUpdate) onUpdate();
         }
-
-        const merged = [...otherItems, ...items];
-        localStorage.setItem(key, JSON.stringify(merged));
-
-        window.dispatchEvent(new Event('credit_gestao_storage_update'));
-        if (onUpdate) onUpdate();
       }, (error) => {
         console.warn(`Real-time listener error on ${colName}:`, error);
       });
@@ -867,16 +809,14 @@ export class StorageService {
   }
 
   public static async seedFirestoreFromLocal(): Promise<void> {
-    const currentPartnerId = this.getCurrentPartnerId();
     for (const [key, colName] of Object.entries(this.KEY_TO_COLLECTION)) {
       try {
         const localData = this.get<any[]>(key, []);
         if (localData.length > 0) {
-          console.log(`Seeding ${colName} with ${localData.length} records for partner ${currentPartnerId}...`);
+          console.log(`Seeding ${colName} with ${localData.length} records...`);
           for (const item of localData) {
             if (item && item.id) {
-              const stamped = { ...item, partnerId: item.partnerId || currentPartnerId };
-              await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(stamped));
+              await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(item));
             }
           }
         }
@@ -1802,6 +1742,8 @@ export class StorageService {
       digitizerId?: string;
       statusId?: string;
       notes?: string;
+      disbursedValue?: number;
+      contractBalance?: number;
       relatedPortabilityId?: string; // If creating a refin linked to a portabilidade
     },
     origin: 'MANUAL' | 'IMPORTACAO' = 'MANUAL'
@@ -1849,6 +1791,8 @@ export class StorageService {
       digitizerId: data.digitizerId || activeUser.id,
       statusId: statusId,
       currentResponsible: statusObj.responsibleGroup,
+      disbursedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : undefined,
+      contractBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
       notes: data.notes,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1874,7 +1818,9 @@ export class StorageService {
       newStatusId: statusId,
       newStatusName: statusObj.name,
       action: 'Cadastro de Proposta',
-      observation: data.notes,
+      observation: data.notes
+        ? `${data.notes} | Liberado: R$ ${Number(data.disbursedValue || 0).toFixed(2)} | Saldo: R$ ${Number(data.contractBalance || 0).toFixed(2)}`
+        : `Liberado: R$ ${Number(data.disbursedValue || 0).toFixed(2)} | Saldo: R$ ${Number(data.contractBalance || 0).toFixed(2)}`,
       origin: origin,
     });
 
@@ -1887,6 +1833,8 @@ export class StorageService {
         clientId: newProposal.clientId,
         bankId: newProposal.bankId,
         promoterId: newProposal.promoterId,
+        disbursedValue: newProposal.disbursedValue,
+        contractBalance: newProposal.contractBalance,
       }),
     });
 
@@ -1894,6 +1842,154 @@ export class StorageService {
     this.processSimulationMatching(newProposal);
 
     return newProposal;
+  }
+
+  /**
+   * Updates an existing proposal with partial data (e.g. values, notes, etc.)
+   */
+  public static updateProposal(
+    proposalId: string,
+    updates: Partial<Proposal>,
+    changeReason?: string
+  ): Proposal {
+    const proposals = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
+    const idx = proposals.findIndex(p => p.id === proposalId);
+    if (idx === -1) {
+      throw new Error('Proposta não encontrada.');
+    }
+
+    const current = proposals[idx];
+    const prevDisbursed = current.disbursedValue;
+    const prevBalance = current.contractBalance;
+
+    const updated: Proposal = {
+      ...current,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    proposals[idx] = updated;
+    this.set(STORAGE_KEYS.PROPOSALS, proposals);
+
+    // If financial values changed, log to status history
+    const valChanged =
+      (updates.disbursedValue !== undefined && updates.disbursedValue !== prevDisbursed) ||
+      (updates.contractBalance !== undefined && updates.contractBalance !== prevBalance);
+
+    if (valChanged) {
+      const activeUser = this.getActiveUser();
+      const currentStatus = this.getStatusById(updated.statusId);
+      this.addStatusHistory({
+        proposalId: updated.id,
+        userId: activeUser.id,
+        userName: activeUser.name,
+        newStatusId: updated.statusId,
+        newStatusName: currentStatus?.name || 'Status Atual',
+        action: 'Atualização de Valores',
+        observation:
+          changeReason ||
+          `Valores alterados: Liberado R$ ${Number(updated.disbursedValue || 0).toFixed(2)} | Saldo R$ ${Number(updated.contractBalance || 0).toFixed(2)}`,
+        origin: 'MANUAL',
+      });
+    }
+
+    this.addAuditLog({
+      action: 'ATUALIZAR_PROPOSTA',
+      entity: 'Proposal',
+      entityId: proposalId,
+      previousData: JSON.stringify(current),
+      newData: JSON.stringify(updated),
+    });
+
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    return updated;
+  }
+
+  /**
+   * Updates proposal financial values if they differ from current values.
+   * Logs history and returns details of the modification.
+   */
+  public static updateProposalFinancials(
+    proposalId: string,
+    financials: { disbursedValue?: number; contractBalance?: number },
+    origin: 'IMPORTACAO' | 'MANUAL' | 'SISTEMA' = 'IMPORTACAO',
+    fileName?: string
+  ): { updated: boolean; details: string; proposal?: Proposal } {
+    const proposals = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
+    const idx = proposals.findIndex(p => p.id === proposalId);
+    if (idx === -1) return { updated: false, details: 'Proposta não encontrada' };
+
+    const current = proposals[idx];
+    let hasDifference = false;
+    const changeLogs: string[] = [];
+    const newValues: Partial<Proposal> = {};
+
+    if (
+      financials.disbursedValue !== undefined &&
+      Number(financials.disbursedValue) !== Number(current.disbursedValue || 0)
+    ) {
+      hasDifference = true;
+      changeLogs.push(
+        `Valor Liberado atualizado de R$ ${Number(current.disbursedValue || 0).toFixed(2)} para R$ ${Number(financials.disbursedValue).toFixed(2)}`
+      );
+      newValues.disbursedValue = Number(financials.disbursedValue);
+    }
+
+    if (
+      financials.contractBalance !== undefined &&
+      Number(financials.contractBalance) !== Number(current.contractBalance || 0)
+    ) {
+      hasDifference = true;
+      changeLogs.push(
+        `Saldo do Contrato atualizado de R$ ${Number(current.contractBalance || 0).toFixed(2)} para R$ ${Number(financials.contractBalance).toFixed(2)}`
+      );
+      newValues.contractBalance = Number(financials.contractBalance);
+    }
+
+    if (!hasDifference) {
+      return { updated: false, details: 'Valores idênticos aos já cadastrados' };
+    }
+
+    const updatedProposal: Proposal = {
+      ...current,
+      ...newValues,
+      updatedAt: new Date().toISOString(),
+    };
+
+    proposals[idx] = updatedProposal;
+    this.set(STORAGE_KEYS.PROPOSALS, proposals);
+
+    const activeUser = this.getActiveUser();
+    const currentStatus = this.getStatusById(updatedProposal.statusId);
+    const reason = changeLogs.join(' | ') + (fileName ? ` (Arquivo: ${fileName})` : '');
+
+    this.addStatusHistory({
+      proposalId: updatedProposal.id,
+      userId: activeUser.id,
+      userName: activeUser.name,
+      newStatusId: updatedProposal.statusId,
+      newStatusName: currentStatus?.name || 'Status Atual',
+      action: 'Atualização de Valores via Planilha',
+      observation: reason,
+      origin: origin as any,
+    });
+
+    this.addAuditLog({
+      action: 'ATUALIZAR_VALORES_PROPOSTA',
+      entity: 'Proposal',
+      entityId: proposalId,
+      previousData: JSON.stringify({
+        disbursedValue: current.disbursedValue,
+        contractBalance: current.contractBalance,
+      }),
+      newData: JSON.stringify({
+        disbursedValue: updatedProposal.disbursedValue,
+        contractBalance: updatedProposal.contractBalance,
+      }),
+    });
+
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    return { updated: true, details: reason, proposal: updatedProposal };
   }
 
   /**

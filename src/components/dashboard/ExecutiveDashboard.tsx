@@ -323,6 +323,9 @@ export const ExecutiveDashboard: React.FC = () => {
       const conversionRate = total > 0 ? Math.round((pagas / total) * 100) : 0;
       const points = total * 10 + pagas * 50;
 
+      const totalDisbursed = userProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+      const totalBalance = userProps.reduce((sum, p) => sum + (p.contractBalance || 0), 0);
+
       return {
         id: u.id,
         name: u.name,
@@ -339,11 +342,49 @@ export const ExecutiveDashboard: React.FC = () => {
         canceladas,
         conversionRate,
         points,
+        totalDisbursed,
+        totalBalance,
       };
     });
 
     return stats.sort((a, b) => b.points - a.points);
   }, [users, proposals, statuses, individualPeriod]);
+
+  // Executive financial totals overview
+  const financialOverview = useMemo(() => {
+    let totalDisbursed = 0;
+    let totalContractBalance = 0;
+    let totalDisbursedPaid = 0;
+    let totalDisbursedPending = 0;
+    let countWithDisbursed = 0;
+
+    proposals.forEach(p => {
+      const s = statuses.find(st => st.id === p.statusId);
+      const dis = p.disbursedValue || 0;
+      const bal = p.contractBalance || 0;
+
+      totalDisbursed += dis;
+      totalContractBalance += bal;
+
+      if (dis > 0) countWithDisbursed++;
+
+      if (s?.code === 'PAGO') {
+        totalDisbursedPaid += dis;
+      } else if (s?.code !== 'CANCELADO') {
+        totalDisbursedPending += dis;
+      }
+    });
+
+    const avgTicket = countWithDisbursed > 0 ? totalDisbursed / countWithDisbursed : 0;
+
+    return {
+      totalDisbursed,
+      totalContractBalance,
+      totalDisbursedPaid,
+      totalDisbursedPending,
+      avgTicket,
+    };
+  }, [proposals, statuses]);
 
   // Individual chart data (Top operators)
   const operatorChartData = useMemo(() => {
@@ -355,18 +396,22 @@ export const ExecutiveDashboard: React.FC = () => {
       emAndamento: op.emAndamento,
       canceladas: op.canceladas,
       taxaConversao: op.conversionRate,
+      volumeLiberado: op.totalDisbursed,
     }));
   }, [operatorPerformance]);
 
-  // Top partners by count
+  // Top partners by count & financial volume
   const partnerCounts = useMemo(() => {
     return partners
       .map(pt => {
-        const total = proposals.filter(p => p.partnerId === pt.id).length;
-        const pagas = proposals.filter(p => {
+        const partnerProps = proposals.filter(p => p.partnerId === pt.id);
+        const total = partnerProps.length;
+        const pagas = partnerProps.filter(p => {
           const s = statuses.find(st => st.id === p.statusId);
-          return p.partnerId === pt.id && s?.code === 'PAGO';
+          return s?.code === 'PAGO';
         }).length;
+        const totalDisbursed = partnerProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+        const totalBalance = partnerProps.reduce((sum, p) => sum + (p.contractBalance || 0), 0);
 
         return {
           id: pt.id,
@@ -375,6 +420,8 @@ export const ExecutiveDashboard: React.FC = () => {
           name: pt.fullName,
           total,
           pagas,
+          totalDisbursed,
+          totalBalance,
         };
       })
       .sort((a, b) => b.total - a.total);
@@ -382,10 +429,15 @@ export const ExecutiveDashboard: React.FC = () => {
 
   // Banks performance
   const bankChartData = useMemo(() => {
-    return banks.map(b => ({
-      name: b.name,
-      total: proposals.filter(p => p.bankId === b.id).length,
-    }));
+    return banks.map(b => {
+      const bankProps = proposals.filter(p => p.bankId === b.id);
+      const totalDisbursed = bankProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+      return {
+        name: b.name,
+        total: bankProps.length,
+        totalDisbursed,
+      };
+    });
   }, [banks, proposals]);
 
   // Operational Status Distribution
@@ -682,6 +734,14 @@ export const ExecutiveDashboard: React.FC = () => {
                             <span className="text-blue-600 dark:text-blue-400 font-semibold">
                               {op.conversionRate}% conv.
                             </span>
+                            {op.totalDisbursed > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-slate-700 dark:text-slate-300 font-bold">
+                                  {formatCurrency(op.totalDisbursed)}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -729,6 +789,11 @@ export const ExecutiveDashboard: React.FC = () => {
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Código: <strong>{pt.code}</strong> • {pt.name}
                     </p>
+                    {pt.totalDisbursed > 0 && (
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                        💰 Lib: {formatCurrency(pt.totalDisbursed)}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -736,9 +801,14 @@ export const ExecutiveDashboard: React.FC = () => {
                   <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100 block">
                     {pt.total} ADEs
                   </span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block">
                     {pt.pagas} pagas
                   </span>
+                  {pt.totalBalance > 0 && (
+                    <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-medium">
+                      Saldo: {formatCurrency(pt.totalBalance)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -890,6 +960,77 @@ export const ExecutiveDashboard: React.FC = () => {
             <SlidersHorizontal className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             <span>Personalizar</span>
           </button>
+        </div>
+      </div>
+
+      {/* Executive Financial Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/50 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              Valor Liberado Pago
+            </span>
+            <p className="text-xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
+              {formatCurrency(financialOverview.totalDisbursedPaid)}
+            </p>
+            <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-semibold">
+              Volume efetivamente creditado
+            </span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <DollarSign className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-blue-200/80 dark:border-blue-900/50 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+              Volume Liberado Total
+            </span>
+            <p className="text-xl font-black text-blue-900 dark:text-blue-200 mt-1">
+              {formatCurrency(financialOverview.totalDisbursed)}
+            </p>
+            <span className="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-semibold">
+              Em andamento: {formatCurrency(financialOverview.totalDisbursedPending)}
+            </span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/50 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+              Saldo em Portabilidade
+            </span>
+            <p className="text-xl font-black text-indigo-900 dark:text-indigo-200 mt-1">
+              {formatCurrency(financialOverview.totalContractBalance)}
+            </p>
+            <span className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-semibold">
+              Quitação e dívida assumida
+            </span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Building className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              Ticket Médio Liberado
+            </span>
+            <p className="text-xl font-black text-amber-900 dark:text-amber-200 mt-1">
+              {formatCurrency(financialOverview.avgTicket)}
+            </p>
+            <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 font-semibold">
+              Média por proposta informada
+            </span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Sparkles className="h-5 w-5" />
+          </div>
         </div>
       </div>
 

@@ -120,6 +120,8 @@ export interface Proposal {
   digitizerId: string;
   statusId: string;
   currentResponsible: Alcada;
+  disbursedValue?: number; // Valor liberado para o cliente / troco (R$)
+  contractBalance?: number; // Valor do saldo do contrato / saldo devedor / quitação em portabilidade (R$)
   relatedPortabilityId?: string;
   pendencies?: Pending[];
   statusHistory?: ProposalStatusHistory[];
