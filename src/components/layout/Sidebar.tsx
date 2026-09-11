@@ -99,50 +99,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
       {/* Navigation Links */}
       <nav className="flex-1 p-3 space-y-0.5">
         {/* DASHBOARD SECTION */}
-        <div className={navHeaderClass}>Visão Geral</div>
+        {(isGestor || isSuporte || isDigitador) && (
+          <>
+            <div className={navHeaderClass}>Visão Geral</div>
 
-        {isGestor && (
-          <button
-            id="nav-torre-controle"
-            onClick={() => onNavigate('torre-controle')}
-            className={navItemClass('torre-controle')}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Torre de Controle</span>
-          </button>
-        )}
+            {isGestor && (
+              <button
+                id="nav-torre-controle"
+                onClick={() => onNavigate('torre-controle')}
+                className={navItemClass('torre-controle')}
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Torre de Controle</span>
+              </button>
+            )}
 
-        {isGestor && (
-          <button
-            id="nav-dashboard-executivo"
-            onClick={() => onNavigate('dashboard-executivo')}
-            className={navItemClass('dashboard-executivo')}
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>Dashboard Executivo</span>
-          </button>
-        )}
+            {isGestor && (
+              <button
+                id="nav-dashboard-executivo"
+                onClick={() => onNavigate('dashboard-executivo')}
+                className={navItemClass('dashboard-executivo')}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Dashboard Executivo</span>
+              </button>
+            )}
 
-        {(isGestor || isSuporte) && (
-          <button
-            id="nav-relatorio-gargalos"
-            onClick={() => onNavigate('relatorio-gargalos')}
-            className={navItemClass('relatorio-gargalos')}
-          >
-            <Hourglass className="h-4 w-4 text-amber-500" />
-            <span>Gargalos & Permanência</span>
-          </button>
-        )}
+            {(isGestor || isSuporte) && (
+              <button
+                id="nav-relatorio-gargalos"
+                onClick={() => onNavigate('relatorio-gargalos')}
+                className={navItemClass('relatorio-gargalos')}
+              >
+                <Hourglass className="h-4 w-4 text-amber-500" />
+                <span>Gargalos & Permanência</span>
+              </button>
+            )}
 
-        {isDigitador && (
-          <button
-            id="nav-home-digitador"
-            onClick={() => onNavigate('home-digitador')}
-            className={navItemClass('home-digitador')}
-          >
-            <UserCheck className="h-4 w-4" />
-            <span>Minha Produção</span>
-          </button>
+            {isDigitador && (
+              <button
+                id="nav-home-digitador"
+                onClick={() => onNavigate('home-digitador')}
+                className={navItemClass('home-digitador')}
+              >
+                <UserCheck className="h-4 w-4" />
+                <span>Minha Produção</span>
+              </button>
+            )}
+          </>
         )}
 
         {/* PRODUÇÃO SECTION */}
@@ -157,84 +161,92 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
           <span className="font-medium">Simulações</span>
         </button>
 
-        <button
-          id="nav-producao-todas"
-          onClick={() => onNavigate('producao')}
-          className={navItemClass('producao')}
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          <span>Todas as Propostas</span>
-        </button>
+        {role !== 'SIMULACAO' && (
+          <>
+            <button
+              id="nav-producao-todas"
+              onClick={() => onNavigate('producao')}
+              className={navItemClass('producao')}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Todas as Propostas</span>
+            </button>
 
-        {isDigitador && (
-          <button
-            id="nav-nova-producao"
-            onClick={() => onNavigate('nova-producao')}
-            className={navItemClass('nova-producao')}
-          >
-            <PlusCircle className="h-4 w-4 text-emerald-600" />
-            <span className="font-semibold text-emerald-700">Nova Produção (ADEs)</span>
-          </button>
+            {isDigitador && (
+              <button
+                id="nav-nova-producao"
+                onClick={() => onNavigate('nova-producao')}
+                className={navItemClass('nova-producao')}
+              >
+                <PlusCircle className="h-4 w-4 text-emerald-600" />
+                <span className="font-semibold text-emerald-700">Nova Produção (ADEs)</span>
+              </button>
+            )}
+
+            <button
+              id="nav-esteira-kanban"
+              onClick={() => onNavigate('esteira')}
+              className={navItemClass('esteira')}
+            >
+              <Kanban className="h-4 w-4" />
+              <span>Esteira Kanban</span>
+            </button>
+
+            <button
+              id="nav-portabilidades"
+              onClick={() => onNavigate('portabilidades')}
+              className={navItemClass('portabilidades')}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              <span>Portabilidades (5 Dias)</span>
+            </button>
+
+            {isDigitador && (
+              <button
+                id="nav-importar-excel"
+                onClick={() => onNavigate('importar-excel')}
+                className={navItemClass('importar-excel')}
+              >
+                <Upload className="h-4 w-4 text-blue-600" />
+                <span>Importar Planilha</span>
+              </button>
+            )}
+
+            <button
+              id="nav-exportar-propostas"
+              onClick={() => onNavigate('exportar-propostas')}
+              className={navItemClass('exportar-propostas')}
+            >
+              <Download className="h-4 w-4" />
+              <span>Exportar Propostas</span>
+            </button>
+          </>
         )}
-
-        <button
-          id="nav-esteira-kanban"
-          onClick={() => onNavigate('esteira')}
-          className={navItemClass('esteira')}
-        >
-          <Kanban className="h-4 w-4" />
-          <span>Esteira Kanban</span>
-        </button>
-
-        <button
-          id="nav-portabilidades"
-          onClick={() => onNavigate('portabilidades')}
-          className={navItemClass('portabilidades')}
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-          <span>Portabilidades (5 Dias)</span>
-        </button>
-
-        {isDigitador && (
-          <button
-            id="nav-importar-excel"
-            onClick={() => onNavigate('importar-excel')}
-            className={navItemClass('importar-excel')}
-          >
-            <Upload className="h-4 w-4 text-blue-600" />
-            <span>Importar Planilha</span>
-          </button>
-        )}
-
-        <button
-          id="nav-exportar-propostas"
-          onClick={() => onNavigate('exportar-propostas')}
-          className={navItemClass('exportar-propostas')}
-        >
-          <Download className="h-4 w-4" />
-          <span>Exportar Propostas</span>
-        </button>
 
         {/* CLIENTES */}
-        <div className={navHeaderClass}>Clientes</div>
+        {role !== 'SIMULACAO' && (
+          <>
+            <div className={navHeaderClass}>Clientes</div>
 
-        <button
-          id="nav-clientes-360"
-          onClick={() => onNavigate('clientes')}
-          className={navItemClass('clientes')}
-        >
-          <Users className="h-4 w-4" />
-          <span>Clientes 360º</span>
-        </button>
+            <button
+              id="nav-clientes-360"
+              onClick={() => onNavigate('clientes')}
+              className={navItemClass('clientes')}
+            >
+              <Users className="h-4 w-4" />
+              <span>Clientes 360º</span>
+            </button>
 
-        <button
-          id="nav-busca-cpf"
-          onClick={() => onNavigate('busca-cpf')}
-          className={navItemClass('busca-cpf')}
-        >
-          <Search className="h-4 w-4" />
-          <span>Busca por CPF</span>
-        </button>
+            <button
+              id="nav-busca-cpf"
+              onClick={() => onNavigate('busca-cpf')}
+              className={navItemClass('busca-cpf')}
+            >
+              <Search className="h-4 w-4" />
+              <span>Busca por CPF</span>
+            </button>
+          </>
+        )}
 
         {/* PARCEIROS */}
         {isGerente && (

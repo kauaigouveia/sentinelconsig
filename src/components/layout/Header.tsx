@@ -609,19 +609,28 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1.5">
             <label htmlFor="user-role-select" className="sr-only">Perfil Ativo</label>
             <div className="relative flex items-center">
-              <select
-                id="user-role-select"
-                value={activeUser.id}
-                onChange={e => handleRoleSwitch(e.target.value)}
-                className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 cursor-pointer focus:outline-hidden transition-all ${ROLE_CONFIG[activeUser.role].badgeClass}`}
-                title="Trocar usuário e perfil do sistema"
-              >
-                {allUsers.map(u => (
-                  <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold py-1">
-                    {getRoleEmoji(u.role)} {u.role} — {u.name}
-                  </option>
-                ))}
-              </select>
+              {activeUser.role === 'MASTER' ? (
+                <select
+                  id="user-role-select"
+                  value={activeUser.id}
+                  onChange={e => handleRoleSwitch(e.target.value)}
+                  className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 cursor-pointer focus:outline-hidden transition-all ${ROLE_CONFIG[activeUser.role].badgeClass}`}
+                  title="Trocar usuário e perfil do sistema"
+                >
+                  {allUsers.map(u => (
+                    <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold py-1">
+                      {getRoleEmoji(u.role)} {u.role} — {u.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div
+                  className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 select-none ${ROLE_CONFIG[activeUser.role].badgeClass}`}
+                  title={`Perfil Ativo: ${ROLE_CONFIG[activeUser.role].label}`}
+                >
+                  {getRoleEmoji(activeUser.role)} {activeUser.role}
+                </div>
+              )}
             </div>
 
             {/* Logout Button */}
