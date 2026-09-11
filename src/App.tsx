@@ -41,13 +41,30 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
   const activeUser = StorageService.getActiveUser();
 
-  // Listen for storage / login state updates
+  // Listen for storage / login state updates and initialize/sync Firestore data
   useEffect(() => {
+    // Initial load from Firestore on startup
+    StorageService.initialize();
+
     const handleStorageUpdate = () => {
       setIsAuthenticated(StorageService.isAuthenticated());
     };
     window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
-    return () => window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
+
+    // Sync Firestore to LocalStorage periodically every 30 seconds as a fallback
+    const syncInterval = setInterval(() => {
+      if (StorageService.isAuthenticated()) {
+        StorageService.loadFromFirestore().catch(err => {
+          console.warn("Background Firestore synchronization failed:", err);
+        });
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
+      clearInterval(syncInterval);
+      StorageService.unsubscribeRealTimeListeners();
+    };
   }, []);
 
   // Initial view based on user role

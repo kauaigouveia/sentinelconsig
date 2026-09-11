@@ -25,7 +25,7 @@ import {
 } from '../types';
 import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, doc, setDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 
 function cleanObjectForFirestore<T>(obj: T): T {
   if (obj === undefined) return null as any;
@@ -608,6 +608,8 @@ export class StorageService {
     'cg_simulation_requests': 'simulation_requests',
   };
 
+  private static activeListeners: (() => void)[] = [];
+
   public static getCurrentPartnerId(): string {
     try {
       const activeUserStr = localStorage.getItem('cg_active_user');
@@ -653,12 +655,19 @@ export class StorageService {
       if (Array.isArray(defaultValue)) {
         if (!Array.isArray(parsed)) return defaultValue;
         const currentPartnerId = this.getCurrentPartnerId();
-        return parsed.filter(item => {
+        const filtered = parsed.filter(item => {
           if (item && typeof item === 'object') {
             return !item.partnerId || item.partnerId === currentPartnerId;
           }
           return true;
-        }) as unknown as T;
+        });
+        const stamped = filtered.map(item => {
+          if (item && typeof item === 'object') {
+            return { ...item, partnerId: item.partnerId || currentPartnerId };
+          }
+          return item;
+        });
+        return stamped as unknown as T;
       }
       return parsed;
     } catch {
@@ -670,6 +679,15 @@ export class StorageService {
     try {
       let finalValue = value;
       const currentPartnerId = this.getCurrentPartnerId();
+      const colName = this.KEY_TO_COLLECTION[key];
+      
+      // Grab oldArray BEFORE updating localStorage to detect deletions and modifications
+      let oldArray: any[] = [];
+      if (colName && Array.isArray(value)) {
+        oldArray = this.get<any[]>(key, []);
+      }
+
+      let stampedNewArray: any[] = [];
 
       if (Array.isArray(value)) {
         const rawStored = localStorage.getItem(key);
@@ -683,7 +701,7 @@ export class StorageService {
           }
         } catch {}
 
-        const newArray = (value as any[]).map(item => {
+        stampedNewArray = (value as any[]).map(item => {
           if (item && typeof item === 'object') {
             return { ...item, partnerId: item.partnerId || currentPartnerId };
           }
@@ -697,20 +715,16 @@ export class StorageService {
           return false;
         });
 
-        finalValue = [...otherPartnersItems, ...newArray] as unknown as T;
+        finalValue = [...otherPartnersItems, ...stampedNewArray] as unknown as T;
       }
 
       localStorage.setItem(key, JSON.stringify(finalValue));
 
-      const colName = this.KEY_TO_COLLECTION[key];
       if (colName && Array.isArray(value)) {
-        const oldArray = this.get<any[]>(key, []);
-        const newArray = value as any[];
-
         const oldMap = new Map<string, any>(oldArray.map(item => [item.id, item]));
-        const newMap = new Map<string, any>(newArray.map(item => [item.id, item]));
+        const newMap = new Map<string, any>(stampedNewArray.map(item => [item.id, item]));
 
-        for (const newItem of newArray) {
+        for (const newItem of stampedNewArray) {
           if (newItem && newItem.id) {
             const stampedItem = { ...newItem, partnerId: newItem.partnerId || currentPartnerId };
             const oldItem = oldMap.get(newItem.id);
@@ -745,12 +759,13 @@ export class StorageService {
     this.loadFromFirestore().catch(err => {
       console.error("Failed to initialize state from Firestore:", err);
     });
+    this.setupRealTimeListeners();
   }
 
   public static async loadFromFirestore(): Promise<void> {
-    let hasData = false;
     const collectionsToLoad = Object.entries(this.KEY_TO_COLLECTION);
     const currentPartnerId = this.getCurrentPartnerId();
+    let hasData = false;
 
     for (const [key, colName] of collectionsToLoad) {
       try {
@@ -763,8 +778,59 @@ export class StorageService {
             items.push(doc.data());
           });
           hasData = true;
-        }
 
+          const rawStored = localStorage.getItem(key);
+          let otherItems: any[] = [];
+          if (rawStored) {
+            try {
+              const parsed = JSON.parse(rawStored);
+              if (Array.isArray(parsed)) {
+                otherItems = parsed.filter(item => item && item.partnerId && item.partnerId !== currentPartnerId);
+              }
+            } catch {}
+          }
+
+          const merged = [...otherItems, ...items];
+          localStorage.setItem(key, JSON.stringify(merged));
+        } else {
+          // If Firestore is empty for this specific collection, seed local data so it gets uploaded
+          const localData = this.get<any[]>(key, []);
+          if (localData.length > 0) {
+            console.log(`Firestore has no records for ${colName} (partner: ${currentPartnerId}). Seeding local data...`);
+            for (const item of localData) {
+              if (item && item.id) {
+                const stamped = { ...item, partnerId: item.partnerId || currentPartnerId };
+                await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(stamped));
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to load collection ${colName} from Firestore:`, err);
+      }
+    }
+
+    if (hasData) {
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    }
+  }
+
+  public static setupRealTimeListeners(onUpdate?: () => void): () => void {
+    this.unsubscribeRealTimeListeners();
+
+    const collectionsToListen = Object.entries(this.KEY_TO_COLLECTION);
+    const currentPartnerId = this.getCurrentPartnerId();
+
+    const unsubscribes = collectionsToListen.map(([key, colName]) => {
+      const q = query(collection(db, colName), where('partnerId', '==', currentPartnerId));
+      
+      return onSnapshot(q, (snapshot) => {
+        const items: any[] = [];
+        snapshot.forEach((doc) => {
+          items.push(doc.data());
+        });
+
+        // Merge with other partners' data already in localStorage
         const rawStored = localStorage.getItem(key);
         let otherItems: any[] = [];
         if (rawStored) {
@@ -779,16 +845,24 @@ export class StorageService {
         const merged = [...otherItems, ...items];
         localStorage.setItem(key, JSON.stringify(merged));
 
-      } catch (err) {
-        console.error(`Failed to load collection ${colName} from Firestore:`, err);
-      }
-    }
+        window.dispatchEvent(new Event('credit_gestao_storage_update'));
+        if (onUpdate) onUpdate();
+      }, (error) => {
+        console.warn(`Real-time listener error on ${colName}:`, error);
+      });
+    });
 
-    if (hasData) {
-      window.dispatchEvent(new Event('credit_gestao_storage_update'));
-    } else {
-      console.log("Firestore has no records for this partner. Seeding initial data with current partnerId...");
-      await this.seedFirestoreFromLocal();
+    this.activeListeners = unsubscribes;
+
+    return () => {
+      this.unsubscribeRealTimeListeners();
+    };
+  }
+
+  public static unsubscribeRealTimeListeners(): void {
+    if (this.activeListeners && this.activeListeners.length > 0) {
+      this.activeListeners.forEach(unsub => unsub());
+      this.activeListeners = [];
     }
   }
 
@@ -858,6 +932,7 @@ export class StorageService {
       entityId: user.id,
       newData: JSON.stringify({ email: user.email, name: user.name, role: user.role }),
     });
+    this.setupRealTimeListeners();
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
@@ -870,6 +945,7 @@ export class StorageService {
       entityId: active.id,
       previousData: JSON.stringify({ email: active.email, name: active.name, role: active.role }),
     });
+    this.unsubscribeRealTimeListeners();
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 

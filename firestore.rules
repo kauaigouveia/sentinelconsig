@@ -9,67 +9,99 @@ service cloud.firestore {
 
     // Allow read and write access for application collections
     match /users/{userId} {
-      allow read, write: if isValidId(userId);
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow write: if isValidId(userId);
     }
 
     match /promoters/{promoterId} {
-      allow read, write: if isValidId(promoterId);
+      allow get: if isValidId(promoterId);
+      allow list: if true;
+      allow write: if isValidId(promoterId);
     }
 
     match /banks/{bankId} {
-      allow read, write: if isValidId(bankId);
+      allow get: if isValidId(bankId);
+      allow list: if true;
+      allow write: if isValidId(bankId);
     }
 
     match /bank_promoters/{bpId} {
-      allow read, write: if isValidId(bpId);
+      allow get: if isValidId(bpId);
+      allow list: if true;
+      allow write: if isValidId(bpId);
     }
 
     match /partners/{partnerId} {
-      allow read, write: if isValidId(partnerId);
+      allow get: if isValidId(partnerId);
+      allow list: if true;
+      allow write: if isValidId(partnerId);
     }
 
     match /products/{productId} {
-      allow read, write: if isValidId(productId);
+      allow get: if isValidId(productId);
+      allow list: if true;
+      allow write: if isValidId(productId);
     }
 
     match /clients/{clientId} {
-      allow read, write: if isValidId(clientId);
+      allow get: if isValidId(clientId);
+      allow list: if true;
+      allow write: if isValidId(clientId);
     }
 
     match /proposals/{proposalId} {
-      allow read, write: if isValidId(proposalId);
+      allow get: if isValidId(proposalId);
+      allow list: if true;
+      allow write: if isValidId(proposalId);
     }
 
     match /proposal_relations/{relationId} {
-      allow read, write: if isValidId(relationId);
+      allow get: if isValidId(relationId);
+      allow list: if true;
+      allow write: if isValidId(relationId);
     }
 
     match /statuses/{statusId} {
-      allow read, write: if isValidId(statusId);
+      allow get: if isValidId(statusId);
+      allow list: if true;
+      allow write: if isValidId(statusId);
     }
 
     match /history/{historyId} {
-      allow read, write: if isValidId(historyId);
+      allow get: if isValidId(historyId);
+      allow list: if true;
+      allow write: if isValidId(historyId);
     }
 
     match /pendings/{pendingId} {
-      allow read, write: if isValidId(pendingId);
+      allow get: if isValidId(pendingId);
+      allow list: if true;
+      allow write: if isValidId(pendingId);
     }
 
     match /holidays/{holidayId} {
-      allow read, write: if isValidId(holidayId);
+      allow get: if isValidId(holidayId);
+      allow list: if true;
+      allow write: if isValidId(holidayId);
     }
 
     match /notifications/{notifId} {
-      allow read, write: if isValidId(notifId);
+      allow get: if isValidId(notifId);
+      allow list: if true;
+      allow write: if isValidId(notifId);
     }
 
     match /audit_logs/{auditId} {
-      allow read, write: if isValidId(auditId);
+      allow get: if isValidId(auditId);
+      allow list: if true;
+      allow write: if isValidId(auditId);
     }
 
     match /simulation_requests/{simId} {
-      allow read, write: if isValidId(simId);
+      allow get: if isValidId(simId);
+      allow list: if true;
+      allow write: if isValidId(simId);
     }
 
     // Default deny for non-app collections
@@ -78,4 +110,3 @@ service cloud.firestore {
     }
   }
 }
-
