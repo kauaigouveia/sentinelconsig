@@ -116,6 +116,7 @@ const INITIAL_USERS: User[] = [
     email: 'kauaigouveia@gmail.com',
     role: 'MASTER',
     active: true,
+    password: '120@Jocyane',
     createdAt: '2026-01-01T08:00:00.000Z',
     updatedAt: '2026-01-01T08:00:00.000Z',
   },
@@ -125,6 +126,7 @@ const INITIAL_USERS: User[] = [
     email: 'gestor@creditgestao.com.br',
     role: 'GESTOR',
     active: true,
+    password: '120@Jocyane',
     createdAt: '2026-01-02T08:00:00.000Z',
     updatedAt: '2026-01-02T08:00:00.000Z',
   },
@@ -134,6 +136,7 @@ const INITIAL_USERS: User[] = [
     email: 'gerente@creditgestao.com.br',
     role: 'GERENTE',
     active: true,
+    password: '120@Jocyane',
     createdAt: '2026-01-03T08:00:00.000Z',
     updatedAt: '2026-01-03T08:00:00.000Z',
   },
@@ -143,6 +146,7 @@ const INITIAL_USERS: User[] = [
     email: 'suporte@creditgestao.com.br',
     role: 'SUPORTE',
     active: true,
+    password: '120@Jocyane',
     createdAt: '2026-01-04T08:00:00.000Z',
     updatedAt: '2026-01-04T08:00:00.000Z',
   },
@@ -152,6 +156,7 @@ const INITIAL_USERS: User[] = [
     email: 'digitador@creditgestao.com.br',
     role: 'DIGITADOR',
     active: true,
+    password: '120@Jocyane',
     createdAt: '2026-01-05T08:00:00.000Z',
     updatedAt: '2026-01-05T08:00:00.000Z',
   },
@@ -161,6 +166,7 @@ const INITIAL_USERS: User[] = [
     email: 'simulacao@creditgestao.com.br',
     role: 'SIMULACAO',
     active: true,
+    password: '120@Jocyane',
     createdAt: '2026-01-06T08:00:00.000Z',
     updatedAt: '2026-01-06T08:00:00.000Z',
   },
@@ -836,9 +842,9 @@ export class StorageService {
   public static isAuthenticated(): boolean {
     const isAuth = localStorage.getItem('cg_is_authenticated');
     if (isAuth === null) {
-      // Default to true on initial system bootstrap
-      localStorage.setItem('cg_is_authenticated', 'true');
-      return true;
+      // Default to false. Everyone must log in manually first!
+      localStorage.setItem('cg_is_authenticated', 'false');
+      return false;
     }
     return isAuth === 'true';
   }
