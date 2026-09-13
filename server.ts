@@ -24,6 +24,8 @@ import { TenantResolver } from './server/utils/tenantResolver.js';
 import { AdminContextManager } from './server/utils/adminContext.js';
 
 const prisma = new PrismaClient();
+const app = express();
+export { app };
 
 async function auditAndEnsureMasterUser() {
   try {
@@ -129,7 +131,6 @@ async function auditAndEnsureMasterUser() {
 }
 
 async function startServer() {
-  const app = express();
   const PORT = 3000;
 
   // Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
@@ -3537,5 +3538,9 @@ process.on('SIGINT', () => {
   gracefulShutdown('SIGINT', 0);
 });
 
-startServer();
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
 
