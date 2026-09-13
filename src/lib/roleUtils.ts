@@ -85,14 +85,43 @@ export const ROLE_CONFIG: Record<Role, RoleConfig> = {
   },
 };
 
-export function getRoleEmoji(role: Role): string {
-  return ROLE_CONFIG[role]?.emoji || '👤';
+export const VALID_ROLES: readonly Role[] = [
+  'PLATFORM_MASTER',
+  'MASTER',
+  'TENANT_ADMIN',
+  'GESTOR',
+  'GERENTE',
+  'SUPORTE',
+  'DIGITADOR',
+  'SIMULACAO',
+] as const;
+
+export function isValidRole(role: any): role is Role {
+  return typeof role === 'string' && (VALID_ROLES as readonly string[]).includes(role);
 }
 
-export function getRoleLabel(role: Role): string {
-  return ROLE_CONFIG[role]?.label || role;
+export const FALLBACK_ROLE_CONFIG: RoleConfig = {
+  role: 'DIGITADOR',
+  label: 'Usuário',
+  emoji: '👤',
+  badgeClass: 'bg-slate-100 text-slate-800 border-slate-300',
+  pillClass: 'bg-slate-500 text-white font-bold',
+  textClass: 'text-slate-700 dark:text-slate-400',
+  description: 'Acesso padrão de usuário.',
+};
+
+export function getRoleEmoji(role?: Role | null): string {
+  if (!role || !ROLE_CONFIG[role]) return FALLBACK_ROLE_CONFIG.emoji;
+  return ROLE_CONFIG[role]?.emoji || FALLBACK_ROLE_CONFIG.emoji;
 }
 
-export function getRoleBadgeClass(role: Role): string {
-  return ROLE_CONFIG[role]?.badgeClass || 'bg-slate-100 text-slate-800 border-slate-300';
+export function getRoleLabel(role?: Role | null): string {
+  if (!role || !ROLE_CONFIG[role]) return FALLBACK_ROLE_CONFIG.label;
+  return ROLE_CONFIG[role]?.label || FALLBACK_ROLE_CONFIG.label;
 }
+
+export function getRoleBadgeClass(role?: Role | null): string {
+  if (!role || !ROLE_CONFIG[role]) return FALLBACK_ROLE_CONFIG.badgeClass;
+  return ROLE_CONFIG[role]?.badgeClass || FALLBACK_ROLE_CONFIG.badgeClass;
+}
+

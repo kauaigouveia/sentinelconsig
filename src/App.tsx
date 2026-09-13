@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
+import { realtimeHub } from './services/realtimeService';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { ControlTower } from './components/dashboard/ControlTower';
@@ -51,39 +52,97 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
   const activeUser = StorageService.getActiveUser();
 
-  // Listen for storage / login state updates and initialize/sync Firestore data
+  // Validate server-side session as the ultimate authority
   useEffect(() => {
-    // Initial load from Firestore on startup
+    let isMounted = true;
+
+    const verifyServerSession = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        if (!isMounted) return;
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.authenticated && data.user) {
+            // Update active user with valid server session data
+            StorageService.setActiveUser(data.user);
+            localStorage.setItem('cg_is_authenticated', 'true');
+            setIsAuthenticated(true);
+            return;
+          }
+        }
+        // If server says unauthenticated (401 or !authenticated)
+        if (StorageService.isAuthenticated()) {
+          console.warn('[AUTH] Sessão server-side inexistente ou expirada. Limpando credenciais locais e redirecionando para login.');
+          StorageService.clearBusinessCache();
+          localStorage.setItem('cg_is_authenticated', 'false');
+          setIsAuthenticated(false);
+        }
+      } catch (err) {
+        // Network error during offline/mock fallback: let StorageService validate local user integrity
+        if (!StorageService.isAuthenticated()) {
+          setIsAuthenticated(false);
+        }
+      }
+    };
+
+    verifyServerSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Listen for storage / login state updates and initialize/sync data
+  useEffect(() => {
+    // Initial load on startup
     StorageService.initialize();
 
     const handleStorageUpdate = () => {
-      setIsAuthenticated(StorageService.isAuthenticated());
+      const auth = StorageService.isAuthenticated();
+      setIsAuthenticated(auth);
+      if (auth) {
+        realtimeHub.connect(StorageService.getCurrentTenantId());
+      } else {
+        realtimeHub.disconnect();
+      }
     };
     window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
 
-    // Sync PostgreSQL state to LocalStorage periodically every 30 seconds as fallback
-    const syncInterval = setInterval(() => {
-      if (StorageService.isAuthenticated()) {
-        StorageService.syncWithPostgreSQL().catch(err => {
-          console.warn("Background PostgreSQL synchronization failed:", err);
+    // If authenticated on mount, establish SSE connection immediately
+    if (StorageService.isAuthenticated()) {
+      realtimeHub.connect(StorageService.getCurrentTenantId());
+    }
+
+    // Subscribe to incoming realtime SSE events to perform targeted entity synchronization
+    const unsubscribeSSE = realtimeHub.subscribe('*', (event) => {
+      if (event && event.entity) {
+        StorageService.syncSpecificEntity(event.entity, event.entityId).catch((err) => {
+          console.warn('[REALTIME] Erro no sync targeted:', err);
+        });
+      } else {
+        // Fallback: sync all if event entity is not specified
+        StorageService.syncWithPostgreSQL().catch((err) => {
+          console.warn('[REALTIME] Erro no sync global fallback:', err);
         });
       }
-    }, 30000);
+    });
 
     return () => {
       window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
-      clearInterval(syncInterval);
+      unsubscribeSSE();
+      realtimeHub.disconnect();
       StorageService.unsubscribeRealTimeListeners();
     };
   }, []);
 
-  // Initial view based on user role
+  // Initial view based on user role (safe fallback)
   const defaultView =
-    activeUser.role === 'DIGITADOR'
+    activeUser?.role === 'DIGITADOR'
       ? 'home-digitador'
-    : activeUser.role === 'SUPORTE'
+    : activeUser?.role === 'SUPORTE'
     ? 'suporte'
-    : activeUser.role === 'SIMULACAO'
+    : activeUser?.role === 'SIMULACAO'
     ? 'simulacoes'
     : 'torre-controle';
 

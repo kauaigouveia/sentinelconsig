@@ -1,28 +1,60 @@
 /**
- * Realtime Event Dispatcher & SSE / WebSocket Hub for Sentinel Consig SaaS
- * Enables instantaneous zero-reload synchronization across operators.
+ * Realtime Event Dispatcher & Server-Sent Events (SSE) Client Hub
+ * Sentinel Consig SaaS — Phase 2.3
+ * 
+ * Rules:
+ * - Direct SSE connection via EventSource to GET /api/realtime
+ * - Isolated per tenantId from session
+ * - Reconnection with exponential backoff
+ * - Event only triggers targeted reload; PostgreSQL remains the single source of truth
  */
 
 export interface RealtimeEvent<T = any> {
-  id: string;
-  type: 'PROPOSAL_CREATED' | 'PROPOSAL_UPDATED' | 'STATUS_CHANGED' | 'COMMENT_ADDED' | 'TASK_ASSIGNED' | 'TENANT_UPDATED' | 'USER_UPDATED' | 'BACKUP_COMPLETED';
-  tenantId: string;
+  id?: string;
+  type:
+    | 'PROPOSAL_CREATED'
+    | 'PROPOSAL_UPDATED'
+    | 'PROPOSAL_DELETED'
+    | 'STATUS_CHANGED'
+    | 'COMMENT_ADDED'
+    | 'TASK_CREATED'
+    | 'TASK_UPDATED'
+    | 'TASK_DELETED'
+    | 'CLIENT_CREATED'
+    | 'CLIENT_UPDATED'
+    | 'CLIENT_DELETED'
+    | 'NOTIFICATION_CREATED'
+    | 'TENANT_UPDATED'
+    | 'USER_UPDATED'
+    | 'USER_DELETED';
+  entity?: string;
+  entityId?: string;
+  tenantId?: string;
   userId?: string;
-  userName?: string;
-  timestamp: string;
-  payload: T;
+  timestamp?: string | number;
+  payload?: T;
 }
 
-type EventListener<T = any> = (event: RealtimeEvent<T>) => void;
+export type ConnectionStatus = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'ERROR';
+export type EventListener<T = any> = (event: RealtimeEvent<T>) => void;
+export type StatusListener = (status: ConnectionStatus, details?: { error?: string; reconnectAttempt?: number }) => void;
 
 class RealtimeService {
   private static instance: RealtimeService;
   private listeners: Map<string, Set<EventListener>> = new Map();
-  private connectionStatus: 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' = 'CONNECTED';
-  private eventHistory: RealtimeEvent[] = [];
+  private statusListeners: Set<StatusListener> = new Set();
+  private connectionStatus: ConnectionStatus = 'DISCONNECTED';
+  private eventSource: EventSource | null = null;
+  private currentTenantId: string | null = null;
+  private reconnectAttempts = 0;
+  private reconnectTimer: any = null;
+  private maxReconnectDelay = 30000;
+  private initialReconnectDelay = 1000;
+  private lastPingAt: number = Date.now();
+  private isConnecting = false;
 
   private constructor() {
-    // In browser, establish listener bridge
+    // Cross-tab broadcast listener as complementary local bridge
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key === 'sentinel_realtime_broadcast' && e.newValue) {
@@ -30,7 +62,7 @@ class RealtimeService {
             const event: RealtimeEvent = JSON.parse(e.newValue);
             this.notifyListeners(event);
           } catch (err) {
-            console.error('Falha ao processar evento realtime:', err);
+            console.error('[REALTIME] Falha ao processar evento storage cross-tab:', err);
           }
         }
       });
@@ -45,104 +77,276 @@ class RealtimeService {
   }
 
   /**
-   * Broadcast an event to all subscribers and across browser tabs
+   * Connects to SSE stream for authenticated tenant
    */
-  public broadcast<T = any>(
-    type: RealtimeEvent['type'],
-    tenantId: string,
-    payload: T,
-    user?: { id: string; name: string }
-  ): RealtimeEvent<T> {
-    const event: RealtimeEvent<T> = {
-      id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type,
-      tenantId,
-      userId: user?.id,
-      userName: user?.name,
-      timestamp: new Date().toISOString(),
-      payload,
-    };
+  public connect(tenantId?: string): void {
+    if (typeof window === 'undefined') return;
 
-    this.eventHistory.push(event);
-    if (this.eventHistory.length > 200) {
-      this.eventHistory.shift();
+    if (tenantId) {
+      this.currentTenantId = tenantId;
     }
 
-    // Local tab notifications
+    if (this.eventSource && this.eventSource.readyState === EventSource.OPEN) {
+      return;
+    }
+
+    if (this.isConnecting) {
+      return;
+    }
+
+    this.isConnecting = true;
+    this.setStatus('CONNECTING');
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    try {
+      if (this.eventSource) {
+        this.eventSource.close();
+      }
+
+      // EventSource sends cookies automatically to same origin
+      const es = new EventSource('/api/realtime', { withCredentials: true });
+      this.eventSource = es;
+
+      es.addEventListener('open', () => {
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.lastPingAt = Date.now();
+        this.setStatus('CONNECTED');
+      });
+
+      es.addEventListener('connected', (event: MessageEvent) => {
+        this.setStatus('CONNECTED');
+      });
+
+      es.addEventListener('ping', () => {
+        this.lastPingAt = Date.now();
+      });
+
+      // Dispatch specific domain events
+      const eventTypes: RealtimeEvent['type'][] = [
+        'PROPOSAL_CREATED',
+        'PROPOSAL_UPDATED',
+        'PROPOSAL_DELETED',
+        'STATUS_CHANGED',
+        'COMMENT_ADDED',
+        'TASK_CREATED',
+        'TASK_UPDATED',
+        'TASK_DELETED',
+        'CLIENT_CREATED',
+        'CLIENT_UPDATED',
+        'CLIENT_DELETED',
+        'NOTIFICATION_CREATED',
+        'TENANT_UPDATED',
+        'USER_UPDATED',
+        'USER_DELETED',
+      ];
+
+      for (const type of eventTypes) {
+        es.addEventListener(type, (event: MessageEvent) => {
+          try {
+            const parsed: RealtimeEvent = JSON.parse(event.data);
+            this.handleIncomingEvent(parsed);
+          } catch (e) {
+            console.error(`[REALTIME SSE] Falha ao processar evento ${type}:`, e);
+          }
+        });
+      }
+
+      // Generic message fallback
+      es.onmessage = (event: MessageEvent) => {
+        try {
+          const parsed: RealtimeEvent = JSON.parse(event.data);
+          this.handleIncomingEvent(parsed);
+        } catch (e) {
+          // ignore heartbeats
+        }
+      };
+
+      es.onerror = (err) => {
+        this.isConnecting = false;
+        this.setStatus('ERROR', { error: 'Desconectado do servidor SSE', reconnectAttempt: this.reconnectAttempts + 1 });
+        this.cleanupAndReconnect();
+      };
+    } catch (err: any) {
+      this.isConnecting = false;
+      this.setStatus('ERROR', { error: err?.message || 'Falha ao instanciar EventSource' });
+      this.cleanupAndReconnect();
+    }
+  }
+
+  private cleanupAndReconnect(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+
+    if (this.reconnectTimer) return;
+
+    this.reconnectAttempts++;
+    // Exponential backoff: min(30s, initial * 2^(attempts-1)) + jitter
+    const delay = Math.min(
+      this.maxReconnectDelay,
+      this.initialReconnectDelay * Math.pow(1.5, Math.min(this.reconnectAttempts, 8))
+    ) + Math.random() * 500;
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, delay);
+  }
+
+  public disconnect(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+    this.isConnecting = false;
+    this.setStatus('DISCONNECTED');
+  }
+
+  private handleIncomingEvent(event: RealtimeEvent): void {
+    // Client-side isolation verification (server already isolates by tenantId)
+    if (this.currentTenantId && event.tenantId && event.tenantId !== this.currentTenantId) {
+      console.warn('[REALTIME] Evento descartado por incompatibilidade de tenant:', event.tenantId);
+      return;
+    }
+
     this.notifyListeners(event);
 
-    // Cross-tab broadcast
+    // Cross-tab broadcast for other browser tabs in the same browser
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('sentinel_realtime_broadcast', JSON.stringify(event));
       } catch (e) {
-        // Storage limit or sandbox fallback
+        // Safe quota fallback
       }
     }
+  }
 
-    return event;
+  private setStatus(status: ConnectionStatus, details?: { error?: string; reconnectAttempt?: number }): void {
+    this.connectionStatus = status;
+    this.statusListeners.forEach((fn) => {
+      try {
+        fn(status, details);
+      } catch (err) {
+        console.error('[REALTIME] Erro no status listener:', err);
+      }
+    });
   }
 
   /**
-   * Subscribe to events matching specific event type or all events ('*')
-   * Filtered automatically by tenantId
+   * Subscribe to events matching specific event type or wildcard ('*')
+   * Supports optional tenantId filter for multi-tenant isolation or test environments
    */
   public subscribe<T = any>(
     eventType: string,
-    currentTenantId: string,
-    callback: EventListener<T>
+    callbackOrTenantId: EventListener<T> | string,
+    optionalCallback?: EventListener<T>
   ): () => void {
+    let callback: EventListener<T>;
+    let targetTenantId: string | undefined;
+
+    if (typeof callbackOrTenantId === 'function') {
+      callback = callbackOrTenantId;
+    } else {
+      targetTenantId = callbackOrTenantId;
+      callback = optionalCallback!;
+    }
+
+    const wrappedCallback: EventListener<T> = (event: RealtimeEvent) => {
+      if (targetTenantId && event.tenantId && event.tenantId !== targetTenantId) {
+        return;
+      }
+      callback(event);
+    };
+
     const key = eventType;
     if (!this.listeners.has(key)) {
       this.listeners.set(key, new Set());
     }
 
-    const tenantGuardedCallback: EventListener<T> = (evt) => {
-      // Strict multi-tenant isolation guard: Only dispatch if event matches tenant or caller is platform master
-      if (evt.tenantId === currentTenantId || currentTenantId === 'PLATFORM_MASTER_GLOBAL') {
-        callback(evt);
-      }
-    };
-
-    this.listeners.get(key)!.add(tenantGuardedCallback as EventListener);
+    this.listeners.get(key)!.add(wrappedCallback as EventListener);
 
     return () => {
-      this.listeners.get(key)?.delete(tenantGuardedCallback as EventListener);
+      this.listeners.get(key)?.delete(wrappedCallback as EventListener);
+    };
+  }
+
+  /**
+   * Broadcast an event (used for cross-tab local triggers or test runner validation)
+   */
+  public broadcast(eventType: string, tenantIdOrPayload: string | any, payload?: any): void {
+    let tenantId = this.currentTenantId || 'default-tenant';
+    let data = payload;
+
+    if (typeof tenantIdOrPayload === 'string') {
+      tenantId = tenantIdOrPayload;
+    } else {
+      data = tenantIdOrPayload;
+    }
+
+    const event: RealtimeEvent = {
+      type: eventType as any,
+      entity: 'Proposal',
+      entityId: data?.id || 'synthetic-id',
+      tenantId,
+      timestamp: Date.now(),
+      payload: data,
+    };
+
+    this.notifyListeners(event);
+  }
+
+  /**
+   * Subscribe to SSE Connection Status changes (CONNECTED, CONNECTING, DISCONNECTED, ERROR)
+   */
+  public onStatusChange(callback: StatusListener): () => void {
+    this.statusListeners.add(callback);
+    // Notify immediately with current status
+    callback(this.connectionStatus);
+    return () => {
+      this.statusListeners.delete(callback);
     };
   }
 
   private notifyListeners(event: RealtimeEvent): void {
-    const specificListeners = this.listeners.get(event.type);
-    if (specificListeners) {
-      specificListeners.forEach((fn) => {
+    const specific = this.listeners.get(event.type);
+    if (specific) {
+      specific.forEach((fn) => {
         try {
           fn(event);
-        } catch (err) {
-          console.error('Erro ao executar listener de realtime:', err);
+        } catch (e) {
+          console.error('[REALTIME] Listener error:', e);
         }
       });
     }
 
-    const wildcardListeners = this.listeners.get('*');
-    if (wildcardListeners) {
-      wildcardListeners.forEach((fn) => {
+    const wildcard = this.listeners.get('*');
+    if (wildcard) {
+      wildcard.forEach((fn) => {
         try {
           fn(event);
-        } catch (err) {
-          console.error('Erro ao executar listener wildcard:', err);
+        } catch (e) {
+          console.error('[REALTIME] Wildcard listener error:', e);
         }
       });
     }
   }
 
-  public getStatus(): 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' {
+  public getStatus(): ConnectionStatus {
     return this.connectionStatus;
   }
 
-  public getRecentEvents(tenantId: string): RealtimeEvent[] {
-    return this.eventHistory.filter(
-      (e) => e.tenantId === tenantId || tenantId === 'PLATFORM_MASTER_GLOBAL'
-    );
+  public getReconnectAttempts(): number {
+    return this.reconnectAttempts;
   }
 }
 

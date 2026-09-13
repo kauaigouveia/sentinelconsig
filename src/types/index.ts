@@ -15,6 +15,8 @@ export interface User {
   role: Role;
   active: boolean;
   tenantId?: string;
+  customPermissions?: string[];
+  isMasterProtected?: boolean;
   password?: string;
   mustChangePassword?: boolean;
   avatarUrl?: string;

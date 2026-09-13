@@ -43,7 +43,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   const activeUser = StorageService.getActiveUser();
-  const role: Role = activeUser.role;
+  const role: Role = activeUser?.role || 'DIGITADOR';
 
   const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
   const currentTenant = StorageService.getCurrentTenant();
@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
   }, []);
 
   // RBAC Permission checks
-  const isMaster = role === 'MASTER';
+  const isMaster = role === 'MASTER' || role === 'PLATFORM_MASTER';
   const isGestor = role === 'GESTOR' || isMaster;
   const isGerente = role === 'GERENTE' || isGestor;
   const isSuporte = role === 'SUPORTE' || isGestor;

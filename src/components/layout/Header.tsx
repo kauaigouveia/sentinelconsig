@@ -21,13 +21,15 @@ import {
   Activity,
   RefreshCw,
   Palette,
+  Radio,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
+import { realtimeHub, ConnectionStatus } from '../../services/realtimeService';
 import { AutomationService } from '../../services/automationService';
 import { BackupService } from '../../services/backupService';
 import { User, Role } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
-import { ROLE_CONFIG, getRoleEmoji } from '../../lib/roleUtils';
+import { ROLE_CONFIG, getRoleEmoji, getRoleLabel, getRoleBadgeClass } from '../../lib/roleUtils';
 import { db } from '../../firebase';
 import { doc, getDocFromServer } from 'firebase/firestore';
 
@@ -88,6 +90,28 @@ export const Header: React.FC<HeaderProps> = ({
   const [fbError, setFbError] = useState<string | null>(null);
   const [isFbStatusOpen, setIsFbStatusOpen] = useState(false);
   const fbMenuRef = useRef<HTMLDivElement>(null);
+
+  // Realtime SSE connection status state
+  const [realtimeStatus, setRealtimeStatus] = useState<ConnectionStatus>(() => realtimeHub.getStatus());
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+  const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
+  const [isRealtimeMenuOpen, setIsRealtimeMenuOpen] = useState(false);
+  const realtimeMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const unsub = realtimeHub.onStatusChange((status, details) => {
+      setRealtimeStatus(status);
+      if (details?.error) {
+        setRealtimeError(details.error);
+      } else if (status === 'CONNECTED') {
+        setRealtimeError(null);
+      }
+      if (details?.reconnectAttempt !== undefined) {
+        setReconnectAttempt(details.reconnectAttempt);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const checkFirebase = async (forceCheckingState = true) => {
     if (!navigator.onLine) {
@@ -166,6 +190,21 @@ export const Header: React.FC<HeaderProps> = ({
       document.removeEventListener('mousedown', handleClickOutsideFb);
     };
   }, [isFbStatusOpen]);
+
+  // Close Realtime dropdown on outside click
+  useEffect(() => {
+    const handleClickOutsideRealtime = (event: MouseEvent) => {
+      if (realtimeMenuRef.current && !realtimeMenuRef.current.contains(event.target as Node)) {
+        setIsRealtimeMenuOpen(false);
+      }
+    };
+    if (isRealtimeMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsideRealtime);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideRealtime);
+    };
+  }, [isRealtimeMenuOpen]);
 
   // Close tools dropdown on outside click
   useEffect(() => {
@@ -452,6 +491,108 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
+        {/* Realtime SSE Connection Status Badge & Popover */}
+        <div className="relative" ref={realtimeMenuRef}>
+          <button
+            id="btn-realtime-status"
+            onClick={() => setIsRealtimeMenuOpen(!isRealtimeMenuOpen)}
+            title="Status do canal Server-Sent Events (SSE)"
+            className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
+              realtimeStatus === 'CONNECTED'
+                ? 'border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300'
+                : realtimeStatus === 'CONNECTING'
+                ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
+            }`}
+          >
+            <Radio className={`h-3.5 w-3.5 ${realtimeStatus === 'CONNECTED' ? 'text-sky-500 animate-pulse' : realtimeStatus === 'CONNECTING' ? 'text-amber-500 animate-spin' : 'text-rose-500'}`} />
+            <span className="hidden md:inline">
+              {realtimeStatus === 'CONNECTED'
+                ? 'Realtime SSE'
+                : realtimeStatus === 'CONNECTING'
+                ? 'Conectando...'
+                : 'SSE Desconectado'}
+            </span>
+          </button>
+
+          {isRealtimeMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3.5 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2.5">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Canal Realtime (SSE)
+                </span>
+                <span className="text-[10px] font-mono text-sky-600 dark:text-sky-400 font-semibold">
+                  PostgreSQL
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${
+                      realtimeStatus === 'CONNECTED'
+                        ? 'bg-sky-500 animate-pulse'
+                        : realtimeStatus === 'CONNECTING'
+                        ? 'bg-amber-500 animate-pulse'
+                        : 'bg-rose-500'
+                    }`} />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {realtimeStatus === 'CONNECTED'
+                        ? 'Stream Ativo (SSE)'
+                        : realtimeStatus === 'CONNECTING'
+                        ? 'Estabelecendo canal...'
+                        : 'Desconectado'}
+                    </span>
+                  </div>
+                  {reconnectAttempt > 0 && (
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
+                      Tentativa {reconnectAttempt}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 dark:text-slate-500">Endpoint:</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">
+                      GET /api/realtime
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 dark:text-slate-500">Protocolo:</span>
+                    <span className="text-slate-700 dark:text-slate-300">Server-Sent Events</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 dark:text-slate-500">Fonte de Verdade:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">PostgreSQL</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 dark:text-slate-500">Isolamento:</span>
+                    <span className="text-slate-700 dark:text-slate-300">Tenant Seguro (Session)</span>
+                  </div>
+                </div>
+
+                {realtimeError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-lg p-2 text-[10px] text-rose-600 dark:text-rose-400 font-mono break-words leading-relaxed max-h-24 overflow-y-auto">
+                    <strong>Status:</strong> {realtimeError}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    realtimeHub.disconnect();
+                    realtimeHub.connect(StorageService.getCurrentTenantId());
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs py-2 px-3 shadow-xs hover:shadow-sm active:scale-[0.98] transition-all"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Reconectar SSE
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Consolidated System & Tools Dropdown Menu */}
         <div className="relative" ref={toolsMenuRef}>
           <button
@@ -602,21 +743,21 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2">
           <div className="text-right hidden lg:block">
             <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight flex items-center justify-end gap-1">
-              <span>{getRoleEmoji(activeUser.role)}</span>
-              <span>{activeUser.name}</span>
+              <span>{getRoleEmoji(activeUser?.role)}</span>
+              <span>{activeUser?.name || 'Usuário'}</span>
             </p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{activeUser.email}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{activeUser?.email || ''}</p>
           </div>
 
           <div className="flex items-center gap-1.5">
             <label htmlFor="user-role-select" className="sr-only">Perfil Ativo</label>
             <div className="relative flex items-center">
-              {activeUser.role === 'MASTER' ? (
+              {(activeUser?.role === 'MASTER' || activeUser?.role === 'PLATFORM_MASTER') ? (
                 <select
                   id="user-role-select"
                   value={activeUser.id}
                   onChange={e => handleRoleSwitch(e.target.value)}
-                  className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 cursor-pointer focus:outline-hidden transition-all ${ROLE_CONFIG[activeUser.role].badgeClass}`}
+                  className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 cursor-pointer focus:outline-hidden transition-all ${getRoleBadgeClass(activeUser?.role)}`}
                   title="Trocar usuário e perfil do sistema"
                 >
                   {allUsers.map(u => (
@@ -627,10 +768,10 @@ export const Header: React.FC<HeaderProps> = ({
                 </select>
               ) : (
                 <div
-                  className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 select-none ${ROLE_CONFIG[activeUser.role].badgeClass}`}
-                  title={`Perfil Ativo: ${ROLE_CONFIG[activeUser.role].label}`}
+                  className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 select-none ${getRoleBadgeClass(activeUser?.role)}`}
+                  title={`Perfil Ativo: ${getRoleLabel(activeUser?.role)}`}
                 >
-                  {getRoleEmoji(activeUser.role)} {activeUser.role}
+                  {getRoleEmoji(activeUser?.role)} {activeUser?.role || 'USUÁRIO'}
                 </div>
               )}
             </div>

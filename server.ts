@@ -13,8 +13,119 @@ import {
   buildBlobPath,
   sanitizeFileName,
 } from './server/services/azureBlobStorage.js';
+import { hasPermission, Permission } from './src/lib/permissions.js';
+import { Role } from './src/types/index.js';
+import { sseRegistry } from './server/realtime.js';
 
 const prisma = new PrismaClient();
+
+async function auditAndEnsureMasterUser() {
+  try {
+    const masterEmail = (process.env.INITIAL_MASTER_EMAIL || 'kauaigouveia@gmail.com').trim().toLowerCase();
+    const masterPassword = process.env.INITIAL_MASTER_PASSWORD?.trim();
+
+    // 1. Tenant inicial idempotente
+    let tenant = await prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { slug: 'sentinel-consig' },
+          { slug: 'evolve' },
+          { name: { contains: 'SENTINEL', mode: 'insensitive' } },
+          { name: { contains: 'EVOLVE', mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (!tenant) {
+      tenant = await prisma.tenant.create({
+        data: {
+          name: 'SENTINEL CONSIG / EVOLVE',
+          tradeName: 'Sentinel Consig',
+          slug: 'sentinel-consig',
+          status: 'ACTIVE',
+          plan: 'PRO',
+          maxUsers: 50,
+          storageLimitMb: 10000,
+          maxProposals: 50000,
+        },
+      });
+      console.log(`[RBAC BOOTSTRAP] Tenant inicial criado com sucesso no PostgreSQL: ${tenant.id} (${tenant.name})`);
+
+      try {
+        await prisma.whiteLabelConfig.create({
+          data: {
+            tenantId: tenant.id,
+            companyName: 'Sentinel Consig',
+            legalName: 'Sentinel Intermediação de Negócios Ltda',
+            primaryColor: '#2563eb',
+            secondaryColor: '#1e40af',
+            accentColor: '#3b82f6',
+          },
+        });
+      } catch (wlErr) {
+        console.warn('[RBAC BOOTSTRAP] Aviso ao configurar WhiteLabelConfig inicial:', wlErr);
+      }
+    } else {
+      console.log(`[RBAC BOOTSTRAP] Tenant inicial reutilizado: ${tenant.id} (${tenant.name})`);
+    }
+
+    // 2. Usuário Master inicial idempotente
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: masterEmail, mode: 'insensitive' } },
+    });
+
+    if (user) {
+      console.log(`[RBAC BOOTSTRAP] Usuario Master localizado no PostgreSQL:`, {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        active: user.active,
+        isMasterProtected: user.isMasterProtected,
+      });
+
+      const updates: any = {};
+      if (user.role !== 'PLATFORM_MASTER') updates.role = 'PLATFORM_MASTER';
+      if (!user.active) updates.active = true;
+      if (!user.isMasterProtected) updates.isMasterProtected = true;
+      if (!user.tenantId && tenant) updates.tenantId = tenant.id;
+
+      if (Object.keys(updates).length > 0) {
+        const updated = await prisma.user.update({
+          where: { id: user.id },
+          data: updates,
+        });
+        console.log(`[RBAC BOOTSTRAP] Perfil de ${masterEmail} sincronizado para PLATFORM_MASTER:`, updated.role);
+      }
+    } else {
+      if (!masterPassword) {
+        console.error(`[RBAC BOOTSTRAP CRITICAL] INITIAL_MASTER_PASSWORD não configurada no ambiente. Usuário master não criado.`);
+        return;
+      }
+
+      const created = await prisma.user.create({
+        data: {
+          name: 'Kauai Gouveia',
+          email: masterEmail,
+          passwordHash: masterPassword,
+          role: 'PLATFORM_MASTER',
+          active: true,
+          isMasterProtected: true,
+          tenantId: tenant.id,
+          customPermissions: [],
+        },
+      });
+      console.log(`[RBAC BOOTSTRAP] Usuario PLATFORM_MASTER criado com sucesso no PostgreSQL:`, {
+        id: created.id,
+        email: created.email,
+        role: created.role,
+        tenantId: created.tenantId,
+      });
+    }
+  } catch (err) {
+    console.warn('[RBAC BOOTSTRAP WARNING]', err);
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -27,15 +138,15 @@ async function startServer() {
   app.use(cookieParser());
 
   // Rate Limiter for Authentication Endpoints (Brute Force Guard)
-  // 5 login attempts per IP every 15 minutes
+  // 60 login attempts per IP every 15 minutes
   const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    max: 60,
     standardHeaders: true,
     legacyHeaders: false,
     statusCode: 429,
     message: {
-      error: 'Muitas tentativas de login a partir deste IP. Tente novamente após 15 minutes.',
+      error: 'Muitas tentativas de login a partir deste IP. Tente novamente mais tarde.',
     },
     handler: (req, res, _next, options) => {
       console.warn(`[SECURITY ALERT] Rate limit de autenticação excedido para IP: ${req.ip}`);
@@ -76,67 +187,60 @@ async function startServer() {
           include: { tenant: true },
         });
       } catch (err) {
-        console.warn('[AUTH] Falha ou banco não migrado no Prisma:', err);
+        console.warn('[AUTH] Falha ao consultar usuário no banco de dados:', err);
       }
 
-      if (dbUser) {
-        // User status check
-        if (!dbUser.active) {
-          return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
-        }
+      if (!dbUser) {
+        return res.status(401).json({ message: 'Credenciais inválidas ou usuário não encontrado.' });
+      }
 
-        // Tenant status check
-        if (dbUser.tenant && dbUser.tenant.status === 'SUSPENDED') {
-          return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
-        }
+      // User status check
+      if (!dbUser.active) {
+        return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
+      }
 
-        // Password hash check
-        if (dbUser.passwordHash !== cleanPassword && !dbUser.passwordHash.includes(cleanPassword)) {
-          return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
-        }
+      // Tenant status check
+      if (dbUser.tenant && dbUser.tenant.status === 'SUSPENDED') {
+        return res.status(401).json({ message: 'Empresa com acesso suspenso temporariamente.' });
+      }
+
+      // Password hash check
+      if (dbUser.passwordHash !== cleanPassword && !dbUser.passwordHash.includes(cleanPassword)) {
+        return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
       // Safe user output object (NO PASSWORDS, NO HASHES)
-      const safeUser = dbUser
-        ? {
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            role: dbUser.role,
-            active: dbUser.active,
-            tenantId: dbUser.tenantId || undefined,
-            mustChangePassword: dbUser.mustChangePassword,
-            createdAt: dbUser.createdAt.toISOString(),
-            updatedAt: dbUser.updatedAt.toISOString(),
-          }
-        : {
-            id: `u-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
-            name: cleanEmail.split('@')[0].toUpperCase(),
-            email: cleanEmail,
-            role: cleanEmail.includes('master') ? 'PLATFORM_MASTER' : 'DIGITADOR',
-            active: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
+      const safeUser = {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        role: dbUser.role,
+        active: dbUser.active,
+        tenantId: dbUser.tenantId || undefined,
+        customPermissions: dbUser.customPermissions || [],
+        isMasterProtected: dbUser.isMasterProtected || false,
+        mustChangePassword: dbUser.mustChangePassword,
+        createdAt: dbUser.createdAt.toISOString(),
+        updatedAt: dbUser.updatedAt.toISOString(),
+      };
 
-      // Create Server Session
+      // Create Server Session in PostgreSQL
       const sessionToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      if (dbUser) {
-        try {
-          await prisma.session.create({
-            data: {
-              userId: dbUser.id,
-              token: sessionToken,
-              ipAddress: req.ip || '127.0.0.1',
-              userAgent: req.headers['user-agent'] || 'Unknown',
-              expiresAt,
-            },
-          });
-        } catch (sessErr) {
-          console.warn('[AUTH] Não foi possível persistir sessão no banco:', sessErr);
-        }
+      try {
+        await prisma.session.create({
+          data: {
+            userId: dbUser.id,
+            token: sessionToken,
+            ipAddress: req.ip || '127.0.0.1',
+            userAgent: req.headers['user-agent'] || 'Unknown',
+            expiresAt,
+          },
+        });
+      } catch (sessErr) {
+        console.warn('[AUTH] Não foi possível persistir sessão no banco:', sessErr);
+        return res.status(500).json({ message: 'Erro ao criar sessão no servidor.' });
       }
 
       // Set HttpOnly Cookie
@@ -208,6 +312,8 @@ async function startServer() {
         role: session.user.role,
         active: session.user.active,
         tenantId: session.user.tenantId || undefined,
+        customPermissions: session.user.customPermissions || [],
+        isMasterProtected: session.user.isMasterProtected || false,
         mustChangePassword: session.user.mustChangePassword,
         createdAt: session.user.createdAt.toISOString(),
         updatedAt: session.user.updatedAt.toISOString(),
@@ -269,6 +375,74 @@ async function startServer() {
   };
 
   // -------------------------------------------------------------
+  // REALTIME SERVER-SENT EVENTS (SSE) ENDPOINT
+  // -------------------------------------------------------------
+  app.get('/api/realtime', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Autenticação obrigatória para SSE.' });
+      }
+
+      const tenantId = session.user.tenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Tenant ativo é obrigatório para conexão Realtime.' });
+      }
+
+      // Headers estritos para SSE streaming
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders?.();
+
+      const connectionId = crypto.randomUUID();
+      const sseConn = {
+        connectionId,
+        userId: session.user.id,
+        tenantId,
+        userRole: session.user.role,
+        res,
+        createdAt: new Date(),
+      };
+
+      sseRegistry.registerConnection(sseConn);
+
+      // Evento inicial "connected"
+      const connectedPayload = {
+        connectionId,
+        tenantId,
+        userId: session.user.id,
+        timestamp: new Date().toISOString(),
+      };
+      res.write(`event: connected\ndata: ${JSON.stringify(connectedPayload)}\n\n`);
+
+      // Cleanup seguro ao desconectar
+      const cleanup = () => {
+        sseRegistry.unregisterConnection(connectionId);
+      };
+
+      req.on('close', cleanup);
+      req.on('aborted', cleanup);
+      res.on('finish', cleanup);
+    } catch (err) {
+      console.error('[REALTIME SSE ROUTE ERROR]', err);
+      if (!res.headersSent) {
+        return res.status(500).json({ error: 'Erro ao iniciar conexão SSE.' });
+      }
+    }
+  });
+
+  // Estatísticas do SSE para administradores
+  app.get('/api/realtime/stats', async (req, res) => {
+    const session = await getAuthSession(req);
+    if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      return res.status(403).json({ error: 'Acesso restrito.' });
+    }
+    return res.json(sseRegistry.getStats());
+  });
+
+  // -------------------------------------------------------------
   // CLIENTS API (PostgreSQL / Prisma)
   // -------------------------------------------------------------
   app.get('/api/clients', async (req, res) => {
@@ -302,6 +476,12 @@ async function startServer() {
 
       const cleanCpf = String(cpf).replace(/\D/g, '');
 
+      // Verificar existência para diferenciar com precisão CLIENT_CREATED de CLIENT_UPDATED
+      const existingClient = await prisma.client.findUnique({
+        where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
+        select: { id: true },
+      });
+
       const client = await prisma.client.upsert({
         where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
         update: {
@@ -313,6 +493,7 @@ async function startServer() {
           addressCity: addressCity || null,
           addressState: addressState || null,
           addressZip: addressZip || null,
+          deletedAt: null, // Restaura se estava em soft-delete
           updatedAt: new Date(),
         },
         create: {
@@ -327,6 +508,14 @@ async function startServer() {
           addressState: addressState || null,
           addressZip: addressZip || null,
         },
+      });
+
+      // Emissão pós-commit estrita por tenant
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: existingClient ? 'CLIENT_UPDATED' : 'CLIENT_CREATED',
+        entity: 'Client',
+        entityId: client.id,
+        userId: session.user.id,
       });
 
       return res.json(client);
@@ -346,9 +535,25 @@ async function startServer() {
         return res.status(401).json({ error: 'Acesso não autorizado.' });
       }
 
+      const client = await prisma.client.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!client) {
+        return res.status(404).json({ error: 'Cliente não encontrado.' });
+      }
+
       await prisma.client.updateMany({
         where: { id, tenantId },
         data: { deletedAt: new Date() },
+      });
+
+      // Emissão pós-commit
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'CLIENT_DELETED',
+        entity: 'Client',
+        entityId: id,
+        userId: session.user.id,
       });
 
       return res.json({ success: true, message: 'Cliente removido.' });
@@ -424,10 +629,203 @@ async function startServer() {
         include: { client: true, bank: true, promoter: true, partner: true, product: true },
       });
 
+      // Emissão pós-commit de PROPOSAL_CREATED estritamente para o tenant da sessão
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'PROPOSAL_CREATED',
+        entity: 'Proposal',
+        entityId: proposal.id,
+        userId: session.user.id,
+      });
+
       return res.json(proposal);
     } catch (err) {
       console.error('[API PROPOSALS POST ERROR]', err);
       return res.status(500).json({ error: 'Erro ao criar proposta no PostgreSQL.' });
+    }
+  });
+
+  // PATCH /api/proposals/:id - Optimistic concurrency, status change history & real-time events
+  app.patch('/api/proposals/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para atualizar proposta.' });
+      }
+
+      const { id } = req.params;
+      const {
+        version,
+        statusId,
+        statusName,
+        releasedValue,
+        contractValue,
+        installmentValue,
+        installmentsCount,
+        debtBalance,
+        commissionRate,
+        bankId,
+        promoterId,
+        partnerId,
+        productId,
+        type,
+        standardCategory,
+        notes,
+      } = req.body;
+
+      // 1. Buscar proposta existente com validação de tenant
+      const existing = await prisma.proposal.findFirst({
+        where: { id, tenantId, deletedAt: null },
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Proposta não encontrada.' });
+      }
+
+      // 2. Concorrência Otimista (Optimistic Concurrency) via Proposal.version
+      if (version !== undefined && Number(version) !== existing.version) {
+        return res.status(409).json({
+          error: 'Conflito de versão concorrente: Esta proposta foi modificada por outro operador.',
+          currentVersion: existing.version,
+          expectedVersion: Number(version),
+        });
+      }
+
+      const isStatusChanging = statusId !== undefined && statusId !== existing.statusId;
+
+      // 3. Executar transação atômica no PostgreSQL
+      const result = await prisma.$transaction(async (tx) => {
+        // Atualizar proposta incrementando a versão
+        const updated = await tx.proposal.update({
+          where: { id },
+          data: {
+            statusId: statusId !== undefined ? statusId : undefined,
+            standardCategory: standardCategory || undefined,
+            releasedValue: releasedValue !== undefined ? Number(releasedValue) : undefined,
+            contractValue: contractValue !== undefined ? Number(contractValue) : undefined,
+            installmentValue: installmentValue !== undefined ? Number(installmentValue) : undefined,
+            installmentsCount: installmentsCount !== undefined ? Number(installmentsCount) : undefined,
+            debtBalance: debtBalance !== undefined ? (debtBalance ? Number(debtBalance) : null) : undefined,
+            commissionRate: commissionRate !== undefined ? (commissionRate ? Number(commissionRate) : null) : undefined,
+            bankId: bankId !== undefined ? bankId : undefined,
+            promoterId: promoterId !== undefined ? promoterId : undefined,
+            partnerId: partnerId !== undefined ? partnerId : undefined,
+            productId: productId !== undefined ? productId : undefined,
+            type: type || undefined,
+            version: { increment: 1 },
+          },
+          include: { client: true, bank: true, promoter: true, partner: true, product: true },
+        });
+
+        // Gravar StatusHistory se o status mudou
+        if (isStatusChanging) {
+          await tx.statusHistory.create({
+            data: {
+              tenantId,
+              proposalId: id,
+              statusId: statusId || null,
+              statusName: statusName || 'Alteração de Fase',
+              userId: session.user.id,
+              notes: notes || null,
+            },
+          });
+        }
+
+        return updated;
+      });
+
+      // 4. Emissão PÓS-COMMIT garantida: somente após sucesso total da transação
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'PROPOSAL_UPDATED',
+        entity: 'Proposal',
+        entityId: result.id,
+        userId: session.user.id,
+      });
+
+      if (isStatusChanging) {
+        sseRegistry.broadcastToTenant(tenantId, {
+          type: 'STATUS_CHANGED',
+          entity: 'Proposal',
+          entityId: result.id,
+          userId: session.user.id,
+        });
+      }
+
+      return res.json(result);
+    } catch (err) {
+      console.error('[API PROPOSALS PATCH ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar proposta no PostgreSQL.' });
+    }
+  });
+
+  // POST /api/proposals/:id/comments - Comentários com validação de tenant e SSE COMMENT_ADDED
+  app.post('/api/proposals/:id/comments', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const { id } = req.params;
+      const { text } = req.body;
+
+      if (!text || String(text).trim().length === 0) {
+        return res.status(400).json({ error: 'Texto do comentário é obrigatório.' });
+      }
+
+      // Validar se proposta pertence ao tenant
+      const proposal = await prisma.proposal.findFirst({
+        where: { id, tenantId, deletedAt: null },
+      });
+
+      if (!proposal) {
+        return res.status(404).json({ error: 'Proposta não encontrada neste tenant.' });
+      }
+
+      const comment = await prisma.comment.create({
+        data: {
+          tenantId,
+          proposalId: id,
+          userId: session.user.id,
+          authorName: session.user.name,
+          text: String(text).trim(),
+        },
+      });
+
+      // Emissão PÓS-COMMIT
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'COMMENT_ADDED',
+        entity: 'Comment',
+        entityId: comment.id,
+        userId: session.user.id,
+      });
+
+      return res.json(comment);
+    } catch (err) {
+      console.error('[API PROPOSALS COMMENTS POST ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao adicionar comentário.' });
+    }
+  });
+
+  // GET /api/proposals/:id/comments
+  app.get('/api/proposals/:id/comments', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: 'Acesso não autorizado.' });
+      }
+
+      const { id } = req.params;
+      const comments = await prisma.comment.findMany({
+        where: { proposalId: id, tenantId },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return res.json(comments);
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao buscar comentários.' });
     }
   });
 
@@ -441,8 +839,24 @@ async function startServer() {
         return res.status(401).json({ error: 'Acesso não autorizado.' });
       }
 
+      const proposal = await prisma.proposal.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!proposal) {
+        return res.status(404).json({ error: 'Proposta não encontrada.' });
+      }
+
       await prisma.proposal.deleteMany({
         where: { id, tenantId },
+      });
+
+      // Emissão pós-commit estritamente para o tenant
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'PROPOSAL_DELETED',
+        entity: 'Proposal',
+        entityId: id,
+        userId: session.user.id,
       });
 
       return res.json({ success: true, message: 'Proposta removida.' });
@@ -539,6 +953,42 @@ async function startServer() {
     }
   });
 
+  // POST /api/notifications - Helper de criação com NOTIFICATION_CREATED pós-commit
+  app.post('/api/notifications', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const { targetUserId, title, message, linkUrl } = req.body;
+      if (!title || !message) {
+        return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
+      }
+
+      const notification = await prisma.notification.create({
+        data: {
+          tenantId,
+          userId: targetUserId || session.user.id,
+          title,
+          message,
+          linkUrl: linkUrl || null,
+        },
+      });
+
+      // Emissão pós-commit de NOTIFICATION_CREATED (seguro, sem dados sensíveis)
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'NOTIFICATION_CREATED',
+        entity: 'Notification',
+        entityId: notification.id,
+        userId: notification.userId || undefined,
+      });
+
+      return res.json(notification);
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao criar notificação.' });
+    }
+  });
+
   // -------------------------------------------------------------
   // TASKS API
   // -------------------------------------------------------------
@@ -577,6 +1027,15 @@ async function startServer() {
           assignedToId: assignedToId || null,
         },
       });
+
+      // Emissão pós-commit de TASK_CREATED
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'TASK_CREATED',
+        entity: 'Task',
+        entityId: task.id,
+        userId: session.user.id,
+      });
+
       return res.json(task);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao criar tarefa.' });
@@ -590,10 +1049,19 @@ async function startServer() {
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id } = req.params;
       const { title, description, category, priority, dueDate, completed, assignedToId } = req.body;
-      const task = await prisma.task.updateMany({
+
+      const existing = await prisma.task.findFirst({
         where: { id, tenantId },
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Tarefa não encontrada.' });
+      }
+
+      const task = await prisma.task.update({
+        where: { id },
         data: {
-          title,
+          title: title !== undefined ? title : undefined,
           description: description !== undefined ? description : undefined,
           category: category !== undefined ? category : undefined,
           priority: priority !== undefined ? priority : undefined,
@@ -602,6 +1070,15 @@ async function startServer() {
           assignedToId: assignedToId !== undefined ? assignedToId : undefined,
         },
       });
+
+      // Emissão pós-commit de TASK_UPDATED
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'TASK_UPDATED',
+        entity: 'Task',
+        entityId: task.id,
+        userId: session.user.id,
+      });
+
       return res.json({ success: true, task });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao atualizar tarefa.' });
@@ -614,9 +1091,27 @@ async function startServer() {
       const tenantId = session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id } = req.params;
+
+      const existing = await prisma.task.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Tarefa não encontrada.' });
+      }
+
       await prisma.task.deleteMany({
         where: { id, tenantId },
       });
+
+      // Emissão pós-commit de TASK_DELETED
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'TASK_DELETED',
+        entity: 'Task',
+        entityId: id,
+        userId: session.user.id,
+      });
+
       return res.json({ success: true });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao deletar tarefa.' });
@@ -1251,26 +1746,34 @@ async function startServer() {
   app.get('/api/users', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
-      // Only Admin or Master can see list of users
-      const allowed = ['TENANT_ADMIN', 'MASTER', 'PLATFORM_MASTER'];
-      if (!allowed.includes(session.user.role)) {
-        return res.status(403).json({ error: 'Permissão negada para listar usuários.' });
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.view'." });
       }
 
+      const tenantId = session.user.tenantId;
+      const whereCondition = isPlatformMaster
+        ? { deletedAt: null }
+        : { tenantId: tenantId || undefined, deletedAt: null };
+
       const users = await prisma.user.findMany({
-        where: { tenantId, deletedAt: null },
+        where: whereCondition,
         orderBy: { name: 'asc' },
       });
-      // Safety clean (remove passwordHash)
+
       const cleanUsers = users.map(u => {
         const { passwordHash, ...rest } = u;
         return rest;
       });
+
       return res.json(cleanUsers);
     } catch (err) {
+      console.error('[GET /api/users ERROR]', err);
       return res.status(500).json({ error: 'Erro ao listar usuários.' });
     }
   });
@@ -1278,50 +1781,82 @@ async function startServer() {
   app.post('/api/users', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
-      // RBAC check
-      if (session.user.role !== 'TENANT_ADMIN' && session.user.role !== 'MASTER' && session.user.role !== 'PLATFORM_MASTER') {
-        return res.status(403).json({ error: 'Permissão negada para cadastrar usuário.' });
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.create')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.create'." });
       }
 
-      const { id, name, email, password, role, phone } = req.body;
+      const { id, name, email, password, role, customPermissions, tenantId, phone } = req.body;
       if (!name || !email || !password) {
         return res.status(400).json({ error: 'Nome, E-mail e Senha são obrigatórios.' });
       }
 
-      // Block privileged role escalation
-      const allowedRoles = ['DIGITADOR', 'SIMULACAO', 'SUPORTE', 'GERENTE', 'GESTOR'];
-      if (session.user.role === 'PLATFORM_MASTER' || session.user.role === 'TENANT_ADMIN') {
-        allowedRoles.push('TENANT_ADMIN');
-      }
-      if (!allowedRoles.includes(role)) {
-        return res.status(403).json({ error: 'Papel de usuário (role) inválido ou privilégio excessivo.' });
+      if (role === 'PLATFORM_MASTER' && !isPlatformMaster) {
+        return res.status(403).json({ error: 'Apenas um PLATFORM_MASTER pode atribuir o perfil PLATFORM_MASTER.' });
       }
 
-      const existing = await prisma.user.findUnique({ where: { email } });
+      const targetTenantId = isPlatformMaster && tenantId ? tenantId : session.user.tenantId;
+
+      const existing = await prisma.user.findUnique({
+        where: { email: String(email).trim().toLowerCase() },
+      });
       if (existing) {
         return res.status(400).json({ error: 'E-mail já está em uso.' });
       }
 
+      const cleanPermissions = Array.isArray(customPermissions) ? customPermissions : [];
+
       const user = await prisma.user.create({
         data: {
           id: id || undefined,
-          tenantId,
-          name,
+          tenantId: targetTenantId || null,
+          name: String(name).trim(),
           email: String(email).trim().toLowerCase(),
-          passwordHash: password, // simple hash or plain for staging as audited
+          passwordHash: String(password).trim(),
           role: role || 'DIGITADOR',
+          customPermissions: cleanPermissions,
           phone: phone || null,
           active: true,
         },
       });
 
+      await prisma.auditLog.create({
+        data: {
+          tenantId: targetTenantId || null,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'USER_CREATED',
+          entity: 'User',
+          entityId: user.id,
+          newData: JSON.stringify({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            tenantId: user.tenantId,
+            customPermissions: user.customPermissions,
+          }),
+        },
+      }).catch(() => {});
+
+      if (user.tenantId) {
+        sseRegistry.broadcastToTenant(user.tenantId, {
+          type: 'USER_CREATED',
+          entity: 'User',
+          entityId: user.id,
+          userId: session.user.id,
+        });
+      }
+
       const { passwordHash, ...safeCreatedUser } = user;
       return res.json(safeCreatedUser);
     } catch (err) {
-      console.error('[POST /api/users]', err);
+      console.error('[POST /api/users ERROR]', err);
       return res.status(500).json({ error: 'Erro ao criar usuário.' });
     }
   });
@@ -1329,52 +1864,201 @@ async function startServer() {
   app.put('/api/users/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { id } = req.params;
-      const { name, active, role, phone, password } = req.body;
+      const { name, active, role, customPermissions, tenantId, phone, password } = req.body;
 
-      // Access Check: self update OR admin update
       const isSelf = id === session.user.id;
-      const isAdmin = session.user.role === 'TENANT_ADMIN' || session.user.role === 'MASTER' || session.user.role === 'PLATFORM_MASTER';
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
 
-      if (!isSelf && !isAdmin) {
-        return res.status(403).json({ error: 'Não autorizado.' });
+      const canUpdateUsers = isPlatformMaster || hasPermission(userRole, userCustomPerms, 'users.update');
+
+      if (!isSelf && !canUpdateUsers) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
       }
 
-      // Guard Master protection
-      const targetUser = await prisma.user.findFirst({ where: { id, tenantId } });
+      const targetUser = await prisma.user.findFirst({ where: { id } });
       if (!targetUser) {
         return res.status(404).json({ error: 'Usuário não encontrado.' });
       }
-      if (targetUser.isMasterProtected && !isSelf && session.user.role !== 'PLATFORM_MASTER') {
-        return res.status(403).json({ error: 'Este usuário está protegido e não pode ser editado.' });
+
+      if (!isPlatformMaster && targetUser.tenantId !== session.user.tenantId) {
+        return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
       }
 
-      // Roles checks
-      let finalRole = undefined;
-      if (role !== undefined && isAdmin && !isSelf) {
-        const allowedRoles = ['DIGITADOR', 'SIMULACAO', 'SUPORTE', 'GERENTE', 'GESTOR', 'TENANT_ADMIN'];
-        if (allowedRoles.includes(role)) {
-          finalRole = role;
+      if (role === 'PLATFORM_MASTER' && !isPlatformMaster) {
+        return res.status(403).json({ error: 'Apenas um PLATFORM_MASTER pode atribuir o perfil PLATFORM_MASTER.' });
+      }
+
+      if (targetUser.role === 'PLATFORM_MASTER') {
+        const isDemoting = role !== undefined && role !== 'PLATFORM_MASTER';
+        const isDeactivating = active === false;
+
+        if (isDemoting || isDeactivating) {
+          const remainingMasters = await prisma.user.count({
+            where: {
+              role: 'PLATFORM_MASTER',
+              active: true,
+              deletedAt: null,
+              id: { not: targetUser.id },
+            },
+          });
+
+          if (remainingMasters < 1) {
+            return res.status(403).json({
+              error: 'Operação bloqueada: Não é possível remover, rebaixar ou desativar o último PLATFORM_MASTER ativo da plataforma.',
+            });
+          }
         }
       }
 
-      const user = await prisma.user.updateMany({
-        where: { id, tenantId },
+      const auditActions: { action: string; details: any }[] = [];
+      if (role !== undefined && role !== targetUser.role) {
+        auditActions.push({ action: 'ROLE_CHANGED', details: { oldRole: targetUser.role, newRole: role } });
+      }
+      if (Array.isArray(customPermissions) && JSON.stringify(customPermissions) !== JSON.stringify(targetUser.customPermissions)) {
+        auditActions.push({ action: 'PERMISSIONS_CHANGED', details: { oldPermissions: targetUser.customPermissions, newPermissions: customPermissions } });
+      }
+      if (tenantId !== undefined && tenantId !== targetUser.tenantId && isPlatformMaster) {
+        auditActions.push({ action: 'TENANT_CHANGED', details: { oldTenantId: targetUser.tenantId, newTenantId: tenantId } });
+      }
+      if (active === false && targetUser.active === true) {
+        auditActions.push({ action: 'USER_SUSPENDED', details: { email: targetUser.email } });
+      } else if (active === true && targetUser.active === false) {
+        auditActions.push({ action: 'USER_REACTIVATED', details: { email: targetUser.email } });
+      }
+
+      const finalTenantId = isPlatformMaster && tenantId !== undefined ? tenantId : undefined;
+
+      const updatedUser = await prisma.user.update({
+        where: { id },
         data: {
           name: name || undefined,
           active: active !== undefined ? Boolean(active) : undefined,
-          role: finalRole,
+          role: role || undefined,
+          customPermissions: Array.isArray(customPermissions) ? customPermissions : undefined,
+          tenantId: finalTenantId,
           phone: phone !== undefined ? phone : undefined,
           passwordHash: password || undefined,
         },
       });
 
-      return res.json({ success: true, user });
+      for (const item of auditActions) {
+        await prisma.auditLog.create({
+          data: {
+            tenantId: updatedUser.tenantId,
+            userId: session.user.id,
+            userName: session.user.name,
+            action: item.action,
+            entity: 'User',
+            entityId: id,
+            oldData: JSON.stringify({
+              role: targetUser.role,
+              customPermissions: targetUser.customPermissions,
+              active: targetUser.active,
+              tenantId: targetUser.tenantId,
+            }),
+            newData: JSON.stringify(item.details),
+          },
+        }).catch(() => {});
+      }
+
+      // Emissão pós-commit de USER_UPDATED para o tenant
+      if (updatedUser.tenantId) {
+        sseRegistry.broadcastToTenant(updatedUser.tenantId, {
+          type: 'USER_UPDATED',
+          entity: 'User',
+          entityId: updatedUser.id,
+          userId: session.user.id,
+        });
+      }
+
+      const { passwordHash, ...safeUser } = updatedUser;
+      return res.json({ success: true, user: safeUser });
     } catch (err) {
+      console.error('[PUT /api/users/:id ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar usuário.' });
+    }
+  });
+
+  app.delete('/api/users/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.delete')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.delete'." });
+      }
+
+      const { id } = req.params;
+
+      if (id === session.user.id) {
+        return res.status(400).json({ error: 'Não é possível excluir seu próprio usuário ativo.' });
+      }
+
+      const targetUser = await prisma.user.findFirst({ where: { id } });
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+      }
+
+      if (!isPlatformMaster && targetUser.tenantId !== session.user.tenantId) {
+        return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
+      }
+
+      if (targetUser.role === 'PLATFORM_MASTER') {
+        const remainingMasters = await prisma.user.count({
+          where: {
+            role: 'PLATFORM_MASTER',
+            active: true,
+            deletedAt: null,
+            id: { not: targetUser.id },
+          },
+        });
+
+        if (remainingMasters < 1) {
+          return res.status(403).json({
+            error: 'Operação bloqueada: Não é possível excluir o último PLATFORM_MASTER ativo da plataforma.',
+          });
+        }
+      }
+
+      await prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date(), active: false },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          tenantId: targetUser.tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'USER_DELETED',
+          entity: 'User',
+          entityId: id,
+          oldData: JSON.stringify({ email: targetUser.email, name: targetUser.name, role: targetUser.role }),
+        },
+      }).catch(() => {});
+
+      if (targetUser.tenantId) {
+        sseRegistry.broadcastToTenant(targetUser.tenantId, {
+          type: 'USER_DELETED',
+          entity: 'User',
+          entityId: id,
+          userId: session.user.id,
+        });
+      }
+
+      return res.json({ success: true, message: 'Usuário excluído com sucesso.' });
+    } catch (err) {
+      console.error('[DELETE /api/users/:id ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao excluir usuário.' });
     }
   });
 
@@ -1418,6 +2102,15 @@ async function startServer() {
           status: status || 'ACTIVE',
         },
       });
+
+      // Emissão para o próprio tenant recém-criado
+      sseRegistry.broadcastToTenant(tenant.id, {
+        type: 'TENANT_UPDATED',
+        entity: 'Tenant',
+        entityId: tenant.id,
+        userId: session.user.id,
+      });
+
       return res.json(tenant);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao criar tenant.' });
@@ -1443,6 +2136,15 @@ async function startServer() {
           status: status || undefined,
         },
       });
+
+      // Emissão pós-commit de TENANT_UPDATED
+      sseRegistry.broadcastToTenant(id, {
+        type: 'TENANT_UPDATED',
+        entity: 'Tenant',
+        entityId: tenant.id,
+        userId: session.user.id,
+      });
+
       return res.json(tenant);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao atualizar tenant.' });
@@ -1464,8 +2166,9 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
+    await auditAndEnsureMasterUser();
   });
 }
 

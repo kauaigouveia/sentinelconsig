@@ -36,6 +36,7 @@ import {
   AIChatMessage,
 } from '../types';
 import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay } from '../lib/utils';
+import { isValidRole } from '../lib/roleUtils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -1100,6 +1101,11 @@ export class StorageService {
 
   public static async syncWithPostgreSQL(): Promise<void> {
     try {
+      // If executing in Node.js / non-browser without origin, skip relative HTTP fetches
+      if (typeof window === 'undefined' || typeof window.location === 'undefined') {
+        return;
+      }
+
       // Helper function to fetch and log errors safely
       const safeFetch = async (url: string) => {
         try {
@@ -1166,6 +1172,22 @@ export class StorageService {
           updatedAt: t.updatedAt,
         }));
         localStorage.setItem(STORAGE_KEYS.OPERATIONAL_TASKS, JSON.stringify(formattedTasks));
+      }
+
+      // 3.1 Fetch Notifications
+      const dbNotifs = await safeFetch('/api/notifications');
+      if (Array.isArray(dbNotifs)) {
+        const formattedNotifs = dbNotifs.map((n: any) => ({
+          id: n.id,
+          proposalId: n.proposalId || undefined,
+          title: n.title,
+          message: n.message,
+          type: n.type || 'SISTEMA',
+          priority: n.priority || 'INFO',
+          read: n.read,
+          createdAt: n.createdAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(formattedNotifs));
       }
 
       // 4. Fetch Banks
@@ -1341,6 +1363,141 @@ export class StorageService {
     }
   }
 
+  /**
+   * Targeted reload for specific entity triggered by realtime SSE event.
+   * Ensures zero full-table thrash while keeping PostgreSQL as the single source of truth.
+   */
+  public static async syncSpecificEntity(entity: string, entityId?: string): Promise<void> {
+    // If executing in Node.js / non-browser without origin, skip relative HTTP fetches
+    if (typeof window === 'undefined' || typeof window.location === 'undefined') {
+      return;
+    }
+
+    const safeFetch = async (url: string) => {
+      try {
+        const res = await fetch(url);
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.warn(`[STORAGE TARGETED SYNC] Failed: ${url}`, e);
+      }
+      return null;
+    };
+
+    try {
+      if (entity === 'Proposal') {
+        const dbProposals = await safeFetch('/api/proposals');
+        if (Array.isArray(dbProposals)) {
+          const formattedProps = dbProposals.map((p: any) => ({
+            id: p.id,
+            proposalNumber: p.proposalNumber,
+            clientId: p.clientId,
+            productId: p.productId || 'prod-novo',
+            bankId: p.bankId || 'bank-c6',
+            promoterId: p.promoterId || 'prom-dg',
+            partnerId: p.partnerId || 'part-kauai',
+            digitizerId: p.createdById || 'u-digitador',
+            statusId: p.statusId || 'st-1',
+            currentResponsible: 'CLIENTE',
+            disbursedValue: p.releasedValue ? Number(p.releasedValue) : 0,
+            contractBalance: p.contractValue ? Number(p.contractValue) : 0,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
+        }
+      } else if (entity === 'Client') {
+        const dbClients = await safeFetch('/api/clients');
+        if (Array.isArray(dbClients)) {
+          const formatted = dbClients.map((c: any) => ({
+            id: c.id,
+            cpf: c.cpf,
+            fullName: c.fullName,
+            phone: c.phone || '',
+            email: c.email || '',
+            observation: '',
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(formatted));
+        }
+      } else if (entity === 'Task') {
+        const dbTasks = await safeFetch('/api/tasks');
+        if (Array.isArray(dbTasks)) {
+          const formattedTasks = dbTasks.map((t: any) => ({
+            id: t.id,
+            tenantId: t.tenantId,
+            title: t.title,
+            description: t.description || '',
+            category: t.category || 'OPERACIONAL',
+            priority: t.priority || 'MEDIUM',
+            dueDate: t.dueDate ? t.dueDate.split('T')[0] : '',
+            completed: t.completed,
+            assignedUserId: t.assignedToId || '',
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.OPERATIONAL_TASKS, JSON.stringify(formattedTasks));
+        }
+      } else if (entity === 'Notification') {
+        const dbNotifs = await safeFetch('/api/notifications');
+        if (Array.isArray(dbNotifs)) {
+          const formattedNotifs = dbNotifs.map((n: any) => ({
+            id: n.id,
+            proposalId: n.proposalId || undefined,
+            title: n.title,
+            message: n.message,
+            type: n.type || 'SISTEMA',
+            priority: n.priority || 'INFO',
+            read: n.read,
+            createdAt: n.createdAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(formattedNotifs));
+        }
+      } else if (entity === 'User') {
+        const dbUsers = await safeFetch('/api/users');
+        if (Array.isArray(dbUsers)) {
+          const formattedUsers = dbUsers.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            active: u.active,
+            createdAt: u.createdAt,
+            updatedAt: u.updatedAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(formattedUsers));
+        }
+      } else if (entity === 'Tenant') {
+        const dbTenants = await safeFetch('/api/tenants');
+        if (Array.isArray(dbTenants)) {
+          const formattedTenants = dbTenants.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            slug: t.slug,
+            customDomain: t.customDomain || '',
+            cnpj: t.cnpj || '',
+            razaoSocial: t.razaoSocial || t.name,
+            tradeName: t.tradeName || t.name,
+            plan: t.plan || 'PRO',
+            status: t.status || 'ACTIVE',
+            maxUsers: t.maxUsers || 10,
+            storageLimitMb: t.storageLimitMb || 5000,
+            modules: t.enabledModules || ['ALL'],
+            adminEmail: t.adminEmail || '',
+            adminName: t.adminName || '',
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(formattedTenants));
+        }
+      }
+
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    } catch (err) {
+      console.warn('[STORAGE] Erro ao sincronizar entidade específica:', entity, err);
+    }
+  }
+
   public static async loadFromFirestore(): Promise<void> {
     const collectionsToLoad = Object.entries(this.KEY_TO_COLLECTION);
     let hasData = false;
@@ -1496,12 +1653,19 @@ export class StorageService {
   // Active User & Auth
   public static isAuthenticated(): boolean {
     const isAuth = localStorage.getItem('cg_is_authenticated');
-    if (isAuth === null) {
-      // Default to false. Everyone must log in manually first!
+    if (isAuth !== 'true') {
+      return false;
+    }
+
+    // Check whether active user in localStorage is valid.
+    // If active user is missing, empty ({}) or invalid, flag is invalid and must be cleared.
+    const active = this.getActiveUser();
+    if (!active || active.id === 'guest' || !active.active) {
       localStorage.setItem('cg_is_authenticated', 'false');
       return false;
     }
-    return isAuth === 'true';
+
+    return true;
   }
 
   public static loginUser(user: User): void {
@@ -1548,29 +1712,75 @@ export class StorageService {
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
+  // Active User & Auth
+  public static isValidUser(user: any): user is User {
+    return (
+      user !== null &&
+      typeof user === 'object' &&
+      typeof user.id === 'string' &&
+      user.id.trim() !== '' &&
+      typeof user.name === 'string' &&
+      user.name.trim() !== '' &&
+      typeof user.role === 'string' &&
+      isValidRole(user.role)
+    );
+  }
+
   public static getActiveUser(): User {
-    let user = this.get<User>(STORAGE_KEYS.ACTIVE_USER, INITIAL_USERS[0]);
-    if (user.id === 'u-master') {
-      if (user.name !== 'Kauai Gouveia' || user.email !== 'kauaigouveia@gmail.com') {
-        user = { ...user, name: 'Kauai Gouveia', email: 'kauaigouveia@gmail.com' };
+    const defaultAnonymousUser: User = {
+      id: 'guest',
+      name: 'Usuário',
+      email: '',
+      role: 'DIGITADOR',
+      active: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER);
+      if (!raw || raw === 'undefined' || raw === 'null') {
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER);
+        return defaultAnonymousUser;
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER);
+        return defaultAnonymousUser;
+      }
+
+      if (!this.isValidUser(parsed)) {
+        console.warn('[STORAGE] cg_active_user inválido ou parcial detectado. Removendo estado local inválido.');
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER);
+        return defaultAnonymousUser;
+      }
+
+      let user: User = parsed;
+      if (user.name && user.name.includes('(')) {
+        user = { ...user, name: user.name.replace(/\s*\([^)]*\)/g, '').trim() };
         this.set(STORAGE_KEYS.ACTIVE_USER, user);
       }
+      return user;
+    } catch {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER);
+      return defaultAnonymousUser;
     }
-    if (user.name && user.name.includes('(')) {
-      user = { ...user, name: user.name.replace(/\s*\([^)]*\)/g, '').trim() };
-      this.set(STORAGE_KEYS.ACTIVE_USER, user);
-    }
-    return user;
   }
 
   public static setActiveUser(user: User): void {
     this.set(STORAGE_KEYS.ACTIVE_USER, user);
     this.addAuditLog({
-      action: 'LOGIN_SIMULADO',
+      action: 'LOGIN_SESSAO',
       entity: 'User',
       entityId: user.id,
       newData: JSON.stringify({ email: user.email, role: user.role }),
     });
+    try {
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    } catch {}
   }
 
   public static getUsers(): User[] {
@@ -1625,6 +1835,7 @@ export class StorageService {
       ...cleanData,
       id: `u-${Date.now()}`,
       mustChangePassword: data.mustChangePassword !== undefined ? data.mustChangePassword : true,
+      customPermissions: data.customPermissions || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1640,6 +1851,8 @@ export class StorageService {
         email: newUser.email,
         password: tempPassword,
         role: newUser.role,
+        customPermissions: newUser.customPermissions,
+        tenantId: newUser.tenantId,
         phone: (newUser as any).phone || '',
       }),
     }).catch(err => console.warn('[API] Error creating user:', err));
@@ -1648,7 +1861,7 @@ export class StorageService {
       action: 'CRIAR_USUARIO',
       entity: 'User',
       entityId: newUser.id,
-      newData: JSON.stringify({ name: newUser.name, email: newUser.email, role: newUser.role, mustChangePassword: newUser.mustChangePassword }),
+      newData: JSON.stringify({ name: newUser.name, email: newUser.email, role: newUser.role, customPermissions: newUser.customPermissions }),
     });
     return { ...newUser, password: tempPassword };
   }
@@ -1740,6 +1953,8 @@ export class StorageService {
         email: updatedUser.email,
         role: updatedUser.role,
         active: updatedUser.active,
+        customPermissions: updatedUser.customPermissions,
+        tenantId: updatedUser.tenantId,
         phone: (updatedUser as any).phone || '',
       }),
     }).catch(err => console.warn('[API] Error updating user:', err));

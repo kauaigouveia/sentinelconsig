@@ -95,19 +95,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         setIsSubmitting(false);
       }
     } catch (err: any) {
-      const matchedUser = allUsers.find(
-        u => u.email.toLowerCase() === cleanEmail && u.active
-      );
-
-      if (!matchedUser) {
-        setErrorMsg('Usuário não localizado ou inativo.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      StorageService.loginUser(matchedUser);
+      setErrorMsg('Não foi possível conectar ao servidor de autenticação. Verifique sua conexão.');
       setIsSubmitting(false);
-      onLoginSuccess();
     }
   };
 
