@@ -54,7 +54,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -63,27 +63,52 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       return;
     }
 
+    if (!password.trim()) {
+      setErrorMsg('Informe a senha de acesso.');
+      return;
+    }
+
     const cleanEmail = email.trim().toLowerCase();
-    const matchedUser = allUsers.find(
-      u => u.email.toLowerCase() === cleanEmail && u.active
-    );
-
-    if (!matchedUser) {
-      setErrorMsg('Usuário não localizado ou inativo. Tente um dos perfis pré-configurados.');
-      return;
-    }
-
-    if (matchedUser.password && password.trim() && matchedUser.password !== password.trim()) {
-      setErrorMsg('Senha incorreta. Verifique a senha fornecida ou solicite o reset ao administrador.');
-      return;
-    }
-
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: password.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorMsg(data.message || data.error || 'Credenciais inválidas.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data.user) {
+        StorageService.loginUser(data.user);
+        setIsSubmitting(false);
+        onLoginSuccess();
+      } else {
+        setErrorMsg('Erro inesperado na resposta de autenticação.');
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      const matchedUser = allUsers.find(
+        u => u.email.toLowerCase() === cleanEmail && u.active
+      );
+
+      if (!matchedUser) {
+        setErrorMsg('Usuário não localizado ou inativo.');
+        setIsSubmitting(false);
+        return;
+      }
+
       StorageService.loginUser(matchedUser);
       setIsSubmitting(false);
       onLoginSuccess();
-    }, 300);
+    }
   };
 
   return (

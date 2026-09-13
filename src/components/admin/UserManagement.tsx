@@ -113,7 +113,9 @@ export const UserManagement: React.FC = () => {
   };
 
   const roleColors: Record<Role, string> = {
+    PLATFORM_MASTER: 'bg-indigo-100 text-indigo-900 border-indigo-300',
     MASTER: 'bg-rose-100 text-rose-800',
+    TENANT_ADMIN: 'bg-sky-100 text-sky-800 border-sky-300',
     GESTOR: 'bg-purple-100 text-purple-800',
     GERENTE: 'bg-blue-100 text-blue-800',
     SUPORTE: 'bg-amber-100 text-amber-800',

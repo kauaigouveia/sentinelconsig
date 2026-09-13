@@ -1,4 +1,12 @@
-export type Role = 'MASTER' | 'GESTOR' | 'GERENTE' | 'SUPORTE' | 'DIGITADOR' | 'SIMULACAO';
+export type Role =
+  | 'PLATFORM_MASTER'
+  | 'MASTER'
+  | 'TENANT_ADMIN'
+  | 'GESTOR'
+  | 'GERENTE'
+  | 'SUPORTE'
+  | 'DIGITADOR'
+  | 'SIMULACAO';
 
 export interface User {
   id: string;
@@ -6,6 +14,7 @@ export interface User {
   email: string;
   role: Role;
   active: boolean;
+  tenantId?: string;
   password?: string;
   mustChangePassword?: boolean;
   avatarUrl?: string;
@@ -15,6 +24,29 @@ export interface User {
 
 export type Alcada = 'CLIENTE' | 'PARCEIRO' | 'BANCO' | 'NOSSA EQUIPE' | 'SISTEMA';
 export type ResponsibleAlçada = Alcada;
+
+export type TenantPlan = 'BASIC' | 'PRO' | 'ENTERPRISE';
+export type TenantStatus = 'ACTIVE' | 'SUSPENDED';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  customDomain?: string;
+  cnpj?: string;
+  razaoSocial?: string;
+  tradeName?: string;
+  plan: TenantPlan;
+  status: TenantStatus;
+  maxUsers: number;
+  storageLimitMb: number;
+  modules: string[];
+  whiteLabel: WhiteLabelConfig;
+  adminEmail?: string;
+  adminName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Promoter {
   id: string;
@@ -71,10 +103,179 @@ export interface Client {
   cpf: string; // Raw 11 digits
   fullName: string;
   phone?: string;
+  whatsapp?: string;
   email?: string;
+  birthDate?: string;
+  matricula?: string;
+  orgao?: string;
+  convenio?: string;
+  margemDisponivel?: number;
+  city?: string;
+  state?: string;
   observation?: string;
+  tenantId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type DocumentType =
+  | 'RG'
+  | 'CNH'
+  | 'CONTRACHEQUE'
+  | 'EXTRATO'
+  | 'PROCURACAO'
+  | 'COMPROVANTE_RESIDENCIA'
+  | 'TERMO_ADESAO'
+  | 'OUTROS';
+
+export interface DocumentItem {
+  id: string;
+  tenantId?: string;
+  clientId: string;
+  proposalId?: string;
+  name: string;
+  type: DocumentType;
+  fileUrl: string; // Firebase Storage URL or base64
+  fileSizeBytes: number;
+  uploadedByUserId: string;
+  uploadedByUserName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientCommunication {
+  id: string;
+  tenantId?: string;
+  clientId: string;
+  proposalId?: string;
+  channel: 'WHATSAPP' | 'EMAIL' | 'SMS' | 'TELEFONE' | 'SISTEMA';
+  templateName?: string;
+  eventType?:
+    | 'PROPOSTA_CRIADA'
+    | 'PENDENCIA_DOCUMENTACAO'
+    | 'SALDO_RETORNADO'
+    | 'PAGAMENTO_LIBERADO'
+    | 'CANCELAMENTO'
+    | 'AVULSO';
+  recipient: string; // Phone or email
+  messageContent: string;
+  status: 'ENVIADO' | 'PENDENTE' | 'FALHA' | 'RECEBIDO';
+  sentByUserId: string;
+  sentByUserName: string;
+  createdAt: string;
+}
+
+export interface ClientNote {
+  id: string;
+  tenantId?: string;
+  clientId: string;
+  proposalId?: string;
+  authorId: string;
+  authorName: string;
+  note: string;
+  createdAt: string;
+}
+
+export type TaskCategory =
+  | 'RETORNO'
+  | 'FOLLOW_UP'
+  | 'PENDENCIA'
+  | 'SALDO_CIP'
+  | 'CLIENTE'
+  | 'PARCEIRO'
+  | 'INTERNA'
+  | 'OUTRO';
+
+export type TaskPriority = 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
+
+export interface OperationalTask {
+  id: string;
+  tenantId?: string;
+  title: string;
+  description?: string;
+  category: TaskCategory;
+  priority: TaskPriority;
+  dueDate: string; // YYYY-MM-DD or ISO
+  completed: boolean;
+  completedAt?: string;
+  completedByUserId?: string;
+  assignedUserId?: string;
+  assignedUserName?: string;
+  clientId?: string;
+  clientName?: string;
+  proposalId?: string;
+  proposalNumber?: string;
+  partnerId?: string;
+  partnerName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EntryType = 'ENTRADA' | 'SAIDA';
+export type FinancialCategory =
+  | 'RECEBIMENTO_OPERACIONAL'
+  | 'COMISSAO_RECEBIDA'
+  | 'DESPESA_FIXA'
+  | 'DESPESA_VARIAVEL'
+  | 'SERVICO'
+  | 'OUTROS';
+export type FinancialStatus = 'PREVISTO' | 'REALIZADO' | 'CANCELADO';
+
+export interface FinancialEntry {
+  id: string;
+  tenantId?: string;
+  type: EntryType;
+  category: FinancialCategory;
+  title: string;
+  description?: string;
+  amount: number;
+  dueDate: string; // YYYY-MM-DD
+  paymentDate?: string; // YYYY-MM-DD
+  status: FinancialStatus;
+  bankId?: string;
+  bankName?: string;
+  proposalId?: string;
+  proposalNumber?: string;
+  partnerId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AchievementCode =
+  | 'META_BATIDA'
+  | 'PRIMEIRA_VENDA'
+  | '100_PROPOSTAS'
+  | 'MAIOR_PRODUCAO'
+  | 'MELHOR_CONVERSAO'
+  | 'ZERO_CANCELAMENTOS';
+
+export interface GamificationAchievement {
+  id: string;
+  code: AchievementCode;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt: string;
+  operatorId: string;
+  operatorName: string;
+}
+
+export interface CommercialInsight {
+  id: string;
+  type: 'BANCO_ALTA_CONVERSAO' | 'PARCEIRO_CRESCIMENTO' | 'PARCEIRO_QUEDA' | 'PRODUTO_DESTAQUE' | 'ALERTA_CANCELAMENTO' | 'GARGALO_HORARIO';
+  title: string;
+  description: string;
+  metricValue: string | number;
+  trend: 'UP' | 'DOWN' | 'STABLE';
+  severity: 'SUCCESS' | 'INFO' | 'WARNING';
+}
+
+export interface AIChatMessage {
+  id: string;
+  sender: 'USER' | 'SENTINELA_IA';
+  text: string;
+  timestamp: string;
+  contextData?: Record<string, any>;
 }
 
 export type ProposalStatusCode =
@@ -222,7 +423,8 @@ export interface Notification {
     | 'PORTABILIDADE_5_DIA'
     | 'PORTABILIDADE_ATRASADA'
     | 'SALDO_RETORNADO'
-    | 'ALTERACAO_IMPORTANTE';
+    | 'ALTERACAO_IMPORTANTE'
+    | 'ALERTA_GERAL';
   priority: NotificationPriority;
   read: boolean;
   createdAt: string;

@@ -24,6 +24,13 @@ import {
   Hourglass,
   Database,
   Calculator,
+  Tv,
+  TrendingUp,
+  Bot,
+  Trophy,
+  DollarSign,
+  HardDrive,
+  Sparkles,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { Role } from '../../types';
@@ -39,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
   const role: Role = activeUser.role;
 
   const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
+  const currentTenant = StorageService.getCurrentTenant();
 
   useEffect(() => {
     const handleWlUpdate = () => {
@@ -91,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             {whiteLabel.companyName}
           </h1>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold truncate">
-            {whiteLabel.tradeName || 'Gestão de Produção'}
+            {currentTenant.name || whiteLabel.tradeName || 'Gestão de Produção'}
           </p>
         </div>
       </div>
@@ -101,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         {/* DASHBOARD SECTION */}
         {(isGestor || isSuporte || isDigitador) && (
           <>
-            <div className={navHeaderClass}>Visão Geral</div>
+            <div className={navHeaderClass}>Visão Geral & Inteligência</div>
 
             {isGestor && (
               <button
@@ -114,6 +122,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               </button>
             )}
 
+            {/* TV Monitor Mode */}
+            <button
+              id="nav-tv-monitor"
+              onClick={() => onNavigate('tv-monitor')}
+              className={navItemClass('tv-monitor')}
+            >
+              <Tv className="h-4 w-4 text-emerald-500" />
+              <span className="flex-1 text-left">Monitor TV (Ao Vivo)</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
+                LIVE
+              </span>
+            </button>
+
             {isGestor && (
               <button
                 id="nav-dashboard-executivo"
@@ -124,6 +145,41 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
                 <span>Dashboard Executivo</span>
               </button>
             )}
+
+            {/* Radar Comercial BI */}
+            {isGestor && (
+              <button
+                id="nav-radar-comercial"
+                onClick={() => onNavigate('radar-comercial')}
+                className={navItemClass('radar-comercial')}
+              >
+                <TrendingUp className="h-4 w-4 text-indigo-500" />
+                <span>Radar Comercial & BI</span>
+              </button>
+            )}
+
+            {/* Sentinela AI Assistant */}
+            <button
+              id="nav-sentinela-ai"
+              onClick={() => onNavigate('sentinela-ai')}
+              className={navItemClass('sentinela-ai')}
+            >
+              <Bot className="h-4 w-4 text-purple-500" />
+              <span className="flex-1 text-left">Sentinela IA</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-100 text-purple-800">
+                IA
+              </span>
+            </button>
+
+            {/* Gamification Center */}
+            <button
+              id="nav-gamificacao"
+              onClick={() => onNavigate('gamificacao')}
+              className={navItemClass('gamificacao')}
+            >
+              <Trophy className="h-4 w-4 text-amber-500" />
+              <span>Conquistas & Metas</span>
+            </button>
 
             {(isGestor || isSuporte) && (
               <button
@@ -201,6 +257,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               <span>Portabilidades (5 Dias)</span>
             </button>
 
+            {/* Agenda & Tarefas Operacionais */}
+            <button
+              id="nav-agenda-operacional"
+              onClick={() => onNavigate('agenda-operacional')}
+              className={navItemClass('agenda-operacional')}
+            >
+              <Calendar className="h-4 w-4 text-blue-500" />
+              <span>Agenda & Tarefas CIP</span>
+            </button>
+
             {isDigitador && (
               <button
                 id="nav-importar-excel"
@@ -226,15 +292,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         {/* CLIENTES */}
         {role !== 'SIMULACAO' && (
           <>
-            <div className={navHeaderClass}>Clientes</div>
+            <div className={navHeaderClass}>Clientes (CRM 360º)</div>
 
             <button
               id="nav-clientes-360"
               onClick={() => onNavigate('clientes')}
               className={navItemClass('clientes')}
             >
-              <Users className="h-4 w-4" />
-              <span>Clientes 360º</span>
+              <Users className="h-4 w-4 text-blue-600" />
+              <span>Clientes 360º & CRM</span>
             </button>
 
             <button
@@ -244,6 +310,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             >
               <Search className="h-4 w-4" />
               <span>Busca por CPF</span>
+            </button>
+          </>
+        )}
+
+        {/* FINANCEIRO GERAL */}
+        {isGestor && (
+          <>
+            <div className={navHeaderClass}>Gestão Financeira</div>
+            <button
+              id="nav-financeiro-geral"
+              onClick={() => onNavigate('financeiro-geral')}
+              className={navItemClass('financeiro-geral')}
+            >
+              <DollarSign className="h-4 w-4 text-emerald-600" />
+              <span>Fluxo de Caixa & Entradas</span>
             </button>
           </>
         )}
@@ -305,7 +386,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         {/* ADMINISTRAÇÃO (MASTER ONLY) */}
         {isMaster && (
           <>
-            <div className={navHeaderClass}>Administração</div>
+            <div className={navHeaderClass}>Administração & Multi-Tenant</div>
+
+            {/* SaaS Platform Master */}
+            <button
+              id="nav-saas-tenants"
+              onClick={() => onNavigate('saas-tenants')}
+              className={navItemClass('saas-tenants')}
+            >
+              <HardDrive className="h-4 w-4 text-rose-500" />
+              <span className="font-bold text-rose-700 dark:text-rose-400">SaaS & Tenants</span>
+            </button>
+
             <button
               id="nav-admin-usuarios"
               onClick={() => onNavigate('admin-usuarios')}
@@ -376,7 +468,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
       {/* Footer info */}
       <div className="p-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">
-        <p className="font-semibold text-slate-600 dark:text-slate-300">{whiteLabel.companyName} v2.4</p>
+        <p className="font-semibold text-slate-600 dark:text-slate-300">{whiteLabel.companyName} v2.5 Enterprise</p>
         <p className="flex items-center gap-1 mt-0.5 font-bold text-slate-700 dark:text-slate-200">
           <span>{getRoleEmoji(role)}</span>
           <span>{getRoleLabel(role)} ({role})</span>

@@ -266,6 +266,87 @@
         "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
       },
       "required": ["id", "cpf", "partnerId", "createdById", "status", "createdAt", "updatedAt"]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "description": "Multi-tenant company organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Tenant unique id" },
+        "name": { "type": "string", "description": "Tenant name" },
+        "slug": { "type": "string", "description": "Subdomain / identifier slug" },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "TRIAL", "CANCELLED"], "description": "Tenant state" },
+        "plan": { "type": "string", "enum": ["STARTER", "PRO", "ENTERPRISE", "CUSTOM"], "description": "Subscription plan" },
+        "cnpj": { "type": "string", "description": "CNPJ tax id" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "slug", "status", "plan", "createdAt", "updatedAt"]
+    },
+    "DocumentItem": {
+      "title": "DocumentItem",
+      "description": "Client or proposal attached documents",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Document unique id" },
+        "tenantId": { "type": "string", "description": "Tenant reference" },
+        "clientId": { "type": "string", "description": "Client reference" },
+        "proposalId": { "type": "string", "description": "Optional proposal reference" },
+        "name": { "type": "string", "description": "File name" },
+        "type": { "type": "string", "description": "Document type classification" },
+        "fileUrl": { "type": "string", "description": "File URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "clientId", "name", "type", "createdAt"]
+    },
+    "OperationalTask": {
+      "title": "OperationalTask",
+      "description": "Operational task item in agenda",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Task unique id" },
+        "tenantId": { "type": "string", "description": "Tenant reference" },
+        "title": { "type": "string", "description": "Task title" },
+        "description": { "type": "string", "description": "Task description" },
+        "category": { "type": "string", "description": "Task category" },
+        "priority": { "type": "string", "description": "Task priority" },
+        "dueDate": { "type": "string", "description": "Due date" },
+        "completed": { "type": "boolean", "description": "Completion state" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "title", "completed", "createdAt"]
+    },
+    "FinancialEntry": {
+      "title": "FinancialEntry",
+      "description": "General financial revenue and expense entries",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Entry unique id" },
+        "tenantId": { "type": "string", "description": "Tenant reference" },
+        "type": { "type": "string", "enum": ["ENTRADA", "SAIDA"], "description": "Entry type" },
+        "category": { "type": "string", "description": "Category code" },
+        "title": { "type": "string", "description": "Title description" },
+        "amount": { "type": "number", "description": "Monetary amount" },
+        "dueDate": { "type": "string", "description": "Due date" },
+        "status": { "type": "string", "enum": ["PREVISTO", "REALIZADO", "CANCELADO"], "description": "Payment status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "type", "category", "title", "amount", "dueDate", "status", "createdAt"]
+    },
+    "BackupSnapshot": {
+      "title": "BackupSnapshot",
+      "description": "Full system backup snapshots",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Snapshot unique id" },
+        "tenantId": { "type": "string", "description": "Tenant reference" },
+        "label": { "type": "string", "description": "Backup label/description" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "recordsCount": { "type": "number", "description": "Number of records in dump" },
+        "sizeBytes": { "type": "number", "description": "Payload size in bytes" },
+        "checksumSha256": { "type": "string", "description": "SHA-256 integrity hash" }
+      },
+      "required": ["id", "label", "createdAt", "recordsCount", "sizeBytes", "checksumSha256"]
     }
   },
   "firestore": {
@@ -284,6 +365,11 @@
     "/holidays/{holidayId}": { "schema": "Holiday", "description": "Calendar of non-working dates" },
     "/notifications/{notifId}": { "schema": "Notification", "description": "System-generated alerts for users" },
     "/audit_logs/{auditId}": { "schema": "AuditLog", "description": "Operations and access logs" },
-    "/simulation_requests/{simId}": { "schema": "SimulationRequest", "description": "Presales loan analysis simulation requests" }
+    "/simulation_requests/{simId}": { "schema": "SimulationRequest", "description": "Presales loan analysis simulation requests" },
+    "/tenants/{tenantId}": { "schema": "Tenant", "description": "Multi-tenant company configurations" },
+    "/documents/{docId}": { "schema": "DocumentItem", "description": "Uploaded proposal and client files" },
+    "/operational_tasks/{taskId}": { "schema": "OperationalTask", "description": "Tasks and reminders" },
+    "/financial_entries/{finId}": { "schema": "FinancialEntry", "description": "Financial ledger transactions" },
+    "/backup_snapshots/{snapId}": { "schema": "BackupSnapshot", "description": "Database backup snapshots" }
   }
 }

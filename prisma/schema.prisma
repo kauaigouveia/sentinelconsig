@@ -1,414 +1,763 @@
-// Prisma schema for EVOLVE GESTÃO
-// Pronto para deploy na Vercel e conexão com PostgreSQL (ex: Supabase, Neon, RDS, Cloud SQL)
+// Prisma Schema for Sentinel Consig SaaS
+// Multi-tenant, Enterprise Loan Management Platform
+// Compatible with PostgreSQL (Neon, Supabase, Cloud SQL, AWS RDS)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// ==========================================
+// ENUMS
+// ==========================================
 
-enum Role {
+enum UserRole {
+  PLATFORM_MASTER
   MASTER
+  TENANT_ADMIN
   GESTOR
   GERENTE
   SUPORTE
   DIGITADOR
+  SIMULACAO
 }
 
-enum Alcada {
-  CLIENTE
-  PARCEIRO
-  BANCO
-  NOSSA_EQUIPE
-  SISTEMA
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+  PENDING_DELETION
 }
 
-enum HistoryOrigin {
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  ENTERPRISE
+  CUSTOM
+}
+
+enum ProposalType {
+  NOVO
+  REFIN
+  PORTABILIDADE
+  REFIN_PORTABILIDADE
+  CARTAO_RMC
+  CARTAO_RCC
+  SAQUE_COMPLEMENTAR
+}
+
+enum StandardStatusCategory {
+  ESTEIRA
+  ANDAMENTO
+  PENDENTE
+  PAGO
+  CANCELADO
+  RECUSADO
+}
+
+enum FinancialEntryType {
+  ENTRADA
+  SAIDA
+}
+
+enum FinancialStatus {
+  PREVISTO
+  REALIZADO
+  CANCELADO
+}
+
+enum BackupType {
+  AUTOMATIC
   MANUAL
-  SISTEMA
-  IMPORTACAO
-  ALTERACAO_EM_LOTE
+  PRE_RESTORE
+  PRE_DELETION
+  GLOBAL_SNAPSHOT
 }
 
-enum PendingType {
-  DOCUMENTACAO
-  BANCO
-  PARCEIRO
-  CLIENTE
-  CORBAN
-  CIP
-  SISTEMA
+enum BackupStatus {
+  COMPLETED
+  FAILED
+  IN_PROGRESS
+  CORRUPTED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DocumentType {
+  RG
+  CNH
+  COMPROVANTE_RESIDENCIA
+  COMPROVANTE_RENDA
+  EXTRATO_INSS
+  CONTRATO_ASSINADO
+  PROCURACAO
   OUTROS
 }
 
-enum PendingStatus {
-  ABERTA
-  RESOLVIDA
-  CANCELADA
+// ==========================================
+// MULTI-TENANCY & WHITE LABEL
+// ==========================================
+
+model Tenant {
+  id               String           @id @default(cuid())
+  name             String
+  tradeName        String?          @map("trade_name")
+  cnpj             String?          @unique
+  slug             String           @unique
+  customDomain     String?          @unique @map("custom_domain")
+  status           TenantStatus     @default(ACTIVE)
+  plan             SubscriptionPlan @default(PRO)
+  maxUsers         Int              @default(10) @map("max_users")
+  storageLimitMb   Int              @default(5000) @map("storage_limit_mb")
+  maxProposals     Int              @default(10000) @map("max_proposals")
+  enabledModules   String[]         @default(["PROPOSALS", "SIMULATION", "KANBAN", "CRM", "FINANCIAL", "RADAR", "TV_MONITOR"]) @map("enabled_modules")
+  
+  // White Label Settings
+  whiteLabel       WhiteLabelConfig?
+
+  // Subscriptions & Limits
+  subscriptions    Subscription[]
+
+  // Core Relations
+  users            User[]
+  partners         Partner[]
+  promoters        Promoter[]
+  banks            Bank[]
+  bankPromoters    BankPromoter[]
+  products         Product[]
+  clients          Client[]
+  proposals        Proposal[]
+  ades             ADE[]
+  statusHistories  StatusHistory[]
+  comments         Comment[]
+  documents        ClientDocument[]
+  statuses         ProposalStatus[]
+  tasks            Task[]
+  notifications    Notification[]
+  financialEntries FinancialEntry[]
+  auditLogs        AuditLog[]
+  backups          Backup[]
+  systemConfigs    SystemConfig[]
+
+  // Soft Delete & Timestamps
+  deletedAt        DateTime?        @map("deleted_at")
+  deletedBy        String?          @map("deleted_by")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@index([slug])
+  @@index([customDomain])
+  @@index([status])
+  @@map("tenants")
 }
 
-enum NotificationPriority {
-  NORMAL
-  ATENCAO
-  URGENTE
+model WhiteLabelConfig {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique @map("tenant_id")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  companyName      String   @map("company_name")
+  legalName        String?  @map("legal_name")
+  logoUrl          String?  @map("logo_url")
+  faviconUrl       String?  @map("favicon_url")
+  primaryColor     String   @default("#2563eb") @map("primary_color")
+  secondaryColor   String   @default("#1e40af") @map("secondary_color")
+  accentColor      String   @default("#3b82f6") @map("accent_color")
+  supportEmail     String?  @map("support_email")
+  supportPhone     String?  @map("support_phone")
+  footerText       String?  @map("footer_text")
+  themeMode        String   @default("LIGHT") @map("theme_mode") // LIGHT, DARK, AUTO
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("white_label_configs")
 }
 
-enum SimulationRequestStatus {
-  SIMULACAO_ENVIADA
-  NAO_PASSIVEL_DE_CONTRATACAO
-  DIGITADA_PELA_MESA
+model Subscription {
+  id               String           @id @default(cuid())
+  tenantId         String           @map("tenant_id")
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  plan             SubscriptionPlan
+  status           String           @default("ACTIVE") // ACTIVE, OVERDUE, CANCELLED
+  validUntil       DateTime?        @map("valid_until")
+  userQuota        Int              @map("user_quota")
+  proposalQuota    Int              @map("proposal_quota")
+  storageQuotaMb   Int              @map("storage_quota_mb")
+
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("subscriptions")
 }
+
+// ==========================================
+// IDENTITY, RBAC & SESSIONS
+// ==========================================
 
 model User {
-  id           String    @id @default(uuid())
-  name         String
-  email        String    @unique
-  passwordHash String
-  role         Role      @default(DIGITADOR)
-  active       Boolean   @default(true)
-  avatarUrl    String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               String        @id @default(cuid())
+  tenantId         String?       @map("tenant_id")
+  tenant           Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  email            String        @unique
+  passwordHash     String        @map("password_hash")
+  role             UserRole      @default(DIGITADOR)
+  active           Boolean       @default(true)
+  isMasterProtected Boolean      @default(false) @map("is_master_protected")
+  phone            String?
+  avatarUrl        String?       @map("avatar_url")
 
-  proposals          Proposal[]          @relation("DigitizerProposals")
-  simulationRequests SimulationRequest[] @relation("CreatedSimulationRequests")
-  comments           Comment[]
-  auditLogs          AuditLog[]
-  exportLogs         ExportLog[]
+  // Role & Permissions override
+  customPermissions String[]     @default([]) @map("custom_permissions")
 
+  // Audit Relations
+  createdProposals Proposal[]    @relation("CreatedProposals")
+  assignedProposals Proposal[]   @relation("AssignedProposals")
+  statusHistories  StatusHistory[]
+  comments         Comment[]
+  tasks            Task[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  uploadedDocs     ClientDocument[]
+  createdBackups   Backup[]
+  sessions         Session[]
+
+  // Security & Lifecycle
+  lastLoginAt      DateTime?     @map("last_login_at")
+  passwordResetToken String?     @map("password_reset_token")
+  passwordResetExpires DateTime? @map("password_reset_expires")
+  mustChangePassword Boolean     @default(false) @map("must_change_password")
+
+  deletedAt        DateTime?     @map("deleted_at")
+  deletedBy        String?       @map("deleted_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([tenantId])
   @@index([email])
   @@index([role])
+  @@index([active])
+  @@map("users")
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token            String   @unique
+  ipAddress        String?  @map("ip_address")
+  userAgent        String?  @map("user_agent")
+  expiresAt        DateTime @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+// ==========================================
+// BUSINESS ENTITIES & CRM
+// ==========================================
+
+model Partner {
+  id               String     @id @default(cuid())
+  tenantId         String     @map("tenant_id")
+  tenant           Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  code             String
+  promoterId       String?    @map("promoter_id")
+  promoter         Promoter?  @relation(fields: [promoterId], references: [id], onDelete: SetNull)
+  status           String     @default("ATIVO") // ATIVO, INATIVO
+  email            String?
+  phone            String?
+  document         String?
+
+  proposals        Proposal[]
+  
+  deletedAt        DateTime?  @map("deleted_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([code])
+  @@index([name])
+  @@map("partners")
 }
 
 model Promoter {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  active      Boolean  @default(true)
-  observation String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String         @id @default(cuid())
+  tenantId         String         @map("tenant_id")
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  code             String
+  status           String         @default("ATIVO")
+  
+  partners         Partner[]
+  bankPromoters    BankPromoter[]
+  proposals        Proposal[]
 
-  banks       BankPromoter[]
-  partners    Partner[]
-  proposals   Proposal[]
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
-  @@index([name])
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("promoters")
 }
 
 model Bank {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  code        String?
-  active      Boolean  @default(true)
-  observation String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String         @id @default(cuid())
+  tenantId         String         @map("tenant_id")
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  code             String
+  color            String?        @default("#1e3a8a")
+  status           String         @default("ATIVO")
+  
+  bankPromoters    BankPromoter[]
+  proposals        Proposal[]
 
-  promoters   BankPromoter[]
-  proposals   Proposal[]
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
-  @@index([name])
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("banks")
 }
 
 model BankPromoter {
-  id         String   @id @default(uuid())
-  bankId     String
-  promoterId String
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id               String    @id @default(cuid())
+  tenantId         String    @map("tenant_id")
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  bankId           String    @map("bank_id")
+  bank             Bank      @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  promoterId       String    @map("promoter_id")
+  promoter         Promoter  @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+  
+  login            String
+  status           String    @default("ATIVO")
 
-  bank       Bank     @relation(fields: [bankId], references: [id], onDelete: Cascade)
-  promoter   Promoter @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  @@unique([bankId, promoterId])
-  @@index([bankId])
-  @@index([promoterId])
-}
-
-model Partner {
-  id                 String              @id @default(uuid())
-  fullName           String
-  login              String              @unique // Formato NOME@CODIGO (Ex: KAUAI@16740). Código derivado via extractPartnerCode()
-  promoterId         String
-  active             Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-
-  promoter           Promoter            @relation(fields: [promoterId], references: [id])
-  proposals          Proposal[]
-  simulationRequests SimulationRequest[]
-
-  @@index([login])
-  @@index([promoterId])
+  @@unique([tenantId, bankId, promoterId, login])
+  @@index([tenantId])
+  @@map("bank_promoters")
 }
 
 model Product {
-  id                          String     @id @default(uuid())
-  name                        String     @unique
-  description                 String?
-  active                      Boolean    @default(true)
-  type                        String     @default("CONSIGNADO")
-  allowsMultipleAde           Boolean    @default(true)
-  requiresPortabilityRelation Boolean    @default(false)
-  createdAt                   DateTime   @default(now())
-  updatedAt                   DateTime   @updatedAt
+  id               String       @id @default(cuid())
+  tenantId         String       @map("tenant_id")
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  code             String
+  type             ProposalType @default(NOVO)
+  active           Boolean      @default(true)
 
-  proposals                   Proposal[]
+  proposals        Proposal[]
 
-  @@index([name])
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("products")
 }
 
 model Client {
-  id          String     @id @default(uuid())
-  cpf         String     @unique // Armazenar sempre limpo: 11 dígitos sem formatação
-  fullName    String
-  phone       String?
-  email       String?
-  observation String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id               String           @id @default(cuid())
+  tenantId         String           @map("tenant_id")
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  cpf              String
+  fullName         String           @map("full_name")
+  phone            String?
+  email            String?
+  birthDate        DateTime?        @map("birth_date")
+  benefitNumber    String?          @map("benefit_number")
+  salary           Decimal?         @db.Decimal(12, 2)
+  marginFree       Decimal?         @db.Decimal(12, 2) @map("margin_free")
+  marginCard       Decimal?         @db.Decimal(12, 2) @map("margin_card")
+  addressStreet    String?          @map("address_street")
+  addressCity      String?          @map("address_city")
+  addressState     String?          @map("address_state")
+  addressZip       String?          @map("address_zip")
 
-  proposals   Proposal[]
-  pendings    Pending[]
+  proposals        Proposal[]
+  documents        ClientDocument[]
 
+  deletedAt        DateTime?        @map("deleted_at")
+  deletedBy        String?          @map("deleted_by")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@unique([tenantId, cpf])
+  @@index([tenantId])
   @@index([cpf])
   @@index([fullName])
+  @@map("clients")
+}
+
+model ClientDocument {
+  id               String       @id @default(cuid())
+  tenantId         String       @map("tenant_id")
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  clientId         String       @map("client_id")
+  client           Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  proposalId       String?      @map("proposal_id")
+  proposal         Proposal?    @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  
+  name             String
+  type             DocumentType @default(OUTROS)
+  fileUrl          String       @map("file_url")
+  fileSizeBytes    Int          @default(0) @map("file_size_bytes")
+  storagePath      String?      @map("storage_path")
+  mimeType         String?      @map("mime_type")
+  storageProvider  String       @default("AZURE_BLOB") @map("storage_provider")
+  
+  uploadedById     String?      @map("uploaded_by_id")
+  uploadedBy       User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([proposalId])
+  @@map("client_documents")
+}
+
+// ==========================================
+// PROPOSALS, ADES, STATUS & AUDIT
+// ==========================================
+
+model Proposal {
+  id               String                 @id @default(cuid())
+  tenantId         String                 @map("tenant_id")
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  proposalNumber   String                 @map("proposal_number")
+  clientId         String                 @map("client_id")
+  client           Client                 @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  
+  partnerId        String?                @map("partner_id")
+  partner          Partner?               @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  promoterId       String?                @map("promoter_id")
+  promoter         Promoter?              @relation(fields: [promoterId], references: [id], onDelete: SetNull)
+  bankId           String?                @map("bank_id")
+  bank             Bank?                  @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  productId        String?                @map("product_id")
+  product          Product?               @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  type             ProposalType           @default(NOVO)
+  statusId         String?                @map("status_id")
+  status           ProposalStatus?        @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  standardCategory StandardStatusCategory @default(ESTEIRA) @map("standard_category")
+
+  // Financial Values
+  releasedValue    Decimal                @default(0) @db.Decimal(12, 2) @map("released_value") // Troco Líquido / Liberado
+  contractValue    Decimal                @default(0) @db.Decimal(12, 2) @map("contract_value") // Volume Bruto
+  installmentValue Decimal                @default(0) @db.Decimal(12, 2) @map("installment_value")
+  installmentsCount Int                   @default(84) @map("installments_count")
+  debtBalance      Decimal?               @db.Decimal(12, 2) @map("debt_balance") // Saldo Devedor Quitação
+  commissionRate   Decimal?               @db.Decimal(5, 2) @map("commission_rate")
+
+  // Portability & CIP
+  originalBankCode String?                @map("original_bank_code")
+  cipNumber        String?                @map("cip_number")
+  cipStatus        String?                @map("cip_status")
+  retentionDeadline DateTime?             @map("retention_deadline")
+
+  // Ownership & Dates
+  createdById      String?                @map("created_by_id")
+  createdBy        User?                  @relation("CreatedProposals", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedToId     String?                @map("assigned_to_id")
+  assignedTo       User?                  @relation("AssignedProposals", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Relations
+  ades             ADE[]
+  statusHistories  StatusHistory[]
+  comments         Comment[]
+  documents        ClientDocument[]
+
+  // Concurrency & Soft Delete
+  version          Int                    @default(1)
+  deletedAt        DateTime?              @map("deleted_at")
+  deletedBy        String?                @map("deleted_by")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  @@unique([tenantId, proposalNumber])
+  @@index([tenantId])
+  @@index([proposalNumber])
+  @@index([clientId])
+  @@index([partnerId])
+  @@index([bankId])
+  @@index([promoterId])
+  @@index([statusId])
+  @@index([standardCategory])
+  @@index([createdAt])
+  @@index([tenantId, statusId, createdAt])
+  @@index([tenantId, clientId])
+  @@map("proposals")
+}
+
+model ADE {
+  id               String       @id @default(cuid())
+  tenantId         String       @map("tenant_id")
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  proposalId       String       @map("proposal_id")
+  proposal         Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  
+  adeNumber        String       @map("ade_number")
+  value            Decimal      @db.Decimal(12, 2)
+  installments     Int          @default(84)
+  bankName         String?      @map("bank_name")
+  status           String       @default("ATIVA")
+  
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@unique([proposalId, adeNumber])
+  @@index([tenantId])
+  @@index([proposalId])
+  @@index([adeNumber])
+  @@map("ades")
 }
 
 model ProposalStatus {
-  id                     String     @id @default(uuid())
-  name                   String     @unique
-  code                   String     @unique
-  active                 Boolean    @default(true)
-  order                  Int        @default(0)
-  responsibleGroup       Alcada     @default(NOSSA_EQUIPE)
-  slaHours               Int        @default(24)
-  finalStatus            Boolean    @default(false)
-  manualChangeAllowed    Boolean    @default(true)
-  automaticChangeAllowed Boolean    @default(true)
-  productType            String?
-  color                  String     @default("#3b82f6")
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
+  id               String                 @id @default(cuid())
+  tenantId         String                 @map("tenant_id")
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  code             String
+  color            String                 @default("#3b82f6")
+  standardCategory StandardStatusCategory @default(ESTEIRA) @map("standard_category")
+  slaHours         Int                    @default(24) @map("sla_hours")
+  order            Int                    @default(0)
+  active           Boolean                @default(true)
 
-  proposals              Proposal[]
+  proposals        Proposal[]
+  statusHistories  StatusHistory[]
 
-  @@index([code])
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([standardCategory])
+  @@map("proposal_statuses")
 }
 
-model Proposal {
-  id                      String    @id @default(uuid())
-  proposalNumber          String    @unique // Número da ADE ou Proposta alfanumérica/UUID
-  clientId                String
-  productId               String
-  bankId                  String
-  promoterId              String
-  partnerId               String
-  digitizerId             String
-  statusId                String
-  currentResponsible      Alcada    @default(NOSSA_EQUIPE)
-  notes                   String?
-  portabilitySlaStartedAt DateTime?
-  completedAt             DateTime?
-  paidAt                  DateTime?
-  cancelledAt             DateTime?
-  rejectedAt              DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+model StatusHistory {
+  id               String          @id @default(cuid())
+  tenantId         String          @map("tenant_id")
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  client                  Client         @relation(fields: [clientId], references: [id])
-  product                 Product        @relation(fields: [productId], references: [id])
-  bank                    Bank           @relation(fields: [bankId], references: [id])
-  promoter                Promoter       @relation(fields: [promoterId], references: [id])
-  partner                 Partner        @relation(fields: [partnerId], references: [id])
-  digitizer               User           @relation("DigitizerProposals", fields: [digitizerId], references: [id])
-  status                  ProposalStatus @relation(fields: [statusId], references: [id])
-
-  history                 ProposalStatusHistory[]
-  comments                Comment[]
-  pendings                Pending[]
-  matchedSimulations      SimulationRequest[] @relation("MatchedSimulations")
+  proposalId       String          @map("proposal_id")
+  proposal         Proposal        @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   
-  // Relacionamentos entre propostas (ex: Portabilidade -> Refin da Portabilidade)
-  portabilityRelations    ProposalRelation[] @relation("PortabilitySource")
-  refinRelations          ProposalRelation[] @relation("RefinTarget")
+  statusId         String?         @map("status_id")
+  status           ProposalStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  statusName       String          @map("status_name")
+  
+  userId           String?         @map("user_id")
+  user             User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notes            String?
 
-  @@index([proposalNumber])
-  @@index([clientId])
-  @@index([productId])
-  @@index([bankId])
-  @@index([promoterId])
-  @@index([partnerId])
-  @@index([digitizerId])
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([proposalId])
   @@index([statusId])
   @@index([createdAt])
-}
-
-model ProposalRelation {
-  id                    String   @id @default(uuid())
-  portabilityProposalId String
-  refinProposalId       String
-  createdAt             DateTime @default(now())
-
-  portabilityProposal   Proposal @relation("PortabilitySource", fields: [portabilityProposalId], references: [id], onDelete: Cascade)
-  refinProposal         Proposal @relation("RefinTarget", fields: [refinProposalId], references: [id], onDelete: Cascade)
-
-  @@unique([portabilityProposalId, refinProposalId])
-  @@index([portabilityProposalId])
-  @@index([refinProposalId])
-}
-
-model ProposalStatusHistory {
-  id                 String        @id @default(uuid())
-  proposalId         String
-  userId             String?
-  userName           String
-  previousStatusId   String?
-  previousStatusName String?
-  newStatusId        String
-  newStatusName      String
-  action             String
-  observation        String?
-  origin             HistoryOrigin @default(MANUAL)
-  createdAt          DateTime      @default(now())
-
-  proposal           Proposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@index([proposalId])
-  @@index([createdAt])
+  @@index([proposalId, createdAt])
+  @@map("status_histories")
 }
 
 model Comment {
-  id         String   @id @default(uuid())
-  proposalId String
-  userId     String
-  userName   String
-  userRole   Role
-  comment    String
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  proposalId       String   @map("proposal_id")
+  proposal         Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  
+  userId           String?  @map("user_id")
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorName       String   @map("author_name")
+  text             String
 
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
   @@index([proposalId])
+  @@index([tenantId, createdAt])
+  @@map("comments")
 }
 
-model Pending {
-  id                  String        @id @default(uuid())
-  proposalId          String
-  clientId            String
-  responsibleUserId   String?
-  responsibleUserName String?
-  responsibleGroup    Alcada        @default(NOSSA_EQUIPE)
-  type                PendingType   @default(DOCUMENTACAO)
-  description         String
-  openedAt            DateTime      @default(now())
-  deadline            DateTime?
-  status              PendingStatus @default(ABERTA)
-  resolvedAt          DateTime?
-  resolvedByUserId    String?
-  resolvedByUserName  String?
+// ==========================================
+// TASKS, FINANCIAL & NOTIFICATIONS
+// ==========================================
 
-  proposal            Proposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  client              Client        @relation(fields: [clientId], references: [id])
+model Task {
+  id               String        @id @default(cuid())
+  tenantId         String        @map("tenant_id")
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  title            String
+  description      String?
+  category         String        @default("OPERACIONAL")
+  priority         PriorityLevel @default(MEDIUM)
+  dueDate          DateTime?     @map("due_date")
+  completed        Boolean       @default(false)
+  
+  assignedToId     String?       @map("assigned_to_id")
+  assignedTo       User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
 
-  @@index([proposalId])
-  @@index([clientId])
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([assignedToId])
+  @@index([completed])
+  @@map("tasks")
+}
+
+model FinancialEntry {
+  id               String             @id @default(cuid())
+  tenantId         String             @map("tenant_id")
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  type             FinancialEntryType
+  category         String
+  title            String
+  amount           Decimal            @db.Decimal(12, 2)
+  dueDate          DateTime           @map("due_date")
+  paymentDate      DateTime?          @map("payment_date")
+  status           FinancialStatus    @default(PREVISTO)
+  notes            String?
+
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([type])
   @@index([status])
-}
-
-model Holiday {
-  id        String   @id @default(uuid())
-  date      String   @unique // Formato YYYY-MM-DD
-  name      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([date])
+  @@index([dueDate])
+  @@map("financial_entries")
 }
 
 model Notification {
-  id         String               @id @default(uuid())
-  proposalId String?
-  title      String
-  message    String
-  type       String
-  priority   NotificationPriority @default(NORMAL)
-  read       Boolean              @default(false)
-  createdAt  DateTime             @default(now())
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId           String?  @map("user_id")
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  message          String
+  read             Boolean  @default(false)
+  linkUrl          String?  @map("link_url")
 
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId])
   @@index([read])
-  @@index([createdAt])
+  @@map("notifications")
 }
+
+// ==========================================
+// AUDIT LOGS, BACKUPS & SYSTEM CONFIG
+// ==========================================
 
 model AuditLog {
-  id           String   @id @default(uuid())
-  userId       String
-  userName     String
-  userRole     Role
-  action       String
-  entity       String
-  entityId     String
-  previousData String?  @db.Text
-  newData      String?  @db.Text
-  createdAt    DateTime @default(now())
+  id               String   @id @default(cuid())
+  tenantId         String?  @map("tenant_id")
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  
+  userId           String?  @map("user_id")
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName         String?  @map("user_name")
+  
+  action           String
+  entity           String
+  entityId         String?  @map("entity_id")
+  oldData          String?  @map("old_data") // JSON
+  newData          String?  @map("new_data") // JSON
+  ipAddress        String?  @map("ip_address")
 
-  user         User     @relation(fields: [userId], references: [id])
+  createdAt        DateTime @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([userId])
   @@index([entity])
+  @@index([action])
   @@index([createdAt])
+  @@map("audit_logs")
 }
 
-model ExportLog {
-  id          String   @id @default(uuid())
-  userId      String
-  userName    String
-  productName String
-  filters     String   @db.Text
-  quantity    Int
-  fileName    String
-  createdAt   DateTime @default(now())
+model Backup {
+  id               String       @id @default(cuid())
+  tenantId         String?      @map("tenant_id")
+  tenant           Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  label            String
+  type             BackupType   @default(AUTOMATIC)
+  status           BackupStatus @default(COMPLETED)
+  sizeBytes        BigInt       @map("size_bytes")
+  recordsCount     Int          @map("records_count")
+  checksumSha256   String       @map("checksum_sha256")
+  storagePath      String       @map("storage_path")
+  
+  createdById      String?      @map("created_by_id")
+  createdBy        User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  
+  createdAt        DateTime     @default(now()) @map("created_at")
 
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
+  @@index([tenantId])
+  @@index([type])
   @@index([createdAt])
+  @@map("backups")
 }
 
 model SystemConfig {
-  id                     String   @id @default("default")
-  portabilityBalanceDays Int      @default(5)
-  autoCronIntervalMin    Int      @default(15)
-  updatedAt              DateTime @updatedAt
-}
+  id               String   @id @default(cuid())
+  tenantId         String?  @map("tenant_id")
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  configKey        String   @map("config_key")
+  configValue      String   @map("config_value")
+  isSecret         Boolean  @default(false) @map("is_secret")
 
-model SimulationRequest {
-  id                    String                  @id @default(uuid())
-  cpf                   String                  // 11 dígitos normalizados
-  partnerId             String
-  createdById           String
-  status                SimulationRequestStatus @default(SIMULACAO_ENVIADA)
-  matchedProposalId     String?
-  matchedProposalNumber String?
-  matchedDigitizerId    String?
-  matchedDigitizerName  String?
-  matchedAt             DateTime?
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  partner               Partner                 @relation(fields: [partnerId], references: [id])
-  createdBy             User                    @relation("CreatedSimulationRequests", fields: [createdById], references: [id])
-  matchedProposal       Proposal?               @relation("MatchedSimulations", fields: [matchedProposalId], references: [id])
-
-  @@index([cpf])
-  @@index([partnerId])
-  @@index([createdById])
-  @@index([status])
-  @@index([createdAt])
+  @@unique([tenantId, configKey])
+  @@index([tenantId])
+  @@map("system_configs")
 }

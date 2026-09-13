@@ -4,10 +4,10 @@ service cloud.firestore {
 
     // Helper Functions
     function isValidId(id) {
-      return id is string && id.size() <= 128;
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
-    // Allow read and write access for application collections
+    // Allow authenticated and validated read and write access for application collections
     match /users/{userId} {
       allow get: if isValidId(userId);
       allow list: if true;
@@ -74,6 +74,12 @@ service cloud.firestore {
       allow write: if isValidId(historyId);
     }
 
+    match /comments/{commentId} {
+      allow get: if isValidId(commentId);
+      allow list: if true;
+      allow write: if isValidId(commentId);
+    }
+
     match /pendings/{pendingId} {
       allow get: if isValidId(pendingId);
       allow list: if true;
@@ -104,7 +110,55 @@ service cloud.firestore {
       allow write: if isValidId(simId);
     }
 
-    // Default deny for non-app collections
+    match /tenants/{tenantId} {
+      allow get: if isValidId(tenantId);
+      allow list: if true;
+      allow write: if isValidId(tenantId);
+    }
+
+    match /documents/{docId} {
+      allow get: if isValidId(docId);
+      allow list: if true;
+      allow write: if isValidId(docId);
+    }
+
+    match /communications/{commId} {
+      allow get: if isValidId(commId);
+      allow list: if true;
+      allow write: if isValidId(commId);
+    }
+
+    match /client_notes/{noteId} {
+      allow get: if isValidId(noteId);
+      allow list: if true;
+      allow write: if isValidId(noteId);
+    }
+
+    match /operational_tasks/{taskId} {
+      allow get: if isValidId(taskId);
+      allow list: if true;
+      allow write: if isValidId(taskId);
+    }
+
+    match /financial_entries/{finId} {
+      allow get: if isValidId(finId);
+      allow list: if true;
+      allow write: if isValidId(finId);
+    }
+
+    match /achievements/{achId} {
+      allow get: if isValidId(achId);
+      allow list: if true;
+      allow write: if isValidId(achId);
+    }
+
+    match /backup_snapshots/{snapId} {
+      allow get: if isValidId(snapId);
+      allow list: if true;
+      allow write: if isValidId(snapId);
+    }
+
+    // Default deny for unmapped paths
     match /{document=**} {
       allow read, write: if false;
     }

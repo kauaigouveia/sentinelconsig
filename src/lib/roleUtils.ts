@@ -11,14 +11,32 @@ export interface RoleConfig {
 }
 
 export const ROLE_CONFIG: Record<Role, RoleConfig> = {
+  PLATFORM_MASTER: {
+    role: 'PLATFORM_MASTER',
+    label: 'Platform Master SaaS',
+    emoji: '⚡',
+    badgeClass: 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-950 dark:text-indigo-200 border-indigo-400 dark:border-indigo-600',
+    pillClass: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black shadow-xs',
+    textClass: 'text-indigo-700 dark:text-indigo-400',
+    description: 'Acesso global multi-empresa à infraestrutura SaaS, gestão de tenants, planos e auditoria.',
+  },
   MASTER: {
     role: 'MASTER',
-    label: 'Master System',
+    label: 'Master da Operação',
     emoji: '👑',
     badgeClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700',
     pillClass: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black shadow-xs',
     textClass: 'text-amber-700 dark:text-amber-400',
-    description: 'Acesso irrestrito a todos os módulos, usuários e configurações do sistema.',
+    description: 'Acesso irrestrito a todos os módulos, usuários e configurações do sistema do tenant.',
+  },
+  TENANT_ADMIN: {
+    role: 'TENANT_ADMIN',
+    label: 'Administrador da Empresa',
+    emoji: '🏢',
+    badgeClass: 'bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700',
+    pillClass: 'bg-sky-600 text-white font-bold',
+    textClass: 'text-sky-700 dark:text-sky-400',
+    description: 'Gestão da empresa, personalização de marca white label e controle de usuários da conta.',
   },
   GESTOR: {
     role: 'GESTOR',

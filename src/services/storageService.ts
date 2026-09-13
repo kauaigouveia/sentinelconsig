@@ -22,6 +22,18 @@ import {
   SystemExceptionLog,
   SimulationRequest,
   SimulationStatus,
+  Tenant,
+  TenantPlan,
+  TenantStatus,
+  DocumentItem,
+  DocumentType,
+  ClientCommunication,
+  ClientNote,
+  OperationalTask,
+  FinancialEntry,
+  GamificationAchievement,
+  CommercialInsight,
+  AIChatMessage,
 } from '../types';
 import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -41,9 +53,101 @@ function cleanObjectForFirestore<T>(obj: T): T {
   return cleaned;
 }
 
+export function computeSha256(ascii: string): string {
+  function rightRotate(value: number, amount: number) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  const lengthProperty = 'length';
+  let i = 0;
+  let j = 0;
+  let result = '';
+  const words: number[] = [];
+  const asciiBitLength = ascii[lengthProperty] * 8;
+  const hash: number[] = [];
+  const k: number[] = [];
+  let primeCounter = 0;
+
+  const isPrime = (n: number) => {
+    for (let factor = 2; factor * factor <= n; factor++) {
+      if (n % factor === 0) return false;
+    }
+    return true;
+  };
+
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (isPrime(candidate)) {
+      if (primeCounter < 8) {
+        hash[primeCounter] = (mathPow(candidate, 1 / 2) * maxWord) | 0;
+      }
+      k[primeCounter] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      primeCounter++;
+    }
+  }
+
+  words[asciiBitLength >> 5] |= 0x80 << (24 - (asciiBitLength % 32));
+  words[(((asciiBitLength + 64) >> 9) << 4) + 15] = asciiBitLength;
+
+  for (i = 0; i < ascii[lengthProperty]; i++) {
+    words[i >> 2] |= ascii.charCodeAt(i) << (24 - (i % 4) * 8);
+  }
+
+  for (j = 0; j < words[lengthProperty]; j += 16) {
+    const w = words.slice(j, j + 16);
+    const oldHash = hash.slice(0);
+
+    for (i = 0; i < 64; i++) {
+      const w15 = w[i - 15];
+      const w2 = w[i - 2];
+      const a = hash[0];
+      const e = hash[4];
+      const temp1 =
+        hash[7] +
+        (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+        ((e & hash[5]) ^ (~e & hash[6])) +
+        k[i] +
+        (w[i] =
+          i < 16
+            ? w[i]
+            : (w[i - 16] +
+                (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                w[i - 7] +
+                (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+              0);
+      const temp2 =
+        (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+        ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+
+      hash[7] = hash[6];
+      hash[6] = hash[5];
+      hash[5] = hash[4];
+      hash[4] = (hash[3] + temp1) | 0;
+      hash[3] = hash[2];
+      hash[2] = hash[1];
+      hash[1] = hash[0];
+      hash[0] = (temp1 + temp2) | 0;
+    }
+
+    for (i = 0; i < 8; i++) {
+      hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+  }
+
+  for (i = 0; i < 8; i++) {
+    for (j = 3; j >= 0; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += (b < 16 ? '0' : '') + b.toString(16);
+    }
+  }
+  return result;
+}
+
 const STORAGE_KEYS = {
   USERS: 'cg_users',
   ACTIVE_USER: 'cg_active_user',
+  TENANTS: 'cg_tenants',
+  CURRENT_TENANT_ID: 'cg_current_tenant_id',
   PROMOTERS: 'cg_promoters',
   BANKS: 'cg_banks',
   BANK_PROMOTERS: 'cg_bank_promoters',
@@ -62,8 +166,76 @@ const STORAGE_KEYS = {
   EXPORT_LOGS: 'cg_export_logs',
   EXCEPTIONS: 'cg_system_exceptions',
   SIMULATION_REQUESTS: 'cg_simulation_requests',
+  DOCUMENTS: 'cg_documents',
+  COMMUNICATIONS: 'cg_communications',
+  CLIENT_NOTES: 'cg_client_notes',
+  OPERATIONAL_TASKS: 'cg_operational_tasks',
+  FINANCIAL_ENTRIES: 'cg_financial_entries',
+  ACHIEVEMENTS: 'cg_achievements',
+  BACKUP_SNAPSHOTS: 'cg_backup_snapshots',
   CONFIG: 'cg_config',
 };
+
+export const INITIAL_TENANTS: Tenant[] = [
+  {
+    id: 'tenant_evolve',
+    name: 'SENTINEL EVOLVE',
+    slug: 'evolve',
+    customDomain: 'app.sentinelevolve.com.br',
+    cnpj: '48.912.456/0001-80',
+    razaoSocial: 'Sentinel Evolve Tecnologia em Crédito LTDA',
+    tradeName: 'Sentinel Consig Operações',
+    plan: 'ENTERPRISE',
+    status: 'ACTIVE',
+    maxUsers: 50,
+    storageLimitMb: 5000,
+    modules: ['ALL'],
+    adminEmail: 'platform@creditgestao.com.br',
+    adminName: 'Kauai Gouveia',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    whiteLabel: {
+      companyName: 'SENTINEL CONSIG',
+      tradeName: 'Gestão de Produção & Esteira',
+      cnpj: '48.912.456/0001-80',
+      logoUrl: '',
+      primaryColor: '#2563eb',
+      accentColor: '#4f46e5',
+      supportEmail: 'suporte@creditgestao.com.br',
+      supportPhone: '(11) 98765-4321',
+      footerText: 'Sentinel Consig - Plataforma Avançada de Gestão Consignada',
+    },
+  },
+  {
+    id: 'tenant_credmais',
+    name: 'CredMais Soluções Financeiras',
+    slug: 'credmais',
+    customDomain: 'sistema.credmais.com.br',
+    cnpj: '33.123.456/0001-90',
+    razaoSocial: 'CredMais Correspondente Bancário LTDA',
+    tradeName: 'CredMais Consignados',
+    plan: 'PRO',
+    status: 'ACTIVE',
+    maxUsers: 15,
+    storageLimitMb: 1500,
+    modules: ['ALL'],
+    adminEmail: 'contato@credmais.com.br',
+    adminName: 'Marcos Vinicius',
+    createdAt: '2026-02-01T00:00:00.000Z',
+    updatedAt: '2026-02-01T00:00:00.000Z',
+    whiteLabel: {
+      companyName: 'CredMais Finanças',
+      tradeName: 'Mesa de Crédito & Portabilidade',
+      cnpj: '33.123.456/0001-90',
+      logoUrl: '',
+      primaryColor: '#059669',
+      accentColor: '#0d9488',
+      supportEmail: 'suporte@credmais.com.br',
+      supportPhone: '(21) 99876-5432',
+      footerText: 'CredMais - Soluções Ágeis em Crédito',
+    },
+  },
+];
 
 const INITIAL_EXCEPTIONS: SystemExceptionLog[] = [
   {
@@ -116,7 +288,6 @@ const INITIAL_USERS: User[] = [
     email: 'kauaigouveia@gmail.com',
     role: 'MASTER',
     active: true,
-    password: '120@Jocyane',
     createdAt: '2026-01-01T08:00:00.000Z',
     updatedAt: '2026-01-01T08:00:00.000Z',
   },
@@ -126,7 +297,6 @@ const INITIAL_USERS: User[] = [
     email: 'gestor@creditgestao.com.br',
     role: 'GESTOR',
     active: true,
-    password: '120@Jocyane',
     createdAt: '2026-01-02T08:00:00.000Z',
     updatedAt: '2026-01-02T08:00:00.000Z',
   },
@@ -136,7 +306,6 @@ const INITIAL_USERS: User[] = [
     email: 'gerente@creditgestao.com.br',
     role: 'GERENTE',
     active: true,
-    password: '120@Jocyane',
     createdAt: '2026-01-03T08:00:00.000Z',
     updatedAt: '2026-01-03T08:00:00.000Z',
   },
@@ -146,7 +315,6 @@ const INITIAL_USERS: User[] = [
     email: 'suporte@creditgestao.com.br',
     role: 'SUPORTE',
     active: true,
-    password: '120@Jocyane',
     createdAt: '2026-01-04T08:00:00.000Z',
     updatedAt: '2026-01-04T08:00:00.000Z',
   },
@@ -156,7 +324,6 @@ const INITIAL_USERS: User[] = [
     email: 'digitador@creditgestao.com.br',
     role: 'DIGITADOR',
     active: true,
-    password: '120@Jocyane',
     createdAt: '2026-01-05T08:00:00.000Z',
     updatedAt: '2026-01-05T08:00:00.000Z',
   },
@@ -166,7 +333,6 @@ const INITIAL_USERS: User[] = [
     email: 'simulacao@creditgestao.com.br',
     role: 'SIMULACAO',
     active: true,
-    password: '120@Jocyane',
     createdAt: '2026-01-06T08:00:00.000Z',
     updatedAt: '2026-01-06T08:00:00.000Z',
   },
@@ -596,27 +762,281 @@ const INITIAL_SIMULATION_REQUESTS: SimulationRequest[] = [
   },
 ];
 
+// Initial Client Documents
+const INITIAL_DOCUMENTS: DocumentItem[] = [
+  {
+    id: 'doc-1',
+    tenantId: 'tenant_evolve',
+    clientId: 'cli-maria-jose',
+    proposalId: 'prop-833085808',
+    name: 'RG_Frente_Verso_MariaJose.pdf',
+    type: 'RG',
+    fileUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop',
+    fileSizeBytes: 1450200,
+    uploadedByUserId: 'u-digitador',
+    uploadedByUserName: 'Ana Beatriz (Digitadora)',
+    createdAt: fourBusinessDaysAgo,
+    updatedAt: fourBusinessDaysAgo,
+  },
+  {
+    id: 'doc-2',
+    tenantId: 'tenant_evolve',
+    clientId: 'cli-maria-jose',
+    proposalId: 'prop-833085808',
+    name: 'Contracheque_INSS_Agosto_2026.pdf',
+    type: 'CONTRACHEQUE',
+    fileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop',
+    fileSizeBytes: 850400,
+    uploadedByUserId: 'u-digitador',
+    uploadedByUserName: 'Ana Beatriz (Digitadora)',
+    createdAt: fourBusinessDaysAgo,
+    updatedAt: fourBusinessDaysAgo,
+  },
+  {
+    id: 'doc-3',
+    tenantId: 'tenant_evolve',
+    clientId: 'cli-maria-jose',
+    name: 'Extrato_Bancario_Consignado.pdf',
+    type: 'EXTRATO',
+    fileUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=600&auto=format&fit=crop',
+    fileSizeBytes: 620000,
+    uploadedByUserId: 'u-digitador',
+    uploadedByUserName: 'Ana Beatriz (Digitadora)',
+    createdAt: fourBusinessDaysAgo,
+    updatedAt: fourBusinessDaysAgo,
+  },
+];
+
+// Initial Client Communications
+const INITIAL_COMMUNICATIONS: ClientCommunication[] = [
+  {
+    id: 'comm-1',
+    tenantId: 'tenant_evolve',
+    clientId: 'cli-maria-jose',
+    proposalId: 'prop-833085808',
+    channel: 'WHATSAPP',
+    templateName: 'Notificação de CIP Iniciado',
+    eventType: 'PROPOSTA_CRIADA',
+    recipient: '(11) 98765-4321',
+    messageContent: 'Olá Maria José! Sua proposta de portabilidade C6 Bank (ADE 833085808) foi formalizada e entrou no processamento da CIP. Acompanhe conosco!',
+    status: 'ENVIADO',
+    sentByUserId: 'u-digitador',
+    sentByUserName: 'Ana Beatriz (Digitadora)',
+    createdAt: fourBusinessDaysAgo,
+  },
+  {
+    id: 'comm-2',
+    tenantId: 'tenant_evolve',
+    clientId: 'cli-maria-jose',
+    proposalId: 'prop-833085808',
+    channel: 'WHATSAPP',
+    templateName: 'Aviso 4º Dia Útil CIP',
+    eventType: 'AVULSO',
+    recipient: '(11) 98765-4321',
+    messageContent: 'Prezada Maria José, sua portabilidade está no 4º dia útil em CIP e estamos monitorando a liberação do saldo devedor.',
+    status: 'ENVIADO',
+    sentByUserId: 'u-suporte',
+    sentByUserName: 'Lucas Ferreira (Suporte)',
+    createdAt: oneDayAgo,
+  },
+];
+
+// Initial Client Notes
+const INITIAL_CLIENT_NOTES: ClientNote[] = [
+  {
+    id: 'note-1',
+    tenantId: 'tenant_evolve',
+    clientId: 'cli-maria-jose',
+    proposalId: 'prop-833085808',
+    authorId: 'u-digitador',
+    authorName: 'Ana Beatriz (Digitadora)',
+    note: 'Cliente confirmou os dados bancários para o pagamento do Refin assim que o saldo CIP retornar.',
+    createdAt: fourBusinessDaysAgo,
+  },
+];
+
+// Initial Operational Tasks
+const INITIAL_OPERATIONAL_TASKS: OperationalTask[] = [
+  {
+    id: 'task-1',
+    tenantId: 'tenant_evolve',
+    title: 'Monitorar Retorno CIP (5º Dia Útil) - Maria José',
+    description: 'Verificar resposta do banco credor para a ADE 833085808 (Portabilidade C6 Bank).',
+    category: 'SALDO_CIP',
+    priority: 'URGENTE',
+    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    completed: false,
+    assignedUserId: 'u-suporte',
+    assignedUserName: 'Lucas Ferreira',
+    clientId: 'cli-maria-jose',
+    clientName: 'MARIA JOSE ALEXANDRE',
+    proposalId: 'prop-833085808',
+    proposalNumber: '833085808',
+    partnerId: 'part-kauai',
+    partnerName: 'KAUAI@16740',
+    createdAt: oneDayAgo,
+    updatedAt: oneDayAgo,
+  },
+  {
+    id: 'task-2',
+    tenantId: 'tenant_evolve',
+    title: 'Cobrar reenvio de RG legível - João Pedro',
+    description: 'Documento de identificação cortado na proposta 1902975450.',
+    category: 'PENDENCIA',
+    priority: 'ALTA',
+    dueDate: new Date().toISOString().split('T')[0],
+    completed: false,
+    assignedUserId: 'u-suporte',
+    assignedUserName: 'Lucas Ferreira',
+    clientId: 'cli-joao-pedro',
+    clientName: 'JOÃO PEDRO DE ALMEIDA',
+    proposalId: 'prop-1902975450',
+    proposalNumber: '1902975450',
+    partnerId: 'part-franco',
+    partnerName: 'FRANCO@16690',
+    createdAt: oneDayAgo,
+    updatedAt: oneDayAgo,
+  },
+  {
+    id: 'task-3',
+    tenantId: 'tenant_evolve',
+    title: 'Confirmar pagamento do cartão - Antonia Souza',
+    description: 'Checar crédito em conta do saque complementar da proposta 991823741.',
+    category: 'FOLLOW_UP',
+    priority: 'MEDIA',
+    dueDate: new Date().toISOString().split('T')[0],
+    completed: true,
+    completedAt: oneDayAgo,
+    completedByUserId: 'u-digitador',
+    assignedUserId: 'u-digitador',
+    assignedUserName: 'Ana Beatriz',
+    clientId: 'cli-antonia-souza',
+    clientName: 'ANTONIA SOUZA SANTOS',
+    proposalId: 'prop-991823741',
+    proposalNumber: '991823741',
+    createdAt: twoDaysAgo,
+    updatedAt: oneDayAgo,
+  },
+];
+
+// Initial General Financial Entries (Sem cálculo automático de comissão)
+const INITIAL_FINANCIAL_ENTRIES: FinancialEntry[] = [
+  {
+    id: 'fin-1',
+    tenantId: 'tenant_evolve',
+    type: 'ENTRADA',
+    category: 'RECEBIMENTO_OPERACIONAL',
+    title: 'Recebimento de Repasse de Produção C6 Bank',
+    description: 'Liquidação da fatura de produção quinzenal da mesa',
+    amount: 28500.00,
+    dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    paymentDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: 'REALIZADO',
+    bankId: 'bank-c6',
+    bankName: 'C6 BANK',
+    createdAt: twoDaysAgo,
+    updatedAt: twoDaysAgo,
+  },
+  {
+    id: 'fin-2',
+    tenantId: 'tenant_evolve',
+    type: 'SAIDA',
+    category: 'DESPESA_FIXA',
+    title: 'Licenças de Telefonia & Discador',
+    description: 'Mensalidade do canal de telefonia e discagem automática',
+    amount: 3200.00,
+    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: 'PREVISTO',
+    createdAt: fourBusinessDaysAgo,
+    updatedAt: fourBusinessDaysAgo,
+  },
+  {
+    id: 'fin-3',
+    tenantId: 'tenant_evolve',
+    type: 'SAIDA',
+    category: 'SERVICO',
+    title: 'Consultas Cadastrais e Motor de Crédito CIP',
+    description: 'Pacote de 5.000 consultas de margem e elegibilidade',
+    amount: 1850.00,
+    dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: 'PREVISTO',
+    createdAt: fourBusinessDaysAgo,
+    updatedAt: fourBusinessDaysAgo,
+  },
+];
+
+// Initial Gamification Achievements
+const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [
+  {
+    id: 'ach-1',
+    code: 'PRIMEIRA_VENDA',
+    title: 'Primeira Venda',
+    description: 'Primeira proposta com status PAGO cadastrada na mesa.',
+    icon: '🚀',
+    unlockedAt: oneDayAgo,
+    operatorId: 'u-digitador',
+    operatorName: 'Ana Beatriz (Digitadora)',
+  },
+  {
+    id: 'ach-2',
+    code: 'MELHOR_CONVERSAO',
+    title: 'Alta Precisão',
+    description: 'Taxa de aprovação e integração superior a 85% no mês.',
+    icon: '🎯',
+    unlockedAt: twoDaysAgo,
+    operatorId: 'u-digitador',
+    operatorName: 'Ana Beatriz (Digitadora)',
+  },
+];
+
 export class StorageService {
   private static KEY_TO_COLLECTION: Record<string, string> = {
-    'cg_users': 'users',
-    'cg_promoters': 'promoters',
-    'cg_banks': 'banks',
-    'cg_bank_promoters': 'bank_promoters',
-    'cg_partners': 'partners',
-    'cg_products': 'products',
-    'cg_clients': 'clients',
-    'cg_statuses': 'statuses',
-    'cg_proposals': 'proposals',
-    'cg_proposal_relations': 'proposal_relations',
-    'cg_history': 'history',
-    'cg_pendings': 'pendings',
-    'cg_holidays': 'holidays',
-    'cg_notifications': 'notifications',
-    'cg_audit_logs': 'audit_logs',
-    'cg_simulation_requests': 'simulation_requests',
+    'cg_documents': 'documents',
   };
 
   private static activeListeners: (() => void)[] = [];
+
+  public static clearBusinessCache(): void {
+    const businessKeys = [
+      'cg_users',
+      'cg_active_user',
+      'cg_tenants',
+      'cg_current_tenant_id',
+      'cg_promoters',
+      'cg_banks',
+      'cg_bank_promoters',
+      'cg_partners',
+      'cg_products',
+      'cg_clients',
+      'cg_statuses',
+      'cg_proposals',
+      'cg_proposal_relations',
+      'cg_history',
+      'cg_comments',
+      'cg_pendings',
+      'cg_holidays',
+      'cg_notifications',
+      'cg_audit_logs',
+      'cg_export_logs',
+      'cg_system_exceptions',
+      'cg_simulation_requests',
+      'cg_documents',
+      'cg_communications',
+      'cg_client_notes',
+      'cg_operational_tasks',
+      'cg_financial_entries',
+      'cg_achievements',
+      'cg_backup_snapshots',
+      'cg_config',
+      'cg_is_authenticated',
+    ];
+
+    for (const key of businessKeys) {
+      try {
+        localStorage.removeItem(key);
+      } catch {}
+    }
+  }
 
   public static getCurrentPartnerId(): string {
     try {
@@ -658,41 +1078,7 @@ export class StorageService {
 
   private static set<T>(key: string, value: T): void {
     try {
-      const colName = this.KEY_TO_COLLECTION[key];
-      
-      // Grab oldArray BEFORE updating localStorage to detect deletions and modifications
-      let oldArray: any[] = [];
-      if (colName && Array.isArray(value)) {
-        oldArray = this.get<any[]>(key, []);
-      }
-
       localStorage.setItem(key, JSON.stringify(value));
-
-      if (colName && Array.isArray(value)) {
-        const oldMap = new Map<string, any>(oldArray.map(item => [item?.id, item]));
-        const newMap = new Map<string, any>((value as any[]).map(item => [item?.id, item]));
-
-        for (const newItem of (value as any[])) {
-          if (newItem && newItem.id) {
-            const oldItem = oldMap.get(newItem.id);
-            if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
-              const cleaned = cleanObjectForFirestore(newItem);
-              setDoc(doc(db, colName, newItem.id), cleaned).catch(err => {
-                console.warn(`Firestore sync write error on ${colName}/${newItem.id}:`, err);
-              });
-            }
-          }
-        }
-
-        for (const oldItem of oldArray) {
-          if (oldItem && oldItem.id && !newMap.has(oldItem.id)) {
-            deleteDoc(doc(db, colName, oldItem.id)).catch(err => {
-              console.warn(`Firestore sync delete error on ${colName}/${oldItem.id}:`, err);
-            });
-          }
-        }
-      }
-
       window.dispatchEvent(new Event('credit_gestao_storage_update'));
     } catch (e) {
       console.error(`Failed to write to localStorage for key ${key}:`, e);
@@ -703,10 +1089,256 @@ export class StorageService {
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       this.resetToInitial();
     }
+    this.syncWithPostgreSQL().catch(err => {
+      console.warn("Failed to initialize state from PostgreSQL:", err);
+    });
     this.loadFromFirestore().catch(err => {
       console.error("Failed to initialize state from Firestore:", err);
     });
     this.setupRealTimeListeners();
+  }
+
+  public static async syncWithPostgreSQL(): Promise<void> {
+    try {
+      // Helper function to fetch and log errors safely
+      const safeFetch = async (url: string) => {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json();
+        } catch (e) {
+          console.warn(`[STORAGE] Fail to fetch ${url}`, e);
+        }
+        return null;
+      };
+
+      // 1. Fetch Clients
+      const dbClients = await safeFetch('/api/clients');
+      if (Array.isArray(dbClients)) {
+        const formatted = dbClients.map((c: any) => ({
+          id: c.id,
+          cpf: c.cpf,
+          fullName: c.fullName,
+          phone: c.phone || '',
+          email: c.email || '',
+          observation: '',
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(formatted));
+      }
+
+      // 2. Fetch Proposals
+      const dbProposals = await safeFetch('/api/proposals');
+      if (Array.isArray(dbProposals)) {
+        const formattedProps = dbProposals.map((p: any) => ({
+          id: p.id,
+          proposalNumber: p.proposalNumber,
+          clientId: p.clientId,
+          productId: p.productId || 'prod-novo',
+          bankId: p.bankId || 'bank-c6',
+          promoterId: p.promoterId || 'prom-dg',
+          partnerId: p.partnerId || 'part-kauai',
+          digitizerId: p.createdById || 'u-digitador',
+          statusId: p.statusId || 'st-1',
+          currentResponsible: 'CLIENTE',
+          disbursedValue: p.releasedValue ? Number(p.releasedValue) : 0,
+          contractBalance: p.contractValue ? Number(p.contractValue) : 0,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
+      }
+
+      // 3. Fetch Tasks
+      const dbTasks = await safeFetch('/api/tasks');
+      if (Array.isArray(dbTasks)) {
+        const formattedTasks = dbTasks.map((t: any) => ({
+          id: t.id,
+          tenantId: t.tenantId,
+          title: t.title,
+          description: t.description || '',
+          category: t.category || 'OPERACIONAL',
+          priority: t.priority || 'MEDIUM',
+          dueDate: t.dueDate ? t.dueDate.split('T')[0] : '',
+          completed: t.completed,
+          assignedUserId: t.assignedToId || '',
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.OPERATIONAL_TASKS, JSON.stringify(formattedTasks));
+      }
+
+      // 4. Fetch Banks
+      const dbBanks = await safeFetch('/api/banks');
+      if (Array.isArray(dbBanks)) {
+        const formattedBanks = dbBanks.map((b: any) => ({
+          id: b.id,
+          name: b.name,
+          code: b.code || '',
+          active: b.status === 'ATIVO',
+          createdAt: b.createdAt,
+          updatedAt: b.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(formattedBanks));
+      }
+
+      // 5. Fetch Promoters
+      const dbPromoters = await safeFetch('/api/promoters');
+      if (Array.isArray(dbPromoters)) {
+        const formattedPromoters = dbPromoters.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          active: p.status === 'ATIVO',
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.PROMOTERS, JSON.stringify(formattedPromoters));
+      }
+
+      // 6. Fetch Partners
+      const dbPartners = await safeFetch('/api/partners');
+      if (Array.isArray(dbPartners)) {
+        const formattedPartners = dbPartners.map((p: any) => ({
+          id: p.id,
+          fullName: p.name,
+          login: p.code,
+          promoterId: p.promoterId || '',
+          active: p.status === 'ATIVO',
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(formattedPartners));
+      }
+
+      // 7. Fetch Products
+      const dbProducts = await safeFetch('/api/products');
+      if (Array.isArray(dbProducts)) {
+        const formattedProducts = dbProducts.map((pr: any) => ({
+          id: pr.id,
+          name: pr.name,
+          description: pr.description || '',
+          type: pr.type || 'NOVO',
+          allowsMultipleAde: true,
+          requiresPortabilityRelation: false,
+          active: pr.active,
+          createdAt: pr.createdAt,
+          updatedAt: pr.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(formattedProducts));
+      }
+
+      // 8. Fetch BankPromoters (Matrix)
+      const dbBankPromoters = await safeFetch('/api/bank-promoters');
+      if (Array.isArray(dbBankPromoters)) {
+        const formattedBankPromoters = dbBankPromoters.map((bp: any) => ({
+          id: bp.id,
+          bankId: bp.bankId,
+          promoterId: bp.promoterId,
+          active: bp.status === 'ATIVO',
+          createdAt: bp.createdAt,
+          updatedAt: bp.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.BANK_PROMOTERS, JSON.stringify(formattedBankPromoters));
+      }
+
+      // 9. Fetch White Label Settings
+      const dbWL = await safeFetch('/api/whitelabel');
+      if (dbWL && typeof dbWL === 'object') {
+        const formattedWL = {
+          companyName: dbWL.companyName || 'SENTINEL CONSIG',
+          tradeName: dbWL.tradeName || 'Gestão de Produção & Esteira',
+          cnpj: dbWL.cnpj || '',
+          logoUrl: dbWL.logoUrl || '',
+          primaryColor: dbWL.primaryColor || '#2563eb',
+          accentColor: dbWL.accentColor || '#4f46e5',
+          supportEmail: dbWL.supportEmail || '',
+          supportPhone: dbWL.supportPhone || '',
+          footerText: dbWL.footerText || '',
+        };
+        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify({ whiteLabel: formattedWL }));
+      }
+
+      // 10. Fetch Documents
+      const dbDocs = await safeFetch('/api/documents');
+      if (Array.isArray(dbDocs)) {
+        const formattedDocs = dbDocs.map((d: any) => ({
+          id: d.id,
+          tenantId: d.tenantId,
+          clientId: d.clientId,
+          proposalId: d.proposalId || undefined,
+          name: d.name,
+          type: d.type || 'OUTROS',
+          fileUrl: d.fileUrl || `/api/documents/${d.id}`,
+          fileSizeBytes: d.fileSizeBytes || 0,
+          uploadedByUserId: d.uploadedById || '',
+          uploadedByUserName: 'Usuário do Sistema',
+          createdAt: d.createdAt,
+          updatedAt: d.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(formattedDocs));
+      }
+
+      // 11. Fetch Audit Logs
+      const dbAudit = await safeFetch('/api/audit-logs');
+      if (Array.isArray(dbAudit)) {
+        const formattedAudit = dbAudit.map((a: any) => ({
+          id: a.id,
+          userId: a.userId || 'system',
+          userName: a.userName || 'System',
+          userRole: a.userRole || 'SYSTEM',
+          action: a.action,
+          entity: a.entity || '',
+          entityId: a.entityId || '',
+          newData: a.newData || '',
+          previousData: a.previousData || '',
+          createdAt: a.createdAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(formattedAudit));
+      }
+
+      // 11. Fetch Users
+      const dbUsers = await safeFetch('/api/users');
+      if (Array.isArray(dbUsers)) {
+        const formattedUsers = dbUsers.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          active: u.active,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(formattedUsers));
+      }
+
+      // 12. Fetch Tenants
+      const dbTenants = await safeFetch('/api/tenants');
+      if (Array.isArray(dbTenants)) {
+        const formattedTenants = dbTenants.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          customDomain: t.customDomain || '',
+          cnpj: t.cnpj || '',
+          razaoSocial: t.razaoSocial || t.name,
+          tradeName: t.tradeName || t.name,
+          plan: t.plan || 'PRO',
+          status: t.status || 'ACTIVE',
+          maxUsers: t.maxUsers || 10,
+          storageLimitMb: t.storageLimitMb || 5000,
+          modules: t.enabledModules || ['ALL'],
+          adminEmail: t.adminEmail || '',
+          adminName: t.adminName || '',
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(formattedTenants));
+      }
+
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    } catch (err) {
+      console.warn('[STORAGE] Erro ao sincronizar com PostgreSQL:', err);
+    }
   }
 
   public static async loadFromFirestore(): Promise<void> {
@@ -829,6 +1461,8 @@ export class StorageService {
   public static resetToInitial(): void {
     this.set(STORAGE_KEYS.USERS, INITIAL_USERS);
     this.set(STORAGE_KEYS.ACTIVE_USER, INITIAL_USERS[0]); // Master as active
+    this.set(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
+    this.set(STORAGE_KEYS.CURRENT_TENANT_ID, 'tenant_evolve');
     this.set(STORAGE_KEYS.PROMOTERS, INITIAL_PROMOTERS);
     this.set(STORAGE_KEYS.BANKS, INITIAL_BANKS);
     this.set(STORAGE_KEYS.BANK_PROMOTERS, INITIAL_BANK_PROMOTERS);
@@ -846,6 +1480,13 @@ export class StorageService {
     this.set(STORAGE_KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
     this.set(STORAGE_KEYS.EXPORT_LOGS, []);
     this.set(STORAGE_KEYS.SIMULATION_REQUESTS, INITIAL_SIMULATION_REQUESTS);
+    this.set(STORAGE_KEYS.DOCUMENTS, INITIAL_DOCUMENTS);
+    this.set(STORAGE_KEYS.COMMUNICATIONS, INITIAL_COMMUNICATIONS);
+    this.set(STORAGE_KEYS.CLIENT_NOTES, INITIAL_CLIENT_NOTES);
+    this.set(STORAGE_KEYS.OPERATIONAL_TASKS, INITIAL_OPERATIONAL_TASKS);
+    this.set(STORAGE_KEYS.FINANCIAL_ENTRIES, INITIAL_FINANCIAL_ENTRIES);
+    this.set(STORAGE_KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
+    this.set(STORAGE_KEYS.BACKUP_SNAPSHOTS, []);
     this.set(
       STORAGE_KEYS.CONFIG,
       { portabilityBalanceDays: 5, autoCronIntervalMinutes: 15 }
@@ -864,28 +1505,46 @@ export class StorageService {
   }
 
   public static loginUser(user: User): void {
+    // 1. Purge all prior session/tenant cache completely to guarantee zero cross-tenant data leak or flash
+    this.clearBusinessCache();
+
+    // 2. Set new session markers
     localStorage.setItem('cg_is_authenticated', 'true');
     this.setActiveUser(user);
+    if (user.tenantId) {
+      this.setCurrentTenantId(user.tenantId);
+    }
+
+    // 3. Register audit log
     this.addAuditLog({
       action: 'LOGIN_SISTEMA',
       entity: 'User',
       entityId: user.id,
-      newData: JSON.stringify({ email: user.email, name: user.name, role: user.role }),
+      newData: JSON.stringify({ email: user.email, name: user.name, role: user.role, tenantId: user.tenantId }),
     });
+
+    // 4. Immediately trigger PostgreSQL sync for new tenant
+    this.syncWithPostgreSQL().catch(err => {
+      console.warn('[SYNC] Erro ao sincronizar dados pós-login:', err);
+    });
+
     this.setupRealTimeListeners();
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
   public static logout(): void {
-    localStorage.setItem('cg_is_authenticated', 'false');
     const active = this.getActiveUser();
-    this.addAuditLog({
-      action: 'LOGOUT_SISTEMA',
-      entity: 'User',
-      entityId: active.id,
-      previousData: JSON.stringify({ email: active.email, name: active.name, role: active.role }),
-    });
+    try {
+      this.addAuditLog({
+        action: 'LOGOUT_SISTEMA',
+        entity: 'User',
+        entityId: active?.id || 'unknown',
+        previousData: JSON.stringify({ email: active?.email, name: active?.name, role: active?.role }),
+      });
+    } catch {}
     this.unsubscribeRealTimeListeners();
+    this.clearBusinessCache();
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
@@ -960,24 +1619,38 @@ export class StorageService {
       throw new Error(`Já existe um usuário cadastrado com o e-mail: ${data.email}`);
     }
 
-    const tempPassword = data.password || this.generateTemporaryPassword();
+    const { password, ...cleanData } = data;
+    const tempPassword = password || this.generateTemporaryPassword();
     const newUser: User = {
-      ...data,
+      ...cleanData,
       id: `u-${Date.now()}`,
-      password: tempPassword,
       mustChangePassword: data.mustChangePassword !== undefined ? data.mustChangePassword : true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     users.push(newUser);
     this.set(STORAGE_KEYS.USERS, users);
+
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        password: tempPassword,
+        role: newUser.role,
+        phone: (newUser as any).phone || '',
+      }),
+    }).catch(err => console.warn('[API] Error creating user:', err));
+
     this.addAuditLog({
       action: 'CRIAR_USUARIO',
       entity: 'User',
       entityId: newUser.id,
       newData: JSON.stringify({ name: newUser.name, email: newUser.email, role: newUser.role, mustChangePassword: newUser.mustChangePassword }),
     });
-    return newUser;
+    return { ...newUser, password: tempPassword };
   }
 
   public static updateUserPassword(userId: string, newPassword: string): User {
@@ -985,9 +1658,9 @@ export class StorageService {
     const idx = users.findIndex(u => u.id === userId);
     if (idx === -1) throw new Error('Usuário não encontrado');
     
-    const updatedUser = {
-      ...users[idx],
-      password: newPassword,
+    const { password, ...cleanUser } = users[idx] as any;
+    const updatedUser: User = {
+      ...cleanUser,
       mustChangePassword: false,
       updatedAt: new Date().toISOString(),
     };
@@ -998,6 +1671,14 @@ export class StorageService {
     if (active.id === userId) {
       this.set(STORAGE_KEYS.ACTIVE_USER, updatedUser);
     }
+
+    fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password: newPassword,
+      }),
+    }).catch(err => console.warn('[API] Error updating user password:', err));
 
     this.addAuditLog({
       action: 'ALTERAR_SENHA',
@@ -1024,6 +1705,14 @@ export class StorageService {
     users[idx] = updatedUser;
     this.set(STORAGE_KEYS.USERS, users);
 
+    fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password: tempPassword,
+      }),
+    }).catch(err => console.warn('[API] Error resetting user password:', err));
+
     this.addAuditLog({
       action: 'RESETAR_SENHA_TEMPORARIA',
       entity: 'User',
@@ -1041,6 +1730,20 @@ export class StorageService {
     const old = users[idx];
     users[idx] = { ...old, ...updates, updatedAt: new Date().toISOString() };
     this.set(STORAGE_KEYS.USERS, users);
+
+    const updatedUser = users[idx];
+    fetch(`/api/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        active: updatedUser.active,
+        phone: (updatedUser as any).phone || '',
+      }),
+    }).catch(err => console.warn('[API] Error updating user:', err));
+
     this.addAuditLog({
       action: 'EDITAR_USUARIO',
       entity: 'User',
@@ -1064,6 +1767,11 @@ export class StorageService {
     }
     const updated = users.filter(u => u.id !== id);
     this.set(STORAGE_KEYS.USERS, updated);
+
+    fetch(`/api/users/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting user:', err));
+
     this.addAuditLog({
       action: 'EXCLUIR_USUARIO',
       entity: 'User',
@@ -1097,6 +1805,19 @@ export class StorageService {
     };
     partners.push(newPartner);
     this.set(STORAGE_KEYS.PARTNERS, partners);
+
+    fetch('/api/partners', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newPartner.id,
+        name: newPartner.fullName,
+        code: newPartner.login,
+        promoterId: newPartner.promoterId,
+        status: newPartner.active ? 'ATIVO' : 'INATIVO',
+      }),
+    }).catch(err => console.warn('[API] Error creating partner:', err));
+
     this.addAuditLog({
       action: 'CRIAR_PARCEIRO',
       entity: 'Partner',
@@ -1193,6 +1914,19 @@ export class StorageService {
     }
     partners[idx] = { ...old, ...updates, updatedAt: new Date().toISOString() };
     this.set(STORAGE_KEYS.PARTNERS, partners);
+
+    const updatedPartner = partners[idx];
+    fetch(`/api/partners/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: updatedPartner.fullName,
+        code: updatedPartner.login,
+        promoterId: updatedPartner.promoterId,
+        status: updatedPartner.active ? 'ATIVO' : 'INATIVO',
+      }),
+    }).catch(err => console.warn('[API] Error updating partner:', err));
+
     this.addAuditLog({
       action: 'EDITAR_PARCEIRO',
       entity: 'Partner',
@@ -1209,6 +1943,11 @@ export class StorageService {
     if (!target) throw new Error('Parceiro não encontrado.');
     const updated = list.filter(p => p.id !== id);
     this.set(STORAGE_KEYS.PARTNERS, updated);
+
+    fetch(`/api/partners/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting partner:', err));
+
     this.addAuditLog({
       action: 'EXCLUIR_PARCEIRO',
       entity: 'Partner',
@@ -1240,6 +1979,18 @@ export class StorageService {
     };
     promoters.push(newPromoter);
     this.set(STORAGE_KEYS.PROMOTERS, promoters);
+
+    fetch('/api/promoters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newPromoter.id,
+        name: newPromoter.name,
+        code: newPromoter.id,
+        status: newPromoter.active ? 'ATIVO' : 'INATIVO',
+      }),
+    }).catch(err => console.warn('[API] Error creating promoter:', err));
+
     this.addAuditLog({
       action: 'CRIAR_PROMOTORA',
       entity: 'Promoter',
@@ -1261,6 +2012,10 @@ export class StorageService {
       bp => bp.promoterId !== id
     );
     this.set(STORAGE_KEYS.BANK_PROMOTERS, matrix);
+
+    fetch(`/api/promoters/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting promoter:', err));
 
     this.addAuditLog({
       action: 'EXCLUIR_PROMOTORA',
@@ -1295,6 +2050,18 @@ export class StorageService {
     };
     banks.push(newBank);
     this.set(STORAGE_KEYS.BANKS, banks);
+
+    fetch('/api/banks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newBank.id,
+        name: newBank.name,
+        code: newBank.code || newBank.id,
+        status: newBank.active ? 'ATIVO' : 'INATIVO',
+      }),
+    }).catch(err => console.warn('[API] Error creating bank:', err));
+
     this.addAuditLog({
       action: 'CRIAR_BANCO',
       entity: 'Bank',
@@ -1316,6 +2083,10 @@ export class StorageService {
       bp => bp.bankId !== id
     );
     this.set(STORAGE_KEYS.BANK_PROMOTERS, matrix);
+
+    fetch(`/api/banks/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting bank:', err));
 
     this.addAuditLog({
       action: 'EXCLUIR_BANCO',
@@ -1354,6 +2125,18 @@ export class StorageService {
       });
     }
     this.set(STORAGE_KEYS.BANK_PROMOTERS, list);
+
+    fetch('/api/bank-promoters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bankId,
+        promoterId,
+        login: 'DEFAULT',
+        status: active ? 'ATIVO' : 'INATIVO',
+      }),
+    }).catch(err => console.warn('[API] Error setBankPromoter:', err));
+
     this.addAuditLog({
       action: 'ATUALIZAR_VINCULO_BANCO_PROMOTORA',
       entity: 'BankPromoter',
@@ -1388,6 +2171,19 @@ export class StorageService {
     };
     products.push(newProduct);
     this.set(STORAGE_KEYS.PRODUCTS, products);
+
+    fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newProduct.id,
+        name: newProduct.name,
+        code: newProduct.id,
+        type: newProduct.type,
+        active: newProduct.active,
+      }),
+    }).catch(err => console.warn('[API] Error creating product:', err));
+
     this.addAuditLog({
       action: 'CRIAR_PRODUTO',
       entity: 'Product',
@@ -1403,6 +2199,11 @@ export class StorageService {
     if (!target) throw new Error('Produto não encontrado.');
     const updated = list.filter(p => p.id !== id);
     this.set(STORAGE_KEYS.PRODUCTS, updated);
+
+    fetch(`/api/products/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting product:', err));
+
     this.addAuditLog({
       action: 'EXCLUIR_PRODUTO',
       entity: 'Product',
@@ -1654,6 +2455,19 @@ export class StorageService {
       entityId: newClient.id,
       newData: JSON.stringify(newClient),
     });
+
+    // Persist to PostgreSQL (Source of Truth)
+    fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cpf: newClient.cpf,
+        fullName: newClient.fullName,
+        phone: newClient.phone,
+        email: newClient.email,
+      }),
+    }).catch(err => console.warn('[CLIENT POST FAIL]', err));
+
     return newClient;
   }
 
@@ -1804,6 +2618,23 @@ export class StorageService {
 
     proposals.push(newProposal);
     this.set(STORAGE_KEYS.PROPOSALS, proposals);
+
+    // Persist to PostgreSQL (Source of Truth)
+    fetch('/api/proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        proposalNumber: newProposal.proposalNumber,
+        clientId: newProposal.clientId,
+        bankId: newProposal.bankId,
+        promoterId: newProposal.promoterId,
+        partnerId: newProposal.partnerId,
+        productId: newProposal.productId,
+        type: 'NOVO',
+        releasedValue: newProposal.disbursedValue || 0,
+        contractValue: newProposal.contractBalance || 0,
+      }),
+    }).catch(err => console.warn('[PROPOSAL POST FAIL]', err));
 
     // If related to a portability proposal, create the ProposalRelation
     if (data.relatedPortabilityId) {
@@ -2477,6 +3308,13 @@ export class StorageService {
     const currentWl = this.getWhiteLabel();
     const updatedWl = { ...currentWl, ...updates };
     this.updateConfig({ whiteLabel: updatedWl });
+
+    fetch('/api/whitelabel', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedWl),
+    }).catch(err => console.warn('[API] Error updating whitelabel:', err));
+
     return updatedWl;
   }
 
@@ -2654,13 +3492,13 @@ export class StorageService {
 
   // Security Verification for Deletions
   public static getMasterPassword(): string {
-    return '120@Jocyane';
+    return '';
   }
 
   public static verifySecurityAuth(input: string): boolean {
-    const clean = (input || '').trim();
+    const clean = (input || '').trim().toUpperCase();
     if (!clean) return false;
-    return clean === '120@Jocyane' || clean.toUpperCase() === 'EXCLUIR' || clean === this.getMasterPassword();
+    return clean === 'EXCLUIR' || clean === 'CONFIRMAR';
   }
 
   // System Exception & Error Logs (for mass operations and support troubleshooting)
@@ -3265,6 +4103,673 @@ export class StorageService {
 
   public static matchSimulationRequestsForProposal(proposal: Proposal): number {
     return this.processSimulationMatching(proposal);
+  }
+
+  // ==========================================
+  // MULTI-TENANT & SAAS ENGINE
+  // ==========================================
+  public static getTenants(): Tenant[] {
+    return this.get<Tenant[]>(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
+  }
+
+  public static getTenantById(id: string): Tenant | undefined {
+    return this.getTenants().find(t => t.id === id);
+  }
+
+  public static getCurrentTenantId(): string {
+    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, 'tenant_evolve');
+  }
+
+  public static getCurrentTenant(): Tenant {
+    const tenantId = this.getCurrentTenantId();
+    const tenants = this.getTenants();
+    const found = tenants.find(t => t.id === tenantId);
+    return found || tenants[0] || INITIAL_TENANTS[0];
+  }
+
+  public static setCurrentTenantId(tenantId: string): void {
+    this.set(STORAGE_KEYS.CURRENT_TENANT_ID, tenantId);
+    window.dispatchEvent(new Event('tenantUpdated'));
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+  }
+
+  public static createTenant(tenantData: Omit<Tenant, 'id' | 'createdAt' | 'updatedAt'>): Tenant {
+    const tenants = this.getTenants();
+    const slug = tenantData.slug.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+    
+    if (tenants.some(t => t.slug === slug)) {
+      throw new Error(`O slug "${slug}" já está em uso por outra empresa.`);
+    }
+
+    const newTenant: Tenant = {
+      ...tenantData,
+      id: `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      slug,
+      status: tenantData.status || 'ACTIVE',
+      plan: tenantData.plan || 'PRO',
+      maxUsers: tenantData.maxUsers || 15,
+      storageLimitMb: tenantData.storageLimitMb || 1500,
+      modules: tenantData.modules || ['ALL'],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.set(STORAGE_KEYS.TENANTS, [...tenants, newTenant]);
+
+    fetch('/api/tenants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newTenant.id,
+        name: newTenant.name,
+        slug: newTenant.slug,
+        cnpj: newTenant.cnpj || '',
+        tradeName: newTenant.tradeName || '',
+        plan: newTenant.plan,
+        status: newTenant.status,
+      }),
+    }).catch(err => console.warn('[API] Error creating tenant:', err));
+
+    this.addAuditLog({
+      action: 'CRIACAO_TENANT',
+      entity: 'Tenant',
+      entityId: newTenant.id,
+      newData: JSON.stringify(newTenant),
+    });
+
+    return newTenant;
+  }
+
+  public static updateTenant(tenant: Tenant): void {
+    const tenants = this.getTenants();
+    const updated = tenants.map(t => (t.id === tenant.id ? { ...tenant, updatedAt: new Date().toISOString() } : t));
+    this.set(STORAGE_KEYS.TENANTS, updated);
+
+    fetch(`/api/tenants/${tenant.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: tenant.name,
+        slug: tenant.slug,
+        cnpj: tenant.cnpj || '',
+        tradeName: tenant.tradeName || '',
+        plan: tenant.plan,
+        status: tenant.status,
+      }),
+    }).catch(err => console.warn('[API] Error updating tenant:', err));
+
+    this.addAuditLog({
+      action: 'EDICAO_TENANT',
+      entity: 'Tenant',
+      entityId: tenant.id,
+      newData: JSON.stringify(tenant),
+    });
+
+    window.dispatchEvent(new Event('tenantUpdated'));
+  }
+
+  public static suspendTenant(tenantId: string, reason?: string): void {
+    const tenants = this.getTenants();
+    const updated = tenants.map(t => {
+      if (t.id === tenantId) {
+        return { ...t, status: 'SUSPENDED' as TenantStatus, updatedAt: new Date().toISOString() };
+      }
+      return t;
+    });
+    this.set(STORAGE_KEYS.TENANTS, updated);
+
+    fetch(`/api/tenants/${tenantId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'SUSPENDED',
+      }),
+    }).catch(err => console.warn('[API] Error suspending tenant:', err));
+
+    this.addAuditLog({
+      action: 'SUSPENSAO_TENANT',
+      entity: 'Tenant',
+      entityId: tenantId,
+      newData: JSON.stringify({ reason: reason || 'Sem justificativa' }),
+    });
+
+    window.dispatchEvent(new Event('tenantUpdated'));
+  }
+
+  public static activateTenant(tenantId: string): void {
+    const tenants = this.getTenants();
+    const updated = tenants.map(t => {
+      if (t.id === tenantId) {
+        return { ...t, status: 'ACTIVE' as TenantStatus, updatedAt: new Date().toISOString() };
+      }
+      return t;
+    });
+    this.set(STORAGE_KEYS.TENANTS, updated);
+
+    fetch(`/api/tenants/${tenantId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'ACTIVE',
+      }),
+    }).catch(err => console.warn('[API] Error activating tenant:', err));
+
+    this.addAuditLog({
+      action: 'ATIVACAO_TENANT',
+      entity: 'Tenant',
+      entityId: tenantId,
+      newData: JSON.stringify({ activatedAt: new Date().toISOString() }),
+    });
+
+    window.dispatchEvent(new Event('tenantUpdated'));
+  }
+
+  // ==========================================
+  // CLIENT CRM: DOCUMENTS & ATTACHMENTS
+  // ==========================================
+  public static getDocuments(): DocumentItem[] {
+    return this.get<DocumentItem[]>(STORAGE_KEYS.DOCUMENTS, INITIAL_DOCUMENTS);
+  }
+
+  public static getDocumentsByClient(clientId: string): DocumentItem[] {
+    return this.getDocuments().filter(d => d.clientId === clientId);
+  }
+
+  public static addDocument(docData: Omit<DocumentItem, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): DocumentItem {
+    const docs = this.getDocuments();
+    const newDoc: DocumentItem = {
+      ...docData,
+      id: docData.id || `doc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.set(STORAGE_KEYS.DOCUMENTS, [newDoc, ...docs]);
+
+    this.addAuditLog({
+      action: 'UPLOAD_DOCUMENTO_CLIENTE',
+      entity: 'DocumentItem',
+      entityId: newDoc.id,
+      newData: JSON.stringify({ clientId: newDoc.clientId, name: newDoc.name, type: newDoc.type }),
+    });
+
+    return newDoc;
+  }
+
+  public static deleteDocument(id: string): void {
+    const docs = this.getDocuments();
+    const target = docs.find(d => d.id === id);
+    if (!target) return;
+
+    this.set(STORAGE_KEYS.DOCUMENTS, docs.filter(d => d.id !== id));
+
+    fetch(`/api/documents/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(err => {
+      console.warn('[StorageService] Erro ao deletar documento no servidor:', err);
+    });
+
+    this.addAuditLog({
+      action: 'EXCLUSAO_DOCUMENTO_CLIENTE',
+      entity: 'DocumentItem',
+      entityId: id,
+      previousData: JSON.stringify(target),
+    });
+  }
+
+  // ==========================================
+  // CLIENT CRM: COMMUNICATIONS & WHATSAPP LOGS
+  // ==========================================
+  public static getCommunications(): ClientCommunication[] {
+    return this.get<ClientCommunication[]>(STORAGE_KEYS.COMMUNICATIONS, INITIAL_COMMUNICATIONS);
+  }
+
+  public static getCommunicationsByClient(clientId: string): ClientCommunication[] {
+    return this.getCommunications().filter(c => c.clientId === clientId);
+  }
+
+  public static addCommunication(commData: Omit<ClientCommunication, 'id' | 'createdAt'>): ClientCommunication {
+    const comms = this.getCommunications();
+    const newComm: ClientCommunication = {
+      ...commData,
+      id: `comm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.set(STORAGE_KEYS.COMMUNICATIONS, [newComm, ...comms]);
+
+    this.addAuditLog({
+      action: 'ENVIO_COMUNICACAO_CLIENTE',
+      entity: 'ClientCommunication',
+      entityId: newComm.id,
+      newData: JSON.stringify({
+        clientId: newComm.clientId,
+        channel: newComm.channel,
+        recipient: newComm.recipient,
+        eventType: newComm.eventType,
+      }),
+    });
+
+    return newComm;
+  }
+
+  // ==========================================
+  // CLIENT CRM: INTERNAL NOTES
+  // ==========================================
+  public static getClientNotes(clientId: string): ClientNote[] {
+    const all = this.get<ClientNote[]>(STORAGE_KEYS.CLIENT_NOTES, INITIAL_CLIENT_NOTES);
+    return all.filter(n => n.clientId === clientId);
+  }
+
+  public static addClientNote(noteData: Omit<ClientNote, 'id' | 'createdAt'>): ClientNote {
+    const notes = this.get<ClientNote[]>(STORAGE_KEYS.CLIENT_NOTES, INITIAL_CLIENT_NOTES);
+    const newNote: ClientNote = {
+      ...noteData,
+      id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.set(STORAGE_KEYS.CLIENT_NOTES, [newNote, ...notes]);
+    return newNote;
+  }
+
+  // ==========================================
+  // AGENDA & OPERATIONAL TASKS
+  // ==========================================
+  public static getOperationalTasks(): OperationalTask[] {
+    return this.get<OperationalTask[]>(STORAGE_KEYS.OPERATIONAL_TASKS, INITIAL_OPERATIONAL_TASKS);
+  }
+
+  public static addOperationalTask(taskData: Omit<OperationalTask, 'id' | 'createdAt' | 'updatedAt' | 'completed'>): OperationalTask {
+    const tasks = this.getOperationalTasks();
+    const newTask: OperationalTask = {
+      ...taskData,
+      id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.set(STORAGE_KEYS.OPERATIONAL_TASKS, [newTask, ...tasks]);
+
+    fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: newTask.id,
+        title: newTask.title,
+        description: newTask.description,
+        category: newTask.category,
+        priority: newTask.priority,
+        dueDate: newTask.dueDate,
+        completed: newTask.completed,
+        assignedToId: newTask.assignedUserId || null,
+      }),
+    }).catch(err => console.warn('[API] Error creating task:', err));
+
+    this.addAuditLog({
+      action: 'CRIACAO_TAREFA_AGENDA',
+      entity: 'OperationalTask',
+      entityId: newTask.id,
+      newData: JSON.stringify(newTask),
+    });
+
+    return newTask;
+  }
+
+  public static updateOperationalTask(task: OperationalTask): void {
+    const tasks = this.getOperationalTasks();
+    const updated = tasks.map(t => (t.id === task.id ? { ...task, updatedAt: new Date().toISOString() } : t));
+    this.set(STORAGE_KEYS.OPERATIONAL_TASKS, updated);
+
+    fetch(`/api/tasks/${task.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: task.title,
+        description: task.description,
+        category: task.category,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        completed: task.completed,
+        assignedToId: task.assignedUserId || null,
+      }),
+    }).catch(err => console.warn('[API] Error updating task:', err));
+  }
+
+  public static toggleOperationalTaskCompleted(id: string): void {
+    const tasks = this.getOperationalTasks();
+    const activeUser = this.getActiveUser();
+    const updated = tasks.map(t => {
+      if (t.id === id) {
+        const nextState = !t.completed;
+        return {
+          ...t,
+          completed: nextState,
+          completedAt: nextState ? new Date().toISOString() : undefined,
+          completedByUserId: nextState ? activeUser.id : undefined,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return t;
+    });
+
+    this.set(STORAGE_KEYS.OPERATIONAL_TASKS, updated);
+
+    const updatedTask = updated.find(t => t.id === id);
+    if (updatedTask) {
+      fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completed: updatedTask.completed,
+        }),
+      }).catch(err => console.warn('[API] Error toggling task:', err));
+    }
+  }
+
+  public static deleteOperationalTask(id: string): void {
+    const tasks = this.getOperationalTasks();
+    this.set(STORAGE_KEYS.OPERATIONAL_TASKS, tasks.filter(t => t.id !== id));
+
+    fetch(`/api/tasks/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting task:', err));
+  }
+
+  // ==========================================
+  // GENERAL FINANCE (ENTRADAS & SAÍDAS GERAIS)
+  // Sem cálculo de comissão automática
+  // ==========================================
+  public static getFinancialEntries(): FinancialEntry[] {
+    return this.get<FinancialEntry[]>(STORAGE_KEYS.FINANCIAL_ENTRIES, INITIAL_FINANCIAL_ENTRIES);
+  }
+
+  public static addFinancialEntry(entryData: Omit<FinancialEntry, 'id' | 'createdAt' | 'updatedAt'>): FinancialEntry {
+    const entries = this.getFinancialEntries();
+    const newEntry: FinancialEntry = {
+      ...entryData,
+      id: `fin_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.set(STORAGE_KEYS.FINANCIAL_ENTRIES, [newEntry, ...entries]);
+
+    this.addAuditLog({
+      action: 'LANCAMENTO_FINANCEIRO',
+      entity: 'FinancialEntry',
+      entityId: newEntry.id,
+      newData: JSON.stringify(newEntry),
+    });
+
+    return newEntry;
+  }
+
+  public static updateFinancialEntry(entry: FinancialEntry): void {
+    const entries = this.getFinancialEntries();
+    const updated = entries.map(e => (e.id === entry.id ? { ...entry, updatedAt: new Date().toISOString() } : e));
+    this.set(STORAGE_KEYS.FINANCIAL_ENTRIES, updated);
+  }
+
+  public static deleteFinancialEntry(id: string): void {
+    const entries = this.getFinancialEntries();
+    this.set(STORAGE_KEYS.FINANCIAL_ENTRIES, entries.filter(e => e.id !== id));
+  }
+
+  // ==========================================
+  // GAMIFICATION & OPERATOR ACHIEVEMENTS
+  // ==========================================
+  public static getAchievements(): GamificationAchievement[] {
+    return this.get<GamificationAchievement[]>(STORAGE_KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
+  }
+
+  public static unlockAchievement(operatorId: string, operatorName: string, code: GamificationAchievement['code']): void {
+    const achievements = this.getAchievements();
+    if (achievements.some(a => a.operatorId === operatorId && a.code === code)) {
+      return; // Already unlocked
+    }
+
+    const map: Record<string, { title: string; description: string; icon: string }> = {
+      META_BATIDA: { title: 'Meta Batida', description: 'Atingiu 100% da meta operacional mensal.', icon: '🏆' },
+      PRIMEIRA_VENDA: { title: 'Primeira Venda', description: 'Primeira proposta com status PAGO cadastrada.', icon: '🚀' },
+      '100_PROPOSTAS': { title: '100 Propostas', description: 'Alcançou a marca de 100 propostas movimentadas.', icon: '💯' },
+      MAIOR_PRODUCAO: { title: 'Maior Produção', description: 'Líder em volume financeiro liberado no período.', icon: '👑' },
+      MELHOR_CONVERSAO: { title: 'Melhor Conversão', description: 'Maior taxa de propostas pagas vs. canceladas.', icon: '🎯' },
+      ZERO_CANCELAMENTOS: { title: 'Zero Cancelamentos', description: 'Manteve 100% de propostas sem cancelamento.', icon: '🛡️' },
+    };
+
+    const meta = map[code] || { title: code, description: 'Conquista desbloqueada', icon: '⭐' };
+
+    const newAch: GamificationAchievement = {
+      id: `ach_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      code,
+      title: meta.title,
+      description: meta.description,
+      icon: meta.icon,
+      unlockedAt: new Date().toISOString(),
+      operatorId,
+      operatorName,
+    };
+
+    this.set(STORAGE_KEYS.ACHIEVEMENTS, [newAch, ...achievements]);
+
+    this.addNotification({
+      title: `Nova Conquista: ${meta.title} ${meta.icon}`,
+      message: `Parabéns ${operatorName}! Você desbloqueou a conquista: ${meta.description}`,
+      type: 'ALERTA_GERAL',
+      priority: 'NORMAL',
+    });
+  }
+
+  // ==========================================
+  // COMMERCIAL RADAR & REAL DATA BI INSIGHTS
+  // ==========================================
+  public static getCommercialInsights(): CommercialInsight[] {
+    const proposals = this.getProposals();
+    const banks = this.getBanks();
+    const partners = this.getPartners();
+    const statuses = this.getStatuses();
+
+    const insights: CommercialInsight[] = [];
+
+    // 1. Bank Conversion Rate
+    const paidStatus = statuses.find(s => s.code === 'PAGO');
+    const cancelledStatus = statuses.find(s => s.code === 'CANCELADO');
+
+    let bestBank = '';
+    let highestPaidCount = 0;
+    for (const b of banks) {
+      const bankProps = proposals.filter(p => p.bankId === b.id);
+      const paid = bankProps.filter(p => p.statusId === paidStatus?.id).length;
+      if (paid > highestPaidCount) {
+        highestPaidCount = paid;
+        bestBank = b.name;
+      }
+    }
+
+    if (bestBank) {
+      insights.push({
+        id: 'ins-1',
+        type: 'BANCO_ALTA_CONVERSAO',
+        title: 'Banco com Maior Eficiência de Liquidação',
+        description: `${bestBank} lidera o volume de contratos pagos este mês com excelente taxa de conversão.`,
+        metricValue: `${highestPaidCount} Pagas`,
+        trend: 'UP',
+        severity: 'SUCCESS',
+      });
+    }
+
+    // 2. Partner Activity Alert
+    const activePartnersCount = partners.filter(p => p.active).length;
+    insights.push({
+      id: 'ins-2',
+      type: 'PARCEIRO_CRESCIMENTO',
+      title: 'Rede de Parceiros Ativa',
+      description: `${activePartnersCount} correspondentes ativos gerando novas solicitações e formalizações.`,
+      metricValue: `${activePartnersCount} Ativos`,
+      trend: 'UP',
+      severity: 'INFO',
+    });
+
+    // 3. Portability CIP Bottleneck check
+    const cipStatus = statuses.find(s => s.code === 'AGUARDAR_RETORNO_CIP');
+    const inCip = proposals.filter(p => p.statusId === cipStatus?.id);
+    if (inCip.length > 0) {
+      insights.push({
+        id: 'ins-3',
+        type: 'GARGALO_HORARIO',
+        title: 'Portabilidades em Monitoramento CIP',
+        description: `${inCip.length} proposta(s) aguardando retorno do saldo devedor das instituições credoras.`,
+        metricValue: `${inCip.length} em CIP`,
+        trend: 'STABLE',
+        severity: 'WARNING',
+      });
+    }
+
+    return insights;
+  }
+
+  // ==========================================
+  // SENTINELA IA: OPERATIONAL ASSISTANT
+  // ==========================================
+  public static async askSentinelaAI(prompt: string): Promise<string> {
+    const proposals = this.getProposals();
+    const clients = this.getClients();
+    const partners = this.getPartners();
+    const banks = this.getBanks();
+    const statuses = this.getStatuses();
+    const users = this.getUsers();
+
+    const totalVolumeDisbursed = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+    const totalBalance = proposals.reduce((acc, p) => acc + (p.contractBalance || 0), 0);
+    const totalCount = proposals.length;
+    const paidCount = proposals.filter(p => {
+      const st = statuses.find(s => s.id === p.statusId);
+      return st?.code === 'PAGO';
+    }).length;
+
+    const lower = prompt.toLowerCase();
+
+    if (lower.includes('quem produziu') || lower.includes('producao') || lower.includes('digitador')) {
+      const byDigitizer: Record<string, number> = {};
+      proposals.forEach(p => {
+        byDigitizer[p.digitizerId] = (byDigitizer[p.digitizerId] || 0) + 1;
+      });
+      let topUser = '';
+      let maxP = 0;
+      Object.entries(byDigitizer).forEach(([uid, count]) => {
+        if (count > maxP) {
+          maxP = count;
+          topUser = users.find(u => u.id === uid)?.name || 'Digitador';
+        }
+      });
+      return `📊 **Análise de Produção da Mesa:**\nO operador com maior volume registrado é **${topUser}** com **${maxP} propostas**. O total geral da mesa acumula **${totalCount} propostas** cadastradas.`;
+    }
+
+    if (lower.includes('banco') || lower.includes('conversao') || lower.includes('melhor')) {
+      return `🏦 **Radar de Bancos:**\nO banco com maior movimentação e fluidez no momento é o **C6 Bank**, seguido por **Daycoval** e **BRB**. Temos **${paidCount} propostas liquidadas com sucesso**.`;
+    }
+
+    if (lower.includes('meta') || lower.includes('quanto falta') || lower.includes('valor')) {
+      const meta = 250000;
+      const pct = ((totalVolumeDisbursed / meta) * 100).toFixed(1);
+      return `🎯 **Acompanhamento de Metas:**\n- Volume Liberado Líquido: **R$ ${totalVolumeDisbursed.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}**\n- Meta Mensal: **R$ ${meta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}**\n- Atingimento: **${pct}%** da meta conquistada!\n- Saldo em Portabilidades monitoradas: **R$ ${totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}**.`;
+    }
+
+    if (lower.includes('cip') || lower.includes('portabilidade') || lower.includes('parada')) {
+      const cipProps = proposals.filter(p => {
+        const st = statuses.find(s => s.id === p.statusId);
+        return st?.code === 'AGUARDAR_RETORNO_CIP';
+      });
+      return `⏳ **Status das Portabilidades em CIP:**\nAtualmente temos **${cipProps.length} proposta(s)** em processamento CIP. Acompanhe a esteira de 5 dias úteis para agir antes do vencimento do prazo regulatório.`;
+    }
+
+    return `🤖 **Sentinela IA Operacional:**\nCom base nos dados em tempo real da mesa, temos **${totalCount} propostas** ativas no sistema, totalizando **R$ ${totalVolumeDisbursed.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}** em valores liberados e **${paidCount} contratos liquidados**. Como posso ajudar na análise da sua operação hoje?`;
+  }
+
+  // ==========================================
+  // REMOTE BACKUPS ENGINE (SHA-256 & RESTORE)
+  // ==========================================
+  public static getBackupSnapshots(): any[] {
+    return this.get<any[]>(STORAGE_KEYS.BACKUP_SNAPSHOTS, []);
+  }
+
+  public static createBackupSnapshot(label?: string): any {
+    const allData: Record<string, any> = {};
+    for (const [key, colName] of Object.entries(this.KEY_TO_COLLECTION)) {
+      allData[colName] = this.get<any[]>(key, []);
+    }
+
+    const payload = JSON.stringify(allData);
+    const sizeBytes = new Blob([payload]).size;
+    const activeUser = this.getActiveUser();
+    const hash = computeSha256(payload);
+
+    const snapshot = {
+      id: `snap_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId: this.getCurrentTenantId(),
+      label: label || `Backup Automático ${new Date().toLocaleString('pt-BR')}`,
+      createdAt: new Date().toISOString(),
+      authorId: activeUser.id,
+      authorName: activeUser.name,
+      recordsCount: Object.values(allData).reduce((acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0), 0),
+      sizeBytes,
+      checksumSha256: hash,
+      data: allData,
+    };
+
+    const existing = this.getBackupSnapshots();
+    const updated = [snapshot, ...existing].slice(0, 30); // Retain 30 snapshots
+    this.set(STORAGE_KEYS.BACKUP_SNAPSHOTS, updated);
+
+    this.addAuditLog({
+      action: 'GERACAO_BACKUP_SISTEMA',
+      entity: 'BackupSnapshot',
+      entityId: snapshot.id,
+      newData: JSON.stringify({
+        label: snapshot.label,
+        sizeBytes: snapshot.sizeBytes,
+        recordsCount: snapshot.recordsCount,
+        checksumSha256: hash,
+      }),
+    });
+
+    return snapshot;
+  }
+
+  public static restoreBackupSnapshot(snapshotId: string): boolean {
+    const snapshots = this.getBackupSnapshots();
+    const target = snapshots.find(s => s.id === snapshotId);
+    if (!target || !target.data) {
+      throw new Error('Snapshot de backup não encontrado ou corrompido.');
+    }
+
+    // Safety Step: Create an automatic pre-restore snapshot before modifying current state
+    try {
+      this.createBackupSnapshot(`Snapshot de Segurança Pré-Restauração (${target.label})`);
+    } catch (e) {
+      console.warn('Aviso ao criar snapshot pré-restauração:', e);
+    }
+
+    for (const [key, colName] of Object.entries(this.KEY_TO_COLLECTION)) {
+      if (target.data[colName]) {
+        this.set(key, target.data[colName]);
+      }
+    }
+
+    this.addAuditLog({
+      action: 'RESTAURACAO_BACKUP_SISTEMA',
+      entity: 'BackupSnapshot',
+      entityId: snapshotId,
+      newData: JSON.stringify({
+        label: target.label,
+        restoredAt: new Date().toISOString(),
+        author: this.getActiveUser().name,
+        checksumSha256: target.checksumSha256,
+      }),
+    });
+
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    return true;
   }
 }
 

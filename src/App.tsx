@@ -22,6 +22,15 @@ import { UserManagement } from './components/admin/UserManagement';
 import { StatusImport } from './components/admin/StatusImport';
 import { SimulationView } from './components/simulation/SimulationView';
 
+import { TVOperationsMonitor } from './components/monitor/TVOperationsMonitor';
+import { CommercialRadarView } from './components/bi/CommercialRadarView';
+import { SentinelaAIChat } from './components/ai/SentinelaAIChat';
+import { OperationalAgendaView } from './components/agenda/OperationalAgendaView';
+import { GamificationCenter } from './components/gamification/GamificationCenter';
+import { GeneralFinanceView } from './components/finance/GeneralFinanceView';
+import { PlatformMasterCentral } from './components/saas/PlatformMasterCentral';
+import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
+
 import { NewProductionModal } from './components/production/NewProductionModal';
 import { ExcelImportModal } from './components/production/ExcelImportModal';
 import { ExcelExportModal } from './components/production/ExcelExportModal';
@@ -52,11 +61,11 @@ export default function App() {
     };
     window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
 
-    // Sync Firestore to LocalStorage periodically every 30 seconds as a fallback
+    // Sync PostgreSQL state to LocalStorage periodically every 30 seconds as fallback
     const syncInterval = setInterval(() => {
       if (StorageService.isAuthenticated()) {
-        StorageService.loadFromFirestore().catch(err => {
-          console.warn("Background Firestore synchronization failed:", err);
+        StorageService.syncWithPostgreSQL().catch(err => {
+          console.warn("Background PostgreSQL synchronization failed:", err);
         });
       }
     }, 30000);
@@ -97,6 +106,7 @@ export default function App() {
   const [isTestRunnerOpen, setIsTestRunnerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isUniversalSearchOpen, setIsUniversalSearchOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isWhiteLabelModalOpen, setIsWhiteLabelModalOpen] = useState(false);
@@ -121,7 +131,6 @@ export default function App() {
   // Global Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is currently typing in an input, textarea or contenteditable element
       const target = e.target as HTMLElement;
       const isInput =
         target.tagName === 'INPUT' ||
@@ -132,7 +141,7 @@ export default function App() {
       // Global Command Palette (Ctrl+K or Cmd+K)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
-        setIsCommandPaletteOpen(prev => !prev);
+        setIsUniversalSearchOpen(prev => !prev);
         return;
       }
 
@@ -150,7 +159,7 @@ export default function App() {
         if (searchInput) {
           searchInput.focus();
         } else {
-          setIsCommandPaletteOpen(true);
+          setIsUniversalSearchOpen(true);
         }
         return;
       }
@@ -181,7 +190,8 @@ export default function App() {
 
       // Escape key handling
       if (e.key === 'Escape') {
-        if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
+        if (isUniversalSearchOpen) setIsUniversalSearchOpen(false);
+        else if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
         else if (isShortcutsOpen) setIsShortcutsOpen(false);
         else if (isBackupModalOpen) setIsBackupModalOpen(false);
         else if (isNewProductionOpen) setIsNewProductionOpen(false);
@@ -197,6 +207,7 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
+    isUniversalSearchOpen,
     isCommandPaletteOpen,
     isShortcutsOpen,
     isBackupModalOpen,
@@ -209,7 +220,7 @@ export default function App() {
     isFocusMode,
   ]);
 
-  const handleNavigate = (view: string) => {
+  const handleNavigate = (view: string, params?: any) => {
     if (view === 'nova-producao') {
       setIsNewProductionOpen(true);
       return;
@@ -224,6 +235,54 @@ export default function App() {
     }
     if (view === 'admin-backup') {
       setIsBackupModalOpen(true);
+      return;
+    }
+
+    if (view === 'clients_360' || view === 'clientes') {
+      if (params?.cpf) {
+        setGlobalSearchTerm(params.cpf);
+      }
+      setCurrentView('clientes');
+      return;
+    }
+
+    if (view === 'tv_monitor' || view === 'tv-monitor') {
+      setCurrentView('tv-monitor');
+      return;
+    }
+
+    if (view === 'commercial_radar' || view === 'radar-comercial') {
+      setCurrentView('radar-comercial');
+      return;
+    }
+
+    if (view === 'sentinela_ai' || view === 'sentinela-ai') {
+      setCurrentView('sentinela-ai');
+      return;
+    }
+
+    if (view === 'agenda' || view === 'agenda-operacional') {
+      setCurrentView('agenda-operacional');
+      return;
+    }
+
+    if (view === 'gamification' || view === 'gamificacao') {
+      setCurrentView('gamificacao');
+      return;
+    }
+
+    if (view === 'finance' || view === 'financeiro-geral') {
+      setCurrentView('financeiro-geral');
+      return;
+    }
+
+    if (view === 'saas_tenants' || view === 'saas-tenants') {
+      setCurrentView('saas-tenants');
+      return;
+    }
+
+    if (view === 'proposals' && params?.proposalId) {
+      setDetailProposalId(params.proposalId);
       return;
     }
 
@@ -297,8 +356,8 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setIsCommandPaletteOpen(true)}
-                className="flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 px-2.5 py-1 text-xs font-medium text-white"
+                onClick={() => setIsUniversalSearchOpen(true)}
+                className="flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 px-2.5 py-1 text-xs font-medium text-white cursor-pointer"
               >
                 <Search className="h-3.5 w-3.5" />
                 <span>Buscar (Ctrl+K)</span>
@@ -306,7 +365,7 @@ export default function App() {
 
               <button
                 onClick={() => setIsShortcutsOpen(true)}
-                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-white"
+                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
                 title="Atalhos (?)"
               >
                 <Keyboard className="h-4 w-4" />
@@ -315,7 +374,7 @@ export default function App() {
               <button
                 id="btn-exit-focus-mode"
                 onClick={() => setIsFocusMode(false)}
-                className="flex items-center gap-1 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs font-bold text-white shadow-xs transition-colors"
+                className="flex items-center gap-1 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
                 title="Sair do Modo Foco (Esc)"
               >
                 <Minimize2 className="h-3.5 w-3.5" />
@@ -333,7 +392,21 @@ export default function App() {
             />
           )}
 
+          {currentView === 'tv-monitor' && <TVOperationsMonitor />}
+
           {currentView === 'dashboard-executivo' && <ExecutiveDashboard />}
+
+          {currentView === 'radar-comercial' && <CommercialRadarView />}
+
+          {currentView === 'sentinela-ai' && <SentinelaAIChat />}
+
+          {currentView === 'gamificacao' && <GamificationCenter />}
+
+          {currentView === 'agenda-operacional' && <OperationalAgendaView />}
+
+          {currentView === 'financeiro-geral' && <GeneralFinanceView />}
+
+          {currentView === 'saas-tenants' && <PlatformMasterCentral />}
 
           {currentView === 'relatorio-gargalos' && <StatusBottleneckReport />}
 
@@ -447,7 +520,14 @@ export default function App() {
         />
       )}
 
-      {/* Command Palette (Ctrl+K) */}
+      {/* Universal Search Command Palette (Ctrl+K) */}
+      <UniversalCommandPalette
+        isOpen={isUniversalSearchOpen}
+        onClose={() => setIsUniversalSearchOpen(false)}
+        onNavigate={handleNavigate}
+      />
+
+      {/* Legacy/Quick Palette */}
       <CommandPaletteModal
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
@@ -501,4 +581,3 @@ export default function App() {
     </div>
   );
 }
-
