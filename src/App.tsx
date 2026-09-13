@@ -102,6 +102,8 @@ export default function App() {
       const auth = StorageService.isAuthenticated();
       setIsAuthenticated(auth);
       if (auth) {
+        const user = StorageService.getActiveUser();
+        if (user) realtimeHub.setUserContext(user.id);
         realtimeHub.connect(StorageService.getCurrentTenantId());
       } else {
         realtimeHub.disconnect();
@@ -111,6 +113,8 @@ export default function App() {
 
     // If authenticated on mount, establish SSE connection immediately
     if (StorageService.isAuthenticated()) {
+      const user = StorageService.getActiveUser();
+      if (user) realtimeHub.setUserContext(user.id);
       realtimeHub.connect(StorageService.getCurrentTenantId());
     }
 

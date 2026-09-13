@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import crypto from 'crypto';
+import { eventBus } from './services/pusherService.js';
 
 export interface SSEEventPayload {
   id: string;
@@ -112,6 +113,7 @@ class SSERegistry {
       data?: any;
     }
   ): void {
+    // 1. Publish via SSE (Legacy)
     const payload: SSEEventPayload = {
       id: crypto.randomUUID(),
       type: eventData.type,
@@ -122,6 +124,17 @@ class SSERegistry {
       data: eventData.data,
       timestamp: new Date().toISOString(),
     };
+
+    // 2. Publish via EventBus (Pusher) - Fire and forget
+    eventBus.publishToTenant(tenantId, {
+      type: eventData.type,
+      entity: eventData.entity,
+      entityId: eventData.entityId,
+      userId: eventData.userId,
+      tenantId: tenantId,
+      data: eventData.data
+    }).catch(err => console.error('[SSE_REGISTRY] Fail eventBus', err));
+
 
     this.metrics.totalEventsEmitted++;
 
@@ -168,6 +181,15 @@ class SSERegistry {
       entityId: string;
     }
   ): void {
+    // 2. Publish via EventBus (Pusher)
+    eventBus.publishToUser(userId, {
+      type: eventData.type,
+      entity: eventData.entity,
+      entityId: eventData.entityId,
+      userId: userId,
+      tenantId: tenantId
+    }).catch(err => console.error('[SSE_REGISTRY] Fail eventBus emitToUser', err));
+
     const connections = this.tenantConnections.get(tenantId);
     if (!connections) return;
 

@@ -9,6 +9,8 @@
  * - Event only triggers targeted reload; PostgreSQL remains the single source of truth
  */
 
+import PusherClient, { Channel } from 'pusher-js';
+
 export interface RealtimeEvent<T = any> {
   id?: string;
   type:
@@ -25,6 +27,7 @@ export interface RealtimeEvent<T = any> {
     | 'CLIENT_DELETED'
     | 'NOTIFICATION_CREATED'
     | 'TENANT_UPDATED'
+    | 'USER_CREATED'
     | 'USER_UPDATED'
     | 'USER_DELETED'
     | 'IMPORT_STARTED'
@@ -52,12 +55,19 @@ export class RealtimeService {
   private connectionStatus: ConnectionStatus = 'DISCONNECTED';
   private eventSource: EventSource | null = null;
   private currentTenantId: string | null = null;
+  private currentUserId: string | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: any = null;
   private maxReconnectDelay = 30000;
   private initialReconnectDelay = 1000;
   private lastPingAt: number = Date.now();
   private isConnecting = false;
+
+  // Pusher specific
+  private pusherClient: PusherClient | null = null;
+  private tenantChannel: Channel | null = null;
+  private userChannel: Channel | null = null;
+  private usePusher: boolean = (import.meta as any).env.VITE_REALTIME_PROVIDER === 'pusher';
 
   private constructor() {
     // Cross-tab broadcast listener as complementary local bridge
@@ -85,13 +95,124 @@ export class RealtimeService {
   /**
    * Connects to SSE stream for authenticated tenant
    */
+  
+  public setUserContext(userId: string) {
+    this.currentUserId = userId;
+  }
+
   public connect(tenantId?: string): void {
     if (typeof window === 'undefined') return;
-
     if (tenantId) {
       this.currentTenantId = tenantId;
     }
 
+    if (this.usePusher) {
+      this.connectPusher();
+    } else {
+      this.connectSSE();
+    }
+  }
+
+  private connectPusher(): void {
+    if (this.pusherClient) {
+      if (this.pusherClient.connection.state === 'connected' || this.pusherClient.connection.state === 'connecting') {
+        this.subscribePusherChannels();
+        return;
+      }
+    }
+
+    if (this.isConnecting) return;
+    this.isConnecting = true;
+    this.setStatus('CONNECTING');
+
+    try {
+      if (!this.pusherClient) {
+        this.pusherClient = new PusherClient((import.meta as any).env.VITE_PUSHER_KEY, {
+          cluster: (import.meta as any).env.VITE_PUSHER_CLUSTER,
+          authEndpoint: '/api/pusher/auth',
+        });
+
+        this.pusherClient.connection.bind('connected', () => {
+          this.isConnecting = false;
+          this.reconnectAttempts = 0;
+          this.setStatus('CONNECTED');
+          this.subscribePusherChannels();
+        });
+
+        this.pusherClient.connection.bind('connecting', () => {
+          this.setStatus('CONNECTING');
+        });
+
+        this.pusherClient.connection.bind('disconnected', () => {
+          this.setStatus('DISCONNECTED');
+          this.isConnecting = false;
+        });
+
+        this.pusherClient.connection.bind('error', (err: any) => {
+          this.setStatus('ERROR', { error: err?.error?.data?.code === 4004 ? 'Limites excedidos' : 'Erro de conexão Pusher' });
+        });
+      } else {
+        this.pusherClient.connect();
+      }
+
+    } catch (err: any) {
+      this.isConnecting = false;
+      this.setStatus('ERROR', { error: err?.message || 'Falha ao instanciar Pusher' });
+    }
+  }
+
+  private subscribePusherChannels(): void {
+    if (!this.pusherClient || !this.currentTenantId) return;
+
+    if (this.tenantChannel && this.tenantChannel.name !== `private-tenant-${this.currentTenantId}`) {
+      this.pusherClient.unsubscribe(this.tenantChannel.name);
+      this.tenantChannel = null;
+    }
+
+    if (!this.tenantChannel) {
+      this.tenantChannel = this.pusherClient.subscribe(`private-tenant-${this.currentTenantId}`);
+      this.bindPusherEvents(this.tenantChannel);
+      
+      this.tenantChannel.bind('pusher:subscription_error', (status: any) => {
+        this.setStatus('ERROR', { error: `Subscription error: ${status}` });
+      });
+    }
+
+    if (this.currentUserId) {
+      if (this.userChannel && this.userChannel.name !== `private-user-${this.currentUserId}`) {
+        this.pusherClient.unsubscribe(this.userChannel.name);
+        this.userChannel = null;
+      }
+
+      if (!this.userChannel) {
+        this.userChannel = this.pusherClient.subscribe(`private-user-${this.currentUserId}`);
+        this.bindPusherEvents(this.userChannel);
+      }
+    }
+  }
+
+  private bindPusherEvents(channel: Channel): void {
+    const eventTypes: RealtimeEvent['type'][] = [
+      'PROPOSAL_CREATED', 'PROPOSAL_UPDATED', 'PROPOSAL_DELETED',
+      'STATUS_CHANGED', 'COMMENT_ADDED', 'TASK_CREATED', 'TASK_UPDATED', 'TASK_DELETED',
+      'CLIENT_CREATED', 'CLIENT_UPDATED', 'CLIENT_DELETED',
+      'USER_CREATED', 'USER_UPDATED', 'USER_DELETED',
+      'TENANT_UPDATED', 'NOTIFICATION_CREATED',
+      'IMPORT_STARTED', 'IMPORT_PROGRESS', 'IMPORT_COMPLETED', 'IMPORT_FAILED', 'IMPORT_CANCELLED'
+    ];
+    
+    eventTypes.forEach(type => {
+      channel.bind(type, (data: any) => {
+        const event: RealtimeEvent = {
+          ...data,
+          type
+        };
+        this.handleIncomingEvent(event);
+      });
+    });
+  }
+
+  private connectSSE(): void {
     if (this.eventSource && this.eventSource.readyState === EventSource.OPEN) {
       return;
     }
@@ -113,7 +234,6 @@ export class RealtimeService {
         this.eventSource.close();
       }
 
-      // EventSource sends cookies automatically to same origin
       const es = new EventSource('/api/realtime', { withCredentials: true });
       this.eventSource = es;
 
@@ -132,7 +252,6 @@ export class RealtimeService {
         this.lastPingAt = Date.now();
       });
 
-      // Dispatch specific domain events
       const eventTypes: RealtimeEvent['type'][] = [
         'PROPOSAL_CREATED',
         'PROPOSAL_UPDATED',
@@ -149,6 +268,11 @@ export class RealtimeService {
         'TENANT_UPDATED',
         'USER_UPDATED',
         'USER_DELETED',
+        'IMPORT_STARTED',
+        'IMPORT_PROGRESS',
+        'IMPORT_COMPLETED',
+        'IMPORT_FAILED',
+        'IMPORT_CANCELLED'
       ];
 
       for (const type of eventTypes) {
@@ -162,13 +286,11 @@ export class RealtimeService {
         });
       }
 
-      // Generic message fallback
       es.onmessage = (event: MessageEvent) => {
         try {
           const parsed: RealtimeEvent = JSON.parse(event.data);
           this.handleIncomingEvent(parsed);
         } catch (e) {
-          // ignore heartbeats
         }
       };
 
@@ -206,13 +328,27 @@ export class RealtimeService {
   }
 
   public disconnect(): void {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.usePusher) {
+      if (this.pusherClient) {
+        if (this.tenantChannel) {
+          this.pusherClient.unsubscribe(this.tenantChannel.name);
+          this.tenantChannel = null;
+        }
+        if (this.userChannel) {
+          this.pusherClient.unsubscribe(this.userChannel.name);
+          this.userChannel = null;
+        }
+        this.pusherClient.disconnect();
+      }
+    } else {
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      if (this.eventSource) {
+        this.eventSource.close();
+        this.eventSource = null;
+      }
     }
     this.isConnecting = false;
     this.setStatus('DISCONNECTED');

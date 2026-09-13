@@ -195,6 +195,7 @@ async function startServer() {
   );
 
   app.use(express.json({ limit: '20mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());
 
   // Rate Limiter for Authentication Endpoints (Brute Force Guard)
@@ -584,6 +585,66 @@ async function startServer() {
       adminContext,
     };
   };
+
+  // -------------------------------------------------------------
+  // PUSHER REALTIME AUTHENTICATION ENDPOINT
+  // -------------------------------------------------------------
+  app.post('/api/pusher/auth', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Autenticação obrigatória para acesso Realtime.' });
+      }
+
+      const socketId = req.body.socket_id;
+      const channel = req.body.channel_name;
+
+      if (!socketId || !channel) {
+        return res.status(400).json({ error: 'Parâmetros socket_id e channel_name são obrigatórios.' });
+      }
+
+      const userRole = session.user.role;
+      const userId = session.user.id;
+
+      // Validate tenant channel access
+      if (channel.startsWith('private-tenant-')) {
+        const requestedTenantId = channel.replace('private-tenant-', '');
+        
+        // PLATFORM_MASTER validation uses effectiveTenantId context switch rules
+        if (userRole === 'PLATFORM_MASTER') {
+          const effectiveTenantId = req.headers['x-tenant-id'] as string || session.effectiveTenantId;
+          if (requestedTenantId !== effectiveTenantId) {
+            return res.status(403).json({ error: 'PLATFORM_MASTER tentando acessar tenant indevido para o contexto atual.' });
+          }
+        } 
+        // Standard user validation
+        else if (requestedTenantId !== session.user.tenantId) {
+          return res.status(403).json({ error: 'Acesso negado ao canal do tenant.' });
+        }
+      } 
+      // Validate user channel access
+      else if (channel.startsWith('private-user-')) {
+        const requestedUserId = channel.replace('private-user-', '');
+        if (requestedUserId !== userId) {
+          return res.status(403).json({ error: 'Acesso negado ao canal do usuário.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Canal não suportado ou negado.' });
+      }
+
+      const { eventBus } = await import('./server/services/pusherService.js');
+      const authResponse = eventBus.authorizeChannel(socketId, channel, {
+        user_id: userId,
+        user_info: { role: userRole }
+      });
+      
+      return res.json(authResponse);
+
+    } catch (err: any) {
+      console.error('[PUSHER AUTH ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao autenticar canal do Pusher.' });
+    }
+  });
 
   // -------------------------------------------------------------
   // REALTIME SERVER-SENT EVENTS (SSE) ENDPOINT
