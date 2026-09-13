@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { logger } from './server/logger.js';
 import {
   uploadBlob,
   downloadBlob,
@@ -16,6 +18,10 @@ import {
 import { hasPermission, Permission } from './src/lib/permissions.js';
 import { Role } from './src/types/index.js';
 import { sseRegistry } from './server/realtime.js';
+import { ImportWorkerService } from './server/services/importWorker.js';
+import { TenantNormalization } from './server/utils/tenantNormalization.js';
+import { TenantResolver } from './server/utils/tenantResolver.js';
+import { AdminContextManager } from './server/utils/adminContext.js';
 
 const prisma = new PrismaClient();
 
@@ -95,11 +101,11 @@ async function auditAndEnsureMasterUser() {
           where: { id: user.id },
           data: updates,
         });
-        console.log(`[RBAC BOOTSTRAP] Perfil de ${masterEmail} sincronizado para PLATFORM_MASTER:`, updated.role);
+        logger.info({ role: updated.role }, '[RBAC BOOTSTRAP] Master profile synchronized for PLATFORM_MASTER');
       }
     } else {
       if (!masterPassword) {
-        console.error(`[RBAC BOOTSTRAP CRITICAL] INITIAL_MASTER_PASSWORD não configurada no ambiente. Usuário master não criado.`);
+        logger.error('[RBAC BOOTSTRAP CRITICAL] INITIAL_MASTER_PASSWORD não configurada no ambiente. Usuário master não criado.');
         return;
       }
 
@@ -115,15 +121,10 @@ async function auditAndEnsureMasterUser() {
           customPermissions: [],
         },
       });
-      console.log(`[RBAC BOOTSTRAP] Usuario PLATFORM_MASTER criado com sucesso no PostgreSQL:`, {
-        id: created.id,
-        email: created.email,
-        role: created.role,
-        tenantId: created.tenantId,
-      });
+      logger.info({ id: created.id, role: created.role }, '[RBAC BOOTSTRAP] Usuario PLATFORM_MASTER criado com sucesso no PostgreSQL');
     }
   } catch (err) {
-    console.warn('[RBAC BOOTSTRAP WARNING]', err);
+    logger.warn({ error: err?.message || String(err) }, '[RBAC BOOTSTRAP WARNING]');
   }
 }
 
@@ -133,6 +134,65 @@ async function startServer() {
 
   // Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
   app.set('trust proxy', 1);
+
+  // -------------------------------------------------------------
+  // P1.2 CORRELATION ID / REQUEST ID MIDDLEWARE (Top of Express Chain)
+  // -------------------------------------------------------------
+  app.use((req, res, next) => {
+    const rawHeader = req.headers['x-request-id'];
+    let reqId = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+
+    // Validate size and alphanumeric/hyphen format (8-100 chars)
+    if (!reqId || typeof reqId !== 'string' || reqId.length < 8 || reqId.length > 100 || !/^[a-zA-Z0-9\-_]+$/.test(reqId)) {
+      reqId = crypto.randomUUID();
+    }
+
+    req.requestId = reqId;
+    req.startTime = Date.now();
+
+    // Attach X-Request-ID to response header for ALL responses (2xx, 4xx, 5xx)
+    res.setHeader('X-Request-ID', reqId);
+    next();
+  });
+
+  // -------------------------------------------------------------
+  // P1.3 STRUCTURED HTTP REQUEST LOGGING MIDDLEWARE
+  // -------------------------------------------------------------
+  app.use((req, res, next) => {
+    res.on('finish', () => {
+      const durationMs = Date.now() - (req.startTime || Date.now());
+      logger.info({
+        requestId: req.requestId,
+        method: req.method,
+        url: req.originalUrl || req.url,
+        statusCode: res.statusCode,
+        durationMs,
+        message: 'request completed',
+      });
+    });
+    next();
+  });
+
+  // P0.1 HTTP Security Headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "blob:", "https://*.blob.core.windows.net", "https://*.googleusercontent.com"],
+          connectSrc: ["'self'", "ws:", "wss:", "https://*.blob.core.windows.net", "https://*.firebaseio.com", "https://*.googleapis.com"],
+          mediaSrc: ["'self'", "data:", "blob:"],
+          frameAncestors: ["'self'", "https://*.google.com", "https://*.ai.studio", "https://*.aistudio.google.com", "https://*.googleusercontent.com"],
+          objectSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    })
+  );
 
   app.use(express.json({ limit: '20mb' }));
   app.use(cookieParser());
@@ -149,26 +209,106 @@ async function startServer() {
       error: 'Muitas tentativas de login a partir deste IP. Tente novamente mais tarde.',
     },
     handler: (req, res, _next, options) => {
-      console.warn(`[SECURITY ALERT] Rate limit de autenticação excedido para IP: ${req.ip}`);
+      logger.warn({ ip: req.ip }, '[SECURITY ALERT] Rate limit de autenticação excedido');
       res.status(429).json(options.message);
     },
   });
 
-  // Health and environment audit route
-  app.get('/api/health', (_req, res) => {
-    res.json({
-      status: 'ok',
-      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
-      hasDirectUrl: Boolean(process.env.DIRECT_URL),
-      timestamp: new Date().toISOString(),
-    });
+  // P0.4 Rate Limiter for Public Branding Endpoints
+  // 120 requests per IP per minute
+  const publicBrandingRateLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    statusCode: 429,
+    message: {
+      error: 'Muitas requisições de branding a partir deste IP. Tente novamente em breve.',
+    },
+    handler: (req, res, _next, options) => {
+      logger.warn({ ip: req.ip }, '[SECURITY ALERT] Rate limit de branding excedido');
+      res.status(429).json(options.message);
+    },
+  });
+
+  // P0.4 Rate Limiter for Document Endpoints (Azure Blob)
+  // 120 requests per IP every 15 minutes
+  const documentRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    statusCode: 429,
+    message: {
+      error: 'Limite de requisições de documentos excedido. Tente novamente em alguns minutos.',
+    },
+    handler: (req, res, _next, options) => {
+      logger.warn({ ip: req.ip }, '[SECURITY ALERT] Rate limit de documentos excedido');
+      res.status(429).json(options.message);
+    },
+  });
+
+  // -------------------------------------------------------------
+  // P1.1 REAL POSTGRESQL HEALTH CHECK API
+  // -------------------------------------------------------------
+  app.get('/api/health', async (_req, res) => {
+    const timestamp = new Date().toISOString();
+
+    try {
+      // 3-second timeout for database health query
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database health check timeout')), 3000);
+      });
+
+      const dbPromise = prisma.$queryRaw`SELECT 1`;
+
+      await Promise.race([dbPromise, timeoutPromise]);
+
+      return res.status(200).json({
+        status: 'ok',
+        database: 'healthy',
+        timestamp,
+      });
+    } catch (err: any) {
+      logger.error({
+        message: 'Health check failed',
+        error: err?.message || String(err),
+      });
+
+      return res.status(503).json({
+        status: 'degraded',
+        database: 'unreachable',
+        timestamp,
+      });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // PUBLIC BRANDING API (Domain & Subdomain Resolution)
+  // -------------------------------------------------------------
+  app.get('/api/public/tenant-branding', publicBrandingRateLimiter, async (req, res) => {
+    try {
+      const host = TenantResolver.extractHost(req);
+      const resolution = await TenantResolver.resolveByHost(prisma, host);
+
+      // Safe public payload - NO internal IDs, passwords or sensitive metrics
+      return res.json(resolution.branding);
+    } catch (err) {
+      console.error('[PUBLIC BRANDING ERROR]', err);
+      return res.status(500).json({
+        status: 'DOMAIN_NOT_CONFIGURED',
+        domainType: 'DOMAIN_NOT_CONFIGURED',
+        companyName: 'Sentinel Consig',
+        message: 'Erro ao resolver identidade visual do domínio.',
+      });
+    }
   });
 
   // -------------------------------------------------------------
   // AUTHENTICATION API ROUTES (Server-Side Authority)
   // -------------------------------------------------------------
 
-  // 1. POST /api/auth/login - Rate limited
+  // 1. POST /api/auth/login - Rate limited & Domain-aware
   app.post('/api/auth/login', authRateLimiter, async (req, res) => {
     try {
       const { email, password } = req.body || {};
@@ -178,6 +318,10 @@ async function startServer() {
 
       const cleanEmail = String(email).trim().toLowerCase();
       const cleanPassword = String(password).trim();
+
+      // Resolve domain context to enforce domain-level tenant boundaries
+      const host = TenantResolver.extractHost(req);
+      const domainResolution = await TenantResolver.resolveByHost(prisma, host);
 
       // Query PostgreSQL via Prisma
       let dbUser = null;
@@ -199,9 +343,25 @@ async function startServer() {
         return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
-      // Tenant status check
-      if (dbUser.tenant && dbUser.tenant.status === 'SUSPENDED') {
-        return res.status(401).json({ message: 'Empresa com acesso suspenso temporariamente.' });
+      // Domain-level tenant check:
+      // If domain resolved to a specific tenant (subdomain or custom domain) and user is NOT PLATFORM_MASTER
+      if (
+        domainResolution.tenant &&
+        (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
+      ) {
+        if (dbUser.role !== 'PLATFORM_MASTER' && dbUser.tenantId !== domainResolution.tenant.id) {
+          console.warn(
+            `[AUTH REJECTED] Usuário '${cleanEmail}' (Tenant: ${dbUser.tenantId}) tentou autenticar no domínio do Tenant '${domainResolution.tenant.name}' (${domainResolution.tenant.id})`
+          );
+          return res.status(403).json({
+            message: 'Este usuário não pertence a esta organização.',
+          });
+        }
+      }
+
+      // Tenant status check (Instant suspension blocker)
+      if (dbUser.tenant && (dbUser.tenant.status === 'SUSPENDED' || dbUser.tenant.status === 'CANCELLED')) {
+        return res.status(403).json({ message: 'Tenant suspenso.' });
       }
 
       // Password hash check
@@ -234,7 +394,7 @@ async function startServer() {
             userId: dbUser.id,
             token: sessionToken,
             ipAddress: req.ip || '127.0.0.1',
-            userAgent: req.headers['user-agent'] || 'Unknown',
+            userAgent: (req.headers['user-agent'] as string) || 'Unknown',
             expiresAt,
           },
         });
@@ -268,7 +428,11 @@ async function startServer() {
       const token = req.cookies.cg_session_id;
       if (token) {
         try {
-          await prisma.session.deleteMany({ where: { token } });
+          const session = await prisma.session.findUnique({ where: { token } });
+          if (session) {
+            AdminContextManager.clearContext(session.id);
+            await prisma.session.deleteMany({ where: { token } });
+          }
         } catch (e) {
           // session already removed
         }
@@ -299,10 +463,20 @@ async function startServer() {
         return res.status(401).json({ authenticated: false, message: 'Sessão expirada ou inválida.' });
       }
 
-      if (!session.user.active || (session.user.tenant && session.user.tenant.status === 'SUSPENDED')) {
+      if (
+        !session.user.active ||
+        (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
+      ) {
+        AdminContextManager.clearContext(session.id);
         await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
         res.clearCookie('cg_session_id', { path: '/' });
-        return res.status(401).json({ authenticated: false, message: 'Usuário desativado ou empresa suspensa.' });
+        return res.status(403).json({ authenticated: false, message: 'Tenant suspenso ou usuário desativado.' });
+      }
+
+      // Check active AdminContext for PLATFORM_MASTER
+      let adminContext: any = null;
+      if (session.user.role === 'PLATFORM_MASTER') {
+        adminContext = AdminContextManager.getContext(session.id);
       }
 
       const safeUser = {
@@ -319,7 +493,18 @@ async function startServer() {
         updatedAt: session.user.updatedAt.toISOString(),
       };
 
-      return res.json({ authenticated: true, user: safeUser });
+      return res.json({
+        authenticated: true,
+        user: safeUser,
+        adminContext: adminContext
+          ? {
+              targetTenantId: adminContext.targetTenantId,
+              targetTenantName: adminContext.targetTenantName,
+              switchedAt: adminContext.switchedAt,
+              expiresAt: adminContext.expiresAt,
+            }
+          : null,
+      });
     } catch (err) {
       return res.status(401).json({ authenticated: false, message: 'Erro ao validar sessão.' });
     }
@@ -361,17 +546,43 @@ async function startServer() {
     }
   });
 
-  // Helper middleware/function for tenant context & session auth
+  // Helper middleware/function for tenant context & session auth with instant suspension protection
   const getAuthSession = async (req: express.Request) => {
     const token = req.cookies.cg_session_id;
     if (!token) return null;
+
     const session = await prisma.session.findUnique({
       where: { token },
       include: { user: { include: { tenant: true } } },
     });
+
     if (!session || session.expiresAt < new Date()) return null;
-    if (!session.user.active || (session.user.tenant && session.user.tenant.status === 'SUSPENDED')) return null;
-    return session;
+
+    // Instant suspension protection: if tenant is SUSPENDED or CANCELLED, kill session
+    if (
+      !session.user.active ||
+      (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
+    ) {
+      AdminContextManager.clearContext(session.id);
+      await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+      return null;
+    }
+
+    // Context switch support for PLATFORM_MASTER
+    let effectiveTenantId = session.user.tenantId;
+    let adminContext: any = null;
+    if (session.user.role === 'PLATFORM_MASTER') {
+      adminContext = AdminContextManager.getContext(session.id);
+      if (adminContext) {
+        effectiveTenantId = adminContext.targetTenantId;
+      }
+    }
+
+    return {
+      ...session,
+      effectiveTenantId,
+      adminContext,
+    };
   };
 
   // -------------------------------------------------------------
@@ -1123,7 +1334,7 @@ async function startServer() {
   // -------------------------------------------------------------
 
   // 1. GET /api/documents
-  app.get('/api/documents', async (req, res) => {
+  app.get('/api/documents', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
       const tenantId = session?.user?.tenantId;
@@ -1147,7 +1358,7 @@ async function startServer() {
   });
 
   // 2. POST /api/documents (Azure Blob Upload + Metadata)
-  app.post('/api/documents', async (req, res) => {
+  app.post('/api/documents', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
       const tenantId = session?.user?.tenantId;
@@ -1243,7 +1454,7 @@ async function startServer() {
   });
 
   // 3. GET /api/documents/:id (Download Document Stream)
-  app.get('/api/documents/:id', async (req, res) => {
+  app.get('/api/documents/:id', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
       const tenantId = session?.user?.tenantId;
@@ -1280,7 +1491,7 @@ async function startServer() {
   });
 
   // 4. DELETE /api/documents/:id
-  app.delete('/api/documents/:id', async (req, res) => {
+  app.delete('/api/documents/:id', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
       const tenantId = session?.user?.tenantId;
@@ -1657,7 +1868,7 @@ async function startServer() {
   app.get('/api/whitelabel', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const config = await prisma.whiteLabelConfig.findUnique({
         where: { tenantId },
@@ -1671,7 +1882,7 @@ async function startServer() {
   app.put('/api/whitelabel', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       
       // RBAC Check: Only TENANT_ADMIN or higher
@@ -1679,20 +1890,22 @@ async function startServer() {
         return res.status(403).json({ error: 'Permissão negada para alterar White Label.' });
       }
 
-      const { companyName, legalName, logoUrl, faviconUrl, primaryColor, secondaryColor, accentColor, supportEmail, themeMode } = req.body;
+      const { companyName, legalName, logoUrl, faviconUrl, primaryColor, secondaryColor, accentColor, supportEmail, supportPhone, footerText, themeMode } = req.body;
       if (!companyName) return res.status(400).json({ error: 'Nome da Empresa é obrigatório.' });
 
       const config = await prisma.whiteLabelConfig.upsert({
         where: { tenantId },
         update: {
           companyName,
-          legalName: legalName || null,
-          logoUrl: logoUrl || null,
-          faviconUrl: faviconUrl || null,
+          legalName: legalName !== undefined ? legalName : undefined,
+          logoUrl: logoUrl !== undefined ? logoUrl : undefined,
+          faviconUrl: faviconUrl !== undefined ? faviconUrl : undefined,
           primaryColor: primaryColor || '#2563eb',
           secondaryColor: secondaryColor || '#1e40af',
           accentColor: accentColor || '#3b82f6',
-          supportEmail: supportEmail || null,
+          supportEmail: supportEmail !== undefined ? supportEmail : undefined,
+          supportPhone: supportPhone !== undefined ? supportPhone : undefined,
+          footerText: footerText !== undefined ? footerText : undefined,
           themeMode: themeMode || 'LIGHT',
         },
         create: {
@@ -1705,9 +1918,19 @@ async function startServer() {
           secondaryColor: secondaryColor || '#1e40af',
           accentColor: accentColor || '#3b82f6',
           supportEmail: supportEmail || null,
+          supportPhone: supportPhone || null,
+          footerText: footerText || `© ${new Date().getFullYear()} ${companyName}`,
           themeMode: themeMode || 'LIGHT',
         },
       });
+
+      // Invalidate domain resolution cache for this tenant
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      if (tenant) {
+        if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
+        TenantResolver.invalidateCache(tenant.slug + '.sentinelconsig.com.br');
+      }
+
       return res.json(config);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao salvar White Label.' });
@@ -2063,92 +2286,1066 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
-  // TENANTS MANAGEMENT (PLATFORM MASTER ONLY)
+  // SAAS & TENANTS MANAGEMENT API (PLATFORM MASTER ONLY)
   // -------------------------------------------------------------
-  app.get('/api/tenants', async (req, res) => {
+
+  // 1. GET /api/saas/tenants (and alias /api/tenants)
+  const getTenantsHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (session?.user?.role !== 'PLATFORM_MASTER') {
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
-      const list = await prisma.tenant.findMany({
+
+      const tenants = await prisma.tenant.findMany({
         where: { deletedAt: null },
+        include: {
+          whiteLabel: true,
+          _count: {
+            select: {
+              users: { where: { deletedAt: null } },
+              proposals: { where: { deletedAt: null } },
+              clients: { where: { deletedAt: null } },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
-      return res.json(list);
+
+      return res.json(tenants);
     } catch (err) {
+      console.error('[GET /api/saas/tenants ERROR]', err);
       return res.status(500).json({ error: 'Erro ao buscar tenants.' });
     }
-  });
+  };
+  app.get('/api/saas/tenants', getTenantsHandler);
+  app.get('/api/tenants', getTenantsHandler);
 
-  app.post('/api/tenants', async (req, res) => {
+  // 2. GET /api/saas/tenants/:id
+  const getTenantByIdHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (session?.user?.role !== 'PLATFORM_MASTER') {
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
-      const { id, name, slug, cnpj, tradeName, plan, status } = req.body;
-      if (!name || !slug) {
-        return res.status(400).json({ error: 'Nome e Slug são obrigatórios.' });
-      }
-      const tenant = await prisma.tenant.create({
-        data: {
-          id: id || undefined,
-          name,
-          slug: String(slug).trim().toLowerCase(),
-          cnpj: cnpj || null,
-          tradeName: tradeName || null,
-          plan: plan || 'PRO',
-          status: status || 'ACTIVE',
+
+      const { id } = req.params;
+      const tenant = await prisma.tenant.findUnique({
+        where: { id },
+        include: {
+          whiteLabel: true,
+          _count: {
+            select: {
+              users: { where: { deletedAt: null } },
+              proposals: { where: { deletedAt: null } },
+              clients: { where: { deletedAt: null } },
+            },
+          },
         },
       });
 
-      // Emissão para o próprio tenant recém-criado
+      if (!tenant || tenant.deletedAt) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      return res.json(tenant);
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao obter detalhes do tenant.' });
+    }
+  };
+  app.get('/api/saas/tenants/:id', getTenantByIdHandler);
+
+  // 3. POST /api/saas/tenants (and alias /api/tenants)
+  const createTenantHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const {
+        name,
+        slug: rawSlug,
+        customDomain: rawCustomDomain,
+        cnpj,
+        razaoSocial,
+        tradeName,
+        plan,
+        maxUsers,
+        storageLimitMb,
+        maxProposals,
+        adminEmail,
+        adminName,
+      } = req.body || {};
+
+      if (!name || !rawSlug) {
+        return res.status(400).json({ error: 'Nome e Slug são obrigatórios.' });
+      }
+
+      // Normalização estrita
+      let slug: string;
+      try {
+        slug = TenantNormalization.normalizeSlug(rawSlug);
+      } catch (normErr: any) {
+        return res.status(400).json({ error: normErr.message });
+      }
+
+      let customDomain: string | null = null;
+      if (rawCustomDomain) {
+        try {
+          customDomain = TenantNormalization.normalizeCustomDomain(rawCustomDomain);
+        } catch (domErr: any) {
+          return res.status(400).json({ error: domErr.message });
+        }
+      }
+
+      const VALID_PLANS = ['STARTER', 'PRO', 'ENTERPRISE', 'CUSTOM'];
+      if (plan && !VALID_PLANS.includes(plan)) {
+        return res.status(400).json({ error: `Plano inválido '${plan}'. Planos válidos: ${VALID_PLANS.join(', ')}.` });
+      }
+
+      const cleanCnpj = cnpj ? String(cnpj).replace(/\D/g, '') : null;
+
+      // Validação de duplicidade
+      const existingSlug = await prisma.tenant.findUnique({ where: { slug } });
+      if (existingSlug) {
+        return res.status(400).json({ error: `O slug '${slug}' já está em uso por outro tenant.` });
+      }
+
+      if (customDomain) {
+        const existingDomain = await prisma.tenant.findUnique({ where: { customDomain } });
+        if (existingDomain) {
+          return res.status(400).json({ error: `O domínio personalizado '${customDomain}' já está em uso.` });
+        }
+      }
+
+      if (cleanCnpj) {
+        const existingCnpj = await prisma.tenant.findUnique({ where: { cnpj: cleanCnpj } });
+        if (existingCnpj) {
+          return res.status(400).json({ error: `O CNPJ '${cleanCnpj}' já está cadastrado.` });
+        }
+      }
+
+      // Criação transacional do Tenant + WhiteLabel padrão
+      const tenant = await prisma.$transaction(async (tx) => {
+        const newTenant = await tx.tenant.create({
+          data: {
+            name: String(name).trim(),
+            slug,
+            customDomain,
+            cnpj: cleanCnpj,
+            tradeName: tradeName ? String(tradeName).trim() : String(name).trim(),
+            plan: plan || 'PRO',
+            status: 'ACTIVE',
+            maxUsers: Number(maxUsers) || 10,
+            storageLimitMb: Number(storageLimitMb) || 5000,
+            maxProposals: Number(maxProposals) || 10000,
+          },
+        });
+
+        // Configuração WhiteLabel padrão vinculada
+        await tx.whiteLabelConfig.create({
+          data: {
+            tenantId: newTenant.id,
+            companyName: String(name).trim(),
+            legalName: razaoSocial ? String(razaoSocial).trim() : null,
+            primaryColor: '#2563eb',
+            secondaryColor: '#1e40af',
+            accentColor: '#3b82f6',
+            footerText: `© ${new Date().getFullYear()} ${String(name).trim()}`,
+            supportEmail: adminEmail ? String(adminEmail).trim().toLowerCase() : null,
+          },
+        });
+
+        // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial
+        if (adminEmail && adminName) {
+          const cleanAdminEmail = String(adminEmail).trim().toLowerCase();
+          const existingUser = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
+          if (!existingUser) {
+            await tx.user.create({
+              data: {
+                tenantId: newTenant.id,
+                name: String(adminName).trim(),
+                email: cleanAdminEmail,
+                passwordHash: 'Mudar@123', // Senha inicial temporária
+                role: 'MASTER',
+                active: true,
+                mustChangePassword: true,
+              },
+            });
+          }
+        }
+
+        return newTenant;
+      });
+
+      // Invalidação de cache de resolução de domínios
+      TenantResolver.invalidateCache(slug + '.sentinelconsig.com.br');
+      if (customDomain) {
+        TenantResolver.invalidateCache(customDomain);
+      }
+
+      // Registro de Auditoria
+      await prisma.auditLog.create({
+        data: {
+          tenantId: tenant.id,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'TENANT_CREATED',
+          entity: 'Tenant',
+          entityId: tenant.id,
+          newData: JSON.stringify({
+            id: tenant.id,
+            name: tenant.name,
+            slug: tenant.slug,
+            customDomain: tenant.customDomain,
+            plan: tenant.plan,
+          }),
+        },
+      }).catch(() => {});
+
+      // Emissão SSE
       sseRegistry.broadcastToTenant(tenant.id, {
-        type: 'TENANT_UPDATED',
+        type: 'TENANT_CREATED',
         entity: 'Tenant',
         entityId: tenant.id,
         userId: session.user.id,
       });
 
-      return res.json(tenant);
-    } catch (err) {
-      return res.status(500).json({ error: 'Erro ao criar tenant.' });
+      return res.status(201).json(tenant);
+    } catch (err: any) {
+      console.error('[POST /api/saas/tenants ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao criar tenant.' });
     }
-  });
+  };
+  app.post('/api/saas/tenants', createTenantHandler);
+  app.post('/api/tenants', createTenantHandler);
 
-  app.put('/api/tenants/:id', async (req, res) => {
+  // 4. PUT /api/saas/tenants/:id (and alias /api/tenants/:id)
+  const updateTenantHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (session?.user?.role !== 'PLATFORM_MASTER') {
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
+
       const { id } = req.params;
-      const { name, slug, cnpj, tradeName, plan, status } = req.body;
-      const tenant = await prisma.tenant.update({
-        where: { id },
-        data: {
-          name: name || undefined,
-          slug: slug ? String(slug).trim().toLowerCase() : undefined,
-          cnpj: cnpj !== undefined ? cnpj : undefined,
-          tradeName: tradeName !== undefined ? tradeName : undefined,
-          plan: plan || undefined,
-          status: status || undefined,
-        },
+      const {
+        name,
+        slug: rawSlug,
+        customDomain: rawCustomDomain,
+        cnpj,
+        tradeName,
+        plan,
+        status,
+        maxUsers,
+        storageLimitMb,
+        maxProposals,
+        whiteLabel,
+      } = req.body || {};
+
+      const currentTenant = await prisma.tenant.findUnique({ where: { id } });
+      if (!currentTenant) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      let slug: string | undefined = undefined;
+      if (rawSlug) {
+        try {
+          slug = TenantNormalization.normalizeSlug(rawSlug);
+          if (slug !== currentTenant.slug) {
+            const existingSlug = await prisma.tenant.findUnique({ where: { slug } });
+            if (existingSlug && existingSlug.id !== id) {
+              return res.status(400).json({ error: `O slug '${slug}' já pertence a outro tenant.` });
+            }
+          }
+        } catch (normErr: any) {
+          return res.status(400).json({ error: normErr.message });
+        }
+      }
+
+      let customDomain: string | null | undefined = undefined;
+      if (rawCustomDomain !== undefined) {
+        if (rawCustomDomain === null || rawCustomDomain === '') {
+          customDomain = null;
+        } else {
+          try {
+            customDomain = TenantNormalization.normalizeCustomDomain(rawCustomDomain);
+            if (customDomain && customDomain !== currentTenant.customDomain) {
+              const existingDom = await prisma.tenant.findUnique({ where: { customDomain } });
+              if (existingDom && existingDom.id !== id) {
+                return res.status(400).json({ error: `O domínio personalizado '${customDomain}' já está em uso.` });
+              }
+            }
+          } catch (domErr: any) {
+            return res.status(400).json({ error: domErr.message });
+          }
+        }
+      }
+
+      const VALID_PLANS = ['STARTER', 'PRO', 'ENTERPRISE', 'CUSTOM'];
+      if (plan && !VALID_PLANS.includes(plan)) {
+        return res.status(400).json({ error: `Plano inválido '${plan}'. Planos válidos: ${VALID_PLANS.join(', ')}.` });
+      }
+
+      const cleanCnpj = cnpj !== undefined ? (cnpj ? String(cnpj).replace(/\D/g, '') : null) : undefined;
+      if (cleanCnpj && cleanCnpj !== currentTenant.cnpj) {
+        const existingCnpj = await prisma.tenant.findUnique({ where: { cnpj: cleanCnpj } });
+        if (existingCnpj && existingCnpj.id !== id) {
+          return res.status(400).json({ error: `O CNPJ '${cleanCnpj}' já pertence a outro tenant.` });
+        }
+      }
+
+      const updatedTenant = await prisma.$transaction(async (tx) => {
+        const t = await tx.tenant.update({
+          where: { id },
+          data: {
+            name: name ? String(name).trim() : undefined,
+            slug,
+            customDomain,
+            cnpj: cleanCnpj,
+            tradeName: tradeName !== undefined ? (tradeName ? String(tradeName).trim() : null) : undefined,
+            plan: plan || undefined,
+            status: status || undefined,
+            maxUsers: maxUsers !== undefined ? Number(maxUsers) : undefined,
+            storageLimitMb: storageLimitMb !== undefined ? Number(storageLimitMb) : undefined,
+            maxProposals: maxProposals !== undefined ? Number(maxProposals) : undefined,
+          },
+        });
+
+        if (whiteLabel && typeof whiteLabel === 'object') {
+          await tx.whiteLabelConfig.upsert({
+            where: { tenantId: id },
+            update: {
+              companyName: whiteLabel.companyName || undefined,
+              legalName: whiteLabel.legalName !== undefined ? whiteLabel.legalName : undefined,
+              logoUrl: whiteLabel.logoUrl !== undefined ? whiteLabel.logoUrl : undefined,
+              faviconUrl: whiteLabel.faviconUrl !== undefined ? whiteLabel.faviconUrl : undefined,
+              primaryColor: whiteLabel.primaryColor || undefined,
+              secondaryColor: whiteLabel.secondaryColor || undefined,
+              accentColor: whiteLabel.accentColor || undefined,
+              supportEmail: whiteLabel.supportEmail !== undefined ? whiteLabel.supportEmail : undefined,
+              supportPhone: whiteLabel.supportPhone !== undefined ? whiteLabel.supportPhone : undefined,
+              footerText: whiteLabel.footerText !== undefined ? whiteLabel.footerText : undefined,
+              themeMode: whiteLabel.themeMode || undefined,
+            },
+            create: {
+              tenantId: id,
+              companyName: whiteLabel.companyName || t.name,
+              legalName: whiteLabel.legalName || null,
+              logoUrl: whiteLabel.logoUrl || null,
+              faviconUrl: whiteLabel.faviconUrl || null,
+              primaryColor: whiteLabel.primaryColor || '#2563eb',
+              secondaryColor: whiteLabel.secondaryColor || '#1e40af',
+              accentColor: whiteLabel.accentColor || '#3b82f6',
+              supportEmail: whiteLabel.supportEmail || null,
+              supportPhone: whiteLabel.supportPhone || null,
+              footerText: whiteLabel.footerText || `© ${new Date().getFullYear()} ${t.name}`,
+              themeMode: whiteLabel.themeMode || 'LIGHT',
+            },
+          });
+        }
+
+        return t;
       });
 
-      // Emissão pós-commit de TENANT_UPDATED
+      // Invalidação de caches
+      if (currentTenant.customDomain) TenantResolver.invalidateCache(currentTenant.customDomain);
+      if (updatedTenant.customDomain) TenantResolver.invalidateCache(updatedTenant.customDomain);
+      TenantResolver.invalidateCache(currentTenant.slug + '.sentinelconsig.com.br');
+      TenantResolver.invalidateCache(updatedTenant.slug + '.sentinelconsig.com.br');
+
+      // Auditoria
+      await prisma.auditLog.create({
+        data: {
+          tenantId: id,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'TENANT_UPDATED',
+          entity: 'Tenant',
+          entityId: id,
+          oldData: JSON.stringify({
+            name: currentTenant.name,
+            slug: currentTenant.slug,
+            customDomain: currentTenant.customDomain,
+            status: currentTenant.status,
+          }),
+          newData: JSON.stringify({
+            name: updatedTenant.name,
+            slug: updatedTenant.slug,
+            customDomain: updatedTenant.customDomain,
+            status: updatedTenant.status,
+          }),
+        },
+      }).catch(() => {});
+
+      // Emissão SSE
       sseRegistry.broadcastToTenant(id, {
         type: 'TENANT_UPDATED',
         entity: 'Tenant',
-        entityId: tenant.id,
+        entityId: id,
         userId: session.user.id,
       });
 
-      return res.json(tenant);
-    } catch (err) {
-      return res.status(500).json({ error: 'Erro ao atualizar tenant.' });
+      return res.json(updatedTenant);
+    } catch (err: any) {
+      console.error('[PUT /api/saas/tenants/:id ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao atualizar tenant.' });
     }
+  };
+  app.put('/api/saas/tenants/:id', updateTenantHandler);
+  app.put('/api/tenants/:id', updateTenantHandler);
+
+  // 5. POST /api/saas/tenants/:id/suspend - Suspensão imediata com expurgo de sessões e encerramento SSE
+  app.post('/api/saas/tenants/:id/suspend', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const { id } = req.params;
+      const tenant = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      // Atualiza status para SUSPENDED
+      const updated = await prisma.tenant.update({
+        where: { id },
+        data: { status: 'SUSPENDED' },
+      });
+
+      // Invalida sessões ativas no banco de dados para todos os usuários deste tenant
+      const deletedSessions = await prisma.session.deleteMany({
+        where: { user: { tenantId: id } },
+      });
+      console.log(`[TENANT SUSPEND] ${deletedSessions.count} sessões ativas revogadas para o Tenant ${id}`);
+
+      // Invalidação de cache de domínio
+      if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
+      TenantResolver.invalidateCache(tenant.slug + '.sentinelconsig.com.br');
+
+      // Notifica e desconecta todas as conexões SSE deste tenant imediatamente
+      sseRegistry.broadcastToTenant(id, {
+        type: 'TENANT_SUSPENDED',
+        entity: 'Tenant',
+        entityId: id,
+        userId: session.user.id,
+      });
+      sseRegistry.disconnectTenant(id, 'TENANT_SUSPENDED');
+
+      // Registro de Auditoria
+      await prisma.auditLog.create({
+        data: {
+          tenantId: id,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'TENANT_SUSPENDED',
+          entity: 'Tenant',
+          entityId: id,
+          newData: JSON.stringify({ status: 'SUSPENDED', revokedSessionsCount: deletedSessions.count }),
+        },
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        message: 'Tenant suspenso com sucesso. Todas as sessões e conexões foram encerradas.',
+        tenant: updated,
+      });
+    } catch (err) {
+      console.error('[POST /api/saas/tenants/:id/suspend ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao suspender tenant.' });
+    }
+  });
+
+  // 6. POST /api/saas/tenants/:id/reactivate - Reativação
+  app.post('/api/saas/tenants/:id/reactivate', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const { id } = req.params;
+      const tenant = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      const updated = await prisma.tenant.update({
+        where: { id },
+        data: { status: 'ACTIVE' },
+      });
+
+      // Invalidação de cache de resolução
+      if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
+      TenantResolver.invalidateCache(tenant.slug + '.sentinelconsig.com.br');
+
+      // Auditoria
+      await prisma.auditLog.create({
+        data: {
+          tenantId: id,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'TENANT_REACTIVATED',
+          entity: 'Tenant',
+          entityId: id,
+          newData: JSON.stringify({ status: 'ACTIVE' }),
+        },
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        message: 'Tenant reativado com sucesso.',
+        tenant: updated,
+      });
+    } catch (err) {
+      console.error('[POST /api/saas/tenants/:id/reactivate ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao reativar tenant.' });
+    }
+  });
+
+  // 7. CONTEXT SWITCHING API (PLATFORM_MASTER Support/Admin Inspection)
+  app.post('/api/saas/context-switch', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const { targetTenantId } = req.body || {};
+      if (!targetTenantId) {
+        return res.status(400).json({ error: 'targetTenantId é obrigatório.' });
+      }
+
+      const targetTenant = await prisma.tenant.findUnique({ where: { id: targetTenantId } });
+      if (!targetTenant || targetTenant.deletedAt) {
+        return res.status(404).json({ error: 'Tenant alvo não encontrado.' });
+      }
+
+      const contextData = AdminContextManager.setContext(
+        session.id,
+        targetTenant.id,
+        targetTenant.name,
+        session.user.id
+      );
+
+      // Auditoria obrigatória de início de contexto administrativo
+      await prisma.auditLog.create({
+        data: {
+          tenantId: targetTenant.id,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'CONTEXT_SWITCH_STARTED',
+          entity: 'Tenant',
+          entityId: targetTenant.id,
+          newData: JSON.stringify({
+            platformMasterUserId: session.user.id,
+            targetTenantId: targetTenant.id,
+            targetTenantName: targetTenant.name,
+            timestamp: contextData.switchedAt.toISOString(),
+          }),
+        },
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        message: `Contexto administrativo alternado para '${targetTenant.name}'.`,
+        context: {
+          targetTenantId: contextData.targetTenantId,
+          targetTenantName: contextData.targetTenantName,
+          switchedAt: contextData.switchedAt,
+          expiresAt: contextData.expiresAt,
+        },
+      });
+    } catch (err) {
+      console.error('[POST /api/saas/context-switch ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao alternar contexto administrativo.' });
+    }
+  });
+
+  app.post('/api/saas/context-switch/exit', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const currentContext = AdminContextManager.getContext(session.id);
+      AdminContextManager.clearContext(session.id);
+
+      if (currentContext) {
+        // Auditoria de encerramento de contexto
+        await prisma.auditLog.create({
+          data: {
+            tenantId: currentContext.targetTenantId,
+            userId: session.user.id,
+            userName: session.user.name,
+            action: 'CONTEXT_SWITCH_ENDED',
+            entity: 'Tenant',
+            entityId: currentContext.targetTenantId,
+            newData: JSON.stringify({
+              platformMasterUserId: session.user.id,
+              targetTenantId: currentContext.targetTenantId,
+              timestamp: new Date().toISOString(),
+            }),
+          },
+        }).catch(() => {});
+      }
+
+      return res.json({
+        success: true,
+        message: 'Contexto administrativo encerrado. Retornado ao escopo global.',
+      });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao sair do contexto administrativo.' });
+    }
+  });
+
+  app.get('/api/saas/context-switch/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const context = AdminContextManager.getContext(session.id);
+      return res.json({ active: Boolean(context), context });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao obter status do contexto.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // BULK IMPORT & ASYNC JOBS API ROUTES (Phase 2.4)
+  // -------------------------------------------------------------
+
+  // Rate Limiter for bulk imports: max 15 imports per 15 min per IP
+  const importRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Limite de requisições de importação excedido. Aguarde alguns instantes.' },
+  });
+
+  // 1. POST /api/import/proposals - Async background processing
+  app.post('/api/import/proposals', importRateLimiter, async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.user.tenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para iniciar importação.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.create')) {
+        return res.status(403).json({ error: 'Você não tem permissão para importar propostas.' });
+      }
+
+      const tenantId = session.user.tenantId;
+      const userId = session.user.id;
+
+      // Rate limit / Concurrency protection: Check if there's already an active job in PROCESSING for this tenant
+      const activeJob = await prisma.importJob.findFirst({
+        where: {
+          tenantId,
+          status: { in: ['QUEUED', 'PROCESSING'] },
+        },
+      });
+
+      if (activeJob) {
+        return res.status(429).json({
+          error: 'Já existe uma importação em processamento para este tenant.',
+          activeJobId: activeJob.id,
+        });
+      }
+
+      const { fileName, fileSize, rows } = req.body || {};
+      const cleanFileName = String(fileName || 'importacao_propostas.xlsx').trim();
+
+      if (cleanFileName.toLowerCase().endsWith('.xls')) {
+        return res.status(400).json({ error: 'Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.' });
+      }
+
+      if (!rows || !Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ error: 'Nenhum registro válido enviado para importação.' });
+      }
+
+      const MAX_IMPORT_ROWS = 50000;
+      if (rows.length > MAX_IMPORT_ROWS) {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId,
+            action: 'IMPORT_REJECTED_ROW_LIMIT',
+            entity: 'ImportJob',
+            newData: JSON.stringify({
+              type: 'PROPOSALS',
+              fileName: cleanFileName,
+              totalRecords: rows.length,
+              maxAllowed: MAX_IMPORT_ROWS,
+            }),
+          },
+        });
+        return res.status(400).json({ error: `O arquivo excede o limite máximo permitido de 50.000 registros para importação.` });
+      }
+
+      const numFileSize = Number(fileSize) || 0;
+
+      // Create ImportJob record in PostgreSQL
+      const job = await prisma.importJob.create({
+        data: {
+          tenantId,
+          userId,
+          type: 'PROPOSALS',
+          fileName: cleanFileName,
+          fileSize: numFileSize,
+          status: 'QUEUED',
+          totalRecords: rows.length,
+        },
+      });
+
+      // Audit Log
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          action: 'IMPORT_STARTED',
+          entity: 'ImportJob',
+          entityId: job.id,
+          newData: JSON.stringify({
+            type: 'PROPOSALS',
+            fileName: cleanFileName,
+            totalRecords: rows.length,
+          }),
+        },
+      });
+
+      // Dispatch async background runner without blocking HTTP response
+      setImmediate(() => {
+        ImportWorkerService.processProposalsJob(prisma, job.id, tenantId, userId, rows).catch(err => {
+          console.error(`[BACKGROUND IMPORT ERROR] Job ${job.id} failed:`, err);
+        });
+      });
+
+      // Return 202 Accepted immediately
+      return res.status(202).json({
+        success: true,
+        message: 'Importação aceita e enfileirada para processamento em segundo plano.',
+        importId: job.id,
+        totalRecords: rows.length,
+        status: 'QUEUED',
+      });
+    } catch (err: any) {
+      console.error('[IMPORT PROPOSALS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao inicializar importação de propostas.' });
+    }
+  });
+
+  // 2. POST /api/import/status - Bulk status updates
+  app.post('/api/import/status', importRateLimiter, async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.user.tenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para atualizar status em lote.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'statuses.manage') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update')) {
+        return res.status(403).json({ error: 'Você não tem permissão para gerenciar status de propostas.' });
+      }
+
+      const tenantId = session.user.tenantId;
+      const userId = session.user.id;
+
+      const activeJob = await prisma.importJob.findFirst({
+        where: {
+          tenantId,
+          status: { in: ['QUEUED', 'PROCESSING'] },
+        },
+      });
+
+      if (activeJob) {
+        return res.status(429).json({
+          error: 'Já existe uma importação em processamento para este tenant.',
+          activeJobId: activeJob.id,
+        });
+      }
+
+      const { fileName, fileSize, rows } = req.body || {};
+      const cleanFileName = String(fileName || 'retorno_status.xlsx').trim();
+
+      if (cleanFileName.toLowerCase().endsWith('.xls')) {
+        return res.status(400).json({ error: 'Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.' });
+      }
+
+      if (!rows || !Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ error: 'Nenhum registro de status fornecido.' });
+      }
+
+      const MAX_IMPORT_ROWS = 50000;
+      if (rows.length > MAX_IMPORT_ROWS) {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId,
+            action: 'IMPORT_REJECTED_ROW_LIMIT',
+            entity: 'ImportJob',
+            newData: JSON.stringify({
+              type: 'STATUS_UPDATE',
+              fileName: cleanFileName,
+              totalRecords: rows.length,
+              maxAllowed: MAX_IMPORT_ROWS,
+            }),
+          },
+        });
+        return res.status(400).json({ error: `O arquivo excede o limite máximo permitido de 50.000 registros para importação.` });
+      }
+
+      const numFileSize = Number(fileSize) || 0;
+
+      const job = await prisma.importJob.create({
+        data: {
+          tenantId,
+          userId,
+          type: 'STATUS_UPDATE',
+          fileName: cleanFileName,
+          fileSize: numFileSize,
+          status: 'QUEUED',
+          totalRecords: rows.length,
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          action: 'IMPORT_STARTED',
+          entity: 'ImportJob',
+          entityId: job.id,
+          newData: JSON.stringify({
+            type: 'STATUS_UPDATE',
+            fileName: cleanFileName,
+            totalRecords: rows.length,
+          }),
+        },
+      });
+
+      setImmediate(() => {
+        ImportWorkerService.processStatusJob(prisma, job.id, tenantId, userId, rows).catch(err => {
+          console.error(`[BACKGROUND STATUS IMPORT ERROR] Job ${job.id} failed:`, err);
+        });
+      });
+
+      return res.status(202).json({
+        success: true,
+        message: 'Atualização de status em lote aceita e enfileirada.',
+        importId: job.id,
+        totalRecords: rows.length,
+        status: 'QUEUED',
+      });
+    } catch (err: any) {
+      console.error('[IMPORT STATUS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao inicializar atualização de status em lote.' });
+    }
+  });
+
+  // 3. POST /api/import/partners - Bulk partner imports
+  app.post('/api/import/partners', importRateLimiter, async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.user.tenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para importar parceiros.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'partners.create')) {
+        return res.status(403).json({ error: 'Você não tem permissão para cadastrar parceiros.' });
+      }
+
+      const tenantId = session.user.tenantId;
+      const userId = session.user.id;
+
+      const { fileName, fileSize, rows } = req.body || {};
+      const cleanFileName = String(fileName || 'importacao_parceiros.xlsx').trim();
+
+      if (cleanFileName.toLowerCase().endsWith('.xls')) {
+        return res.status(400).json({ error: 'Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.' });
+      }
+
+      if (!rows || !Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ error: 'Nenhum registro de parceiro fornecido.' });
+      }
+
+      const MAX_IMPORT_ROWS = 50000;
+      if (rows.length > MAX_IMPORT_ROWS) {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId,
+            action: 'IMPORT_REJECTED_ROW_LIMIT',
+            entity: 'ImportJob',
+            newData: JSON.stringify({
+              type: 'PARTNERS',
+              fileName: cleanFileName,
+              totalRecords: rows.length,
+              maxAllowed: MAX_IMPORT_ROWS,
+            }),
+          },
+        });
+        return res.status(400).json({ error: `O arquivo excede o limite máximo permitido de 50.000 registros para importação.` });
+      }
+
+      const numFileSize = Number(fileSize) || 0;
+
+      const job = await prisma.importJob.create({
+        data: {
+          tenantId,
+          userId,
+          type: 'PARTNERS',
+          fileName: cleanFileName,
+          fileSize: numFileSize,
+          status: 'QUEUED',
+          totalRecords: rows.length,
+        },
+      });
+
+      setImmediate(() => {
+        ImportWorkerService.processPartnersJob(prisma, job.id, tenantId, userId, rows).catch(err => {
+          console.error(`[BACKGROUND PARTNER IMPORT ERROR] Job ${job.id} failed:`, err);
+        });
+      });
+
+      return res.status(202).json({
+        success: true,
+        message: 'Importação de parceiros enfileirada com sucesso.',
+        importId: job.id,
+        totalRecords: rows.length,
+        status: 'QUEUED',
+      });
+    } catch (err: any) {
+      console.error('[IMPORT PARTNERS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao inicializar importação de parceiros.' });
+    }
+  });
+
+  // 4. GET /api/import/:id - Retrieve job status with tenant isolation
+  app.get('/api/import/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.user.tenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const { id } = req.params;
+      const tenantId = session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER';
+
+      const job = await prisma.importJob.findUnique({
+        where: { id },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+
+      if (!job) {
+        return res.status(404).json({ error: 'Job de importação não encontrado.' });
+      }
+
+      // Strict Tenant Isolation check
+      if (!isMaster && job.tenantId !== tenantId) {
+        return res.status(404).json({ error: 'Job de importação não encontrado.' });
+      }
+
+      const percent = job.totalRecords > 0 ? Math.min(100, Math.round((job.processedRecords / job.totalRecords) * 100)) : 0;
+
+      return res.json({
+        ...job,
+        percent,
+      });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao buscar status da importação.' });
+    }
+  });
+
+  // 5. POST /api/import/:id/cancel - Request job cancellation
+  app.post('/api/import/:id/cancel', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.user.tenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const { id } = req.params;
+      const tenantId = session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER';
+
+      const job = await prisma.importJob.findUnique({
+        where: { id },
+      });
+
+      if (!job) {
+        return res.status(404).json({ error: 'Job de importação não encontrado.' });
+      }
+
+      if (!isMaster && job.tenantId !== tenantId) {
+        return res.status(404).json({ error: 'Job de importação não encontrado.' });
+      }
+
+      if (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED') {
+        return res.status(400).json({ error: `O job já está finalizado (${job.status}).` });
+      }
+
+      // Flag cancellation
+      ImportWorkerService.requestCancellation(id);
+
+      if (job.status === 'QUEUED') {
+        await prisma.importJob.update({
+          where: { id },
+          data: {
+            status: 'CANCELLED',
+            cancelledAt: new Date(),
+          },
+        });
+
+        sseRegistry.broadcastToTenant(job.tenantId, {
+          type: 'IMPORT_CANCELLED',
+          entity: 'ImportJob',
+          entityId: id,
+          userId: session.user.id,
+          data: { importId: id },
+        });
+      }
+
+      return res.json({ success: true, message: 'Solicitação de cancelamento enviada com sucesso.' });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao solicitar cancelamento do job.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // P0.2 GLOBAL ERROR HANDLER MIDDLEWARE
+  // -------------------------------------------------------------
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const requestId = req.requestId || (req as any).requestId || crypto.randomUUID();
+
+    logger.error({
+      requestId,
+      method: req.method,
+      url: req.originalUrl || req.url,
+      ip: req.ip,
+      code: err?.code,
+      error: err?.message || String(err),
+    }, '[GLOBAL ERROR HANDLER]');
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    const rawStatus = err?.status || err?.statusCode;
+    const statusCode = typeof rawStatus === 'number' && rawStatus >= 400 && rawStatus < 600 ? rawStatus : 500;
+
+    return res.status(statusCode).json({
+      error: statusCode === 500 ? 'Internal server error' : (err.message || 'Erro interno no servidor.'),
+      requestId,
+    });
   });
 
   // Vite middleware for development
@@ -2166,11 +3363,79 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', async () => {
+  serverInstance = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
     await auditAndEnsureMasterUser();
   });
 }
+
+// -------------------------------------------------------------
+// P0.3 UNCAUGHT EXCEPTION, UNHANDLED REJECTION & GRACEFUL SHUTDOWN
+// -------------------------------------------------------------
+let isShuttingDown = false;
+let serverInstance: any = null;
+
+async function gracefulShutdown(reason: string | Error, exitCode = 0) {
+  if (isShuttingDown) {
+    logger.warn('[SHUTDOWN] Processo de shutdown já em andamento...');
+    return;
+  }
+  isShuttingDown = true;
+
+  logger.error({ reason: reason instanceof Error ? reason.message : String(reason) }, '[SHUTDOWN] Iniciando encerramento gracioso do servidor');
+
+  const forceExitTimeout = setTimeout(() => {
+    logger.error('[SHUTDOWN TIMEOUT] Forçando encerramento do processo após 10s');
+    process.exit(exitCode || 1);
+  }, 10000);
+  forceExitTimeout.unref();
+
+  try {
+    if (sseRegistry) {
+      logger.info('[SHUTDOWN] Encerrando conexões SSE ativas...');
+      sseRegistry.closeAllConnections();
+    }
+
+    if (serverInstance && serverInstance.close) {
+      logger.info('[SHUTDOWN] Fechando servidor HTTP Express...');
+      await new Promise<void>((resolve) => {
+        serverInstance.close((err?: Error) => {
+          if (err) logger.error({ error: err?.message || String(err) }, '[SHUTDOWN ERROR] Erro ao fechar servidor HTTP');
+          resolve();
+        });
+      });
+    }
+
+    logger.info('[SHUTDOWN] Desconectando Prisma Client...');
+    await prisma.$disconnect();
+
+    logger.info('[SHUTDOWN] Encerramento gracioso concluído com sucesso.');
+    process.exit(exitCode);
+  } catch (err: any) {
+    logger.error({ error: err?.message || String(err) }, '[SHUTDOWN ERROR] Erro durante o encerramento gracioso');
+    process.exit(1);
+  }
+}
+
+process.on('uncaughtException', (err: Error) => {
+  logger.error({ error: err?.message || String(err) }, '[CRITICAL UNCAUGHT EXCEPTION]');
+  gracefulShutdown(err, 1);
+});
+
+process.on('unhandledRejection', (reason: any) => {
+  logger.error({ reason: reason instanceof Error ? reason.message : String(reason) }, '[CRITICAL UNHANDLED REJECTION]');
+  gracefulShutdown(reason instanceof Error ? reason : new Error(String(reason)), 1);
+});
+
+process.on('SIGTERM', () => {
+  logger.info('[SIGNAL] SIGTERM recebido.');
+  gracefulShutdown('SIGTERM', 0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('[SIGNAL] SIGINT recebido.');
+  gracefulShutdown('SIGINT', 0);
+});
 
 startServer();
 

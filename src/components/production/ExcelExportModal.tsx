@@ -116,10 +116,10 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
       if (exportType === 'PADRAO') {
-        const { fileName } = ExcelService.exportStandard(proposals, productFilterName);
+        const { fileName } = await ExcelService.exportStandard(proposals, productFilterName);
         setDownloadSuccess(`Arquivo padrão gerado com sucesso: ${fileName}`);
       } else {
         if (selectedColumns.length === 0) {
@@ -127,7 +127,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
           return;
         }
 
-        const { fileName } = ExcelService.exportCustom(
+        const { fileName } = await ExcelService.exportCustom(
           proposals,
           selectedColumns,
           `Personalizado | ${selectedColumns.length} colunas | Formato ${fileFormat}`,

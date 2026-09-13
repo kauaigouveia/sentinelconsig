@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -10,20 +10,13 @@ import {
   Download,
   AlertTriangle,
   FileText,
+  Loader2,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils, writeFile as xlsxWriteFile } from 'xlsx';
+import ExcelJS from 'exceljs';
 import { StorageService } from '../../services/storageService';
 import { extractPartnerCode } from '../../lib/utils';
 import { Partner, Promoter } from '../../types';
-
-const getSafeXlsx = () => {
-  const mod = (XLSX as any) || {};
-  const read = xlsxRead || mod.read || mod.default?.read || (window as any)?.XLSX?.read;
-  const utils = xlsxUtils || mod.utils || mod.default?.utils || (window as any)?.XLSX?.utils;
-  const writeFile = xlsxWriteFile || mod.writeFile || mod.default?.writeFile || (window as any)?.XLSX?.writeFile;
-  return { read, utils, writeFile };
-};
+import { RealtimeService } from '../../services/realtimeService';
 
 interface PartnerImportModalProps {
   isOpen: boolean;
@@ -157,26 +150,52 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    if (file.name.toLowerCase().endsWith('.xls')) {
+      setErrorMsg('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = evt => {
+    reader.onload = async evt => {
       try {
-        const buffer = evt.target?.result;
-        const { read, utils } = getSafeXlsx();
-        if (!read || !utils) {
-          throw new Error('Não foi possível carregar os módulos da biblioteca XLSX.');
+        const buffer = evt.target?.result as ArrayBuffer;
+        if (!buffer) {
+          throw new Error('Não foi possível ler o arquivo.');
         }
 
-        const wb = read(buffer, { type: 'array' });
-        const wsName = wb?.SheetNames?.[0];
-        if (!wsName || !wb?.Sheets?.[wsName]) {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
           throw new Error('Nenhuma planilha encontrada no arquivo.');
         }
-        const ws = wb.Sheets[wsName];
-        const rawJson = utils.sheet_to_json(ws);
+
+        const rawJson: any[] = [];
+        let headers: string[] = [];
+
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+          if (rowNumber === 1) {
+            headers = rowValues.map(v => String(v || '').trim());
+          } else {
+            const rowObj: Record<string, any> = {};
+            headers.forEach((h, idx) => {
+              rowObj[h] = rowValues[idx] !== undefined ? rowValues[idx] : '';
+            });
+            rawJson.push(rowObj);
+          }
+        });
+
         if (rawJson.length === 0) {
           setErrorMsg('A planilha selecionada está vazia ou sem cabeçalhos reconhecíveis.');
           return;
         }
+
+        if (rawJson.length > 50000) {
+          setErrorMsg('O arquivo excede o limite máximo permitido de 50.000 registros para importação.');
+          return;
+        }
+
         processRawData(rawJson);
       } catch (err: any) {
         setErrorMsg('Erro ao ler a planilha: ' + (err.message || 'Arquivo inválido.'));
@@ -206,32 +225,39 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   };
 
   // Download Example CSV Template
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const templateData = [
       { 'NOME COMPLETO': 'KAUAI AMORIM GOUVEIA', 'LOGIN': 'KAUAI@16740', 'PROMOTORA': 'DG' },
       { 'NOME COMPLETO': 'FRANCISCO DA SILVA', 'LOGIN': 'FRANCO@16690', 'PROMOTORA': 'DG' },
       { 'NOME COMPLETO': 'FOX AGENTE FINANCEIRO', 'LOGIN': 'FOX@16715', 'PROMOTORA': 'PROSPECTA' },
     ];
-    const { utils, writeFile } = getSafeXlsx();
-    if (!utils || !writeFile) {
-      alert('Biblioteca XLSX não pôde ser carregada.');
-      return;
-    }
 
-    const ws = utils.json_to_sheet(templateData);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, 'Parceiros');
-    writeFile(wb, 'MODELO_IMPORTACAO_PARCEIROS.xlsx');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Parceiros');
+    const headers = Object.keys(templateData[0]);
+    worksheet.addRow(headers);
+    templateData.forEach(item => {
+      worksheet.addRow(headers.map(h => (item as any)[h]));
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'MODELO_IMPORTACAO_PARCEIROS.xlsx';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // Confirm Import
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     const validItems = parsedRows
       .filter(r => r.status === 'VALID' || r.status === 'WARNING')
       .map(r => ({
         fullName: r.fullName,
         login: r.login,
-        promoterId: r.promoterId,
+        promoterName: r.promoterName,
       }));
 
     if (validItems.length === 0) {
@@ -240,9 +266,25 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
     }
 
     setImporting(true);
+    setErrorMsg(null);
     try {
-      const res = StorageService.createPartnersBatch(validItems);
-      setSuccessMsg(`Sucesso! ${res.createdCount} parceiros cadastrados no sistema.`);
+      const res = await fetch('/api/import/partners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileName: 'importacao_parceiros.xlsx',
+          fileSize: 0,
+          rows: validItems,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao processar importação de parceiros.');
+      }
+
+      setSuccessMsg(`Importação enfileirada com sucesso no servidor! ${validItems.length} parceiros em processamento.`);
       setTimeout(() => {
         onImportCompleted();
         onClose();
@@ -331,12 +373,12 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Selecione uma planilha de parceiros
               </p>
-              <p className="text-[10px] text-slate-500 mb-3">Formatos suportados: .XLSX, .XLS, .CSV</p>
+              <p className="text-[10px] text-slate-500 mb-3">Formatos suportados: .XLSX, .CSV</p>
               <label className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white cursor-pointer shadow-xs transition-colors">
                 <span>Escolher Arquivo</span>
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".xlsx,.csv"
                   onChange={handleFileUpload}
                   className="hidden"
                 />

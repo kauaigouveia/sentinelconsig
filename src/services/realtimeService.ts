@@ -26,20 +26,26 @@ export interface RealtimeEvent<T = any> {
     | 'NOTIFICATION_CREATED'
     | 'TENANT_UPDATED'
     | 'USER_UPDATED'
-    | 'USER_DELETED';
+    | 'USER_DELETED'
+    | 'IMPORT_STARTED'
+    | 'IMPORT_PROGRESS'
+    | 'IMPORT_COMPLETED'
+    | 'IMPORT_FAILED'
+    | 'IMPORT_CANCELLED';
   entity?: string;
   entityId?: string;
   tenantId?: string;
   userId?: string;
   timestamp?: string | number;
   payload?: T;
+  data?: T;
 }
 
 export type ConnectionStatus = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'ERROR';
 export type EventListener<T = any> = (event: RealtimeEvent<T>) => void;
 export type StatusListener = (status: ConnectionStatus, details?: { error?: string; reconnectAttempt?: number }) => void;
 
-class RealtimeService {
+export class RealtimeService {
   private static instance: RealtimeService;
   private listeners: Map<string, Set<EventListener>> = new Map();
   private statusListeners: Set<StatusListener> = new Set();

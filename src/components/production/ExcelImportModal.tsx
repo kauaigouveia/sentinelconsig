@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -9,14 +9,33 @@ import {
   FileCheck,
   RotateCcw,
   Sparkles,
+  Loader2,
+  StopCircle,
 } from 'lucide-react';
 import { ExcelService, ImportAnalysisResult, ImportPreviewRow } from '../../services/excelService';
 import { formatCpf, formatCurrency } from '../../lib/utils';
+import { RealtimeService } from '../../services/realtimeService';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportSuccess: (count: number) => void;
+}
+
+interface ImportJobProgressState {
+  importId: string;
+  totalRecords: number;
+  processed: number;
+  created: number;
+  updated: number;
+  duplicates: number;
+  invalid: number;
+  failed: number;
+  percent: number;
+  currentChunk: number;
+  totalChunks: number;
+  status: 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  errorMessage?: string;
 }
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
@@ -30,13 +49,89 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<ImportAnalysisResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
   const [activeTab, setActiveTab] = useState<'VALIDAS' | 'ERROS' | 'DUPLICADAS' | 'MAPA'>('VALIDAS');
+  
+  // Async Job State
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState<ImportJobProgressState | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Subscribe to SSE realtime events for import updates
+  useEffect(() => {
+    const realtime = RealtimeService.getInstance();
+    
+    const unsubscribeProgress = realtime.subscribe('IMPORT_PROGRESS', (event) => {
+      const data = event.data || event.payload;
+      if (data && (!activeJobId || data.importId === activeJobId)) {
+        setActiveJobId(data.importId);
+        setJobProgress({
+          importId: data.importId,
+          totalRecords: data.totalRecords || 0,
+          processed: data.processed || 0,
+          created: data.created || 0,
+          updated: data.updated || 0,
+          duplicates: data.duplicates || 0,
+          invalid: data.invalid || 0,
+          failed: data.failed || 0,
+          percent: data.percent || 0,
+          currentChunk: data.currentChunk || 0,
+          totalChunks: data.totalChunks || 0,
+          status: 'PROCESSING',
+        });
+      }
+    });
+
+    const unsubscribeCompleted = realtime.subscribe('IMPORT_COMPLETED', (event) => {
+      const data = event.data || event.payload;
+      if (data && (!activeJobId || data.importId === activeJobId)) {
+        setJobProgress(prev => prev ? {
+          ...prev,
+          status: 'COMPLETED',
+          percent: 100,
+          created: data.created || prev.created,
+          updated: data.updated || prev.updated,
+          invalid: data.invalid || prev.invalid,
+        } : null);
+        onImportSuccess((data.created || 0) + (data.updated || 0));
+      }
+    });
+
+    const unsubscribeFailed = realtime.subscribe('IMPORT_FAILED', (event) => {
+      const data = event.data || event.payload;
+      if (data && (!activeJobId || data.importId === activeJobId)) {
+        setJobProgress(prev => prev ? {
+          ...prev,
+          status: 'FAILED',
+          errorMessage: data.error || 'Erro no processamento da importação.',
+        } : null);
+        setErrorMsg(data.error || 'Erro no processamento da importação.');
+      }
+    });
+
+    const unsubscribeCancelled = realtime.subscribe('IMPORT_CANCELLED', (event) => {
+      const data = event.data || event.payload;
+      if (data && (!activeJobId || data.importId === activeJobId)) {
+        setJobProgress(prev => prev ? { ...prev, status: 'CANCELLED' } : null);
+        setIsCancelling(false);
+      }
+    });
+
+    return () => {
+      unsubscribeProgress();
+      unsubscribeCompleted();
+      unsubscribeFailed();
+      unsubscribeCancelled();
+    };
+  }, [activeJobId, onImportSuccess]);
+
   const handleFileSelected = async (file: File) => {
     setErrorMsg(null);
+    if (file.name.toLowerCase().endsWith('.xls')) {
+      setErrorMsg('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const result = await ExcelService.parseAndAnalyzeFile(file);
@@ -72,22 +167,71 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }
   };
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     if (!analysisResult || analysisResult.validRows.length === 0) return;
 
-    setIsImporting(true);
+    setErrorMsg(null);
+
+    // Prepare rows payload matching backend ImportProposalRow
+    const rowsPayload = analysisResult.validRows.map(r => ({
+      cpf: r.normalizedCpf || r.rawCpf,
+      fullName: r.fullName,
+      proposalNumber: r.proposalNumber,
+      partnerCodeOrLogin: r.matchedPartnerLogin || r.rawPartner,
+      productName: r.matchedProductName || r.rawProduct,
+      bankName: r.matchedBankName || r.rawBank,
+      promoterName: r.matchedPromoterName || r.rawPromoter,
+      disbursedValue: r.disbursedValue,
+      contractBalance: r.contractBalance,
+    }));
+
     try {
-      const { importedCount, errors } = ExcelService.executeImport(analysisResult.validRows, analysisResult.fileName);
-      if (errors.length > 0) {
-        setErrorMsg(`Importado parcialmente (${importedCount}). Erros: ${errors.join('; ')}`);
-      } else {
-        onImportSuccess(importedCount);
-        onClose();
+      const res = await fetch('/api/import/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileName: analysisResult.fileName,
+          fileSize: analysisResult.fileSize,
+          rows: rowsPayload,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao despachar importação no servidor.');
       }
+
+      setActiveJobId(data.importId);
+      setJobProgress({
+        importId: data.importId,
+        totalRecords: data.totalRecords || rowsPayload.length,
+        processed: 0,
+        created: 0,
+        updated: 0,
+        duplicates: 0,
+        invalid: 0,
+        failed: 0,
+        percent: 0,
+        currentChunk: 1,
+        totalChunks: Math.ceil(rowsPayload.length / 500) || 1,
+        status: 'PROCESSING',
+      });
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro durante a importação.');
-    } finally {
-      setIsImporting(false);
+      setErrorMsg(err.message || 'Erro ao iniciar importação em massa.');
+    }
+  };
+
+  const handleCancelJob = async () => {
+    if (!activeJobId) return;
+    setIsCancelling(true);
+    try {
+      await fetch(`/api/import/${activeJobId}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Falha ao cancelar job:', err);
     }
   };
 
@@ -102,16 +246,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                Importar Produção em Lote (Excel / CSV)
+                Importar Produção em Lote (Pipeline Backend SSE)
               </h3>
               <p className="text-xs text-slate-500">
-                Suporta reconhecimento inteligente de cabeçalho, detecção de ADEs duplicadas e interpretação de bancos legados
+                Processamento assíncrono com chunks de alta performance, proteção multi-tenant e monitoramento em tempo real
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200"
+            disabled={jobProgress?.status === 'PROCESSING'}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 disabled:opacity-30"
           >
             <X className="h-5 w-5" />
           </button>
@@ -119,7 +264,95 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {!analysisResult ? (
+          {/* Active Job Progress Bar View */}
+          {jobProgress ? (
+            <div className="space-y-6 py-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    {jobProgress.status === 'PROCESSING' ? (
+                      <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                    ) : jobProgress.status === 'COMPLETED' ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    ) : jobProgress.status === 'CANCELLED' ? (
+                      <StopCircle className="h-5 w-5 text-amber-600" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-rose-600" />
+                    )}
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        {jobProgress.status === 'PROCESSING' && 'Processando Importação no Servidor...'}
+                        {jobProgress.status === 'COMPLETED' && 'Importação Concluída com Sucesso!'}
+                        {jobProgress.status === 'CANCELLED' && 'Importação Cancelada pelo Usuário'}
+                        {jobProgress.status === 'FAILED' && 'Falha no Processamento da Importação'}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {jobProgress.processed} de {jobProgress.totalRecords} registros processados ({jobProgress.percent}%)
+                        {jobProgress.totalChunks > 1 && ` • Bloco ${jobProgress.currentChunk} de ${jobProgress.totalChunks}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {jobProgress.status === 'PROCESSING' && (
+                    <button
+                      onClick={handleCancelJob}
+                      disabled={isCancelling}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <StopCircle className="h-3.5 w-3.5" />
+                      <span>{isCancelling ? 'Cancelando...' : 'Cancelar Importação'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      jobProgress.status === 'COMPLETED'
+                        ? 'bg-emerald-600'
+                        : jobProgress.status === 'CANCELLED'
+                        ? 'bg-amber-500'
+                        : jobProgress.status === 'FAILED'
+                        ? 'bg-rose-600'
+                        : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${jobProgress.percent}%` }}
+                  />
+                </div>
+
+                {/* Metric cards */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+                  <div className="p-3 bg-white rounded-lg border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Processados</span>
+                    <p className="text-base font-extrabold text-slate-900">{jobProgress.processed}</p>
+                  </div>
+                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase">Criados</span>
+                    <p className="text-base font-extrabold text-emerald-800">{jobProgress.created}</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <span className="text-[10px] font-bold text-blue-700 uppercase">Atualizados</span>
+                    <p className="text-base font-extrabold text-blue-800">{jobProgress.updated}</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase">Duplicados</span>
+                    <p className="text-base font-extrabold text-amber-800">{jobProgress.duplicates}</p>
+                  </div>
+                  <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
+                    <span className="text-[10px] font-bold text-rose-700 uppercase">Inválidos / Falhas</span>
+                    <p className="text-base font-extrabold text-rose-800">{jobProgress.invalid + jobProgress.failed}</p>
+                  </div>
+                </div>
+
+                {jobProgress.errorMessage && (
+                  <div className="p-3 bg-rose-100 text-rose-800 rounded-lg text-xs font-medium border border-rose-300">
+                    {jobProgress.errorMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : !analysisResult ? (
             /* Upload Box */
             <div
               onDragOver={handleDragOver}
@@ -135,7 +368,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls,.csv"
+                accept=".xlsx,.csv"
                 className="hidden"
                 onChange={e => {
                   if (e.target.files?.[0]) handleFileSelected(e.target.files[0]);
@@ -148,7 +381,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 Arraste sua planilha aqui ou clique para selecionar
               </p>
               <p className="text-xs text-slate-500 max-w-sm mb-3">
-                Formatos aceitos: <strong>.xlsx, .xls, .csv</strong>. O sistema identifica automaticamente colunas como CPF, ADE, Parceiro, Produto e Banco/Promotora.
+                Formatos aceitos: <strong>.xlsx, .csv</strong>. O sistema identifica automaticamente colunas como CPF, ADE, Parceiro, Produto e Banco/Promotora.
               </p>
               <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200">
                 <Sparkles className="h-3.5 w-3.5 text-blue-600" />
@@ -173,7 +406,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <p className="text-lg font-extrabold text-emerald-800">
                     {analysisResult.validRows.length}
                   </p>
-                  <span className="text-[10px] text-emerald-600">Prontas para importação</span>
+                  <span className="text-[10px] text-emerald-600">Prontas para envio ao servidor</span>
                 </div>
 
                 <div className="rounded-lg border border-rose-200 bg-rose-50/50 p-3 shadow-2xs">
@@ -367,7 +600,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 bg-slate-50 rounded-b-xl">
           <div className="text-xs text-slate-500 font-medium">
-            {analysisResult ? (
+            {jobProgress ? (
+              <span>Status do Job: <strong>{jobProgress.status}</strong></span>
+            ) : analysisResult ? (
               <span>
                 Total válido para importação: <strong>{analysisResult.validRows.length}</strong> de{' '}
                 {analysisResult.totalRows}
@@ -380,22 +615,26 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+              disabled={jobProgress?.status === 'PROCESSING'}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
             >
-              Cancelar
+              {jobProgress?.status === 'COMPLETED' ? 'Fechar' : 'Cancelar'}
             </button>
-            <button
-              id="btn-confirm-import-excel"
-              onClick={handleConfirmImport}
-              disabled={!analysisResult || analysisResult.validRows.length === 0 || isImporting}
-              className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-            >
-              <FileCheck className="h-4 w-4" />
-              <span>{isImporting ? 'Importando...' : `Confirmar Importação (${analysisResult?.validRows.length || 0})`}</span>
-            </button>
+            {!jobProgress && (
+              <button
+                id="btn-confirm-import-excel"
+                onClick={handleConfirmImport}
+                disabled={!analysisResult || analysisResult.validRows.length === 0}
+                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <FileCheck className="h-4 w-4" />
+                <span>Confirmar e Enviar para Servidor ({analysisResult?.validRows.length || 0})</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 };
+

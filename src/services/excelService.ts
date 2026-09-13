@@ -1,5 +1,4 @@
-import * as XLSX from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils, writeFile as xlsxWriteFile } from 'xlsx';
+import ExcelJS from 'exceljs';
 import { StorageService } from './storageService';
 import {
   extractPartnerCode,
@@ -11,14 +10,6 @@ import {
   formatCurrency,
 } from '../lib/utils';
 import { Proposal } from '../types';
-
-const getXlsxSafe = () => {
-  const mod = (XLSX as any) || {};
-  const read = xlsxRead || mod.read || mod.default?.read || (window as any)?.XLSX?.read;
-  const utils = xlsxUtils || mod.utils || mod.default?.utils || (window as any)?.XLSX?.utils;
-  const writeFile = xlsxWriteFile || mod.writeFile || mod.default?.writeFile || (window as any)?.XLSX?.writeFile;
-  return { read, utils, writeFile };
-};
 
 export interface ImportPreviewRow {
   rowNumber: number;
@@ -56,6 +47,7 @@ export interface ImportPreviewRow {
 
 export interface ImportAnalysisResult {
   fileName: string;
+  fileSize?: number;
   totalRows: number;
   validRows: ImportPreviewRow[];
   invalidRows: ImportPreviewRow[];
@@ -65,26 +57,43 @@ export interface ImportAnalysisResult {
 }
 
 export class ExcelService {
+  public static readonly MAX_IMPORT_ROWS = 50000;
+
   /**
    * Parses uploaded Excel/CSV file and analyzes rows with smart column detection
    * and legacy bank-promoter interpretation.
    */
   public static async parseAndAnalyzeFile(file: File): Promise<ImportAnalysisResult> {
-    let rawRows: any[][] = [];
-    const { read, utils } = getXlsxSafe();
+    if (file.name.toLowerCase().endsWith('.xls')) {
+      throw new Error('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
+    }
 
-    if (read && utils) {
-      try {
-        const data = await file.arrayBuffer();
-        const workbook = read(data, { type: 'array' });
-        const firstSheetName = workbook?.SheetNames?.[0];
-        if (firstSheetName && workbook?.Sheets?.[firstSheetName]) {
-          const worksheet = workbook.Sheets[firstSheetName];
-          rawRows = utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-        }
-      } catch (excelErr) {
-        console.warn('Erro ao processar XLSX no ExcelService, tentando leitor de texto:', excelErr);
+    let rawRows: any[][] = [];
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(data);
+      const worksheet = workbook.worksheets[0];
+      if (worksheet) {
+        worksheet.eachRow({ includeEmpty: true }, (row) => {
+          const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+          rawRows.push(
+            rowValues.map(v => {
+              if (v === null || v === undefined) return '';
+              if (typeof v === 'object') {
+                if ('result' in v && v.result !== undefined) return v.result;
+                if ('text' in v && v.text !== undefined) return v.text;
+                if ('hyperlink' in v && 'text' in v) return v.text;
+                if (v instanceof Date) return v.toISOString();
+              }
+              return v;
+            })
+          );
+        });
       }
+    } catch (excelErr) {
+      console.warn('Erro ao processar XLSX no ExcelService, tentando leitor de texto:', excelErr);
     }
 
     if (!rawRows || rawRows.length < 2) {
@@ -102,6 +111,10 @@ export class ExcelService {
 
     if (!rawRows || rawRows.length < 2) {
       throw new Error('A planilha está vazia ou não contém dados suficientes.');
+    }
+
+    if (rawRows.length > ExcelService.MAX_IMPORT_ROWS) {
+      throw new Error(`O arquivo excede o limite máximo permitido de ${ExcelService.MAX_IMPORT_ROWS.toLocaleString('pt-BR')} registros para importação.`);
     }
 
     const headers = rawRows[0].map(h => String(h).trim());
@@ -398,6 +411,7 @@ export class ExcelService {
 
     return {
       fileName: file.name,
+      fileSize: file.size,
       totalRows: previewRows.length,
       validRows: previewRows.filter(r => r.isValid),
       invalidRows,
@@ -594,10 +608,10 @@ export class ExcelService {
    * IMPORTANT:
    *   "Se parceiro KAUAI@16740, exportar 16740. NUNCA KAUAI@16740. Utilizar extractPartnerCode()."
    */
-  public static exportStandard(
+  public static async exportStandard(
     proposals: Proposal[],
     productFilterName: string = 'TODOS'
-  ): { fileName: string; buffer: any } {
+  ): Promise<{ fileName: string }> {
     const clients = StorageService.getClients();
     const partners = StorageService.getPartners();
     const today = new Date();
@@ -620,12 +634,25 @@ export class ExcelService {
       };
     });
 
-    const { utils, writeFile } = getXlsxSafe();
-    const worksheet = utils.json_to_sheet(dataRows);
-    const workbook = utils.book_new();
-    utils.book_append_sheet(workbook, worksheet, 'Propostas');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Propostas');
 
-    writeFile(workbook, fileName);
+    if (dataRows.length > 0) {
+      const headers = Object.keys(dataRows[0]);
+      worksheet.addRow(headers);
+      dataRows.forEach(item => {
+        worksheet.addRow(headers.map(h => (item as any)[h]));
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
 
     // Log the export
     StorageService.addExportLog({
@@ -635,18 +662,18 @@ export class ExcelService {
       fileName,
     });
 
-    return { fileName, buffer: workbook };
+    return { fileName };
   }
 
   /**
    * Exportação Personalizada Completa (Relatórios com Filtros Seletivos):
    */
-  public static exportCustom(
+  public static async exportCustom(
     proposals: Proposal[],
     selectedColumns: string[],
     filtersSummary: string,
     format: 'XLSX' | 'CSV' = 'XLSX'
-  ): { fileName: string } {
+  ): Promise<{ fileName: string }> {
     const clients = StorageService.getClients();
     const partners = StorageService.getPartners();
     const products = StorageService.getProducts();
@@ -694,15 +721,35 @@ export class ExcelService {
       return row;
     });
 
-    const { utils, writeFile } = getXlsxSafe();
-    const worksheet = utils.json_to_sheet(dataRows);
-    const workbook = utils.book_new();
-    utils.book_append_sheet(workbook, worksheet, 'Relatório');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Relatório');
+
+    if (dataRows.length > 0) {
+      const headers = Object.keys(dataRows[0]);
+      worksheet.addRow(headers);
+      dataRows.forEach(item => {
+        worksheet.addRow(headers.map(h => item[h]));
+      });
+    }
 
     if (format === 'CSV') {
-      writeFile(workbook, fileName, { bookType: 'csv' });
+      const buffer = await workbook.csv.writeBuffer();
+      const blob = new Blob([buffer], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
     } else {
-      writeFile(workbook, fileName);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
     }
 
     StorageService.addExportLog({

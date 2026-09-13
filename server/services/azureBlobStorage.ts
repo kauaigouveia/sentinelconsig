@@ -1,5 +1,6 @@
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import path from 'path';
+import { logger } from '../logger';
 
 let containerClientInstance: ContainerClient | null = null;
 
@@ -107,7 +108,7 @@ export async function deleteBlob(blobPath: string): Promise<void> {
     const container = getAzureContainerClient();
     const blockBlobClient = container.getBlockBlobClient(blobPath);
     await blockBlobClient.deleteIfExists();
-  } catch (err) {
-    console.warn(`[AzureBlobStorage] Warning: deleteIfExists failed for ${blobPath}:`, err);
+  } catch (err: any) {
+    logger.warn({ error: err?.message || String(err) }, '[AZURE BLOB WARNING] deleteIfExists failed');
   }
 }

@@ -9,6 +9,7 @@ export interface SSEEventPayload {
   tenantId: string;
   timestamp: string;
   userId?: string;
+  data?: any;
 }
 
 export interface SSEConnection {
@@ -108,6 +109,7 @@ class SSERegistry {
       entity: string;
       entityId: string;
       userId?: string;
+      data?: any;
     }
   ): void {
     const payload: SSEEventPayload = {
@@ -117,6 +119,7 @@ class SSERegistry {
       entityId: eventData.entityId,
       tenantId: tenantId,
       userId: eventData.userId,
+      data: eventData.data,
       timestamp: new Date().toISOString(),
     };
 
@@ -188,6 +191,39 @@ class SSERegistry {
           this.unregisterConnection(conn.connectionId);
         }
       }
+    }
+  }
+
+  /**
+   * Encerra imediatamente todas as conexões SSE ativas de um tenant (ex: quando o tenant é suspenso).
+   */
+  public disconnectTenant(tenantId: string, reason = 'TENANT_SUSPENDED'): void {
+    const connections = this.tenantConnections.get(tenantId);
+    if (!connections || connections.size === 0) return;
+
+    const payload = {
+      type: 'SESSION_TERMINATED',
+      reason,
+      timestamp: new Date().toISOString(),
+    };
+    const sseMessage = `event: session_terminated\ndata: ${JSON.stringify(payload)}\n\n`;
+
+    for (const conn of Array.from(connections)) {
+      try {
+        conn.res.write(sseMessage);
+        conn.res.end();
+      } catch {}
+      this.unregisterConnection(conn.connectionId);
+    }
+
+    this.tenantConnections.delete(tenantId);
+    console.log(`[SSE REGISTRY] Todas as conexões do Tenant [${tenantId}] foram encerradas devido a '${reason}'.`);
+  }
+
+  public closeAllConnections(): void {
+    const tenantIds = Array.from(this.tenantConnections.keys());
+    for (const tenantId of tenantIds) {
+      this.disconnectTenant(tenantId, 'SERVER_SHUTDOWN');
     }
   }
 

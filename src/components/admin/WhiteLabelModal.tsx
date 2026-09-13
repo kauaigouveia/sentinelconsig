@@ -54,7 +54,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!companyName.trim()) {
       setErrorMsg('Informe o nome principal da promotora / empresa.');
       return;
@@ -73,6 +73,25 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
       };
 
       StorageService.updateWhiteLabel(updated);
+
+      // Persist to PostgreSQL backend
+      await fetch('/api/whitelabel', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+          tradeName: tradeName.trim() || null,
+          cnpj: cnpj.trim() || null,
+          logoUrl: logoUrl.trim() || null,
+          primaryColor,
+          secondaryColor: primaryColor,
+          accentColor: primaryColor,
+          supportEmail: supportEmail.trim() || null,
+          supportPhone: supportPhone.trim() || null,
+          footerText: footerText.trim() || null,
+        }),
+      }).catch(err => console.warn('[WHITELABEL] Erro ao sincronizar com backend:', err));
+
       setSavedSuccess(true);
       setErrorMsg(null);
 

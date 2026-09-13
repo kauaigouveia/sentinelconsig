@@ -9,20 +9,11 @@ import {
   AlertTriangle,
   Calculator,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils, writeFile as xlsxWriteFile } from 'xlsx';
+import ExcelJS from 'exceljs';
 import { StorageService } from '../../services/storageService';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { Partner } from '../../types';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
-
-const getSafeXlsx = () => {
-  const mod = (XLSX as any) || {};
-  const read = xlsxRead || mod.read || mod.default?.read || (window as any)?.XLSX?.read;
-  const utils = xlsxUtils || mod.utils || mod.default?.utils || (window as any)?.XLSX?.utils;
-  const writeFile = xlsxWriteFile || mod.writeFile || mod.default?.writeFile || (window as any)?.XLSX?.writeFile;
-  return { read, utils, writeFile };
-};
 
 interface SimulationImportModalProps {
   isOpen: boolean;
@@ -136,26 +127,52 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    if (file.name.toLowerCase().endsWith('.xls')) {
+      setErrorMsg('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = evt => {
+    reader.onload = async evt => {
       try {
-        const buffer = evt.target?.result;
-        const { read, utils } = getSafeXlsx();
-        if (!read || !utils) {
-          throw new Error('Não foi possível carregar os módulos da biblioteca XLSX.');
+        const buffer = evt.target?.result as ArrayBuffer;
+        if (!buffer) {
+          throw new Error('Não foi possível ler o arquivo.');
         }
 
-        const wb = read(buffer, { type: 'array' });
-        const wsName = wb?.SheetNames?.[0];
-        if (!wsName || !wb?.Sheets?.[wsName]) {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
           throw new Error('Nenhuma planilha encontrada no arquivo.');
         }
-        const ws = wb.Sheets[wsName];
-        const rawJson = utils.sheet_to_json(ws);
+
+        const rawJson: any[] = [];
+        let headers: string[] = [];
+
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+          if (rowNumber === 1) {
+            headers = rowValues.map(v => String(v || '').trim());
+          } else {
+            const rowObj: Record<string, any> = {};
+            headers.forEach((h, idx) => {
+              rowObj[h] = rowValues[idx] !== undefined ? rowValues[idx] : '';
+            });
+            rawJson.push(rowObj);
+          }
+        });
+
         if (rawJson.length === 0) {
           setErrorMsg('A planilha selecionada está vazia.');
           return;
         }
+
+        if (rawJson.length > 50000) {
+          setErrorMsg('O arquivo excede o limite máximo permitido de 50.000 registros para importação.');
+          return;
+        }
+
         processRawData(rawJson);
       } catch (err: any) {
         setErrorMsg('Erro ao ler a planilha: ' + (err.message || 'Arquivo inválido.'));
@@ -184,22 +201,29 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
   };
 
   // Download Excel Template
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const templateData = [
       { 'CPF CLIENTE': '012.345.678-90', 'PARCEIRO (LOGIN / CÓDIGO)': 'KAUAI@16740' },
       { 'CPF CLIENTE': '987.654.321-00', 'PARCEIRO (LOGIN / CÓDIGO)': '16690' },
       { 'CPF CLIENTE': '111.222.333-44', 'PARCEIRO (LOGIN / CÓDIGO)': 'FOX@16715' },
     ];
-    const { utils, writeFile } = getSafeXlsx();
-    if (!utils || !writeFile) {
-      alert('Biblioteca XLSX não pôde ser carregada.');
-      return;
-    }
 
-    const ws = utils.json_to_sheet(templateData);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, 'Simulacoes');
-    writeFile(wb, 'MODELO_IMPORTACAO_SIMULACOES.xlsx');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Simulacoes');
+    const headers = Object.keys(templateData[0]);
+    worksheet.addRow(headers);
+    templateData.forEach(item => {
+      worksheet.addRow(headers.map(h => (item as any)[h]));
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'MODELO_IMPORTACAO_SIMULACOES.xlsx';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // Confirm Import
@@ -301,12 +325,12 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Selecione a planilha de simulações
               </p>
-              <p className="text-[10px] text-slate-500 mb-3">Formatos: .XLSX, .XLS, .CSV</p>
+              <p className="text-[10px] text-slate-500 mb-3">Formatos: .XLSX, .CSV</p>
               <label className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white cursor-pointer shadow-xs transition-colors">
                 <span>Escolher Arquivo</span>
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".xlsx,.csv"
                   onChange={handleFileUpload}
                   className="hidden"
                 />

@@ -27,7 +27,7 @@ export interface User {
 export type Alcada = 'CLIENTE' | 'PARCEIRO' | 'BANCO' | 'NOSSA EQUIPE' | 'SISTEMA';
 export type ResponsibleAlçada = Alcada;
 
-export type TenantPlan = 'BASIC' | 'PRO' | 'ENTERPRISE';
+export type TenantPlan = 'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED';
 
 export interface Tenant {

@@ -105,6 +105,21 @@ enum DocumentType {
   OUTROS
 }
 
+enum ImportJobType {
+  PROPOSALS
+  STATUS_UPDATE
+  SIMULATIONS
+  PARTNERS
+}
+
+enum ImportJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 // ==========================================
 // MULTI-TENANCY & WHITE LABEL
 // ==========================================
@@ -149,6 +164,7 @@ model Tenant {
   auditLogs        AuditLog[]
   backups          Backup[]
   systemConfigs    SystemConfig[]
+  importJobs       ImportJob[]
 
   // Soft Delete & Timestamps
   deletedAt        DateTime?        @map("deleted_at")
@@ -235,6 +251,7 @@ model User {
   auditLogs        AuditLog[]
   uploadedDocs     ClientDocument[]
   createdBackups   Backup[]
+  importJobs       ImportJob[]
   sessions         Session[]
 
   // Security & Lifecycle
@@ -760,4 +777,41 @@ model SystemConfig {
   @@unique([tenantId, configKey])
   @@index([tenantId])
   @@map("system_configs")
+}
+
+model ImportJob {
+  id               String          @id @default(cuid())
+  tenantId         String          @map("tenant_id")
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId           String          @map("user_id")
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type             ImportJobType
+  fileName         String          @map("file_name")
+  fileSize         Int             @default(0) @map("file_size")
+  status           ImportJobStatus @default(QUEUED)
+  
+  totalRecords     Int             @default(0) @map("total_records")
+  processedRecords Int             @default(0) @map("processed_records")
+  createdRecords   Int             @default(0) @map("created_records")
+  updatedRecords   Int             @default(0) @map("updated_records")
+  duplicateRecords Int             @default(0) @map("duplicate_records")
+  invalidRecords   Int             @default(0) @map("invalid_records")
+  failedRecords    Int             @default(0) @map("failed_records")
+  
+  currentChunk     Int             @default(0) @map("current_chunk")
+  totalChunks      Int             @default(0) @map("total_chunks")
+  
+  errorMessage     String?         @map("error_message")
+  metadata         Json?
+  
+  createdAt        DateTime        @default(now()) @map("created_at")
+  startedAt        DateTime?       @map("started_at")
+  completedAt      DateTime?       @map("completed_at")
+  cancelledAt      DateTime?       @map("cancelled_at")
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("import_jobs")
 }

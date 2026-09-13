@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -14,20 +14,15 @@ import {
   ArrowLeft,
   Search,
   Check,
-  Info
+  Info,
+  Loader2,
+  StopCircle,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
+import ExcelJS from 'exceljs';
 import { StorageService } from '../../services/storageService';
 import { Proposal, ProposalStatus } from '../../types';
 import { parseCurrency, formatCurrency } from '../../lib/utils';
-
-const getSafeXlsx = () => {
-  const mod = (XLSX as any) || {};
-  const readFn = xlsxRead || mod.read || mod.default?.read || (window as any)?.XLSX?.read;
-  const utilsObj = xlsxUtils || mod.utils || mod.default?.utils || (window as any)?.XLSX?.utils;
-  return { read: readFn, utils: utilsObj };
-};
+import { RealtimeService } from '../../services/realtimeService';
 
 interface StatusImportProps {
   onNavigate: (view: string) => void;
@@ -146,26 +141,41 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
   const handleFileSelected = async (selectedFile: File) => {
     setErrorMsg(null);
+    if (selectedFile.name.toLowerCase().endsWith('.xls')) {
+      setErrorMsg('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
+      return;
+    }
     setIsParsing(true);
     setFile(selectedFile);
 
     try {
       let rawRows: any[][] = [];
-      const { read: readFn, utils: utilsObj } = getSafeXlsx();
 
-      // 1. Tentar ler via SheetJS (Excel .xlsx / .xls / .csv)
-      if (readFn && utilsObj) {
-        try {
-          const buffer = await selectedFile.arrayBuffer();
-          const workbook = readFn(buffer, { type: 'array' });
-          const firstSheetName = workbook?.SheetNames?.[0];
-          if (firstSheetName && workbook?.Sheets?.[firstSheetName]) {
-            const worksheet = workbook.Sheets[firstSheetName];
-            rawRows = utilsObj.sheet_to_json(worksheet, { header: 1, defval: '' });
-          }
-        } catch (excelErr) {
-          console.warn('Leitura XLSX falhou, tentando leitor de texto puro:', excelErr);
+      // 1. Tentar ler via ExcelJS (.xlsx)
+      try {
+        const buffer = await selectedFile.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+        if (worksheet) {
+          worksheet.eachRow({ includeEmpty: true }, (row) => {
+            const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+            rawRows.push(
+              rowValues.map(v => {
+                if (v === null || v === undefined) return '';
+                if (typeof v === 'object') {
+                  if ('result' in v && v.result !== undefined) return v.result;
+                  if ('text' in v && v.text !== undefined) return v.text;
+                  if ('hyperlink' in v && 'text' in v) return v.text;
+                  if (v instanceof Date) return v.toISOString();
+                }
+                return v;
+              })
+            );
+          });
         }
+      } catch (excelErr) {
+        console.warn('Leitura XLSX falhou, tentando leitor de texto puro:', excelErr);
       }
 
       // 2. Fallback robusto para arquivos CSV/TSV/TXT ou se o leitor XLSX não obteve linhas
@@ -185,6 +195,10 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
       if (!rawRows || rawRows.length < 2) {
         throw new Error('O arquivo selecionado está vazio ou não possui colunas suficientes.');
+      }
+
+      if (rawRows.length > 50000) {
+        throw new Error('O arquivo excede o limite máximo permitido de 50.000 registros para importação.');
       }
 
       // Headers extraction
@@ -402,6 +416,47 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
     }
   }, [contractColIdx, statusColIdx, clientColIdx, disbursedColIdx, contractBalanceColIdx, statusMapping, rows]);
 
+  // Async Job SSE tracking
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState<{
+    processed: number;
+    total: number;
+    percent: number;
+    updated: number;
+    status: 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  } | null>(null);
+
+  useEffect(() => {
+    const realtime = RealtimeService.getInstance();
+    const unsubProgress = realtime.subscribe('IMPORT_PROGRESS', (event) => {
+      const data = event.data || event.payload;
+      if (data && (!activeJobId || data.importId === activeJobId)) {
+        setActiveJobId(data.importId);
+        setJobProgress({
+          processed: data.processed || 0,
+          total: data.totalRecords || 0,
+          percent: data.percent || 0,
+          updated: data.updated || 0,
+          status: 'PROCESSING',
+        });
+      }
+    });
+
+    const unsubCompleted = realtime.subscribe('IMPORT_COMPLETED', (event) => {
+      const data = event.data || event.payload;
+      if (data && (!activeJobId || data.importId === activeJobId)) {
+        setJobProgress(prev => prev ? { ...prev, status: 'COMPLETED', percent: 100 } : null);
+        setIsProcessing(false);
+        setStep(3);
+      }
+    });
+
+    return () => {
+      unsubProgress();
+      unsubCompleted();
+    };
+  }, [activeJobId]);
+
   const handleConfirmImport = async () => {
     const toUpdate = previewItems.filter(item => item.matchType === 'UPDATE');
     if (toUpdate.length === 0) {
@@ -412,57 +467,40 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
     setIsProcessing(true);
     setErrorMsg(null);
 
-    try {
-      let successCount = 0;
-      
-      for (const item of toUpdate) {
-        if (item.proposalId) {
-          try {
-            if (item.mappedStatusId && item.currentStatusName !== item.mappedStatusName) {
-              StorageService.updateProposalStatus(
-                item.proposalId,
-                item.mappedStatusId,
-                `Status atualizado automaticamente via importação de lote (Arquivo: ${file?.name})`,
-                undefined,
-                'ALTERACAO_EM_LOTE'
-              );
-            }
-            if (item.financialUpdate) {
-              StorageService.updateProposalFinancials(
-                item.proposalId,
-                {
-                  disbursedValue: item.financialUpdate.disbursedValue,
-                  contractBalance: item.financialUpdate.contractBalance,
-                },
-                'IMPORTACAO',
-                file?.name
-              );
-            }
-            successCount++;
-          } catch (err) {
-            console.warn(`Erro ao atualizar proposta ID: ${item.proposalId}`, err);
-          }
-        }
-      }
+    const rowsPayload = toUpdate.map(item => ({
+      proposalNumber: item.contractNumber,
+      newStatusNameOrId: item.mappedStatusName,
+      disbursedValue: item.financialUpdate?.disbursedValue,
+      contractBalance: item.financialUpdate?.contractBalance,
+    }));
 
-      // Create Audit Log of batch import
-      StorageService.addAuditLog({
-        action: 'ALTERACAO_EM_LOTE',
-        entity: 'Proposal',
-        entityId: 'import-lote',
-        newData: JSON.stringify({
-          arquivo: file?.name,
-          linhasProcessadas: stats.totalRows,
-          atualizadasComSucesso: successCount,
-          jaAtualizadas: stats.noChange,
-          naoLocalizadas: stats.notFound
-        })
+    try {
+      const res = await fetch('/api/import/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileName: file?.name || 'retorno_status.xlsx',
+          fileSize: file?.size || 0,
+          rows: rowsPayload,
+        }),
       });
 
-      setStep(3);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao despachar atualização de status no servidor.');
+      }
+
+      setActiveJobId(data.importId);
+      setJobProgress({
+        processed: 0,
+        total: rowsPayload.length,
+        percent: 0,
+        updated: 0,
+        status: 'PROCESSING',
+      });
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro durante o processamento da importação de lote.');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -533,7 +571,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.csv"
               className="hidden"
               onChange={e => {
                 if (e.target.files?.[0]) handleFileSelected(e.target.files[0]);
@@ -548,7 +586,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
               Arraste seu relatório bancário aqui
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mb-4">
-              Selecione o arquivo <strong>Excel (.xlsx, .xls)</strong> ou <strong>CSV (.csv)</strong> que você exporta da plataforma para sincronizar instantaneamente.
+              Selecione o arquivo <strong>Excel (.xlsx)</strong> ou <strong>CSV (.csv)</strong> que você exporta da plataforma para sincronizar instantaneamente.
             </p>
             
             <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
