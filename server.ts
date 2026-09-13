@@ -659,8 +659,16 @@ async function startServer() {
   app.get('/api/clients', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      const whereCondition = tenantId ? { tenantId, deletedAt: null } : { deletedAt: null };
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      
+      const tenantId = session.user.tenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      }
+
+      const whereCondition = { tenantId, deletedAt: null };
       const clients = await prisma.client.findMany({
         where: whereCondition,
         orderBy: { createdAt: 'desc' },
@@ -675,9 +683,20 @@ async function startServer() {
   app.post('/api/clients', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.user.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar cliente.' });
+      }
+
+      const userRole = session.user.role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'clients.create')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'clients.create'." });
       }
 
       const { cpf, fullName, phone, email, birthDate, benefitNumber, salary, marginFree, marginCard, addressStreet, addressCity, addressState, addressZip } = req.body;
@@ -780,8 +799,10 @@ async function startServer() {
   app.get('/api/proposals', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      const whereCondition = tenantId ? { tenantId } : {};
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const whereCondition = { tenantId };
       const proposals = await prisma.proposal.findMany({
         where: whereCondition,
         include: { client: true, bank: true, promoter: true, partner: true, product: true },
@@ -1083,9 +1104,11 @@ async function startServer() {
   app.get('/api/banks', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const banks = await prisma.bank.findMany({
-        where: tenantId ? { tenantId } : {},
+        where: { tenantId },
       });
       return res.json(banks);
     } catch (err) {
@@ -1096,9 +1119,11 @@ async function startServer() {
   app.get('/api/promoters', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const promoters = await prisma.promoter.findMany({
-        where: tenantId ? { tenantId } : {},
+        where: { tenantId },
       });
       return res.json(promoters);
     } catch (err) {
@@ -1109,9 +1134,11 @@ async function startServer() {
   app.get('/api/partners', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const partners = await prisma.partner.findMany({
-        where: tenantId ? { tenantId, deletedAt: null } : { deletedAt: null },
+        where: { tenantId, deletedAt: null },
       });
       return res.json(partners);
     } catch (err) {
@@ -1122,9 +1149,11 @@ async function startServer() {
   app.get('/api/products', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const products = await prisma.product.findMany({
-        where: tenantId ? { tenantId } : {},
+        where: { tenantId },
       });
       return res.json(products);
     } catch (err) {
@@ -1138,9 +1167,11 @@ async function startServer() {
   app.get('/api/financial', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const entries = await prisma.financialEntry.findMany({
-        where: tenantId ? { tenantId } : {},
+        where: { tenantId },
         orderBy: { dueDate: 'desc' },
       });
       return res.json(entries);
@@ -1152,10 +1183,12 @@ async function startServer() {
   app.get('/api/notifications', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      const userId = session?.user?.id;
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const userId = session.user.id;
       const notifications = await prisma.notification.findMany({
-        where: tenantId ? { tenantId, userId } : {},
+        where: { tenantId, userId },
         orderBy: { createdAt: 'desc' },
       });
       return res.json(notifications);
@@ -2101,6 +2134,12 @@ async function startServer() {
 
       if (!isSelf && !canUpdateUsers) {
         return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
+      }
+
+      if (!canUpdateUsers) {
+        if (role !== undefined || customPermissions !== undefined || tenantId !== undefined || active !== undefined) {
+          return res.status(403).json({ error: "Acesso negado. Alteração de role, permissões ou status requer permissão 'users.update'." });
+        }
       }
 
       const targetUser = await prisma.user.findFirst({ where: { id } });
