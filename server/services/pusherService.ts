@@ -3,22 +3,35 @@ import { logger } from '../logger.js';
 
 let pusherClient: Pusher | null = null;
 
-if (process.env.VITE_REALTIME_PROVIDER === 'pusher') {
-  if (!process.env.PUSHER_APP_ID || !process.env.VITE_PUSHER_KEY || !process.env.PUSHER_SECRET || !process.env.VITE_PUSHER_CLUSTER) {
-    logger.error('[PUSHER] Pusher environment variables are missing. Pusher realtime will be disabled.');
-  } else {
-    try {
-      pusherClient = new Pusher({
-        appId: process.env.PUSHER_APP_ID,
-        key: process.env.VITE_PUSHER_KEY,
-        secret: process.env.PUSHER_SECRET,
-        cluster: process.env.VITE_PUSHER_CLUSTER,
-        useTLS: true,
-      });
-      logger.info('[PUSHER] Client initialized successfully.');
-    } catch (err: any) {
-      logger.error({ error: err?.message || String(err) }, '[PUSHER] Failed to initialize Pusher client.');
-    }
+/**
+ * Gets or initializes the Pusher client using lazy loading.
+ * This ensures the client is available in serverless environments.
+ */
+function getPusherClient(): Pusher {
+  if (pusherClient) return pusherClient;
+
+  const appId = process.env.PUSHER_APP_ID;
+  const key = process.env.PUSHER_KEY || process.env.VITE_PUSHER_KEY;
+  const secret = process.env.PUSHER_SECRET;
+  const cluster = process.env.PUSHER_CLUSTER || process.env.VITE_PUSHER_CLUSTER;
+
+  if (!appId || !key || !secret || !cluster) {
+    throw new Error('Pusher configuration is incomplete.');
+  }
+
+  try {
+    pusherClient = new Pusher({
+      appId,
+      key,
+      secret,
+      cluster,
+      useTLS: true,
+    });
+    logger.info('[PUSHER] Client initialized successfully (Lazy).');
+    return pusherClient;
+  } catch (err: any) {
+    logger.error({ error: err?.message || String(err) }, '[PUSHER] Lazy initialization failed.');
+    throw new Error('Pusher initialization failed.');
   }
 }
 
@@ -37,25 +50,25 @@ class EventBus {
    * Format: private-tenant-{tenantId}
    */
   public async publishToTenant(tenantId: string, payload: PublishPayload): Promise<void> {
-    if (pusherClient && process.env.VITE_REALTIME_PROVIDER === 'pusher') {
-      try {
-        const thinEvent = {
-          type: payload.type,
-          entity: payload.entity,
-          entityId: payload.entityId,
-          timestamp: new Date().toISOString(),
-          // Data is intentionally omitted for sensitive events, or kept minimal
-        };
-        // If it's an IMPORT event, we might need data
-        if (payload.type.startsWith('IMPORT_') && payload.data) {
-          (thinEvent as any).data = payload.data;
-        }
+    if (process.env.VITE_REALTIME_PROVIDER !== 'pusher') return;
 
-        await pusherClient.trigger(`private-tenant-${tenantId}`, payload.type, thinEvent);
-        logger.debug(`[EVENT_BUS] Published ${payload.type} to private-tenant-${tenantId}`);
-      } catch (err: any) {
-        logger.error({ error: err?.message || String(err) }, `[EVENT_BUS] Failed to publish ${payload.type} to Pusher`);
+    try {
+      const client = getPusherClient();
+      const thinEvent = {
+        type: payload.type,
+        entity: payload.entity,
+        entityId: payload.entityId,
+        timestamp: new Date().toISOString(),
+      };
+      
+      if (payload.type.startsWith('IMPORT_') && payload.data) {
+        (thinEvent as any).data = payload.data;
       }
+
+      await client.trigger(`private-tenant-${tenantId}`, payload.type, thinEvent);
+      logger.debug(`[EVENT_BUS] Published ${payload.type} to private-tenant-${tenantId}`);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, `[EVENT_BUS] Failed to publish ${payload.type} to Pusher`);
     }
   }
 
@@ -64,20 +77,21 @@ class EventBus {
    * Format: private-user-{userId}
    */
   public async publishToUser(userId: string, payload: PublishPayload): Promise<void> {
-    if (pusherClient && process.env.VITE_REALTIME_PROVIDER === 'pusher') {
-      try {
-        const thinEvent = {
-          type: payload.type,
-          entity: payload.entity,
-          entityId: payload.entityId,
-          timestamp: new Date().toISOString(),
-        };
+    if (process.env.VITE_REALTIME_PROVIDER !== 'pusher') return;
 
-        await pusherClient.trigger(`private-user-${userId}`, payload.type, thinEvent);
-        logger.debug(`[EVENT_BUS] Published ${payload.type} to private-user-${userId}`);
-      } catch (err: any) {
-        logger.error({ error: err?.message || String(err) }, `[EVENT_BUS] Failed to publish ${payload.type} to Pusher`);
-      }
+    try {
+      const client = getPusherClient();
+      const thinEvent = {
+        type: payload.type,
+        entity: payload.entity,
+        entityId: payload.entityId,
+        timestamp: new Date().toISOString(),
+      };
+
+      await client.trigger(`private-user-${userId}`, payload.type, thinEvent);
+      logger.debug(`[EVENT_BUS] Published ${payload.type} to private-user-${userId}`);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, `[EVENT_BUS] Failed to publish ${payload.type} to Pusher`);
     }
   }
 
@@ -85,10 +99,8 @@ class EventBus {
    * Authenticates a user/tenant connection for Pusher's private channels.
    */
   public authorizeChannel(socketId: string, channel: string, authData: any = {}) {
-    if (!pusherClient) {
-      throw new Error('Pusher client is not initialized.');
-    }
-    return pusherClient.authorizeChannel(socketId, channel, authData);
+    const client = getPusherClient();
+    return client.authorizeChannel(socketId, channel, authData);
   }
 }
 
