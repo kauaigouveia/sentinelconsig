@@ -276,14 +276,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
-        <div className="hidden sm:block">
-          <span className="text-xs font-black tracking-wider text-slate-900 dark:text-white leading-none block">
-            {whiteLabel.companyName}
-          </span>
-          <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 tracking-widest uppercase block mt-0.5">
-            {whiteLabel.tradeName || 'SISTEMA MULTI-PROMOTORA'}
-          </span>
-        </div>
       </div>
 
       {/* Search Bar */}
@@ -508,10 +500,10 @@ export const Header: React.FC<HeaderProps> = ({
             <Radio className={`h-3.5 w-3.5 ${realtimeStatus === 'CONNECTED' ? 'text-sky-500 animate-pulse' : realtimeStatus === 'CONNECTING' ? 'text-amber-500 animate-spin' : 'text-rose-500'}`} />
             <span className="hidden md:inline">
               {realtimeStatus === 'CONNECTED'
-                ? 'Realtime SSE'
+                ? `Realtime ${realtimeHub.getProviderName()}`
                 : realtimeStatus === 'CONNECTING'
                 ? 'Conectando...'
-                : 'SSE Desconectado'}
+                : `${realtimeHub.getProviderName()} Desconectado`}
             </span>
           </button>
 
@@ -741,14 +733,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Live Role & User Switcher */}
         <div className="flex items-center gap-2">
-          <div className="text-right hidden lg:block">
-            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight flex items-center justify-end gap-1">
-              <span>{getRoleEmoji(activeUser?.role)}</span>
-              <span>{activeUser?.name || 'Usuário'}</span>
-            </p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{activeUser?.email || ''}</p>
-          </div>
-
           <div className="flex items-center gap-1.5">
             <label htmlFor="user-role-select" className="sr-only">Perfil Ativo</label>
             <div className="relative flex items-center">
@@ -760,18 +744,21 @@ export const Header: React.FC<HeaderProps> = ({
                   className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 cursor-pointer focus:outline-hidden transition-all ${getRoleBadgeClass(activeUser?.role)}`}
                   title="Trocar usuário e perfil do sistema"
                 >
-                  {allUsers.map(u => (
-                    <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold py-1">
-                      {getRoleEmoji(u.role)} {u.role} — {u.name}
-                    </option>
-                  ))}
+                  {allUsers.map(u => {
+                    const visualRole = (u.role as any) === 'PLATFORM_MASTER' ? 'MASTER' : u.role;
+                    return (
+                      <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold py-1">
+                        {getRoleEmoji(u.role)} [{visualRole}] - {u.name}
+                      </option>
+                    );
+                  })}
                 </select>
               ) : (
                 <div
                   className={`text-xs font-bold rounded-lg border px-2.5 py-1.5 select-none ${getRoleBadgeClass(activeUser?.role)}`}
                   title={`Perfil Ativo: ${getRoleLabel(activeUser?.role)}`}
                 >
-                  {getRoleEmoji(activeUser?.role)} {activeUser?.role || 'USUÁRIO'}
+                  {getRoleEmoji(activeUser?.role)} [{(activeUser?.role as any) === 'PLATFORM_MASTER' ? 'MASTER' : activeUser?.role || 'USUÁRIO'}] - {activeUser?.name || 'Usuário'}
                 </div>
               )}
             </div>

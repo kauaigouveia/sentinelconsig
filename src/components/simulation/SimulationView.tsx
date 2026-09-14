@@ -45,11 +45,26 @@ interface SimulationViewProps {
 type TabType = 'VISAO_GERAL' | 'AGUARDANDO_DIGITACAO' | 'DASHBOARD_ANALISES';
 
 export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDetail }) => {
+  const activeUser = StorageService.getActiveUser();
+
+  if (activeUser?.role === 'DIGITADOR') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
+        <div className="h-16 w-16 bg-rose-100 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mb-4">
+          <ShieldAlert className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Acesso Restrito</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md">
+          Seu perfil de <strong>DIGITADOR</strong> não possui permissão para visualizar a Central de Simulações.
+        </p>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
   const [simulations, setSimulations] = useState<SimulationRequest[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
-  const activeUser = StorageService.getActiveUser();
 
   // Filter states
   const [cpfSearch, setCpfSearch] = useState('');

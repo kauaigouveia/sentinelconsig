@@ -481,7 +481,7 @@ export default function App() {
             />
           )}
 
-          {currentView === 'simulacoes' && (
+          {currentView === 'simulacoes' && activeUser?.role !== 'DIGITADOR' && (
             <SimulationView
               onOpenProposalDetail={propId => setDetailProposalId(propId)}
             />

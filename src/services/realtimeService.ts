@@ -92,6 +92,10 @@ export class RealtimeService {
     return RealtimeService.instance;
   }
 
+  public getProviderName(): string {
+    return this.usePusher ? 'Pusher' : 'SSE';
+  }
+
   /**
    * Connects to SSE stream for authenticated tenant
    */
@@ -213,6 +217,8 @@ export class RealtimeService {
   }
 
   private connectSSE(): void {
+    if (this.usePusher) return; // Prevent SSE initialization if Pusher is configured
+
     if (this.eventSource && this.eventSource.readyState === EventSource.OPEN) {
       return;
     }
@@ -307,6 +313,8 @@ export class RealtimeService {
   }
 
   private cleanupAndReconnect(): void {
+    if (this.usePusher) return; // Prevent SSE reconnection if Pusher is active
+
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;

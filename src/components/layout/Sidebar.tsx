@@ -208,14 +208,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         {/* PRODUÇÃO SECTION */}
         <div className={navHeaderClass}>Produção & Simulações</div>
 
-        <button
-          id="nav-simulacoes"
-          onClick={() => onNavigate('simulacoes')}
-          className={navItemClass('simulacoes')}
-        >
-          <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-medium">Simulações</span>
-        </button>
+        {role !== 'DIGITADOR' && (
+          <button
+            id="nav-simulacoes"
+            onClick={() => onNavigate('simulacoes')}
+            className={navItemClass('simulacoes')}
+          >
+            <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="font-medium">Simulações</span>
+          </button>
+        )}
 
         {role !== 'SIMULACAO' && (
           <>
