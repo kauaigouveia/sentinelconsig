@@ -23,9 +23,15 @@ import { TenantNormalization } from './server/utils/tenantNormalization.js';
 import { TenantResolver } from './server/utils/tenantResolver.js';
 import { AdminContextManager } from './server/utils/adminContext.js';
 
+let isShuttingDown = false;
+let serverInstance: any = null;
+
 const prisma = new PrismaClient();
 const app = express();
 export { app };
+
+// Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
+app.set('trust proxy', 1);
 
 async function auditAndEnsureMasterUser() {
   try {
@@ -130,14 +136,8 @@ async function auditAndEnsureMasterUser() {
   }
 }
 
-async function startServer() {
-  const PORT = 3000;
-
-  // Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
-  app.set('trust proxy', 1);
-
-  // -------------------------------------------------------------
-  // P1.2 CORRELATION ID / REQUEST ID MIDDLEWARE (Top of Express Chain)
+// -------------------------------------------------------------
+// P1.2 CORRELATION ID / REQUEST ID MIDDLEWARE (Top of Express Chain)
   // -------------------------------------------------------------
   app.use((req, res, next) => {
     const rawHeader = req.headers['x-request-id'];
@@ -3449,6 +3449,9 @@ async function startServer() {
     });
   });
 
+async function startServer() {
+  const PORT = 3000;
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -3473,8 +3476,6 @@ async function startServer() {
 // -------------------------------------------------------------
 // P0.3 UNCAUGHT EXCEPTION, UNHANDLED REJECTION & GRACEFUL SHUTDOWN
 // -------------------------------------------------------------
-let isShuttingDown = false;
-let serverInstance: any = null;
 
 async function gracefulShutdown(reason: string | Error, exitCode = 0) {
   if (isShuttingDown) {
@@ -3538,7 +3539,7 @@ process.on('SIGINT', () => {
   gracefulShutdown('SIGINT', 0);
 });
 
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   startServer();
 }
 
