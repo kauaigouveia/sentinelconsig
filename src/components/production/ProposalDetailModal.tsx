@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Clock,
@@ -17,20 +17,32 @@ import {
   Trash2,
   Edit3,
   DollarSign,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { formatDate, formatCpf, extractPartnerCode, formatCurrency, parseCurrency } from '../../lib/utils';
 import { Proposal, Status, PendencyType, PendencyPriority } from '../../types';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
+import { StatusBadge } from '../ui/StatusBadge';
+import { AuthorityBadge } from '../ui/AuthorityBadge';
+import { toastService } from '../ui/toastService';
 
 interface ProposalDetailModalProps {
   proposalId: string | null;
+  proposalIdsList?: string[];
+  onSelectProposal?: (id: string) => void;
   onClose: () => void;
   onProposalUpdated: () => void;
 }
 
 export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   proposalId,
+  proposalIdsList = [],
+  onSelectProposal,
   onClose,
   onProposalUpdated,
 }) => {
@@ -50,6 +62,48 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const digitizer = StorageService.getUsers().find(u => u.id === proposal.digitizerId);
   const allStatuses = StorageService.getStatuses().filter(s => s.active);
 
+  // Navigation Index
+  const currentIndex = proposalIdsList.indexOf(proposalId);
+  const hasPrevious = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < proposalIdsList.length - 1;
+
+  const handleGoPrevious = () => {
+    if (hasPrevious && onSelectProposal) {
+      onSelectProposal(proposalIdsList[currentIndex - 1]);
+    }
+  };
+
+  const handleGoNext = () => {
+    if (hasNext && onSelectProposal) {
+      onSelectProposal(proposalIdsList[currentIndex + 1]);
+    }
+  };
+
+  // Keyboard navigation Alt + Left / Alt + Right and ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable;
+
+      if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleGoPrevious();
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleGoNext();
+      } else if (e.key === 'Escape' && !isInput) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, proposalIdsList, hasPrevious, hasNext, onSelectProposal, onClose]);
+
   // Related proposals of this client
   const otherClientProposals = StorageService.getProposalsByClientId(proposal.clientId).filter(
     p => p.id !== proposal.id
@@ -68,6 +122,15 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const [statusObservation, setStatusObservation] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusSuccess, setStatusSuccess] = useState(false);
+
+  // Reset selected status if proposal changes
+  useEffect(() => {
+    setSelectedStatusId(proposal.statusId);
+    setStatusObservation('');
+    setIsEditingFinancials(false);
+    setEditDisbursedStr(proposal.disbursedValue !== undefined ? String(proposal.disbursedValue) : '');
+    setEditBalanceStr(proposal.contractBalance !== undefined ? String(proposal.contractBalance) : '');
+  }, [proposalId, proposal.statusId]);
 
   // New Pendency Form
   const [pendencyType, setPendencyType] = useState<PendencyType>('DOCUMENTACAO');
@@ -101,13 +164,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         'MANUAL'
       );
       setFinancialsSuccess(true);
+      toastService.success('Valores Atualizados', 'Informações financeiras registradas com sucesso.');
       setTimeout(() => {
         setFinancialsSuccess(false);
         setIsEditingFinancials(false);
         onProposalUpdated();
       }, 800);
     } catch (err: any) {
-      alert(err.message || 'Erro ao atualizar valores da proposta.');
+      toastService.error('Erro ao Atualizar', err.message || 'Erro ao atualizar valores da proposta.');
     }
   };
 
@@ -125,13 +189,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       );
       setStatusSuccess(true);
       setStatusObservation('');
+      toastService.success('Status Atualizado', 'Novo status gravado na linha do tempo com sucesso.');
       setTimeout(() => {
         setStatusSuccess(false);
         setStatusUpdating(false);
         onProposalUpdated();
-      }, 1000);
+      }, 800);
     } catch (err: any) {
-      alert(err.message || 'Erro ao alterar status.');
+      toastService.error('Falha ao Alterar Status', err.message || 'Erro ao alterar status.');
       setStatusUpdating(false);
     }
   };
@@ -145,6 +210,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       priority: pendencyPriority,
     });
     setPendencyDesc('');
+    toastService.success('Pendência Aberta', 'Nova pendência registrada para a proposta.');
     onProposalUpdated();
   };
 
@@ -162,7 +228,8 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   });
 
   const handleResolvePendency = (pendencyId: string) => {
-    StorageService.resolvePendency(pendencyId, 'Resolvido pelo usuário');
+    StorageService.resolvePendency(pendencyId, 'Resolvido pelo operador');
+    toastService.success('Pendência Resolvida', 'Status de pendência atualizado para resolvido.');
     onProposalUpdated();
   };
 
@@ -175,9 +242,10 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       onConfirm: () => {
         try {
           StorageService.deletePendency(pen.id);
+          toastService.success('Pendência Removida');
           onProposalUpdated();
         } catch (err: any) {
-          alert(err.message || 'Erro ao excluir pendência.');
+          toastService.error('Erro ao Excluir', err.message || 'Erro ao excluir pendência.');
         }
       },
     });
@@ -192,10 +260,11 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       onConfirm: () => {
         try {
           StorageService.deleteProposal(proposal.id);
+          toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} removida com sucesso.`);
           onProposalUpdated();
           onClose();
         } catch (err: any) {
-          alert(err.message || 'Erro ao excluir proposta.');
+          toastService.error('Erro ao Excluir', err.message || 'Erro ao excluir proposta.');
         }
       },
     });
@@ -208,94 +277,142 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       text: commentText.trim(),
     });
     setCommentText('');
+    toastService.success('Comentário Gravado');
     onProposalUpdated();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-4xl rounded-xl bg-white shadow-2xl flex flex-col max-h-[92vh] border border-slate-200">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50 rounded-t-xl">
-          <div className="flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="relative w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
+        {/* Header with Navigation and Copy Buttons */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-3.5 bg-slate-50 dark:bg-slate-950/60 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold"
+              className="h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold shrink-0 shadow-xs"
               style={{ backgroundColor: currentStatus?.color || '#3b82f6' }}
             >
               <FileText className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900 font-mono">
-                  ADE {proposal.proposalNumber}
-                </h2>
-                <span
-                  className="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white shadow-2xs"
-                  style={{ backgroundColor: currentStatus?.color || '#64748b' }}
-                >
-                  {currentStatus?.name}
-                </span>
-                <span className="text-xs text-slate-400">|</span>
-                <span className="text-xs font-semibold text-slate-600">
-                  Alçada: {currentStatus?.responsible}
-                </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
+                    ADE {proposal.proposalNumber}
+                  </h2>
+                  <button
+                    onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}
+                    title="Copiar número da ADE"
+                    aria-label="Copiar número da ADE"
+                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <StatusBadge status={currentStatus} />
+                <AuthorityBadge responsible={currentStatus?.responsible} />
               </div>
-              <p className="text-xs text-slate-500">
-                Cliente: <strong className="text-slate-800">{client?.fullName || 'CLIENTE NÃO NOMEADO'}</strong> {client?.cpf ? `(${formatCpf(client.cpf)})` : ''}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                <span>Cliente:</span>
+                <strong className="text-slate-800 dark:text-slate-200 truncate">
+                  {client?.fullName || 'CLIENTE NÃO NOMEADO'}
+                </strong>
+                {client?.cpf && (
+                  <button
+                    onClick={() => toastService.copyToClipboard(client.cpf, 'CPF')}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    title="Clique para copiar CPF"
+                  >
+                    <span>({formatCpf(client.cpf)})</span>
+                    <Copy className="h-3 w-3 inline" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Sequential Proposals Navigator */}
+            {proposalIdsList.length > 1 && onSelectProposal && (
+              <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0.5 shadow-2xs">
+                <button
+                  onClick={handleGoPrevious}
+                  disabled={!hasPrevious}
+                  title="Proposta Anterior (Alt + ←)"
+                  aria-label="Proposta Anterior"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline text-[11px]">Anterior</span>
+                </button>
+                <div className="px-1.5 text-[10.5px] font-mono font-bold text-slate-400 dark:text-slate-500">
+                  {currentIndex + 1}/{proposalIdsList.length}
+                </div>
+                <button
+                  onClick={handleGoNext}
+                  disabled={!hasNext}
+                  title="Próxima Proposta (Alt + →)"
+                  aria-label="Próxima Proposta"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                >
+                  <span className="hidden sm:inline text-[11px]">Próxima</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              aria-label="Fechar Detalhes da Proposta"
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Quick Info Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 py-3 bg-white border-b border-slate-100 text-xs text-slate-600">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Produto</span>
-            <span className="font-semibold text-slate-900">{product?.name}</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{product?.name || '—'}</span>
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Banco × Promotora</span>
-            <span className="font-semibold text-slate-900">
-              {bank?.name} / {promoter?.name}
+            <span className="font-semibold text-slate-900 dark:text-slate-100 truncate block">
+              {bank?.name || '—'} / {promoter?.name || '—'}
             </span>
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Parceiro</span>
-            <span className="font-semibold text-slate-900">
-              {partner?.login} ({partner ? extractPartnerCode(partner.login) : ''})
+            <span className="font-semibold text-slate-900 dark:text-slate-100 truncate block">
+              {partner?.login || '—'} ({partner ? extractPartnerCode(partner.login) : ''})
             </span>
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Digitador / Data</span>
-            <span className="font-medium text-slate-800">
-              {digitizer?.name} • {formatDate(proposal.createdAt)}
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Digitador / Cadastro</span>
+            <span className="font-medium text-slate-800 dark:text-slate-200 truncate block">
+              {digitizer?.name || 'Operador'} • {formatDate(proposal.createdAt)}
             </span>
           </div>
         </div>
 
         {/* Financial Information Bar */}
-        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="px-6 py-2.5 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-500">
+              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
                 Valor Liberado Cliente:
               </span>
-              <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <span className="font-mono font-bold text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                 {proposal.disbursedValue !== undefined ? formatCurrency(proposal.disbursedValue) : 'Não informado'}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-500">
+              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
                 Saldo Contrato (Portabilidade):
               </span>
-              <span className="font-mono font-bold text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
                 {proposal.contractBalance !== undefined ? formatCurrency(proposal.contractBalance) : 'Não informado'}
               </span>
             </div>
@@ -303,7 +420,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
           <button
             onClick={() => setIsEditingFinancials(prev => !prev)}
-            className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-slate-300 hover:border-blue-400 px-2.5 py-1 rounded-md transition-colors"
+            className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:border-blue-400 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
           >
             <Edit3 className="h-3 w-3" />
             <span>{isEditingFinancials ? 'Cancelar Edição' : 'Ajustar Valores'}</span>
@@ -312,9 +429,9 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
         {/* Financial Inline Form */}
         {isEditingFinancials && (
-          <div className="px-6 py-3 bg-blue-50/60 border-b border-blue-200 flex flex-wrap items-end gap-3 text-xs">
+          <div className="px-6 py-3 bg-blue-50/70 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900/60 flex flex-wrap items-end gap-3 text-xs animate-in fade-in duration-100">
             <div>
-              <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+              <label className="block text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
                 Valor Liberado para Cliente (R$)
               </label>
               <input
@@ -322,11 +439,11 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                 value={editDisbursedStr}
                 onChange={e => setEditDisbursedStr(e.target.value)}
                 placeholder="Ex: 1.250,00"
-                className="w-36 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+                className="w-36 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+              <label className="block text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
                 Saldo do Contrato / Quitação (R$)
               </label>
               <input
@@ -334,47 +451,49 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                 value={editBalanceStr}
                 onChange={e => setEditBalanceStr(e.target.value)}
                 placeholder="Ex: 15.420,00"
-                className="w-36 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+                className="w-36 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
               />
             </div>
             <button
               onClick={handleSaveFinancials}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1.5"
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>Salvar Valores</span>
             </button>
             {financialsSuccess && (
-              <span className="text-emerald-700 font-bold text-xs py-1">Valores atualizados com sucesso!</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold text-xs py-1">
+                Valores atualizados com sucesso!
+              </span>
             )}
           </div>
         )}
 
         {/* Related Portability Banner if exists */}
         {relatedPort && (
-          <div className="px-6 py-2 bg-purple-50 border-b border-purple-200 flex items-center justify-between text-xs text-purple-900">
+          <div className="px-6 py-2 bg-purple-50 dark:bg-purple-950/40 border-b border-purple-200 dark:border-purple-900 flex items-center justify-between text-xs text-purple-900 dark:text-purple-300">
             <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4 text-purple-600" />
+              <Link2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               <span>
                 Esta proposta é um <strong>REFIN DA PORTABILIDADE</strong> vinculado à Portabilidade ADE: <strong>{relatedPort.proposalNumber}</strong>
               </span>
             </div>
-            <span className="bg-purple-200 text-purple-800 font-bold px-2 py-0.5 rounded text-[10px]">
+            <span className="bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 font-bold px-2 py-0.5 rounded text-[10px]">
               VÍNCULO ATIVO
             </span>
           </div>
         )}
 
         {/* Status Update Action Bar */}
-        <div className="px-6 py-3 bg-slate-50 border-b border-slate-200">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+        <div className="px-6 py-3 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
             Alterar Status da Proposta
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={selectedStatusId}
               onChange={e => setSelectedStatusId(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
             >
               {allStatuses.map(s => (
                 <option key={s.id} value={s.id}>
@@ -388,167 +507,176 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
               value={statusObservation}
               onChange={e => setStatusObservation(e.target.value)}
               placeholder="Motivo / Observação da alteração..."
-              className="flex-1 min-w-[200px] rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-hidden"
+              className="flex-1 min-w-[200px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden"
             />
 
             <button
               onClick={handleUpdateStatus}
               disabled={statusUpdating}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-1.5 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-xs"
+              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-1.5 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>{statusUpdating ? 'Gravando...' : 'Gravar Novo Status'}</span>
             </button>
           </div>
           {statusSuccess && (
-            <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
               Status atualizado com sucesso e registrado na linha do tempo!
             </p>
           )}
         </div>
 
-        {/* Tabs Bar */}
-        <div className="flex border-b border-slate-200 px-6 gap-6 text-xs font-semibold text-slate-500">
+        {/* Tab Navigation */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900">
           <button
             onClick={() => setActiveTab('HISTORICO')}
-            className={`py-3 border-b-2 transition-colors cursor-pointer ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'HISTORICO'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent hover:text-slate-800'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Histórico de Status ({proposal.statusHistory.length})
+            <Clock className="h-3.5 w-3.5" />
+            <span>Linha do Tempo / Histórico ({StorageService.getHistory().filter(h => h.proposalId === proposal.id).length})</span>
           </button>
+
           <button
             onClick={() => setActiveTab('PENDENCIAS')}
-            className={`py-3 border-b-2 transition-colors cursor-pointer ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'PENDENCIAS'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent hover:text-slate-800'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Pendências ({proposal.pendencies.length})
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>Pendências ({(proposal.pendencies || []).length})</span>
           </button>
+
           <button
             onClick={() => setActiveTab('COMENTARIOS')}
-            className={`py-3 border-b-2 transition-colors cursor-pointer ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'COMENTARIOS'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent hover:text-slate-800'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Comentários Internos ({proposal.comments.length})
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>Comentários ({(proposal.comments || []).length})</span>
           </button>
+
           <button
             onClick={() => setActiveTab('CLIENTE')}
-            className={`py-3 border-b-2 transition-colors cursor-pointer ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'CLIENTE'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent hover:text-slate-800'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            Outras Propostas do Cliente ({otherClientProposals.length})
+            <User className="h-3.5 w-3.5" />
+            <span>Cliente 360 ({otherClientProposals.length} outras)</span>
           </button>
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-900">
           {/* TAB 1: HISTÓRICO */}
           {activeTab === 'HISTORICO' && (
             <div className="space-y-4">
-              <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                {proposal.statusHistory.map((item, idx) => {
-                  const s = StorageService.getStatusById(item.newStatusId);
-                  return (
-                    <div key={item.id || idx} className="relative group">
-                      <div
-                        className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full ring-4 ring-white"
-                        style={{ backgroundColor: s?.color || '#3b82f6' }}
-                      />
-                      <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-xs">
-                        <div className="flex items-center justify-between font-semibold text-slate-800 mb-1">
-                          <span className="text-sm font-bold">{s?.name || 'Status'}</span>
-                          <span className="text-slate-400 text-[11px]">
-                            {formatDate(item.createdAt)}
-                          </span>
+              <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
+                {StorageService.getHistory()
+                  .filter(h => h.proposalId === proposal.id)
+                  .map((h, i) => {
+                    const toSt = allStatuses.find(s => s.name === h.newStatusName);
+
+                    return (
+                      <div key={h.id || i} className="relative group">
+                        <div
+                          className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs"
+                          style={{ backgroundColor: toSt?.color || '#3b82f6' }}
+                        />
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-3.5 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                            <div className="flex items-center gap-2">
+                              {h.previousStatusName && (
+                                <>
+                                  <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                    {h.previousStatusName}
+                                  </span>
+                                  <span className="text-slate-400">→</span>
+                                </>
+                              )}
+                              <span className="font-bold text-slate-900 dark:text-slate-100">
+                                {h.newStatusName || 'Status Inicial'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono text-slate-400">
+                              {formatDate(h.createdAt)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                            <span>Operador: <strong>{h.userName}</strong> ({h.origin})</span>
+                            {h.observation && (
+                              <span className="italic text-slate-600 dark:text-slate-300">"{h.observation}"</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-slate-500 text-[11px] mb-1.5">
-                          <span>
-                            Alterado por: <strong>{item.userName}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Origem: <strong className="text-blue-600">{item.origin}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>Alçada: {s?.responsible}</span>
-                        </div>
-                        {item.observation && (
-                          <p className="rounded bg-white p-2 text-slate-700 border border-slate-100 italic">
-                            "{item.observation}"
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
           )}
 
           {/* TAB 2: PENDÊNCIAS */}
           {activeTab === 'PENDENCIAS' && (
-            <div className="space-y-6">
-              {/* Add Pendency Form */}
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-                <h4 className="text-xs font-bold text-amber-900 uppercase mb-2">
-                  Abrir Nova Pendência
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3">
+                <h4 className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
+                  Cadastrar Nova Pendência
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <select
                     value={pendencyType}
-                    onChange={e => setPendencyType(e.target.value as any)}
-                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold"
+                    onChange={e => setPendencyType(e.target.value as PendencyType)}
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200"
                   >
-                    <option value="DOCUMENTACAO">DOCUMENTAÇÃO</option>
-                    <option value="BANCO">BANCO</option>
-                    <option value="PARCEIRO">PARCEIRO</option>
-                    <option value="CLIENTE">CLIENTE</option>
-                    <option value="CORBAN">CORBAN</option>
-                    <option value="CIP">CIP</option>
-                    <option value="SISTEMA">SISTEMA</option>
+                    <option value="DOCUMENTACAO">Documentação Incompleta</option>
+                    <option value="BANCO">Banco / Formalização</option>
+                    <option value="PARCEIRO">Parceiro / Corban</option>
+                    <option value="CLIENTE">Cliente</option>
+                    <option value="CIP">CIP / Retorno de Saldo</option>
+                    <option value="OUTROS">Outros Motivos</option>
                   </select>
 
                   <select
                     value={pendencyPriority}
-                    onChange={e => setPendencyPriority(e.target.value as any)}
-                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold"
+                    onChange={e => setPendencyPriority(e.target.value as PendencyPriority)}
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200"
                   >
-                    <option value="BAIXA">PRIORIDADE BAIXA</option>
-                    <option value="NORMAL">PRIORIDADE NORMAL</option>
-                    <option value="ALTA">PRIORIDADE ALTA</option>
-                    <option value="URGENTE">URGENTE</option>
+                    <option value="NORMAL">Prioridade Normal</option>
+                    <option value="ALTA">Prioridade Alta</option>
+                    <option value="URGENTE">Prioridade Urgente</option>
                   </select>
 
                   <button
                     onClick={handleAddPendency}
-                    className="rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 transition-colors"
+                    className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                   >
-                    + Registrar Pendência
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>Adicionar Pendência</span>
                   </button>
                 </div>
                 <input
                   type="text"
                   value={pendencyDesc}
                   onChange={e => setPendencyDesc(e.target.value)}
-                  placeholder="Descreva o motivo da pendência (ex: Comprovante de endereço ilegível)..."
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs"
+                  placeholder="Descreva a pendência com detalhes operacionais..."
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200"
                 />
               </div>
 
-              {/* List */}
               <div className="space-y-2">
-                {proposal.pendencies.length === 0 ? (
+                {(!proposal.pendencies || proposal.pendencies.length === 0) ? (
                   <p className="text-xs text-slate-400 italic text-center py-6">
                     Nenhuma pendência ativa nesta proposta.
                   </p>
@@ -556,48 +684,44 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                   proposal.pendencies.map(pen => (
                     <div
                       key={pen.id}
-                      className={`flex items-start justify-between rounded-lg border p-3 text-xs ${
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-xs ${
                         pen.status === 'RESOLVIDA'
-                          ? 'border-emerald-200 bg-emerald-50/40 text-slate-500'
-                          : 'border-rose-200 bg-rose-50/40 text-slate-800'
+                          ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-70'
+                          : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
                       }`}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{pen.type}</span>
                           <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               pen.status === 'RESOLVIDA'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-800'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                             }`}
                           >
                             {pen.status}
                           </span>
-                          <span className="font-bold text-slate-700">{pen.type}</span>
-                          <span className="text-slate-400 text-[10px]">
-                            {formatDate(pen.openedAt)}
-                          </span>
                         </div>
-                        <p className="font-medium">{pen.description}</p>
-                        {pen.resolvedAt && (
-                          <p className="text-[11px] text-emerald-700">
-                            Resolvido em: {formatDate(pen.resolvedAt)} {pen.resolvedByUserName ? `por ${pen.resolvedByUserName}` : ''}
-                          </p>
-                        )}
+                        <p className="text-slate-700 dark:text-slate-300">{pen.description}</p>
+                        <span className="text-[10px] text-slate-400 block">
+                          Aberta em {formatDate(pen.openedAt)} • Grupo: {pen.responsibleGroup}
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         {pen.status === 'ABERTA' && (
                           <button
                             onClick={() => handleResolvePendency(pen.id)}
-                            className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs cursor-pointer"
                           >
-                            Resolver
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>Resolver</span>
                           </button>
                         )}
                         <button
                           onClick={() => handleDeletePendency(pen)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
+                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
                           title="Excluir pendência"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -610,7 +734,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: COMENTÁRIOS INTERNOS */}
+          {/* TAB 3: COMENTÁRIOS */}
           {activeTab === 'COMENTARIOS' && (
             <div className="space-y-4">
               <div className="flex gap-2">
@@ -618,12 +742,12 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                   type="text"
                   value={commentText}
                   onChange={e => setCommentText(e.target.value)}
-                  placeholder="Escreva um comentário interno (visível apenas para a equipe)..."
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                  placeholder="Escreva um comentário interno (visível para a equipe)..."
+                  className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400"
                 />
                 <button
                   onClick={handleAddComment}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 flex items-center gap-1.5"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>Enviar</span>
@@ -639,13 +763,13 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                   proposal.comments.map(c => (
                     <div
                       key={c.id}
-                      className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs"
+                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs"
                     >
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                        <span className="font-bold text-slate-800">{c.userName}</span>
-                        <span>{formatDate(c.createdAt)}</span>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{c.userName}</span>
+                        <span className="font-mono text-[10px]">{formatDate(c.createdAt)}</span>
                       </div>
-                      <p className="text-slate-800">{c.comment}</p>
+                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{c.comment}</p>
                     </div>
                   ))
                 )}
@@ -653,34 +777,42 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: CLIENTE 360 & OUTRAS PROPOSTAS */}
+          {/* TAB 4: CLIENTE 360 */}
           {activeTab === 'CLIENTE' && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs">
-                <h4 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 text-xs">
+                <h4 className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-2">
                   Dados do Cliente
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <span className="text-slate-400 block">Nome Completo:</span>
-                    <strong className="text-slate-800">{client?.fullName}</strong>
+                    <span className="text-slate-400 block text-[10.5px]">Nome Completo:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{client?.fullName || '—'}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">CPF:</span>
-                    <strong className="text-slate-800">{formatCpf(client?.cpf || '')}</strong>
+                    <span className="text-slate-400 block text-[10.5px]">CPF:</span>
+                    <button
+                      onClick={() => client?.cpf && toastService.copyToClipboard(client.cpf, 'CPF')}
+                      className="text-left font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <span>{client?.cpf ? formatCpf(client.cpf) : '—'}</span>
+                      <Copy className="h-3 w-3" />
+                    </button>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">Telefone:</span>
-                    <span className="text-slate-800">{client?.phone || 'Não informado'}</span>
+                    <span className="text-slate-400 block text-[10.5px]">Telefone:</span>
+                    <span className="text-slate-800 dark:text-slate-200">{client?.phone || 'Não informado'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">E-mail:</span>
-                    <span className="text-slate-800">{client?.email || 'Não informado'}</span>
+                    <span className="text-slate-400 block text-[10.5px]">E-mail:</span>
+                    <span className="text-slate-800 dark:text-slate-200 truncate block">
+                      {client?.email || 'Não informado'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <h4 className="text-xs font-bold uppercase text-slate-700">
+              <h4 className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
                 Demais Propostas Cadastradas para este CPF ({otherClientProposals.length})
               </h4>
 
@@ -699,22 +831,23 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                     return (
                       <div
                         key={p.id}
-                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-2xs"
+                        onClick={() => onSelectProposal && onSelectProposal(p.id)}
+                        className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs shadow-2xs hover:border-blue-500/50 transition-colors cursor-pointer"
                       >
                         <div>
-                          <div className="flex items-center gap-2 font-mono font-bold text-slate-900">
+                          <div className="flex items-center gap-2 font-mono font-bold text-slate-900 dark:text-slate-100">
                             <span>ADE {p.proposalNumber}</span>
-                            <span className="font-sans text-[11px] font-semibold text-blue-600">
+                            <span className="font-sans text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                               • {prod?.name}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
                             Banco: {bk?.name} | Parceiro: {pt?.login} ({pt ? extractPartnerCode(pt.login) : ''})
                           </p>
                         </div>
 
                         <span
-                          className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                          className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs"
                           style={{ backgroundColor: st?.color || '#64748b' }}
                         >
                           {st?.name}
@@ -729,10 +862,10 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-3 bg-slate-50 rounded-b-xl">
+        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-3 bg-slate-50 dark:bg-slate-950/60 rounded-b-2xl shrink-0">
           <button
             onClick={handleDeleteProposal}
-            className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
             title="Excluir proposta permanentemente"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -740,7 +873,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           </button>
           <button
             onClick={onClose}
-            className="rounded-lg bg-white border border-slate-300 px-4 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100"
+            className="rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             Fechar
           </button>

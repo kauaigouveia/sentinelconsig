@@ -56,23 +56,23 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
   const selectedStatus = statuses.find(s => s.id === targetStatusId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50 rounded-t-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/40 rounded-t-xl">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
               <Layers className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Alterar Status em Lote</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Alterar Status em Lote</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {selectedProposalIds.length} proposta(s) selecionada(s)
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200"
+            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -80,13 +80,13 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
 
         <div className="p-6 space-y-4 text-xs">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Novo Status para Todas as Propostas Selecionadas *
             </label>
             <select
               value={targetStatusId}
               onChange={e => setTargetStatusId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
             >
               {statuses.map(s => (
                 <option key={s.id} value={s.id}>
@@ -95,14 +95,14 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
               ))}
             </select>
             {selectedStatus && (
-              <p className="mt-1 text-[11px] text-slate-500">
-                Alçada responsável: <strong>{selectedStatus.responsible}</strong>
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Alçada responsável: <strong className="text-slate-700 dark:text-slate-300">{selectedStatus.responsible}</strong>
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Motivo / Observação Geral (Opcional)
             </label>
             <textarea
@@ -110,11 +110,11 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
               value={observation}
               onChange={e => setObservation(e.target.value)}
               placeholder="Ex: Atualizado após confirmação bancária em lote..."
-              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
             />
           </div>
 
-          <div className="rounded-lg bg-blue-50 p-3 text-[11px] text-blue-800 border border-blue-200">
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-[11px] text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
             <strong>Nota de Auditoria:</strong> Cada proposta selecionada receberá seu próprio evento na linha do tempo com origem marcada como <code>ALTERACAO_EM_LOTE</code> e usuário ativo vinculado.
           </div>
 
@@ -122,8 +122,8 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
             <div
               className={`rounded-lg p-3 text-xs flex items-center gap-2 border ${
                 resultMsg.success
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                  : 'border-rose-200 bg-rose-50 text-rose-800'
+                  ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
+                  : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
               }`}
             >
               {resultMsg.success ? (
@@ -136,11 +136,11 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-3 bg-slate-50 rounded-b-xl">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800 px-6 py-3 bg-slate-50 dark:bg-slate-950/40 rounded-b-xl">
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
           >
             Cancelar
           </button>

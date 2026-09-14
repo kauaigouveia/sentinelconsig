@@ -8,14 +8,20 @@ import {
   CheckSquare,
   Square,
   Trash2,
+  Building,
+  ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { Bank, Promoter } from '../../types';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
+import { ActionBar } from '../ui/ActionBar';
+import { MetricCard } from '../ui/MetricCard';
 
 export const BankPromoterManagement: React.FC = () => {
   const [banks, setBanks] = useState<Bank[]>(() => StorageService.getBanks());
   const [promoters, setPromoters] = useState<Promoter[]>(() => StorageService.getPromoters());
+  const [bankPromoters, setBankPromoters] = useState(() => StorageService.getBankPromoters());
   const [newBankName, setNewBankName] = useState('');
   const [newBankCode, setNewBankCode] = useState('');
   const [newPromoterName, setNewPromoterName] = useState('');
@@ -25,6 +31,7 @@ export const BankPromoterManagement: React.FC = () => {
   const refresh = () => {
     setBanks(StorageService.getBanks());
     setPromoters(StorageService.getPromoters());
+    setBankPromoters(StorageService.getBankPromoters());
   };
 
   const handleCreateBank = (e: React.FormEvent) => {
@@ -105,9 +112,9 @@ export const BankPromoterManagement: React.FC = () => {
   const handleDeletePromoter = (promoter: Promoter) => {
     setDeleteModalConfig({
       isOpen: true,
-      itemType: 'Promotora / Correspondente',
+      itemType: 'Promotora / Corban',
       itemName: promoter.name,
-      description: 'A promotora e seus vínculos cadastrados com as instituições bancárias serão permanentemente removidos.',
+      description: 'A promotora e seus vínculos ativos serão desvinculados permanentemente.',
       onConfirm: () => {
         try {
           StorageService.deletePromoter(promoter.id);
@@ -123,88 +130,219 @@ export const BankPromoterManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-blue-600" />
-          <span>Matriz de Bancos & Promotoras</span>
-        </h2>
-        <p className="text-xs text-slate-500">
-          Regra de Negócio Central: Defina estritamente quais promotoras estão habilitadas para cada instituição bancária
-        </p>
+      <ActionBar
+        title="Bancos, Promotoras & Matriz de Vínculos"
+        subtitle="Instituições financeiras integradas e habilitação de promotoras por banco na esteira"
+        badgeText="ESTRUTURA BANCÁRIA"
+        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+      />
+
+      {/* Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
+        <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 p-4 shadow-2xs space-y-1.5">
+          <div className="flex items-center justify-between font-sans">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
+              Bancos Homologados
+            </span>
+            <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <p className="text-2xl font-black text-blue-950 dark:text-blue-200">
+            {banks.length} instituições
+          </p>
+          <span className="text-[11px] text-blue-700 dark:text-blue-400 font-bold block font-sans">
+            Bancos cadastrados na plataforma
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50/40 dark:bg-cyan-950/20 p-4 shadow-2xs space-y-1.5">
+          <div className="flex items-center justify-between font-sans">
+            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
+              Promotoras Parceiras
+            </span>
+            <Building className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+          </div>
+          <p className="text-2xl font-black text-cyan-950 dark:text-cyan-200">
+            {promoters.length} entidades
+          </p>
+          <span className="text-[11px] text-cyan-700 dark:text-cyan-400 font-bold block font-sans">
+            Promotoras habilitadas para digitação
+          </span>
+        </div>
       </div>
 
       {message && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+        <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{message}</span>
         </div>
       )}
 
-      {/* MATRIX TABLE */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-          Matriz de Vínculos Habilitados (BankPromoter)
-        </h3>
+      {/* Creation Panels Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Bancos */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Adicionar Banco
+            </h3>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">{banks.length} cadastrados</span>
+          </div>
+
+          <form onSubmit={handleCreateBank} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Nome *</label>
+                <input
+                  type="text"
+                  required
+                  value={newBankName}
+                  onChange={e => setNewBankName(e.target.value)}
+                  placeholder="Ex: BANCO DAYCOVAL"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Código FEBRABAN</label>
+                <input
+                  type="text"
+                  value={newBankCode}
+                  onChange={e => setNewBankCode(e.target.value)}
+                  placeholder="Ex: 707"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Salvar Banco</span>
+            </button>
+          </form>
+
+          <div className="space-y-2 pt-2">
+            {banks.map(bank => (
+              <div
+                key={bank.id}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+              >
+                <div>
+                  <span className="font-bold text-xs text-slate-900 dark:text-white">{bank.name}</span>
+                  {bank.code && (
+                    <span className="ml-2 font-mono text-[10px] text-slate-400">Cód: {bank.code}</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDeleteBank(bank)}
+                  className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
+                  title="Excluir banco"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Promotoras */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Adicionar Promotora
+            </h3>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">{promoters.length} cadastradas</span>
+          </div>
+
+          <form onSubmit={handleCreatePromoter} className="space-y-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Nome da Promotora *</label>
+              <input
+                type="text"
+                required
+                value={newPromoterName}
+                onChange={e => setNewPromoterName(e.target.value)}
+                placeholder="Ex: PROMOTORA ALPHA CONSIG"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-2 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Salvar Promotora</span>
+            </button>
+          </form>
+
+          <div className="space-y-2 pt-2">
+            {promoters.map(promoter => (
+              <div
+                key={promoter.id}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+              >
+                <span className="font-bold text-xs text-slate-900 dark:text-white">{promoter.name}</span>
+                <button
+                  onClick={() => handleDeletePromoter(promoter)}
+                  className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
+                  title="Excluir promotora"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Matriz de Vínculos Banco x Promotora */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Matriz de Ativação Cruzada (Banco × Promotora)
+            </h3>
+          </div>
+          <span className="text-[11px] text-slate-400">Clique para ativar ou desativar o vínculo</span>
+        </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">Instituição Bancária</th>
+                <th className="px-3.5 py-2.5">Banco / Instituição</th>
                 {promoters.map(pr => (
-                  <th key={pr.id} className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <span>Promotora: {pr.name}</span>
-                      <button
-                        onClick={() => handleDeletePromoter(pr)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
-                        title={`Excluir Promotora ${pr.name}`}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
+                  <th key={pr.id} className="px-3.5 py-2.5 text-center">
+                    {pr.name}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {banks.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50/80">
-                  <td className="px-4 py-3 font-bold text-slate-900">
-                    <div className="flex items-center justify-between gap-2">
-                      <span>{b.name} {b.code ? `(${b.code})` : ''}</span>
-                      <button
-                        onClick={() => handleDeleteBank(b)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
-                        title={`Excluir Banco ${b.name}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+              {banks.map(bank => (
+                <tr key={bank.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                  <td className="px-3.5 py-2.5 font-bold text-slate-900 dark:text-white">
+                    {bank.name}
                   </td>
-                  {promoters.map(pr => {
-                    const isAllowed = StorageService.isBankPromoterAllowed(b.id, pr.id);
+                  {promoters.map(promoter => {
+                    const isLinked = bankPromoters.some(
+                      bp => bp.bankId === bank.id && bp.promoterId === promoter.id && bp.active
+                    );
                     return (
-                      <td key={pr.id} className="px-4 py-3 text-center">
+                      <td key={promoter.id} className="px-3.5 py-2.5 text-center">
                         <button
-                          onClick={() => handleToggleBankPromoter(b.id, pr.id, isAllowed)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                            isAllowed
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                              : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                          onClick={() => handleToggleBankPromoter(bank.id, promoter.id, isLinked)}
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                            isLinked
+                              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
                           }`}
                         >
-                          {isAllowed ? (
-                            <>
-                              <CheckSquare className="h-3.5 w-3.5 text-emerald-600" />
-                              <span>Habilitada</span>
-                            </>
-                          ) : (
-                            <>
-                              <Square className="h-3.5 w-3.5" />
-                              <span>Desabilitada</span>
-                            </>
-                          )}
+                          {isLinked ? <Check className="h-4 w-4" /> : <div className="h-4 w-4" />}
                         </button>
                       </td>
                     );
@@ -216,124 +354,13 @@ export const BankPromoterManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Creation Forms */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* New Bank Form */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Cadastrar Novo Banco
-          </h4>
-          <form onSubmit={handleCreateBank} className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nome do Banco *
-              </label>
-              <input
-                type="text"
-                value={newBankName}
-                onChange={e => setNewBankName(e.target.value)}
-                placeholder="Ex: BANCO PAN"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 uppercase"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Código Compensação (Opcional)
-              </label>
-              <input
-                type="text"
-                value={newBankCode}
-                onChange={e => setNewBankCode(e.target.value)}
-                placeholder="Ex: 623"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs"
-            >
-              + Salvar Banco
-            </button>
-          </form>
-
-          {/* Banks List */}
-          <div className="pt-3 border-t border-slate-100">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
-              Bancos Cadastrados ({banks.length})
-            </span>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-              {banks.map(b => (
-                <div key={b.id} className="flex items-center justify-between py-1.5 px-2.5 rounded bg-slate-50 border border-slate-100 text-xs">
-                  <span className="font-semibold text-slate-800">{b.name} {b.code ? `(${b.code})` : ''}</span>
-                  <button
-                    onClick={() => handleDeleteBank(b)}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
-                    title={`Excluir Banco ${b.name}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* New Promoter Form */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Cadastrar Nova Promotora
-          </h4>
-          <form onSubmit={handleCreatePromoter} className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nome da Promotora *
-              </label>
-              <input
-                type="text"
-                value={newPromoterName}
-                onChange={e => setNewPromoterName(e.target.value)}
-                placeholder="Ex: ALPHA PROMOTORA"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 uppercase"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs"
-            >
-              + Salvar Promotora
-            </button>
-          </form>
-
-          {/* Promoters List */}
-          <div className="pt-3 border-t border-slate-100">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
-              Promotoras Cadastradas ({promoters.length})
-            </span>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-              {promoters.map(pr => (
-                <div key={pr.id} className="flex items-center justify-between py-1.5 px-2.5 rounded bg-slate-50 border border-slate-100 text-xs">
-                  <span className="font-semibold text-slate-800">{pr.name}</span>
-                  <button
-                    onClick={() => handleDeletePromoter(pr)}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
-                    title={`Excluir Promotora ${pr.name}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <DeleteConfirmationModal
         isOpen={deleteModalConfig.isOpen}
-        onClose={() => setDeleteModalConfig(prev => ({ ...prev, isOpen: false }))}
-        onConfirm={deleteModalConfig.onConfirm}
         itemType={deleteModalConfig.itemType}
         itemName={deleteModalConfig.itemName}
         description={deleteModalConfig.description}
+        onConfirm={deleteModalConfig.onConfirm}
+        onClose={() => setDeleteModalConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

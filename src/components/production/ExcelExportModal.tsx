@@ -145,24 +145,24 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50 shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/40 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
               <Download className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Exportação de Propostas e Produção</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Exportação de Propostas e Produção</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {proposals.length} proposta(s) filtradas prontas para download
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -174,54 +174,54 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => setExportType('PADRAO')}
-              className={`p-3.5 rounded-xl border text-left transition-all ${
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 exportType === 'PADRAO'
-                  ? 'border-emerald-500 bg-emerald-50/60 text-emerald-950 font-bold shadow-2xs'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-300 font-bold shadow-2xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
-              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-emerald-800">
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-emerald-800 dark:text-emerald-400">
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Layout Padrão Bancário</span>
               </div>
-              <p className="text-[11px] font-normal text-slate-500 leading-relaxed">
+              <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 leading-relaxed">
                 Colunas essenciais para importação bancária: <strong>ADE | CPF | CÓDIGO DO PARCEIRO | DATA</strong>
               </p>
             </button>
 
             <button
               onClick={() => setExportType('PERSONALIZADO')}
-              className={`p-3.5 rounded-xl border text-left transition-all ${
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 exportType === 'PERSONALIZADO'
-                  ? 'border-blue-500 bg-blue-50/60 text-blue-950 font-bold shadow-2xs'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-950 dark:text-blue-300 font-bold shadow-2xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
-              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-blue-800">
-                <Sliders className="h-4 w-4 text-blue-600" />
+              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-blue-800 dark:text-blue-400">
+                <Sliders className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <span>Exportação Seletiva Personalizada</span>
               </div>
-              <p className="text-[11px] font-normal text-slate-500 leading-relaxed">
+              <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 leading-relaxed">
                 Escolha exatamente quais colunas financeiras, operacionais e de esteira incluir.
               </p>
             </button>
           </div>
 
           {/* Format selection (.xlsx vs .csv) */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-700">Formato de Saída:</span>
-              <span className="text-[11px] text-slate-500">Compatível com Excel, Google Sheets e PowerBI</span>
+              <span className="font-bold text-slate-700 dark:text-slate-300">Formato de Saída:</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Compatível com Excel, Google Sheets e PowerBI</span>
             </div>
 
-            <div className="flex rounded-lg border border-slate-300 bg-white p-0.5">
+            <div className="flex rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-0.5">
               <button
                 type="button"
                 onClick={() => setFileFormat('XLSX')}
-                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
                   fileFormat === 'XLSX'
                     ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                 }`}
               >
                 Excel (.xlsx)
@@ -229,10 +229,10 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
               <button
                 type="button"
                 onClick={() => setFileFormat('CSV')}
-                className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
                   fileFormat === 'CSV'
                     ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                 }`}
               >
                 CSV (.csv)
@@ -347,22 +347,22 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-3.5 bg-slate-50 rounded-b-2xl shrink-0">
-          <span className="text-[11px] text-slate-500">
+        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-3.5 bg-slate-50 dark:bg-slate-950/40 rounded-b-2xl shrink-0">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
             {exportType === 'PADRAO' ? '4 colunas bancárias' : `${selectedColumns.length} colunas selecionadas`}
           </span>
 
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               id="btn-confirm-download-excel"
               onClick={handleExport}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white transition-colors flex items-center gap-2 shadow-xs"
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Baixar Arquivo {fileFormat === 'XLSX' ? 'Excel (.xlsx)' : 'CSV (.csv)'}</span>

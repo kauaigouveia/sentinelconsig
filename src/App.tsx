@@ -47,6 +47,8 @@ import { LoginView } from './components/auth/LoginView';
 import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { ResponsibleAlçada } from './types';
 import { Maximize2, Minimize2, Plus, Search, Keyboard, Database, Sparkles } from 'lucide-react';
+import { Breadcrumbs } from './components/ui/Breadcrumbs';
+import { ToastContainer } from './components/ui/ToastContainer';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
@@ -447,8 +449,15 @@ export default function App() {
           </div>
         )}
 
+        {/* Breadcrumb Navigation Bar */}
+        {!isFocusMode && currentView !== 'tv-monitor' && (
+          <div className="px-4 py-1.5 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
+            <Breadcrumbs currentView={currentView} onNavigate={handleNavigate} />
+          </div>
+        )}
+
         {/* Dynamic Page Views */}
-        <main className={`flex-1 overflow-y-auto p-4 md:p-5 min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
+        <main className={`flex-1 overflow-y-auto p-3.5 md:p-4 min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
           {currentView === 'torre-controle' && (
             <ControlTower
               onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
@@ -529,6 +538,31 @@ export default function App() {
             <StatusImport onNavigate={handleNavigate} />
           )}
         </main>
+
+        {/* Bottom Operational Status Bar */}
+        {!isFocusMode && currentView !== 'tv-monitor' && (
+          <footer className="h-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none shrink-0">
+            <div className="flex items-center gap-2.5">
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>SENTINEL OPERACIONAL</span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="truncate max-w-[200px]">
+                Tenant: <strong className="text-slate-700 dark:text-slate-300 font-medium">{StorageService.getCurrentTenant().name}</strong>
+              </span>
+              <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
+              <span className="hidden sm:inline">
+                Contexto: <strong className="text-slate-700 dark:text-slate-300 font-medium">{activeUser?.role === 'PLATFORM_MASTER' ? 'MASTER' : activeUser?.role}</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-3 font-mono text-[10px]">
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">PostgreSQL</span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="text-slate-400">Pusher Live</span>
+            </div>
+          </footer>
+        )}
       </div>
 
       {/* Global Modals */}
@@ -641,6 +675,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Global Toast Feedback Container */}
+      <ToastContainer />
     </div>
   );
 }

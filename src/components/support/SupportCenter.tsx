@@ -13,9 +13,12 @@ import { StorageService } from '../../services/storageService';
 import { formatDate, formatCpf, extractPartnerCode } from '../../lib/utils';
 import { Proposal, ResponsibleAlçada, Pendency } from '../../types';
 import { ProposalDetailModal } from '../production/ProposalDetailModal';
+import { ActionBar } from '../ui/ActionBar';
+import { MetricCard } from '../ui/MetricCard';
+import { StatusBadge } from '../ui/StatusBadge';
 
 export const SupportCenter: React.FC = () => {
-  const proposals = StorageService.getProposals();
+  const [proposals, setProposals] = useState<Proposal[]>(StorageService.getProposals());
   const statuses = StorageService.getStatuses();
   const clients = StorageService.getClients();
   const partners = StorageService.getPartners();
@@ -24,6 +27,10 @@ export const SupportCenter: React.FC = () => {
   const [selectedAlçada, setSelectedAlçada] = useState<ResponsibleAlçada | ''>('');
   const [activeTab, setActiveTab] = useState<'PENDENCIAS' | 'TRAVADAS'>('PENDENCIAS');
   const [detailProposalId, setDetailProposalId] = useState<string | null>(null);
+
+  const refreshData = () => {
+    setProposals(StorageService.getProposals());
+  };
 
   // All open pendencies across all proposals
   const allOpenPendencies: { pendency: Pendency; proposal: Proposal }[] = [];
@@ -46,52 +53,55 @@ export const SupportCenter: React.FC = () => {
 
   const handleResolvePendency = (pendencyId: string) => {
     StorageService.resolvePendency(pendencyId, 'Resolvido via Central de Suporte');
-    window.location.reload();
+    refreshData();
   };
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-          <Headphones className="h-5 w-5 text-blue-600" />
-          <span>Central de Suporte Operacional</span>
-        </h2>
-        <p className="text-xs text-slate-500">
-          Gerenciamento de pendências, propostas estagnadas na esteira e controle de alçadas
-        </p>
-      </div>
+      <ActionBar
+        title="Central de Suporte Operacional"
+        subtitle="Gerenciamento de pendências, propostas estagnadas na esteira e controle de alçadas"
+        badgeText="HELP DESK & SLA"
+        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+      />
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-rose-700">Pendências Abertas</span>
-          <p className="text-2xl font-black text-rose-800 mt-1">{allOpenPendencies.length}</p>
-          <span className="text-[10px] text-rose-600">Requerem ação imediata</span>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <MetricCard
+          label="Pendências Abertas"
+          value={allOpenPendencies.length}
+          subtext="Requerem ação imediata"
+          tone="danger"
+          icon={<AlertCircle className="h-4 w-4 text-rose-600" />}
+        />
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-amber-700">Propostas Travadas (&gt;3d)</span>
-          <p className="text-2xl font-black text-amber-800 mt-1">{stuckProposals.length}</p>
-          <span className="text-[10px] text-amber-600">Sem movimentação recente</span>
-        </div>
+        <MetricCard
+          label="Propostas Travadas (>3d)"
+          value={stuckProposals.length}
+          subtext="Sem movimentação recente"
+          tone="warning"
+          icon={<Clock className="h-4 w-4 text-amber-600" />}
+        />
 
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-blue-700">Eficiência de SLA</span>
-          <p className="text-2xl font-black text-blue-800 mt-1">94%</p>
-          <span className="text-[10px] text-blue-600">No prazo estipulado</span>
-        </div>
+        <MetricCard
+          label="Eficiência de SLA"
+          value="94%"
+          subtext="No prazo estipulado"
+          tone="primary"
+          icon={<CheckCircle2 className="h-4 w-4 text-blue-600" />}
+        />
       </div>
 
       {/* Tabs & Content */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-        <div className="flex border-b border-slate-200 gap-4 text-xs font-semibold text-slate-500">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs space-y-4">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <button
             onClick={() => setActiveTab('PENDENCIAS')}
             className={`py-2 border-b-2 transition-colors cursor-pointer ${
               activeTab === 'PENDENCIAS'
-                ? 'border-blue-600 text-blue-700 font-bold'
-                : 'border-transparent hover:text-slate-800'
+                ? 'border-blue-600 text-blue-700 dark:text-blue-400 font-bold'
+                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Todas as Pendências Abertas ({allOpenPendencies.length})
@@ -100,8 +110,8 @@ export const SupportCenter: React.FC = () => {
             onClick={() => setActiveTab('TRAVADAS')}
             className={`py-2 border-b-2 transition-colors cursor-pointer ${
               activeTab === 'TRAVADAS'
-                ? 'border-amber-600 text-amber-700 font-bold'
-                : 'border-transparent hover:text-slate-800'
+                ? 'border-amber-600 text-amber-700 dark:text-amber-400 font-bold'
+                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Propostas Travadas &gt; 3 Dias ({stuckProposals.length})
@@ -111,7 +121,7 @@ export const SupportCenter: React.FC = () => {
         {activeTab === 'PENDENCIAS' ? (
           <div className="space-y-3">
             {allOpenPendencies.length === 0 ? (
-              <p className="text-xs text-slate-400 italic text-center py-10">
+              <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center py-10">
                 Nenhuma pendência aberta no momento.
               </p>
             ) : (
@@ -122,25 +132,25 @@ export const SupportCenter: React.FC = () => {
                 return (
                   <div
                     key={pendency.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50/30 p-4 text-xs"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-4 text-xs transition-colors"
                   >
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-900">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                           ADE {proposal.proposalNumber}
                         </span>
                         <span className="text-slate-400">•</span>
-                        <span className="font-semibold text-slate-800">{client?.fullName}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{client?.fullName}</span>
                         <span className="text-slate-400">•</span>
-                        <span className="rounded bg-rose-100 text-rose-800 px-2 py-0.5 font-bold text-[10px]">
+                        <span className="rounded bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 px-2 py-0.5 font-bold text-[10px]">
                           {pendency.type}
                         </span>
-                        <span className="text-slate-400 text-[10px]">
+                        <span className="text-slate-400 dark:text-slate-500 text-[10px]">
                           Aberta em {formatDate(pendency.openedAt)}
                         </span>
                       </div>
-                      <p className="font-medium text-slate-800">{pendency.description}</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="font-medium text-slate-800 dark:text-slate-200">{pendency.description}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
                         Parceiro: <strong>{partner?.login}</strong> (Cód: {partner ? extractPartnerCode(partner.login) : ''})
                       </p>
                     </div>
@@ -148,13 +158,13 @@ export const SupportCenter: React.FC = () => {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => setDetailProposalId(proposal.id)}
-                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                       >
                         Ver Proposta
                       </button>
                       <button
                         onClick={() => handleResolvePendency(pendency.id)}
-                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1"
+                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Check className="h-3.5 w-3.5" />
                         <span>Resolver</span>
@@ -175,29 +185,24 @@ export const SupportCenter: React.FC = () => {
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/30 p-3 text-xs"
+                  className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-3 text-xs transition-colors"
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
                         ADE {p.proposalNumber}
                       </span>
-                      <span className="font-semibold text-slate-800">{client?.fullName}</span>
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-                        style={{ backgroundColor: status?.color || '#64748b' }}
-                      >
-                        {status?.name}
-                      </span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{client?.fullName}</span>
+                      <StatusBadge status={status} />
                     </div>
-                    <p className="text-[11px] text-amber-900 font-semibold mt-1">
+                    <p className="text-[11px] text-amber-900 dark:text-amber-300 font-semibold mt-1">
                       Parada há {diffDays} dias neste mesmo status (Alçada: {status?.responsible})
                     </p>
                   </div>
 
                   <button
                     onClick={() => setDetailProposalId(p.id)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                   >
                     Ver Detalhes
                   </button>
@@ -212,7 +217,7 @@ export const SupportCenter: React.FC = () => {
         <ProposalDetailModal
           proposalId={detailProposalId}
           onClose={() => setDetailProposalId(null)}
-          onProposalUpdated={() => window.location.reload()}
+          onProposalUpdated={refreshData}
         />
       )}
     </div>

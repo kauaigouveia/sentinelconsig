@@ -22,6 +22,9 @@ import { StorageService } from '../../services/storageService';
 import { formatCpf, extractPartnerCode, formatDate, formatCurrency } from '../../lib/utils';
 import { Proposal, Status, ResponsibleAlçada } from '../../types';
 import { ProposalDetailModal } from './ProposalDetailModal';
+import { ActionBar } from '../ui/ActionBar';
+import { AuthorityBadge } from '../ui/AuthorityBadge';
+import { EmptyState } from '../ui/EmptyState';
 
 export const KanbanBoard: React.FC = () => {
   const [proposals, setProposals] = useState<Proposal[]>(() => StorageService.getProposals());
@@ -190,31 +193,11 @@ export const KanbanBoard: React.FC = () => {
 
   return (
     <div className="space-y-3.5 h-[calc(100vh-8.5rem)] flex flex-col">
-      {/* Top Filter and SLA Urgency Bar */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs shrink-0 space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900">Esteira Kanban de Produção</h2>
-              {slaCounts.overdue > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-extrabold text-rose-700 border border-rose-200 animate-pulse">
-                  <AlertCircle className="h-3 w-3 text-rose-600" />
-                  {slaCounts.overdue} SLA estourado(s)
-                </span>
-              )}
-              {slaCounts.warning > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-extrabold text-amber-700 border border-amber-200">
-                  <AlertTriangle className="h-3 w-3 text-amber-600" />
-                  {slaCounts.warning} próximo(s) do vencimento
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Acompanhamento de fluxo por status com alertas visuais de prazo operacional (SLA) em tempo real
-            </p>
-          </div>
-
-          {/* Quick Filters */}
+      {/* Top Action Bar with Filters */}
+      <ActionBar
+        title="Esteira Kanban"
+        count={filteredProposals.length}
+        rightActions={
           <div className="flex items-center gap-2 flex-wrap">
             {/* Search Input */}
             <div className="relative">
@@ -224,7 +207,7 @@ export const KanbanBoard: React.FC = () => {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar ADE, CPF ou Parceiro..."
-                className="w-48 sm:w-56 rounded-lg border border-slate-300 bg-slate-50 pl-8 pr-3 py-1 text-xs text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                className="w-44 sm:w-52 h-7.5 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:outline-none"
               />
             </div>
 
@@ -232,7 +215,7 @@ export const KanbanBoard: React.FC = () => {
             <select
               value={productFilter}
               onChange={e => setProductFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+              className="h-7.5 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
               <option value="">Todos os Produtos</option>
               {products.map(p => (
@@ -246,62 +229,54 @@ export const KanbanBoard: React.FC = () => {
             <select
               value={slaFilter}
               onChange={e => setSlaFilter(e.target.value as any)}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-bold focus:outline-hidden ${
+              className={`h-7.5 rounded-md border px-2 text-xs font-bold ${
                 slaFilter === 'OVERDUE'
-                  ? 'bg-rose-50 border-rose-300 text-rose-700'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
                   : slaFilter === 'WARNING' || slaFilter === 'WARNING_AND_OVERDUE'
-                  ? 'bg-amber-50 border-amber-300 text-amber-800'
-                  : 'bg-white border-slate-300 text-slate-700'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
-              <option value="ALL">Status SLA: Todos ({slaCounts.total})</option>
-              <option value="WARNING_AND_OVERDUE">⚠️ Críticos & Estourados ({slaCounts.overdue + slaCounts.warning})</option>
-              <option value="OVERDUE">🔴 Somente Estourados ({slaCounts.overdue})</option>
-              <option value="WARNING">🟠 Próximos do Vencimento ≥75% ({slaCounts.warning})</option>
+              <option value="ALL">SLA: Todos ({slaCounts.total})</option>
+              <option value="WARNING_AND_OVERDUE">⚠️ Críticos ({slaCounts.overdue + slaCounts.warning})</option>
+              <option value="OVERDUE">🔴 Estourados ({slaCounts.overdue})</option>
+              <option value="WARNING">🟠 Próximos 75% ({slaCounts.warning})</option>
               <option value="ON_TRACK">🟢 No Prazo ({slaCounts.onTrack})</option>
             </select>
 
             {/* Sort */}
-            <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+            <div className="flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setSortBy('SLA_URGENCY')}
-                className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${
-                  sortBy === 'SLA_URGENCY' ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2 py-1 text-xs font-bold rounded transition-all ${
+                  sortBy === 'SLA_URGENCY'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
                 title="Ordenar por maior urgência de SLA"
               >
-                Urgência SLA
+                Urgência
               </button>
               <button
                 onClick={() => setSortBy('RECENT')}
-                className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${
-                  sortBy === 'RECENT' ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-2 py-1 text-xs font-bold rounded transition-all ${
+                  sortBy === 'RECENT'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
                 Recentes
               </button>
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {proposals.length === 0 ? (
-        /* Global Onboarding Empty State for Kanban */
-        <div className="flex-1 flex items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center shadow-2xs">
-          <div className="max-w-md space-y-4">
-            <div className="mx-auto h-16 w-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-2xs">
-              <Inbox className="h-8 w-8" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-slate-900">
-                Esteira Kanban sem propostas
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                As colunas operacionais refletirão automaticamente o fluxo de esteira assim que novas propostas forem criadas ou importadas.
-              </p>
-            </div>
-          </div>
-        </div>
+        <EmptyState
+          title="Esteira Kanban sem propostas"
+          description="As colunas operacionais refletirão automaticamente o fluxo de esteira assim que novas propostas forem criadas ou importadas."
+        />
       ) : (
         /* Columns Container */
         <div className="flex-1 flex gap-3 overflow-x-auto pb-2 min-h-0">
@@ -311,43 +286,40 @@ export const KanbanBoard: React.FC = () => {
             return (
               <div
                 key={status.id}
-                className="w-76 shrink-0 flex flex-col rounded-xl bg-slate-100/90 border border-slate-200 overflow-hidden shadow-2xs"
+                className="w-80 shrink-0 flex flex-col rounded-xl bg-slate-100/80 dark:bg-[#0c1220] border border-slate-200/90 dark:border-slate-800/80 overflow-hidden shadow-xs"
               >
                 {/* Column Header */}
-                <div
-                  className="p-3 border-b border-slate-200 flex items-center justify-between bg-white"
-                  style={{ borderTop: `4px solid ${status.color}` }}
-                >
+                <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-[#0e1626]">
                   <div className="min-w-0 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-xs font-bold text-slate-900 truncate" title={status.name}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0 shadow-xs"
+                        style={{ backgroundColor: status.color || '#3b82f6' }}
+                      />
+                      <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 truncate tracking-tight" title={status.name}>
                         {status.name}
                       </h3>
                       {status.slaHours && (
-                        <span className="text-[10px] text-slate-400 font-semibold" title={`SLA padrão: ${status.slaHours} horas`}>
+                        <span className="text-[10px] text-slate-400 font-mono font-bold" title={`SLA padrão: ${status.slaHours} horas`}>
                           ({status.slaHours}h)
                         </span>
                       )}
                     </div>
-                    <span
-                      className={`inline-block rounded px-1.5 py-0.2 text-[9px] font-bold border mt-0.5 ${
-                        alcadaColors[status.responsible]
-                      }`}
-                    >
-                      Alçada: {status.responsible}
-                    </span>
+                    <div className="mt-1.5">
+                      <AuthorityBadge authority={status.responsible} />
+                    </div>
                   </div>
-                  <span className="h-5 w-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center shrink-0">
+                  <span className="h-5.5 min-w-5.5 px-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black text-[11px] flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
                     {colProps.length}
                   </span>
                 </div>
 
                 {/* Column Cards */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2.5">
+                <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 max-h-[calc(100vh-280px)]">
                   {colProps.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 px-3 rounded-lg border border-dashed border-slate-300 bg-white/60 text-center space-y-1.5">
-                      <FolderOpen className="h-5 w-5 text-slate-300" />
-                      <p className="text-[11px] font-medium text-slate-400">
+                    <div className="flex flex-col items-center justify-center py-12 px-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/20 text-center space-y-1.5">
+                      <FolderOpen className="h-5 w-5 text-slate-300 dark:text-slate-600" />
+                      <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                         Nenhuma proposta nesta etapa
                       </p>
                     </div>
@@ -363,22 +335,22 @@ export const KanbanBoard: React.FC = () => {
                       return (
                         <div
                           key={p.id}
-                          className={`rounded-lg border bg-white p-3 shadow-2xs hover:shadow-md transition-all space-y-2 cursor-pointer group relative ${
+                          className={`rounded-xl border bg-white dark:bg-[#11192a] p-3.5 shadow-2xs hover:shadow-md transition-all space-y-2 cursor-pointer group relative ${
                             sla.health === 'OVERDUE'
-                              ? 'border-rose-300 ring-1 ring-rose-200'
+                              ? 'border-rose-400 dark:border-rose-500/70 ring-1 ring-rose-300 dark:ring-rose-500/30'
                               : sla.health === 'WARNING'
-                              ? 'border-amber-300 ring-1 ring-amber-100'
-                              : 'border-slate-200 hover:border-slate-300'
+                              ? 'border-amber-400 dark:border-amber-500/70 ring-1 ring-amber-300 dark:ring-amber-500/30'
+                              : 'border-slate-200 dark:border-slate-800/90 hover:border-blue-400 dark:hover:border-blue-500/50'
                           }`}
                           onClick={() => setSelectedProposalId(p.id)}
                         >
                           {/* Top: ADE + Product + SLA Status Badge */}
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="font-mono text-xs font-bold text-slate-900 group-hover:text-blue-600 truncate">
+                            <span className="font-mono text-xs font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">
                               ADE {p.proposalNumber}
                             </span>
                             <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                              <span className="text-[9.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded">
                                 {prod?.name}
                               </span>
                             </div>
@@ -386,110 +358,87 @@ export const KanbanBoard: React.FC = () => {
 
                           {/* Client info */}
                           <div>
-                            <p className="text-xs font-semibold text-slate-800 truncate" title={client?.fullName}>
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" title={client?.fullName}>
                               {client?.fullName}
                             </p>
-                            <p className="text-[11px] font-mono text-slate-500">
+                            <p className="text-[10.5px] font-mono font-medium text-slate-400 dark:text-slate-500">
                               {formatCpf(client?.cpf || '')}
                             </p>
                           </div>
 
                           {/* Bank & Promoter */}
-                          <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                            <span className="truncate">{bank?.name}</span>
-                            <span className="text-slate-400 font-medium shrink-0 ml-1">{promoter?.name}</span>
+                          <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                            <span className="font-semibold truncate">{bank?.name}</span>
+                            <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 ml-1">{promoter?.name}</span>
                           </div>
 
                           {/* Partner & Code */}
-                          <div className="flex items-center justify-between text-[10px] text-slate-500">
-                            <span className="font-bold text-blue-800">
+                          <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
+                            <span className="font-bold text-blue-700 dark:text-blue-400 font-mono">
                               Cód: {partner ? extractPartnerCode(partner.login) : ''}
                             </span>
-                            <span className="truncate max-w-[120px]" title={partner?.login}>
+                            <span className="truncate max-w-[120px] font-medium" title={partner?.login}>
                               {partner?.login}
                             </span>
                           </div>
 
                           {/* Financial Values Pill */}
                           {(p.disbursedValue || p.contractBalance) && (
-                            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 text-[10px]">
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 text-[10px]">
                               {p.disbursedValue ? (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-mono font-bold border border-emerald-200 dark:border-emerald-800/50">
                                   Lib: {formatCurrency(p.disbursedValue)}
                                 </span>
                               ) : null}
                               {p.contractBalance ? (
-                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium border border-indigo-200">
+                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-mono font-medium border border-indigo-200 dark:border-indigo-800/50">
                                   Saldo: {formatCurrency(p.contractBalance)}
                                 </span>
                               ) : null}
                             </div>
                           )}
 
-                          {/* SLA Operational Deadline Visual Progress Bar */}
-                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="flex items-center gap-1 text-slate-500 font-semibold">
-                                <Clock className="h-3 w-3 text-slate-400" />
-                                <span>SLA: {sla.elapsedHours}h / {sla.targetHours}h</span>
-                              </span>
+                          {/* SLA Urgency Pill */}
+                          <div className="pt-1 flex items-center justify-between text-[10px] font-mono">
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-bold ${
+                                sla.health === 'OVERDUE'
+                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                  : sla.health === 'WARNING'
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              }`}
+                            >
+                              {sla.health === 'OVERDUE' ? `Atrasado (+${Math.round(sla.overdueHours)}h)` : `${sla.progressPct}% SLA`}
+                            </span>
 
-                              {sla.health === 'OVERDUE' ? (
-                                <span className="font-black text-rose-600 flex items-center gap-0.5">
-                                  <AlertCircle className="h-3 w-3" />
-                                  +{sla.overdueHours}h estourado
-                                </span>
-                              ) : sla.health === 'WARNING' ? (
-                                <span className="font-bold text-amber-700 flex items-center gap-0.5">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Restam {sla.remainingHours}h
-                                </span>
-                              ) : (
-                                <span className="font-bold text-emerald-600">
-                                  {sla.remainingHours}h restantes
-                                </span>
+                            {/* Quick Next/Prev Navigation */}
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {statusIdx > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveStatus(p.id, 'PREV');
+                                  }}
+                                  className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+                                  title="Mover para etapa anterior"
+                                >
+                                  <ChevronLeft className="h-3 w-3" />
+                                </button>
+                              )}
+                              {statusIdx < statuses.length - 1 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveStatus(p.id, 'NEXT');
+                                  }}
+                                  className="p-1 rounded bg-blue-50 dark:bg-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-300 cursor-pointer"
+                                  title="Avançar para próxima etapa"
+                                >
+                                  <ChevronRight className="h-3 w-3" />
+                                </button>
                               )}
                             </div>
-
-                            {/* Progress bar background & fill */}
-                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                  sla.health === 'OVERDUE'
-                                    ? 'bg-rose-500'
-                                    : sla.health === 'WARNING'
-                                    ? 'bg-amber-500'
-                                    : 'bg-emerald-500'
-                                }`}
-                                style={{ width: `${sla.progressPct}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Actions (Move Prev / Next) */}
-                          <div
-                            className="flex items-center justify-between pt-1 border-t border-slate-100"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <button
-                              disabled={statusIdx === 0}
-                              onClick={() => handleMoveStatus(p.id, 'PREV')}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-20"
-                              title="Voltar status anterior"
-                            >
-                              <ChevronLeft className="h-3.5 w-3.5" />
-                            </button>
-
-                            <span className="text-[9px] text-slate-400 font-medium">Mover etapa</span>
-
-                            <button
-                              disabled={statusIdx === statuses.length - 1}
-                              onClick={() => handleMoveStatus(p.id, 'NEXT')}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-20"
-                              title="Avançar próximo status"
-                            >
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </button>
                           </div>
                         </div>
                       );

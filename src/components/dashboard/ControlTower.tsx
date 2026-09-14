@@ -155,154 +155,233 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
   const PRODUCT_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899'];
 
   return (
-    <div className="space-y-5">
-      {/* Title */}
-      <div>
-        <h2 className="text-base font-bold text-slate-900">Torre de Controle Operacional</h2>
-        <p className="text-xs text-slate-500">
-          Visão holística da produção, SLAs, gargalos e distribuição de responsabilidades por alçada
-        </p>
+    <div className="space-y-4 select-none">
+      {/* Title & Status Summary */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0f172a] p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xs">
+            <LayoutDashboard className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                Torre de Controle Operacional
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                TELEMETRIA ATIVA
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Visão holística da esteira, SLAs, alçadas e gargalos operacionais
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onNavigateToProductionWithFilter({})}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            <span>Ver Esteira Completa</span>
+            <ArrowRight className="h-3.5 w-3.5 text-blue-500" />
+          </button>
+        </div>
       </div>
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 flex items-center justify-between shadow-2xs">
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ statusId: statuses.find(s => s.code === 'PAGO')?.id })}
+          className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/30 p-4 flex items-center justify-between shadow-2xs hover:border-emerald-400 transition-all cursor-pointer group"
+        >
           <div>
-            <span className="text-[10px] font-bold uppercase text-emerald-700">Volume Liberado Pago (R$)</span>
-            <p className="text-xl font-black text-emerald-900 mt-0.5">{formatCurrency(totalDisbursedPaid)}</p>
-            <span className="text-[10px] text-emerald-600 font-semibold">{pagas} propostas concluídas</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              Volume Liberado Pago (R$)
+            </span>
+            <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-300 mt-0.5 tracking-tight">
+              {formatCurrency(totalDisbursedPaid)}
+            </p>
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400/80 font-bold">
+              {pagas} propostas concluídas
+            </span>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <DollarSign className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3.5 flex items-center justify-between shadow-2xs">
+        <div
+          onClick={() => onNavigateToProductionWithFilter({})}
+          className="rounded-xl border border-blue-200 dark:border-blue-800/60 bg-blue-50/60 dark:bg-blue-950/30 p-4 flex items-center justify-between shadow-2xs hover:border-blue-400 transition-all cursor-pointer group"
+        >
           <div>
-            <span className="text-[10px] font-bold uppercase text-blue-700">Volume Total em Esteira (R$)</span>
-            <p className="text-xl font-black text-blue-900 mt-0.5">{formatCurrency(totalDisbursed)}</p>
-            <span className="text-[10px] text-blue-600 font-semibold">{total} propostas cadastradas</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
+              Volume Total em Esteira (R$)
+            </span>
+            <p className="text-2xl font-black font-mono text-blue-900 dark:text-blue-300 mt-0.5 tracking-tight">
+              {formatCurrency(totalDisbursed)}
+            </p>
+            <span className="text-[11px] text-blue-600 dark:text-blue-400/80 font-bold">
+              {total} propostas cadastradas
+            </span>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <TrendingUp className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-3.5 flex items-center justify-between shadow-2xs">
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ statusId: cipStatus?.id })}
+          className="rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50/60 dark:bg-purple-950/30 p-4 flex items-center justify-between shadow-2xs hover:border-purple-400 transition-all cursor-pointer group"
+        >
           <div>
-            <span className="text-[10px] font-bold uppercase text-purple-700">Saldo Retido em CIP (R$)</span>
-            <p className="text-xl font-black text-purple-900 mt-0.5">{formatCurrency(totalBalanceCip)}</p>
-            <span className="text-[10px] text-purple-600 font-semibold">
+            <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-400">
+              Saldo Retido em CIP (R$)
+            </span>
+            <p className="text-2xl font-black font-mono text-purple-900 dark:text-purple-300 mt-0.5 tracking-tight">
+              {formatCurrency(totalBalanceCip)}
+            </p>
+            <span className="text-[11px] text-purple-600 dark:text-purple-400/80 font-bold">
               Troco previsto: {formatCurrency(totalDisbursedCip)}
             </span>
           </div>
-          <div className="h-9 w-9 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Coins className="h-5 w-5" />
           </div>
         </div>
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-slate-400">Total Propostas</span>
-          <p className="text-xl font-black text-slate-900 mt-1">{total}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
+        <div
+          onClick={() => onNavigateToProductionWithFilter({})}
+          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-3 shadow-2xs hover:border-slate-400 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block">Total Geral</span>
+          <p className="text-lg font-black font-mono text-slate-900 dark:text-white mt-1">{total}</p>
         </div>
 
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-emerald-700">Pagas</span>
-          <p className="text-xl font-black text-emerald-800 mt-1">{pagas}</p>
-          <span className="text-[10px] text-emerald-600 font-semibold">
-            {total > 0 ? `${Math.round((pagas / total) * 100)}% de conversão` : '0%'}
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ statusId: statuses.find(s => s.code === 'PAGO')?.id })}
+          className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-3 shadow-2xs hover:border-emerald-400 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Pagas</span>
+          <p className="text-lg font-black font-mono text-emerald-800 dark:text-emerald-300 mt-1">{pagas}</p>
+          <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-bold block truncate">
+            {total > 0 ? `${Math.round((pagas / total) * 100)}% conversão` : '0%'}
           </span>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-amber-700">Pendentes</span>
-          <p className="text-xl font-black text-amber-800 mt-1">{pendentes}</p>
-          <span className="text-[10px] text-amber-600">Doc / Banco / Parceiro</span>
+        <div
+          onClick={() => onNavigateToProductionWithFilter({})}
+          className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-3 shadow-2xs hover:border-amber-400 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">Pendentes</span>
+          <p className="text-lg font-black font-mono text-amber-800 dark:text-amber-300 mt-1">{pendentes}</p>
+          <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-bold block truncate">Doc / Banco</span>
         </div>
 
-        <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-rose-700">Cancel/Reprov</span>
-          <p className="text-xl font-black text-rose-800 mt-1">{canceladasReprovadas}</p>
-          <span className="text-[10px] text-rose-600">
-            {total > 0 ? `${Math.round((canceladasReprovadas / total) * 100)}% canceladas` : '0%'}
+        <div
+          onClick={() => onNavigateToProductionWithFilter({})}
+          className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-3 shadow-2xs hover:border-rose-400 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-rose-700 dark:text-rose-400 block">Cancel/Reprov</span>
+          <p className="text-lg font-black font-mono text-rose-800 dark:text-rose-300 mt-1">{canceladasReprovadas}</p>
+          <span className="text-[9.5px] text-rose-600 dark:text-rose-400 font-bold block truncate">
+            {total > 0 ? `${Math.round((canceladasReprovadas / total) * 100)}% perda` : '0%'}
           </span>
         </div>
 
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-blue-700">Portab. em CIP</span>
-          <p className="text-xl font-black text-blue-800 mt-1">{portInCip.length}</p>
-          <span className="text-[10px] text-blue-600">Aguardando saldo</span>
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ statusId: cipStatus?.id })}
+          className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 p-3 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400 block">Portab. em CIP</span>
+          <p className="text-lg font-black font-mono text-blue-800 dark:text-blue-300 mt-1">{portInCip.length}</p>
+          <span className="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold block truncate">Aguardando saldo</span>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-amber-800">Port. no 5º Dia</span>
-          <p className="text-xl font-black text-amber-900 mt-1">{portNo5Dia}</p>
-          <span className="text-[10px] text-amber-700 font-semibold">Prestes a virar</span>
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ statusId: cipStatus?.id })}
+          className="rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-100/50 dark:bg-amber-950/40 p-3 shadow-2xs hover:border-amber-500 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 block">Port. 5º Dia</span>
+          <p className="text-lg font-black font-mono text-amber-900 dark:text-amber-200 mt-1">{portNo5Dia}</p>
+          <span className="text-[9.5px] text-amber-700 dark:text-amber-300 font-black block truncate">Prestes a virar</span>
         </div>
 
-        <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-rose-800">Port. Atrasadas</span>
-          <p className="text-xl font-black text-rose-900 mt-1">{portAtrasadas}</p>
-          <span className="text-[10px] text-rose-700 font-bold">&gt; 5 dias úteis</span>
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ statusId: cipStatus?.id })}
+          className="rounded-xl border border-rose-300 dark:border-rose-700/60 bg-rose-100/50 dark:bg-rose-950/40 p-3 shadow-2xs hover:border-rose-500 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 block">Port. Atrasadas</span>
+          <p className="text-lg font-black font-mono text-rose-900 dark:text-rose-200 mt-1">{portAtrasadas}</p>
+          <span className="text-[9.5px] text-rose-700 dark:text-rose-300 font-black block truncate">&gt; 5 dias úteis</span>
         </div>
 
-        <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-purple-700">Alçada Equipe</span>
-          <p className="text-xl font-black text-purple-800 mt-1">{alcadas['NOSSA EQUIPE']}</p>
-          <span className="text-[10px] text-purple-600">Ação interna</span>
+        <div
+          onClick={() => onNavigateToProductionWithFilter({ alçada: 'NOSSA EQUIPE' })}
+          className="rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 p-3 shadow-2xs hover:border-purple-400 cursor-pointer transition-colors"
+        >
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-400 block">Nossa Equipe</span>
+          <p className="text-lg font-black font-mono text-purple-800 dark:text-purple-300 mt-1">{alcadas['NOSSA EQUIPE']}</p>
+          <span className="text-[9.5px] text-purple-600 dark:text-purple-400 font-bold block truncate">Ação interna</span>
         </div>
       </div>
 
       {/* SECTION: INDICADOR ALÇADA ATUAL */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Distribuição por Alçada de Responsabilidade (Quem está travando a esteira?)
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Distribuição por Alçada de Responsabilidade
             </h3>
-            <p className="text-xs text-slate-500">
-              Clique em qualquer alçada para filtrar a esteira imediatamente
-            </p>
           </div>
+          <span className="text-[10px] text-slate-400 font-bold uppercase">Clique para filtrar</span>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {(
             [
-              { key: 'CLIENTE', label: 'Cliente', desc: 'Aguardando formalização / assinatura / doc', color: 'border-orange-200 bg-orange-50/60 text-orange-900' },
-              { key: 'PARCEIRO', label: 'Parceiro', desc: 'Pendente retorno / recálculo / dados', color: 'border-amber-200 bg-amber-50/60 text-amber-900' },
-              { key: 'BANCO', label: 'Banco / CIP', desc: 'Em análise CIP / averbação bancária', color: 'border-blue-200 bg-blue-50/60 text-blue-900' },
-              { key: 'NOSSA EQUIPE', label: 'Nossa Equipe', desc: 'Digitação / conferência / anexos', color: 'border-purple-200 bg-purple-50/60 text-purple-900' },
-              { key: 'SISTEMA', label: 'Sistema', desc: 'Processamento automático / cron', color: 'border-slate-200 bg-slate-50 text-slate-900' },
+              { key: 'CLIENTE', label: 'Cliente', desc: 'Aguardando formalização / assinatura / doc', color: 'border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300' },
+              { key: 'PARCEIRO', label: 'Parceiro', desc: 'Pendente retorno / recálculo / dados', color: 'border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300' },
+              { key: 'BANCO', label: 'Banco / CIP', desc: 'Em análise CIP / averbação bancária', color: 'border-purple-200 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20 text-purple-900 dark:text-purple-300' },
+              { key: 'NOSSA EQUIPE', label: 'Nossa Equipe', desc: 'Digitação / conferência / anexos', color: 'border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300' },
+              { key: 'SISTEMA', label: 'Sistema', desc: 'Processamento automático / cron', color: 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-200' },
             ] as const
           ).map(al => (
             <button
               key={al.key}
               onClick={() => onNavigateToProductionWithFilter({ alçada: al.key })}
-              className={`p-4 rounded-xl border text-left transition-all hover:shadow-xs group cursor-pointer ${al.color}`}
+              className={`p-3.5 rounded-xl border text-left transition-all hover:scale-[1.01] group cursor-pointer shadow-2xs ${al.color}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-xs">{al.label}</span>
+                <span className="font-black text-xs uppercase tracking-wider">{al.label}</span>
                 <ArrowRight className="h-3.5 w-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
               </div>
-              <p className="text-2xl font-extrabold mt-1">{alcadas[al.key]}</p>
-              <p className="text-[10px] opacity-75 mt-1">{al.desc}</p>
+              <p className="text-2xl font-black font-mono mt-1">{alcadas[al.key]}</p>
+              <p className="text-[10px] opacity-75 mt-1 font-medium">{al.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* SECTION: PRODUÇÃO BANCO × PROMOTORA */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-          Matriz de Produção: Banco × Promotora de Vínculo
-        </h3>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Matriz Operacional: Banco Destino × Promotora
+            </h3>
+          </div>
+          <span className="text-[10px] text-slate-400 font-mono">Consolidado em Tempo Real</span>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="px-3 py-2.5">Banco Destino</th>
                 {promoters.map(pr => (
@@ -313,12 +392,12 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
                 <th className="px-3 py-2.5 text-right">Total Banco</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {banks.map(b => {
                 const totalForBank = proposals.filter(p => p.bankId === b.id).length;
                 return (
-                  <tr key={b.id} className="hover:bg-slate-50/80">
-                    <td className="px-3 py-2.5 font-bold text-slate-900">{b.name}</td>
+                  <tr key={b.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white">{b.name}</td>
                     {promoters.map(pr => {
                       const count = proposals.filter(
                         p => p.bankId === b.id && p.promoterId === pr.id
@@ -332,23 +411,23 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
                               onClick={() =>
                                 onNavigateToProductionWithFilter({ bankId: b.id, promoterId: pr.id })
                               }
-                              className={`rounded px-2 py-0.5 font-mono text-xs font-bold ${
+                              className={`rounded px-2.5 py-0.5 font-mono text-xs font-bold transition-transform hover:scale-105 cursor-pointer ${
                                 count > 0
-                                  ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                  : 'text-slate-400'
+                                  ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 hover:bg-blue-200'
+                                  : 'text-slate-400 dark:text-slate-600'
                               }`}
                             >
                               {count}
                             </button>
                           ) : (
-                            <span className="text-slate-300 text-[11px] italic" title="Vínculo não habilitado">
+                            <span className="text-slate-300 dark:text-slate-700 text-[11px] italic" title="Vínculo não habilitado">
                               -
                             </span>
                           )}
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900">
+                    <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
                       {totalForBank}
                     </td>
                   </tr>
@@ -362,17 +441,28 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
       {/* SECTION: AGING BUCKETS & CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Aging Buckets */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Aging da Esteira (Tempo em Aberto)
-          </h3>
-          <div className="h-64">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Aging da Esteira (Tempo em Aberto)
+            </h3>
+            <span className="text-[10px] text-slate-400 font-mono">Dias de Esteira</span>
+          </div>
+          <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={agingData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.2)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    borderColor: '#334155',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: '11px',
+                  }}
+                />
                 <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -380,11 +470,14 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
         </div>
 
         {/* Product Distribution */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Distribuição por Linha de Produto
-          </h3>
-          <div className="h-64 flex items-center justify-center">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Distribuição por Linha de Produto
+            </h3>
+            <span className="text-[10px] text-slate-400 font-mono">{products.length} Categorias</span>
+          </div>
+          <div className="h-56 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -393,9 +486,9 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  labelLine={false}
+                  outerRadius={75}
+                  innerRadius={45}
+                  paddingAngle={3}
                 >
                   {productData.map((entry, index) => (
                     <Cell
@@ -404,7 +497,15 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    borderColor: '#334155',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: '11px',
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

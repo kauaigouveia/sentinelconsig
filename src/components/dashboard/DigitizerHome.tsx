@@ -10,11 +10,17 @@ import {
   Search,
   Eye,
   DollarSign,
+  UserCheck,
+  Zap,
+  Filter,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
 import { Proposal } from '../../types';
 import { ProposalDetailModal } from '../production/ProposalDetailModal';
+import { ActionBar } from '../ui/ActionBar';
+import { MetricCard } from '../ui/MetricCard';
+import { StatusBadge } from '../ui/StatusBadge';
 
 interface DigitizerHomeProps {
   onOpenNewProduction: () => void;
@@ -36,6 +42,8 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
   const statuses = StorageService.getStatuses();
 
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterTab, setFilterTab] = useState<'ALL' | 'TODAY' | 'PENDING' | 'PAID'>('ALL');
 
   // Filter proposals by this digitizer (or all if master)
   const myProposals = allProposals.filter(
@@ -46,7 +54,7 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
   const digitadasHoje = myProposals.filter(p => p.createdAt.startsWith(todayStr));
   const pendentesAnexo = myProposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
-    return s?.code === 'PENDENTE_ANEXO_DOCUMENTACAO';
+    return s?.code === 'PENDENTE_ANEXO_DOCUMENTACAO' || s?.code === 'PENDENCIA';
   });
   const pagas = myProposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
@@ -57,165 +65,227 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
   const totalDisbursedGeral = myProposals.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
   const totalDisbursedPago = pagas.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
 
+  const filteredList = myProposals.filter(p => {
+    const client = clients.find(c => c.id === p.clientId);
+    const matchSearch =
+      !searchTerm ||
+      p.proposalNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client?.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client?.cpf.includes(searchTerm);
+
+    if (!matchSearch) return false;
+
+    if (filterTab === 'TODAY') return p.createdAt.startsWith(todayStr);
+    if (filterTab === 'PENDING') {
+      const s = statuses.find(st => st.id === p.statusId);
+      return s?.code === 'PENDENTE_ANEXO_DOCUMENTACAO' || s?.code === 'PENDENCIA';
+    }
+    if (filterTab === 'PAID') {
+      const s = statuses.find(st => st.id === p.statusId);
+      return s?.code === 'PAGO';
+    }
+
+    return true;
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-slate-900">
-            Minha Produção — Operador: {activeUser.name}
-          </h2>
-          <p className="text-xs text-slate-500">
-            Painel rápido para digitação, conferência de anexos e exportação para envio bancário
-          </p>
-        </div>
+      <ActionBar
+        title={`Minha Produção — Operador: ${activeUser.name}`}
+        subtitle="Mesa ágil de digitação, conferência de anexos e esteira de envio bancário"
+        badgeText="ESTEIRA DO DIGITADOR"
+        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenImportExcel}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Upload className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Importar Planilha</span>
+            </button>
 
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenImportExcel}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <Upload className="h-3.5 w-3.5 text-blue-600" />
-            <span>Importar Planilha</span>
-          </button>
+            <button
+              onClick={onOpenExport}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Exportar</span>
+            </button>
 
-          <button
-            onClick={onOpenExport}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <Download className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Exportar Propostas</span>
-          </button>
+            <button
+              onClick={onOpenNewProduction}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>+ Nova Produção</span>
+            </button>
+          </div>
+        }
+      />
 
-          <button
-            onClick={onOpenNewProduction}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-xs"
-          >
-            <PlusCircle className="h-4 w-4" />
-            <span>+ Nova Produção</span>
-          </button>
-        </div>
+      {/* Operator Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <MetricCard
+          title="Digitadas Hoje"
+          value={digitadasHoje.length}
+          subtitle={`Volume: ${formatCurrency(totalDisbursedHoje)}`}
+          icon={<Clock className="h-4 w-4 text-blue-600" />}
+          variant="primary"
+        />
+
+        <MetricCard
+          title="Minha Produção Total"
+          value={myProposals.length}
+          subtitle={`Volume: ${formatCurrency(totalDisbursedGeral)}`}
+          icon={<DollarSign className="h-4 w-4 text-slate-600" />}
+        />
+
+        <MetricCard
+          title="Pendentes de Anexo/Doc"
+          value={pendentesAnexo.length}
+          subtitle="Aguardando documentação"
+          icon={<AlertCircle className="h-4 w-4 text-amber-600" />}
+          variant="warning"
+        />
+
+        <MetricCard
+          title="Pagas / Liquidadas"
+          value={pagas.length}
+          subtitle={`Liberado: ${formatCurrency(totalDisbursedPago)}`}
+          icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+          variant="success"
+        />
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-blue-700">Digitadas Hoje</span>
-          <p className="text-2xl font-black text-blue-800 mt-1">{digitadasHoje.length}</p>
-          <span className="text-[10px] text-blue-600 font-semibold block">
-            {formatCurrency(totalDisbursedHoje)}
-          </span>
-        </div>
+      {/* Work Queue */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Fila de Trabalho de Digitação ({filteredList.length})
+            </h3>
+          </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-amber-700">Pendente Anexo Doc</span>
-          <p className="text-2xl font-black text-amber-800 mt-1">{pendentesAnexo.length}</p>
-          <span className="text-[10px] text-amber-600">Aguardando envio</span>
-        </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Buscar ADE, Cliente ou CPF..."
+                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              />
+            </div>
 
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-emerald-700">Pagas</span>
-          <p className="text-2xl font-black text-emerald-800 mt-1">{pagas.length}</p>
-          <span className="text-[10px] text-emerald-600 font-semibold block">
-            {formatCurrency(totalDisbursedPago)} creditado
-          </span>
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setFilterTab('ALL')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterTab === 'ALL' ? 'bg-blue-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Todas ({myProposals.length})
+              </button>
+              <button
+                onClick={() => setFilterTab('TODAY')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterTab === 'TODAY' ? 'bg-blue-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Hoje ({digitadasHoje.length})
+              </button>
+              <button
+                onClick={() => setFilterTab('PENDING')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterTab === 'PENDING' ? 'bg-amber-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Pendentes ({pendentesAnexo.length})
+              </button>
+              <button
+                onClick={() => setFilterTab('PAID')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterTab === 'PAID' ? 'bg-emerald-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Pagas ({pagas.length})
+              </button>
+            </div>
+          </div>
         </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase text-slate-400">Total Digitadas</span>
-          <p className="text-2xl font-black text-slate-900 mt-1">{myProposals.length}</p>
-          <span className="text-[10px] text-slate-500 font-semibold block">
-            {formatCurrency(totalDisbursedGeral)} volume
-          </span>
-        </div>
-      </div>
-
-      {/* Proposals List */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-          Últimas Propostas Digitadas por Você ({myProposals.length})
-        </h3>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">ADE / Proposta</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">CPF</th>
-                <th className="px-4 py-3">Produto</th>
-                <th className="px-4 py-3">Banco</th>
-                <th className="px-4 py-3">Parceiro</th>
-                <th className="px-4 py-3">Valores</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-center">Ações</th>
+                <th className="px-3.5 py-2.5 font-mono">ADE / Proposta</th>
+                <th className="px-3.5 py-2.5">Cliente</th>
+                <th className="px-3.5 py-2.5">Banco / Produto</th>
+                <th className="px-3.5 py-2.5">Parceiro</th>
+                <th className="px-3.5 py-2.5">Status</th>
+                <th className="px-3.5 py-2.5 text-right font-mono">Valor Líquido</th>
+                <th className="px-3.5 py-2.5 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {myProposals.slice(0, 15).map(p => {
-                const client = clients.find(c => c.id === p.clientId);
-                const prod = products.find(pr => pr.id === p.productId);
-                const bank = banks.find(b => b.id === p.bankId);
-                const partner = partners.find(pt => pt.id === p.partnerId);
-                const status = statuses.find(s => s.id === p.statusId);
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+              {filteredList.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-6 text-slate-400">
+                    Nenhuma proposta encontrada na esteira.
+                  </td>
+                </tr>
+              ) : (
+                filteredList.map(p => {
+                  const client = clients.find(c => c.id === p.clientId);
+                  const bank = banks.find(b => b.id === p.bankId);
+                  const product = products.find(pr => pr.id === p.productId);
+                  const partner = partners.find(pt => pt.id === p.partnerId);
 
-                return (
-                  <tr key={p.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900">
-                      ADE {p.proposalNumber}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-800">
-                      {client?.fullName}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-slate-500">
-                      {formatCpf(client?.cpf || '')}
-                    </td>
-                    <td className="px-4 py-3">{prod?.name}</td>
-                    <td className="px-4 py-3">{bank?.name}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-blue-700">
-                        {partner ? extractPartnerCode(partner.login) : ''}
-                      </span>
-                      <span className="text-slate-400 text-[10px] block">
-                        {partner?.login}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.disbursedValue ? (
-                        <span className="font-bold text-emerald-700 block">
-                          Lib: {formatCurrency(p.disbursedValue)}
-                        </span>
-                      ) : null}
-                      {p.contractBalance ? (
-                        <span className="text-[10px] text-indigo-600 block">
-                          Saldo: {formatCurrency(p.contractBalance)}
-                        </span>
-                      ) : null}
-                      {!p.disbursedValue && !p.contractBalance && (
-                        <span className="text-slate-400 text-[10px]">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs"
-                        style={{ backgroundColor: status?.color || '#64748b' }}
-                      >
-                        {status?.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => setSelectedProposalId(p.id)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100"
-                        title="Ver detalhes"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <td className="px-3.5 py-2.5">
+                        <button
+                          onClick={() => setSelectedProposalId(p.id)}
+                          className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          {p.proposalNumber}
+                        </button>
+                        <span className="text-[10px] text-slate-400 block">{formatDate(p.createdAt)}</span>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <span className="font-bold text-slate-900 dark:text-white block">{client?.fullName}</span>
+                        <span className="text-[10px] font-mono text-slate-500">{formatCpf(client?.cpf || '')}</span>
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <span className="text-slate-900 dark:text-white font-medium block">{bank?.name}</span>
+                        <span className="text-[10px] text-slate-500">{product?.name}</span>
+                      </td>
+                      <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
+                        {partner?.login ? extractPartnerCode(partner.login) : '—'}
+                      </td>
+                      <td className="px-3.5 py-2.5">
+                        <StatusBadge status={statuses.find(st => st.id === p.statusId)} />
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(p.disbursedValue || 0)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-center">
+                        <button
+                          onClick={() => setSelectedProposalId(p.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          title="Detalhar Proposta"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -225,7 +295,9 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
         <ProposalDetailModal
           proposalId={selectedProposalId}
           onClose={() => setSelectedProposalId(null)}
-          onProposalUpdated={() => {}}
+          onProposalUpdated={() => {
+            // refresh data
+          }}
         />
       )}
     </div>

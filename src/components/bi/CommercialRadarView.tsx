@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   Award,
@@ -14,10 +14,17 @@ import {
   Sparkles,
   Layers,
   Filter,
+  Users,
+  Search,
+  DollarSign,
+  Activity,
+  Flame,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatDate, extractPartnerCode } from '../../lib/utils';
 import { Proposal, Bank, Partner, ProposalStatus } from '../../types';
+import { ActionBar } from '../ui/ActionBar';
+import { MetricCard } from '../ui/MetricCard';
 
 export const CommercialRadarView: React.FC = () => {
   const proposals = StorageService.getProposals();
@@ -26,210 +33,331 @@ export const CommercialRadarView: React.FC = () => {
   const statuses = StorageService.getStatuses();
   const insights = StorageService.getCommercialInsights();
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSegment, setFilterSegment] = useState<'ALL' | 'DIAMOND' | 'GROWTH' | 'RISK' | 'INACTIVE'>('ALL');
+
   const paidStatus = statuses.find(s => s.code === 'PAGO');
   const cancelledStatus = statuses.find(s => s.code === 'CANCELADO');
   const reprovadoStatus = statuses.find(s => s.code === 'REPROVADO');
   const cipStatus = statuses.find(s => s.code === 'AGUARDAR_RETORNO_CIP');
 
-  // Bank conversion analysis
-  const bankStats = banks.map(b => {
-    const bankProps = proposals.filter(p => p.bankId === b.id);
-    const total = bankProps.length;
-    const paid = bankProps.filter(p => p.statusId === paidStatus?.id).length;
-    const cancelled = bankProps.filter(p => p.statusId === cancelledStatus?.id).length;
-    const reprovados = bankProps.filter(p => p.statusId === reprovadoStatus?.id).length;
-    const inCip = bankProps.filter(p => p.statusId === cipStatus?.id).length;
-    const disbursed = bankProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
-    const conversionRate = total > 0 ? Math.round((paid / total) * 100) : 0;
+  // Partner Analysis with Categorization Matrix
+  const partnerMatrix = useMemo(() => {
+    return partners.map(pt => {
+      const ptProps = proposals.filter(p => p.partnerId === pt.id);
+      const total = ptProps.length;
+      const disbursed = ptProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+      const paid = ptProps.filter(p => p.statusId === paidStatus?.id).length;
+      const conversion = total > 0 ? Math.round((paid / total) * 100) : 0;
+      const ticket = total > 0 ? disbursed / total : 0;
+      const code = extractPartnerCode(pt.login);
 
-    return {
-      id: b.id,
-      name: b.name,
-      total,
-      paid,
-      cancelled,
-      reprovados,
-      inCip,
-      disbursed,
-      conversionRate,
-    };
-  }).sort((a, b) => b.disbursed - a.disbursed);
+      // Segment classification based on actual data
+      let segment: 'DIAMOND' | 'GROWTH' | 'RISK' | 'INACTIVE' = 'INACTIVE';
+      if (total === 0) {
+        segment = 'INACTIVE';
+      } else if (disbursed >= 50000 && conversion >= 60) {
+        segment = 'DIAMOND';
+      } else if (conversion < 40 && total >= 3) {
+        segment = 'RISK';
+      } else {
+        segment = 'GROWTH';
+      }
 
-  // Partner growth and activity
-  const partnerStats = partners.map(pt => {
-    const ptProps = proposals.filter(p => p.partnerId === pt.id);
-    const total = ptProps.length;
-    const disbursed = ptProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
-    const paid = ptProps.filter(p => p.statusId === paidStatus?.id).length;
-    const conversion = total > 0 ? Math.round((paid / total) * 100) : 0;
+      return {
+        id: pt.id,
+        fullName: pt.fullName,
+        login: pt.login,
+        code,
+        total,
+        disbursed,
+        paid,
+        conversion,
+        ticket,
+        active: pt.active,
+        segment,
+      };
+    });
+  }, [partners, proposals, paidStatus]);
 
-    return {
-      id: pt.id,
-      login: pt.login,
-      total,
-      disbursed,
-      paid,
-      conversion,
-      active: pt.active,
-    };
+  // Bank stats
+  const bankStats = useMemo(() => {
+    return banks.map(b => {
+      const bankProps = proposals.filter(p => p.bankId === b.id);
+      const total = bankProps.length;
+      const paid = bankProps.filter(p => p.statusId === paidStatus?.id).length;
+      const disbursed = bankProps.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+      const conversionRate = total > 0 ? Math.round((paid / total) * 100) : 0;
+
+      return {
+        id: b.id,
+        name: b.name,
+        total,
+        paid,
+        disbursed,
+        conversionRate,
+      };
+    }).sort((a, b) => b.disbursed - a.disbursed);
+  }, [banks, proposals, paidStatus]);
+
+  // Aggregates
+  const totalVolumeGeral = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+  const totalParceirosAtivos = partnerMatrix.filter(p => p.total > 0).length;
+  const diamondCount = partnerMatrix.filter(p => p.segment === 'DIAMOND').length;
+  const riskCount = partnerMatrix.filter(p => p.segment === 'RISK').length;
+
+  const filteredPartners = partnerMatrix.filter(pt => {
+    const matchSearch =
+      !searchTerm ||
+      pt.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pt.login.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pt.code.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchSegment = filterSegment === 'ALL' || pt.segment === filterSegment;
+    return matchSearch && matchSegment;
   }).sort((a, b) => b.disbursed - a.disbursed);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 uppercase tracking-wider">
-              BI & ANÁLISE PREDITIVA
+      <ActionBar
+        title="Radar Comercial & Inteligência de Mesa"
+        subtitle="Mapeamento de performance de agentes, matriz de conversão e identificação de oportunidades e riscos"
+        badgeText="BI & ANÁLISE DE CORRESPONDENTES"
+        badgeColor="bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800"
+      />
+
+      {/* Top Real KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="rounded-xl border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50/40 dark:bg-cyan-950/20 p-4 shadow-2xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
+              Parceiros com Produção
             </span>
-            <span className="text-xs text-slate-500 font-semibold">Dados Reais da Operação</span>
+            <Users className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
           </div>
-          <h2 className="text-base font-bold text-slate-900 mt-1">Radar Comercial & Inteligência de Mesa</h2>
-          <p className="text-xs text-slate-500">
-            Conversão por instituição financeira, tendências de correspondentes, SLA médio e gargalos operacionais
+          <p className="text-2xl font-black font-mono text-cyan-950 dark:text-cyan-200">
+            {totalParceirosAtivos} <span className="text-xs font-normal text-slate-500">/ {partners.length} cadastrados</span>
           </p>
+          <span className="text-[11px] text-cyan-700 dark:text-cyan-400 font-bold block">
+            {Math.round((totalParceirosAtivos / (partners.length || 1)) * 100)}% de engajamento ativo
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+              Volume Total Movimentado
+            </span>
+            <DollarSign className="h-4 w-4 text-slate-400" />
+          </div>
+          <p className="text-2xl font-black font-mono text-slate-900 dark:text-white">
+            {formatCurrency(totalVolumeGeral)}
+          </p>
+          <span className="text-[11px] text-slate-500 font-bold block">
+            {proposals.length} propostas na base
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 shadow-2xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+              Segmento Diamante
+            </span>
+            <Award className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-300">
+            {diamondCount} parceiros
+          </p>
+          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold block">
+            Alto volume e conversão &gt; 60%
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-4 shadow-2xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-800 dark:text-rose-300">
+              Parceiros em Risco
+            </span>
+            <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+          </div>
+          <p className="text-2xl font-black font-mono text-rose-900 dark:text-rose-300">
+            {riskCount} parceiros
+          </p>
+          <span className="text-[11px] text-rose-700 dark:text-rose-400 font-bold block">
+            Alta taxa de cancelamento / perda
+          </span>
         </div>
       </div>
 
-      {/* Automated Real Data Insights Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {insights.map(ins => (
-          <div
-            key={ins.id}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2 flex flex-col justify-between"
-          >
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  ins.severity === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800' :
-                  ins.severity === 'WARNING' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {ins.metricValue}
-                </span>
-                <Sparkles className="h-4 w-4 text-amber-500" />
+      {/* Real Commercial Insights */}
+      {insights.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {insights.map(ins => (
+            <div
+              key={ins.id}
+              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-2 flex flex-col justify-between"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    <span>{ins.type}</span>
+                  </span>
+                  <span
+                    className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded ${
+                      ins.severity === 'WARNING'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        : ins.severity === 'SUCCESS'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                    }`}
+                  >
+                    {ins.metricValue}
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                  {ins.title}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {ins.description}
+                </p>
               </div>
-              <h3 className="text-xs font-bold text-slate-900">{ins.title}</h3>
-              <p className="text-xs text-slate-600">{ins.description}</p>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-blue-600 dark:text-blue-400 font-bold font-mono">
+                Tendência: {ins.trend === 'UP' ? 'ALTA ↑' : ins.trend === 'DOWN' ? 'QUEDA ↓' : 'ESTÁVEL →'}
+              </div>
             </div>
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 pt-2 border-t border-slate-100">
-              <TrendingUp className="h-3.5 w-3.5 text-blue-600" />
-              <span>Insight Gerado Automaticamente</span>
+          ))}
+        </div>
+      )}
+
+      {/* Main Analytical Partners Table */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Matriz de Desempenho dos Correspondentes
+            </h3>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Buscar parceiro ou código..."
+                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              />
+            </div>
+
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setFilterSegment('ALL')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterSegment === 'ALL' ? 'bg-cyan-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Todos ({partnerMatrix.length})
+              </button>
+              <button
+                onClick={() => setFilterSegment('DIAMOND')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterSegment === 'DIAMOND' ? 'bg-emerald-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Diamantes ({diamondCount})
+              </button>
+              <button
+                onClick={() => setFilterSegment('GROWTH')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterSegment === 'GROWTH' ? 'bg-blue-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Em Crescimento
+              </button>
+              <button
+                onClick={() => setFilterSegment('RISK')}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
+                  filterSegment === 'RISK' ? 'bg-rose-600 text-white' : 'text-slate-500'
+                }`}
+              >
+                Em Risco ({riskCount})
+              </button>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Bank Conversion & Liquidity Matrix */}
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-blue-600" />
-            <span>Matriz de Conversão & Desempenho por Banco</span>
-          </h3>
-          <span className="text-xs text-slate-500 font-semibold">{banks.length} bancos cadastrados</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="p-3.5">Banco / Instituição</th>
-                <th className="p-3.5 text-center">Total Propostas</th>
-                <th className="p-3.5 text-center">Pagas / Liquidadas</th>
-                <th className="p-3.5 text-center">Em CIP</th>
-                <th className="p-3.5 text-center">Canceladas / Reprov.</th>
-                <th className="p-3.5 text-center">Taxa de Conversão</th>
-                <th className="p-3.5 text-right">Volume Liberado Líquido</th>
+                <th className="px-3.5 py-2.5">Correspondente / Agente</th>
+                <th className="px-3.5 py-2.5 font-mono">Código</th>
+                <th className="px-3.5 py-2.5 text-center">Classificação</th>
+                <th className="px-3.5 py-2.5 text-right">Propostas</th>
+                <th className="px-3.5 py-2.5 text-right font-mono">Volume Total (R$)</th>
+                <th className="px-3.5 py-2.5 text-center">Taxa Conversão</th>
+                <th className="px-3.5 py-2.5 text-right font-mono">Ticket Médio</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {bankStats.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-3.5 font-bold text-slate-900 flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-blue-600" />
-                    <span>{b.name}</span>
-                  </td>
-                  <td className="p-3.5 text-center font-semibold">{b.total}</td>
-                  <td className="p-3.5 text-center">
-                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                      {b.paid}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                      {b.inCip}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">
-                      {b.cancelled + b.reprovados}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-16 bg-slate-200 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-2 rounded-full"
-                          style={{ width: `${b.conversionRate}%` }}
-                        />
-                      </div>
-                      <span className="font-bold text-slate-900">{b.conversionRate}%</span>
-                    </div>
-                  </td>
-                  <td className="p-3.5 text-right font-mono font-bold text-emerald-700">
-                    {formatCurrency(b.disbursed)}
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+              {filteredPartners.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-6 text-slate-400">
+                    Nenhum parceiro encontrado com os filtros selecionados.
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Partner Performance & Activity Matrix */}
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-indigo-600" />
-            <span>Desempenho & Assertividade por Parceiro (Corban)</span>
-          </h3>
-          <span className="text-xs text-slate-500 font-semibold">{partners.length} parceiros</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-              <tr>
-                <th className="p-3.5">Login do Parceiro</th>
-                <th className="p-3.5 text-center">Status</th>
-                <th className="p-3.5 text-center">Total ADEs</th>
-                <th className="p-3.5 text-center">Pagas</th>
-                <th className="p-3.5 text-center">Assertividade</th>
-                <th className="p-3.5 text-right">Volume Total Liberado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {partnerStats.map(pt => (
-                <tr key={pt.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-3.5 font-mono font-bold text-slate-900">
-                    {pt.login}
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      pt.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {pt.active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-center font-semibold">{pt.total}</td>
-                  <td className="p-3.5 text-center font-bold text-emerald-700">{pt.paid}</td>
-                  <td className="p-3.5 text-center font-bold text-blue-700">{pt.conversion}%</td>
-                  <td className="p-3.5 text-right font-mono font-bold text-emerald-700">
-                    {formatCurrency(pt.disbursed)}
-                  </td>
-                </tr>
-              ))}
+              ) : (
+                filteredPartners.map(pt => (
+                  <tr key={pt.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="px-3.5 py-2.5">
+                      <span className="font-bold text-slate-900 dark:text-white block">{pt.fullName}</span>
+                      <span className="text-[10px] text-slate-500">{pt.login}</span>
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono text-slate-600 dark:text-slate-400">
+                      {pt.code}
+                    </td>
+                    <td className="px-3.5 py-2.5 text-center">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          pt.segment === 'DIAMOND'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : pt.segment === 'GROWTH'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            : pt.segment === 'RISK'
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        }`}
+                      >
+                        {pt.segment === 'DIAMOND'
+                          ? '💎 DIAMANTE'
+                          : pt.segment === 'GROWTH'
+                          ? '🚀 POTENCIAL'
+                          : pt.segment === 'RISK'
+                          ? '⚠️ EM RISCO'
+                          : 'INATIVO'}
+                      </span>
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-mono font-bold">
+                      {pt.total}
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                      {formatCurrency(pt.disbursed)}
+                    </td>
+                    <td className="px-3.5 py-2.5 text-center font-mono">
+                      <span className={`font-bold ${pt.conversion >= 60 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                        {pt.conversion}%
+                      </span>
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-mono text-slate-600 dark:text-slate-400">
+                      {formatCurrency(pt.ticket)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { ProposalStatus, Alcada } from '../../types';
+import { ActionBar } from '../ui/ActionBar';
 
 const ALCADA_OPTIONS: { value: Alcada; label: string; color: string; desc: string }[] = [
   {
@@ -234,26 +235,21 @@ export const StatusManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Sliders className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <span>Gestão de Status & Alçadas da Esteira</span>
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Cadastre novos status, defina alçadas de responsabilidade, ajuste prazos de SLA e organize a esteira Kanban
-          </p>
-        </div>
-
-        <button
-          onClick={openNewModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 text-xs font-bold shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Cadastrar Novo Status</span>
-        </button>
-      </div>
+      <ActionBar
+        title="Gestão de Status & Alçadas da Esteira"
+        subtitle="Cadastre novos status, defina alçadas de responsabilidade, ajuste prazos de SLA e organize a esteira operacional"
+        badgeText={`${statuses.length} STATUS ATIVOS`}
+        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        actions={
+          <button
+            onClick={openNewModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-xs font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Cadastrar Novo Status</span>
+          </button>
+        }
+      />
 
       {/* Success Notification */}
       {successMsg && (

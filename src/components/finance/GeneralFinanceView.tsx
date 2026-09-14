@@ -17,6 +17,8 @@ import {
 import { StorageService } from '../../services/storageService';
 import { FinancialEntry, EntryType, FinancialCategory, FinancialStatus } from '../../types';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { ActionBar } from '../ui/ActionBar';
+import { MetricCard } from '../ui/MetricCard';
 
 export const GeneralFinanceView: React.FC = () => {
   const [entries, setEntries] = useState<FinancialEntry[]>(StorageService.getFinancialEntries());
@@ -85,83 +87,64 @@ export const GeneralFinanceView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase tracking-wider">
-              FLUXO DE CAIXA
-            </span>
-            <span className="text-xs text-slate-500 font-semibold">Mesa & Operação</span>
-          </div>
-          <h2 className="text-base font-bold text-slate-900 mt-1">Gestão Financeira Geral da Promotora</h2>
-          <p className="text-xs text-slate-500">
-            Controle de receitas operacionais, despesas administrativas, fluxo Previsto vs. Realizado
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Novo Lançamento Financeiro</span>
-        </button>
-      </div>
+      <ActionBar
+        title="Gestão Financeira Geral da Promotora"
+        subtitle="Controle de receitas operacionais, despesas administrativas, fluxo Previsto vs. Realizado"
+        badgeText="FLUXO DE CAIXA & DRE"
+        badgeColor="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+        actions={
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Novo Lançamento Financeiro</span>
+          </button>
+        }
+      />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Entradas Realizadas</span>
-            <ArrowUpRight className="h-4 w-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-black font-mono text-emerald-700 mt-1">
-            {formatCurrency(totalReceitas)}
-          </div>
-          <span className="text-[11px] text-slate-400 font-mono">Previsto a receber: {formatCurrency(pendingReceitas)}</span>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <MetricCard
+          label="Entradas Realizadas"
+          value={formatCurrency(totalReceitas)}
+          subtext={`Previsto a receber: ${formatCurrency(pendingReceitas)}`}
+          tone="success"
+          icon={<ArrowUpRight className="h-4 w-4 text-emerald-600" />}
+        />
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Saídas Pagas</span>
-            <ArrowDownRight className="h-4 w-4 text-rose-600" />
-          </div>
-          <div className="text-xl font-black font-mono text-rose-700 mt-1">
-            {formatCurrency(totalDespesas)}
-          </div>
-          <span className="text-[11px] text-slate-400 font-mono">Previsto a pagar: {formatCurrency(pendingDespesas)}</span>
-        </div>
+        <MetricCard
+          label="Saídas Pagas"
+          value={formatCurrency(totalDespesas)}
+          subtext={`Previsto a pagar: ${formatCurrency(pendingDespesas)}`}
+          tone="danger"
+          icon={<ArrowDownRight className="h-4 w-4 text-rose-600" />}
+        />
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Resultado Líquido</span>
-            <DollarSign className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className={`text-xl font-black font-mono mt-1 ${netResult >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-            {formatCurrency(netResult)}
-          </div>
-          <span className="text-[11px] text-slate-400">Saldo apurado no caixa</span>
-        </div>
+        <MetricCard
+          label="Resultado Líquido"
+          value={formatCurrency(netResult)}
+          subtext="Saldo apurado em caixa"
+          tone={netResult >= 0 ? 'success' : 'danger'}
+          icon={<DollarSign className={`h-4 w-4 ${netResult >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />}
+        />
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Total de Lançamentos</span>
-            <Layers className="h-4 w-4 text-slate-500" />
-          </div>
-          <div className="text-xl font-black text-slate-900 mt-1">
-            {entries.length} registros
-          </div>
-          <span className="text-[11px] text-slate-400">Auditoria completa</span>
-        </div>
+        <MetricCard
+          label="Total de Lançamentos"
+          value={`${entries.length} registros`}
+          subtext="Auditoria contábil completa"
+          tone="neutral"
+          icon={<Layers className="h-4 w-4 text-slate-500" />}
+        />
       </div>
 
       {/* Filter Bar */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3">
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
-            className="rounded-lg border border-slate-300 p-1.5 text-xs text-slate-700 focus:outline-hidden"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
           >
             <option value="ALL">Todos os Tipos (Entradas e Saídas)</option>
             <option value="ENTRADA">Apenas Entradas</option>
@@ -171,7 +154,7 @@ export const GeneralFinanceView: React.FC = () => {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="rounded-lg border border-slate-300 p-1.5 text-xs text-slate-700 focus:outline-hidden"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
           >
             <option value="ALL">Todos os Status</option>
             <option value="REALIZADO">Realizado</option>
@@ -179,13 +162,16 @@ export const GeneralFinanceView: React.FC = () => {
             <option value="CANCELADO">Cancelado</option>
           </select>
         </div>
+        <span className="text-slate-400 dark:text-slate-500 text-[11px] font-mono">
+          {filteredEntries.length} de {entries.length} registros
+        </span>
       </div>
 
       {/* Financial Entries Table */}
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="p-3.5">Descrição</th>
                 <th className="p-3.5">Categoria</th>
@@ -196,7 +182,7 @@ export const GeneralFinanceView: React.FC = () => {
                 <th className="p-3.5 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-slate-700 dark:text-slate-300">
               {filteredEntries.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-slate-400 italic">
@@ -205,34 +191,39 @@ export const GeneralFinanceView: React.FC = () => {
                 </tr>
               ) : (
                 filteredEntries.map(e => (
-                  <tr key={e.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-3.5 font-bold text-slate-900">{e.title || e.description}</td>
-                    <td className="p-3.5 text-slate-600 font-medium">{e.category.replace('_', ' ')}</td>
+                  <tr key={e.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">{e.title || e.description}</td>
+                    <td className="p-3.5 text-slate-600 dark:text-slate-400 font-medium">{e.category.replace('_', ' ')}</td>
                     <td className="p-3.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                        e.type === 'ENTRADA' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        e.type === 'ENTRADA'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
                       }`}>
                         {e.type}
                       </span>
                     </td>
-                    <td className="p-3.5 font-mono text-slate-600">{e.dueDate}</td>
+                    <td className="p-3.5 font-mono text-slate-600 dark:text-slate-400">{e.dueDate}</td>
                     <td className="p-3.5">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        e.status === 'REALIZADO' ? 'bg-emerald-100 text-emerald-800' :
-                        e.status === 'PREVISTO' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
+                        e.status === 'REALIZADO'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                          : e.status === 'PREVISTO'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                       }`}>
                         {e.status}
                       </span>
                     </td>
                     <td className={`p-3.5 text-right font-mono font-bold ${
-                      e.type === 'ENTRADA' ? 'text-emerald-700' : 'text-rose-700'
+                      e.type === 'ENTRADA' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
                     }`}>
                       {e.type === 'ENTRADA' ? '+' : '-'} {formatCurrency(e.amount)}
                     </td>
                     <td className="p-3.5 text-right">
                       <button
                         onClick={() => handleDeleteEntry(e.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-500 rounded cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                         title="Excluir Lançamento"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -249,29 +240,29 @@ export const GeneralFinanceView: React.FC = () => {
       {/* Modal Novo Lançamento */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Novo Lançamento Financeiro</h3>
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Novo Lançamento Financeiro</h3>
 
             <form onSubmit={handleCreateEntry} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Descrição do Lançamento</label>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Descrição do Lançamento</label>
                 <input
                   type="text"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   required
                   placeholder="Ex: Recebimento de Spread Bancário"
-                  className="w-full rounded border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Tipo</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Tipo</label>
                   <select
                     value={type}
                     onChange={e => setType(e.target.value as EntryType)}
-                    className="w-full rounded border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                   >
                     <option value="ENTRADA">Entrada (Receita)</option>
                     <option value="SAIDA">Saída (Despesa)</option>
@@ -279,25 +270,25 @@ export const GeneralFinanceView: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Valor (R$)</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Valor (R$)</label>
                   <input
                     type="text"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     required
                     placeholder="Ex: 1.500,00"
-                    className="w-full rounded border border-slate-300 p-2 text-xs text-slate-900 font-mono focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-hidden"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Categoria</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Categoria</label>
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value as FinancialCategory)}
-                    className="w-full rounded border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                   >
                     <option value="RECEBIMENTO_OPERACIONAL">Recebimento Operacional</option>
                     <option value="COMISSAO_RECEBIDA">Comissão Recebida</option>
@@ -309,13 +300,13 @@ export const GeneralFinanceView: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Data de Vencimento</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Data de Vencimento</label>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={e => setDueDate(e.target.value)}
                     required
-                    className="w-full rounded border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                   />
                 </div>
               </div>
@@ -328,22 +319,22 @@ export const GeneralFinanceView: React.FC = () => {
                   onChange={e => setIsPaid(e.target.checked)}
                   className="rounded border-slate-300 text-blue-600"
                 />
-                <label htmlFor="isPaidCheck" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                <label htmlFor="isPaidCheck" className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                   Marcar como já pago / realizado
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-700 cursor-pointer shadow-xs"
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 cursor-pointer shadow-xs transition-colors"
                 >
                   Salvar Lançamento
                 </button>

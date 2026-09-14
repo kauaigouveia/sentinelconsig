@@ -439,17 +439,17 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   const currentPartnerCode = currentPartner ? extractPartnerCode(currentPartner.login) : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-5xl rounded-xl bg-white shadow-2xl flex flex-col max-h-[92vh] border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-5xl rounded-xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/40 rounded-t-xl">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
               <Plus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Nova Produção</h2>
-              <p className="text-xs text-slate-500">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Nova Produção</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Inclusão de propostas individuais ou múltiplas ADEs para o mesmo cliente
               </p>
             </div>
@@ -458,7 +458,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>

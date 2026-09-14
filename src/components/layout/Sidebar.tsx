@@ -1,28 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   FileSpreadsheet,
-  PlusCircle,
   Kanban,
   ArrowLeftRight,
   Upload,
-  Download,
   Users,
   Search,
   Handshake,
   Building2,
   Headphones,
-  AlertCircle,
-  Clock,
-  BarChart3,
-  ShieldAlert,
-  Sliders,
-  Calendar,
-  Layers,
-  FileText,
-  UserCheck,
   Hourglass,
-  Database,
+  BarChart3,
   Calculator,
   Tv,
   TrendingUp,
@@ -30,452 +19,575 @@ import {
   Trophy,
   DollarSign,
   HardDrive,
+  Calendar,
+  Layers,
+  Sliders,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  UserCheck,
   Sparkles,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { Role } from '../../types';
-import { getRoleEmoji, getRoleLabel } from '../../lib/roleUtils';
 
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
 }
 
+type SemanticColor =
+  | 'blue'
+  | 'cyan'
+  | 'violet'
+  | 'amber'
+  | 'purple'
+  | 'yellow'
+  | 'emerald'
+  | 'indigo'
+  | 'sky'
+  | 'orange'
+  | 'rose'
+  | 'fuchsia'
+  | 'slate';
+
+interface NavItemConfig {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: SemanticColor;
+  badge?: {
+    text: string;
+    variant: 'live' | 'ai' | 'counter' | 'alert';
+  };
+}
+
+const colorStyles: Record<
+  SemanticColor,
+  {
+    iconInactive: string;
+    iconActive: string;
+    activeBg: string;
+    activeBar: string;
+    activeBorder: string;
+    badgeBg: string;
+  }
+> = {
+  blue: {
+    iconInactive: 'text-blue-500/80 group-hover:text-blue-500 dark:text-blue-400',
+    iconActive: 'text-blue-600 dark:text-blue-400',
+    activeBg: 'bg-blue-500/10 dark:bg-blue-500/15 text-blue-950 dark:text-blue-100 font-bold',
+    activeBar: 'bg-blue-600 dark:bg-blue-400 shadow-[0_0_8px_rgba(37,99,235,0.6)]',
+    activeBorder: 'border-blue-200/60 dark:border-blue-800/40',
+    badgeBg: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+  },
+  cyan: {
+    iconInactive: 'text-cyan-500/80 group-hover:text-cyan-500 dark:text-cyan-400',
+    iconActive: 'text-cyan-600 dark:text-cyan-300',
+    activeBg: 'bg-cyan-500/10 dark:bg-cyan-500/15 text-cyan-950 dark:text-cyan-100 font-bold',
+    activeBar: 'bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.6)]',
+    activeBorder: 'border-cyan-200/60 dark:border-cyan-800/40',
+    badgeBg: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300',
+  },
+  violet: {
+    iconInactive: 'text-violet-500/80 group-hover:text-violet-500 dark:text-violet-400',
+    iconActive: 'text-violet-600 dark:text-violet-300',
+    activeBg: 'bg-violet-500/10 dark:bg-violet-500/15 text-violet-950 dark:text-violet-100 font-bold',
+    activeBar: 'bg-violet-600 dark:bg-violet-400 shadow-[0_0_8px_rgba(124,58,237,0.6)]',
+    activeBorder: 'border-violet-200/60 dark:border-violet-800/40',
+    badgeBg: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300',
+  },
+  purple: {
+    iconInactive: 'text-purple-500/80 group-hover:text-purple-500 dark:text-purple-400',
+    iconActive: 'text-purple-600 dark:text-purple-300',
+    activeBg: 'bg-purple-500/10 dark:bg-purple-500/15 text-purple-950 dark:text-purple-100 font-bold',
+    activeBar: 'bg-purple-500 dark:bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]',
+    activeBorder: 'border-purple-200/60 dark:border-purple-800/40',
+    badgeBg: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+  },
+  amber: {
+    iconInactive: 'text-amber-500/80 group-hover:text-amber-500 dark:text-amber-400',
+    iconActive: 'text-amber-600 dark:text-amber-300',
+    activeBg: 'bg-amber-500/10 dark:bg-amber-500/15 text-amber-950 dark:text-amber-100 font-bold',
+    activeBar: 'bg-amber-500 dark:bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]',
+    activeBorder: 'border-amber-200/60 dark:border-amber-800/40',
+    badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  },
+  yellow: {
+    iconInactive: 'text-yellow-600/80 group-hover:text-yellow-500 dark:text-yellow-400',
+    iconActive: 'text-yellow-600 dark:text-yellow-300',
+    activeBg: 'bg-yellow-500/10 dark:bg-yellow-500/15 text-yellow-950 dark:text-yellow-100 font-bold',
+    activeBar: 'bg-yellow-500 dark:bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.6)]',
+    activeBorder: 'border-yellow-200/60 dark:border-yellow-800/40',
+    badgeBg: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300',
+  },
+  emerald: {
+    iconInactive: 'text-emerald-500/80 group-hover:text-emerald-500 dark:text-emerald-400',
+    iconActive: 'text-emerald-600 dark:text-emerald-300',
+    activeBg: 'bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-950 dark:text-emerald-100 font-bold',
+    activeBar: 'bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]',
+    activeBorder: 'border-emerald-200/60 dark:border-emerald-800/40',
+    badgeBg: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+  },
+  indigo: {
+    iconInactive: 'text-indigo-500/80 group-hover:text-indigo-500 dark:text-indigo-400',
+    iconActive: 'text-indigo-600 dark:text-indigo-300',
+    activeBg: 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-950 dark:text-indigo-100 font-bold',
+    activeBar: 'bg-indigo-600 dark:bg-indigo-400 shadow-[0_0_8px_rgba(79,70,229,0.6)]',
+    activeBorder: 'border-indigo-200/60 dark:border-indigo-800/40',
+    badgeBg: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300',
+  },
+  sky: {
+    iconInactive: 'text-sky-500/80 group-hover:text-sky-500 dark:text-sky-400',
+    iconActive: 'text-sky-600 dark:text-sky-300',
+    activeBg: 'bg-sky-500/10 dark:bg-sky-500/15 text-sky-950 dark:text-sky-100 font-bold',
+    activeBar: 'bg-sky-500 dark:bg-sky-400 shadow-[0_0_8px_rgba(14,165,233,0.6)]',
+    activeBorder: 'border-sky-200/60 dark:border-sky-800/40',
+    badgeBg: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
+  },
+  orange: {
+    iconInactive: 'text-orange-500/80 group-hover:text-orange-500 dark:text-orange-400',
+    iconActive: 'text-orange-600 dark:text-orange-300',
+    activeBg: 'bg-orange-500/10 dark:bg-orange-500/15 text-orange-950 dark:text-orange-100 font-bold',
+    activeBar: 'bg-orange-500 dark:bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.6)]',
+    activeBorder: 'border-orange-200/60 dark:border-orange-800/40',
+    badgeBg: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300',
+  },
+  rose: {
+    iconInactive: 'text-rose-500/80 group-hover:text-rose-500 dark:text-rose-400',
+    iconActive: 'text-rose-600 dark:text-rose-300',
+    activeBg: 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-950 dark:text-rose-100 font-bold',
+    activeBar: 'bg-rose-500 dark:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.6)]',
+    activeBorder: 'border-rose-200/60 dark:border-rose-800/40',
+    badgeBg: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
+  },
+  fuchsia: {
+    iconInactive: 'text-fuchsia-500/80 group-hover:text-fuchsia-500 dark:text-fuchsia-400',
+    iconActive: 'text-fuchsia-600 dark:text-fuchsia-300',
+    activeBg: 'bg-fuchsia-500/10 dark:bg-fuchsia-500/15 text-fuchsia-950 dark:text-fuchsia-100 font-bold',
+    activeBar: 'bg-fuchsia-500 dark:bg-fuchsia-400 shadow-[0_0_8px_rgba(217,70,239,0.6)]',
+    activeBorder: 'border-fuchsia-200/60 dark:border-fuchsia-800/40',
+    badgeBg: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-300',
+  },
+  slate: {
+    iconInactive: 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400',
+    iconActive: 'text-slate-800 dark:text-slate-200',
+    activeBg: 'bg-slate-200/70 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold',
+    activeBar: 'bg-slate-700 dark:bg-slate-300',
+    activeBorder: 'border-slate-300 dark:border-slate-700',
+    badgeBg: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
+  },
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   const activeUser = StorageService.getActiveUser();
   const role: Role = activeUser?.role || 'DIGITADOR';
 
-  const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
-  const currentTenant = StorageService.getCurrentTenant();
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('cg_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
-  useEffect(() => {
-    const handleWlUpdate = () => {
-      setWhiteLabel(StorageService.getWhiteLabel());
-    };
-    window.addEventListener('whiteLabelUpdated', handleWlUpdate);
-    window.addEventListener('storage', handleWlUpdate);
-    return () => {
-      window.removeEventListener('whiteLabelUpdated', handleWlUpdate);
-      window.removeEventListener('storage', handleWlUpdate);
-    };
-  }, []);
+  const toggleCollapse = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cg_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
-  // RBAC Permission checks
-  const isMaster = role === 'MASTER' || role === 'PLATFORM_MASTER';
+  // RBAC Permission checks (strictly preserved)
+  const isPlatformMaster = role === 'PLATFORM_MASTER';
+  const isMaster = role === 'MASTER' || isPlatformMaster;
   const isGestor = role === 'GESTOR' || isMaster;
   const isGerente = role === 'GERENTE' || isGestor;
   const isSuporte = role === 'SUPORTE' || isGestor;
   const isDigitador = role === 'DIGITADOR' || isMaster;
 
-  const navItemClass = (viewName: string) =>
-    `flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-      currentView === viewName
-        ? 'bg-blue-600 text-white font-semibold shadow-xs'
-        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
-    }`;
+  const renderNavItem = (item: NavItemConfig) => {
+    const isActive = currentView === item.id;
+    const Icon = item.icon;
+    const style = colorStyles[item.color] || colorStyles.blue;
 
-  const navHeaderClass = 'px-3 mt-4 mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500';
+    return (
+      <button
+        key={item.id}
+        id={`nav-${item.id}`}
+        onClick={() => onNavigate(item.id)}
+        title={isCollapsed ? item.label : undefined}
+        className={`group relative flex items-center w-full rounded-lg transition-all duration-150 cursor-pointer select-none text-left ${
+          isCollapsed ? 'h-9 px-0 justify-center' : 'h-[34px] px-2.5 text-xs'
+        } ${
+          isActive
+            ? `${style.activeBg} border ${style.activeBorder}`
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent'
+        }`}
+      >
+        {/* Left active vertical indicator bar */}
+        {isActive && (
+          <span
+            className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r ${style.activeBar}`}
+          />
+        )}
+
+        {/* Semantic Icon with subtle colored container */}
+        <div
+          className={`flex items-center justify-center shrink-0 rounded-md transition-colors ${
+            isCollapsed ? 'h-7 w-7' : 'h-5 w-5 mr-2'
+          } ${
+            isActive
+              ? 'bg-white/80 dark:bg-slate-900/80 shadow-2xs'
+              : 'bg-transparent group-hover:bg-slate-200/50 dark:group-hover:bg-slate-800/50'
+          }`}
+        >
+          <Icon
+            className={`h-4 w-4 shrink-0 transition-transform ${
+              isActive ? style.iconActive : style.iconInactive
+            }`}
+          />
+        </div>
+
+        {/* Item Label */}
+        {!isCollapsed && (
+          <span className="flex-1 truncate tracking-tight text-[12.5px] font-medium">
+            {item.label}
+          </span>
+        )}
+
+        {/* Item Badge */}
+        {!isCollapsed && item.badge && (
+          <span
+            className={`ml-auto px-1.5 py-0.5 rounded text-[9px] font-extrabold font-mono tracking-wide shrink-0 uppercase flex items-center gap-1 ${
+              item.badge.variant === 'live'
+                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse'
+                : item.badge.variant === 'ai'
+                ? 'bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30'
+                : item.badge.variant === 'alert'
+                ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            {item.badge.variant === 'live' && (
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+            )}
+            {item.badge.text}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const renderSectionHeader = (title: string) => {
+    if (isCollapsed) return <div className="my-2 border-t border-slate-200/60 dark:border-slate-800/80" />;
+    return (
+      <div className="px-2.5 pt-3 pb-1 flex items-center justify-between">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 select-none">
+          {title}
+        </span>
+      </div>
+    );
+  };
 
   return (
-    <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 overflow-y-auto transition-colors">
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-100 dark:border-slate-800">
-        <div className="h-9 w-9 flex items-center justify-center shrink-0">
-          {whiteLabel.logoUrl ? (
-            <img
-              src={whiteLabel.logoUrl}
-              alt={whiteLabel.companyName}
-              className="h-full w-full object-contain filter drop-shadow-sm rounded-lg"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
-              {whiteLabel.companyName.slice(0, 2).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div className="overflow-hidden">
-          <h1 className="text-xs font-black text-slate-900 dark:text-slate-100 leading-tight truncate">
-            {whiteLabel.companyName}
-          </h1>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold truncate">
-            {currentTenant.name || whiteLabel.tradeName || 'Gestão de Produção'}
-          </p>
-        </div>
-      </div>
-
-      {/* Navigation Links */}
-      <nav className="flex-1 p-3 space-y-0.5">
-        {/* DASHBOARD SECTION */}
+    <aside
+      className={`border-r border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#080d18] flex flex-col shrink-0 transition-all duration-200 ease-in-out select-none ${
+        isCollapsed ? 'w-[68px]' : 'w-[232px]'
+      }`}
+    >
+      {/* Scrollable Navigation Tree */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-1">
+        {/* ==================================================
+            1. VISÃO GERAL (Blue / Cyan / Violet)
+        ================================================== */}
         {(isGestor || isSuporte || isDigitador) && (
-          <>
-            <div className={navHeaderClass}>Visão Geral & Inteligência</div>
+          <div className="space-y-0.5">
+            {renderSectionHeader('Visão Geral')}
 
-            {isGestor && (
-              <button
-                id="nav-torre-controle"
-                onClick={() => onNavigate('torre-controle')}
-                className={navItemClass('torre-controle')}
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Torre de Controle</span>
-              </button>
-            )}
+            {isGestor &&
+              renderNavItem({
+                id: 'torre-controle',
+                label: 'Torre de Controle',
+                icon: LayoutDashboard,
+                color: 'blue',
+              })}
 
-            {/* TV Monitor Mode */}
-            <button
-              id="nav-tv-monitor"
-              onClick={() => onNavigate('tv-monitor')}
-              className={navItemClass('tv-monitor')}
-            >
-              <Tv className="h-4 w-4 text-emerald-500" />
-              <span className="flex-1 text-left">Monitor TV (Ao Vivo)</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
-                LIVE
-              </span>
-            </button>
+            {isGestor &&
+              renderNavItem({
+                id: 'dashboard-executivo',
+                label: 'Dashboard Executivo',
+                icon: BarChart3,
+                color: 'violet',
+              })}
 
-            {isGestor && (
-              <button
-                id="nav-dashboard-executivo"
-                onClick={() => onNavigate('dashboard-executivo')}
-                className={navItemClass('dashboard-executivo')}
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span>Dashboard Executivo</span>
-              </button>
-            )}
+            {renderNavItem({
+              id: 'tv-monitor',
+              label: 'Monitor TV',
+              icon: Tv,
+              color: 'cyan',
+              badge: { text: 'Live', variant: 'live' },
+            })}
 
-            {/* Radar Comercial BI */}
-            {isGestor && (
-              <button
-                id="nav-radar-comercial"
-                onClick={() => onNavigate('radar-comercial')}
-                className={navItemClass('radar-comercial')}
-              >
-                <TrendingUp className="h-4 w-4 text-indigo-500" />
-                <span>Radar Comercial & BI</span>
-              </button>
-            )}
+            {isGestor &&
+              renderNavItem({
+                id: 'radar-comercial',
+                label: 'Radar Comercial',
+                icon: TrendingUp,
+                color: 'amber',
+              })}
 
-            {/* Sentinela AI Assistant */}
-            <button
-              id="nav-sentinela-ai"
-              onClick={() => onNavigate('sentinela-ai')}
-              className={navItemClass('sentinela-ai')}
-            >
-              <Bot className="h-4 w-4 text-purple-500" />
-              <span className="flex-1 text-left">Sentinela IA</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-100 text-purple-800">
-                IA
-              </span>
-            </button>
+            {renderNavItem({
+              id: 'sentinela-ai',
+              label: 'Sentinela IA',
+              icon: Bot,
+              color: 'purple',
+              badge: { text: 'Copilot', variant: 'ai' },
+            })}
 
-            {/* Gamification Center */}
-            <button
-              id="nav-gamificacao"
-              onClick={() => onNavigate('gamificacao')}
-              className={navItemClass('gamificacao')}
-            >
-              <Trophy className="h-4 w-4 text-amber-500" />
-              <span>Conquistas & Metas</span>
-            </button>
-
-            {(isGestor || isSuporte) && (
-              <button
-                id="nav-relatorio-gargalos"
-                onClick={() => onNavigate('relatorio-gargalos')}
-                className={navItemClass('relatorio-gargalos')}
-              >
-                <Hourglass className="h-4 w-4 text-amber-500" />
-                <span>Gargalos & Permanência</span>
-              </button>
-            )}
-
-            {isDigitador && (
-              <button
-                id="nav-home-digitador"
-                onClick={() => onNavigate('home-digitador')}
-                className={navItemClass('home-digitador')}
-              >
-                <UserCheck className="h-4 w-4" />
-                <span>Minha Produção</span>
-              </button>
-            )}
-          </>
+            {renderNavItem({
+              id: 'gamificacao',
+              label: 'Conquistas & Metas',
+              icon: Trophy,
+              color: 'yellow',
+            })}
+          </div>
         )}
 
-        {/* PRODUÇÃO SECTION */}
-        <div className={navHeaderClass}>Produção & Simulações</div>
+        {/* ==================================================
+            2. OPERAÇÃO (Emerald / Blue / Violet / Amber)
+        ================================================== */}
+        {role !== 'SIMULACAO' && (
+          <div className="space-y-0.5">
+            {renderSectionHeader('Operação')}
 
+            {isDigitador &&
+              renderNavItem({
+                id: 'home-digitador',
+                label: 'Minha Produção',
+                icon: UserCheck,
+                color: 'emerald',
+              })}
+
+            {renderNavItem({
+              id: 'producao',
+              label: 'Todas as Propostas',
+              icon: FileSpreadsheet,
+              color: 'blue',
+            })}
+
+            {renderNavItem({
+              id: 'esteira',
+              label: 'Esteira Kanban',
+              icon: Kanban,
+              color: 'violet',
+            })}
+
+            {renderNavItem({
+              id: 'portabilidades',
+              label: 'Portabilidades (CIP)',
+              icon: ArrowLeftRight,
+              color: 'amber',
+            })}
+
+            {renderNavItem({
+              id: 'agenda-operacional',
+              label: 'Agenda & Tarefas',
+              icon: Calendar,
+              color: 'cyan',
+            })}
+
+            {isDigitador &&
+              renderNavItem({
+                id: 'importar-excel',
+                label: 'Importar Planilha',
+                icon: Upload,
+                color: 'emerald',
+              })}
+          </div>
+        )}
+
+        {/* ==================================================
+            3. SIMULAÇÕES (Violet)
+        ================================================== */}
         {role !== 'DIGITADOR' && (
-          <button
-            id="nav-simulacoes"
-            onClick={() => onNavigate('simulacoes')}
-            className={navItemClass('simulacoes')}
-          >
-            <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="font-medium">Simulações</span>
-          </button>
+          <div className="space-y-0.5">
+            {renderSectionHeader('Simulações')}
+            {renderNavItem({
+              id: 'simulacoes',
+              label: 'Simulações',
+              icon: Calculator,
+              color: 'violet',
+            })}
+          </div>
         )}
 
+        {/* ==================================================
+            4. CLIENTES (Cyan / Blue)
+        ================================================== */}
         {role !== 'SIMULACAO' && (
-          <>
-            <button
-              id="nav-producao-todas"
-              onClick={() => onNavigate('producao')}
-              className={navItemClass('producao')}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>Todas as Propostas</span>
-            </button>
+          <div className="space-y-0.5">
+            {renderSectionHeader('Clientes')}
 
-            {isDigitador && (
-              <button
-                id="nav-nova-producao"
-                onClick={() => onNavigate('nova-producao')}
-                className={navItemClass('nova-producao')}
-              >
-                <PlusCircle className="h-4 w-4 text-emerald-600" />
-                <span className="font-semibold text-emerald-700">Nova Produção (ADEs)</span>
-              </button>
-            )}
+            {renderNavItem({
+              id: 'clientes',
+              label: 'Clientes 360º',
+              icon: Users,
+              color: 'cyan',
+            })}
 
-            <button
-              id="nav-esteira-kanban"
-              onClick={() => onNavigate('esteira')}
-              className={navItemClass('esteira')}
-            >
-              <Kanban className="h-4 w-4" />
-              <span>Esteira Kanban</span>
-            </button>
-
-            <button
-              id="nav-portabilidades"
-              onClick={() => onNavigate('portabilidades')}
-              className={navItemClass('portabilidades')}
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              <span>Portabilidades (5 Dias)</span>
-            </button>
-
-            {/* Agenda & Tarefas Operacionais */}
-            <button
-              id="nav-agenda-operacional"
-              onClick={() => onNavigate('agenda-operacional')}
-              className={navItemClass('agenda-operacional')}
-            >
-              <Calendar className="h-4 w-4 text-blue-500" />
-              <span>Agenda & Tarefas CIP</span>
-            </button>
-
-            {isDigitador && (
-              <button
-                id="nav-importar-excel"
-                onClick={() => onNavigate('importar-excel')}
-                className={navItemClass('importar-excel')}
-              >
-                <Upload className="h-4 w-4 text-blue-600" />
-                <span>Importar Planilha</span>
-              </button>
-            )}
-
-            <button
-              id="nav-exportar-propostas"
-              onClick={() => onNavigate('exportar-propostas')}
-              className={navItemClass('exportar-propostas')}
-            >
-              <Download className="h-4 w-4" />
-              <span>Exportar Propostas</span>
-            </button>
-          </>
+            {renderNavItem({
+              id: 'busca-cpf',
+              label: 'Busca por CPF',
+              icon: Search,
+              color: 'blue',
+            })}
+          </div>
         )}
 
-        {/* CLIENTES */}
-        {role !== 'SIMULACAO' && (
-          <>
-            <div className={navHeaderClass}>Clientes (CRM 360º)</div>
+        {/* ==================================================
+            5. GESTÃO (Emerald / Indigo / Sky / Orange / Rose)
+        ================================================== */}
+        {(isGestor || isGerente || isSuporte) && (
+          <div className="space-y-0.5">
+            {renderSectionHeader('Gestão')}
 
-            <button
-              id="nav-clientes-360"
-              onClick={() => onNavigate('clientes')}
-              className={navItemClass('clientes')}
-            >
-              <Users className="h-4 w-4 text-blue-600" />
-              <span>Clientes 360º & CRM</span>
-            </button>
+            {isGestor &&
+              renderNavItem({
+                id: 'financeiro-geral',
+                label: 'Financeiro',
+                icon: DollarSign,
+                color: 'emerald',
+              })}
 
-            <button
-              id="nav-busca-cpf"
-              onClick={() => onNavigate('busca-cpf')}
-              className={navItemClass('busca-cpf')}
-            >
-              <Search className="h-4 w-4" />
-              <span>Busca por CPF</span>
-            </button>
-          </>
+            {isGerente &&
+              renderNavItem({
+                id: 'parceiros',
+                label: 'Parceiros',
+                icon: Handshake,
+                color: 'indigo',
+              })}
+
+            {isGerente &&
+              renderNavItem({
+                id: 'promotoras',
+                label: 'Promotoras',
+                icon: Building2,
+                color: 'sky',
+              })}
+
+            {(isSuporte || isGestor) &&
+              renderNavItem({
+                id: 'suporte',
+                label: 'Suporte & Fila',
+                icon: Headphones,
+                color: 'orange',
+              })}
+
+            {(isGestor || isSuporte) &&
+              renderNavItem({
+                id: 'relatorio-gargalos',
+                label: 'Gargalos & SLA',
+                icon: Hourglass,
+                color: 'rose',
+              })}
+          </div>
         )}
 
-        {/* FINANCEIRO GERAL */}
-        {isGestor && (
-          <>
-            <div className={navHeaderClass}>Gestão Financeira</div>
-            <button
-              id="nav-financeiro-geral"
-              onClick={() => onNavigate('financeiro-geral')}
-              className={navItemClass('financeiro-geral')}
-            >
-              <DollarSign className="h-4 w-4 text-emerald-600" />
-              <span>Fluxo de Caixa & Entradas</span>
-            </button>
-          </>
-        )}
-
-        {/* PARCEIROS */}
-        {isGerente && (
-          <>
-            <div className={navHeaderClass}>Parceiros & Promotoras</div>
-            <button
-              id="nav-parceiros"
-              onClick={() => onNavigate('parceiros')}
-              className={navItemClass('parceiros')}
-            >
-              <Handshake className="h-4 w-4" />
-              <span>Parceiros Cadastrados</span>
-            </button>
-            <button
-              id="nav-promotoras"
-              onClick={() => onNavigate('promotoras')}
-              className={navItemClass('promotoras')}
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Promotoras</span>
-            </button>
-          </>
-        )}
-
-        {/* SUPORTE */}
-        {(isSuporte || isGestor) && (
-          <>
-            <div className={navHeaderClass}>Suporte & SLA</div>
-            <button
-              id="nav-central-suporte"
-              onClick={() => onNavigate('suporte')}
-              className={navItemClass('suporte')}
-            >
-              <Headphones className="h-4 w-4" />
-              <span>Central de Suporte</span>
-            </button>
-            <button
-              id="nav-pendencias"
-              onClick={() => onNavigate('pendencias')}
-              className={navItemClass('pendencias')}
-            >
-              <AlertCircle className="h-4 w-4" />
-              <span>Pendências</span>
-            </button>
-            <button
-              id="nav-sla"
-              onClick={() => onNavigate('sla')}
-              className={navItemClass('sla')}
-            >
-              <Clock className="h-4 w-4" />
-              <span>Controle de Alçadas</span>
-            </button>
-          </>
-        )}
-
-        {/* ADMINISTRAÇÃO (MASTER ONLY) */}
+        {/* ==================================================
+            6. ADMINISTRAÇÃO (Slate / Cyan / Purple / Amber / Sky / Emerald)
+        ================================================== */}
         {isMaster && (
-          <>
-            <div className={navHeaderClass}>Administração & Multi-Tenant</div>
+          <div className="space-y-0.5">
+            {renderSectionHeader('Administração')}
 
-            {/* SaaS Platform Master */}
-            <button
-              id="nav-saas-tenants"
-              onClick={() => onNavigate('saas-tenants')}
-              className={navItemClass('saas-tenants')}
-            >
-              <HardDrive className="h-4 w-4 text-rose-500" />
-              <span className="font-bold text-rose-700 dark:text-rose-400">SaaS & Tenants</span>
-            </button>
+            {renderNavItem({
+              id: 'admin-usuarios',
+              label: 'Usuários',
+              icon: Users,
+              color: 'blue',
+            })}
 
-            <button
-              id="nav-admin-usuarios"
-              onClick={() => onNavigate('admin-usuarios')}
-              className={navItemClass('admin-usuarios')}
-            >
-              <Users className="h-4 w-4" />
-              <span>Usuários & Perfis</span>
-            </button>
-            <button
-              id="nav-admin-bancos"
-              onClick={() => onNavigate('admin-bancos')}
-              className={navItemClass('admin-bancos')}
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Bancos & Vínculos</span>
-            </button>
-            <button
-              id="nav-admin-produtos"
-              onClick={() => onNavigate('admin-produtos')}
-              className={navItemClass('admin-produtos')}
-            >
-              <Layers className="h-4 w-4" />
-              <span>Produtos & Regras</span>
-            </button>
-            <button
-              id="nav-admin-status"
-              onClick={() => onNavigate('admin-status')}
-              className={navItemClass('admin-status')}
-            >
-              <Sliders className="h-4 w-4" />
-              <span>Status do Sistema</span>
-            </button>
-            <button
-              id="nav-admin-import-status"
-              onClick={() => onNavigate('admin-import-status')}
-              className={navItemClass('admin-import-status')}
-            >
-              <Upload className="h-4 w-4 text-emerald-500" />
-              <span>Importar Status Bancos</span>
-            </button>
-            <button
-              id="nav-admin-calendario"
-              onClick={() => onNavigate('admin-calendario')}
-              className={navItemClass('admin-calendario')}
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Feriados & SLA</span>
-            </button>
-            <button
-              id="nav-admin-backup"
-              onClick={() => onNavigate('admin-backup')}
-              className={navItemClass('admin-backup')}
-            >
-              <Database className="h-4 w-4 text-purple-500" />
-              <span>Backup & Cron</span>
-            </button>
-            <button
-              id="nav-admin-auditoria"
-              onClick={() => onNavigate('admin-auditoria')}
-              className={navItemClass('admin-auditoria')}
-            >
-              <ShieldAlert className="h-4 w-4" />
-              <span>Auditoria (AuditLog)</span>
-            </button>
-          </>
+            {renderNavItem({
+              id: 'admin-bancos',
+              label: 'Bancos & Vínculos',
+              icon: Building2,
+              color: 'cyan',
+            })}
+
+            {renderNavItem({
+              id: 'admin-produtos',
+              label: 'Produtos & Regras',
+              icon: Layers,
+              color: 'purple',
+            })}
+
+            {renderNavItem({
+              id: 'admin-status',
+              label: 'Status do Sistema',
+              icon: Sliders,
+              color: 'amber',
+            })}
+
+            {renderNavItem({
+              id: 'admin-calendario',
+              label: 'Feriados & Prazos',
+              icon: Calendar,
+              color: 'sky',
+            })}
+
+            {renderNavItem({
+              id: 'admin-auditoria',
+              label: 'Auditoria & Logs',
+              icon: ShieldCheck,
+              color: 'emerald',
+            })}
+          </div>
+        )}
+
+        {/* ==================================================
+            7. PLATAFORMA (Fuchsia / Magenta)
+        ================================================== */}
+        {isPlatformMaster && (
+          <div className="space-y-0.5">
+            {renderSectionHeader('Plataforma')}
+
+            {renderNavItem({
+              id: 'saas-tenants',
+              label: 'SaaS / Tenants',
+              icon: HardDrive,
+              color: 'fuchsia',
+            })}
+          </div>
         )}
       </nav>
 
-      {/* Footer info */}
-      <div className="p-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">
-        <p className="font-semibold text-slate-600 dark:text-slate-300">{whiteLabel.companyName} v2.5 Enterprise</p>
-        <p className="flex items-center gap-1 mt-0.5 font-bold text-slate-700 dark:text-slate-200">
-          <span>{getRoleEmoji(role)}</span>
-          <span>{getRoleLabel(role)} ({role})</span>
-        </p>
+      {/* Sidebar Footer / Collapse Toggle */}
+      <div className="p-2 border-t border-slate-200/80 dark:border-slate-800/80 shrink-0 bg-slate-50/50 dark:bg-slate-900/40">
+        <button
+          onClick={toggleCollapse}
+          className="flex items-center justify-center w-full h-8 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+          title={isCollapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <div className="flex items-center justify-between w-full px-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <ChevronLeft className="h-4 w-4" />
+                <span>Recolher</span>
+              </span>
+              <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-500">
+                Alt+B
+              </kbd>
+            </div>
+          )}
+        </button>
       </div>
     </aside>
   );
 };
+

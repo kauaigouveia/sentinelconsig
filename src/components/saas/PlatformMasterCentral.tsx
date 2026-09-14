@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2,
   Users,
@@ -24,11 +24,15 @@ import {
   Mail,
   Palette,
   FileText,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { TenantPlan, TenantStatus } from '../../types';
 import { formatDate } from '../../lib/utils';
 import { realtimeHub } from '../../services/realtimeService';
+import { ActionBar } from '../common/ActionBar';
+import { MetricCard } from '../common/MetricCard';
 
 interface DbTenant {
   id: string;
@@ -102,6 +106,11 @@ export const PlatformMasterCentral: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+  const [planFilter, setPlanFilter] = useState<string>('ALL');
 
   // Fetch tenants from PostgreSQL API
   const fetchTenants = useCallback(async () => {
@@ -338,6 +347,20 @@ export const PlatformMasterCentral: React.FC = () => {
   const totalUsersCapacity = tenants.reduce((sum, t) => sum + t.maxUsers, 0);
   const totalActiveUsers = tenants.reduce((sum, t) => sum + (t._count?.users || 0), 0);
 
+  const filteredTenants = useMemo(() => {
+    return tenants.filter((t) => {
+      const matchSearch =
+        !searchTerm ||
+        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.customDomain && t.customDomain.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (t.cnpj && t.cnpj.includes(searchTerm));
+      const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
+      const matchPlan = planFilter === 'ALL' || t.plan === planFilter;
+      return matchSearch && matchStatus && matchPlan;
+    });
+  }, [tenants, searchTerm, statusFilter, planFilter]);
+
   return (
     <div className="space-y-6">
       {/* Active Context Banner */}
@@ -365,111 +388,116 @@ export const PlatformMasterCentral: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 text-white p-6 rounded-2xl shadow-sm">
-        <div className="space-y-1">
+      {/* Header with Standardized ActionBar */}
+      <ActionBar
+        title="Central de Gestão SaaS, Tenants & Domínios"
+        subtitle="Controle corporativo de instâncias isoladas, resolução de domínios, white label, cotas e suspensão imediata"
+        badge="PLATFORM MASTER ROOT"
+        actions={
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white uppercase tracking-wider">
-              PLATFORM MASTER ROOT
-            </span>
-            <span className="text-xs text-slate-400">PostgreSQL Cloud Database Multi-Tenant Central</span>
+            <button
+              onClick={fetchTenants}
+              className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
+              title="Atualizar lista"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+
+            <button
+              onClick={handleOpenCreateModal}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Nova Empresa (Tenant)</span>
+            </button>
           </div>
-          <h2 className="text-xl font-black tracking-tight">Central de Gestão SaaS, Tenants & Domínios</h2>
-          <p className="text-xs text-slate-400">
-            Controle oficial de instâncias, resolução de domínios, white label, cotas e suspensão imediata
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchTenants}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-700 cursor-pointer"
-            title="Atualizar lista"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Atualizar</span>
-          </button>
-
-          <button
-            onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Criar Nova Empresa (Tenant)</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* Global Infrastructure KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Empresas (Tenants)</span>
-            <Building2 className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{totalTenants}</span>
-            <span className="text-xs text-emerald-600 font-bold">{activeTenants} ativas</span>
-            {suspendedTenants > 0 && <span className="text-xs text-amber-600 font-bold">({suspendedTenants} suspensas)</span>}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Usuários Cadastrados</span>
-            <Users className="h-5 w-5 text-indigo-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{totalActiveUsers}</span>
-            <span className="text-xs text-slate-500">de {totalUsersCapacity} vagas contratadas</span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Resolução de Domínios</span>
-            <Globe className="h-5 w-5 text-purple-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-purple-900">
-              {tenants.filter((t) => t.customDomain).length}
-            </span>
-            <span className="text-xs text-slate-500">domínios customizados</span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase">Banco Oficial</span>
-            <Database className="h-5 w-5 text-emerald-600" />
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm font-bold text-emerald-700">PostgreSQL (Shared Schema)</span>
-          </div>
-        </div>
+      {/* Global Infrastructure KPIs via MetricCard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          label="Empresas (Tenants)"
+          value={totalTenants}
+          helperText={`${activeTenants} ativas${suspendedTenants > 0 ? ` · ${suspendedTenants} suspensas` : ''}`}
+          tone="primary"
+        />
+        <MetricCard
+          label="Usuários Cadastrados"
+          value={totalActiveUsers}
+          helperText={`de ${totalUsersCapacity} vagas contratadas`}
+          tone="neutral"
+        />
+        <MetricCard
+          label="Domínios Customizados"
+          value={tenants.filter((t) => t.customDomain).length}
+          helperText="Resoluções CNAME ativas"
+          tone="warning"
+        />
+        <MetricCard
+          label="Banco de Dados"
+          value="PostgreSQL"
+          helperText="Multi-tenancy com isolamento"
+          tone="success"
+        />
       </div>
 
       {/* Tenants Table */}
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-blue-600" />
-            <span>Empresas Cadastradas no PostgreSQL ({tenants.length})</span>
-          </h3>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+        {/* Table Toolbar / Filter Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nome, slug, CNPJ ou domínio..."
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+            >
+              <option value="ALL">Todos os Status</option>
+              <option value="ACTIVE">Somente Ativos</option>
+              <option value="SUSPENDED">Somente Suspensos</option>
+            </select>
+
+            <select
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+            >
+              <option value="ALL">Todos os Planos</option>
+              <option value="STARTER">STARTER</option>
+              <option value="PRO">PRO</option>
+              <option value="ENTERPRISE">ENTERPRISE</option>
+              <option value="CUSTOM">CUSTOM</option>
+            </select>
+
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 pl-1">
+              {filteredTenants.length} de {tenants.length}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+          <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider">
               <tr>
                 <th className="p-3.5">Empresa / White Label</th>
                 <th className="p-3.5">Slug & Subdomínio</th>
@@ -481,138 +509,148 @@ export const PlatformMasterCentral: React.FC = () => {
                 <th className="p-3.5 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {tenants.map((t) => {
-                const isActive = t.status === 'ACTIVE';
-                const isCurrentInspected = adminContext.context?.targetTenantId === t.id;
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredTenants.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    Nenhuma empresa encontrada com os filtros atuais.
+                  </td>
+                </tr>
+              ) : (
+                filteredTenants.map((t) => {
+                  const isActive = t.status === 'ACTIVE';
+                  const isCurrentInspected = adminContext.context?.targetTenantId === t.id;
 
-                return (
-                  <tr
-                    key={t.id}
-                    className={`hover:bg-slate-50/80 transition-colors ${
-                      isCurrentInspected ? 'bg-purple-50/60' : ''
-                    }`}
-                  >
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        {t.whiteLabel?.logoUrl ? (
-                          <img
-                            src={t.whiteLabel.logoUrl}
-                            alt={t.name}
-                            className="h-7 w-7 rounded object-contain border border-slate-200"
-                          />
-                        ) : (
-                          <div
-                            className="h-7 w-7 rounded text-white font-bold flex items-center justify-center text-[10px]"
-                            style={{ backgroundColor: t.whiteLabel?.primaryColor || '#2563eb' }}
-                          >
-                            {t.name.slice(0, 2).toUpperCase()}
+                  return (
+                    <tr
+                      key={t.id}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
+                        isCurrentInspected ? 'bg-purple-50/60 dark:bg-purple-950/30' : ''
+                      }`}
+                    >
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2.5">
+                          {t.whiteLabel?.logoUrl ? (
+                            <img
+                              src={t.whiteLabel.logoUrl}
+                              alt={t.name}
+                              className="h-7 w-7 rounded object-contain border border-slate-200 dark:border-slate-700 bg-white"
+                            />
+                          ) : (
+                            <div
+                              className="h-7 w-7 rounded text-white font-bold flex items-center justify-center text-[10px]"
+                              style={{ backgroundColor: t.whiteLabel?.primaryColor || '#2563eb' }}
+                            >
+                              {t.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-slate-100">{t.name}</div>
+                            <div className="text-[11px] text-slate-400 dark:text-slate-500">{t.cnpj || 'CNPJ não informado'}</div>
                           </div>
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-900">{t.name}</div>
-                          <div className="text-[11px] text-slate-400">{t.cnpj || 'CNPJ não informado'}</div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-3.5 font-mono text-[11px]">
-                      <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded font-bold">
-                        {t.slug}.sentinelconsig.com.br
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono text-[11px]">
-                      {t.customDomain ? (
-                        <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold flex items-center gap-1 w-fit">
-                          <Globe className="h-3 w-3" />
-                          <span>{t.customDomain}</span>
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px]">
+                        <span className="text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded font-bold">
+                          {t.slug}.sentinelconsig.com.br
                         </span>
-                      ) : (
-                        <span className="text-slate-400 italic">Nenhum</span>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                          t.plan === 'ENTERPRISE'
-                            ? 'bg-purple-100 text-purple-800'
-                            : t.plan === 'PRO'
-                            ? 'bg-blue-100 text-blue-800'
-                            : t.plan === 'CUSTOM'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                      >
-                        {t.plan}
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                        <span>{isActive ? 'Ativo' : 'Suspenso'}</span>
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-slate-900">
-                        {t._count?.users || 0} / {t.maxUsers} usuários
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {t._count?.proposals || 0} propostas cadastradas
-                      </div>
-                    </td>
-                    <td className="p-3.5 font-semibold text-slate-800">
-                      {(t.storageLimitMb / 1024).toFixed(1)} GB
-                    </td>
-                    <td className="p-3.5 text-right space-x-1.5">
-                      {isCurrentInspected ? (
-                        <button
-                          onClick={handleExitContextSwitch}
-                          className="px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 rounded transition-all cursor-pointer"
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px]">
+                        {t.customDomain ? (
+                          <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-900/60 px-2 py-0.5 rounded font-bold flex items-center gap-1 w-fit">
+                            <Globe className="h-3 w-3" />
+                            <span>{t.customDomain}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">Nenhum</span>
+                        )}
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
+                            t.plan === 'ENTERPRISE'
+                              ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800'
+                              : t.plan === 'PRO'
+                              ? 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                              : t.plan === 'CUSTOM'
+                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                              : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                          }`}
                         >
-                          Sair Inspeção
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleStartContextSwitch(t.id, t.name)}
-                          className="px-2.5 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded transition-all cursor-pointer"
-                          title="Inspecionar dados operacionais deste tenant"
+                          {t.plan}
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            isActive
+                              ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                              : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                          }`}
                         >
-                          Inspecionar
-                        </button>
-                      )}
+                          {isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          <span>{isActive ? 'Ativo' : 'Suspenso'}</span>
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">
+                          {t._count?.users || 0} / {t.maxUsers} usuários
+                        </div>
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                          {t._count?.proposals || 0} propostas cadastradas
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
+                        {(t.storageLimitMb / 1024).toFixed(1)} GB
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5">
+                        {isCurrentInspected ? (
+                          <button
+                            onClick={handleExitContextSwitch}
+                            className="px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 hover:bg-rose-200 rounded border border-rose-300 dark:border-rose-800 transition-all cursor-pointer"
+                          >
+                            Sair Inspeção
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleStartContextSwitch(t.id, t.name)}
+                            className="px-2.5 py-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 hover:bg-purple-100 dark:hover:bg-purple-900/60 rounded border border-purple-200 dark:border-purple-800 transition-all cursor-pointer"
+                            title="Inspecionar dados operacionais deste tenant"
+                          >
+                            Inspecionar
+                          </button>
+                        )}
 
-                      <button
-                        onClick={() => handleOpenEditModal(t)}
-                        className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded cursor-pointer"
-                        title="Editar Tenant & White Label"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
+                        <button
+                          onClick={() => handleOpenEditModal(t)}
+                          className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
+                          title="Editar Tenant & White Label"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
 
-                      {isActive ? (
-                        <button
-                          onClick={() => handleSuspendTenant(t.id, t.name)}
-                          className="p-1.5 text-amber-600 hover:bg-amber-50 rounded cursor-pointer"
-                          title="Suspender Tenant Imediatamente"
-                        >
-                          <Lock className="h-3.5 w-3.5" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleReactivateTenant(t.id)}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded cursor-pointer"
-                          title="Reativar Tenant"
-                        >
-                          <Unlock className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                        {isActive ? (
+                          <button
+                            onClick={() => handleSuspendTenant(t.id, t.name)}
+                            className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded cursor-pointer"
+                            title="Suspender Tenant Imediatamente"
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleReactivateTenant(t.id)}
+                            className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded cursor-pointer"
+                            title="Reativar Tenant"
+                          >
+                            <Unlock className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -620,23 +658,23 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Modal Create/Edit Tenant */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 {editingTenant ? 'Editar Tenant & White Label' : 'Cadastrar Nova Empresa (Tenant)'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-base"
               >
                 ✕
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
                 <span>{formError}</span>
               </div>
@@ -645,27 +683,27 @@ export const PlatformMasterCentral: React.FC = () => {
             <form onSubmit={handleSaveTenant} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Nome da Empresa *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Nome da Empresa *</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                     placeholder="Ex: CredFácil Financeira"
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Slug (Subdomínio) *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Slug (Subdomínio) *</label>
                   <input
                     type="text"
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                     required
                     placeholder="Ex: credfacil"
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
                   />
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
                     Acesso: {slug ? `${slug.toLowerCase().trim()}.sentinelconsig.com.br` : 'slug.sentinelconsig.com.br'}
                   </span>
                 </div>
@@ -673,45 +711,45 @@ export const PlatformMasterCentral: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Domínio Personalizado (Opcional)</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Domínio Personalizado (Opcional)</label>
                   <input
                     type="text"
                     value={customDomain}
                     onChange={(e) => setCustomDomain(e.target.value)}
                     placeholder="Ex: app.credfacil.com.br"
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
                   />
-                  <span className="text-[10px] text-slate-400">CNAME apontando para a plataforma</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">CNAME apontando para a plataforma</span>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">CNPJ</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">CNPJ</label>
                   <input
                     type="text"
                     value={cnpj}
                     onChange={(e) => setCnpj(e.target.value)}
                     placeholder="00.000.000/0001-00"
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Nome Fantasia / Comercial</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Nome Fantasia / Comercial</label>
                   <input
                     type="text"
                     value={tradeName}
                     onChange={(e) => setTradeName(e.target.value)}
                     placeholder="Ex: CredFácil Consignados"
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Plano SaaS</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Plano SaaS</label>
                   <select
                     value={plan}
                     onChange={(e) => setPlan(e.target.value as TenantPlan)}
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
                   >
                     <option value="STARTER">STARTER (Até 5 Usuários)</option>
                     <option value="PRO">PRO (Até 15 Usuários)</option>
@@ -723,29 +761,29 @@ export const PlatformMasterCentral: React.FC = () => {
 
               {/* Se for criação, solicita dados do admin do tenant */}
               {!editingTenant && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                  <span className="font-bold text-slate-800 text-[11px] block uppercase tracking-wider">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] block uppercase tracking-wider">
                     Usuário Administrador Inicial do Tenant
                   </span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700">Nome do Administrador</label>
+                      <label className="font-semibold text-slate-700 dark:text-slate-300">Nome do Administrador</label>
                       <input
                         type="text"
                         value={adminName}
                         onChange={(e) => setAdminName(e.target.value)}
                         placeholder="Ex: Carlos Mendes"
-                        className="w-full rounded-lg border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700">E-mail do Administrador</label>
+                      <label className="font-semibold text-slate-700 dark:text-slate-300">E-mail do Administrador</label>
                       <input
                         type="email"
                         value={adminEmail}
                         onChange={(e) => setAdminEmail(e.target.value)}
                         placeholder="admin@empresa.com.br"
-                        className="w-full rounded-lg border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -753,60 +791,60 @@ export const PlatformMasterCentral: React.FC = () => {
               )}
 
               {/* White Label Settings */}
-              <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-3">
-                <span className="font-bold text-blue-900 text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
-                  <Palette className="h-3.5 w-3.5 text-blue-600" />
+              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/50 space-y-3">
+                <span className="font-bold text-blue-900 dark:text-blue-300 text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
+                  <Palette className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                   <span>Identidade Visual & Cores (White Label)</span>
                 </span>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700">Cor Primária</label>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300">Cor Primária</label>
                     <div className="flex items-center gap-1.5">
                       <input
                         type="color"
                         value={primaryColor}
                         onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 p-0"
+                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 dark:border-slate-700 p-0"
                       />
                       <input
                         type="text"
                         value={primaryColor}
                         onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="w-full rounded border border-slate-300 p-1 text-[11px] font-mono text-slate-900"
+                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 text-[11px] font-mono text-slate-900 dark:text-slate-100"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700">Cor Secundária</label>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300">Cor Secundária</label>
                     <div className="flex items-center gap-1.5">
                       <input
                         type="color"
                         value={secondaryColor}
                         onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 p-0"
+                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 dark:border-slate-700 p-0"
                       />
                       <input
                         type="text"
                         value={secondaryColor}
                         onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="w-full rounded border border-slate-300 p-1 text-[11px] font-mono text-slate-900"
+                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 text-[11px] font-mono text-slate-900 dark:text-slate-100"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700">Cor Destaque</label>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300">Cor Destaque</label>
                     <div className="flex items-center gap-1.5">
                       <input
                         type="color"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 p-0"
+                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 dark:border-slate-700 p-0"
                       />
                       <input
                         type="text"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        className="w-full rounded border border-slate-300 p-1 text-[11px] font-mono text-slate-900"
+                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 text-[11px] font-mono text-slate-900 dark:text-slate-100"
                       />
                     </div>
                   </div>
@@ -814,23 +852,23 @@ export const PlatformMasterCentral: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700">URL do Logotipo</label>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300">URL do Logotipo</label>
                     <input
                       type="url"
                       value={logoUrl}
                       onChange={(e) => setLogoUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full rounded border border-slate-300 p-1.5 text-xs text-slate-900 focus:outline-hidden"
+                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700">E-mail de Suporte White Label</label>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300">E-mail de Suporte White Label</label>
                     <input
                       type="email"
                       value={supportEmail}
                       onChange={(e) => setSupportEmail(e.target.value)}
                       placeholder="suporte@empresa.com.br"
-                      className="w-full rounded border border-slate-300 p-1.5 text-xs text-slate-900 focus:outline-hidden"
+                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -839,43 +877,43 @@ export const PlatformMasterCentral: React.FC = () => {
               {/* Limites & Cotas */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Limite de Usuários</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Limite de Usuários</label>
                   <input
                     type="number"
                     value={maxUsers}
                     onChange={(e) => setMaxUsers(Number(e.target.value))}
                     min={1}
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Armazenamento (MB)</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Armazenamento (MB)</label>
                   <input
                     type="number"
                     value={storageLimitMb}
                     onChange={(e) => setStorageLimitMb(Number(e.target.value))}
                     min={100}
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Cota Propostas</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Cota Propostas</label>
                   <input
                     type="number"
                     value={maxProposals}
                     onChange={(e) => setMaxProposals(Number(e.target.value))}
                     min={100}
-                    className="w-full rounded-xl border border-slate-300 p-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   Cancelar
                 </button>
