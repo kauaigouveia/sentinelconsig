@@ -790,28 +790,33 @@ model Notification {
 // ==========================================
 
 model AuditLog {
-  id       String  @id @default(cuid())
-  tenantId String? @map("tenant_id")
-  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  id           String   @id @default(cuid())
+  tenantId     String?  @map("tenant_id")
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
-  userId   String? @map("user_id")
-  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userName String? @map("user_name")
+  userId       String?  @map("user_id")
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName     String?  @map("user_name")
 
-  action    String
-  entity    String
-  entityId  String? @map("entity_id")
-  oldData   String? @map("old_data") // JSON
-  newData   String? @map("new_data") // JSON
-  ipAddress String? @map("ip_address")
+  action       String
+  entity       String
+  entityId     String?  @map("entity_id")
+  oldData      String?  @map("old_data") // JSON
+  newData      String?  @map("new_data") // JSON
+  ipAddress    String?  @map("ip_address")
 
-  createdAt DateTime @default(now()) @map("created_at")
+  // Hash de Integridade Criptográfica (SHA-256)
+  previousHash String?  @map("previous_hash")
+  recordHash   String?  @map("record_hash")
+
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([userId])
   @@index([entity])
   @@index([action])
   @@index([createdAt])
+  @@index([tenantId, createdAt])
   @@map("audit_logs")
 }
 

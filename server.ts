@@ -2821,6 +2821,53 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
+  // AUDIT LOG INTEGRITY VERIFICATION & DLQ API (FASE 10.2-B)
+  // -------------------------------------------------------------
+  app.get('/api/audit-logs/verify-integrity', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'audit_logs.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'audit_logs.view'." });
+      }
+
+      let targetTenantId: string | null = session.user.tenantId || null;
+      if (isPlatformMaster && typeof req.query.tenantId === 'string') {
+        targetTenantId = req.query.tenantId === 'GLOBAL' || req.query.tenantId === '' ? null : req.query.tenantId;
+      }
+
+      const result = await AuditLogService.verifyAuditLogIntegrity(prisma, targetTenantId);
+      return res.json(result);
+    } catch (err) {
+      logger.error({ error: err }, '[GET /api/audit-logs/verify-integrity ERROR]');
+      return res.status(500).json({ error: 'Erro ao verificar integridade da trilha de auditoria.' });
+    }
+  });
+
+  app.get('/api/audit-logs/failed-queue', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito ao PLATFORM_MASTER.' });
+      }
+
+      const failedQueue = AuditLogService.getFailedQueue();
+      return res.json({
+        count: failedQueue.length,
+        items: failedQueue,
+      });
+    } catch (err) {
+      logger.error({ error: err }, '[GET /api/audit-logs/failed-queue ERROR]');
+      return res.status(500).json({ error: 'Erro ao consultar fila de falhas de auditoria.' });
+    }
+  });
+
+  // -------------------------------------------------------------
   // USERS MANAGEMENT API
   // -------------------------------------------------------------
   app.get('/api/users', async (req, res) => {
@@ -2905,24 +2952,23 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
-      await prisma.auditLog.create({
-        data: {
-          tenantId: targetTenantId || null,
-          userId: session.user.id,
-          userName: session.user.name,
-          action: 'USER_CREATED',
-          entity: 'User',
-          entityId: user.id,
-          newData: JSON.stringify({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            tenantId: user.tenantId,
-            customPermissions: user.customPermissions,
-          }),
+      await AuditLogService.record(prisma, {
+        tenantId: targetTenantId || null,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'USER_CREATED',
+        entity: 'User',
+        entityId: user.id,
+        newData: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+          customPermissions: user.customPermissions,
         },
-      }).catch(() => {});
+        req,
+      });
 
       if (user.tenantId) {
         sseRegistry.broadcastToTenant(user.tenantId, {

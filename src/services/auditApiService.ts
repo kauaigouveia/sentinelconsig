@@ -9,6 +9,8 @@ export interface AuditLogApiEntry {
   oldData?: string | null;
   newData?: string | null;
   ipAddress?: string | null;
+  previousHash?: string | null;
+  recordHash?: string | null;
   createdAt: string;
   user?: {
     id: string;
@@ -35,6 +37,19 @@ export interface AuditLogPagination {
 export interface AuditLogsResponse {
   data: AuditLogApiEntry[];
   pagination: AuditLogPagination;
+}
+
+export interface AuditIntegrityResponse {
+  valid: boolean;
+  status: 'VALID' | 'INVALID';
+  checkedCount: number;
+  tenantId: string | null;
+  error?: string;
+  brokenAtId?: string;
+  expectedPreviousHash?: string | null;
+  actualPreviousHash?: string | null;
+  expectedRecordHash?: string;
+  actualRecordHash?: string;
 }
 
 export interface AuditLogFilterParams {
@@ -95,6 +110,22 @@ export class AuditApiService {
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
       throw new Error(errBody.error || `Erro ao consultar logs de auditoria (${res.status})`);
+    }
+
+    return await res.json();
+  }
+
+  public static async verifyIntegrity(tenantId?: string): Promise<AuditIntegrityResponse> {
+    const qs = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
+    const res = await fetch(`/api/audit-logs/verify-integrity${qs}`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.error || `Erro ao verificar integridade (${res.status})`);
     }
 
     return await res.json();
