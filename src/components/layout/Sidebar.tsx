@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   FileSpreadsheet,
@@ -29,6 +29,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
+import { realtimeHub } from '../../services/realtimeService';
 import { Role } from '../../types';
 
 interface SidebarProps {
@@ -191,6 +192,68 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     }
   });
 
+  const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
+  const [currentTenant, setCurrentTenant] = useState(StorageService.getCurrentTenant());
+  const [adminContext, setAdminContext] = useState<{ active: boolean; context?: { targetTenantId: string; targetTenantName: string } }>({ active: false });
+
+  // Sync tenant and admin context status
+  const syncTenantState = async () => {
+    setCurrentTenant(StorageService.getCurrentTenant());
+    setWhiteLabel(StorageService.getWhiteLabel());
+    if (activeUser?.role === 'PLATFORM_MASTER') {
+      try {
+        const res = await fetch('/api/saas/context-switch/status');
+        if (res.ok) {
+          const data = await res.json();
+          setAdminContext(data);
+        }
+      } catch (e) {}
+    }
+  };
+
+  useEffect(() => {
+    syncTenantState();
+
+    const handleUpdates = () => {
+      syncTenantState();
+    };
+
+    window.addEventListener('whiteLabelUpdated', handleUpdates);
+    window.addEventListener('tenantUpdated', handleUpdates);
+    window.addEventListener('credit_gestao_storage_update', handleUpdates);
+    window.addEventListener('storage', handleUpdates);
+
+    // Listen to realtime tenant context changes
+    const unsub = realtimeHub.subscribe('*', (event) => {
+      const eventType = (event as any)?.type;
+      if (eventType === 'TENANT_UPDATED' || eventType === 'TENANT_SUSPENDED' || eventType === 'CONTEXT_SWITCHED') {
+        syncTenantState();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('whiteLabelUpdated', handleUpdates);
+      window.removeEventListener('tenantUpdated', handleUpdates);
+      window.removeEventListener('credit_gestao_storage_update', handleUpdates);
+      window.removeEventListener('storage', handleUpdates);
+      unsub();
+    };
+  }, [activeUser?.id, activeUser?.role]);
+
+  // Determine dynamic company name to display
+  const displayCompanyName = (() => {
+    if (activeUser?.role === 'PLATFORM_MASTER') {
+      if (adminContext.active && adminContext.context?.targetTenantName) {
+        return adminContext.context.targetTenantName;
+      }
+      return 'PLATAFORMA';
+    }
+    return currentTenant?.name || 'Mesa Operacional';
+  })();
+
+  const isGlobalPlatformContext = activeUser?.role === 'PLATFORM_MASTER' && !adminContext.active;
+  const isInspectionMode = activeUser?.role === 'PLATFORM_MASTER' && adminContext.active;
+
   const toggleCollapse = () => {
     setIsCollapsed(prev => {
       const next = !prev;
@@ -296,9 +359,100 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
   return (
     <aside
       className={`border-r border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#080d18] flex flex-col shrink-0 transition-all duration-200 ease-in-out select-none ${
-        isCollapsed ? 'w-[68px]' : 'w-[232px]'
+        isCollapsed ? 'w-[68px]' : 'w-[248px]'
       }`}
     >
+      {/* ==================================================
+          BLOCO DE IDENTIDADE & MARCA: SENTINEL CONSIG + EMPRESA ATUAL
+      ================================================== */}
+      {isCollapsed ? (
+        /* Versão Compacta (Ícone do Sentinel / Logo da Empresa) */
+        <div className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col items-center gap-1.5 shrink-0">
+          <div
+            className="h-8 w-8 flex items-center justify-center shrink-0 cursor-pointer"
+            title={`${whiteLabel.companyName || 'Sentinel Consig'} - ${displayCompanyName}`}
+            onClick={() => onNavigate('torre-controle')}
+          >
+            {whiteLabel.logoUrl ? (
+              <img
+                src={whiteLabel.logoUrl}
+                alt={whiteLabel.companyName || 'Sentinel Consig'}
+                className="h-full w-full object-contain rounded-lg shadow-2xs"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs ring-1 ring-blue-500/30">
+                {(displayCompanyName || 'SC').slice(0, 2).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <span className="text-[8px] font-black uppercase tracking-tighter text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-400/15 px-1 py-0.2 rounded border border-blue-200 dark:border-blue-800/50 text-center leading-tight">
+            ENT
+          </span>
+        </div>
+      ) : (
+        /* Versão Expandida: Sentinel Consig + Enterprise + Empresa Atual */
+        <div className="p-3.5 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0 space-y-3">
+          {/* IDENTIDADE DO SISTEMA */}
+          <div className="flex items-start gap-2.5">
+            <div className="h-8.5 w-8.5 flex items-center justify-center shrink-0 mt-0.5">
+              {whiteLabel.logoUrl ? (
+                <img
+                  src={whiteLabel.logoUrl}
+                  alt={whiteLabel.companyName || 'Sentinel Consig'}
+                  className="h-full w-full object-contain rounded-lg shadow-2xs"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="h-8.5 w-8.5 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs ring-1 ring-blue-500/30">
+                  SC
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 flex flex-col justify-center">
+              {/* Linha principal: Sentinel Consig + ENTERPRISE */}
+              <div className="flex items-center gap-1.5 flex-nowrap">
+                <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight">
+                  Sentinel Consig
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 dark:bg-blue-400/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shrink-0 leading-none">
+                  ENTERPRISE
+                </span>
+              </div>
+              {/* Segunda linha: SENTINEL CONSIG */}
+              <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight mt-0.5">
+                SENTINEL CONSIG
+              </span>
+            </div>
+          </div>
+
+          {/* IDENTIDADE DO TENANT (EMPRESA ATUAL / AMBIENTE) */}
+          <div className="bg-slate-50 dark:bg-slate-900/70 rounded-lg p-2.5 border border-slate-200/70 dark:border-slate-800/70">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                {isGlobalPlatformContext ? 'Ambiente' : 'Empresa Atual'}
+              </span>
+              {isGlobalPlatformContext && (
+                <span className="px-1.5 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-500/10 dark:bg-purple-400/15 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50">
+                  GLOBAL
+                </span>
+              )}
+              {isInspectionMode && (
+                <span className="px-1.5 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/15 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 animate-pulse">
+                  INSPEÇÃO
+                </span>
+              )}
+            </div>
+            <div
+              className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate leading-snug"
+              title={displayCompanyName}
+            >
+              {displayCompanyName}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Scrollable Navigation Tree */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-1">
         {/* ==================================================

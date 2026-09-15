@@ -93,21 +93,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   const { theme, toggleTheme, isDark } = useTheme();
 
-  const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
-  const currentTenant = StorageService.getCurrentTenant();
-
-  useEffect(() => {
-    const handleWlUpdate = () => {
-      setWhiteLabel(StorageService.getWhiteLabel());
-    };
-    window.addEventListener('whiteLabelUpdated', handleWlUpdate);
-    window.addEventListener('storage', handleWlUpdate);
-    return () => {
-      window.removeEventListener('whiteLabelUpdated', handleWlUpdate);
-      window.removeEventListener('storage', handleWlUpdate);
-    };
-  }, []);
-
   const [cronMessage, setCronMessage] = useState<string | null>(null);
 
   // System Status Popover state
@@ -245,39 +230,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-4 flex items-center justify-between gap-4 shrink-0 z-30 transition-colors select-none">
-      {/* ESQUERDA: Logo do tenant + nome/contexto do tenant */}
-      <div className="flex items-center gap-3 min-w-0 max-w-[260px] sm:max-w-xs shrink-0">
-        <div className="h-8 w-8 flex items-center justify-center shrink-0">
-          {whiteLabel.logoUrl ? (
-            <img
-              src={whiteLabel.logoUrl}
-              alt={whiteLabel.companyName}
-              className="h-full w-full object-contain rounded-lg shadow-2xs"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs ring-1 ring-blue-500/30">
-              {whiteLabel.companyName.slice(0, 2).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 truncate">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white truncate block leading-tight">
-              {whiteLabel.companyName || 'SENTINEL CONSIG'}
-            </span>
-            <span className="px-1.5 py-0.2 rounded text-[8.5px] font-black uppercase tracking-wider bg-blue-500/10 dark:bg-blue-400/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
-              ENTERPRISE
-            </span>
-          </div>
-          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate block leading-none mt-0.5">
-            {currentTenant.name || 'Mesa Operacional'}
-          </span>
-        </div>
-      </div>
-
       {/* CENTRO: Busca Global */}
-      <div className="flex-1 max-w-xl mx-auto">
+      <div className="flex-1 max-w-xl">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
