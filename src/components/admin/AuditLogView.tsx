@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   ShieldAlert,
   Search,
@@ -22,10 +22,18 @@ import {
   Terminal,
   Clock,
   UserCheck,
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  Building2,
+  User,
+  Shield,
+  Loader2,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
+import { AuditApiService, AuditLogApiEntry, AuditLogPagination } from '../../services/auditApiService';
 import { formatDate } from '../../lib/utils';
-import { AuditLog, SystemExceptionLog } from '../../types';
+import { SystemExceptionLog } from '../../types';
 import { ActionBar } from '../ui/ActionBar';
 
 type TabMode = 'SUMMARY' | 'ALL_LOGS' | 'EXCEPTIONS';
@@ -33,24 +41,70 @@ type BulkFilter = 'ALL' | 'IMPORT' | 'DELETE' | 'STATUS';
 type ExceptionSeverityFilter = 'ALL' | 'CRITICAL' | 'ERROR' | 'WARNING' | 'INFO';
 
 export const AuditLogView: React.FC = () => {
-  const [logs, setLogs] = useState<AuditLog[]>(() => StorageService.getAuditLogs());
-  const [exceptions, setExceptions] = useState<SystemExceptionLog[]>(() =>
-    StorageService.getSystemExceptionLogs()
-  );
+  // PostgreSQL Server-Side Audit Logs State
+  const [logs, setLogs] = useState<AuditLogApiEntry[]>([]);
+  const [pagination, setPagination] = useState<AuditLogPagination>({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Filters for Server-Side Audit Query
   const [activeTab, setActiveTab] = useState<TabMode>('SUMMARY');
   const [bulkFilter, setBulkFilter] = useState<BulkFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAction, setSelectedAction] = useState<string>('ALL');
+  const [selectedEntity, setSelectedEntity] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  // Exception filters & state
+  // Exceptions state (Diagnostic center)
+  const [exceptions, setExceptions] = useState<SystemExceptionLog[]>(() =>
+    StorageService.getSystemExceptionLogs()
+  );
   const [exceptionSeverity, setExceptionSeverity] = useState<ExceptionSeverityFilter>('ALL');
   const [exceptionOperation, setExceptionOperation] = useState<string>('ALL');
   const [exceptionStatusFilter, setExceptionStatusFilter] = useState<'ALL' | 'OPEN' | 'RESOLVED'>('ALL');
   const [expandedExceptionId, setExpandedExceptionId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Fetch audit logs from PostgreSQL via AuditApiService
+  const fetchLogs = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const response = await AuditApiService.fetchAuditLogs({
+        page,
+        limit: 50,
+        search: searchTerm.trim() || undefined,
+        action: selectedAction !== 'ALL' ? selectedAction : undefined,
+        entity: selectedEntity !== 'ALL' ? selectedEntity : undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      setLogs(response.data);
+      setPagination(response.pagination);
+    } catch (err: any) {
+      console.error('[AuditLogView] Erro ao carregar logs de auditoria:', err);
+      setLoadError(err?.message || 'Falha ao sincronizar trilha de auditoria com PostgreSQL.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, searchTerm, selectedAction, selectedEntity, startDate, endDate]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
   const refreshLogs = () => {
-    setLogs(StorageService.getAuditLogs());
+    fetchLogs();
     setExceptions(StorageService.getSystemExceptionLogs());
   };
 
@@ -110,27 +164,17 @@ export const AuditLogView: React.FC = () => {
     return exceptions.filter(e => !e.resolved).length;
   }, [exceptions]);
 
-  // Filter for all logs
-  const filteredLogs = useMemo(() => {
-    return logs.filter(l => {
-      if (!searchTerm.trim()) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        l.action.toLowerCase().includes(term) ||
-        l.entity.toLowerCase().includes(term) ||
-        l.userName.toLowerCase().includes(term) ||
-        (l.newData && l.newData.toLowerCase().includes(term))
-      );
-    });
-  }, [logs, searchTerm]);
-
-  // Extract bulk & import operations
+  // Extract bulk & import operations for Summary Tab
   const bulkOperations = useMemo(() => {
     return logs.filter(l =>
       l.action === 'IMPORTAR_EXCEL' ||
       l.action === 'EXCLUIR_PROPOSTAS_EM_LOTE' ||
       l.action === 'EXCLUIR_PROPOSTA' ||
-      l.action === 'ALTERACAO_STATUS_EM_LOTE'
+      l.action === 'PROPOSAL_DELETED' ||
+      l.action === 'ALTERACAO_STATUS_EM_LOTE' ||
+      l.action === 'SENTINELA_QUERY' ||
+      l.action === 'DOCUMENT_UPLOADED' ||
+      l.action === 'DOCUMENT_DELETED'
     );
   }, [logs]);
 
@@ -138,21 +182,11 @@ export const AuditLogView: React.FC = () => {
   const filteredBulkOps = useMemo(() => {
     return bulkOperations.filter(op => {
       if (bulkFilter === 'IMPORT' && op.action !== 'IMPORTAR_EXCEL') return false;
-      if (bulkFilter === 'DELETE' && !op.action.includes('EXCLUIR')) return false;
+      if (bulkFilter === 'DELETE' && !op.action.includes('EXCLUIR') && !op.action.includes('DELETED')) return false;
       if (bulkFilter === 'STATUS' && op.action !== 'ALTERACAO_STATUS_EM_LOTE') return false;
-
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        return (
-          op.action.toLowerCase().includes(term) ||
-          op.userName.toLowerCase().includes(term) ||
-          (op.newData && op.newData.toLowerCase().includes(term)) ||
-          (op.previousData && op.previousData.toLowerCase().includes(term))
-        );
-      }
       return true;
     });
-  }, [bulkOperations, bulkFilter, searchTerm]);
+  }, [bulkOperations, bulkFilter]);
 
   // Compute summary metrics for bulk operations
   const summaryMetrics = useMemo(() => {
@@ -177,7 +211,7 @@ export const AuditLogView: React.FC = () => {
         } else if (op.action === 'EXCLUIR_PROPOSTAS_EM_LOTE') {
           totalDeleteBatches++;
           totalDeletedProposals += Number(parsed.count || 0);
-        } else if (op.action === 'EXCLUIR_PROPOSTA') {
+        } else if (op.action === 'EXCLUIR_PROPOSTA' || op.action === 'PROPOSAL_DELETED') {
           totalDeletedProposals += 1;
         } else if (op.action === 'ALTERACAO_STATUS_EM_LOTE') {
           totalStatusBatches++;
@@ -206,7 +240,7 @@ export const AuditLogView: React.FC = () => {
     };
   }, [bulkOperations]);
 
-  const parseLogDetails = (log: AuditLog) => {
+  const parseLogDetails = (log: AuditLogApiEntry) => {
     let successCount = 0;
     let failCount = 0;
     let errors: string[] = [];
@@ -231,16 +265,22 @@ export const AuditLogView: React.FC = () => {
           observation = parsed.observation || '';
           errors = Array.isArray(parsed.errors) ? parsed.errors : [];
           failCount = errors.length;
-        }
-      } else if (log.previousData) {
-        const parsed = JSON.parse(log.previousData);
-        if (log.action === 'EXCLUIR_PROPOSTA') {
+        } else if (log.action === 'SENTINELA_QUERY') {
           successCount = 1;
-          deletedAdes = [parsed.proposalNumber || log.entityId];
+          observation = parsed.promptSnippet ? `Pergunta: "${parsed.promptSnippet}"` : '';
+          if (Array.isArray(parsed.toolsUsed) && parsed.toolsUsed.length > 0) {
+            successfulItems = parsed.toolsUsed.map((t: string) => `Ferramenta: ${t}`);
+          }
+        }
+      } else if (log.oldData) {
+        const parsed = JSON.parse(log.oldData);
+        if (log.action === 'EXCLUIR_PROPOSTA' || log.action === 'PROPOSAL_DELETED') {
+          successCount = 1;
+          deletedAdes = [parsed.proposalNumber || log.entityId || 'Proposta'];
         }
       }
     } catch {
-      // JSON parse error handled safely
+      // JSON parse fallback
     }
 
     return { successCount, failCount, errors, successfulItems, deletedAdes, observation };
@@ -250,12 +290,18 @@ export const AuditLogView: React.FC = () => {
     <div className="space-y-4">
       {/* Header with ActionBar */}
       <ActionBar
-        title="Trilha de Auditoria & Operações do Sistema"
-        subtitle="Registro imutável de segurança com rastreabilidade de exclusões em massa, importações e exceções operacionais"
-        badgeText="CONFORMIDADE & AUDITORIA"
+        title="Trilha de Auditoria & Governança"
+        subtitle="Registro imutável de segurança alimentado exclusivamente pelo PostgreSQL com isolamento multi-tenant rigoroso"
+        badgeText="POSTGRESQL AUDIT TRAIL"
         badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Source of truth badge */}
+            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+              <Database className="h-3 w-3" />
+              <span>PostgreSQL Source of Truth</span>
+            </div>
+
             {/* Tab Switcher */}
             <div className="flex rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 p-1">
               <button
@@ -278,7 +324,7 @@ export const AuditLogView: React.FC = () => {
                 }`}
               >
                 <FileCheck2 className="h-3.5 w-3.5" />
-                <span>Trilha Completa ({logs.length})</span>
+                <span>Trilha Completa ({pagination.total})</span>
               </button>
               <button
                 onClick={() => setActiveTab('EXCEPTIONS')}
@@ -300,14 +346,22 @@ export const AuditLogView: React.FC = () => {
 
             <button
               onClick={refreshLogs}
-              className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
-              title="Atualizar Logs"
+              disabled={isLoading}
+              className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer disabled:opacity-50"
+              title="Atualizar Logs do PostgreSQL"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         }
       />
+
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+          <span>{loadError}</span>
+        </div>
+      )}
 
       {activeTab === 'SUMMARY' ? (
         <div className="space-y-4">
@@ -405,7 +459,7 @@ export const AuditLogView: React.FC = () => {
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                  Auditoria 100% íntegra
+                  Auditoria 100% PostgreSQL
                 </span>
               </div>
             </div>
@@ -465,7 +519,10 @@ export const AuditLogView: React.FC = () => {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Buscar operações..."
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:outline-hidden"
               />
@@ -474,7 +531,12 @@ export const AuditLogView: React.FC = () => {
 
           {/* Bulk Operations List */}
           <div className="space-y-3">
-            {filteredBulkOps.length === 0 ? (
+            {isLoading ? (
+              <div className="p-12 text-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Carregando trilha de auditoria do PostgreSQL...</p>
+              </div>
+            ) : filteredBulkOps.length === 0 ? (
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-2xs">
                 <Layers className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Nenhuma operação em lote registrada</p>
@@ -489,8 +551,9 @@ export const AuditLogView: React.FC = () => {
                 const isExpanded = expandedLogId === op.id;
 
                 const isImport = op.action === 'IMPORTAR_EXCEL';
-                const isDelete = op.action.includes('EXCLUIR');
+                const isDelete = op.action.includes('EXCLUIR') || op.action.includes('DELETED');
                 const isStatus = op.action === 'ALTERACAO_STATUS_EM_LOTE';
+                const isSentinela = op.action === 'SENTINELA_QUERY';
 
                 return (
                   <div
@@ -506,6 +569,8 @@ export const AuditLogView: React.FC = () => {
                               ? 'bg-blue-600 text-white'
                               : isDelete
                               ? 'bg-rose-600 text-white'
+                              : isSentinela
+                              ? 'bg-purple-600 text-white'
                               : 'bg-indigo-600 text-white'
                           }`}
                         >
@@ -513,6 +578,8 @@ export const AuditLogView: React.FC = () => {
                             <FileSpreadsheet className="h-5 w-5" />
                           ) : isDelete ? (
                             <Trash2 className="h-5 w-5" />
+                          ) : isSentinela ? (
+                            <Shield className="h-5 w-5" />
                           ) : (
                             <Layers className="h-5 w-5" />
                           )}
@@ -526,22 +593,33 @@ export const AuditLogView: React.FC = () => {
                                   ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                                   : isDelete
                                   ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                  : isSentinela
+                                  ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800'
                                   : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
                               }`}
                             >
                               {isImport
                                 ? 'Importação de Planilha Excel'
                                 : isDelete
-                                ? 'Exclusão em Lote / Propostas'
+                                ? 'Exclusão de Registros / Lote'
+                                : isSentinela
+                                ? 'Consulta Sentinela AI'
                                 : 'Alteração de Status em Lote'}
                             </span>
                             <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
                               {formatDate(op.createdAt)}
                             </span>
+                            {op.tenant?.name && (
+                              <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                <Building2 className="h-3 w-3" />
+                                {op.tenant.name}
+                              </span>
+                            )}
                           </div>
 
                           <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-1">
-                            Executado por: <strong className="text-slate-900 dark:text-white">{op.userName}</strong> ({op.userRole})
+                            Executado por: <strong className="text-slate-900 dark:text-white">{op.userName || op.user?.name || 'Sistema'}</strong> {op.user?.role ? `(${op.user.role})` : ''}
+                            {op.ipAddress && <span className="text-slate-400 font-mono ml-2 text-[11px]">IP: {op.ipAddress}</span>}
                           </p>
                         </div>
                       </div>
@@ -590,7 +668,7 @@ export const AuditLogView: React.FC = () => {
                                     key={i}
                                     className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[10px] font-mono font-bold"
                                   >
-                                    ADE: {ade}
+                                    {ade}
                                   </span>
                                 ))}
                               </div>
@@ -645,7 +723,7 @@ export const AuditLogView: React.FC = () => {
                         )}
 
                         <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono break-all pt-1 border-t border-slate-100 dark:border-slate-800">
-                          Identificador do Lote: {op.entityId} • Payload: {op.newData || op.previousData || '-'}
+                          Identificador do Lote: {op.entityId || '-'} • Payload: {op.newData || op.oldData || '-'}
                         </div>
                       </div>
                     )}
@@ -658,20 +736,117 @@ export const AuditLogView: React.FC = () => {
       ) : activeTab === 'ALL_LOGS' ? (
         /* Complete All Logs Table */
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Buscar por ação, usuário ou entidade..."
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:outline-hidden"
-              />
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={e => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Buscar por ação, usuário, entidade ou dados..."
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Action Filter */}
+                <select
+                  value={selectedAction}
+                  onChange={e => {
+                    setSelectedAction(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                >
+                  <option value="ALL">Todas as Ações</option>
+                  <option value="IMPORTAR_EXCEL">IMPORTAR_EXCEL</option>
+                  <option value="EXCLUIR_PROPOSTA">EXCLUIR_PROPOSTA</option>
+                  <option value="PROPOSAL_DELETED">PROPOSAL_DELETED</option>
+                  <option value="ALTERACAO_STATUS_EM_LOTE">ALTERACAO_STATUS_EM_LOTE</option>
+                  <option value="SENTINELA_QUERY">SENTINELA_QUERY</option>
+                  <option value="DOCUMENT_UPLOADED">DOCUMENT_UPLOADED</option>
+                  <option value="DOCUMENT_DOWNLOADED">DOCUMENT_DOWNLOADED</option>
+                  <option value="DOCUMENT_DELETED">DOCUMENT_DELETED</option>
+                  <option value="USER_CREATED">USER_CREATED</option>
+                  <option value="USER_DELETED">USER_DELETED</option>
+                  <option value="TENANT_CREATED">TENANT_CREATED</option>
+                  <option value="TENANT_UPDATED">TENANT_UPDATED</option>
+                  <option value="TENANT_SUSPENDED">TENANT_SUSPENDED</option>
+                  <option value="TENANT_REACTIVATED">TENANT_REACTIVATED</option>
+                  <option value="admin.context_entered">admin.context_entered</option>
+                  <option value="admin.context_exited">admin.context_exited</option>
+                </select>
+
+                {/* Entity Filter */}
+                <select
+                  value={selectedEntity}
+                  onChange={e => {
+                    setSelectedEntity(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                >
+                  <option value="ALL">Todas as Entidades</option>
+                  <option value="Proposal">Proposal</option>
+                  <option value="ClientDocument">ClientDocument</option>
+                  <option value="User">User</option>
+                  <option value="Tenant">Tenant</option>
+                  <option value="SentinelaAI">SentinelaAI</option>
+                  <option value="System">System</option>
+                </select>
+
+                {/* Date Inputs */}
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-200"
+                  title="Data Inicial"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-200"
+                  title="Data Final"
+                />
+
+                {(startDate || endDate || selectedAction !== 'ALL' || selectedEntity !== 'ALL' || searchTerm) && (
+                  <button
+                    onClick={() => {
+                      setSelectedAction('ALL');
+                      setSelectedEntity('ALL');
+                      setStartDate('');
+                      setEndDate('');
+                      setSearchTerm('');
+                      setPage(1);
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  >
+                    Limpar Filtros
+                  </button>
+                )}
+              </div>
             </div>
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              {filteredLogs.length} registro(s) de auditoria
-            </span>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+              <span>
+                Exibindo <strong>{logs.length}</strong> de <strong>{pagination.total}</strong> registros (Página {pagination.page} de {pagination.totalPages || 1})
+              </span>
+              <span className="text-[11px] text-slate-400">
+                PostgreSQL • AuditLog Oficial • Não editável
+              </span>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
@@ -683,42 +858,93 @@ export const AuditLogView: React.FC = () => {
                     <th className="px-4 py-3">Usuário</th>
                     <th className="px-4 py-3">Ação</th>
                     <th className="px-4 py-3">Entidade</th>
+                    <th className="px-4 py-3">IP / Origem</th>
                     <th className="px-4 py-3">Detalhes / Dados</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {filteredLogs.map(l => (
-                    <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
-                        {formatDate(l.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
-                        {l.userName} ({l.userRole})
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded font-mono font-bold px-2 py-0.5 text-[10px] border ${
-                            l.action.includes('EXCLUIR')
-                              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                              : l.action.includes('IMPORT')
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                          }`}
-                        >
-                          {l.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">
-                        {l.entity} ({l.entityId})
-                      </td>
-                      <td className="px-4 py-3 max-w-md truncate text-slate-500 dark:text-slate-400 font-mono text-[11px]" title={l.newData || l.previousData}>
-                        {l.newData || l.previousData || '-'}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
+                        Carregando registros do PostgreSQL...
                       </td>
                     </tr>
-                  ))}
+                  ) : logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                        Nenhum registro de auditoria encontrado com os filtros selecionados.
+                      </td>
+                    </tr>
+                  ) : (
+                    logs.map(l => (
+                      <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                          {formatDate(l.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                          {l.userName || l.user?.name || 'Sistema'}
+                          {l.user?.role && (
+                            <span className="text-[10px] text-slate-400 font-normal ml-1">({l.user.role})</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span
+                            className={`rounded font-mono font-bold px-2 py-0.5 text-[10px] border ${
+                              l.action.includes('EXCLUIR') || l.action.includes('DELETED') || l.action.includes('SUSPENDED')
+                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                : l.action.includes('IMPORT') || l.action.includes('CREATED') || l.action.includes('REACTIVATED')
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : l.action.includes('SENTINELA')
+                                ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                            }`}
+                          >
+                            {l.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                          {l.entity} {l.entityId ? `(${l.entityId})` : ''}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                          {l.ipAddress || '127.0.0.1'}
+                        </td>
+                        <td className="px-4 py-3 max-w-md truncate text-slate-500 dark:text-slate-400 font-mono text-[11px]" title={l.newData || l.oldData || '-'}>
+                          {l.newData || l.oldData || '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination footer */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Página <strong>{pagination.page}</strong> de <strong>{pagination.totalPages}</strong>
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={!pagination.hasPrevPage || isLoading}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                    disabled={!pagination.hasNextPage || isLoading}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Próxima
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -986,4 +1212,3 @@ export const AuditLogView: React.FC = () => {
     </div>
   );
 };
-

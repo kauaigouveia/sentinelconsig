@@ -34,6 +34,7 @@ import { SaasUsageService } from './server/services/saasUsageService.js';
 import { SaasLimitsService } from './server/services/saasLimitsService.js';
 import { TenantHealthService } from './server/services/tenantHealthService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
+import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -349,11 +350,29 @@ async function auditAndEnsureMasterUser() {
       }
 
       if (!dbUser) {
+        // Audit log failed login
+        await AuditLogService.record(prisma, {
+          tenantId: domainResolution.tenant?.id || null,
+          action: 'LOGIN_FAILED',
+          entity: 'AUTH',
+          oldData: { email: cleanEmail, reason: 'Usuário não encontrado' },
+          req,
+        });
         return res.status(401).json({ message: 'Credenciais inválidas ou usuário não encontrado.' });
       }
 
       // User status check
       if (!dbUser.active) {
+        await AuditLogService.record(prisma, {
+          tenantId: dbUser.tenantId || domainResolution.tenant?.id || null,
+          userId: dbUser.id,
+          userName: dbUser.name,
+          action: 'LOGIN_FAILED',
+          entity: 'AUTH',
+          entityId: dbUser.id,
+          oldData: { email: cleanEmail, reason: 'Usuário desativado' },
+          req,
+        });
         return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
@@ -367,6 +386,16 @@ async function auditAndEnsureMasterUser() {
           console.warn(
             `[AUTH REJECTED] Usuário '${cleanEmail}' (Tenant: ${dbUser.tenantId}) tentou autenticar no domínio do Tenant '${domainResolution.tenant.name}' (${domainResolution.tenant.id})`
           );
+          await AuditLogService.record(prisma, {
+            tenantId: domainResolution.tenant.id,
+            userId: dbUser.id,
+            userName: dbUser.name,
+            action: 'LOGIN_FAILED',
+            entity: 'AUTH',
+            entityId: dbUser.id,
+            oldData: { email: cleanEmail, reason: 'Acesso negado: domínio de outra organização' },
+            req,
+          });
           return res.status(403).json({
             message: 'Este usuário não pertence a esta organização.',
           });
@@ -375,11 +404,31 @@ async function auditAndEnsureMasterUser() {
 
       // Tenant status check (Instant suspension blocker)
       if (dbUser.tenant && (dbUser.tenant.status === 'SUSPENDED' || dbUser.tenant.status === 'CANCELLED')) {
+        await AuditLogService.record(prisma, {
+          tenantId: dbUser.tenantId,
+          userId: dbUser.id,
+          userName: dbUser.name,
+          action: 'LOGIN_FAILED',
+          entity: 'AUTH',
+          entityId: dbUser.id,
+          oldData: { email: cleanEmail, reason: 'Organização/Tenant suspenso ou cancelado' },
+          req,
+        });
         return res.status(403).json({ message: 'Tenant suspenso.' });
       }
 
       // Password hash check
       if (dbUser.passwordHash !== cleanPassword && !dbUser.passwordHash.includes(cleanPassword)) {
+        await AuditLogService.record(prisma, {
+          tenantId: dbUser.tenantId,
+          userId: dbUser.id,
+          userName: dbUser.name,
+          action: 'LOGIN_FAILED',
+          entity: 'AUTH',
+          entityId: dbUser.id,
+          oldData: { email: cleanEmail, reason: 'Senha incorreta' },
+          req,
+        });
         return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
@@ -426,6 +475,21 @@ async function auditAndEnsureMasterUser() {
         path: '/',
       });
 
+      // Audit log LOGIN_SUCCESS (Safe, no passwords or tokens)
+      await AuditLogService.record(prisma, {
+        tenantId: dbUser.tenantId || null,
+        userId: dbUser.id,
+        userName: dbUser.name,
+        action: 'LOGIN_SUCCESS',
+        entity: 'AUTH',
+        entityId: dbUser.id,
+        newData: {
+          role: dbUser.role,
+          tenantId: dbUser.tenantId,
+        },
+        req,
+      });
+
       return res.json({
         success: true,
         user: safeUser,
@@ -464,13 +528,25 @@ async function auditAndEnsureMasterUser() {
       const token = extractSessionToken(req);
       if (token) {
         try {
-          const session = await prisma.session.findUnique({ where: { token } });
+          const session = await prisma.session.findUnique({
+            where: { token },
+            include: { user: true },
+          });
           if (session) {
             AdminContextManager.clearContext(session.id);
+            await AuditLogService.record(prisma, {
+              tenantId: session.user?.tenantId || null,
+              userId: session.userId,
+              userName: session.user?.name || null,
+              action: 'LOGOUT',
+              entity: 'AUTH',
+              entityId: session.userId,
+              req,
+            });
             await prisma.session.deleteMany({ where: { token } });
           }
         } catch (e) {
-          // session already removed
+          // session already removed or failed
         }
       }
       res.clearCookie('cg_session_id', { path: '/' });
@@ -575,6 +651,16 @@ async function auditAndEnsureMasterUser() {
           passwordHash: String(newPassword).trim(),
           mustChangePassword: false,
         },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.user?.tenantId || null,
+        userId: session.userId,
+        userName: session.user?.name || null,
+        action: 'PASSWORD_CHANGED',
+        entity: 'AUTH',
+        entityId: session.userId,
+        req,
       });
 
       return res.json({ success: true, message: 'Senha alterada com sucesso.' });
@@ -847,11 +933,28 @@ async function auditAndEnsureMasterUser() {
       });
 
       // Emissão pós-commit estrita por tenant
+      const clientAction = existingClient ? 'CLIENT_UPDATED' : 'CLIENT_CREATED';
       sseRegistry.broadcastToTenant(tenantId, {
-        type: existingClient ? 'CLIENT_UPDATED' : 'CLIENT_CREATED',
+        type: clientAction,
         entity: 'Client',
         entityId: client.id,
         userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: clientAction,
+        entity: 'Client',
+        entityId: client.id,
+        newData: {
+          id: client.id,
+          fullName: client.fullName,
+          cpf: maskCPF(client.cpf),
+          phone: client.phone,
+        },
+        req,
       });
 
       return res.json(client);
@@ -890,6 +993,21 @@ async function auditAndEnsureMasterUser() {
         entity: 'Client',
         entityId: id,
         userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CLIENT_DELETED',
+        entity: 'Client',
+        entityId: id,
+        oldData: {
+          id: client.id,
+          fullName: client.fullName,
+          cpf: maskCPF(client.cpf),
+        },
+        req,
       });
 
       return res.json({ success: true, message: 'Cliente removido.' });
@@ -973,6 +1091,23 @@ async function auditAndEnsureMasterUser() {
         entity: 'Proposal',
         entityId: proposal.id,
         userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PROPOSAL_CREATED',
+        entity: 'Proposal',
+        entityId: proposal.id,
+        newData: {
+          id: proposal.id,
+          proposalNumber: proposal.proposalNumber,
+          type: proposal.type,
+          contractValue: proposal.contractValue,
+          installmentValue: proposal.installmentValue,
+        },
+        req,
       });
 
       return res.json(proposal);
@@ -1119,6 +1254,41 @@ async function auditAndEnsureMasterUser() {
         entityId: result.updated.id,
         userId: session.user.id,
       });
+
+      // Audit log recording (Differentiating status change vs general proposal update)
+      if (result.isStatusChanging) {
+        await AuditLogService.record(prisma, {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'PROPOSAL_STATUS_CHANGED',
+          entity: 'Proposal',
+          entityId: result.updated.id,
+          oldData: {
+            statusId: existing.statusId,
+            standardCategory: existing.standardCategory,
+          },
+          newData: {
+            statusId: result.updated.statusId,
+            statusName: result.targetStatusName,
+            standardCategory: result.targetCategory,
+          },
+          req,
+        });
+      } else {
+        const delta = computeDelta(existing, result.updated);
+        await AuditLogService.record(prisma, {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'PROPOSAL_UPDATED',
+          entity: 'Proposal',
+          entityId: result.updated.id,
+          oldData: delta.oldDelta,
+          newData: delta.newDelta,
+          req,
+        });
+      }
 
       if (result.isStatusChanging) {
         sseRegistry.broadcastToTenant(tenantId, {
@@ -1390,6 +1560,21 @@ async function auditAndEnsureMasterUser() {
         entity: 'Proposal',
         entityId: id,
         userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PROPOSAL_DELETED',
+        entity: 'Proposal',
+        entityId: id,
+        oldData: {
+          id: proposal.id,
+          proposalNumber: proposal.proposalNumber,
+          contractValue: proposal.contractValue,
+        },
+        req,
       });
 
       return res.json({ success: true, message: 'Proposta removida.' });
@@ -1932,6 +2117,24 @@ async function auditAndEnsureMasterUser() {
         throw dbErr;
       }
 
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'DOCUMENT_UPLOADED',
+        entity: 'Document',
+        entityId: docRecord.id,
+        newData: {
+          id: docRecord.id,
+          name: docRecord.name,
+          type: docRecord.type,
+          fileSizeBytes: docRecord.fileSizeBytes,
+          clientId: docRecord.clientId,
+          proposalId: docRecord.proposalId,
+        },
+        req,
+      });
+
       return res.status(201).json({
         id: docRecord.id,
         tenantId: docRecord.tenantId,
@@ -1983,6 +2186,20 @@ async function auditAndEnsureMasterUser() {
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRecord.name)}"`);
       res.setHeader('Content-Length', buffer.length);
 
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'DOCUMENT_DOWNLOADED',
+        entity: 'Document',
+        entityId: docRecord.id,
+        newData: {
+          id: docRecord.id,
+          name: docRecord.name,
+        },
+        req,
+      });
+
       return res.send(buffer);
     } catch (err: any) {
       console.error('[API /api/documents/:id GET] Error:', err?.message || err);
@@ -2016,6 +2233,22 @@ async function auditAndEnsureMasterUser() {
       // Delete Metadata from PostgreSQL
       await prisma.clientDocument.delete({
         where: { id: docRecord.id },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'DOCUMENT_DELETED',
+        entity: 'Document',
+        entityId: docRecord.id,
+        oldData: {
+          id: docRecord.id,
+          name: docRecord.name,
+          type: docRecord.type,
+          clientId: docRecord.clientId,
+        },
+        req,
       });
 
       return res.json({ success: true, id: docRecord.id });
@@ -2438,28 +2671,152 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
-  // AUDIT LOGS API (Read-only, Tenant-scoped, No deletes/updates)
+  // AUDIT LOGS API (Read-only, Tenant-scoped, Server-side Paginated)
   // -------------------------------------------------------------
   app.get('/api/audit-logs', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
 
-      // RBAC check: Only GESTOR, MASTER, TENANT_ADMIN or PLATFORM_MASTER
-      const allowed = ['GESTOR', 'MASTER', 'TENANT_ADMIN', 'PLATFORM_MASTER'];
-      if (!allowed.includes(session.user.role)) {
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      // RBAC check: GESTOR, MASTER, TENANT_ADMIN or users with audit permissions
+      const allowedRoles = ['GESTOR', 'MASTER', 'TENANT_ADMIN', 'PLATFORM_MASTER'];
+      const hasDirectRole = allowedRoles.includes(userRole);
+      const hasExplicitPerm = hasPermission(userRole, userCustomPerms, 'users.view') || hasPermission(userRole, userCustomPerms, 'audit_logs.view');
+
+      if (!hasDirectRole && !hasExplicitPerm) {
         return res.status(403).json({ error: 'Acesso negado aos logs de auditoria.' });
       }
 
-      const logs = await prisma.auditLog.findMany({
-        where: { tenantId },
-        orderBy: { createdAt: 'desc' },
-        take: 100,
+      // Tenant isolation:
+      // PLATFORM_MASTER can view global or filter by requested tenantId.
+      // All other roles are strictly locked to session.effectiveTenantId (or session.user.tenantId).
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const requestedTenantId = req.query.tenantId as string | undefined;
+
+      let targetTenantId: string | undefined | null = effectiveTenantId;
+      if (isPlatformMaster) {
+        targetTenantId = requestedTenantId !== undefined ? requestedTenantId : undefined;
+      } else {
+        if (!effectiveTenantId) {
+          return res.status(403).json({ error: 'Tenant ativo não identificado.' });
+        }
+        targetTenantId = effectiveTenantId;
+      }
+
+      // Query params for filtering & pagination
+      const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
+      const skip = (page - 1) * limit;
+
+      const {
+        action,
+        entity,
+        entityId,
+        userId,
+        search,
+        startDate,
+        endDate,
+      } = req.query as Record<string, string | undefined>;
+
+      const where: Prisma.AuditLogWhereInput = {};
+
+      if (targetTenantId) {
+        where.tenantId = targetTenantId;
+      }
+
+      if (action && action.trim() !== '' && action !== 'ALL') {
+        where.action = action.trim();
+      }
+
+      if (entity && entity.trim() !== '' && entity !== 'ALL') {
+        where.entity = entity.trim();
+      }
+
+      if (entityId && entityId.trim() !== '') {
+        where.entityId = { contains: entityId.trim(), mode: 'insensitive' };
+      }
+
+      if (userId && userId.trim() !== '') {
+        where.userId = userId.trim();
+      }
+
+      // Date range filtering
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) {
+          const parsedStart = new Date(startDate);
+          if (!isNaN(parsedStart.getTime())) {
+            where.createdAt.gte = parsedStart;
+          }
+        }
+        if (endDate) {
+          const parsedEnd = new Date(endDate);
+          if (!isNaN(parsedEnd.getTime())) {
+            // Include until end of day if single date provided
+            if (endDate.length === 10) {
+              parsedEnd.setHours(23, 59, 59, 999);
+            }
+            where.createdAt.lte = parsedEnd;
+          }
+        }
+      }
+
+      // Search term
+      if (search && search.trim() !== '') {
+        const term = search.trim();
+        where.OR = [
+          { action: { contains: term, mode: 'insensitive' } },
+          { entity: { contains: term, mode: 'insensitive' } },
+          { entityId: { contains: term, mode: 'insensitive' } },
+          { userName: { contains: term, mode: 'insensitive' } },
+        ];
+      }
+
+      const [total, logs] = await Promise.all([
+        prisma.auditLog.count({ where }),
+        prisma.auditLog.findMany({
+          where,
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+            tenant: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return res.json({
+        data: logs,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPrevPage: page > 1,
+        },
       });
-      return res.json(logs);
     } catch (err) {
-      return res.status(500).json({ error: 'Erro ao buscar logs de auditoria.' });
+      logger.error({ error: err }, '[GET /api/audit-logs ERROR]');
+      return res.status(500).json({ error: 'Erro ao buscar logs de auditoria no PostgreSQL.' });
     }
   });
 
@@ -5437,6 +5794,22 @@ async function auditAndEnsureMasterUser() {
         durationMs,
         generatedAt: result.generatedAt,
       }, '[SENTINELA AI QUERY PROCESSED]');
+
+      // Registrar auditoria da consulta na Sentinela AI
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'SENTINELA_QUERY',
+        entity: 'SentinelaAI',
+        entityId: 'ai-query',
+        newData: {
+          promptSnippet: String(message).trim().slice(0, 150),
+          toolsUsed: result.toolsUsed.map(t => t.toolName),
+          durationMs,
+        },
+        req,
+      });
 
       return res.json(result);
     } catch (err: any) {
