@@ -774,11 +774,14 @@ model Notification {
   proposalId String?          @map("proposal_id")
   proposal   Proposal?        @relation(fields: [proposalId], references: [id], onDelete: SetNull)
 
+  eventKey   String?          @map("event_key")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([userId])
   @@index([read])
+  @@unique([tenantId, eventKey])
   @@map("notifications")
 }
 

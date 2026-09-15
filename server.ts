@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { PrismaClient, Prisma, ProposalType, StandardStatusCategory } from '@prisma/client';
+import { PrismaClient, Prisma, ProposalType, StandardStatusCategory, PriorityLevel, NotificationType } from '@prisma/client';
 import crypto from 'crypto';
 import { logger } from './server/logger.js';
 import {
@@ -33,6 +33,7 @@ import { SentinelaAIService } from './server/services/sentinelaAIService.js';
 import { SaasUsageService } from './server/services/saasUsageService.js';
 import { SaasLimitsService } from './server/services/saasLimitsService.js';
 import { TenantHealthService } from './server/services/tenantHealthService.js';
+import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -1055,8 +1056,12 @@ async function auditAndEnsureMasterUser() {
         });
 
         // Gravar StatusHistory se o status mudou
+        let statusHistoryRecord: any = null;
+        let targetStatusName = statusName || 'Alteração de Fase';
+        let targetCategory: string | null = null;
+
         if (isStatusChanging) {
-          await tx.statusHistory.create({
+          statusHistoryRecord = await tx.statusHistory.create({
             data: {
               tenantId,
               proposalId: id,
@@ -1066,29 +1071,77 @@ async function auditAndEnsureMasterUser() {
               notes: notes || null,
             },
           });
+
+          // Determinar nome do status e categoria para classificação de relevância operacional
+          if (statusId) {
+            const ps = await tx.proposalStatus.findFirst({
+              where: { id: statusId, tenantId },
+              select: { name: true, standardCategory: true },
+            });
+            if (ps) {
+              targetStatusName = ps.name;
+              targetCategory = ps.standardCategory;
+            }
+          }
         }
 
-        return updated;
+        return {
+          updated,
+          isStatusChanging,
+          statusHistoryRecord,
+          targetStatusName,
+          targetCategory,
+        };
       });
 
-      // 4. Emissão PÓS-COMMIT garantida: somente após sucesso total da transação
+      // 4. Emissão PÓS-COMMIT garantida: somente após sucesso total da transação de negócio
       sseRegistry.broadcastToTenant(tenantId, {
         type: 'PROPOSAL_UPDATED',
         entity: 'Proposal',
-        entityId: result.id,
+        entityId: result.updated.id,
         userId: session.user.id,
       });
 
-      if (isStatusChanging) {
+      if (result.isStatusChanging) {
         sseRegistry.broadcastToTenant(tenantId, {
           type: 'STATUS_CHANGED',
           entity: 'Proposal',
-          entityId: result.id,
+          entityId: result.updated.id,
           userId: session.user.id,
         });
+
+        // 5. Persistência de Notificação PÓS-COMMIT (Desacoplada com garantia contra P2002)
+        if (result.statusHistoryRecord) {
+          try {
+            const statusNotifications = await BusinessNotificationService.onStatusChanged(prisma, {
+              tenantId,
+              operatorUserId: session.user.id,
+              operatorName: session.user.name,
+              proposal: {
+                id: existing.id,
+                proposalNumber: existing.proposalNumber,
+                assignedToId: existing.assignedToId,
+                createdById: existing.createdById,
+              },
+              statusHistoryId: result.statusHistoryRecord.id,
+              toStatusName: result.targetStatusName,
+              toCategory: result.targetCategory,
+            });
+
+            // Emissão pós-persistência de NOTIFICATION_CREATED (thin event) para destinatários
+            for (const notif of statusNotifications) {
+              BusinessNotificationService.emitNotificationCreated(tenantId, notif.id, notif.userId);
+            }
+          } catch (notifErr) {
+            logger.warn(
+              { error: notifErr, tenantId, proposalId: result.updated.id },
+              '[API PROPOSALS] Aviso ao processar notificações de status pós-commit'
+            );
+          }
+        }
       }
 
-      return res.json(result);
+      return res.json(result.updated);
     } catch (err) {
       console.error('[API PROPOSALS PATCH ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar proposta no PostgreSQL.' });
@@ -1114,29 +1167,67 @@ async function auditAndEnsureMasterUser() {
       // Validar se proposta pertence ao tenant
       const proposal = await prisma.proposal.findFirst({
         where: { id, tenantId, deletedAt: null },
+        select: {
+          id: true,
+          proposalNumber: true,
+          assignedToId: true,
+          createdById: true,
+        },
       });
 
       if (!proposal) {
         return res.status(404).json({ error: 'Proposta não encontrada neste tenant.' });
       }
 
-      const comment = await prisma.comment.create({
-        data: {
-          tenantId,
-          proposalId: id,
-          userId: session.user.id,
-          authorName: session.user.name,
-          text: String(text).trim(),
-        },
+      // 1. Transação de Negócio (Isolada e Prioritária)
+      const comment = await prisma.$transaction(async (tx) => {
+        return await tx.comment.create({
+          data: {
+            tenantId,
+            proposalId: id,
+            userId: session.user.id,
+            authorName: session.user.name,
+            text: String(text).trim(),
+          },
+        });
       });
 
-      // Emissão PÓS-COMMIT
+      // 2. Emissão PÓS-COMMIT de sinalização realtime
       sseRegistry.broadcastToTenant(tenantId, {
         type: 'COMMENT_ADDED',
         entity: 'Comment',
         entityId: comment.id,
         userId: session.user.id,
       });
+
+      // 3. Persistência de Notificação PÓS-COMMIT (Desacoplada com garantia contra P2002)
+      try {
+        const notifs = await BusinessNotificationService.onCommentAdded(prisma, {
+          tenantId,
+          authorUserId: session.user.id,
+          authorName: session.user.name,
+          proposal: {
+            id: proposal.id,
+            proposalNumber: proposal.proposalNumber,
+            assignedToId: proposal.assignedToId,
+            createdById: proposal.createdById,
+          },
+          comment: {
+            id: comment.id,
+            text: comment.text,
+          },
+        });
+
+        // Emissão pós-persistência de NOTIFICATION_CREATED (thin event) para destinatários
+        for (const notif of notifs) {
+          BusinessNotificationService.emitNotificationCreated(tenantId, notif.id, notif.userId);
+        }
+      } catch (notifErr) {
+        logger.warn(
+          { error: notifErr, tenantId, commentId: comment.id },
+          '[API PROPOSALS COMMENTS] Aviso ao processar notificações de comentário pós-commit'
+        );
+      }
 
       return res.json(comment);
     } catch (err) {
@@ -1363,41 +1454,86 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  // POST /api/notifications - Helper de criação com NOTIFICATION_CREATED pós-commit
+  // POST /api/notifications - Helper de criação com autorização estrita, validação de destinatário e emissão pós-commit
   app.post('/api/notifications', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      const effectiveTenantId = session?.user?.tenantId;
+      if (!session?.user || !effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
 
-      const { targetUserId, title, message, linkUrl, priority, type, proposalId } = req.body;
-      if (!title || !message) {
+      // Validação de Tenant Spoofing no body: rejeitar qualquer tentativa de cross-tenant
+      if (req.body.tenantId && req.body.tenantId !== effectiveTenantId) {
+        return res.status(403).json({ error: 'Operação não permitida: tenant divergente da sessão.' });
+      }
+
+      // Verificação de Autorização RBAC:
+      // Exige permissão explícita 'notifications.manage' ou papel PLATFORM_MASTER
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions;
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+      const canManage = isPlatformMaster || hasPermission(userRole, userCustomPerms, 'notifications.manage');
+
+      if (!canManage) {
+        return res.status(403).json({ error: 'Acesso negado: permissão notifications.manage necessária.' });
+      }
+
+      const { targetUserId, userId, title, message, linkUrl, priority, type, proposalId } = req.body;
+      if (!title || !message || typeof title !== 'string' || typeof message !== 'string' || !title.trim() || !message.trim()) {
         return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
       }
 
+      // Validação do Destinatário (targetUserId ou userId)
+      const finalTargetId = targetUserId || userId || session.user.id;
+      const targetUser = await prisma.user.findFirst({
+        where: { id: finalTargetId },
+        select: { id: true, tenantId: true, role: true, active: true },
+      });
+
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Destinatário não encontrado.' });
+      }
+
+      // Bloquear cross-tenant target: o destinatário DEVE pertencer ao mesmo tenant da sessão
+      if (targetUser.tenantId !== effectiveTenantId) {
+        return res.status(403).json({ error: 'Acesso negado: destinatário pertence a outro tenant.' });
+      }
+
+      // Bloquear envio para PLATFORM_MASTER caso o emissor não seja PLATFORM_MASTER
+      if (targetUser.role === 'PLATFORM_MASTER' && !isPlatformMaster) {
+        return res.status(403).json({ error: 'Acesso negado: não é permitido enviar notificações a administradores de plataforma.' });
+      }
+
+      const validPriorities: PriorityLevel[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+      const finalPriority = validPriorities.includes(priority) ? priority : 'MEDIUM';
+
+      const validTypes: NotificationType[] = ['SYSTEM', 'PROPOSAL', 'TASK', 'SLA', 'CIP', 'ADMIN'];
+      const finalType = validTypes.includes(type) ? type : 'SYSTEM';
+
       const notification = await prisma.notification.create({
         data: {
-          tenantId,
-          userId: targetUserId || session.user.id,
-          title,
-          message,
-          linkUrl: linkUrl || null,
-          priority: priority || 'MEDIUM',
-          type: type || 'SYSTEM',
+          tenantId: effectiveTenantId,
+          userId: targetUser.id,
+          title: title.trim().slice(0, 200),
+          message: message.trim().slice(0, 1000),
+          linkUrl: linkUrl ? String(linkUrl).trim().slice(0, 500) : null,
+          priority: finalPriority,
+          type: finalType,
           proposalId: proposalId || null,
         },
       });
 
-      // Emissão pós-commit de NOTIFICATION_CREATED (seguro, sem dados sensíveis)
-      sseRegistry.broadcastToTenant(tenantId, {
-        type: 'NOTIFICATION_CREATED',
-        entity: 'Notification',
-        entityId: notification.id,
-        userId: notification.userId || undefined,
-      });
+      // Emissão pós-commit de NOTIFICATION_CREATED (thin event via Pusher e SSE)
+      BusinessNotificationService.emitNotificationCreated(
+        effectiveTenantId,
+        notification.id,
+        notification.userId
+      );
 
-      return res.json(notification);
+      return res.status(201).json(notification);
     } catch (err) {
+      logger.error({ err }, '[API] Erro ao criar notificação manual');
       return res.status(500).json({ error: 'Erro ao criar notificação.' });
     }
   });
@@ -1463,29 +1599,58 @@ async function auditAndEnsureMasterUser() {
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id, title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body;
       if (!title) return res.status(400).json({ error: 'Título é obrigatório.' });
-      const task = await prisma.task.create({
-        data: {
-          id: id || undefined,
-          tenantId,
-          title,
-          description: description || null,
-          category: category || 'OPERACIONAL',
-          priority: priority || 'MEDIUM',
-          dueDate: dueDate ? new Date(dueDate) : null,
-          completed: Boolean(completed),
-          assignedToId: assignedToId || null,
-          proposalId: proposalId || null,
-          clientId: clientId || null,
-        },
+
+      // 1. Transação de Negócio (Isolada e Prioritária)
+      const task = await prisma.$transaction(async (tx) => {
+        return await tx.task.create({
+          data: {
+            id: id || undefined,
+            tenantId,
+            title,
+            description: description || null,
+            category: category || 'OPERACIONAL',
+            priority: priority || 'MEDIUM',
+            dueDate: dueDate ? new Date(dueDate) : null,
+            completed: Boolean(completed),
+            assignedToId: assignedToId || null,
+            proposalId: proposalId || null,
+            clientId: clientId || null,
+          },
+        });
       });
 
-      // Emissão pós-commit de TASK_CREATED
+      // 2. Emissão PÓS-COMMIT de TASK_CREATED
       sseRegistry.broadcastToTenant(tenantId, {
         type: 'TASK_CREATED',
         entity: 'Task',
         entityId: task.id,
         userId: session.user.id,
       });
+
+      // 3. Persistência de Notificação PÓS-COMMIT (Desacoplada com garantia contra P2002)
+      try {
+        const notif = await BusinessNotificationService.onTaskCreated(prisma, {
+          tenantId,
+          creatorUserId: session.user.id,
+          task: {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            assignedToId: task.assignedToId,
+            proposalId: task.proposalId,
+          },
+        });
+
+        // Emissão pós-persistência de NOTIFICATION_CREATED (thin event) se gerada
+        if (notif) {
+          BusinessNotificationService.emitNotificationCreated(tenantId, notif.id, notif.userId);
+        }
+      } catch (notifErr) {
+        logger.warn(
+          { error: notifErr, tenantId, taskId: task.id },
+          '[API TASKS] Aviso ao processar notificações de tarefa pós-commit'
+        );
+      }
 
       return res.json(task);
     } catch (err) {
