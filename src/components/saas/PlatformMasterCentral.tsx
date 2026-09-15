@@ -531,9 +531,9 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Header with Standardized ActionBar */}
       <ActionBar
-        title="Central de Gestão SaaS, Tenants & Domínios"
-        subtitle="Controle corporativo de instâncias isoladas, resolução de domínios, white label, cotas e suspensão imediata"
-        badge="PLATFORM MASTER ROOT"
+        title="Central de Empresas & Assinaturas"
+        subtitle="Controle corporativo de empresas, planos, domínios e personalização da plataforma"
+        badge="PLATFORM MASTER"
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -550,7 +550,7 @@ export const PlatformMasterCentral: React.FC = () => {
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>Nova Empresa (Tenant)</span>
+              <span>Nova Empresa</span>
             </button>
           </div>
         }
@@ -567,7 +567,7 @@ export const PlatformMasterCentral: React.FC = () => {
       {/* Global Infrastructure KPIs via MetricCard */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard
-          label="Empresas (Tenants)"
+          label="Empresas Cadastradas"
           value={totalTenants}
           helperText={`${activeTenants} ativas${suspendedTenants > 0 ? ` · ${suspendedTenants} suspensas` : ''}`}
           tone="primary"
@@ -581,13 +581,13 @@ export const PlatformMasterCentral: React.FC = () => {
         <MetricCard
           label="Domínios Customizados"
           value={tenants.filter((t) => t.customDomain).length}
-          helperText="Resoluções CNAME ativas"
+          helperText="Endereços personalizados ativos"
           tone="warning"
         />
         <MetricCard
-          label="Banco de Dados"
-          value="PostgreSQL"
-          helperText="Multi-tenancy com isolamento"
+          label="Segurança de Dados"
+          value="Ambiente Seguro"
+          helperText="Isolamento total por empresa"
           tone="success"
         />
       </div>
@@ -603,7 +603,7 @@ export const PlatformMasterCentral: React.FC = () => {
           }`}
         >
           <Building2 className="h-4 w-4" />
-          Lista de Empresas (Tenants)
+          Lista de Empresas
         </button>
         <button
           onClick={() => setActiveTab('health_consumo')}
@@ -783,7 +783,7 @@ export const PlatformMasterCentral: React.FC = () => {
                             <button
                               onClick={() => handleStartContextSwitch(t.id, t.name)}
                               className="px-2.5 py-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 hover:bg-purple-100 dark:hover:bg-purple-900/60 rounded border border-purple-200 dark:border-purple-800 transition-all cursor-pointer"
-                              title="Inspecionar dados operacionais deste tenant"
+                              title="Inspecionar dados operacionais desta empresa"
                             >
                               Inspecionar
                             </button>
@@ -792,7 +792,7 @@ export const PlatformMasterCentral: React.FC = () => {
                           <button
                             onClick={() => handleOpenEditModal(t)}
                             className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
-                            title="Editar Tenant & White Label"
+                            title="Editar Empresa & Identidade Visual"
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
@@ -801,7 +801,7 @@ export const PlatformMasterCentral: React.FC = () => {
                             <button
                               onClick={() => handleSuspendTenant(t.id, t.name)}
                               className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded cursor-pointer"
-                              title="Suspender Tenant Imediatamente"
+                              title="Suspender Empresa Imediatamente"
                             >
                               <Lock className="h-3.5 w-3.5" />
                             </button>
@@ -809,7 +809,7 @@ export const PlatformMasterCentral: React.FC = () => {
                             <button
                               onClick={() => handleReactivateTenant(t.id)}
                               className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded cursor-pointer"
-                              title="Reativar Tenant"
+                              title="Reativar Empresa"
                             >
                               <Unlock className="h-3.5 w-3.5" />
                             </button>
@@ -830,13 +830,13 @@ export const PlatformMasterCentral: React.FC = () => {
           {/* Health Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total de Tenants</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total de Empresas</span>
               <div className="text-2xl font-black text-slate-950 dark:text-slate-50 mt-1">{overviewData.length}</div>
               <p className="text-xs text-slate-500 mt-1">Empresas registradas</p>
             </div>
             
             <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/60 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 font-bold">Tenants Saudáveis</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 font-bold">Empresas em Operação Normal</span>
               <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
                 {overviewData.filter(d => d.healthStatus === 'EXCELLENT' || d.healthStatus === 'GOOD').length}
               </div>
@@ -844,7 +844,7 @@ export const PlatformMasterCentral: React.FC = () => {
             </div>
 
             <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/60 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-500 font-bold">Tenants em Atenção</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-500 font-bold">Empresas em Atenção</span>
               <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
                 {overviewData.filter(d => d.healthStatus === 'ATTENTION').length}
               </div>
@@ -860,7 +860,7 @@ export const PlatformMasterCentral: React.FC = () => {
             </div>
           </div>
 
-          {/* Tenants Next to Limit List / Warning list */}
+          {/* Warning list */}
           {overviewData.some(d => d.users.percent >= 95 || d.storage.percent >= 95) && (
             <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200">
               <h3 className="text-xs font-bold flex items-center gap-2 mb-2">
@@ -868,7 +868,7 @@ export const PlatformMasterCentral: React.FC = () => {
                 <span>ALERTAS DE SATURAÇÃO DE CAPACIDADE ATIVOS</span>
               </h3>
               <p className="text-[11px] text-amber-700 dark:text-amber-300 mb-2">
-                Os seguintes tenants atingiram ou excederam 95% das cotas de recursos contratadas e necessitam de upgrade de plano:
+                As seguintes empresas atingiram ou excederam 95% das cotas de recursos contratadas e necessitam de upgrade de plano:
               </p>
               <div className="flex flex-wrap gap-2">
                 {overviewData.map(d => {
@@ -1010,7 +1010,7 @@ export const PlatformMasterCentral: React.FC = () => {
           <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                {editingTenant ? 'Editar Tenant & White Label' : 'Cadastrar Nova Empresa (Tenant)'}
+                {editingTenant ? 'Editar Empresa & Identidade Visual' : 'Cadastrar Nova Empresa'}
               </h3>
               <button
                 type="button"
@@ -1050,7 +1050,7 @@ export const PlatformMasterCentral: React.FC = () => {
                       : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
-                  Domínios do Tenant
+                  Domínios da Empresa
                 </button>
               </div>
             )}
@@ -1139,7 +1139,7 @@ export const PlatformMasterCentral: React.FC = () => {
               {!editingTenant && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                   <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] block uppercase tracking-wider">
-                    Usuário Administrador Inicial do Tenant
+                    Usuário Administrador Inicial da Empresa
                   </span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
@@ -1289,7 +1289,7 @@ export const PlatformMasterCentral: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                     <Layers className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>Módulos Habilitados para este Tenant</span>
+                    <span>Módulos Habilitados para esta Empresa</span>
                   </span>
                   <div className="flex items-center gap-2 text-[10px]">
                     <button
@@ -1349,7 +1349,7 @@ export const PlatformMasterCentral: React.FC = () => {
                   disabled={isSubmitting}
                   className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {isSubmitting ? 'Salvando...' : 'Salvar no PostgreSQL'}
+                  {isSubmitting ? 'Salvando...' : 'Salvar Empresa'}
                 </button>
               </div>
             </form>

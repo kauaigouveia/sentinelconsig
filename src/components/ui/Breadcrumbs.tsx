@@ -153,14 +153,14 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
       case 'admin-auditoria':
         return [
           { label: 'Administração' },
-          { label: 'Auditoria & Logs de Segurança', view: 'admin-auditoria' },
+          { label: 'Auditoria & Segurança', view: 'admin-auditoria' },
         ];
 
       // Plataforma SaaS
       case 'saas-tenants':
         return [
           { label: 'Plataforma' },
-          { label: 'SaaS & Gestão de Tenants', view: 'saas-tenants' },
+          { label: 'Empresas & Assinaturas', view: 'saas-tenants' },
         ];
 
       default:

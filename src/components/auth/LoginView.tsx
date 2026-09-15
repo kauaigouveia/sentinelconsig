@@ -141,17 +141,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 backdrop-blur-xs space-y-1">
               <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
                 <Radio className="h-3.5 w-3.5" />
-                <span>Pusher Live Engine</span>
+                <span>Atualização Instantânea</span>
               </div>
-              <p className="text-[11px] text-slate-400">Sincronização instantânea de propostas e status sem recarga</p>
+              <p className="text-[11px] text-slate-400">Sincronização imediata de esteiras e propostas em tempo real</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 backdrop-blur-xs space-y-1">
               <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs">
                 <Database className="h-3.5 w-3.5" />
-                <span>PostgreSQL Isolado</span>
+                <span>Ambiente Seguro</span>
               </div>
-              <p className="text-[11px] text-slate-400">Multi-tenant seguro com isolamento estrito de bases e regras</p>
+              <p className="text-[11px] text-slate-400">Seus dados e operações protegidos com isolamento exclusivo</p>
             </div>
           </div>
         </div>

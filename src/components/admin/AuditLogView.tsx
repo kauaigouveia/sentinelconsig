@@ -93,7 +93,7 @@ export const AuditLogView: React.FC = () => {
       setPagination(response.pagination);
     } catch (err: any) {
       console.error('[AuditLogView] Erro ao carregar logs de auditoria:', err);
-      setLoadError(err?.message || 'Falha ao sincronizar trilha de auditoria com PostgreSQL.');
+      setLoadError(err?.message || 'Falha ao sincronizar trilha de auditoria.');
     } finally {
       setIsLoading(false);
     }
@@ -290,16 +290,16 @@ export const AuditLogView: React.FC = () => {
     <div className="space-y-4">
       {/* Header with ActionBar */}
       <ActionBar
-        title="Trilha de Auditoria & Governança"
-        subtitle="Registro imutável de segurança alimentado exclusivamente pelo PostgreSQL com isolamento multi-tenant rigoroso"
-        badgeText="POSTGRESQL AUDIT TRAIL"
+        title="Auditoria e Segurança"
+        subtitle="Consulte o histórico das ações realizadas no sistema com rastreabilidade completa."
+        badgeText="REGISTRO OFICIAL"
         badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {/* Source of truth badge */}
             <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
               <Database className="h-3 w-3" />
-              <span>PostgreSQL Source of Truth</span>
+              <span>Base Oficial Protegida</span>
             </div>
 
             {/* Tab Switcher */}
@@ -313,7 +313,7 @@ export const AuditLogView: React.FC = () => {
                 }`}
               >
                 <Layers className="h-3.5 w-3.5" />
-                <span>Resumo Operações</span>
+                <span>Operações</span>
               </button>
               <button
                 onClick={() => setActiveTab('ALL_LOGS')}
@@ -324,7 +324,7 @@ export const AuditLogView: React.FC = () => {
                 }`}
               >
                 <FileCheck2 className="h-3.5 w-3.5" />
-                <span>Trilha Completa ({pagination.total})</span>
+                <span>Registros ({pagination.total})</span>
               </button>
               <button
                 onClick={() => setActiveTab('EXCEPTIONS')}
@@ -335,7 +335,7 @@ export const AuditLogView: React.FC = () => {
                 }`}
               >
                 <Bug className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-                <span>Exceções</span>
+                <span>Ocorrências</span>
                 {unresolvedExceptionsCount > 0 && (
                   <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
                     {unresolvedExceptionsCount}
@@ -348,7 +348,7 @@ export const AuditLogView: React.FC = () => {
               onClick={refreshLogs}
               disabled={isLoading}
               className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer disabled:opacity-50"
-              title="Atualizar Logs do PostgreSQL"
+              title="Atualizar Registros"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -459,7 +459,7 @@ export const AuditLogView: React.FC = () => {
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                  Auditoria 100% PostgreSQL
+                  Auditoria 100% Oficial
                 </span>
               </div>
             </div>
@@ -534,7 +534,7 @@ export const AuditLogView: React.FC = () => {
             {isLoading ? (
               <div className="p-12 text-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Carregando trilha de auditoria do PostgreSQL...</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Carregando histórico de auditoria...</p>
               </div>
             ) : filteredBulkOps.length === 0 ? (
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-2xs">
@@ -723,7 +723,7 @@ export const AuditLogView: React.FC = () => {
                         )}
 
                         <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono break-all pt-1 border-t border-slate-100 dark:border-slate-800">
-                          Identificador do Lote: {op.entityId || '-'} • Payload: {op.newData || op.oldData || '-'}
+                          Identificador do Lote: {op.entityId || '-'} • Detalhes: {op.newData || op.oldData || '-'}
                         </div>
                       </div>
                     )}
@@ -844,7 +844,7 @@ export const AuditLogView: React.FC = () => {
                 Exibindo <strong>{logs.length}</strong> de <strong>{pagination.total}</strong> registros (Página {pagination.page} de {pagination.totalPages || 1})
               </span>
               <span className="text-[11px] text-slate-400">
-                PostgreSQL • AuditLog Oficial • Não editável
+                Base Oficial • Registro Imutável
               </span>
             </div>
           </div>
@@ -867,7 +867,7 @@ export const AuditLogView: React.FC = () => {
                     <tr>
                       <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
-                        Carregando registros do PostgreSQL...
+                        Carregando registros de auditoria...
                       </td>
                     </tr>
                   ) : logs.length === 0 ? (
@@ -959,7 +959,7 @@ export const AuditLogView: React.FC = () => {
                   type="text"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Pesquisar erro, ADE, stack trace, usuário ou arquivo..."
+                  placeholder="Pesquisar por erro, ADE, ocorrência, usuário ou ação..."
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-rose-500 focus:outline-hidden"
                 />
               </div>
@@ -1008,17 +1008,17 @@ export const AuditLogView: React.FC = () => {
                 <button
                   onClick={handleExportExceptionsJson}
                   className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors cursor-pointer"
-                  title="Exportar dados de diagnóstico em JSON para envio ao time técnico"
+                  title="Exportar relatório de ocorrências em JSON"
                 >
                   <Download className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-                  <span>Exportar (.json)</span>
+                  <span>Exportar Relatório (.json)</span>
                 </button>
 
                 {/* Clear Exceptions */}
                 <button
                   onClick={handleClearExceptions}
                   className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                  title="Limpar Histórico de Exceções"
+                  title="Limpar Histórico de Ocorrências"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1173,7 +1173,7 @@ export const AuditLogView: React.FC = () => {
                         {exc.details && (
                           <div>
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block mb-1">
-                              Detalhes & Stack de Execução:
+                              Detalhes da Ocorrência:
                             </span>
                             <div className="rounded-lg bg-slate-900 dark:bg-black p-3 font-mono text-[11px] text-slate-100 overflow-x-auto whitespace-pre-wrap leading-relaxed border border-slate-800">
                               {exc.details}
@@ -1184,7 +1184,7 @@ export const AuditLogView: React.FC = () => {
                         {exc.contextData && (
                           <div>
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block mb-1">
-                              Payload de Contexto (JSON):
+                              Informações Técnicas Complementares:
                             </span>
                             <pre className="rounded-lg bg-slate-900 dark:bg-black p-3 font-mono text-[11px] text-emerald-400 overflow-x-auto border border-slate-800">
                               {JSON.stringify(exc.contextData, null, 2)}

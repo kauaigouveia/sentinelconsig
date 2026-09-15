@@ -564,17 +564,18 @@ export default function App() {
               </span>
               <span className="text-slate-300 dark:text-slate-700">|</span>
               <span className="truncate max-w-[200px]">
-                Tenant: <strong className="text-slate-700 dark:text-slate-300 font-medium">{StorageService.getCurrentTenant().name}</strong>
+                Empresa: <strong className="text-slate-700 dark:text-slate-300 font-medium">{StorageService.getCurrentTenant().name}</strong>
               </span>
               <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
               <span className="hidden sm:inline">
                 Contexto: <strong className="text-slate-700 dark:text-slate-300 font-medium">{activeUser?.role === 'PLATFORM_MASTER' ? 'MASTER' : activeUser?.role}</strong>
               </span>
             </div>
-            <div className="flex items-center gap-3 font-mono text-[10px]">
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">PostgreSQL</span>
-              <span className="text-slate-300 dark:text-slate-700">|</span>
-              <span className="text-slate-400">Pusher Live</span>
+            <div className="flex items-center gap-3 font-medium text-[10px]">
+              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Atualização em tempo real ativa
+              </span>
             </div>
           </footer>
         )}

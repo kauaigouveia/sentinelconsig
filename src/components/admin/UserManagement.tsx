@@ -278,8 +278,8 @@ export const UserManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       <ActionBar
-        title="Usuários & Controle de Acesso (RBAC)"
-        subtitle="Gerenciamento de operadores, perfis hierárquicos e permissões granulares por módulo do sistema"
+        title="Usuários & Permissões de Acesso"
+        subtitle="Gerenciamento de operadores, perfis de acesso e permissões por módulo do sistema"
         badge={`${users.length} Operadores`}
         actions={
           <button
@@ -384,7 +384,7 @@ export const UserManagement: React.FC = () => {
 
               {isPlatformMaster ? (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Empresa / Tenant</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Empresa</label>
                   <select
                     value={selectedTenantId}
                     onChange={e => setSelectedTenantId(e.target.value)}
@@ -392,10 +392,10 @@ export const UserManagement: React.FC = () => {
                   >
                     {tenants.map(t => (
                       <option key={t.id} value={t.id}>
-                        {t.name} ({t.slug})
+                        {t.name}
                       </option>
                     ))}
-                    {tenants.length === 0 && <option value="tenant_evolve">Evolve Gestão (tenant_evolve)</option>}
+                    {tenants.length === 0 && <option value="tenant_evolve">Evolve Gestão</option>}
                   </select>
                 </div>
               ) : (
@@ -504,7 +504,6 @@ export const UserManagement: React.FC = () => {
                                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
                                 />
                                 <span>{perm.label}</span>
-                                <span className="text-[9px] text-slate-400 font-mono ml-auto">{perm.id}</span>
                               </label>
                             );
                           })}
@@ -592,8 +591,8 @@ export const UserManagement: React.FC = () => {
               <tr>
                 <th className="px-4 py-3">Nome / Usuário</th>
                 <th className="px-4 py-3">E-mail</th>
-                <th className="px-4 py-3">Perfil (Role)</th>
-                <th className="px-4 py-3">Permissões Granulares</th>
+                <th className="px-4 py-3">Perfil de Acesso</th>
+                <th className="px-4 py-3">Permissões</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-center">Alternar Perfil</th>
                 <th className="px-4 py-3 text-center">Ações</th>
@@ -753,7 +752,7 @@ export const UserManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Perfil (Role)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Perfil de Acesso</label>
                 <select
                   value={editRole}
                   onChange={e => handleEditRoleChange(e.target.value as any)}

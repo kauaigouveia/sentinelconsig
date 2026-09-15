@@ -57,7 +57,7 @@ export const PortabilityView: React.FC = () => {
   const handleRunCron = () => {
     const res = AutomationService.runPortabilityCron();
     setCronFeedback(
-      `Automação executada: ${res.checkedCount} verificadas | ${res.saldoRetornadoCount} saldos retornados automaticamente!`
+      `Verificação concluída: ${res.checkedCount} propostas verificadas | ${res.saldoRetornadoCount} saldos retornados automaticamente!`
     );
     refreshData();
     setTimeout(() => setCronFeedback(null), 5000);
@@ -114,7 +114,7 @@ export const PortabilityView: React.FC = () => {
             className="flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer"
           >
             <Play className="h-3.5 w-3.5" />
-            <span>Executar Verificação CIP</span>
+            <span>Consultar Retornos de Saldo CIP</span>
           </button>
         }
       />

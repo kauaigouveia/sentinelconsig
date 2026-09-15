@@ -275,7 +275,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   Importação de Produção em Lote
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Processamento com chunks assíncronos, proteção multi-tenant e monitoramento em tempo real
+                  Importação segura de grandes arquivos com acompanhamento em tempo real
                 </p>
               </div>
             </div>
@@ -354,7 +354,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     )}
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        {jobProgress.status === 'PROCESSING' && 'Processando Importação no Servidor...'}
+                        {jobProgress.status === 'PROCESSING' && 'Processando importação de propostas...'}
                         {jobProgress.status === 'COMPLETED' && 'Importação Concluída com Sucesso!'}
                         {jobProgress.status === 'CANCELLED' && 'Importação Cancelada pelo Usuário'}
                         {jobProgress.status === 'FAILED' && 'Falha no Processamento da Importação'}
@@ -479,7 +479,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <p className="text-lg font-extrabold text-emerald-800 dark:text-emerald-300">
                     {analysisResult.validRows.length}
                   </p>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Prontas para envio ao servidor</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Prontas para importação</span>
                 </div>
 
                 <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/40 p-3 shadow-2xs">
@@ -701,7 +701,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <FileCheck className="h-4 w-4" />
-                <span>Confirmar e Enviar para Servidor ({analysisResult?.validRows.length || 0})</span>
+                <span>Importar Propostas ({analysisResult?.validRows.length || 0})</span>
               </button>
             )}
           </div>

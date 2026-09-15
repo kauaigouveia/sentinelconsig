@@ -556,7 +556,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
             {renderNavItem({
               id: 'admin-auditoria',
-              label: 'Auditoria & Logs',
+              label: 'Trilha de Auditoria',
               icon: ShieldCheck,
               color: 'emerald',
             })}
@@ -572,7 +572,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
             {renderNavItem({
               id: 'saas-tenants',
-              label: 'SaaS / Tenants',
+              label: 'Empresas & Assinaturas',
               icon: HardDrive,
               color: 'fuchsia',
             })}

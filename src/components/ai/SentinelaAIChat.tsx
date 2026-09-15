@@ -199,7 +199,7 @@ export const SentinelaAIChat: React.FC = () => {
                     ONLINE
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-500">Respostas estruturadas baseadas na base PostgreSQL da corretora</p>
+                <p className="text-[11px] text-slate-500">Respostas baseadas nos dados oficiais da sua empresa.</p>
               </div>
             </div>
           </div>

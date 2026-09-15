@@ -167,13 +167,13 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
   },
   {
     category: 'TENANTS',
-    label: 'Tenants (Plataforma)',
+    label: 'Empresas (Plataforma)',
     permissions: [
-      { id: 'tenants.view', label: 'Visualizar' },
-      { id: 'tenants.create', label: 'Criar' },
-      { id: 'tenants.update', label: 'Editar' },
-      { id: 'tenants.suspend', label: 'Suspender' },
-      { id: 'tenants.delete', label: 'Excluir' },
+      { id: 'tenants.view', label: 'Visualizar empresas' },
+      { id: 'tenants.create', label: 'Cadastrar empresas' },
+      { id: 'tenants.update', label: 'Editar empresas' },
+      { id: 'tenants.suspend', label: 'Suspender empresas' },
+      { id: 'tenants.delete', label: 'Excluir empresas' },
     ],
   },
   {

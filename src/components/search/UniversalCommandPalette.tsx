@@ -121,7 +121,7 @@ export const UniversalCommandPalette: React.FC<UniversalCommandPaletteProps> = (
     { label: 'Sentinela IA Assistente', tab: 'sentinela_ai', icon: Bot, desc: 'Consultas operacionais em linguagem natural' },
     { label: 'Agenda & Tarefas Operacionais', tab: 'agenda', icon: Calendar, desc: 'Gestão de prazos e pendências CIP' },
     { label: 'Central de Conquistas & Gamificação', tab: 'gamification', icon: Trophy, desc: 'Medalhas e metas de operadores' },
-    { label: 'Central de Gestão SaaS & Tenants', tab: 'saas_tenants', icon: HardDrive, desc: 'Administração multi-empresa e backups' },
+    { label: 'Gestão de Empresas & Assinaturas', tab: 'saas_tenants', icon: HardDrive, desc: 'Administração multi-empresa e planos' },
   ];
 
   const filteredQuickNav = cleanQ

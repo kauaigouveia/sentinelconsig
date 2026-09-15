@@ -186,7 +186,7 @@ export const SentinelaAIChat: React.FC<SentinelaAIChatProps> = ({ startDate, end
         {loading && (
           <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 text-xs py-2 px-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 w-fit shadow-xs">
             <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
-            <span>Consultando dados autorizados no PostgreSQL via Sentinela Tool Router...</span>
+            <span>Consultando os dados operacionais da sua empresa...</span>
           </div>
         )}
       </div>

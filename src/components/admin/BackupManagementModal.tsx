@@ -97,7 +97,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
   const handleUpdateSchedule = (changes: Partial<BackupScheduleConfig>) => {
     const updated = BackupService.updateScheduleConfig(changes);
     setSchedule(updated);
-    showFeedback('Configurações de agendamento do cron salvas com sucesso.', 'success');
+    showFeedback('Configurações de agendamento automático salvas com sucesso.', 'success');
   };
 
   const handleConfirmRestore = async () => {
@@ -162,7 +162,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <span>Backup & Segurança do Banco de Dados</span>
                 <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-extrabold px-2 py-0.5">
-                  CRON ATIVO
+                  ROTINA ATIVA
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -200,7 +200,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
         {/* Quick KPI Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 text-xs">
           <div className="rounded-xl bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <span className="text-slate-500 dark:text-slate-400 block font-medium">Status Cron</span>
+            <span className="text-slate-500 dark:text-slate-400 block font-medium">Status da Rotina</span>
             <div className="flex items-center gap-1.5 mt-1 font-bold text-slate-900 dark:text-slate-100">
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -271,11 +271,11 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleRunCronCheck}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               title="Verificar e executar agendador de backup"
             >
               <Play className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Testar Cron</span>
+              <span>Executar Rotina</span>
             </button>
 
             <button
@@ -328,7 +328,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                                     : 'bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
                                 }`}
                               >
-                                {snap.type === 'AUTOMATICO_CRON' ? 'Cron Automático' : 'Manual'}
+                                {snap.type === 'AUTOMATICO_CRON' ? 'Rotina Automática' : 'Manual'}
                               </span>
                               <span className="text-slate-900 dark:text-slate-100 font-bold">
                                 {formatDate(snap.createdAt)}
@@ -406,7 +406,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
             <div className="max-w-xl mx-auto space-y-5 py-4">
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 p-5 space-y-4">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Parâmetros de Agendamento Automático (Cron)
+                  Parâmetros de Agendamento Automático
                 </h4>
 
                 <div className="space-y-3">
@@ -425,7 +425,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Frequência do Cron
+                        Frequência de Backup
                       </label>
                       <select
                         value={schedule.intervalHours}
