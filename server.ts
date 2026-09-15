@@ -1029,6 +1029,30 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
+      // Validação estrita de statusId no PostgreSQL para evitar Foreign Key Violation (P2003)
+      let validatedStatus: { id: string; name: string; standardCategory: string | null } | null = null;
+      if (statusId !== undefined && statusId !== null && statusId !== '') {
+        // Rejeitar IDs legados "st-*" do LocalStorage com erro explícito 400
+        if (typeof statusId === 'string' && statusId.startsWith('st-')) {
+          return res.status(400).json({
+            error: 'ID de status legado inválido. O sistema requer identificador oficial do banco de dados (PostgreSQL).',
+            details: { statusId, expectedFormat: 'CUID de proposal_statuses' },
+          });
+        }
+
+        validatedStatus = await prisma.proposalStatus.findFirst({
+          where: { id: statusId, tenantId, active: true },
+          select: { id: true, name: true, standardCategory: true },
+        });
+
+        if (!validatedStatus) {
+          return res.status(400).json({
+            error: 'Status de proposta inexistente, inativo ou não pertencente a este tenant.',
+            details: { statusId, tenantId },
+          });
+        }
+      }
+
       const isStatusChanging = statusId !== undefined && statusId !== existing.statusId;
 
       // 3. Executar transação atômica no PostgreSQL
@@ -1061,28 +1085,22 @@ async function auditAndEnsureMasterUser() {
         let targetCategory: string | null = null;
 
         if (isStatusChanging) {
+          const finalStatusName = validatedStatus?.name || statusName || 'Alteração de Fase';
+          const finalCategory = validatedStatus?.standardCategory || null;
+
           statusHistoryRecord = await tx.statusHistory.create({
             data: {
               tenantId,
               proposalId: id,
               statusId: statusId || null,
-              statusName: statusName || 'Alteração de Fase',
+              statusName: finalStatusName,
               userId: session.user.id,
               notes: notes || null,
             },
           });
 
-          // Determinar nome do status e categoria para classificação de relevância operacional
-          if (statusId) {
-            const ps = await tx.proposalStatus.findFirst({
-              where: { id: statusId, tenantId },
-              select: { name: true, standardCategory: true },
-            });
-            if (ps) {
-              targetStatusName = ps.name;
-              targetCategory = ps.standardCategory;
-            }
-          }
+          targetStatusName = finalStatusName;
+          targetCategory = finalCategory;
         }
 
         return {
@@ -1262,26 +1280,84 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Acesso não autorizado.' });
+      if (!tenantId) return res.status(401).json({ error: 'Acesso não autorizado: sessão ou tenant inválido.' });
       
       const { id } = req.params;
+
+      // 1. Validar existência da proposta no tenant respeitando soft delete
+      const proposal = await prisma.proposal.findFirst({
+        where: { id, tenantId, deletedAt: null },
+        select: { id: true, proposalNumber: true },
+      });
+
+      if (!proposal) {
+        return res.status(404).json({ error: 'Proposta não encontrada neste tenant.' });
+      }
       
-      const [history, comments, tasks, notifications] = await Promise.all([
-        prisma.statusHistory.findMany({ where: { proposalId: id, tenantId }, include: { status: true, user: true } }),
-        prisma.comment.findMany({ where: { proposalId: id, tenantId }, include: { user: true } }),
-        prisma.task.findMany({ where: { proposalId: id, tenantId } }),
-        prisma.notification.findMany({ where: { proposalId: id, tenantId } })
+      // 2. Consultas resilientes com Promise.allSettled para evitar que uma falha isole toda a timeline
+      const [historyResult, commentsResult, tasksResult, notifsResult] = await Promise.allSettled([
+        prisma.statusHistory.findMany({
+          where: { proposalId: id, tenantId },
+          include: { status: true, user: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.comment.findMany({
+          where: { proposalId: id, tenantId },
+          include: { user: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.task.findMany({
+          where: { proposalId: id, tenantId },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.notification.findMany({
+          where: { proposalId: id, tenantId },
+          orderBy: { createdAt: 'desc' },
+        }),
       ]);
+
+      const failedSources: string[] = [];
+      const history = historyResult.status === 'fulfilled'
+        ? historyResult.value
+        : (console.error('[API TIMELINE] Falha na consulta de statusHistory:', historyResult.reason?.message || historyResult.reason), failedSources.push('statusHistory'), []);
+
+      const comments = commentsResult.status === 'fulfilled'
+        ? commentsResult.value
+        : (console.error('[API TIMELINE] Falha na consulta de comments:', commentsResult.reason?.message || commentsResult.reason), failedSources.push('comments'), []);
+
+      const tasks = tasksResult.status === 'fulfilled'
+        ? tasksResult.value
+        : (console.error('[API TIMELINE] Falha na consulta de tasks:', tasksResult.reason?.message || tasksResult.reason), failedSources.push('tasks'), []);
+
+      const notifications = notifsResult.status === 'fulfilled'
+        ? notifsResult.value
+        : (console.error('[API TIMELINE] Falha na consulta de notifications:', notifsResult.reason?.message || notifsResult.reason), failedSources.push('notifications'), []);
 
       const timeline = [
         ...history.map(h => ({ type: 'STATUS', date: h.createdAt, data: h })),
         ...comments.map(c => ({ type: 'COMMENT', date: c.createdAt, data: c })),
         ...tasks.map(t => ({ type: 'TASK', date: t.createdAt, data: t })),
-        ...notifications.map(n => ({ type: 'NOTIFICATION', date: n.createdAt, data: n }))
+        ...notifications.map(n => ({ type: 'NOTIFICATION', date: n.createdAt, data: n })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+      if (failedSources.length > 0) {
+        console.warn(`[API TIMELINE] Proposta ${id}: Retorno parcial. Fontes com falha: ${failedSources.join(', ')}`);
+      }
+
+      if (req.query.format === 'object' || req.headers['x-api-version'] === '2') {
+        return res.json({
+          items: timeline,
+          meta: {
+            partial: failedSources.length > 0,
+            failedSources,
+            total: timeline.length,
+          },
+        });
+      }
+
       return res.json(timeline);
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[API TIMELINE ERROR]', err?.message || err);
       return res.status(500).json({ error: 'Erro ao buscar timeline.' });
     }
   });
@@ -1324,8 +1400,25 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
-  // AUXILIARY ENTITIES (Banks, Promoters, Partners, Products)
+  // AUXILIARY ENTITIES (Statuses, Banks, Promoters, Partners, Products)
   // -------------------------------------------------------------
+  app.get('/api/statuses', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const statuses = await prisma.proposalStatus.findMany({
+        where: { tenantId, active: true },
+        orderBy: { order: 'asc' },
+      });
+      return res.json(statuses);
+    } catch (err) {
+      console.error('[API /api/statuses] Erro ao buscar status no PostgreSQL:', err);
+      return res.status(500).json({ error: 'Erro ao buscar status.' });
+    }
+  });
+
   app.get('/api/banks', async (req, res) => {
     try {
       const session = await getAuthSession(req);

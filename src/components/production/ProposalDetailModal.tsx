@@ -58,9 +58,48 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const bank = StorageService.getBanks().find(b => b.id === proposal.bankId);
   const promoter = StorageService.getPromoters().find(p => p.id === proposal.promoterId);
   const partner = StorageService.getPartners().find(p => p.id === proposal.partnerId);
-  const currentStatus = StorageService.getStatuses().find(s => s.id === proposal.statusId);
   const digitizer = StorageService.getUsers().find(u => u.id === proposal.digitizerId);
-  const allStatuses = StorageService.getStatuses().filter(s => s.active);
+
+  // Status reais sincronizados do PostgreSQL
+  const [dbStatuses, setDbStatuses] = useState<any[]>([]);
+  const [statusesLoading, setStatusesLoading] = useState<boolean>(true);
+  const [statusesError, setStatusesError] = useState<string | null>(null);
+
+  const fetchOfficialStatuses = () => {
+    setStatusesLoading(true);
+    setStatusesError(null);
+    fetch('/api/statuses')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setDbStatuses(data);
+          setStatusesError(null);
+        } else {
+          setDbStatuses([]);
+          setStatusesError('Não foi possível carregar os status oficiais. Atualize a página ou tente novamente.');
+        }
+      })
+      .catch(err => {
+        console.error('[ProposalDetailModal] Erro ao buscar status do PostgreSQL:', err);
+        setDbStatuses([]);
+        setStatusesError('Não foi possível carregar os status oficiais. Atualize a página ou tente novamente.');
+      })
+      .finally(() => {
+        setStatusesLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchOfficialStatuses();
+  }, []);
+
+  // Catálogo estritamente oficial do PostgreSQL — NENHUM fallback para INITIAL_STATUSES / StorageService
+  const allStatuses = dbStatuses;
+
+  const currentStatus = allStatuses.find(s => s.id === proposal.statusId);
 
   // Navigation Index
   const currentIndex = proposalIdsList.indexOf(proposalId);
@@ -122,13 +161,18 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     if (proposalId) {
       setLoadingTimeline(true);
       fetch(`/api/proposals/${proposalId}/timeline`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
         .then(data => {
-          setTimeline(Array.isArray(data) ? data : []);
+          const items = Array.isArray(data) ? data : (data?.items || []);
+          setTimeline(items);
           setLoadingTimeline(false);
         })
         .catch(err => {
-          console.error('Timeline error:', err);
+          console.error('[ProposalDetailModal] Erro ao buscar timeline:', err);
+          setTimeline([]);
           setLoadingTimeline(false);
         });
     }
@@ -142,14 +186,23 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusSuccess, setStatusSuccess] = useState(false);
 
-  // Reset selected status if proposal changes
+  // Sincronizar status selecionado com a proposta e a lista de status do PostgreSQL
   useEffect(() => {
-    setSelectedStatusId(proposal.statusId);
+    if (allStatuses.length > 0) {
+      const match = allStatuses.find(s => s.id === proposal.statusId);
+      if (match) {
+        setSelectedStatusId(match.id);
+      } else if (!selectedStatusId || !allStatuses.some(s => s.id === selectedStatusId)) {
+        setSelectedStatusId(allStatuses[0].id);
+      }
+    } else {
+      setSelectedStatusId('');
+    }
     setStatusObservation('');
     setIsEditingFinancials(false);
     setEditDisbursedStr(proposal.disbursedValue !== undefined ? String(proposal.disbursedValue) : '');
     setEditBalanceStr(proposal.contractBalance !== undefined ? String(proposal.contractBalance) : '');
-  }, [proposalId, proposal.statusId]);
+  }, [proposalId, proposal.statusId, dbStatuses]);
 
   // New Pendency Form
   const [pendencyType, setPendencyType] = useState<PendencyType>('DOCUMENTACAO');
@@ -195,6 +248,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   };
 
   const handleUpdateStatus = async () => {
+    if (statusesLoading || allStatuses.length === 0 || !selectedStatusId) {
+      toastService.error('Operação Bloqueada', 'Catálogo oficial de status indisponível. Aguarde o carregamento ou tente novamente.');
+      return;
+    }
+    if (selectedStatusId.startsWith('st-')) {
+      toastService.error('Status Inválido', 'Status legado não permitido. Recarregue os status oficiais.');
+      return;
+    }
     if (selectedStatusId === proposal.statusId && !statusObservation) return;
     setStatusUpdating(true);
     try {
@@ -208,24 +269,38 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           notes: statusObservation || undefined
         })
       });
-      if (!res.ok) throw new Error('Erro ao atualizar status na API');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Erro ao atualizar status na API');
+      }
       
       // Fallback update in local storage for legacy compatibility
-      StorageService.updateProposalStatus(
-        proposal.id,
-        selectedStatusId,
-        statusObservation || undefined,
-        activeUser,
-        'MANUAL'
-      );
+      try {
+        StorageService.updateProposalStatus(
+          proposal.id,
+          selectedStatusId,
+          statusObservation || undefined,
+          activeUser,
+          'MANUAL'
+        );
+      } catch (storageErr) {
+        console.warn('[ProposalDetailModal] Aviso ao sincronizar StorageService:', storageErr);
+      }
       
       setStatusSuccess(true);
       setStatusObservation('');
+      toastService.success('Status Atualizado', `Status alterado para ${targetStatus?.name || 'novo status'}.`);
       
-      // Refresh timeline
-      fetch(`/api/proposals/${proposal.id}/timeline`).then(r => r.json()).then(d => {
-        if(Array.isArray(d)) setTimeline(d);
-      });
+      // Refresh timeline de forma desacoplada
+      fetch(`/api/proposals/${proposal.id}/timeline`)
+        .then(r => r.json())
+        .then(d => {
+          const items = Array.isArray(d) ? d : (d?.items || []);
+          setTimeline(items);
+        })
+        .catch(err => {
+          console.warn('[ProposalDetailModal] Erro secundário ao atualizar timeline pós-status:', err);
+        });
       
       setTimeout(() => {
         setStatusSuccess(false);
@@ -308,24 +383,44 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   };
 
   const handleAddComment = async () => {
-    if (!commentText.trim()) return;
+    const textToSubmit = commentText.trim();
+    if (!textToSubmit) return;
+    
+    // 1. Gravar comentário no PostgreSQL (Operação Primária)
+    let commentSaved = false;
     try {
       const res = await fetch(`/api/proposals/${proposal.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: commentText.trim() })
+        body: JSON.stringify({ text: textToSubmit })
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Erro ao salvar comentário no servidor.');
+      }
+      commentSaved = true;
       setCommentText('');
       toastService.success('Comentário Gravado');
       onProposalUpdated();
-      
-      // refresh timeline
-      const fresh = await fetch(`/api/proposals/${proposal.id}/timeline`).then(r => r.json());
-      if (Array.isArray(fresh)) setTimeline(fresh);
-      
-    } catch (err) {
-      toastService.error('Erro ao salvar comentário');
+    } catch (err: any) {
+      toastService.error('Erro ao Salvar Comentário', err.message || 'Erro ao salvar comentário.');
+      return;
+    }
+
+    // 2. Atualizar timeline (Operação Secundária Desacoplada)
+    if (commentSaved) {
+      try {
+        const timelineRes = await fetch(`/api/proposals/${proposal.id}/timeline`);
+        if (timelineRes.ok) {
+          const fresh = await timelineRes.json();
+          const items = Array.isArray(fresh) ? fresh : (fresh?.items || []);
+          setTimeline(items);
+        } else {
+          console.warn('[ProposalDetailModal] Falha secundária ao sincronizar timeline pós-comentário:', timelineRes.status);
+        }
+      } catch (timelineErr) {
+        console.warn('[ProposalDetailModal] Erro secundário ao buscar timeline pós-comentário:', timelineErr);
+      }
     }
   };
 
@@ -537,36 +632,62 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
             Alterar Status da Proposta
           </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={selectedStatusId}
-              onChange={e => setSelectedStatusId(e.target.value)}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
-            >
-              {allStatuses.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.responsible})
-                </option>
-              ))}
-            </select>
 
-            <input
-              type="text"
-              value={statusObservation}
-              onChange={e => setStatusObservation(e.target.value)}
-              placeholder="Motivo / Observação da alteração..."
-              className="flex-1 min-w-[200px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden"
-            />
+          {statusesLoading ? (
+            <div className="flex items-center gap-2 py-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></span>
+              <span>Carregando status oficiais do PostgreSQL...</span>
+            </div>
+          ) : statusesError || allStatuses.length === 0 ? (
+            <div className="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+              <span>{statusesError || 'Não foi possível carregar os status oficiais. Atualize a página ou tente novamente.'}</span>
+              <button
+                type="button"
+                onClick={fetchOfficialStatuses}
+                className="underline hover:text-amber-900 dark:hover:text-amber-200 font-semibold ml-3 cursor-pointer"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedStatusId}
+                onChange={e => setSelectedStatusId(e.target.value)}
+                disabled={statusesLoading || allStatuses.length === 0 || statusUpdating}
+                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {allStatuses.map(s => {
+                  const badge = s.responsible
+                    ? `(${s.responsible})`
+                    : (s.standardCategory ? `(${s.standardCategory})` : '');
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {badge}
+                    </option>
+                  );
+                })}
+              </select>
 
-            <button
-              onClick={handleUpdateStatus}
-              disabled={statusUpdating}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-1.5 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>{statusUpdating ? 'Gravando...' : 'Gravar Novo Status'}</span>
-            </button>
-          </div>
+              <input
+                type="text"
+                value={statusObservation}
+                onChange={e => setStatusObservation(e.target.value)}
+                placeholder="Motivo / Observação da alteração..."
+                disabled={statusesLoading || allStatuses.length === 0 || statusUpdating}
+                className="flex-1 min-w-[200px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden disabled:opacity-50"
+              />
+
+              <button
+                onClick={handleUpdateStatus}
+                disabled={statusesLoading || allStatuses.length === 0 || statusUpdating || !selectedStatusId || (selectedStatusId === proposal.statusId && !statusObservation)}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-1.5 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>{statusUpdating ? 'Gravando...' : 'Gravar Novo Status'}</span>
+              </button>
+            </div>
+          )}
           {statusSuccess && (
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
               Status atualizado com sucesso e registrado na linha do tempo!
