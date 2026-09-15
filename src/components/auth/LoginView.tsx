@@ -60,6 +60,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, password: password.trim() }),
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -71,6 +72,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       }
 
       if (data.user) {
+        if (data.token) {
+          localStorage.setItem('cg_session_token', data.token);
+        }
         StorageService.loginUser(data.user);
         setIsSubmitting(false);
         onLoginSuccess();

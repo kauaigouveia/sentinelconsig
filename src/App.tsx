@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
@@ -6,6 +6,8 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { ControlTower } from './components/dashboard/ControlTower';
 import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
+import { ExecutiveBIDashboard } from './components/bi/ExecutiveBIDashboard';
+import { OperationalBIDashboard } from './components/bi/OperationalBIDashboard';
 import { StatusBottleneckReport } from './components/dashboard/StatusBottleneckReport';
 import { DigitizerHome } from './components/dashboard/DigitizerHome';
 import { ProductionList } from './components/production/ProductionList';
@@ -25,11 +27,13 @@ import { SimulationView } from './components/simulation/SimulationView';
 
 import { TVOperationsMonitor } from './components/monitor/TVOperationsMonitor';
 import { CommercialRadarView } from './components/bi/CommercialRadarView';
-import { SentinelaAIChat } from './components/ai/SentinelaAIChat';
+import { SentinelaAIChat } from './components/bi/SentinelaAIChat';
 import { OperationalAgendaView } from './components/agenda/OperationalAgendaView';
 import { GamificationCenter } from './components/gamification/GamificationCenter';
 import { GeneralFinanceView } from './components/finance/GeneralFinanceView';
 import { PlatformMasterCentral } from './components/saas/PlatformMasterCentral';
+import { TenantSaaSCapacityView } from './components/admin/TenantSaaSCapacityView';
+import { AnnouncementsManagement } from './components/admin/AnnouncementsManagement';
 import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
@@ -55,45 +59,48 @@ export default function App() {
   const activeUser = StorageService.getActiveUser();
 
   // Validate server-side session as the ultimate authority
-  useEffect(() => {
-    let isMounted = true;
+  const verifyServerSession = useCallback(async () => {
+    try {
+      const storedToken = localStorage.getItem('cg_session_token') || sessionStorage.getItem('cg_session_token');
+      const headers: Record<string, string> = { 'Accept': 'application/json' };
+      if (storedToken) {
+        headers['Authorization'] = `Bearer ${storedToken}`;
+        headers['x-session-id'] = storedToken;
+      }
 
-    const verifyServerSession = async () => {
-      try {
-        const res = await fetch('/api/auth/session');
-        if (!isMounted) return;
+      const res = await fetch('/api/auth/session', { headers, credentials: 'include' });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.authenticated && data.user) {
-            // Update active user with valid server session data
-            StorageService.setActiveUser(data.user);
-            localStorage.setItem('cg_is_authenticated', 'true');
-            setIsAuthenticated(true);
-            return;
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.authenticated && data.user) {
+          if (data.token) {
+            localStorage.setItem('cg_session_token', data.token);
           }
-        }
-        // If server says unauthenticated (401 or !authenticated)
-        if (StorageService.isAuthenticated()) {
-          console.warn('[AUTH] Sessão server-side inexistente ou expirada. Limpando credenciais locais e redirecionando para login.');
-          StorageService.clearBusinessCache();
-          localStorage.setItem('cg_is_authenticated', 'false');
-          setIsAuthenticated(false);
-        }
-      } catch (err) {
-        // Network error during offline/mock fallback: let StorageService validate local user integrity
-        if (!StorageService.isAuthenticated()) {
-          setIsAuthenticated(false);
+          // Update active user with valid server session data
+          StorageService.setActiveUser(data.user);
+          localStorage.setItem('cg_is_authenticated', 'true');
+          setIsAuthenticated(true);
+          return;
         }
       }
-    };
-
-    verifyServerSession();
-
-    return () => {
-      isMounted = false;
-    };
+      // If server says unauthenticated (401 or !authenticated)
+      if (StorageService.isAuthenticated()) {
+        console.warn('[AUTH] Sessão server-side inexistente ou expirada. Limpando credenciais locais e redirecionando para login.');
+        StorageService.clearBusinessCache();
+        localStorage.setItem('cg_is_authenticated', 'false');
+        setIsAuthenticated(false);
+      }
+    } catch (err) {
+      // Network error during offline/mock fallback: let StorageService validate local user integrity
+      if (!StorageService.isAuthenticated()) {
+        setIsAuthenticated(false);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    verifyServerSession();
+  }, [verifyServerSession]);
 
   // Listen for storage / login state updates and initialize/sync data
   useEffect(() => {
@@ -120,8 +127,13 @@ export default function App() {
       realtimeHub.connect(StorageService.getCurrentTenantId());
     }
 
-    // Subscribe to incoming realtime SSE events to perform targeted entity synchronization
-    const unsubscribeSSE = realtimeHub.subscribe('*', (event) => {
+    // Subscribe to incoming realtime events to perform targeted entity synchronization
+    const unsubscribeRealtime = realtimeHub.subscribe('*', (event) => {
+      if (event?.type === 'TENANT_SUSPENDED') {
+        console.warn('[REALTIME] Tenant suspenso via Pusher. Revalidando sessão server-side...');
+        verifyServerSession();
+        return;
+      }
       if (event && event.entity) {
         StorageService.syncSpecificEntity(event.entity, event.entityId).catch((err) => {
           console.warn('[REALTIME] Erro no sync targeted:', err);
@@ -136,7 +148,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
-      unsubscribeSSE();
+      unsubscribeRealtime();
       realtimeHub.disconnect();
       StorageService.unsubscribeRealTimeListeners();
     };
@@ -459,14 +471,14 @@ export default function App() {
         {/* Dynamic Page Views */}
         <main className={`flex-1 overflow-y-auto p-3.5 md:p-4 min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
           {currentView === 'torre-controle' && (
-            <ControlTower
+            <OperationalBIDashboard
               onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
             />
           )}
 
           {currentView === 'tv-monitor' && <TVOperationsMonitor />}
 
-          {currentView === 'dashboard-executivo' && <ExecutiveDashboard />}
+          {currentView === 'dashboard-executivo' && <ExecutiveBIDashboard />}
 
           {currentView === 'radar-comercial' && <CommercialRadarView />}
 
@@ -526,6 +538,8 @@ export default function App() {
 
           {currentView === 'admin-usuarios' && <UserManagement />}
 
+          {currentView === 'admin-plano-consumo' && <TenantSaaSCapacityView />}
+
           {currentView === 'admin-produtos' && <ProductManagement />}
 
           {currentView === 'admin-status' && <StatusManagement />}
@@ -534,6 +548,7 @@ export default function App() {
 
           {currentView === 'admin-auditoria' && <AuditLogView />}
 
+          {currentView === 'admin-comunicados' && (<AnnouncementsManagement />)}
           {currentView === 'admin-import-status' && (
             <StatusImport onNavigate={handleNavigate} />
           )}

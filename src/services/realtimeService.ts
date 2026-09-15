@@ -14,6 +14,8 @@ import PusherClient, { Channel } from 'pusher-js';
 export interface RealtimeEvent<T = any> {
   id?: string;
   type:
+    | 'ANNOUNCEMENT_PUBLISHED'
+    | 'ANNOUNCEMENT_UPDATED'
     | 'PROPOSAL_CREATED'
     | 'PROPOSAL_UPDATED'
     | 'PROPOSAL_DELETED'
@@ -27,6 +29,9 @@ export interface RealtimeEvent<T = any> {
     | 'CLIENT_DELETED'
     | 'NOTIFICATION_CREATED'
     | 'TENANT_UPDATED'
+    | 'TENANT_SUSPENDED'
+    | 'TENANT_CREATED'
+    | 'TENANT_REACTIVATED'
     | 'USER_CREATED'
     | 'USER_UPDATED'
     | 'USER_DELETED'
@@ -67,9 +72,19 @@ export class RealtimeService {
   private pusherClient: PusherClient | null = null;
   private tenantChannel: Channel | null = null;
   private userChannel: Channel | null = null;
-  private usePusher: boolean = (import.meta as any).env.VITE_REALTIME_PROVIDER === 'pusher';
+  private globalChannel: Channel | null = null;
+  private usePusher: boolean = false;
 
   private constructor() {
+    try {
+      // Safe access to Vite environment variables
+      const provider = (import.meta as any).env?.VITE_REALTIME_PROVIDER;
+      this.usePusher = provider === 'pusher';
+    } catch (e) {
+      console.warn('[REALTIME] Falha ao ler configuração de provider, assumindo padrão.');
+      this.usePusher = false;
+    }
+
     // Cross-tab broadcast listener as complementary local bridge
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
@@ -131,8 +146,17 @@ export class RealtimeService {
 
     try {
       if (!this.pusherClient) {
-        this.pusherClient = new PusherClient((import.meta as any).env.VITE_PUSHER_KEY, {
-          cluster: (import.meta as any).env.VITE_PUSHER_CLUSTER,
+        const key = (import.meta as any).env?.VITE_PUSHER_KEY;
+        const cluster = (import.meta as any).env?.VITE_PUSHER_CLUSTER;
+
+        if (!key) {
+          console.warn('[REALTIME] VITE_PUSHER_KEY não definida. Realtime (Pusher) desativado.');
+          this.setStatus('ERROR', { error: 'Pusher Key ausente' });
+          return;
+        }
+
+        this.pusherClient = new PusherClient(key, {
+          cluster: cluster || 'mt1',
           authEndpoint: '/api/pusher/auth',
         });
 
@@ -141,6 +165,10 @@ export class RealtimeService {
           this.reconnectAttempts = 0;
           this.setStatus('CONNECTED');
           this.subscribePusherChannels();
+          // Reconciliação imediata com PostgreSQL ao restabelecer conexão
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('credit_gestao_storage_update'));
+          }
         });
 
         this.pusherClient.connection.bind('connecting', () => {
@@ -193,15 +221,21 @@ export class RealtimeService {
         this.bindPusherEvents(this.userChannel);
       }
     }
+
+    if (!this.globalChannel) {
+      this.globalChannel = this.pusherClient.subscribe('private-platform-global');
+      this.bindPusherEvents(this.globalChannel);
+    }
   }
 
   private bindPusherEvents(channel: Channel): void {
     const eventTypes: RealtimeEvent['type'][] = [
+      'ANNOUNCEMENT_PUBLISHED', 'ANNOUNCEMENT_UPDATED',
       'PROPOSAL_CREATED', 'PROPOSAL_UPDATED', 'PROPOSAL_DELETED',
       'STATUS_CHANGED', 'COMMENT_ADDED', 'TASK_CREATED', 'TASK_UPDATED', 'TASK_DELETED',
       'CLIENT_CREATED', 'CLIENT_UPDATED', 'CLIENT_DELETED',
       'USER_CREATED', 'USER_UPDATED', 'USER_DELETED',
-      'TENANT_UPDATED', 'NOTIFICATION_CREATED',
+      'TENANT_UPDATED', 'TENANT_SUSPENDED', 'TENANT_CREATED', 'TENANT_REACTIVATED', 'NOTIFICATION_CREATED',
       'IMPORT_STARTED', 'IMPORT_PROGRESS', 'IMPORT_COMPLETED', 'IMPORT_FAILED', 'IMPORT_CANCELLED'
     ];
     
@@ -345,6 +379,10 @@ export class RealtimeService {
         if (this.userChannel) {
           this.pusherClient.unsubscribe(this.userChannel.name);
           this.userChannel = null;
+        }
+        if (this.globalChannel) {
+          this.pusherClient.unsubscribe(this.globalChannel.name);
+          this.globalChannel = null;
         }
         this.pusherClient.disconnect();
       }

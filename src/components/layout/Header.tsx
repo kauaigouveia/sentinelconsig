@@ -61,8 +61,36 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const activeUser = StorageService.getActiveUser();
   const allUsers = StorageService.getUsers();
-  const notifications = StorageService.getNotifications();
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCounts = async () => {
+    try {
+      const [notifRes, annRes] = await Promise.all([
+        fetch('/api/notifications/unread-count'),
+        fetch('/api/announcements/unread-count')
+      ]);
+      const notifData = notifRes.ok ? await notifRes.json() : { count: 0 };
+      const annData = annRes.ok ? await annRes.json() : { count: 0 };
+      setUnreadCount((notifData.count || 0) + (annData.count || 0));
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchUnreadCounts();
+    
+    const unsub = realtimeHub.subscribe('*', (event) => {
+      if (
+        event?.type === 'ANNOUNCEMENT_PUBLISHED' ||
+        event?.type === 'NOTIFICATION_CREATED' ||
+        event?.type === 'ANNOUNCEMENT_UPDATED'
+      ) {
+        fetchUnreadCounts();
+      }
+    });
+    
+    return () => unsub();
+  }, []);
+
   const { theme, toggleTheme, isDark } = useTheme();
 
   const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());

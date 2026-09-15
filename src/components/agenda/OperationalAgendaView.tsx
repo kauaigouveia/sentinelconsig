@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
@@ -26,7 +26,7 @@ import { MetricCard } from '../ui/MetricCard';
 import { EmptyState } from '../ui/EmptyState';
 
 export const OperationalAgendaView: React.FC = () => {
-  const [tasks, setTasks] = useState<OperationalTask[]>(StorageService.getOperationalTasks());
+  const [tasks, setTasks] = useState<any[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [filterPriority, setFilterPriority] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
@@ -45,47 +45,74 @@ export const OperationalAgendaView: React.FC = () => {
   const users = StorageService.getUsers();
   const activeUser = StorageService.getActiveUser();
 
-  const refreshTasks = () => {
-    setTasks(StorageService.getOperationalTasks());
-  };
-
-  const handleToggleCompleted = (id: string) => {
-    StorageService.toggleOperationalTaskCompleted(id);
+  useEffect(() => {
     refreshTasks();
-  };
+  }, []);
 
-  const handleDeleteTask = (id: string) => {
-    if (confirm('Deseja realmente excluir esta tarefa da agenda?')) {
-      StorageService.deleteOperationalTask(id);
-      refreshTasks();
+  const refreshTasks = async () => {
+    try {
+      const res = await fetch('/api/tasks');
+      if (res.ok) {
+        const data = await res.json();
+        setTasks(data);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleToggleCompleted = async (task: any) => {
+    try {
+      await fetch(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !task.completed })
+      });
+      refreshTasks();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (confirm('Deseja realmente excluir esta tarefa da agenda?')) {
+      try {
+        await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        refreshTasks();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const assignedUser = users.find(u => u.id === assignedUserId);
-
-    StorageService.addOperationalTask({
-      tenantId: StorageService.getCurrentTenantId(),
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      priority,
-      dueDate,
-      assignedUserId: assignedUserId || activeUser.id,
-      assignedUserName: assignedUser ? assignedUser.name : activeUser.name,
-      clientName: clientName.trim() || undefined,
-      proposalNumber: proposalNumber.trim() || undefined,
-    });
-
-    setTitle('');
-    setDescription('');
-    setClientName('');
-    setProposalNumber('');
-    setIsModalOpen(false);
-    refreshTasks();
+    try {
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          priority,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+          assignedToId: assignedUserId || activeUser?.id,
+          // clientName and proposalNumber should be related by IDs if available, 
+          // passing null for now since they are legacy concepts from localstorage
+        })
+      });
+      setTitle('');
+      setDescription('');
+      setClientName('');
+      setProposalNumber('');
+      setIsModalOpen(false);
+      refreshTasks();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const filteredTasks = tasks.filter(t => {

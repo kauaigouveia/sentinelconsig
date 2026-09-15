@@ -341,18 +341,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               })}
 
             {renderNavItem({
-              id: 'sentinela-ai',
-              label: 'Sentinela IA',
-              icon: Bot,
-              color: 'purple',
-              badge: { text: 'Copilot', variant: 'ai' },
-            })}
-
-            {renderNavItem({
               id: 'gamificacao',
               label: 'Conquistas & Metas',
               icon: Trophy,
               color: 'yellow',
+            })}
+          </div>
+        )}
+
+        {/* ==================================================
+            INTELIGÊNCIA (Purple)
+        ================================================== */}
+        {(isGestor || isSuporte || isDigitador) && (
+          <div className="space-y-0.5">
+            {renderSectionHeader('Inteligência')}
+            {renderNavItem({
+              id: 'sentinela-ai',
+              label: 'Sentinela AI',
+              icon: Bot,
+              color: 'purple',
+              badge: { text: 'Copilot', variant: 'ai' },
             })}
           </div>
         )}
@@ -509,6 +517,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               label: 'Usuários',
               icon: Users,
               color: 'blue',
+            })}
+
+            {renderNavItem({
+              id: 'admin-plano-consumo',
+              label: 'Meu Plano & Consumo',
+              icon: HardDrive,
+              color: 'emerald',
             })}
 
             {renderNavItem({

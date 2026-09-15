@@ -113,7 +113,21 @@ class SSERegistry {
       data?: any;
     }
   ): void {
-    // 1. Publish via SSE (Legacy)
+    const isPusher = (process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher') === 'pusher';
+    if (isPusher) {
+      // Quando Pusher está ativo, entrega EXCLUSIVAMENTE via Pusher. SSE permanece desativado (sem fallback automático).
+      eventBus.publishToTenant(tenantId, {
+        type: eventData.type,
+        entity: eventData.entity,
+        entityId: eventData.entityId,
+        userId: eventData.userId,
+        tenantId: tenantId,
+        data: eventData.data,
+      }).catch(err => console.error('[EVENT_BUS] Fail eventBus broadcast', err));
+      return;
+    }
+
+    // 1. Publish via SSE (Legacy - executado somente se Pusher NÃO for o provider ativo)
     const payload: SSEEventPayload = {
       id: crypto.randomUUID(),
       type: eventData.type,
@@ -125,22 +139,10 @@ class SSERegistry {
       timestamp: new Date().toISOString(),
     };
 
-    // 2. Publish via EventBus (Pusher) - Fire and forget
-    eventBus.publishToTenant(tenantId, {
-      type: eventData.type,
-      entity: eventData.entity,
-      entityId: eventData.entityId,
-      userId: eventData.userId,
-      tenantId: tenantId,
-      data: eventData.data
-    }).catch(err => console.error('[SSE_REGISTRY] Fail eventBus', err));
-
-
     this.metrics.totalEventsEmitted++;
 
     const connections = this.tenantConnections.get(tenantId);
     if (!connections || connections.size === 0) {
-      console.log(`[SSE BROADCAST] Evento [${payload.type}] para tenant [${tenantId}] gerado, porém sem clientes conectados no momento.`);
       return;
     }
 
@@ -154,7 +156,6 @@ class SSERegistry {
         conn.res.write(sseMessage);
         deliveredCount++;
       } catch (err) {
-        console.warn(`[SSE BROADCAST ERROR] Falha ao enviar para conexão [${conn.connectionId}], agendando remoção:`, err);
         deadConnections.push(conn.connectionId);
       }
     }
@@ -165,8 +166,6 @@ class SSERegistry {
     for (const deadId of deadConnections) {
       this.unregisterConnection(deadId);
     }
-
-    console.log(`[SSE BROADCAST] Evento [${payload.type}] entregue a ${deliveredCount} conexões do Tenant [${tenantId}].`);
   }
 
   /**
@@ -181,14 +180,17 @@ class SSERegistry {
       entityId: string;
     }
   ): void {
-    // 2. Publish via EventBus (Pusher)
-    eventBus.publishToUser(userId, {
-      type: eventData.type,
-      entity: eventData.entity,
-      entityId: eventData.entityId,
-      userId: userId,
-      tenantId: tenantId
-    }).catch(err => console.error('[SSE_REGISTRY] Fail eventBus emitToUser', err));
+    const isPusher = (process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher') === 'pusher';
+    if (isPusher) {
+      eventBus.publishToUser(userId, {
+        type: eventData.type,
+        entity: eventData.entity,
+        entityId: eventData.entityId,
+        userId: userId,
+        tenantId: tenantId,
+      }).catch(err => console.error('[EVENT_BUS] Fail eventBus emitToUser', err));
+      return;
+    }
 
     const connections = this.tenantConnections.get(tenantId);
     if (!connections) return;

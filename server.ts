@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma, ProposalType, StandardStatusCategory } from '@prisma/client';
 import crypto from 'crypto';
 import { logger } from './server/logger.js';
 import {
@@ -18,10 +18,21 @@ import {
 import { hasPermission, Permission } from './src/lib/permissions.js';
 import { Role } from './src/types/index.js';
 import { sseRegistry } from './server/realtime.js';
+import { eventBus } from './server/services/pusherService.js';
 import { ImportWorkerService } from './server/services/importWorker.js';
 import { TenantNormalization } from './server/utils/tenantNormalization.js';
 import { TenantResolver } from './server/utils/tenantResolver.js';
+import { DnsVerificationService } from './server/services/dnsVerificationService.js';
 import { AdminContextManager } from './server/utils/adminContext.js';
+import { AnalyticsService } from './server/services/analyticsService.js';
+import { BIService } from './server/services/biService.js';
+import { BIComparisonService } from './server/services/biComparisonService.js';
+import { RuleEngineService } from './server/services/ruleEngineService.js';
+import { ManagerialIntelligenceService } from './server/services/managerialIntelligenceService.js';
+import { SentinelaAIService } from './server/services/sentinelaAIService.js';
+import { SaasUsageService } from './server/services/saasUsageService.js';
+import { SaasLimitsService } from './server/services/saasLimitsService.js';
+import { TenantHealthService } from './server/services/tenantHealthService.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -417,6 +428,7 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         success: true,
         user: safeUser,
+        token: sessionToken,
       });
     } catch (error) {
       console.error('[AUTH ERROR]', error);
@@ -424,10 +436,31 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  // Helper function to extract session token from cookies or authorization headers
+  const extractSessionToken = (req: express.Request): string | null => {
+    if (req.cookies && req.cookies.cg_session_id) {
+      return req.cookies.cg_session_id;
+    }
+    if (req.headers && req.headers.cookie) {
+      const match = req.headers.cookie.match(/(?:^|;\s*)cg_session_id=([^;]+)/);
+      if (match) return decodeURIComponent(match[1]);
+    }
+    if (req.headers && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        return authHeader.substring(7).trim();
+      }
+    }
+    if (req.headers && req.headers['x-session-id']) {
+      return req.headers['x-session-id'] as string;
+    }
+    return null;
+  };
+
   // 2. POST /api/auth/logout
   app.post('/api/auth/logout', async (req, res) => {
     try {
-      const token = req.cookies.cg_session_id;
+      const token = extractSessionToken(req);
       if (token) {
         try {
           const session = await prisma.session.findUnique({ where: { token } });
@@ -450,7 +483,7 @@ async function auditAndEnsureMasterUser() {
   // 3. GET /api/auth/session
   app.get('/api/auth/session', async (req, res) => {
     try {
-      const token = req.cookies.cg_session_id;
+      const token = extractSessionToken(req);
       if (!token) {
         return res.status(401).json({ authenticated: false, message: 'Nenhuma sessão ativa.' });
       }
@@ -498,6 +531,7 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         authenticated: true,
         user: safeUser,
+        token,
         adminContext: adminContext
           ? {
               targetTenantId: adminContext.targetTenantId,
@@ -515,7 +549,7 @@ async function auditAndEnsureMasterUser() {
   // 4. POST /api/auth/change-password
   app.post('/api/auth/change-password', async (req, res) => {
     try {
-      const token = req.cookies.cg_session_id;
+      const token = extractSessionToken(req);
       if (!token) {
         return res.status(401).json({ message: 'Acesso não autorizado.' });
       }
@@ -550,7 +584,7 @@ async function auditAndEnsureMasterUser() {
 
   // Helper middleware/function for tenant context & session auth with instant suspension protection
   const getAuthSession = async (req: express.Request) => {
-    const token = req.cookies.cg_session_id;
+    const token = extractSessionToken(req);
     if (!token) return null;
 
     const session = await prisma.session.findUnique({
@@ -629,11 +663,14 @@ async function auditAndEnsureMasterUser() {
         if (requestedUserId !== userId) {
           return res.status(403).json({ error: 'Acesso negado ao canal do usuário.' });
         }
+      }
+      // Validate platform global channel access
+      else if (channel === 'private-platform-global') {
+        // Allow subscription for all authenticated users (valid session verified above)
       } else {
         return res.status(403).json({ error: 'Canal não suportado ou negado.' });
       }
 
-      const { eventBus } = await import('./server/services/pusherService.js');
       const authResponse = eventBus.authorizeChannel(socketId, channel, {
         user_id: userId,
         user_info: { role: userRole }
@@ -652,6 +689,12 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   app.get('/api/realtime', async (req, res) => {
     try {
+      const isPusher = (process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher') === 'pusher';
+      if (isPusher) {
+        // Quando Pusher é o provedor ativo, SSE é estritamente desativado (sem fallback automático)
+        return res.status(204).end();
+      }
+
       const session = await getAuthSession(req);
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Autenticação obrigatória para SSE.' });
@@ -1123,6 +1166,35 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  // GET /api/proposals/:id/timeline
+  app.get('/api/proposals/:id/timeline', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: 'Acesso não autorizado.' });
+      
+      const { id } = req.params;
+      
+      const [history, comments, tasks, notifications] = await Promise.all([
+        prisma.statusHistory.findMany({ where: { proposalId: id, tenantId }, include: { status: true, user: true } }),
+        prisma.comment.findMany({ where: { proposalId: id, tenantId }, include: { user: true } }),
+        prisma.task.findMany({ where: { proposalId: id, tenantId } }),
+        prisma.notification.findMany({ where: { proposalId: id, tenantId } })
+      ]);
+
+      const timeline = [
+        ...history.map(h => ({ type: 'STATUS', date: h.createdAt, data: h })),
+        ...comments.map(c => ({ type: 'COMMENT', date: c.createdAt, data: c })),
+        ...tasks.map(t => ({ type: 'TASK', date: t.createdAt, data: t })),
+        ...notifications.map(n => ({ type: 'NOTIFICATION', date: n.createdAt, data: n }))
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      return res.json(timeline);
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao buscar timeline.' });
+    }
+  });
+
   app.delete('/api/proposals/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -1242,6 +1314,21 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  app.get('/api/notifications/unread-count', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const count = await prisma.notification.count({
+        where: { tenantId, userId: session.user.id, read: false },
+      });
+      return res.json({ count });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao buscar contador de notificações.' });
+    }
+  });
+
   app.get('/api/notifications', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -1249,11 +1336,28 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const userId = session.user.id;
+      
+      const limit = Number(req.query.limit) || 20;
+      const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+
       const notifications = await prisma.notification.findMany({
         where: { tenantId, userId },
         orderBy: { createdAt: 'desc' },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor } } : {}),
       });
-      return res.json(notifications);
+
+      let nextCursor = undefined;
+      if (notifications.length > limit) {
+        const nextItem = notifications.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return res.json({
+        items: notifications,
+        nextCursor,
+        hasMore: !!nextCursor,
+      });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao buscar notificações.' });
     }
@@ -1266,7 +1370,7 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
-      const { targetUserId, title, message, linkUrl } = req.body;
+      const { targetUserId, title, message, linkUrl, priority, type, proposalId } = req.body;
       if (!title || !message) {
         return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
       }
@@ -1278,6 +1382,9 @@ async function auditAndEnsureMasterUser() {
           title,
           message,
           linkUrl: linkUrl || null,
+          priority: priority || 'MEDIUM',
+          type: type || 'SYSTEM',
+          proposalId: proposalId || null,
         },
       });
 
@@ -1292,6 +1399,42 @@ async function auditAndEnsureMasterUser() {
       return res.json(notification);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao criar notificação.' });
+    }
+  });
+
+  app.patch('/api/notifications/:id/read', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      const { id } = req.params;
+
+      const updated = await prisma.notification.updateMany({
+        where: { id, tenantId },
+        data: { read: true },
+      });
+
+      return res.json({ success: true, count: updated.count });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao marcar notificação como lida.' });
+    }
+  });
+
+  app.post('/api/notifications/read-all', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      const userId = session.user.id;
+
+      const updated = await prisma.notification.updateMany({
+        where: { tenantId, userId, read: false },
+        data: { read: true },
+      });
+
+      return res.json({ success: true, count: updated.count });
+    } catch (err) {
+      return res.status(500).json({ error: 'Erro ao marcar todas notificações como lidas.' });
     }
   });
 
@@ -1318,7 +1461,7 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       const tenantId = session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
-      const { id, title, description, category, priority, dueDate, completed, assignedToId } = req.body;
+      const { id, title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body;
       if (!title) return res.status(400).json({ error: 'Título é obrigatório.' });
       const task = await prisma.task.create({
         data: {
@@ -1331,6 +1474,8 @@ async function auditAndEnsureMasterUser() {
           dueDate: dueDate ? new Date(dueDate) : null,
           completed: Boolean(completed),
           assignedToId: assignedToId || null,
+          proposalId: proposalId || null,
+          clientId: clientId || null,
         },
       });
 
@@ -1354,7 +1499,7 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id } = req.params;
-      const { title, description, category, priority, dueDate, completed, assignedToId } = req.body;
+      const { title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body;
 
       const existing = await prisma.task.findFirst({
         where: { id, tenantId },
@@ -1374,6 +1519,8 @@ async function auditAndEnsureMasterUser() {
           dueDate: dueDate !== undefined ? (dueDate ? new Date(dueDate) : null) : undefined,
           completed: completed !== undefined ? Boolean(completed) : undefined,
           assignedToId: assignedToId !== undefined ? assignedToId : undefined,
+          proposalId: proposalId !== undefined ? proposalId : undefined,
+          clientId: clientId !== undefined ? clientId : undefined,
         },
       });
 
@@ -2390,16 +2537,153 @@ async function auditAndEnsureMasterUser() {
   // SAAS & TENANTS MANAGEMENT API (PLATFORM MASTER ONLY)
   // -------------------------------------------------------------
 
-  // 1. GET /api/saas/tenants (and alias /api/tenants)
-  const getTenantsHandler = async (req: express.Request, res: express.Response) => {
+  // 0. GET /api/saas/metrics & GET /api/admin/metrics (PostgreSQL Aggregations)
+  const getSaasMetricsHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
+      const [
+        totalTenants,
+        activeTenants,
+        suspendedTenants,
+        cancelledTenants,
+        trialTenants,
+        totalUsers,
+        activeUsers,
+        totalProposals,
+        storageAggregate,
+        planGroups,
+      ] = await Promise.all([
+        prisma.tenant.count({ where: { deletedAt: null } }),
+        prisma.tenant.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
+        prisma.tenant.count({ where: { deletedAt: null, status: 'SUSPENDED' } }),
+        prisma.tenant.count({ where: { deletedAt: null, status: 'CANCELLED' } }),
+        prisma.tenant.count({ where: { deletedAt: null, status: 'TRIAL' } }),
+        prisma.user.count({ where: { deletedAt: null } }),
+        prisma.user.count({ where: { deletedAt: null, active: true } }),
+        prisma.proposal.count({ where: { deletedAt: null } }),
+        prisma.tenant.aggregate({
+          where: { deletedAt: null },
+          _sum: { storageLimitMb: true },
+        }),
+        prisma.tenant.groupBy({
+          by: ['plan'],
+          where: { deletedAt: null },
+          _count: { id: true },
+        }),
+      ]);
+
+      const planDistribution: Record<string, number> = {
+        STARTER: 0,
+        PRO: 0,
+        ENTERPRISE: 0,
+        CUSTOM: 0,
+      };
+
+      planGroups.forEach((g) => {
+        if (g.plan) {
+          planDistribution[g.plan] = g._count.id;
+        }
+      });
+
+      return res.json({
+        totalTenants,
+        activeTenants,
+        suspendedTenants,
+        cancelledTenants,
+        trialTenants,
+        totalUsers,
+        activeUsers,
+        totalProposals,
+        storageLimitMb: storageAggregate._sum.storageLimitMb || 0,
+        storageUsedMb: 'N/D',
+        planDistribution,
+      });
+    } catch (err) {
+      console.error('[GET /api/saas/metrics ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao calcular métricas do SaaS.' });
+    }
+  };
+  app.get('/api/saas/metrics', getSaasMetricsHandler);
+  app.get('/api/admin/metrics', getSaasMetricsHandler);
+
+  // 1. GET /api/saas/tenants (and aliases /api/admin/tenants, /api/tenants)
+  const getTenantsHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const pageParam = req.query.page ? parseInt(req.query.page as string, 10) : null;
+      const limitParam = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const search = (req.query.search as string || '').trim();
+      const statusFilter = req.query.status as string;
+      const planFilter = req.query.plan as string;
+
+      const whereClause: any = { deletedAt: null };
+
+      if (statusFilter && statusFilter !== 'ALL') {
+        whereClause.status = statusFilter;
+      }
+      if (planFilter && planFilter !== 'ALL') {
+        whereClause.plan = planFilter;
+      }
+
+      if (search) {
+        whereClause.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { slug: { contains: search, mode: 'insensitive' } },
+          { customDomain: { contains: search, mode: 'insensitive' } },
+          { cnpj: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      if (pageParam && !isNaN(pageParam)) {
+        const page = Math.max(1, pageParam);
+        const limit = Math.max(1, Math.min(100, limitParam));
+        const skip = (page - 1) * limit;
+
+        const [tenants, total] = await Promise.all([
+          prisma.tenant.findMany({
+            where: whereClause,
+            include: {
+              whiteLabel: true,
+              _count: {
+                select: {
+                  users: { where: { deletedAt: null } },
+                  proposals: { where: { deletedAt: null } },
+                  clients: { where: { deletedAt: null } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit,
+          }),
+          prisma.tenant.count({ where: whereClause }),
+        ]);
+
+        return res.json({
+          tenants,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        });
+      }
+
       const tenants = await prisma.tenant.findMany({
-        where: { deletedAt: null },
+        where: whereClause,
         include: {
           whiteLabel: true,
           _count: {
@@ -2420,13 +2704,17 @@ async function auditAndEnsureMasterUser() {
     }
   };
   app.get('/api/saas/tenants', getTenantsHandler);
+  app.get('/api/admin/tenants', getTenantsHandler);
   app.get('/api/tenants', getTenantsHandler);
 
-  // 2. GET /api/saas/tenants/:id
+  // 2. GET /api/saas/tenants/:id (and aliases /api/admin/tenants/:id, /api/tenants/:id)
   const getTenantByIdHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2435,11 +2723,27 @@ async function auditAndEnsureMasterUser() {
         where: { id },
         include: {
           whiteLabel: true,
+          users: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              active: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          },
           _count: {
             select: {
               users: { where: { deletedAt: null } },
               proposals: { where: { deletedAt: null } },
               clients: { where: { deletedAt: null } },
+              documents: true,
+              tasks: true,
             },
           },
         },
@@ -2449,18 +2753,280 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Tenant não encontrado.' });
       }
 
-      return res.json(tenant);
+      const lastAudit = await prisma.auditLog.findFirst({
+        where: { tenantId: id },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, action: true, userName: true },
+      });
+
+      return res.json({
+        ...tenant,
+        lastActivityAt: lastAudit?.createdAt || tenant.updatedAt,
+        lastActivityDescription: lastAudit ? `${lastAudit.action} por ${lastAudit.userName}` : null,
+      });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao obter detalhes do tenant.' });
     }
   };
   app.get('/api/saas/tenants/:id', getTenantByIdHandler);
+  app.get('/api/admin/tenants/:id', getTenantByIdHandler);
+  app.get('/api/tenants/:id', getTenantByIdHandler);
 
-  // 3. POST /api/saas/tenants (and alias /api/tenants)
+  // 2.3. GET /api/saas/tenants/:id/usage
+  const getTenantUsageHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Permissão insuficiente.' });
+      }
+
+      const { id } = req.params;
+      if (!isPlatformMaster && id !== session.effectiveTenantId) {
+        return res.status(403).json({ error: 'Acesso negado para outro tenant.' });
+      }
+
+      const tenantExists = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenantExists) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      const usage = await SaasUsageService.getTenantUsage(prisma, id);
+      return res.json(usage);
+    } catch (err: any) {
+      console.error('[GET /api/saas/tenants/:id/usage ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao obter consumo do tenant.' });
+    }
+  };
+  app.get('/api/saas/tenants/:id/usage', getTenantUsageHandler);
+
+  // 2.4. GET /api/saas/tenants/:id/limits
+  const getTenantLimitsHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Permissão insuficiente.' });
+      }
+
+      const { id } = req.params;
+      if (!isPlatformMaster && id !== session.effectiveTenantId) {
+        return res.status(403).json({ error: 'Acesso negado para outro tenant.' });
+      }
+
+      const tenantExists = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenantExists) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      const limits = await SaasLimitsService.getTenantLimits(prisma, id);
+      return res.json(limits);
+    } catch (err: any) {
+      console.error('[GET /api/saas/tenants/:id/limits ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao obter limites do tenant.' });
+    }
+  };
+  app.get('/api/saas/tenants/:id/limits', getTenantLimitsHandler);
+
+  // 2.5. GET /api/saas/tenants/:id/health
+  const getTenantHealthHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Permissão insuficiente.' });
+      }
+
+      const { id } = req.params;
+      if (!isPlatformMaster && id !== session.effectiveTenantId) {
+        return res.status(403).json({ error: 'Acesso negado para outro tenant.' });
+      }
+
+      const tenantExists = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenantExists) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      const health = await TenantHealthService.getTenantHealth(prisma, id);
+      return res.json(health);
+    } catch (err: any) {
+      console.error('[GET /api/saas/tenants/:id/health ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao obter saúde do tenant.' });
+    }
+  };
+  app.get('/api/saas/tenants/:id/health', getTenantHealthHandler);
+
+  // 2.6. GET /api/saas/usage/overview (Only PLATFORM_MASTER)
+  const getUsageOverviewHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      // Group users by tenantId (excluding deleted)
+      const userGroups = await prisma.user.groupBy({
+        by: ['tenantId'],
+        where: { deletedAt: null, active: true },
+        _count: true
+      });
+
+      // Group proposals by tenantId (excluding deleted)
+      const proposalGroups = await prisma.proposal.groupBy({
+        by: ['tenantId'],
+        where: { deletedAt: null },
+        _count: true
+      });
+
+      // Group documents by tenantId
+      const documentGroups = await prisma.clientDocument.groupBy({
+        by: ['tenantId'],
+        _sum: { fileSizeBytes: true }
+      });
+
+      // Group recent proposals by tenantId (last 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const recentProposalGroups = await prisma.proposal.groupBy({
+        by: ['tenantId'],
+        where: { deletedAt: null, createdAt: { gte: thirtyDaysAgo } },
+        _count: true
+      });
+
+      const tenants = await prisma.tenant.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+
+      const activeUsersMap = new Map(userGroups.map(g => [g.tenantId, g._count]));
+      const proposalsCountMap = new Map(proposalGroups.map(g => [g.tenantId, g._count]));
+      const storageSumMap = new Map(documentGroups.map(g => [g.tenantId, g._sum.fileSizeBytes || 0]));
+      const recentProposalsMap = new Map(recentProposalGroups.map(g => [g.tenantId, g._count]));
+
+      const overview = tenants.map(t => {
+        const activeUsers = activeUsersMap.get(t.id) || 0;
+        const totalProposals = proposalsCountMap.get(t.id) || 0;
+        const storageUsedBytes = storageSumMap.get(t.id) || 0;
+        const storageUsedMb = Number((storageUsedBytes / (1024 * 1024)).toFixed(2));
+        const recentProposals30d = recentProposalsMap.get(t.id) || 0;
+
+        // Calc percents
+        const uPercent = t.maxUsers > 0 ? Number(((activeUsers / t.maxUsers) * 100).toFixed(2)) : 0;
+        const pPercent = t.maxProposals > 0 ? Number(((totalProposals / t.maxProposals) * 100).toFixed(2)) : 0;
+        const sPercent = t.storageLimitMb > 0 ? Number(((storageUsedMb / t.storageLimitMb) * 100).toFixed(2)) : 0;
+
+        // Sync calculation of health score
+        let usersScore = 100;
+        if (uPercent > 100) usersScore = 0;
+        else if (uPercent >= 95) usersScore = 20;
+        else if (uPercent >= 85) usersScore = 50;
+        else if (uPercent >= 70) usersScore = 80;
+
+        let storageScore = 100;
+        if (sPercent > 100) storageScore = 0;
+        else if (sPercent >= 95) storageScore = 20;
+        else if (sPercent >= 85) storageScore = 50;
+        else if (sPercent >= 70) storageScore = 80;
+
+        let activityScore = 100;
+        if (recentProposals30d >= 10) activityScore = 100;
+        else if (recentProposals30d >= 5) activityScore = 80;
+        else if (recentProposals30d >= 1) activityScore = 50;
+        else if (totalProposals > 0) activityScore = 20;
+        else activityScore = 10;
+
+        const weightedScoreSum = (usersScore * 30) + (storageScore * 30) + (activityScore * 20);
+        const healthScore = Math.max(0, Math.min(100, Math.round(weightedScoreSum / 80)));
+
+        let healthStatus = 'CRITICAL';
+        if (healthScore >= 90) healthStatus = 'EXCELLENT';
+        else if (healthScore >= 75) healthStatus = 'GOOD';
+        else if (healthScore >= 60) healthStatus = 'ATTENTION';
+        else if (healthScore >= 40) healthStatus = 'RISK';
+
+        // Categorize usage statuses
+        let usersStatus = 'NORMAL';
+        if (uPercent > 100) usersStatus = 'EXCEEDED';
+        else if (uPercent >= 95) usersStatus = 'CRITICAL';
+        else if (uPercent >= 85) usersStatus = 'ALERT';
+        else if (uPercent >= 70) usersStatus = 'WARNING';
+
+        let proposalsStatus = 'NORMAL';
+        if (pPercent > 100) proposalsStatus = 'EXCEEDED';
+        else if (pPercent >= 95) proposalsStatus = 'CRITICAL';
+        else if (pPercent >= 85) proposalsStatus = 'ALERT';
+        else if (pPercent >= 70) proposalsStatus = 'WARNING';
+
+        let storageStatus = 'NORMAL';
+        if (sPercent > 100) storageStatus = 'EXCEEDED';
+        else if (sPercent >= 95) storageStatus = 'CRITICAL';
+        else if (sPercent >= 85) storageStatus = 'ALERT';
+        else if (sPercent >= 70) storageStatus = 'WARNING';
+
+        return {
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          plan: t.plan,
+          status: t.status,
+          users: {
+            active: activeUsers,
+            limit: t.maxUsers,
+            percent: uPercent,
+            status: usersStatus
+          },
+          proposals: {
+            total: totalProposals,
+            limit: t.maxProposals,
+            percent: pPercent,
+            status: proposalsStatus
+          },
+          storage: {
+            usedMb: storageUsedMb,
+            limitMb: t.storageLimitMb,
+            percent: sPercent,
+            status: storageStatus
+          },
+          healthScore,
+          healthStatus
+        };
+      });
+
+      return res.json(overview);
+    } catch (err: any) {
+      console.error('[GET /api/saas/usage/overview ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao gerar overview consolidado.' });
+    }
+  };
+  app.get('/api/saas/usage/overview', getUsageOverviewHandler);
+
+  // 3. POST /api/saas/tenants (and aliases /api/admin/tenants, /api/tenants)
   const createTenantHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2475,6 +3041,7 @@ async function auditAndEnsureMasterUser() {
         maxUsers,
         storageLimitMb,
         maxProposals,
+        enabledModules,
         adminEmail,
         adminName,
       } = req.body || {};
@@ -2505,6 +3072,20 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: `Plano inválido '${plan}'. Planos válidos: ${VALID_PLANS.join(', ')}.` });
       }
 
+      const cleanUsersLimit = Number(maxUsers);
+      const cleanStorageLimit = Number(storageLimitMb);
+      const cleanProposalsLimit = Number(maxProposals);
+
+      if (maxUsers !== undefined && (isNaN(cleanUsersLimit) || cleanUsersLimit < 1 || cleanUsersLimit > 100000)) {
+        return res.status(400).json({ error: 'maxUsers deve ser um número entre 1 e 100.000.' });
+      }
+      if (storageLimitMb !== undefined && (isNaN(cleanStorageLimit) || cleanStorageLimit < 100 || cleanStorageLimit > 10000000)) {
+        return res.status(400).json({ error: 'storageLimitMb deve ser um número entre 100 e 10.000.000.' });
+      }
+      if (maxProposals !== undefined && (isNaN(cleanProposalsLimit) || cleanProposalsLimit < 100 || cleanProposalsLimit > 10000000)) {
+        return res.status(400).json({ error: 'maxProposals deve ser um número entre 100 e 10.000.000.' });
+      }
+
       const cleanCnpj = cnpj ? String(cnpj).replace(/\D/g, '') : null;
 
       // Validação de duplicidade
@@ -2527,6 +3108,22 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
+      const defaultModules = [
+        'PROPOSALS',
+        'SIMULATION',
+        'KANBAN',
+        'CRM',
+        'FINANCIAL',
+        'RADAR',
+        'TV_MONITOR',
+        'BI',
+        'SENTINELA_AI',
+        'DOCUMENTS',
+        'PORTABILITY',
+      ];
+
+      const initialModules = Array.isArray(enabledModules) ? enabledModules : defaultModules;
+
       // Criação transacional do Tenant + WhiteLabel padrão
       const tenant = await prisma.$transaction(async (tx) => {
         const newTenant = await tx.tenant.create({
@@ -2538,9 +3135,10 @@ async function auditAndEnsureMasterUser() {
             tradeName: tradeName ? String(tradeName).trim() : String(name).trim(),
             plan: plan || 'PRO',
             status: 'ACTIVE',
-            maxUsers: Number(maxUsers) || 10,
-            storageLimitMb: Number(storageLimitMb) || 5000,
-            maxProposals: Number(maxProposals) || 10000,
+            maxUsers: !isNaN(cleanUsersLimit) && cleanUsersLimit > 0 ? cleanUsersLimit : 10,
+            storageLimitMb: !isNaN(cleanStorageLimit) && cleanStorageLimit >= 100 ? cleanStorageLimit : 5000,
+            maxProposals: !isNaN(cleanProposalsLimit) && cleanProposalsLimit >= 100 ? cleanProposalsLimit : 10000,
+            enabledModules: initialModules,
           },
         });
 
@@ -2568,7 +3166,7 @@ async function auditAndEnsureMasterUser() {
                 tenantId: newTenant.id,
                 name: String(adminName).trim(),
                 email: cleanAdminEmail,
-                passwordHash: 'Mudar@123', // Senha inicial temporária
+                passwordHash: 'Mudar@123',
                 role: 'MASTER',
                 active: true,
                 mustChangePassword: true,
@@ -2592,7 +3190,7 @@ async function auditAndEnsureMasterUser() {
           tenantId: tenant.id,
           userId: session.user.id,
           userName: session.user.name,
-          action: 'TENANT_CREATED',
+          action: 'tenant.created',
           entity: 'Tenant',
           entityId: tenant.id,
           newData: JSON.stringify({
@@ -2601,17 +3199,20 @@ async function auditAndEnsureMasterUser() {
             slug: tenant.slug,
             customDomain: tenant.customDomain,
             plan: tenant.plan,
+            maxUsers: tenant.maxUsers,
+            storageLimitMb: tenant.storageLimitMb,
+            maxProposals: tenant.maxProposals,
+            enabledModules: tenant.enabledModules,
           }),
         },
       }).catch(() => {});
 
-      // Emissão SSE
-      sseRegistry.broadcastToTenant(tenant.id, {
+      // Emissão de evento thin via Pusher para o tenant
+      eventBus.publishToTenant(tenant.id, {
         type: 'TENANT_CREATED',
-        entity: 'Tenant',
+        entity: 'tenant',
         entityId: tenant.id,
-        userId: session.user.id,
-      });
+      }).catch(() => {});
 
       return res.status(201).json(tenant);
     } catch (err: any) {
@@ -2620,13 +3221,17 @@ async function auditAndEnsureMasterUser() {
     }
   };
   app.post('/api/saas/tenants', createTenantHandler);
+  app.post('/api/admin/tenants', createTenantHandler);
   app.post('/api/tenants', createTenantHandler);
 
-  // 4. PUT /api/saas/tenants/:id (and alias /api/tenants/:id)
+  // 4. PUT /api/saas/tenants/:id (and aliases /api/admin/tenants/:id, /api/tenants/:id)
   const updateTenantHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2642,6 +3247,7 @@ async function auditAndEnsureMasterUser() {
         maxUsers,
         storageLimitMb,
         maxProposals,
+        enabledModules,
         whiteLabel,
       } = req.body || {};
 
@@ -2689,6 +3295,30 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: `Plano inválido '${plan}'. Planos válidos: ${VALID_PLANS.join(', ')}.` });
       }
 
+      const VALID_STATUSES = ['ACTIVE', 'SUSPENDED', 'CANCELLED', 'TRIAL'];
+      if (status && !VALID_STATUSES.includes(status)) {
+        return res.status(400).json({ error: `Status inválido '${status}'.` });
+      }
+
+      if (maxUsers !== undefined) {
+        const num = Number(maxUsers);
+        if (isNaN(num) || num < 1 || num > 100000) {
+          return res.status(400).json({ error: 'maxUsers deve ser um número entre 1 e 100.000.' });
+        }
+      }
+      if (storageLimitMb !== undefined) {
+        const num = Number(storageLimitMb);
+        if (isNaN(num) || num < 100 || num > 10000000) {
+          return res.status(400).json({ error: 'storageLimitMb deve ser um número entre 100 e 10.000.000.' });
+        }
+      }
+      if (maxProposals !== undefined) {
+        const num = Number(maxProposals);
+        if (isNaN(num) || num < 100 || num > 10000000) {
+          return res.status(400).json({ error: 'maxProposals deve ser um número entre 100 e 10.000.000.' });
+        }
+      }
+
       const cleanCnpj = cnpj !== undefined ? (cnpj ? String(cnpj).replace(/\D/g, '') : null) : undefined;
       if (cleanCnpj && cleanCnpj !== currentTenant.cnpj) {
         const existingCnpj = await prisma.tenant.findUnique({ where: { cnpj: cleanCnpj } });
@@ -2711,6 +3341,7 @@ async function auditAndEnsureMasterUser() {
             maxUsers: maxUsers !== undefined ? Number(maxUsers) : undefined,
             storageLimitMb: storageLimitMb !== undefined ? Number(storageLimitMb) : undefined,
             maxProposals: maxProposals !== undefined ? Number(maxProposals) : undefined,
+            enabledModules: Array.isArray(enabledModules) ? enabledModules : undefined,
           },
         });
 
@@ -2756,13 +3387,27 @@ async function auditAndEnsureMasterUser() {
       TenantResolver.invalidateCache(currentTenant.slug + '.sentinelconsig.com.br');
       TenantResolver.invalidateCache(updatedTenant.slug + '.sentinelconsig.com.br');
 
-      // Auditoria
+      // Auditoria com categorização precisa por tipo de alteração
+      let auditAction = 'tenant.updated';
+      if (plan && plan !== currentTenant.plan) auditAction = 'tenant.plan_changed';
+      else if (
+        (maxUsers !== undefined && maxUsers !== currentTenant.maxUsers) ||
+        (storageLimitMb !== undefined && storageLimitMb !== currentTenant.storageLimitMb) ||
+        (maxProposals !== undefined && maxProposals !== currentTenant.maxProposals)
+      ) {
+        auditAction = 'tenant.limits_changed';
+      } else if (enabledModules && JSON.stringify(enabledModules) !== JSON.stringify(currentTenant.enabledModules)) {
+        auditAction = 'tenant.modules_changed';
+      } else if (whiteLabel) {
+        auditAction = 'tenant.branding_changed';
+      }
+
       await prisma.auditLog.create({
         data: {
           tenantId: id,
           userId: session.user.id,
           userName: session.user.name,
-          action: 'TENANT_UPDATED',
+          action: auditAction,
           entity: 'Tenant',
           entityId: id,
           oldData: JSON.stringify({
@@ -2770,23 +3415,32 @@ async function auditAndEnsureMasterUser() {
             slug: currentTenant.slug,
             customDomain: currentTenant.customDomain,
             status: currentTenant.status,
+            plan: currentTenant.plan,
+            maxUsers: currentTenant.maxUsers,
+            storageLimitMb: currentTenant.storageLimitMb,
+            maxProposals: currentTenant.maxProposals,
+            enabledModules: currentTenant.enabledModules,
           }),
           newData: JSON.stringify({
             name: updatedTenant.name,
             slug: updatedTenant.slug,
             customDomain: updatedTenant.customDomain,
             status: updatedTenant.status,
+            plan: updatedTenant.plan,
+            maxUsers: updatedTenant.maxUsers,
+            storageLimitMb: updatedTenant.storageLimitMb,
+            maxProposals: updatedTenant.maxProposals,
+            enabledModules: updatedTenant.enabledModules,
           }),
         },
       }).catch(() => {});
 
-      // Emissão SSE
-      sseRegistry.broadcastToTenant(id, {
+      // Emissão de evento thin via Pusher para o tenant
+      eventBus.publishToTenant(id, {
         type: 'TENANT_UPDATED',
-        entity: 'Tenant',
+        entity: 'tenant',
         entityId: id,
-        userId: session.user.id,
-      });
+      }).catch(() => {});
 
       return res.json(updatedTenant);
     } catch (err: any) {
@@ -2795,13 +3449,17 @@ async function auditAndEnsureMasterUser() {
     }
   };
   app.put('/api/saas/tenants/:id', updateTenantHandler);
+  app.put('/api/admin/tenants/:id', updateTenantHandler);
   app.put('/api/tenants/:id', updateTenantHandler);
 
-  // 5. POST /api/saas/tenants/:id/suspend - Suspensão imediata com expurgo de sessões e encerramento SSE
-  app.post('/api/saas/tenants/:id/suspend', async (req, res) => {
+  // 5. POST /api/saas/tenants/:id/suspend (and alias /api/admin/tenants/:id/suspend)
+  const suspendTenantHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2827,14 +3485,12 @@ async function auditAndEnsureMasterUser() {
       if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
       TenantResolver.invalidateCache(tenant.slug + '.sentinelconsig.com.br');
 
-      // Notifica e desconecta todas as conexões SSE deste tenant imediatamente
-      sseRegistry.broadcastToTenant(id, {
+      // Emissão de evento thin via Pusher para o tenant
+      eventBus.publishToTenant(id, {
         type: 'TENANT_SUSPENDED',
-        entity: 'Tenant',
+        entity: 'tenant',
         entityId: id,
-        userId: session.user.id,
-      });
-      sseRegistry.disconnectTenant(id, 'TENANT_SUSPENDED');
+      }).catch(() => {});
 
       // Registro de Auditoria
       await prisma.auditLog.create({
@@ -2842,7 +3498,7 @@ async function auditAndEnsureMasterUser() {
           tenantId: id,
           userId: session.user.id,
           userName: session.user.name,
-          action: 'TENANT_SUSPENDED',
+          action: 'tenant.suspended',
           entity: 'Tenant',
           entityId: id,
           newData: JSON.stringify({ status: 'SUSPENDED', revokedSessionsCount: deletedSessions.count }),
@@ -2851,20 +3507,25 @@ async function auditAndEnsureMasterUser() {
 
       return res.json({
         success: true,
-        message: 'Tenant suspenso com sucesso. Todas as sessões e conexões foram encerradas.',
+        message: 'Tenant suspenso com sucesso. Todas as sessões foram encerradas.',
         tenant: updated,
       });
     } catch (err) {
       console.error('[POST /api/saas/tenants/:id/suspend ERROR]', err);
       return res.status(500).json({ error: 'Erro ao suspender tenant.' });
     }
-  });
+  };
+  app.post('/api/saas/tenants/:id/suspend', suspendTenantHandler);
+  app.post('/api/admin/tenants/:id/suspend', suspendTenantHandler);
 
-  // 6. POST /api/saas/tenants/:id/reactivate - Reativação
-  app.post('/api/saas/tenants/:id/reactivate', async (req, res) => {
+  // 6. POST /api/saas/tenants/:id/reactivate (and alias /api/admin/tenants/:id/reactivate)
+  const reactivateTenantHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2883,13 +3544,20 @@ async function auditAndEnsureMasterUser() {
       if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
       TenantResolver.invalidateCache(tenant.slug + '.sentinelconsig.com.br');
 
+      // Emissão de evento thin via Pusher para o tenant
+      eventBus.publishToTenant(id, {
+        type: 'TENANT_REACTIVATED',
+        entity: 'tenant',
+        entityId: id,
+      }).catch(() => {});
+
       // Auditoria
       await prisma.auditLog.create({
         data: {
           tenantId: id,
           userId: session.user.id,
           userName: session.user.name,
-          action: 'TENANT_REACTIVATED',
+          action: 'tenant.reactivated',
           entity: 'Tenant',
           entityId: id,
           newData: JSON.stringify({ status: 'ACTIVE' }),
@@ -2905,13 +3573,18 @@ async function auditAndEnsureMasterUser() {
       console.error('[POST /api/saas/tenants/:id/reactivate ERROR]', err);
       return res.status(500).json({ error: 'Erro ao reativar tenant.' });
     }
-  });
+  };
+  app.post('/api/saas/tenants/:id/reactivate', reactivateTenantHandler);
+  app.post('/api/admin/tenants/:id/reactivate', reactivateTenantHandler);
 
   // 7. CONTEXT SWITCHING API (PLATFORM_MASTER Support/Admin Inspection)
-  app.post('/api/saas/context-switch', async (req, res) => {
+  const contextSwitchHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2938,7 +3611,7 @@ async function auditAndEnsureMasterUser() {
           tenantId: targetTenant.id,
           userId: session.user.id,
           userName: session.user.name,
-          action: 'CONTEXT_SWITCH_STARTED',
+          action: 'admin.context_entered',
           entity: 'Tenant',
           entityId: targetTenant.id,
           newData: JSON.stringify({
@@ -2964,12 +3637,17 @@ async function auditAndEnsureMasterUser() {
       console.error('[POST /api/saas/context-switch ERROR]', err);
       return res.status(500).json({ error: 'Erro ao alternar contexto administrativo.' });
     }
-  });
+  };
+  app.post('/api/saas/context-switch', contextSwitchHandler);
+  app.post('/api/admin/switch-tenant', contextSwitchHandler);
 
-  app.post('/api/saas/context-switch/exit', async (req, res) => {
+  const contextSwitchExitHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -2983,7 +3661,7 @@ async function auditAndEnsureMasterUser() {
             tenantId: currentContext.targetTenantId,
             userId: session.user.id,
             userName: session.user.name,
-            action: 'CONTEXT_SWITCH_ENDED',
+            action: 'admin.context_exited',
             entity: 'Tenant',
             entityId: currentContext.targetTenantId,
             newData: JSON.stringify({
@@ -3002,12 +3680,17 @@ async function auditAndEnsureMasterUser() {
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao sair do contexto administrativo.' });
     }
-  });
+  };
+  app.post('/api/saas/context-switch/exit', contextSwitchExitHandler);
+  app.post('/api/admin/exit-context', contextSwitchExitHandler);
 
-  app.get('/api/saas/context-switch/status', async (req, res) => {
+  const contextStatusHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || session.user.role !== 'PLATFORM_MASTER') {
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
@@ -3016,7 +3699,523 @@ async function auditAndEnsureMasterUser() {
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao obter status do contexto.' });
     }
-  });
+  };
+  app.get('/api/saas/context-switch/status', contextStatusHandler);
+  app.get('/api/admin/context-status', contextStatusHandler);
+
+  // =============================================================
+  // CUSTOM DOMAIN & DNS CHALLENGE API (FASE 8.2-B)
+  // =============================================================
+
+  // 1. GET /api/admin/tenants/:id/domains (and alias /api/saas/tenants/:id/domains)
+  const getDomainsHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const { id: tenantId } = req.params;
+
+      // IDOR check
+      if (isMaster && session.user.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Acesso negado: Você não pode gerenciar domínios de outro tenant.' });
+      }
+
+      if (isPlatformMaster) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!targetTenant) {
+          return res.status(404).json({ error: 'Tenant não encontrado.' });
+        }
+      }
+
+      const domains = await prisma.tenantDomain.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return res.json(domains);
+    } catch (err) {
+      console.error('[GET /api/admin/tenants/:id/domains ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao listar domínios.' });
+    }
+  };
+  app.get('/api/admin/tenants/:id/domains', getDomainsHandler);
+  app.get('/api/saas/tenants/:id/domains', getDomainsHandler);
+
+  // 2. POST /api/admin/tenants/:id/domains (and alias /api/saas/tenants/:id/domains)
+  const createDomainHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const { id: tenantId } = req.params;
+
+      // IDOR check
+      if (isMaster && session.user.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Acesso negado: Você não pode gerenciar domínios de outro tenant.' });
+      }
+
+      if (isPlatformMaster) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!targetTenant) {
+          return res.status(404).json({ error: 'Tenant não encontrado.' });
+        }
+      }
+
+      const rawDomain = req.body.domain;
+      if (!rawDomain || typeof rawDomain !== 'string') {
+        return res.status(400).json({ error: 'O domínio é obrigatório e deve ser uma string.' });
+      }
+
+      let domain: string;
+      try {
+        const norm = TenantNormalization.normalizeCustomDomain(rawDomain);
+        if (!norm) {
+          return res.status(400).json({ error: 'Domínio inválido ou vazio.' });
+        }
+        domain = norm;
+      } catch (err: any) {
+        return res.status(400).json({ error: err.message || 'Erro ao validar domínio.' });
+      }
+
+      if (domain.length > 253) {
+        return res.status(400).json({ error: 'Domínio inválido: comprimento máximo de 253 caracteres excedido.' });
+      }
+
+      // Rejeitar IP literal ou localhost
+      if (domain === 'localhost' || domain === '127.0.0.1' || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
+        return res.status(400).json({ error: 'Domínio inválido: localhost ou IPs literais não são permitidos.' });
+      }
+
+      // Rejeitar domínios reservados do sistema se forem cadastrados incorretamente na plataforma
+      const reservedPrefixes = ['admin', 'api', 'app', 'auth', 'saas', 'www', 'system', 'dashboard', 'dev', 'stage'];
+      const parts = domain.split('.');
+      if (parts.length > 0 && reservedPrefixes.includes(parts[0]) && domain.endsWith('.sentinelconsig.com.br')) {
+        return res.status(400).json({ error: `O prefixo '${parts[0]}' é reservado do sistema.` });
+      }
+
+      // Check cross-tenant uniqueness
+      const existingDomain = await prisma.tenantDomain.findUnique({
+        where: { domain }
+      });
+      if (existingDomain) {
+        return res.status(400).json({ error: `O domínio personalizado '${domain}' já está registrado.` });
+      }
+
+      const existingLegacy = await prisma.tenant.findUnique({
+        where: { customDomain: domain }
+      });
+      if (existingLegacy) {
+        return res.status(400).json({ error: `O domínio personalizado '${domain}' já está em uso por outro tenant (legado).` });
+      }
+
+      // Generate cryptographically secure verification token
+      const secureBytes = crypto.randomBytes(24).toString('hex');
+      const verificationToken = `st_${secureBytes}`;
+
+      const tenantDomain = await prisma.tenantDomain.create({
+        data: {
+          tenantId,
+          domain,
+          status: 'PENDING',
+          verificationToken,
+          isPrimary: false,
+        }
+      });
+
+      // Audit Log (NÃO expor verificationToken nos logs)
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'domain.created',
+          entity: 'TenantDomain',
+          entityId: tenantDomain.id,
+          newData: JSON.stringify({
+            id: tenantDomain.id,
+            domain: tenantDomain.domain,
+            status: tenantDomain.status,
+            isPrimary: tenantDomain.isPrimary,
+          })
+        }
+      }).catch(() => {});
+
+      return res.status(201).json(tenantDomain);
+    } catch (err) {
+      console.error('[POST /api/admin/tenants/:id/domains ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao criar domínio personalizado.' });
+    }
+  };
+  app.post('/api/admin/tenants/:id/domains', createDomainHandler);
+  app.post('/api/saas/tenants/:id/domains', createDomainHandler);
+
+  // 3. POST /api/admin/tenants/:id/domains/:domainId/verify (and alias /api/saas/tenants/:id/domains/:domainId/verify)
+  const verifyDomainHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const { id: tenantId, domainId } = req.params;
+
+      // IDOR check
+      if (isMaster && session.user.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Acesso negado: Você não pode gerenciar domínios de outro tenant.' });
+      }
+
+      if (isPlatformMaster) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!targetTenant) {
+          return res.status(404).json({ error: 'Tenant não encontrado.' });
+        }
+      }
+
+      const tenantDomain = await prisma.tenantDomain.findFirst({
+        where: { id: domainId, tenantId }
+      });
+      if (!tenantDomain) {
+        return res.status(404).json({ error: 'Domínio não encontrado para este tenant.' });
+      }
+
+      // Transition to VERIFYING status first
+      await prisma.tenantDomain.update({
+        where: { id: domainId },
+        data: { status: 'VERIFYING' }
+      });
+
+      // Audit Log
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'domain.verification_started',
+          entity: 'TenantDomain',
+          entityId: domainId,
+          newData: JSON.stringify({ id: domainId, domain: tenantDomain.domain })
+        }
+      }).catch(() => {});
+
+      // DNS Challenge lookup
+      const verificationResult = await DnsVerificationService.verifyTxtRecord(
+        tenantDomain.domain,
+        tenantDomain.verificationToken
+      );
+
+      if (verificationResult.success) {
+        const updated = await prisma.tenantDomain.update({
+          where: { id: domainId },
+          data: {
+            status: 'VERIFIED',
+            verifiedAt: new Date()
+          }
+        });
+
+        // Invalidate cache
+        TenantResolver.invalidateCache(tenantDomain.domain);
+
+        // Audit Log
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: session.user.id,
+            userName: session.user.name,
+            action: 'domain.verified',
+            entity: 'TenantDomain',
+            entityId: domainId,
+            newData: JSON.stringify({ id: domainId, domain: tenantDomain.domain, status: 'VERIFIED' })
+          }
+        }).catch(() => {});
+
+        return res.json({
+          success: true,
+          message: 'Domínio verificado com sucesso.',
+          domain: updated
+        });
+      } else {
+        const updated = await prisma.tenantDomain.update({
+          where: { id: domainId },
+          data: { status: 'FAILED' }
+        });
+
+        // Audit Log
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: session.user.id,
+            userName: session.user.name,
+            action: 'domain.verification_failed',
+            entity: 'TenantDomain',
+            entityId: domainId,
+            newData: JSON.stringify({ id: domainId, domain: tenantDomain.domain, status: 'FAILED', error: verificationResult.error })
+          }
+        }).catch(() => {});
+
+        return res.status(400).json({
+          error: verificationResult.error || 'Registro TXT não encontrado ou inválido.',
+          status: 'FAILED',
+          domain: updated
+        });
+      }
+    } catch (err) {
+      console.error('[POST /api/admin/tenants/:id/domains/:domainId/verify ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao verificar domínio.' });
+    }
+  };
+  app.post('/api/admin/tenants/:id/domains/:domainId/verify', verifyDomainHandler);
+  app.post('/api/saas/tenants/:id/domains/:domainId/verify', verifyDomainHandler);
+
+  // 4. POST /api/admin/tenants/:id/domains/:domainId/primary (and alias /api/saas/tenants/:id/domains/:domainId/primary)
+  const setPrimaryDomainHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const { id: tenantId, domainId } = req.params;
+
+      // IDOR check
+      if (isMaster && session.user.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Acesso negado: Você não pode gerenciar domínios de outro tenant.' });
+      }
+
+      if (isPlatformMaster) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!targetTenant) {
+          return res.status(404).json({ error: 'Tenant não encontrado.' });
+        }
+      }
+
+      const tenantDomain = await prisma.tenantDomain.findFirst({
+        where: { id: domainId, tenantId }
+      });
+      if (!tenantDomain) {
+        return res.status(404).json({ error: 'Domínio não encontrado para este tenant.' });
+      }
+
+      if (tenantDomain.status !== 'VERIFIED') {
+        return res.status(400).json({ error: 'Apenas domínios com status VERIFIED podem ser definidos como primários.' });
+      }
+
+      // Update primary domain in a transaction
+      await prisma.$transaction([
+        prisma.tenantDomain.updateMany({
+          where: { tenantId, isPrimary: true },
+          data: { isPrimary: false }
+        }),
+        prisma.tenantDomain.update({
+          where: { id: domainId },
+          data: { isPrimary: true }
+        })
+      ]);
+
+      // Invalidate cache
+      TenantResolver.invalidateCache(tenantDomain.domain);
+
+      // Audit Log
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'domain.updated',
+          entity: 'TenantDomain',
+          entityId: domainId,
+          newData: JSON.stringify({ id: domainId, domain: tenantDomain.domain, isPrimary: true })
+        }
+      }).catch(() => {});
+
+      const updatedDomain = await prisma.tenantDomain.findUnique({ where: { id: domainId } });
+      return res.json({
+        success: true,
+        message: 'Domínio primário atualizado com sucesso.',
+        domain: updatedDomain
+      });
+    } catch (err) {
+      console.error('[POST /api/admin/tenants/:id/domains/:domainId/primary ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao definir domínio primário.' });
+    }
+  };
+  app.post('/api/admin/tenants/:id/domains/:domainId/primary', setPrimaryDomainHandler);
+  app.post('/api/saas/tenants/:id/domains/:domainId/primary', setPrimaryDomainHandler);
+
+  // 5. POST /api/admin/tenants/:id/domains/:domainId/disable (and alias /api/saas/tenants/:id/domains/:domainId/disable)
+  const disableDomainHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const { id: tenantId, domainId } = req.params;
+
+      // IDOR check
+      if (isMaster && session.user.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Acesso negado: Você não pode gerenciar domínios de outro tenant.' });
+      }
+
+      if (isPlatformMaster) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!targetTenant) {
+          return res.status(404).json({ error: 'Tenant não encontrado.' });
+        }
+      }
+
+      const tenantDomain = await prisma.tenantDomain.findFirst({
+        where: { id: domainId, tenantId }
+      });
+      if (!tenantDomain) {
+        return res.status(404).json({ error: 'Domínio não encontrado para este tenant.' });
+      }
+
+      const updated = await prisma.tenantDomain.update({
+        where: { id: domainId },
+        data: { status: 'DISABLED', isPrimary: false }
+      });
+
+      // Invalidate cache
+      TenantResolver.invalidateCache(tenantDomain.domain);
+
+      // Audit Log
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'domain.disabled',
+          entity: 'TenantDomain',
+          entityId: domainId,
+          newData: JSON.stringify({ id: domainId, domain: tenantDomain.domain, status: 'DISABLED' })
+        }
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        message: 'Domínio desativado com sucesso.',
+        domain: updated
+      });
+    } catch (err) {
+      console.error('[POST /api/admin/tenants/:id/domains/:domainId/disable ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao desativar domínio.' });
+    }
+  };
+  app.post('/api/admin/tenants/:id/domains/:domainId/disable', disableDomainHandler);
+  app.post('/api/saas/tenants/:id/domains/:domainId/disable', disableDomainHandler);
+
+  // 6. DELETE /api/admin/tenants/:id/domains/:domainId (and alias /api/saas/tenants/:id/domains/:domainId)
+  const deleteDomainHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = session.user.role === 'MASTER';
+      if (!isPlatformMaster && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const { id: tenantId, domainId } = req.params;
+
+      // IDOR check
+      if (isMaster && session.user.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Acesso negado: Você não pode gerenciar domínios de outro tenant.' });
+      }
+
+      if (isPlatformMaster) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!targetTenant) {
+          return res.status(404).json({ error: 'Tenant não encontrado.' });
+        }
+      }
+
+      const tenantDomain = await prisma.tenantDomain.findFirst({
+        where: { id: domainId, tenantId }
+      });
+      if (!tenantDomain) {
+        return res.status(404).json({ error: 'Domínio não encontrado para este tenant.' });
+      }
+
+      // Check if it is primary and the ONLY verified domain of the tenant
+      if (tenantDomain.isPrimary) {
+        const verifiedCount = await prisma.tenantDomain.count({
+          where: { tenantId, status: 'VERIFIED' }
+        });
+        if (verifiedCount <= 1) {
+          return res.status(400).json({
+            error: 'Não é permitido remover o domínio primário quando ele é o único domínio verificado do tenant. Adicione ou defina outro domínio verificado como primário antes de remover este.'
+          });
+        }
+      }
+
+      await prisma.tenantDomain.delete({
+        where: { id: domainId }
+      });
+
+      // Invalidate cache
+      TenantResolver.invalidateCache(tenantDomain.domain);
+
+      // Audit Log
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'domain.deleted',
+          entity: 'TenantDomain',
+          entityId: domainId,
+          oldData: JSON.stringify({ id: domainId, domain: tenantDomain.domain })
+        }
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        message: 'Domínio personalizado removido com sucesso.'
+      });
+    } catch (err) {
+      console.error('[DELETE /api/admin/tenants/:id/domains/:domainId ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao remover domínio personalizado.' });
+    }
+  };
+  app.delete('/api/admin/tenants/:id/domains/:domainId', deleteDomainHandler);
+  app.delete('/api/saas/tenants/:id/domains/:domainId', deleteDomainHandler);
 
   // -------------------------------------------------------------
   // BULK IMPORT & ASYNC JOBS API ROUTES (Phase 2.4)
@@ -3422,6 +4621,643 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
+  // ANALYTICS & OPERATIONAL INTELLIGENCE API (Phase 4.1)
+  // Strict Tenant Isolation, RBAC & Aggregations via PostgreSQL
+  // -------------------------------------------------------------
+
+  // Helper for parsing analytics query filters
+  const parseAnalyticsFilters = (query: any) => {
+    const filters: any = {};
+    if (query.startDate) {
+      const d = new Date(String(query.startDate));
+      if (!isNaN(d.getTime())) filters.startDate = d;
+    }
+    if (query.endDate) {
+      const d = new Date(String(query.endDate));
+      if (!isNaN(d.getTime())) filters.endDate = d;
+    }
+    if (query.bankId && typeof query.bankId === 'string' && query.bankId.trim()) {
+      filters.bankId = query.bankId.trim();
+    }
+    if (query.partnerId && typeof query.partnerId === 'string' && query.partnerId.trim()) {
+      filters.partnerId = query.partnerId.trim();
+    }
+    if (query.statusId && typeof query.statusId === 'string' && query.statusId.trim()) {
+      filters.statusId = query.statusId.trim();
+    }
+    if (query.productId && typeof query.productId === 'string' && query.productId.trim()) {
+      filters.productId = query.productId.trim();
+    }
+    return filters;
+  };
+
+  // 1. GET /api/analytics/bottlenecks
+  app.get('/api/analytics/bottlenecks', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar inteligência operacional.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar indicadores analíticos.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseAnalyticsFilters(req.query);
+
+      const result = await AnalyticsService.getBottlenecks(prisma, tenantId, filters);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[ANALYTICS BOTTLENECKS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de gargalos operacionais.' });
+    }
+  });
+
+  // 2. GET /api/analytics/dwell-time
+  app.get('/api/analytics/dwell-time', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar tempo de permanência.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar tempo de permanência.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseAnalyticsFilters(req.query);
+
+      const result = await AnalyticsService.getDwellTime(prisma, tenantId, filters);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[ANALYTICS DWELL TIME ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar tempo de permanência na esteira.' });
+    }
+  });
+
+  // 3. GET /api/analytics/aging
+  app.get('/api/analytics/aging', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar aging de esteira.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar aging da esteira.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseAnalyticsFilters(req.query);
+
+      const result = await AnalyticsService.getAging(prisma, tenantId, filters);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[ANALYTICS AGING ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar aging de propostas.' });
+    }
+  });
+
+  // 4. GET /api/analytics/production
+  app.get('/api/analytics/production', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar produção analítica.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar relatórios de produção.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseAnalyticsFilters(req.query);
+
+      const result = await AnalyticsService.getProduction(prisma, tenantId, filters);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[ANALYTICS PRODUCTION ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar métricas de produção analítica.' });
+    }
+  });
+
+  // 5. GET /api/analytics/sla
+  app.get('/api/analytics/sla', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar SLA analítico.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar indicadores de SLA.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseAnalyticsFilters(req.query);
+
+      const result = await AnalyticsService.getSla(prisma, tenantId, filters);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[ANALYTICS SLA ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar indicadores de SLA.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // FASE 5.1: BI GERENCIAL P0 API
+  // Strict Tenant Isolation, RBAC (dashboard.view) & PostgreSQL Source of Truth
+  // -------------------------------------------------------------
+
+  const parseBIFilters = (query: any) => {
+    const filters: any = {};
+    if (query.period && typeof query.period === 'string') {
+      filters.period = query.period.trim();
+    }
+    if (query.startDate && typeof query.startDate === 'string') {
+      filters.startDate = query.startDate.trim();
+    }
+    if (query.endDate && typeof query.endDate === 'string') {
+      filters.endDate = query.endDate.trim();
+    }
+    if (query.bankId && typeof query.bankId === 'string' && query.bankId.trim()) {
+      filters.bankId = query.bankId.trim();
+    }
+    if (query.partnerId && typeof query.partnerId === 'string' && query.partnerId.trim()) {
+      filters.partnerId = query.partnerId.trim();
+    }
+    if (query.digitizerId && typeof query.digitizerId === 'string' && query.digitizerId.trim()) {
+      filters.digitizerId = query.digitizerId.trim();
+    }
+    if (query.assignedToId && typeof query.assignedToId === 'string' && query.assignedToId.trim()) {
+      filters.assignedToId = query.assignedToId.trim();
+    }
+    if (query.productId && typeof query.productId === 'string' && query.productId.trim()) {
+      filters.productId = query.productId.trim();
+    }
+    if (query.proposalType && typeof query.proposalType === 'string' && query.proposalType.trim()) {
+      filters.proposalType = query.proposalType.trim();
+    }
+    if (query.statusId && typeof query.statusId === 'string' && query.statusId.trim()) {
+      filters.statusId = query.statusId.trim();
+    }
+    if (query.standardCategory && typeof query.standardCategory === 'string' && query.standardCategory.trim()) {
+      filters.standardCategory = query.standardCategory.trim();
+    }
+    if (query.groupBy && ['day', 'week', 'month'].includes(String(query.groupBy))) {
+      filters.groupBy = query.groupBy;
+    }
+    return filters;
+  };
+
+  // 1. GET /api/bi/overview - Strategic Overview KPIs
+  app.get('/api/bi/overview', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar o BI Gerencial.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar o BI Gerencial.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const overview = await BIService.getOverview(prisma, tenantId, filters);
+      return res.json(overview);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API OVERVIEW ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar visão geral do BI Gerencial.' });
+    }
+  });
+
+  // 2. GET /api/bi/production - Aggregated Production Volume Time Series
+  app.get('/api/bi/production', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar a produção do BI.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar a produção do BI.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const production = await BIService.getProduction(prisma, tenantId, filters);
+      return res.json(production);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API PRODUCTION ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar dados de produção do BI Gerencial.' });
+    }
+  });
+
+  // 3. GET /api/bi/banks - Bank Performance & Conversion
+  app.get('/api/bi/banks', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar a análise de bancos.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar a análise de bancos.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const banks = await BIService.getBanks(prisma, tenantId, filters);
+      return res.json(banks);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API BANKS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de bancos do BI Gerencial.' });
+    }
+  });
+
+  // 4. GET /api/bi/partners - Partner Performance & Conversion
+  app.get('/api/bi/partners', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar a análise de parceiros.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar a análise de parceiros.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const partners = await BIService.getPartners(prisma, tenantId, filters);
+      return res.json(partners);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API PARTNERS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de parceiros do BI Gerencial.' });
+    }
+  });
+
+  // 5. GET /api/bi/comparison - Current vs Previous Period Delta Comparison
+  app.get('/api/bi/comparison', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar o comparativo do BI.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar o comparativo do BI.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const comparison = await BIComparisonService.getComparison(prisma, tenantId, filters);
+      return res.json(comparison);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API COMPARISON ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar comparativo do BI Gerencial.' });
+    }
+  });
+
+  // 6. GET /api/bi/rankings - Extended Rankings for Banks, Partners, and Digitizers
+  app.get('/api/bi/rankings', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar os rankings do BI.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar os rankings do BI.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const rankings = await BIComparisonService.getRankings(prisma, tenantId, filters);
+      return res.json(rankings);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API RANKINGS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar rankings do BI Gerencial.' });
+    }
+  });
+
+  // 7. POST /api/bi/export - Server-Side CSV Export with Multi-Tenant & RBAC Isolation
+  app.post('/api/bi/export', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para exportar relatórios do BI.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para exportar relatórios do BI.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.body || req.query);
+
+      const dateRange = BIService.resolveDateRange(filters);
+
+      const where: Prisma.ProposalWhereInput = {
+        tenantId,
+        deletedAt: null,
+        createdAt: {
+          gte: dateRange.startDate,
+          lte: dateRange.endDate,
+        },
+      };
+
+      if (filters.bankId && filters.bankId.trim()) where.bankId = filters.bankId.trim();
+      if (filters.partnerId && filters.partnerId.trim()) where.partnerId = filters.partnerId.trim();
+      if (filters.digitizerId && filters.digitizerId.trim()) where.createdById = filters.digitizerId.trim();
+      if (filters.assignedToId && filters.assignedToId.trim()) where.assignedToId = filters.assignedToId.trim();
+      if (filters.productId && filters.productId.trim()) where.productId = filters.productId.trim();
+      if (filters.proposalType && Object.values(ProposalType).includes(filters.proposalType as ProposalType)) {
+        where.type = filters.proposalType as ProposalType;
+      }
+      if (filters.statusId && filters.statusId.trim()) where.statusId = filters.statusId.trim();
+      if (filters.standardCategory && Object.values(StandardStatusCategory).includes(filters.standardCategory as StandardStatusCategory)) {
+        where.standardCategory = filters.standardCategory as StandardStatusCategory;
+      }
+
+      const proposals = await prisma.proposal.findMany({
+        where,
+        take: 10000,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          proposalNumber: true,
+          client: { select: { fullName: true, cpf: true } },
+          bank: { select: { name: true } },
+          partner: { select: { name: true } },
+          product: { select: { name: true } },
+          type: true,
+          standardCategory: true,
+          releasedValue: true,
+          contractValue: true,
+          createdBy: { select: { name: true } },
+          createdAt: true,
+        },
+      });
+
+      const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+      const headers = [
+        'N_PROPOSTA',
+        'CPF_CLIENTE',
+        'NOME_CLIENTE',
+        'BANCO',
+        'PARCEIRO',
+        'PRODUTO',
+        'TIPO_OPERACAO',
+        'CATEGORIA_STATUS',
+        'VALOR_LIBERADO_LIQUIDO',
+        'VALOR_CONTRATO_BRUTO',
+        'DIGITADOR_CRIADOR',
+        'DATA_CADASTRO',
+      ];
+
+      const csvRows = [headers.join(',')];
+
+      for (const p of proposals) {
+        const row = [
+          escapeCsv(p.proposalNumber),
+          escapeCsv(p.client?.cpf || ''),
+          escapeCsv(p.client?.fullName || ''),
+          escapeCsv(p.bank?.name || ''),
+          escapeCsv(p.partner?.name || ''),
+          escapeCsv(p.product?.name || ''),
+          escapeCsv(p.type || ''),
+          escapeCsv(p.standardCategory || ''),
+          escapeCsv(Number(p.releasedValue || 0).toFixed(2)),
+          escapeCsv(Number(p.contractValue || 0).toFixed(2)),
+          escapeCsv(p.createdBy?.name || ''),
+          escapeCsv(p.createdAt ? new Date(p.createdAt).toISOString() : ''),
+        ];
+        csvRows.push(row.join(','));
+      }
+
+      const csvBuffer = Buffer.from('\uFEFF' + csvRows.join('\n'), 'utf-8');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="bi-relatorio-${tenantId.slice(0, 8)}-${Date.now()}.csv"`);
+      return res.status(200).send(csvBuffer);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API EXPORT ERROR]');
+      return res.status(500).json({ error: 'Erro ao gerar exportação CSV do BI Gerencial.' });
+    }
+  });
+
+  // 8. GET /api/bi/insights - Deterministic Managerial Insights (Phase 5.3-B)
+  app.get('/api/bi/insights', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar os insights gerenciais.' });
+      }
+
+      if (session.user.role === 'DIGITADOR') {
+        return res.status(403).json({ error: 'Acesso a insights gerenciais restrito a gestores.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar insights gerenciais.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const insights = await ManagerialIntelligenceService.getInsights(prisma, tenantId, filters);
+      return res.json({ insights, total: insights.length, generatedAt: new Date().toISOString() });
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API INSIGHTS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar insights gerenciais determinísticos.' });
+    }
+  });
+
+  // 9. GET /api/bi/health-score - Executive & Operational Health Scores (Phase 5.3-B)
+  app.get('/api/bi/health-score', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar o Health Score.' });
+      }
+
+      if (session.user.role === 'DIGITADOR') {
+        return res.status(403).json({ error: 'Acesso à pontuação de saúde gerencial restrito a gestores.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar o Health Score.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const healthScores = await ManagerialIntelligenceService.getHealthScores(prisma, tenantId, filters);
+      return res.json(healthScores);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API HEALTH SCORE ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar o Health Score operacional e executivo.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // FASE 6.0-B: SENTINELA AI QUERY ENDPOINT (READ-ONLY WITH GEMINI & TOOL ROUTER)
+  // -------------------------------------------------------------
+  const sentinelaRateLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    statusCode: 429,
+    keyGenerator: (req) => {
+      const sessionToken = extractSessionToken(req);
+      return sessionToken || req.ip || 'anonymous';
+    },
+    message: {
+      error: 'Limite de consultas à Sentinela AI excedido (máximo 10 por minuto). Aguarde um instante.',
+    },
+    handler: (req, res, _next, options) => {
+      logger.warn({ ip: req.ip }, '[SECURITY ALERT] Rate limit de Sentinela AI excedido');
+      res.status(429).json(options.message);
+    },
+  });
+
+  app.post('/api/sentinela/query', sentinelaRateLimiter, async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar a Sentinela AI.' });
+      }
+
+      // Check server-side rate limits (10/min per user, 200/hr per tenant)
+      const rateCheck = SentinelaAIService.checkRateLimit(session.user.id, session.effectiveTenantId);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({ error: rateCheck.reason });
+      }
+
+      const { message, context } = req.body || {};
+      if (!message || typeof message !== 'string' || !message.trim()) {
+        return res.status(400).json({ error: 'Mensagem inválida ou vazia.' });
+      }
+
+      const toolSession = {
+        user: {
+          id: session.user.id,
+          role: session.user.role,
+          customPermissions: session.user.customPermissions || [],
+          name: session.user.name,
+          email: session.user.email,
+        },
+        effectiveTenantId: session.effectiveTenantId,
+      };
+
+      const startTime = Date.now();
+      const result = await SentinelaAIService.query(prisma, toolSession, {
+        message: String(message).trim(),
+        context: typeof context === 'object' && context ? {
+          startDate: typeof context.startDate === 'string' ? context.startDate : undefined,
+          endDate: typeof context.endDate === 'string' ? context.endDate : undefined,
+        } : undefined,
+      });
+      const durationMs = Date.now() - startTime;
+
+      logger.info({
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        role: session.user.role,
+        toolsUsed: result.toolsUsed.map(t => t.toolName),
+        durationMs,
+        generatedAt: result.generatedAt,
+      }, '[SENTINELA AI QUERY PROCESSED]');
+
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[SENTINELA AI API ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar consulta na Sentinela AI.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // FASE 4.2-B: PROTECTED OPERATIONAL RULES CRON ENDPOINT
+  // -------------------------------------------------------------
+  app.post('/api/cron/operational-rules', async (req, res) => {
+    const startedAt = new Date();
+    const requestId = req.requestId || (req as any).requestId || crypto.randomUUID();
+
+    try {
+      const authHeader = req.headers.authorization;
+      const expectedSecret = process.env.CRON_SECRET || 'sentinel_cron_internal_secret_key';
+
+      // 1. Verificação rigorosa do CRON_SECRET no cabeçalho Authorization: Bearer
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        logger.warn({ ip: req.ip, requestId }, '[CRON SECURITY] Tentativa de execução sem cabeçalho Authorization Bearer');
+        return res.status(401).json({ error: 'Não autorizado: cabeçalho de autenticação do cron obrigatório.' });
+      }
+
+      const providedToken = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+      // Comparação em tempo constante para evitar timing attacks
+      const tokenBuffer = Buffer.from(providedToken);
+      const expectedBuffer = Buffer.from(expectedSecret);
+
+      if (tokenBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(tokenBuffer, expectedBuffer)) {
+        logger.warn({ ip: req.ip, requestId }, '[CRON SECURITY] Token de autorização inválido fornecido');
+        return res.status(403).json({ error: 'Proibido: credencial do cron inválida.' });
+      }
+
+      logger.info({ ip: req.ip, requestId }, '[CRON] Execução autorizada do motor de regras operacionais iniciada');
+
+      // 2. Execução multi-tenant isolada através do RuleEngineService (P0 desativadas na Fase 4.2-B)
+      const summary = await RuleEngineService.runAllTenants(prisma, { batchSize: 20 });
+
+      logger.info(
+        {
+          requestId,
+          durationMs: summary.durationMs,
+          tenantsProcessed: summary.tenantsProcessed,
+          totalEvaluated: summary.totalEvaluated,
+          totalMatched: summary.totalMatched,
+        },
+        '[CRON] Ciclo de regras operacionais concluído com sucesso'
+      );
+
+      return res.status(200).json({
+        status: 'SUCCESS',
+        requestId,
+        summary,
+      });
+    } catch (err: any) {
+      const durationMs = Date.now() - startedAt.getTime();
+      const errorMessage = err?.message || String(err);
+
+      logger.error(
+        {
+          requestId,
+          durationMs,
+          error: errorMessage,
+        },
+        '[CRON ERROR] Falha inesperada no processamento do cron de regras operacionais'
+      );
+
+      return res.status(500).json({
+        status: 'ERROR',
+        requestId,
+        error: 'Falha interna ao executar motor de regras operacionais.',
+      });
+    }
+  });
+
+  // -------------------------------------------------------------
   // P0.2 GLOBAL ERROR HANDLER MIDDLEWARE
   // -------------------------------------------------------------
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -3453,6 +5289,514 @@ async function startServer() {
   const PORT = 3000;
 
   // Vite middleware for development
+  
+  // ==========================================
+  // ANNOUNCEMENTS
+  // ==========================================
+
+  const getVisibilityWhere = () => {
+    const now = new Date();
+    return {
+      status: 'PUBLISHED' as any,
+      publishedAt: { lte: now },
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { gt: now } }
+      ]
+    };
+  };
+
+  app.post('/api/announcements', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      
+      const { role, tenantId: userTenantId, id: userId } = session.user;
+      
+      let { title, content, priority, scheduledAt, expiresAt, isGlobal } = req.body;
+      let targetTenantId = userTenantId;
+
+      if (role === 'PLATFORM_MASTER') {
+        if (isGlobal) {
+          targetTenantId = null;
+        }
+      } else if (role === 'MASTER') {
+        if (isGlobal) {
+          return res.status(403).json({ error: 'Apenas PLATFORM_MASTER pode criar comunicados globais.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Acesso negado para criação de comunicados.' });
+      }
+
+      const announcement = await prisma.announcement.create({
+        data: {
+          title,
+          content,
+          priority: priority || 'MEDIUM',
+          tenantId: targetTenantId,
+          createdById: userId,
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          tenantId: targetTenantId,
+          userId,
+          action: 'announcement.created',
+          entity: 'Announcement',
+          entityId: announcement.id,
+        }
+      });
+
+      res.json(announcement);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro ao criar comunicado.' });
+    }
+  });
+
+  app.get('/api/announcements/manage', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role, tenantId: userTenantId } = session.user;
+
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const whereClause = role === 'PLATFORM_MASTER' 
+        ? {} 
+        : { tenantId: userTenantId };
+
+      const announcements = await prisma.announcement.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(announcements);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro ao listar comunicados.' });
+    }
+  });
+
+  app.get('/api/announcements', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { tenantId, id: userId } = session.user;
+
+      const limit = Number(req.query.limit) || 20;
+      const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+
+      const announcements = await prisma.announcement.findMany({
+        where: {
+          OR: [
+            { tenantId: null },
+            { tenantId }
+          ],
+          ...getVisibilityWhere()
+        },
+        orderBy: [
+          { priority: 'desc' },
+          { publishedAt: 'desc' }
+        ],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor } } : {}),
+        include: {
+          reads: {
+            where: { userId }
+          }
+        }
+      });
+
+      let nextCursor = undefined;
+      if (announcements.length > limit) {
+        const nextItem = announcements.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      const formatted = announcements.map(a => {
+        const readRecord = (a as any).reads[0];
+        return {
+          ...a,
+          read: !!readRecord?.readAt,
+          dismissed: !!readRecord?.dismissedAt,
+          reads: undefined
+        };
+      }).filter(a => !a.dismissed); // Do not show dismissed ones in the main feed
+
+      res.json({ data: formatted, nextCursor, hasMore: !!nextCursor });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro ao listar comunicados do usuário.' });
+    }
+  });
+
+  app.get('/api/announcements/unread-count', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { tenantId, id: userId } = session.user;
+
+      // Unread count: All visible announcements that don't have a read record for this user
+      // Note: Since Prisma doesn't support left join IS NULL easily in count with relations,
+      // we can fetch the IDs or do a small query. Assuming low volume of announcements per tenant:
+      
+      const visibleAnnouncements = await prisma.announcement.findMany({
+        where: {
+          OR: [
+            { tenantId: null },
+            { tenantId }
+          ],
+          ...getVisibilityWhere()
+        },
+        select: { id: true }
+      });
+      
+      if (visibleAnnouncements.length === 0) {
+        return res.json({ count: 0 });
+      }
+
+      const readRecords = await prisma.announcementRead.count({
+        where: {
+          userId,
+          announcementId: { in: visibleAnnouncements.map(a => a.id) },
+          readAt: { not: null }
+        }
+      });
+
+      const count = visibleAnnouncements.length - readRecords;
+      res.json({ count });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro ao contar comunicados.' });
+    }
+  });
+
+  app.get('/api/announcements/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      
+      const { role, tenantId: userTenantId } = session.user;
+      
+      const announcement = await prisma.announcement.findUnique({
+        where: { id: req.params.id }
+      });
+      
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado.' });
+
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      if (role === 'MASTER' && announcement.tenantId !== userTenantId) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      res.json(announcement);
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao buscar.' });
+    }
+  });
+
+  app.put('/api/announcements/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      
+      const { role, tenantId: userTenantId, id: userId } = session.user;
+      const { title, content, priority, scheduledAt, expiresAt } = req.body;
+      
+      const announcement = await prisma.announcement.findUnique({
+        where: { id: req.params.id }
+      });
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado.' });
+
+      if (role === 'MASTER' && announcement.tenantId !== userTenantId) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+
+      const updated = await prisma.announcement.update({
+        where: { id: req.params.id },
+        data: {
+          title,
+          content,
+          priority,
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          tenantId: announcement.tenantId,
+          userId,
+          action: 'announcement.updated',
+          entity: 'Announcement',
+          entityId: announcement.id,
+        }
+      });
+      
+      if (updated.status === 'PUBLISHED') {
+        if (updated.tenantId) {
+          eventBus.publishToTenant(updated.tenantId, {
+            type: 'ANNOUNCEMENT_UPDATED',
+            entity: 'Announcement',
+            entityId: updated.id,
+          });
+        } else {
+          eventBus.publishGlobal({
+            type: 'ANNOUNCEMENT_UPDATED',
+            entity: 'Announcement',
+            entityId: updated.id,
+          });
+        }
+      }
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao atualizar.' });
+    }
+  });
+
+  app.post('/api/announcements/:id/publish', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role, tenantId: userTenantId, id: userId } = session.user;
+      
+      const announcement = await prisma.announcement.findUnique({ where: { id: req.params.id } });
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado.' });
+
+      if (role === 'MASTER' && announcement.tenantId !== userTenantId) return res.status(403).json({ error: 'Acesso negado.' });
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') return res.status(403).json({ error: 'Acesso negado.' });
+
+      const updated = await prisma.announcement.update({
+        where: { id: announcement.id },
+        data: {
+          status: 'PUBLISHED' as any,
+          publishedAt: new Date()
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: { tenantId: announcement.tenantId, userId, action: 'announcement.published', entity: 'Announcement', entityId: announcement.id }
+      });
+
+      if (updated.tenantId) {
+        eventBus.publishToTenant(updated.tenantId, {
+          type: 'ANNOUNCEMENT_PUBLISHED',
+          entity: 'Announcement',
+          entityId: updated.id,
+        });
+      } else {
+        eventBus.publishGlobal({
+          type: 'ANNOUNCEMENT_PUBLISHED',
+          entity: 'Announcement',
+          entityId: updated.id,
+        });
+      }
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao publicar.' });
+    }
+  });
+
+  app.post('/api/announcements/:id/cancel', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role, tenantId: userTenantId, id: userId } = session.user;
+      
+      const announcement = await prisma.announcement.findUnique({ where: { id: req.params.id } });
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado.' });
+
+      if (role === 'MASTER' && announcement.tenantId !== userTenantId) return res.status(403).json({ error: 'Acesso negado.' });
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') return res.status(403).json({ error: 'Acesso negado.' });
+
+      const updated = await prisma.announcement.update({
+        where: { id: announcement.id },
+        data: { status: 'CANCELLED' }
+      });
+
+      await prisma.auditLog.create({
+        data: { tenantId: announcement.tenantId, userId, action: 'announcement.cancelled', entity: 'Announcement', entityId: announcement.id }
+      });
+
+      if (updated.tenantId) {
+        eventBus.publishToTenant(updated.tenantId, {
+          type: 'ANNOUNCEMENT_CANCELLED',
+          entity: 'Announcement',
+          entityId: updated.id,
+        });
+      } else {
+        eventBus.publishGlobal({
+          type: 'ANNOUNCEMENT_CANCELLED',
+          entity: 'Announcement',
+          entityId: updated.id,
+        });
+      }
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao cancelar.' });
+    }
+  });
+
+  app.post('/api/announcements/:id/archive', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role, tenantId: userTenantId, id: userId } = session.user;
+      
+      const announcement = await prisma.announcement.findUnique({ where: { id: req.params.id } });
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado.' });
+
+      if (role === 'MASTER' && announcement.tenantId !== userTenantId) return res.status(403).json({ error: 'Acesso negado.' });
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') return res.status(403).json({ error: 'Acesso negado.' });
+
+      const updated = await prisma.announcement.update({
+        where: { id: announcement.id },
+        data: { status: 'ARCHIVED' }
+      });
+
+      await prisma.auditLog.create({
+        data: { tenantId: announcement.tenantId, userId, action: 'announcement.archived', entity: 'Announcement', entityId: announcement.id }
+      });
+      
+      if (updated.tenantId) {
+        eventBus.publishToTenant(updated.tenantId, {
+          type: 'ANNOUNCEMENT_ARCHIVED',
+          entity: 'Announcement',
+          entityId: updated.id,
+        });
+      } else {
+        eventBus.publishGlobal({
+          type: 'ANNOUNCEMENT_ARCHIVED',
+          entity: 'Announcement',
+          entityId: updated.id,
+        });
+      }
+
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao arquivar.' });
+    }
+  });
+
+  app.delete('/api/announcements/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role, tenantId: userTenantId, id: userId } = session.user;
+      
+      const announcement = await prisma.announcement.findUnique({ where: { id: req.params.id } });
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado.' });
+
+      if (role === 'MASTER' && announcement.tenantId !== userTenantId) return res.status(403).json({ error: 'Acesso negado.' });
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') return res.status(403).json({ error: 'Acesso negado.' });
+
+      await prisma.announcement.delete({ where: { id: announcement.id } });
+
+      await prisma.auditLog.create({
+        data: { tenantId: announcement.tenantId, userId, action: 'announcement.deleted', entity: 'Announcement', entityId: announcement.id }
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao excluir.' });
+    }
+  });
+
+  app.post('/api/announcements/:id/read', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { tenantId, id: userId } = session.user;
+      
+      const announcement = await prisma.announcement.findFirst({ 
+        where: { 
+          id: req.params.id,
+          OR: [{ tenantId: null }, { tenantId }],
+          ...getVisibilityWhere()
+        } 
+      });
+
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado ou invisível.' });
+
+      await prisma.announcementRead.upsert({
+        where: {
+          announcementId_userId: {
+            announcementId: announcement.id,
+            userId
+          }
+        },
+        update: {
+          readAt: new Date()
+        },
+        create: {
+          announcementId: announcement.id,
+          userId,
+          readAt: new Date()
+        }
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao marcar como lido.' });
+    }
+  });
+
+  app.post('/api/announcements/:id/dismiss', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { tenantId, id: userId } = session.user;
+      
+      const announcement = await prisma.announcement.findFirst({ 
+        where: { 
+          id: req.params.id,
+          OR: [{ tenantId: null }, { tenantId }],
+          ...getVisibilityWhere()
+        } 
+      });
+
+      if (!announcement) return res.status(404).json({ error: 'Não encontrado ou invisível.' });
+
+      await prisma.announcementRead.upsert({
+        where: {
+          announcementId_userId: {
+            announcementId: announcement.id,
+            userId
+          }
+        },
+        update: {
+          readAt: new Date(),
+          dismissedAt: new Date()
+        },
+        create: {
+          announcementId: announcement.id,
+          userId,
+          readAt: new Date(),
+          dismissedAt: new Date()
+        }
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Erro ao dispensar comunicado.' });
+    }
+  });
+
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

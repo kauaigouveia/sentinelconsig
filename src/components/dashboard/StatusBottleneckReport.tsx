@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Clock,
   AlertTriangle,
@@ -19,6 +19,8 @@ import {
   Coins,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
+import { AnalyticsApiService } from '../../services/analyticsApiService';
+import { BottlenecksResponse, DwellTimeResponse } from '../../types/analytics';
 import { Proposal, ProposalStatus, Alcada, Bank, Promoter } from '../../types';
 import { formatDate, formatCpf, formatCurrency } from '../../lib/utils';
 import { ProposalDetailModal } from '../production/ProposalDetailModal';
@@ -26,6 +28,22 @@ import { ActionBar } from '../ui/ActionBar';
 import { MetricCard } from '../ui/MetricCard';
 
 export const StatusBottleneckReport: React.FC = () => {
+  const [backendBottlenecks, setBackendBottlenecks] = useState<BottlenecksResponse | null>(null);
+  const [backendDwell, setBackendDwell] = useState<DwellTimeResponse | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    AnalyticsApiService.fetchBottlenecks().then(data => {
+      if (isMounted) setBackendBottlenecks(data);
+    });
+    AnalyticsApiService.fetchDwellTime().then(data => {
+      if (isMounted) setBackendDwell(data);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const proposals = useMemo(() => StorageService.getProposals(), []);
   const statuses = useMemo(() => StorageService.getStatuses(), []);
   const history = useMemo(() => StorageService.getHistory(), []);
@@ -113,12 +131,18 @@ export const StatusBottleneckReport: React.FC = () => {
       .sort((a, b) => b.dwellHours - a.dwellHours);
   }, [proposals, statuses, clients, banks]);
 
-  const totalVolumeTravado = proposals
-    .filter(p => {
-      const s = statuses.find(st => st.id === p.statusId);
-      return s?.code !== 'PAGO' && s?.code !== 'CANCELADO';
-    })
-    .reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+  const totalVolumeTravado = backendBottlenecks?.summary?.totalValueStuck !== undefined
+    ? backendBottlenecks.summary.totalValueStuck
+    : proposals
+        .filter(p => {
+          const s = statuses.find(st => st.id === p.statusId);
+          return s?.code !== 'PAGO' && s?.code !== 'CANCELADO';
+        })
+        .reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
+
+  const totalOverSlaCount = backendBottlenecks?.summary?.totalOverSla !== undefined
+    ? backendBottlenecks.summary.totalOverSla
+    : stuckProposals.length;
 
   return (
     <div className="space-y-6">
@@ -148,7 +172,7 @@ export const StatusBottleneckReport: React.FC = () => {
             Propostas Fora do SLA
           </span>
           <p className="text-2xl font-black text-rose-950 dark:text-rose-200">
-            {stuckProposals.length} propostas
+            {totalOverSlaCount} propostas
           </p>
           <span className="text-[11px] text-rose-700 dark:text-rose-400 font-bold block font-sans">
             Excederam o tempo limite do status

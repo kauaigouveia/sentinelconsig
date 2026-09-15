@@ -66,11 +66,17 @@ export class TenantResolver {
    * Extrai e normaliza o Host a partir dos headers da requisição
    */
   public static extractHost(req: express.Request): string {
-    // 1. Suporte a X-Forwarded-Host (Vercel, proxies reversos)
+    // Hardening: Para evitar o risco de spoofing por Host Header de fontes não confiáveis,
+    // preferimos o header 'host' padrão, a menos que TRUST_PROXY esteja explicitamente definido como 'true'.
+    const useForwarded = process.env.TRUST_PROXY === 'true';
     const forwardedHost = req.headers['x-forwarded-host'];
-    let host = Array.isArray(forwardedHost)
-      ? forwardedHost[0]
-      : (forwardedHost as string) || req.headers['host'] || '';
+    
+    let host = '';
+    if (useForwarded && forwardedHost) {
+      host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost;
+    } else {
+      host = req.headers['host'] || '';
+    }
 
     // 2. Parâmetro opcional para testes/dev
     const queryHost = req.query?.host as string | undefined;
@@ -82,6 +88,32 @@ export class TenantResolver {
     host = host.trim().toLowerCase();
     host = host.split(':')[0]; // Remove porta
     return host;
+  }
+
+  private static isValidHostname(host: string): boolean {
+    if (!host) return false;
+    if (host.length > 253) return false;
+    
+    // Rejeitar localhost ou IPs literais (IPv4 e IPv6 simplificado)
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return false;
+    if (host.includes(':')) return false; // IPs IPv6 ou portas residuais
+
+    // Apenas caracteres FQDN válidos (letras, números, hífens, pontos)
+    const hostRegex = /^[a-z0-9-]+(\.[a-z0-9-]+)*$/;
+    if (!hostRegex.test(host)) return false;
+
+    // Reservados do sistema ou da plataforma diretamente
+    const reserved = ['admin', 'api', 'app', 'auth', 'saas', 'www', 'system', 'dashboard', 'dev', 'stage'];
+    const parts = host.split('.');
+    if (parts.length > 0 && reserved.includes(parts[0])) {
+      // Se for subdomínio direto da plataforma (ex: admin.sentinelconsig.com.br), rejeitar de custom resolution
+      if (host.endsWith('sentinelconsig.com.br')) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
@@ -199,44 +231,125 @@ export class TenantResolver {
       }
     }
 
-    // 3. Verifica se é um Domínio Personalizado (Custom Domain) exato
-    const customTenant = await prisma.tenant.findUnique({
-      where: { customDomain: cleanHost },
-      include: { whiteLabel: true },
-    });
-
-    if (customTenant && customTenant.status === 'ACTIVE') {
-      const wl = customTenant.whiteLabel;
-      const result: DomainResolutionResult = {
-        type: 'CUSTOM_DOMAIN',
+    // Validação estrita do host antes de prosseguir com a busca do domínio customizado
+    if (!this.isValidHostname(cleanHost)) {
+      // Retorna domínio não configurado/inválido
+      const invalidResult: DomainResolutionResult = {
+        type: 'DOMAIN_NOT_CONFIGURED',
         resolvedHost: cleanHost,
-        tenant: customTenant,
+        tenant: null,
         branding: {
-          status: 'CONFIGURED',
-          domainType: 'CUSTOM_DOMAIN',
+          status: 'DOMAIN_NOT_CONFIGURED',
+          domainType: 'DOMAIN_NOT_CONFIGURED',
           resolvedHost: cleanHost,
-          tenantId: customTenant.id,
-          companyName: wl?.companyName || customTenant.name,
-          tradeName: wl?.legalName || customTenant.tradeName || customTenant.name,
-          logoUrl: wl?.logoUrl || null,
-          faviconUrl: wl?.faviconUrl || null,
-          primaryColor: wl?.primaryColor || '#2563eb',
-          secondaryColor: wl?.secondaryColor || '#1e40af',
-          accentColor: wl?.accentColor || '#3b82f6',
+          companyName: 'Domínio Inválido',
+          tradeName: 'Domínio Inválido',
+          logoUrl: null,
+          faviconUrl: null,
+          primaryColor: '#64748b',
+          secondaryColor: '#475569',
+          accentColor: '#94a3b8',
           loginBannerUrl: null,
-          footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || customTenant.name}`,
-          supportEmail: wl?.supportEmail || null,
-          supportPhone: wl?.supportPhone || null,
-          themeMode: wl?.themeMode || 'LIGHT',
+          footerText: 'Sentinel Consig SaaS',
+          supportEmail: 'suporte@sentinelconsig.com.br',
+          supportPhone: null,
+          themeMode: 'LIGHT',
         },
       };
-
+      
       this.brandingCache.set(cleanHost, {
-        result,
+        result: invalidResult,
         expiresAt: Date.now() + this.CACHE_TTL_MS,
       });
 
-      return result;
+      return invalidResult;
+    }
+
+    // 3. Verifica se é um Domínio Personalizado (Custom Domain) verificado via TenantDomain
+    const tenantDomain = await prisma.tenantDomain.findUnique({
+      where: { domain: cleanHost },
+      include: { 
+        tenant: {
+          include: { whiteLabel: true }
+        }
+      },
+    });
+
+    if (tenantDomain) {
+      if (tenantDomain.status === 'VERIFIED' && tenantDomain.tenant.status === 'ACTIVE') {
+        const tenant = tenantDomain.tenant;
+        const wl = tenant.whiteLabel;
+        const result: DomainResolutionResult = {
+          type: 'CUSTOM_DOMAIN',
+          resolvedHost: cleanHost,
+          tenant,
+          branding: {
+            status: 'CONFIGURED',
+            domainType: 'CUSTOM_DOMAIN',
+            resolvedHost: cleanHost,
+            tenantId: tenant.id,
+            companyName: wl?.companyName || tenant.name,
+            tradeName: wl?.legalName || tenant.tradeName || tenant.name,
+            logoUrl: wl?.logoUrl || null,
+            faviconUrl: wl?.faviconUrl || null,
+            primaryColor: wl?.primaryColor || '#2563eb',
+            secondaryColor: wl?.secondaryColor || '#1e40af',
+            accentColor: wl?.accentColor || '#3b82f6',
+            loginBannerUrl: null,
+            footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || tenant.name}`,
+            supportEmail: wl?.supportEmail || null,
+            supportPhone: wl?.supportPhone || null,
+            themeMode: wl?.themeMode || 'LIGHT',
+          },
+        };
+
+        this.brandingCache.set(cleanHost, {
+          result,
+          expiresAt: Date.now() + this.CACHE_TTL_MS,
+        });
+
+        return result;
+      }
+    } else {
+      // 3.1 Compatibilidade Controlada com customDomain Legado
+      const legacyTenant = await prisma.tenant.findUnique({
+        where: { customDomain: cleanHost },
+        include: { whiteLabel: true },
+      });
+
+      if (legacyTenant && legacyTenant.status === 'ACTIVE') {
+        const wl = legacyTenant.whiteLabel;
+        const result: DomainResolutionResult = {
+          type: 'CUSTOM_DOMAIN',
+          resolvedHost: cleanHost,
+          tenant: legacyTenant,
+          branding: {
+            status: 'CONFIGURED',
+            domainType: 'CUSTOM_DOMAIN',
+            resolvedHost: cleanHost,
+            tenantId: legacyTenant.id,
+            companyName: wl?.companyName || legacyTenant.name,
+            tradeName: wl?.legalName || legacyTenant.tradeName || legacyTenant.name,
+            logoUrl: wl?.logoUrl || null,
+            faviconUrl: wl?.faviconUrl || null,
+            primaryColor: wl?.primaryColor || '#2563eb',
+            secondaryColor: wl?.secondaryColor || '#1e40af',
+            accentColor: wl?.accentColor || '#3b82f6',
+            loginBannerUrl: null,
+            footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || legacyTenant.name}`,
+            supportEmail: wl?.supportEmail || null,
+            supportPhone: wl?.supportPhone || null,
+            themeMode: wl?.themeMode || 'LIGHT',
+          },
+        };
+
+        this.brandingCache.set(cleanHost, {
+          result,
+          expiresAt: Date.now() + this.CACHE_TTL_MS,
+        });
+
+        return result;
+      }
     }
 
     // 4. Domínio não configurado ou desconhecido

@@ -11,9 +11,11 @@ import {
   X,
   RotateCcw,
   Sparkles,
+  Globe,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { WhiteLabelConfig } from '../../types';
+import { DomainManagement } from './DomainManagement';
 
 interface WhiteLabelModalProps {
   isOpen: boolean;
@@ -22,6 +24,7 @@ interface WhiteLabelModalProps {
 
 export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClose }) => {
   const currentWl = StorageService.getWhiteLabel();
+  const [activeTab, setActiveTab] = useState<'branding' | 'domains'>('branding');
 
   const [companyName, setCompanyName] = useState(currentWl.companyName || 'SENTINEL CONSIG');
   const [tradeName, setTradeName] = useState(currentWl.tradeName || 'Plataforma de Gestão de Crédito Consignado');
@@ -200,8 +203,36 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
           </div>
         )}
 
-        {/* Content Form */}
-        <div className="space-y-4 my-4">
+        {/* Tabs Navigation */}
+        <div className="flex border-b border-slate-100 dark:border-slate-800 mb-4 mt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('branding')}
+            className={`flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-bold transition-all ${
+              activeTab === 'branding'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Palette className="h-4 w-4" />
+            Identidade Visual
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('domains')}
+            className={`flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-bold transition-all ${
+              activeTab === 'domains'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Globe className="h-4 w-4" />
+            Domínios Customizados
+          </button>
+        </div>
+
+        {activeTab === 'branding' && (
+          <div className="space-y-4 my-4">
           {/* Company Name & Trade Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -403,36 +434,45 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
             </div>
           </div>
         </div>
+      )}
+
+        {activeTab === 'domains' && (
+          <div className="my-4 animate-in fade-in duration-200">
+            <DomainManagement />
+          </div>
+        )}
 
         {/* Footer Actions */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleResetDefault}
-            className="px-3 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Restaurar Padrão</span>
-          </button>
+        {activeTab === 'branding' && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={handleResetDefault}
+              className="px-3 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Restaurar Padrão</span>
+            </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer transition-all flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              <span>Aplicar White-Label</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer transition-all flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Aplicar White-Label</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

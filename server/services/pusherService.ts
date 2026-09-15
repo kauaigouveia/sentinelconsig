@@ -50,7 +50,8 @@ class EventBus {
    * Format: private-tenant-{tenantId}
    */
   public async publishToTenant(tenantId: string, payload: PublishPayload): Promise<void> {
-    if (process.env.VITE_REALTIME_PROVIDER !== 'pusher') return;
+    const provider = process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher';
+    if (provider !== 'pusher') return;
 
     try {
       const client = getPusherClient();
@@ -77,7 +78,8 @@ class EventBus {
    * Format: private-user-{userId}
    */
   public async publishToUser(userId: string, payload: PublishPayload): Promise<void> {
-    if (process.env.VITE_REALTIME_PROVIDER !== 'pusher') return;
+    const provider = process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher';
+    if (provider !== 'pusher') return;
 
     try {
       const client = getPusherClient();
@@ -92,6 +94,30 @@ class EventBus {
       logger.debug(`[EVENT_BUS] Published ${payload.type} to private-user-${userId}`);
     } catch (err: any) {
       logger.error({ error: err?.message || String(err) }, `[EVENT_BUS] Failed to publish ${payload.type} to Pusher`);
+    }
+  }
+
+  /**
+   * Publishes an event to the global platform channel.
+   * Format: private-platform-global
+   */
+  public async publishGlobal(payload: PublishPayload): Promise<void> {
+    const provider = process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher';
+    if (provider !== 'pusher') return;
+
+    try {
+      const client = getPusherClient();
+      const thinEvent = {
+        type: payload.type,
+        entity: payload.entity,
+        entityId: payload.entityId,
+        timestamp: new Date().toISOString(),
+      };
+
+      await client.trigger('private-platform-global', payload.type, thinEvent);
+      logger.debug(`[EVENT_BUS] Published ${payload.type} to private-platform-global`);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, `[EVENT_BUS] Failed to publish ${payload.type} to global channel`);
     }
   }
 

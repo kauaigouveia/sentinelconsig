@@ -38,7 +38,16 @@ export const UniversalCommandPalette: React.FC<UniversalCommandPaletteProps> = (
   const clients = StorageService.getClients();
   const proposals = StorageService.getProposals();
   const partners = StorageService.getPartners();
-  const tasks = StorageService.getOperationalTasks();
+  const [tasks, setTasks] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/tasks').then(r => r.json()).then(d => {
+        if (Array.isArray(d)) setTasks(d);
+      }).catch(e => console.error(e));
+    }
+  }, [isOpen]);
+
 
   useEffect(() => {
     if (isOpen) {

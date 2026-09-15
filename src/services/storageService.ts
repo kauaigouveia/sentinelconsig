@@ -37,6 +37,7 @@ import {
 } from '../types';
 import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay } from '../lib/utils';
 import { isValidRole } from '../lib/roleUtils';
+import { toastService } from '../components/ui/toastService';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -1109,7 +1110,7 @@ export class StorageService {
       // Helper function to fetch and log errors safely
       const safeFetch = async (url: string) => {
         try {
-          const res = await fetch(url);
+          const res = await fetch(url, { credentials: 'include' });
           if (res.ok) return await res.json();
         } catch (e) {
           console.warn(`[STORAGE] Fail to fetch ${url}`, e);
@@ -1375,7 +1376,7 @@ export class StorageService {
 
     const safeFetch = async (url: string) => {
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { credentials: 'include' });
         if (res.ok) return await res.json();
       } catch (e) {
         console.warn(`[STORAGE TARGETED SYNC] Failed: ${url}`, e);
@@ -1452,6 +1453,14 @@ export class StorageService {
             createdAt: n.createdAt,
           }));
           localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(formattedNotifs));
+
+          // Toast trigger with strict deduplication (1 logical event = 1 visual toast)
+          if (entityId) {
+            const newlyCreated = formattedNotifs.find((n: any) => n.id === entityId);
+            if (newlyCreated && !newlyCreated.read) {
+              toastService.info(newlyCreated.title, newlyCreated.message);
+            }
+          }
         }
       } else if (entity === 'User') {
         const dbUsers = await safeFetch('/api/users');
@@ -1708,7 +1717,7 @@ export class StorageService {
     } catch {}
     this.unsubscribeRealTimeListeners();
     this.clearBusinessCache();
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
@@ -3624,6 +3633,8 @@ export class StorageService {
     if (item) {
       item.read = true;
       this.set(STORAGE_KEYS.NOTIFICATIONS, list);
+      fetch(`/api/notifications/${id}/read`, { method: 'PATCH' }).catch(() => {});
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
     }
   }
 
@@ -3635,6 +3646,8 @@ export class StorageService {
     const list = this.getNotifications();
     list.forEach(n => (n.read = true));
     this.set(STORAGE_KEYS.NOTIFICATIONS, list);
+    fetch('/api/notifications/read-all', { method: 'POST' }).catch(() => {});
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
   public static markAllNotificationsRead(): void {

@@ -28,6 +28,8 @@ import {
 } from 'recharts';
 import { StorageService } from '../../services/storageService';
 import { AutomationService } from '../../services/automationService';
+import { AnalyticsApiService } from '../../services/analyticsApiService';
+import { AgingResponse, BottlenecksResponse } from '../../types/analytics';
 import { ResponsibleAlçada } from '../../types';
 import { formatCurrency } from '../../lib/utils';
 
@@ -43,6 +45,22 @@ interface ControlTowerProps {
 export const ControlTower: React.FC<ControlTowerProps> = ({
   onNavigateToProductionWithFilter,
 }) => {
+  const [agingMetrics, setAgingMetrics] = React.useState<AgingResponse | null>(null);
+  const [bottlenecksMetrics, setBottlenecksMetrics] = React.useState<BottlenecksResponse | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    AnalyticsApiService.fetchAging().then(data => {
+      if (isMounted) setAgingMetrics(data);
+    });
+    AnalyticsApiService.fetchBottlenecks().then(data => {
+      if (isMounted) setBottlenecksMetrics(data);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const proposals = StorageService.getProposals();
   const statuses = StorageService.getStatuses();
   const banks = StorageService.getBanks();
@@ -135,10 +153,16 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
     else agingBuckets['+20 dias']++;
   });
 
-  const agingData = Object.entries(agingBuckets).map(([name, count]) => ({
-    name,
-    count,
-  }));
+  // Aging buckets (prioritizing backend analytics API, with seamless local fallback)
+  const agingData = agingMetrics && agingMetrics.buckets && agingMetrics.buckets.length > 0
+    ? agingMetrics.buckets.map(b => ({
+        name: b.label,
+        count: b.count,
+      }))
+    : Object.entries(agingBuckets).map(([name, count]) => ({
+        name,
+        count,
+      }));
 
   // Bank chart data
   const bankData = banks.map(b => ({

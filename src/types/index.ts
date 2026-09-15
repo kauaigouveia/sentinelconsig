@@ -28,7 +28,7 @@ export type Alcada = 'CLIENTE' | 'PARCEIRO' | 'BANCO' | 'NOSSA EQUIPE' | 'SISTEM
 export type ResponsibleAlçada = Alcada;
 
 export type TenantPlan = 'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
-export type TenantStatus = 'ACTIVE' | 'SUSPENDED';
+export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'TRIAL' | 'PENDING_DELETION' | 'PENDING_SETUP';
 
 export interface Tenant {
   id: string;
@@ -42,10 +42,21 @@ export interface Tenant {
   status: TenantStatus;
   maxUsers: number;
   storageLimitMb: number;
-  modules: string[];
-  whiteLabel: WhiteLabelConfig;
+  maxProposals?: number;
+  modules?: string[];
+  enabledModules?: string[];
+  whiteLabel?: WhiteLabelConfig;
   adminEmail?: string;
   adminName?: string;
+  _count?: {
+    users?: number;
+    proposals?: number;
+    clients?: number;
+    documents?: number;
+    tasks?: number;
+  };
+  lastActivityAt?: string;
+  lastActivityDescription?: string;
   createdAt: string;
   updatedAt: string;
 }

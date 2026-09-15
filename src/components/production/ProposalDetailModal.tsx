@@ -115,6 +115,25 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     : null;
 
   // Active tab in modal
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+
+  useEffect(() => {
+    if (proposalId) {
+      setLoadingTimeline(true);
+      fetch(`/api/proposals/${proposalId}/timeline`)
+        .then(res => res.json())
+        .then(data => {
+          setTimeline(Array.isArray(data) ? data : []);
+          setLoadingTimeline(false);
+        })
+        .catch(err => {
+          console.error('Timeline error:', err);
+          setLoadingTimeline(false);
+        });
+    }
+  }, [proposalId]);
+
   const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE'>('HISTORICO');
 
   // Status update form
@@ -175,11 +194,23 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     }
   };
 
-  const handleUpdateStatus = () => {
+  const handleUpdateStatus = async () => {
     if (selectedStatusId === proposal.statusId && !statusObservation) return;
-
     setStatusUpdating(true);
     try {
+      const targetStatus = allStatuses.find(s => s.id === selectedStatusId);
+      const res = await fetch(`/api/proposals/${proposal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          statusId: selectedStatusId,
+          statusName: targetStatus?.name,
+          notes: statusObservation || undefined
+        })
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar status na API');
+      
+      // Fallback update in local storage for legacy compatibility
       StorageService.updateProposalStatus(
         proposal.id,
         selectedStatusId,
@@ -187,17 +218,23 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         activeUser,
         'MANUAL'
       );
+      
       setStatusSuccess(true);
       setStatusObservation('');
-      toastService.success('Status Atualizado', 'Novo status gravado na linha do tempo com sucesso.');
+      
+      // Refresh timeline
+      fetch(`/api/proposals/${proposal.id}/timeline`).then(r => r.json()).then(d => {
+        if(Array.isArray(d)) setTimeline(d);
+      });
+      
       setTimeout(() => {
         setStatusSuccess(false);
         setStatusUpdating(false);
         onProposalUpdated();
-      }, 800);
+      }, 1000);
     } catch (err: any) {
-      toastService.error('Falha ao Alterar Status', err.message || 'Erro ao alterar status.');
       setStatusUpdating(false);
+      toastService.error('Erro de Status', err.message || 'Erro ao atualizar status da proposta.');
     }
   };
 
@@ -270,15 +307,26 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     });
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!commentText.trim()) return;
-    StorageService.addComment({
-      proposalId: proposal.id,
-      text: commentText.trim(),
-    });
-    setCommentText('');
-    toastService.success('Comentário Gravado');
-    onProposalUpdated();
+    try {
+      const res = await fetch(`/api/proposals/${proposal.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: commentText.trim() })
+      });
+      if (!res.ok) throw new Error();
+      setCommentText('');
+      toastService.success('Comentário Gravado');
+      onProposalUpdated();
+      
+      // refresh timeline
+      const fresh = await fetch(`/api/proposals/${proposal.id}/timeline`).then(r => r.json());
+      if (Array.isArray(fresh)) setTimeline(fresh);
+      
+    } catch (err) {
+      toastService.error('Erro ao salvar comentário');
+    }
   };
 
   return (
@@ -537,7 +585,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             }`}
           >
             <Clock className="h-3.5 w-3.5" />
-            <span>Linha do Tempo / Histórico ({StorageService.getHistory().filter(h => h.proposalId === proposal.id).length})</span>
+            <span>Linha do Tempo / Histórico ({timeline.length})</span>
           </button>
 
           <button
@@ -561,7 +609,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             }`}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            <span>Comentários ({(proposal.comments || []).length})</span>
+            <span>Comentários ({timeline.filter(t => t.type === 'COMMENT').length})</span>
           </button>
 
           <button
@@ -582,46 +630,86 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           {/* TAB 1: HISTÓRICO */}
           {activeTab === 'HISTORICO' && (
             <div className="space-y-4">
-              <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                {StorageService.getHistory()
-                  .filter(h => h.proposalId === proposal.id)
-                  .map((h, i) => {
-                    const toSt = allStatuses.find(s => s.name === h.newStatusName);
-
-                    return (
-                      <div key={h.id || i} className="relative group">
-                        <div
-                          className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs"
-                          style={{ backgroundColor: toSt?.color || '#3b82f6' }}
-                        />
-                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-3.5 text-xs shadow-2xs">
-                          <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
-                            <div className="flex items-center gap-2">
-                              {h.previousStatusName && (
-                                <>
-                                  <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                    {h.previousStatusName}
-                                  </span>
-                                  <span className="text-slate-400">→</span>
-                                </>
-                              )}
-                              <span className="font-bold text-slate-900 dark:text-slate-100">
-                                {h.newStatusName || 'Status Inicial'}
+                            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
+                {timeline
+                  .map((t, i) => {
+                    const isStatus = t.type === 'STATUS';
+                    const isComment = t.type === 'COMMENT';
+                    const isTask = t.type === 'TASK';
+                    const isNotification = t.type === 'NOTIFICATION';
+                    
+                    if (isStatus) {
+                      const h = t.data;
+                      const toSt = allStatuses.find(s => s.name === h.newStatusName);
+                      return (
+                        <div key={h.id || i} className="relative group">
+                          <div
+                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs"
+                            style={{ backgroundColor: toSt?.color || '#3b82f6' }}
+                          />
+                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-3.5 text-xs shadow-2xs">
+                            <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                              <div className="flex items-center gap-2">
+                                {h.previousStatusName && (
+                                  <>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                      {h.previousStatusName}
+                                    </span>
+                                    <span className="text-slate-400">→</span>
+                                  </>
+                                )}
+                                <span className="font-bold text-slate-900 dark:text-slate-100">
+                                  {h.newStatusName || 'Status Inicial'}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-mono text-slate-400">
+                                {formatDate(h.createdAt)}
                               </span>
                             </div>
-                            <span className="text-[11px] font-mono text-slate-400">
-                              {formatDate(h.createdAt)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                            <span>Operador: <strong>{h.userName}</strong> ({h.origin})</span>
-                            {h.observation && (
-                              <span className="italic text-slate-600 dark:text-slate-300">"{h.observation}"</span>
-                            )}
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                              <span>Operador: <strong>{h.user?.name || h.userName || 'Sistema'}</strong> ({h.origin || 'N/A'})</span>
+                              {h.observation && (
+                                <span className="italic text-slate-600 dark:text-slate-300">"{h.observation}"</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
+                    } else if (isComment) {
+                      const c = t.data;
+                      return (
+                        <div key={c.id || i} className="relative group">
+                          <div
+                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs bg-emerald-500"
+                          />
+                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs">
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">Comentário: {c.author?.name || c.userName || 'Sistema'}</span>
+                              <span className="font-mono text-[10px]">{formatDate(c.createdAt)}</span>
+                            </div>
+                            <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{c.content || c.comment}</p>
+                          </div>
+                        </div>
+                      );
+                    } else if (isTask) {
+                      const tk = t.data;
+                      return (
+                        <div key={tk.id || i} className="relative group">
+                          <div
+                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs bg-amber-500"
+                          />
+                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 text-xs">
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">Tarefa: {tk.title}</span>
+                              <span className="font-mono text-[10px]">{formatDate(tk.createdAt)}</span>
+                            </div>
+                            <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{tk.description}</p>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      return null; // Notifications can be skipped or added if needed
+                    }
                   })}
               </div>
             </div>
@@ -755,23 +843,25 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
               </div>
 
               <div className="space-y-2">
-                {proposal.comments.length === 0 ? (
+                                {timeline.filter(t => t.type === 'COMMENT').length === 0 ? (
                   <p className="text-xs text-slate-400 italic text-center py-6">
                     Nenhum comentário registrado ainda.
                   </p>
                 ) : (
-                  proposal.comments.map(c => (
+                  timeline.filter(t => t.type === 'COMMENT').map((t, i) => {
+                    const c = t.data;
+                    return (
                     <div
-                      key={c.id}
+                      key={c.id || i}
                       className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs"
                     >
                       <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{c.userName}</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{c.author?.name || c.userName || 'Usuário'}</span>
                         <span className="font-mono text-[10px]">{formatDate(c.createdAt)}</span>
                       </div>
-                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{c.comment}</p>
+                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{c.content || c.comment}</p>
                     </div>
-                  ))
+                  )})
                 )}
               </div>
             </div>
