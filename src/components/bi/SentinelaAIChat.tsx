@@ -30,20 +30,10 @@ export const SentinelaAIChat: React.FC<SentinelaAIChatProps> = ({ startDate, end
   const [loading, setLoading] = useState(false);
 
   const getAuthHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {
+    return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    try {
-      const storedToken = localStorage.getItem('cg_session_token') || sessionStorage.getItem('cg_session_token');
-      if (storedToken) {
-        headers['Authorization'] = `Bearer ${storedToken}`;
-        headers['x-session-id'] = storedToken;
-      }
-    } catch (e) {
-      // storage unavailable
-    }
-    return headers;
   };
 
   const handleSend = async (textToSend?: string) => {

@@ -1031,6 +1031,7 @@ export class StorageService {
       'cg_backup_snapshots',
       'cg_config',
       'cg_is_authenticated',
+      'cg_session_token',
     ];
 
     for (const key of businessKeys) {
@@ -1038,6 +1039,9 @@ export class StorageService {
         localStorage.removeItem(key);
       } catch {}
     }
+    try {
+      sessionStorage.removeItem('cg_session_token');
+    } catch {}
   }
 
   public static getCurrentPartnerId(): string {

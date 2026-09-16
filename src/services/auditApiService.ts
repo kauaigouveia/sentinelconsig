@@ -67,20 +67,10 @@ export interface AuditLogFilterParams {
 
 export class AuditApiService {
   private static getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+    return {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
-    try {
-      const storedToken = localStorage.getItem('cg_session_token') || sessionStorage.getItem('cg_session_token');
-      if (storedToken) {
-        headers['Authorization'] = `Bearer ${storedToken}`;
-        headers['x-session-id'] = storedToken;
-      }
-    } catch {
-      // ignore
-    }
-    return headers;
   }
 
   private static buildQueryString(params: AuditLogFilterParams): string {

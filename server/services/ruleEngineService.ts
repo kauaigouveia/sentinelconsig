@@ -313,8 +313,8 @@ export class RuleEngineService {
 
         for (const tenant of activeTenants) {
           try {
-            // Executa com o client prisma garantindo isolamento
-            const results = await RuleEngineService.executeForTenant(prisma, tenant.id);
+            // Executa com o client tx da transação garantindo atomicidade e lock compartilhado
+            const results = await RuleEngineService.executeForTenant(tx as any, tenant.id);
             tenantResults.push({
               tenantId: tenant.id,
               tenantSlug: tenant.slug,

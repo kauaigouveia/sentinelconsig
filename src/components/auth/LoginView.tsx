@@ -72,9 +72,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       }
 
       if (data.user) {
-        if (data.token) {
-          localStorage.setItem('cg_session_token', data.token);
-        }
+        // P0-B: Session identifier is managed strictly via HttpOnly cookie.
+        // Purge any legacy token residue if present.
+        try {
+          localStorage.removeItem('cg_session_token');
+          sessionStorage.removeItem('cg_session_token');
+        } catch {}
         StorageService.loginUser(data.user);
         setIsSubmitting(false);
         onLoginSuccess();

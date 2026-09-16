@@ -2,6 +2,7 @@ import { PrismaClient, ImportJobStatus, ImportJobType } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import { sseRegistry } from '../realtime.js';
 import { logger } from '../logger';
+import { AuditLogService } from './auditLogService.js';
 
 export interface ImportProposalRow {
   cpf: string;
@@ -239,19 +240,17 @@ export class ImportWorkerService {
             },
           });
 
-          await prisma.auditLog.create({
-            data: {
-              tenantId,
-              userId,
-              action: 'IMPORT_CANCELLED',
-              entity: 'ImportJob',
-              entityId: jobId,
-              newData: JSON.stringify({
-                processedRecords: processedCount,
-                createdRecords: createdCount,
-                updatedRecords: updatedCount,
-                durationMs: Date.now() - startTime,
-              }),
+          await AuditLogService.record(prisma, {
+            tenantId,
+            userId,
+            action: 'IMPORT_CANCELLED',
+            entity: 'ImportJob',
+            entityId: jobId,
+            newData: {
+              processedRecords: processedCount,
+              createdRecords: createdCount,
+              updatedRecords: updatedCount,
+              durationMs: Date.now() - startTime,
             },
           });
 
@@ -459,22 +458,20 @@ export class ImportWorkerService {
       });
 
       // Audit Log
-      await prisma.auditLog.create({
-        data: {
-          tenantId,
-          userId,
-          action: 'IMPORT_COMPLETED',
-          entity: 'ImportJob',
-          entityId: jobId,
-          newData: JSON.stringify({
-            totalRecords,
-            createdRecords: createdCount,
-            updatedRecords: updatedCount,
-            duplicateRecords: duplicateCount,
-            invalidRecords: invalidCount,
-            failedRecords: failedCount,
-            durationMs,
-          }),
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId,
+        action: 'IMPORT_COMPLETED',
+        entity: 'ImportJob',
+        entityId: jobId,
+        newData: {
+          totalRecords,
+          createdRecords: createdCount,
+          updatedRecords: updatedCount,
+          duplicateRecords: duplicateCount,
+          invalidRecords: invalidCount,
+          failedRecords: failedCount,
+          durationMs,
         },
       });
 
@@ -505,19 +502,17 @@ export class ImportWorkerService {
         },
       }).catch(() => {});
 
-      await prisma.auditLog.create({
-        data: {
-          tenantId,
-          userId,
-          action: 'IMPORT_FAILED',
-          entity: 'ImportJob',
-          entityId: jobId,
-          newData: JSON.stringify({
-            error: jobErr?.message || 'Erro fatal',
-            durationMs: Date.now() - startTime,
-          }),
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId,
+        action: 'IMPORT_FAILED',
+        entity: 'ImportJob',
+        entityId: jobId,
+        newData: {
+          error: jobErr?.message || 'Erro fatal',
+          durationMs: Date.now() - startTime,
         },
-      }).catch(() => {});
+      });
 
       sseRegistry.broadcastToTenant(tenantId, {
         type: 'IMPORT_FAILED',
@@ -714,21 +709,19 @@ export class ImportWorkerService {
         },
       });
 
-      await prisma.auditLog.create({
-        data: {
-          tenantId,
-          userId,
-          action: 'IMPORT_COMPLETED',
-          entity: 'ImportJob',
-          entityId: jobId,
-          newData: JSON.stringify({
-            type: 'STATUS_UPDATE',
-            totalRecords,
-            updatedRecords: updatedCount,
-            invalidRecords: invalidCount,
-            failedRecords: failedCount,
-            durationMs,
-          }),
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId,
+        action: 'IMPORT_COMPLETED',
+        entity: 'ImportJob',
+        entityId: jobId,
+        newData: {
+          type: 'STATUS_UPDATE',
+          totalRecords,
+          updatedRecords: updatedCount,
+          invalidRecords: invalidCount,
+          failedRecords: failedCount,
+          durationMs,
         },
       });
 

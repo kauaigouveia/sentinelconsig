@@ -58,24 +58,23 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
   const activeUser = StorageService.getActiveUser();
 
-  // Validate server-side session as the ultimate authority
+  // Validate server-side session as the ultimate authority via HttpOnly cookies
   const verifyServerSession = useCallback(async () => {
     try {
-      const storedToken = localStorage.getItem('cg_session_token') || sessionStorage.getItem('cg_session_token');
-      const headers: Record<string, string> = { 'Accept': 'application/json' };
-      if (storedToken) {
-        headers['Authorization'] = `Bearer ${storedToken}`;
-        headers['x-session-id'] = storedToken;
-      }
+      // P0-B: Clean up any legacy token artifacts from web storage
+      try {
+        localStorage.removeItem('cg_session_token');
+        sessionStorage.removeItem('cg_session_token');
+      } catch {}
 
-      const res = await fetch('/api/auth/session', { headers, credentials: 'include' });
+      const res = await fetch('/api/auth/session', {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include',
+      });
 
       if (res.ok) {
         const data = await res.json();
         if (data && data.authenticated && data.user) {
-          if (data.token) {
-            localStorage.setItem('cg_session_token', data.token);
-          }
           // Update active user with valid server session data
           StorageService.setActiveUser(data.user);
           localStorage.setItem('cg_is_authenticated', 'true');

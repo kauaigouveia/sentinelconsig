@@ -63,18 +63,13 @@ export const TenantSaaSCapacityView: React.FC = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('cg_session_token') || sessionStorage.getItem('cg_session_token');
       const headers: Record<string, string> = { 'Accept': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-session-id'] = token;
-      }
 
       // Fetch usage, limits, and health from server
       const [usageRes, limitsRes, healthRes] = await Promise.all([
-        fetch(`/api/saas/tenants/${tenantId}/usage`, { headers }),
-        fetch(`/api/saas/tenants/${tenantId}/limits`, { headers }),
-        fetch(`/api/saas/tenants/${tenantId}/health`, { headers }),
+        fetch(`/api/saas/tenants/${tenantId}/usage`, { headers, credentials: 'include' }),
+        fetch(`/api/saas/tenants/${tenantId}/limits`, { headers, credentials: 'include' }),
+        fetch(`/api/saas/tenants/${tenantId}/health`, { headers, credentials: 'include' }),
       ]);
 
       if (!usageRes.ok || !limitsRes.ok || !healthRes.ok) {

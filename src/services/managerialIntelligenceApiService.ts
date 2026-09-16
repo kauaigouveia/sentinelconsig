@@ -3,19 +3,9 @@ import { ManagerialInsight, HealthScoreResponse } from '../types/managerialIntel
 
 export class ManagerialIntelligenceApiService {
   private static getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+    return {
       'Accept': 'application/json',
     };
-    try {
-      const storedToken = localStorage.getItem('cg_session_token') || sessionStorage.getItem('cg_session_token');
-      if (storedToken) {
-        headers['Authorization'] = `Bearer ${storedToken}`;
-        headers['x-session-id'] = storedToken;
-      }
-    } catch (e) {
-      // storage unavailable
-    }
-    return headers;
   }
 
   private static buildQueryString(params: BIFilterOptions): string {

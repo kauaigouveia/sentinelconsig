@@ -584,6 +584,15 @@ export class AuditLogService {
             FOR EACH ROW
             EXECUTE FUNCTION enforce_audit_log_immutability();
           END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_trigger WHERE tgname = 'trg_audit_log_immutable_truncate'
+          ) THEN
+            CREATE TRIGGER trg_audit_log_immutable_truncate
+            BEFORE TRUNCATE ON "audit_logs"
+            FOR EACH STATEMENT
+            EXECUTE FUNCTION enforce_audit_log_immutability();
+          END IF;
         END $$;
       `);
       logger.info('[AUDIT_IMMUTABILITY] Triggers de imutabilidade do PostgreSQL validados e ativos.');
