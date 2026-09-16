@@ -379,4 +379,8 @@ async function runCronSecuritySuite() {
   console.log(`\nTotal: ${testResults.length} | PASS: ${pass} | FAIL: ${fail}`);
 }
 
-runCronSecuritySuite().catch(console.error);
+runCronSecuritySuite()
+  .catch(console.error)
+  .finally(() => {
+    process.exit(0);
+  });

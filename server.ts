@@ -36,7 +36,7 @@ import { TenantHealthService } from './server/services/tenantHealthService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
-import { createCsrfMiddleware, isRequestHttps } from './server/utils/csrf.js';
+import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -275,6 +275,7 @@ async function auditAndEnsureMasterUser() {
     })
   );
 
+  app.use(createCorsMiddleware(prisma));
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());

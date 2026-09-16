@@ -374,4 +374,7 @@ async function runB10Audit() {
 
 runB10Audit()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
