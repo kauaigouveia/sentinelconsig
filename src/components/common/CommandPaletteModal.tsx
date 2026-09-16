@@ -394,7 +394,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
               <kbd className="font-mono font-bold">Esc</kbd> fechar
             </span>
           </div>
-          <span className="font-semibold text-blue-600 dark:text-blue-400">Evolve Spotlight</span>
+          <span className="font-semibold text-blue-600 dark:text-blue-400">Sentinel Spotlight</span>
         </div>
       </div>
     </div>

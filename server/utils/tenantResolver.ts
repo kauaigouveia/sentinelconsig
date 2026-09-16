@@ -8,7 +8,7 @@ export type DomainResolutionType =
   | 'DOMAIN_NOT_CONFIGURED';
 
 export interface ResolvedTenantBranding {
-  status: 'CONFIGURED' | 'DOMAIN_NOT_CONFIGURED';
+  status: 'CONFIGURED' | 'DOMAIN_NOT_CONFIGURED' | 'SUSPENDED';
   domainType: DomainResolutionType;
   resolvedHost: string;
   tenantId?: string; // Mantido internamente no backend, não enviado em dados públicos sensíveis
@@ -104,7 +104,31 @@ export class TenantResolver {
     if (!hostRegex.test(host)) return false;
 
     // Reservados do sistema ou da plataforma diretamente
-    const reserved = ['admin', 'api', 'app', 'auth', 'saas', 'www', 'system', 'dashboard', 'dev', 'stage'];
+    const reserved = [
+      'admin',
+      'api',
+      'app',
+      'auth',
+      'cdn',
+      'dashboard',
+      'dev',
+      'login',
+      'mail',
+      'master',
+      'platform',
+      'root',
+      'saas',
+      'sentinel',
+      'sentinelconsig',
+      'stage',
+      'staging',
+      'status',
+      'support',
+      'suporte',
+      'system',
+      'test',
+      'www',
+    ];
     const parts = host.split('.');
     if (parts.length > 0 && reserved.includes(parts[0])) {
       // Se for subdomínio direto da plataforma (ex: admin.sentinelconsig.com.br), rejeitar de custom resolution
@@ -142,6 +166,32 @@ export class TenantResolver {
       return cached.result;
     }
 
+    if (!cleanHost) {
+      const emptyResult: DomainResolutionResult = {
+        type: 'DOMAIN_NOT_CONFIGURED',
+        resolvedHost: '',
+        tenant: null,
+        branding: {
+          status: 'DOMAIN_NOT_CONFIGURED',
+          domainType: 'DOMAIN_NOT_CONFIGURED',
+          resolvedHost: '',
+          companyName: 'Host Inválido',
+          tradeName: 'Host Inválido',
+          logoUrl: null,
+          faviconUrl: null,
+          primaryColor: '#64748b',
+          secondaryColor: '#475569',
+          accentColor: '#94a3b8',
+          loginBannerUrl: null,
+          footerText: 'Sentinel Consig SaaS',
+          supportEmail: 'suporte@sentinelconsig.com.br',
+          supportPhone: null,
+          themeMode: 'LIGHT',
+        },
+      };
+      return emptyResult;
+    }
+
     const defaultPlatformBranding: ResolvedTenantBranding = {
       status: 'CONFIGURED',
       domainType: 'PLATFORM_DEFAULT',
@@ -162,7 +212,6 @@ export class TenantResolver {
 
     // 1. Verifica se é o domínio padrão da plataforma ou ambiente local
     const isLocalOrPlatformHost =
-      !cleanHost ||
       cleanHost === 'localhost' ||
       cleanHost === '127.0.0.1' ||
       cleanHost.includes('run.app') ||
@@ -191,12 +240,159 @@ export class TenantResolver {
     const platformSubdomainMatch = cleanHost.match(/^([a-z0-9-]+)\.sentinelconsig\.com\.br$/);
     if (platformSubdomainMatch) {
       const slug = platformSubdomainMatch[1];
+
+      // Slugs reservados da plataforma que não sejam os de acesso administrativo
+      const reservedSlugs = [
+        'api',
+        'auth',
+        'cdn',
+        'dev',
+        'login',
+        'mail',
+        'master',
+        'saas',
+        'sentinel',
+        'sentinelconsig',
+        'stage',
+        'staging',
+        'status',
+        'support',
+        'suporte',
+        'system',
+        'test',
+      ];
+      if (reservedSlugs.includes(slug)) {
+        const notConfiguredResult: DomainResolutionResult = {
+          type: 'DOMAIN_NOT_CONFIGURED',
+          resolvedHost: cleanHost,
+          tenant: null,
+          branding: {
+            status: 'DOMAIN_NOT_CONFIGURED',
+            domainType: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            companyName: 'Subdomínio Reservado',
+            tradeName: 'Subdomínio Reservado',
+            logoUrl: null,
+            faviconUrl: null,
+            primaryColor: '#64748b',
+            secondaryColor: '#475569',
+            accentColor: '#94a3b8',
+            loginBannerUrl: null,
+            footerText: 'Sentinel Consig SaaS',
+            supportEmail: 'suporte@sentinelconsig.com.br',
+            supportPhone: null,
+            themeMode: 'LIGHT',
+          },
+        };
+        this.brandingCache.set(cleanHost, {
+          result: notConfiguredResult,
+          expiresAt: Date.now() + this.CACHE_TTL_MS,
+        });
+        return notConfiguredResult;
+      }
+
       const tenant = await prisma.tenant.findUnique({
         where: { slug },
-        include: { whiteLabel: true },
+        include: { whiteLabel: true, domains: true },
       });
 
-      if (tenant && tenant.status === 'ACTIVE') {
+      if (tenant) {
+        if (tenant.status === 'SUSPENDED') {
+          const wl = tenant.whiteLabel;
+          const suspendedResult: DomainResolutionResult = {
+            type: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            tenant: null,
+            branding: {
+              status: 'SUSPENDED',
+              domainType: 'PLATFORM_SUBDOMAIN',
+              resolvedHost: cleanHost,
+              companyName: wl?.companyName || tenant.name,
+              tradeName: wl?.legalName || tenant.tradeName || tenant.name,
+              logoUrl: wl?.logoUrl || null,
+              faviconUrl: wl?.faviconUrl || null,
+              primaryColor: wl?.primaryColor || '#64748b',
+              secondaryColor: wl?.secondaryColor || '#475569',
+              accentColor: wl?.accentColor || '#94a3b8',
+              loginBannerUrl: null,
+              footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || tenant.name}`,
+              supportEmail: wl?.supportEmail || 'suporte@sentinelconsig.com.br',
+              supportPhone: wl?.supportPhone || null,
+              themeMode: wl?.themeMode || 'LIGHT',
+            },
+          };
+          this.brandingCache.set(cleanHost, {
+            result: suspendedResult,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+          return suspendedResult;
+        }
+
+        if (tenant.status !== 'ACTIVE') {
+          // CANCELLED, PENDING_DELETION, etc.
+          const inactiveResult: DomainResolutionResult = {
+            type: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            tenant: null,
+            branding: {
+              status: 'DOMAIN_NOT_CONFIGURED',
+              domainType: 'DOMAIN_NOT_CONFIGURED',
+              resolvedHost: cleanHost,
+              companyName: 'Organização Inativa',
+              tradeName: 'Organização Inativa',
+              logoUrl: null,
+              faviconUrl: null,
+              primaryColor: '#64748b',
+              secondaryColor: '#475569',
+              accentColor: '#94a3b8',
+              loginBannerUrl: null,
+              footerText: 'Sentinel Consig SaaS',
+              supportEmail: 'suporte@sentinelconsig.com.br',
+              supportPhone: null,
+              themeMode: 'LIGHT',
+            },
+          };
+          this.brandingCache.set(cleanHost, {
+            result: inactiveResult,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+          return inactiveResult;
+        }
+
+        // Se houver registro de TenantDomain específico para esse subdomínio, verificar status estrito
+        const subdomainDomainRecord = tenant.domains?.find(
+          (d) => d.domain.toLowerCase().trim() === cleanHost
+        );
+        if (subdomainDomainRecord && subdomainDomainRecord.status !== 'VERIFIED') {
+          const unverifiedResult: DomainResolutionResult = {
+            type: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            tenant: null,
+            branding: {
+              status: 'DOMAIN_NOT_CONFIGURED',
+              domainType: 'DOMAIN_NOT_CONFIGURED',
+              resolvedHost: cleanHost,
+              companyName: 'Domínio Não Verificado',
+              tradeName: 'Domínio Não Verificado',
+              logoUrl: null,
+              faviconUrl: null,
+              primaryColor: '#64748b',
+              secondaryColor: '#475569',
+              accentColor: '#94a3b8',
+              loginBannerUrl: null,
+              footerText: 'Sentinel Consig SaaS',
+              supportEmail: 'suporte@sentinelconsig.com.br',
+              supportPhone: null,
+              themeMode: 'LIGHT',
+            },
+          };
+          this.brandingCache.set(cleanHost, {
+            result: unverifiedResult,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+          return unverifiedResult;
+        }
+
         const wl = tenant.whiteLabel;
         const result: DomainResolutionResult = {
           type: 'PLATFORM_SUBDOMAIN',
@@ -276,7 +472,68 @@ export class TenantResolver {
     });
 
     if (tenantDomain) {
-      if (tenantDomain.status === 'VERIFIED' && tenantDomain.tenant.status === 'ACTIVE') {
+      if (tenantDomain.status === 'VERIFIED') {
+        if (tenantDomain.tenant.status === 'SUSPENDED') {
+          const wl = tenantDomain.tenant.whiteLabel;
+          const suspendedResult: DomainResolutionResult = {
+            type: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            tenant: null,
+            branding: {
+              status: 'SUSPENDED',
+              domainType: 'CUSTOM_DOMAIN',
+              resolvedHost: cleanHost,
+              companyName: wl?.companyName || tenantDomain.tenant.name,
+              tradeName: wl?.legalName || tenantDomain.tenant.tradeName || tenantDomain.tenant.name,
+              logoUrl: wl?.logoUrl || null,
+              faviconUrl: wl?.faviconUrl || null,
+              primaryColor: wl?.primaryColor || '#64748b',
+              secondaryColor: wl?.secondaryColor || '#475569',
+              accentColor: wl?.accentColor || '#94a3b8',
+              loginBannerUrl: null,
+              footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || tenantDomain.tenant.name}`,
+              supportEmail: wl?.supportEmail || 'suporte@sentinelconsig.com.br',
+              supportPhone: wl?.supportPhone || null,
+              themeMode: wl?.themeMode || 'LIGHT',
+            },
+          };
+          this.brandingCache.set(cleanHost, {
+            result: suspendedResult,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+          return suspendedResult;
+        }
+
+        if (tenantDomain.tenant.status !== 'ACTIVE') {
+          const inactiveResult: DomainResolutionResult = {
+            type: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            tenant: null,
+            branding: {
+              status: 'DOMAIN_NOT_CONFIGURED',
+              domainType: 'DOMAIN_NOT_CONFIGURED',
+              resolvedHost: cleanHost,
+              companyName: 'Organização Inativa',
+              tradeName: 'Organização Inativa',
+              logoUrl: null,
+              faviconUrl: null,
+              primaryColor: '#64748b',
+              secondaryColor: '#475569',
+              accentColor: '#94a3b8',
+              loginBannerUrl: null,
+              footerText: 'Sentinel Consig SaaS',
+              supportEmail: 'suporte@sentinelconsig.com.br',
+              supportPhone: null,
+              themeMode: 'LIGHT',
+            },
+          };
+          this.brandingCache.set(cleanHost, {
+            result: inactiveResult,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+          return inactiveResult;
+        }
+
         const tenant = tenantDomain.tenant;
         const wl = tenant.whiteLabel;
         const result: DomainResolutionResult = {
@@ -317,38 +574,71 @@ export class TenantResolver {
         include: { whiteLabel: true },
       });
 
-      if (legacyTenant && legacyTenant.status === 'ACTIVE') {
-        const wl = legacyTenant.whiteLabel;
-        const result: DomainResolutionResult = {
-          type: 'CUSTOM_DOMAIN',
-          resolvedHost: cleanHost,
-          tenant: legacyTenant,
-          branding: {
-            status: 'CONFIGURED',
-            domainType: 'CUSTOM_DOMAIN',
+      if (legacyTenant) {
+        if (legacyTenant.status === 'SUSPENDED') {
+          const wl = legacyTenant.whiteLabel;
+          const suspendedResult: DomainResolutionResult = {
+            type: 'DOMAIN_NOT_CONFIGURED',
             resolvedHost: cleanHost,
-            tenantId: legacyTenant.id,
-            companyName: wl?.companyName || legacyTenant.name,
-            tradeName: wl?.legalName || legacyTenant.tradeName || legacyTenant.name,
-            logoUrl: wl?.logoUrl || null,
-            faviconUrl: wl?.faviconUrl || null,
-            primaryColor: wl?.primaryColor || '#2563eb',
-            secondaryColor: wl?.secondaryColor || '#1e40af',
-            accentColor: wl?.accentColor || '#3b82f6',
-            loginBannerUrl: null,
-            footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || legacyTenant.name}`,
-            supportEmail: wl?.supportEmail || null,
-            supportPhone: wl?.supportPhone || null,
-            themeMode: wl?.themeMode || 'LIGHT',
-          },
-        };
+            tenant: null,
+            branding: {
+              status: 'SUSPENDED',
+              domainType: 'CUSTOM_DOMAIN',
+              resolvedHost: cleanHost,
+              companyName: wl?.companyName || legacyTenant.name,
+              tradeName: wl?.legalName || legacyTenant.tradeName || legacyTenant.name,
+              logoUrl: wl?.logoUrl || null,
+              faviconUrl: wl?.faviconUrl || null,
+              primaryColor: wl?.primaryColor || '#64748b',
+              secondaryColor: wl?.secondaryColor || '#475569',
+              accentColor: wl?.accentColor || '#94a3b8',
+              loginBannerUrl: null,
+              footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || legacyTenant.name}`,
+              supportEmail: wl?.supportEmail || 'suporte@sentinelconsig.com.br',
+              supportPhone: wl?.supportPhone || null,
+              themeMode: wl?.themeMode || 'LIGHT',
+            },
+          };
+          this.brandingCache.set(cleanHost, {
+            result: suspendedResult,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+          return suspendedResult;
+        }
 
-        this.brandingCache.set(cleanHost, {
-          result,
-          expiresAt: Date.now() + this.CACHE_TTL_MS,
-        });
+        if (legacyTenant.status === 'ACTIVE') {
+          const wl = legacyTenant.whiteLabel;
+          const result: DomainResolutionResult = {
+            type: 'CUSTOM_DOMAIN',
+            resolvedHost: cleanHost,
+            tenant: legacyTenant,
+            branding: {
+              status: 'CONFIGURED',
+              domainType: 'CUSTOM_DOMAIN',
+              resolvedHost: cleanHost,
+              tenantId: legacyTenant.id,
+              companyName: wl?.companyName || legacyTenant.name,
+              tradeName: wl?.legalName || legacyTenant.tradeName || legacyTenant.name,
+              logoUrl: wl?.logoUrl || null,
+              faviconUrl: wl?.faviconUrl || null,
+              primaryColor: wl?.primaryColor || '#2563eb',
+              secondaryColor: wl?.secondaryColor || '#1e40af',
+              accentColor: wl?.accentColor || '#3b82f6',
+              loginBannerUrl: null,
+              footerText: wl?.footerText || `© ${new Date().getFullYear()} ${wl?.companyName || legacyTenant.name}`,
+              supportEmail: wl?.supportEmail || null,
+              supportPhone: wl?.supportPhone || null,
+              themeMode: wl?.themeMode || 'LIGHT',
+            },
+          };
 
-        return result;
+          this.brandingCache.set(cleanHost, {
+            result,
+            expiresAt: Date.now() + this.CACHE_TTL_MS,
+          });
+
+          return result;
+        }
       }
     }
 

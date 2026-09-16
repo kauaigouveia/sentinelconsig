@@ -475,7 +475,10 @@ async function auditAndEnsureMasterUser() {
       }
 
       // Tenant status check (Instant suspension blocker)
-      if (dbUser.tenant && (dbUser.tenant.status === 'SUSPENDED' || dbUser.tenant.status === 'CANCELLED')) {
+      if (dbUser.role !== 'PLATFORM_MASTER' && dbUser.tenant && dbUser.tenant.status !== 'ACTIVE') {
+        const reason = dbUser.tenant.status === 'SUSPENDED' 
+          ? 'Organização/Tenant suspenso' 
+          : 'Organização/Tenant inativo ou cancelado';
         await AuditLogService.record(prisma, {
           tenantId: dbUser.tenantId,
           userId: dbUser.id,
@@ -483,10 +486,10 @@ async function auditAndEnsureMasterUser() {
           action: 'LOGIN_FAILED',
           entity: 'AUTH',
           entityId: dbUser.id,
-          oldData: { email: cleanEmail, reason: 'Organização/Tenant suspenso ou cancelado' },
+          oldData: { email: cleanEmail, reason },
           req,
         });
-        return res.status(403).json({ message: 'Tenant suspenso.' });
+        return res.status(403).json({ message: dbUser.tenant.status === 'SUSPENDED' ? 'Tenant suspenso.' : 'Tenant inativo ou cancelado.' });
       }
 
       // P0-A: Cryptographic password validation using Argon2id (No includes, no partial matches)
@@ -781,14 +784,28 @@ async function auditAndEnsureMasterUser() {
 
     if (!session || session.expiresAt < new Date()) return null;
 
-    // Instant suspension protection: if tenant is SUSPENDED or CANCELLED, kill session
+    // Instant suspension/inactivation protection: if user is not active or non-master tenant is not ACTIVE, kill session
     if (
       !session.user.active ||
-      (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
+      (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && session.user.tenant.status !== 'ACTIVE')
     ) {
       AdminContextManager.clearContext(session.id);
       await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
       return null;
+    }
+
+    // Hostname / Domain tenant boundary validation:
+    // If request arrives via a specific tenant domain/subdomain, non-PLATFORM_MASTER user MUST belong to that tenant
+    const reqHost = TenantResolver.extractHost(req);
+    const domainResolution = await TenantResolver.resolveByHost(prisma, reqHost);
+    if (
+      domainResolution.tenant &&
+      (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
+    ) {
+      if (session.user.role !== 'PLATFORM_MASTER' && session.user.tenantId !== domainResolution.tenant.id) {
+        // Cross-tenant access forbidden: user from Tenant A accessing domain of Tenant B
+        return null;
+      }
     }
 
     // Context switch support for PLATFORM_MASTER

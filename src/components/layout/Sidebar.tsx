@@ -410,18 +410,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               )}
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
-              {/* Linha principal: Sentinel Consig + ENTERPRISE */}
+              {/* Linha principal: Nome da Empresa / Sistema + ENTERPRISE */}
               <div className="flex items-center gap-1.5 flex-nowrap">
-                <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight">
-                  Sentinel Consig
+                <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight truncate">
+                  {whiteLabel.companyName || 'Sentinel Consig'}
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 dark:bg-blue-400/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shrink-0 leading-none">
                   ENTERPRISE
                 </span>
               </div>
-              {/* Segunda linha: SENTINEL CONSIG */}
-              <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight mt-0.5">
-                SENTINEL CONSIG
+              {/* Segunda linha: Razão / Subtítulo da Marca */}
+              <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight mt-0.5 truncate">
+                {whiteLabel.tradeName || whiteLabel.companyName || 'SENTINEL CONSIG'}
               </span>
             </div>
           </div>

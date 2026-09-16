@@ -201,6 +201,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
           )}
 
+          {/* Domain Not Configured Banner */}
+          {isUnconfigured && (
+            <div className="p-4 rounded-xl border border-amber-800/80 bg-amber-950/40 text-amber-200 text-xs flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-bold">Domínio Não Configurado ou Pendente de Verificação</strong>
+                <span>Este endereço de acesso ainda não foi verificado para nenhuma organização ativa. Acesse pelo portal principal ou contate o administrador.</span>
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {errorMsg && (
             <div className="p-3.5 rounded-xl border border-rose-800/80 bg-rose-950/40 text-rose-200 text-xs flex items-start gap-2.5 animate-in fade-in">

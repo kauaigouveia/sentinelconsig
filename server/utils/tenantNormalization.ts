@@ -32,7 +32,7 @@ export class TenantNormalization {
       throw new Error('Slug inválido: deve conter entre 2 e 63 caracteres.');
     }
 
-    // Slugs reservados da plataforma
+    // Slugs e subdomínios reservados da plataforma
     const reservedSlugs = [
       'admin',
       'api',
@@ -41,12 +41,19 @@ export class TenantNormalization {
       'cdn',
       'dashboard',
       'dev',
+      'login',
       'mail',
+      'master',
       'platform',
       'root',
       'saas',
+      'sentinel',
+      'sentinelconsig',
       'stage',
       'staging',
+      'status',
+      'support',
+      'suporte',
       'system',
       'test',
       'www',
