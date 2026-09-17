@@ -53,7 +53,7 @@ async function simulateBulkDeleteRequest(
   // Chamada direta à lógica do endpoint com transação atômica e proteção
   const rootTenantDb = await prisma.tenant.findUnique({ where: { slug: 'sentinel-consig' } });
   const ROOT_TENANT_ID = rootTenantDb ? rootTenantDb.id : 'sentinel-consig';
-  const PROTECTED_SLUGS = ['sentinel-consig', 'evolve'];
+  const PROTECTED_SLUGS = ['sentinel-consig'];
 
   if (!tenantIds || !Array.isArray(tenantIds) || tenantIds.length === 0) {
     return { status: 400, body: { error: 'Lista de IDs de empresas inválida ou vazia.' } };
@@ -66,11 +66,7 @@ async function simulateBulkDeleteRequest(
   }
 
   // Proteção do tenant raiz e slugs protegidos
-  if (
-    uniqueTenantIds.includes(ROOT_TENANT_ID) ||
-    uniqueTenantIds.includes('sentinel-consig') ||
-    uniqueTenantIds.includes('tenant_evolve')
-  ) {
+  if (uniqueTenantIds.includes(ROOT_TENANT_ID) || uniqueTenantIds.includes('sentinel-consig')) {
     return {
       status: 403,
       body: {

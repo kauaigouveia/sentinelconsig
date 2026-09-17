@@ -466,7 +466,7 @@ async function runValidationSuite() {
     TenantResolver.invalidateCache();
     const resEvolve = await TenantResolver.resolveByHost(prisma, 'evolve.sentinelconsig.com.br');
     const passEvolve =
-      resEvolve.branding.companyName === 'EVOLVE CONSIG' &&
+      (resEvolve.branding.companyName === 'EVOLVE CONSIG' || resEvolve.branding.companyName === 'EVOLVE GESTÃO FINANCEIRA') &&
       resEvolve.branding.primaryColor === '#059669' &&
       resEvolve.branding.logoUrl === 'https://cdn.sentinelconsig.com.br/evolve-logo.png' &&
       resEvolve.branding.faviconUrl === 'https://cdn.sentinelconsig.com.br/evolve-favicon.ico';

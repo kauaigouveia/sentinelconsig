@@ -152,6 +152,81 @@ export class TenantResolver {
   }
 
   /**
+   * Resolve a identidade visual/branding diretamente pelo ID do Tenant
+   */
+  public static async resolveByTenantId(
+    prisma: PrismaClient,
+    tenantId: string
+  ): Promise<ResolvedTenantBranding> {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        include: { whiteLabel: true },
+      });
+
+      if (!tenant) {
+        return {
+          status: 'DOMAIN_NOT_CONFIGURED',
+          domainType: 'PLATFORM_DEFAULT',
+          resolvedHost: 'default',
+          tenantId,
+          companyName: 'Sentinel Consig',
+          tradeName: 'Sentinel Consig',
+          logoUrl: null,
+          faviconUrl: null,
+          primaryColor: '#2563eb',
+          secondaryColor: '#1e40af',
+          accentColor: '#3b82f6',
+          loginBannerUrl: null,
+          footerText: '© 2026 Sentinel Consig. Todos os direitos reservados.',
+          supportEmail: 'suporte@sentinelconsig.com.br',
+          supportPhone: null,
+          themeMode: 'LIGHT',
+        };
+      }
+
+      const wl = tenant.whiteLabel;
+      return {
+        status: tenant.status === 'SUSPENDED' ? 'SUSPENDED' : 'CONFIGURED',
+        domainType: tenant.customDomain ? 'CUSTOM_DOMAIN' : 'PLATFORM_SUBDOMAIN',
+        resolvedHost: tenant.customDomain || `${tenant.slug}.sentinelconsig.com.br`,
+        tenantId: tenant.id,
+        companyName: wl?.companyName || tenant.name,
+        tradeName: tenant.tradeName || tenant.name,
+        logoUrl: wl?.logoUrl || null,
+        faviconUrl: wl?.faviconUrl || null,
+        primaryColor: wl?.primaryColor || '#2563eb',
+        secondaryColor: wl?.secondaryColor || '#1e40af',
+        accentColor: wl?.accentColor || '#3b82f6',
+        loginBannerUrl: null,
+        footerText: wl?.footerText || `© 2026 ${wl?.companyName || tenant.name}. Todos os direitos reservados.`,
+        supportEmail: wl?.supportEmail || null,
+        supportPhone: wl?.supportPhone || null,
+        themeMode: wl?.themeMode || 'LIGHT',
+      };
+    } catch (err) {
+      console.error('[TenantResolver.resolveByTenantId ERROR]', err);
+      return {
+        status: 'DOMAIN_NOT_CONFIGURED',
+        domainType: 'PLATFORM_DEFAULT',
+        resolvedHost: 'default',
+        companyName: 'Sentinel Consig',
+        tradeName: 'Sentinel Consig',
+        logoUrl: null,
+        faviconUrl: null,
+        primaryColor: '#2563eb',
+        secondaryColor: '#1e40af',
+        accentColor: '#3b82f6',
+        loginBannerUrl: null,
+        footerText: '© 2026 Sentinel Consig. Todos os direitos reservados.',
+        supportEmail: 'suporte@sentinelconsig.com.br',
+        supportPhone: null,
+        themeMode: 'LIGHT',
+      };
+    }
+  }
+
+  /**
    * Resolve o Tenant a partir do Host com cache seguro indexado por host
    */
   public static async resolveByHost(

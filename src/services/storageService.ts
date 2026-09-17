@@ -1632,7 +1632,7 @@ export class StorageService {
     this.set(STORAGE_KEYS.USERS, INITIAL_USERS);
     this.set(STORAGE_KEYS.ACTIVE_USER, INITIAL_USERS[0]); // Master as active
     this.set(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
-    this.set(STORAGE_KEYS.CURRENT_TENANT_ID, 'tenant_evolve');
+    this.set(STORAGE_KEYS.CURRENT_TENANT_ID, 'sentinel-consig');
     this.set(STORAGE_KEYS.PROMOTERS, INITIAL_PROMOTERS);
     this.set(STORAGE_KEYS.BANKS, INITIAL_BANKS);
     this.set(STORAGE_KEYS.BANK_PROMOTERS, INITIAL_BANK_PROMOTERS);
@@ -3963,7 +3963,7 @@ export class StorageService {
       cpf: cleanCpf,
       partnerId: partner.id,
       createdById: activeUser.id,
-      tenantId: activeUser.tenantId || (partner as any).tenantId || this.getCurrentTenantId() || 'tenant_evolve',
+      tenantId: activeUser.tenantId || (partner as any).tenantId || this.getCurrentTenantId() || 'sentinel-consig',
       status: initialStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -4151,7 +4151,7 @@ export class StorageService {
         return (partner as any).tenantId;
       }
     }
-    return this.getCurrentTenantId() || 'tenant_evolve';
+    return this.getCurrentTenantId() || 'sentinel-consig';
   }
 
   public static canChangeSimulationStatus(user: User, simulation: SimulationRequest): boolean {
@@ -4174,7 +4174,7 @@ export class StorageService {
 
     const simTenantId = this.getSimulationTenantId(simulation);
     const currentTenantId = this.getCurrentTenantId();
-    const userTenantId = user.tenantId || currentTenantId || 'tenant_evolve';
+    const userTenantId = user.tenantId || currentTenantId || 'sentinel-consig';
 
     // 1. PLATFORM_MASTER
     if (user.role === 'PLATFORM_MASTER') {
@@ -4438,7 +4438,7 @@ export class StorageService {
   }
 
   public static getCurrentTenantId(): string {
-    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, 'tenant_evolve');
+    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, 'sentinel-consig');
   }
 
   public static getCurrentTenant(): Tenant {

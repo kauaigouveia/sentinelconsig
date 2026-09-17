@@ -57,16 +57,17 @@ import { Breadcrumbs } from './components/ui/Breadcrumbs';
 import { ToastContainer } from './components/ui/ToastContainer';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
-  const [activeUser, setActiveUser] = useState<User | null>(() => StorageService.getActiveUser());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
+  const [activeUser, setActiveUser] = useState<User | null>(null);
   const [adminContext, setAdminContext] = useState<{ targetTenantId: string; targetTenantName: string } | null>(null);
   const { branding } = useTenantBranding();
-  const isUnconfiguredDomain = branding.status === 'DOMAIN_NOT_CONFIGURED' || branding.domainType === 'DOMAIN_NOT_CONFIGURED';
 
   // Validate server-side session as the ultimate authority via HttpOnly cookies
   const verifyServerSession = useCallback(async () => {
+    setIsVerifyingSession(true);
     try {
-      // P0-B: Clean up any legacy token artifacts from web storage
+      // Clean up any legacy token artifacts from web storage
       try {
         localStorage.removeItem('cg_session_token');
         sessionStorage.removeItem('cg_session_token');
@@ -87,29 +88,30 @@ export default function App() {
           if (data.adminContext) {
             StorageService.setCurrentTenantId(data.adminContext.targetTenantId);
           } else {
-            StorageService.setCurrentTenantId(data.user.tenantId || 'tenant_evolve');
+            StorageService.setCurrentTenantId(data.user.tenantId || '');
           }
           localStorage.setItem('cg_is_authenticated', 'true');
           setIsAuthenticated(true);
           return;
         }
       }
-      // If server says unauthenticated (401 or !authenticated)
-      if (StorageService.isAuthenticated()) {
-        console.warn('[AUTH] Sessão server-side inexistente ou expirada. Limpando credenciais locais e redirecionando para login.');
-        StorageService.clearBusinessCache();
-        localStorage.setItem('cg_is_authenticated', 'false');
-        setIsAuthenticated(false);
-        setActiveUser(null);
-        setAdminContext(null);
-      }
+
+      // If server responds with non-ok or unauthenticated (FAIL-CLOSED)
+      console.warn('[AUTH FAIL-CLOSED] Sessão server-side inexistente ou inválida. Forçando logout.');
+      StorageService.clearBusinessCache();
+      localStorage.setItem('cg_is_authenticated', 'false');
+      setIsAuthenticated(false);
+      setActiveUser(null);
+      setAdminContext(null);
     } catch (err) {
-      // Network error during offline/mock fallback: let StorageService validate local user integrity
-      if (!StorageService.isAuthenticated()) {
-        setIsAuthenticated(false);
-        setActiveUser(null);
-        setAdminContext(null);
-      }
+      // FAIL-CLOSED: Network or server error must NOT allow access
+      console.warn('[AUTH FAIL-CLOSED] Erro de conexão/servidor ao validar sessão:', err);
+      localStorage.setItem('cg_is_authenticated', 'false');
+      setIsAuthenticated(false);
+      setActiveUser(null);
+      setAdminContext(null);
+    } finally {
+      setIsVerifyingSession(false);
     }
   }, []);
 
@@ -400,8 +402,19 @@ export default function App() {
     setCurrentView('producao');
   };
 
-  if (!isAuthenticated || isUnconfiguredDomain) {
-    return <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />;
+  if (isVerifyingSession) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-slate-200 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <span className="text-xs font-semibold tracking-wide text-slate-400">Verificando autenticação segura...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={() => verifyServerSession()} />;
   }
 
   return (

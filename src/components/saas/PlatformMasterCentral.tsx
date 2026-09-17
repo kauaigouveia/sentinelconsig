@@ -549,7 +549,8 @@ export const PlatformMasterCentral: React.FC = () => {
 
       await fetchContextStatus();
       StorageService.clearBusinessCache();
-      StorageService.setCurrentTenantId('tenant_evolve');
+      const currentUser = StorageService.getActiveUser();
+      StorageService.setCurrentTenantId(currentUser?.tenantId || 'sentinel-consig');
       await StorageService.syncWithPostgreSQL();
       alert('Contexto de inspeção encerrado.');
     } catch (err: any) {
@@ -580,12 +581,7 @@ export const PlatformMasterCentral: React.FC = () => {
 
   // Helper to identify root protected tenant
   const isRootTenant = useCallback((t: { id: string; slug: string }) => {
-    return (
-      t.id === 'sentinel-consig' ||
-      t.slug === 'sentinel-consig' ||
-      t.id === 'tenant_evolve' ||
-      t.slug === 'evolve'
-    );
+    return t.slug === "sentinel-consig";
   }, []);
 
   // Filtered tenants that are selectable (excluding protected root tenants)

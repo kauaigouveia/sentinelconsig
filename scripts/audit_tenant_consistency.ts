@@ -175,7 +175,7 @@ async function runTenantConsistencyAudit() {
   const representativeTenants = await prisma.tenant.findMany({
     where: {
       slug: { notIn: ['sentinel-consig', 'evolve'] },
-      id: { notIn: ['tenant_evolve', 'sentinel-consig'] },
+      id: { notIn: ['sentinel-consig'] },
     },
     take: 5,
     select: { id: true, name: true, slug: true, status: true, deletedAt: true },

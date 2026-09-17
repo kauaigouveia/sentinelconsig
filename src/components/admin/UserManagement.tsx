@@ -32,6 +32,8 @@ import {
   PERMISSION_CATEGORIES,
   Permission,
   getPermissionsForRole,
+  getEffectivePermissions,
+  DEFAULT_ROLE_PERMISSIONS,
   ALL_PERMISSIONS,
   hasPermission,
 } from '../../lib/permissions';
@@ -47,7 +49,7 @@ export const UserManagement: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('DIGITADOR');
-  const [selectedTenantId, setSelectedTenantId] = useState<string>(activeUser.tenantId || 'tenant_evolve');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>(activeUser?.tenantId || '');
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(() =>
     getPermissionsForRole('DIGITADOR')
   );
@@ -211,8 +213,12 @@ export const UserManagement: React.FC = () => {
     );
   };
 
+  const availablePermissions = isPlatformMaster
+    ? ALL_PERMISSIONS
+    : DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN;
+
   const handleSelectAllPermissions = () => {
-    setSelectedPermissions([...ALL_PERMISSIONS]);
+    setSelectedPermissions([...availablePermissions]);
   };
 
   const handleClearAllPermissions = () => {
@@ -257,12 +263,8 @@ export const UserManagement: React.FC = () => {
     setEditName(u.name);
     setEditRole(u.role);
     setEditActive(u.active);
-    setEditTenantId(u.tenantId || activeUser.tenantId || 'tenant_evolve');
-    setEditPermissions(
-      u.customPermissions && u.customPermissions.length > 0
-        ? (u.customPermissions as Permission[])
-        : getPermissionsForRole(u.role)
-    );
+    setEditTenantId(u.tenantId || activeUser?.tenantId || '');
+    setEditPermissions(getEffectivePermissions(u.role, u.customPermissions));
   };
 
   const handleEditRoleChange = (newRole: Role) => {
@@ -486,7 +488,7 @@ export const UserManagement: React.FC = () => {
                         {t.name}
                       </option>
                     ))}
-                    {tenants.length === 0 && <option value="tenant_evolve">Sentinel Consig</option>}
+                    {tenants.length === 0 && <option value="">Selecione uma Empresa</option>}
                   </select>
                 </div>
               ) : (
@@ -552,7 +554,7 @@ export const UserManagement: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {PERMISSION_CATEGORIES.map(cat => {
+                  {(isPlatformMaster ? PERMISSION_CATEGORIES : PERMISSION_CATEGORIES.filter(c => c.category !== 'TENANTS')).map(cat => {
                     const catPermIds = cat.permissions.map(p => p.id);
                     const selectedCount = catPermIds.filter(id => selectedPermissions.includes(id)).length;
                     const allCatSelected = selectedCount === catPermIds.length;
@@ -744,7 +746,8 @@ export const UserManagement: React.FC = () => {
                 filteredUsers.map(u => {
                   const isActive = activeUser.id === u.id;
                   const isMasterProtected = u.role === 'PLATFORM_MASTER' || u.isMasterProtected;
-                  const activePermsCount = u.customPermissions?.length ?? getPermissionsForRole(u.role).length;
+                  const effectivePerms = getEffectivePermissions(u.role, u.customPermissions);
+                  const maxPerms = u.role === 'PLATFORM_MASTER' ? ALL_PERMISSIONS.length : DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN.length;
                   const isSelected = selectedUserIds.has(u.id);
 
                   return (
@@ -791,7 +794,7 @@ export const UserManagement: React.FC = () => {
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold border border-slate-200 dark:border-slate-700">
                           <Shield className="h-3 w-3 text-blue-500" />
-                          {u.role === 'PLATFORM_MASTER' ? 'Global (Total)' : `${activePermsCount} permissões`}
+                          {u.role === 'PLATFORM_MASTER' ? 'Global (Total)' : `${effectivePerms.length} de ${maxPerms}`}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -936,12 +939,12 @@ export const UserManagement: React.FC = () => {
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Shield className="h-4 w-4 text-blue-600" />
-                  <span>Permissões Específicas do Usuário ({editPermissions.length} de {ALL_PERMISSIONS.length})</span>
+                  <span>Permissões Específicas do Usuário ({editPermissions.length} de {isPlatformMaster ? ALL_PERMISSIONS.length : DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN.length})</span>
                 </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setEditPermissions([...ALL_PERMISSIONS])}
+                    onClick={() => setEditPermissions([...(isPlatformMaster ? ALL_PERMISSIONS : DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN)])}
                     className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Marcar Todas
@@ -957,7 +960,7 @@ export const UserManagement: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {PERMISSION_CATEGORIES.map(cat => (
+                {(isPlatformMaster ? PERMISSION_CATEGORIES : PERMISSION_CATEGORIES.filter(c => c.category !== 'TENANTS')).map(cat => (
                   <div key={cat.category} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5 bg-slate-50/50 dark:bg-slate-800/40 space-y-1.5">
                     <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block border-b border-slate-200 dark:border-slate-700 pb-1">
                       {cat.label}

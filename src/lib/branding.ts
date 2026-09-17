@@ -1,0 +1,66 @@
+import { Role } from '../types';
+
+export interface EffectiveTenantBranding {
+  tenantId: string;
+  tenantName: string;
+  logoUrl: string | null;
+  tradeName?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  accentColor?: string | null;
+}
+
+export const SYSTEM_IDENTITY = {
+  name: 'SENTINEL CONSIG',
+  badge: 'ENTERPRISE',
+  subtitle: 'Gestão de Produção & Esteira',
+  defaultLogo: '/branding/sentinel-consig-symbol.png',
+};
+
+export function resolveEffectiveTenantBranding(
+  activeUser: { role?: Role | string; tenantId?: string } | null,
+  currentTenant: { id?: string; name?: string; tradeName?: string; whiteLabel?: any } | null,
+  whiteLabel: any | null,
+  adminContext?: { active: boolean; context?: { targetTenantId: string; targetTenantName: string } } | null
+): EffectiveTenantBranding {
+  let effectiveTenantId = activeUser?.tenantId || currentTenant?.id || 'sentinel-consig';
+  let effectiveTenantName = currentTenant?.name || whiteLabel?.companyName || 'Sentinel Consig';
+  let logoUrl: string | null = null;
+  let tradeName: string | null = null;
+  let primaryColor: string | null = null;
+  let secondaryColor: string | null = null;
+  let accentColor: string | null = null;
+
+  if (activeUser?.role === 'PLATFORM_MASTER') {
+    if (adminContext?.active && adminContext.context?.targetTenantName) {
+      effectiveTenantId = adminContext.context.targetTenantId;
+      effectiveTenantName = adminContext.context.targetTenantName;
+      if (whiteLabel?.logoUrl && !whiteLabel.logoUrl.startsWith('/branding/sentinel-')) {
+        logoUrl = whiteLabel.logoUrl;
+      }
+    } else {
+      effectiveTenantId = 'platform';
+      effectiveTenantName = 'PLATAFORMA';
+      logoUrl = SYSTEM_IDENTITY.defaultLogo;
+    }
+  } else {
+    effectiveTenantId = activeUser?.tenantId || currentTenant?.id || 'sentinel-consig';
+    effectiveTenantName = currentTenant?.name || whiteLabel?.companyName || 'Sentinel Consig';
+    if (whiteLabel?.logoUrl && !whiteLabel.logoUrl.startsWith('/branding/sentinel-')) {
+      logoUrl = whiteLabel.logoUrl;
+    }
+  }
+
+  // Fallback Rule for Logo
+  const finalLogoUrl = logoUrl || SYSTEM_IDENTITY.defaultLogo;
+
+  return {
+    tenantId: effectiveTenantId,
+    tenantName: effectiveTenantName,
+    logoUrl: finalLogoUrl,
+    tradeName: whiteLabel?.tradeName || currentTenant?.tradeName || null,
+    primaryColor: whiteLabel?.primaryColor || currentTenant?.whiteLabel?.primaryColor || null,
+    secondaryColor: whiteLabel?.secondaryColor || currentTenant?.whiteLabel?.secondaryColor || null,
+    accentColor: whiteLabel?.accentColor || currentTenant?.whiteLabel?.accentColor || null,
+  };
+}

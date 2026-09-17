@@ -48,16 +48,37 @@ export class BackupService {
   }
 
   /**
-   * Retrieves all saved snapshots
+   * Retrieves all saved snapshots from server-side PostgreSQL endpoint
    */
-  public static getSnapshots(): DatabaseBackupSnapshot[] {
+  public static async getSnapshots(): Promise<DatabaseBackupSnapshot[]> {
     try {
-      const raw = localStorage.getItem(BACKUP_STORAGE_KEY);
-      if (!raw) return [];
-      const list: DatabaseBackupSnapshot[] = JSON.parse(raw);
-      return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const res = await fetch('/api/admin/backups', { credentials: 'include' });
+      if (!res.ok) {
+        console.warn('Falha ao carregar backups do servidor:', res.status);
+        return [];
+      }
+      const list = await res.json();
+      return list.map((b: any) => ({
+        id: b.id,
+        createdAt: b.createdAt,
+        type: b.type === 'MANUAL' ? 'MANUAL' : 'AUTOMATICO_CRON',
+        fileName: `${b.id}.json`,
+        fileSizeBytes: Number(b.sizeBytes || 0),
+        stats: {
+          proposalsCount: b.recordsCount || 0,
+          clientsCount: 0,
+          partnersCount: 0,
+          banksCount: 0,
+          historyCount: 0,
+          pendingsCount: 0,
+          usersCount: 0,
+        },
+        dataDump: {},
+        createdByUserName: b.createdBy?.name || 'Administrador',
+        note: b.label || 'Snapshot do servidor PostgreSQL',
+      }));
     } catch (e) {
-      console.error('Erro ao ler snapshots de backup:', e);
+      console.error('Erro ao ler snapshots de backup do servidor:', e);
       return [];
     }
   }
@@ -113,10 +134,10 @@ export class BackupService {
   /**
    * Creates a backup snapshot, saves it to history, and handles rotation
    */
-  public static createBackupSnapshot(
+  public static async createBackupSnapshot(
     type: 'AUTOMATICO_CRON' | 'MANUAL' = 'MANUAL',
     note?: string
-  ): DatabaseBackupSnapshot {
+  ): Promise<DatabaseBackupSnapshot> {
     const dump = this.generateFullDatabaseDump();
     const jsonString = JSON.stringify(dump);
     const sizeBytes = new Blob([jsonString]).size;
@@ -154,7 +175,7 @@ export class BackupService {
     // Save and rotate snapshots
     const schedule = this.getScheduleConfig();
     const maxKeep = schedule.maxSnapshotsToKeep || 15;
-    const currentSnapshots = this.getSnapshots();
+    const currentSnapshots = await this.getSnapshots();
     
     const updatedSnapshots = [snapshot, ...currentSnapshots].slice(0, maxKeep);
     this.saveSnapshots(updatedSnapshots);
@@ -198,10 +219,10 @@ export class BackupService {
   /**
    * Downloads a snapshot or current database dump to a local JSON file
    */
-  public static downloadBackupAsFile(
+  public static async downloadBackupAsFile(
     snapshotOrData?: DatabaseBackupSnapshot | Record<string, any>,
     customFileName?: string
-  ): void {
+  ): Promise<void> {
     let dataToExport: Record<string, any>;
     let fileName: string;
 
@@ -213,7 +234,7 @@ export class BackupService {
       const ts = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').split('.')[0];
       fileName = customFileName || `evolve_database_dump_${ts}.json`;
     } else {
-      const snapshot = this.createBackupSnapshot('MANUAL', 'Download direto de arquivo de backup');
+      const snapshot = await this.createBackupSnapshot('MANUAL', 'Download direto de arquivo de backup');
       dataToExport = snapshot.dataDump;
       fileName = snapshot.fileName;
     }
@@ -310,8 +331,9 @@ export class BackupService {
   /**
    * Deletes a snapshot by ID
    */
-  public static deleteSnapshot(id: string): void {
-    const list = this.getSnapshots().filter(s => s.id !== id);
+  public static async deleteSnapshot(id: string): Promise<void> {
+    const snapshots = await this.getSnapshots();
+    const list = snapshots.filter(s => s.id !== id);
     this.saveSnapshots(list);
 
     StorageService.addAuditLog({
@@ -324,7 +346,7 @@ export class BackupService {
   /**
    * Checks if a scheduled backup is due and runs it
    */
-  public static checkAndExecuteScheduledBackup(): { executed: boolean; message: string; snapshot?: DatabaseBackupSnapshot } {
+  public static async checkAndExecuteScheduledBackup(): Promise<{ executed: boolean; message: string; snapshot?: DatabaseBackupSnapshot }> {
     const schedule = this.getScheduleConfig();
     if (!schedule.enabled) {
       return { executed: false, message: 'Agendamento de backup automático desativado.' };
@@ -335,7 +357,7 @@ export class BackupService {
 
     // Check if due (or if never ran before)
     if (!schedule.lastRunAt || now >= nextRun) {
-      const snapshot = this.createBackupSnapshot('AUTOMATICO_CRON', 'Executado automaticamente pelo serviço de cron');
+      const snapshot = await this.createBackupSnapshot('AUTOMATICO_CRON', 'Executado automaticamente pelo serviço de cron');
       return {
         executed: true,
         message: `Backup automático realizado com sucesso (${snapshot.stats.proposalsCount} propostas salvas).`,

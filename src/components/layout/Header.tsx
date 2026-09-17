@@ -262,18 +262,61 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const handleTriggerCron = () => {
+  const [serverHealth, setServerHealth] = useState<{
+    status: string;
+    api: string;
+    database: string;
+    realtime: string;
+    storage: string;
+  } | null>(null);
+
+  const checkServerHealth = async () => {
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) {
+        const data = await res.json();
+        setServerHealth(data);
+      } else {
+        setServerHealth({
+          status: 'degraded',
+          api: 'healthy',
+          database: 'unreachable',
+          realtime: 'degraded',
+          storage: 'degraded',
+        });
+      }
+    } catch {
+      setServerHealth({
+        status: 'offline',
+        api: 'unreachable',
+        database: 'unreachable',
+        realtime: 'unreachable',
+        storage: 'unreachable',
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkServerHealth();
+    const interval = setInterval(checkServerHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleTriggerCron = async () => {
     setIsUserMenuOpen(false);
-    const res = AutomationService.runPortabilityCron();
-    const backupRes = BackupService.checkAndExecuteScheduledBackup();
+    const res = await AutomationService.runPortabilityCron();
     setCronMessage(
-      `Verificação concluída: ${res.checkedCount} propostas verificadas | ${res.saldoRetornadoCount} saldos retornados ${backupRes.executed ? '| Cópia de segurança salva' : ''}`
+      `Verificação concluída: ${res.checkedCount} propostas verificadas | ${res.saldoRetornadoCount} saldos retornados`
     );
     setTimeout(() => setCronMessage(null), 4000);
   };
 
   const handleResetData = () => {
     setIsUserMenuOpen(false);
+    if (process.env.NODE_ENV === 'production') {
+      alert('Operação de reset de banco de dados bloqueada em ambiente de produção.');
+      return;
+    }
     if (confirm('Deseja redefinir os dados para o estado inicial de fábrica (seed)?')) {
       StorageService.resetToInitial();
       window.location.reload();
@@ -295,7 +338,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   // Overall system health indicator
-  const isHealthy = fbStatus === 'online' || fbStatus === 'checking';
+  const isHealthy = serverHealth ? serverHealth.status === 'ok' && serverHealth.database === 'healthy' : true;
 
   return (
     <header className="h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-4 flex items-center justify-between gap-4 shrink-0 z-30 transition-colors select-none">

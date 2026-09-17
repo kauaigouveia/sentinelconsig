@@ -31,6 +31,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
 import { Role } from '../../types';
+import { resolveEffectiveTenantBranding, SYSTEM_IDENTITY } from '../../lib/branding';
 
 interface SidebarProps {
   currentView: string;
@@ -266,7 +267,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
   // RBAC Permission checks (strictly preserved)
   const isPlatformMaster = role === 'PLATFORM_MASTER';
-  const isMaster = role === 'MASTER' || isPlatformMaster;
+  const isTenantAdmin = role === 'TENANT_ADMIN';
+  const isMaster = role === 'MASTER' || isPlatformMaster || isTenantAdmin;
   const isGestor = role === 'GESTOR' || isMaster;
   const isGerente = role === 'GERENTE' || isGestor;
   const isSuporte = role === 'SUPORTE' || isGestor;
@@ -356,6 +358,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     );
   };
 
+  const effectiveBranding = resolveEffectiveTenantBranding(
+    activeUser,
+    currentTenant,
+    whiteLabel,
+    adminContext
+  );
+
   return (
     <aside
       className={`border-r border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#080d18] flex flex-col shrink-0 transition-all duration-200 ease-in-out select-none ${
@@ -370,25 +379,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         <div className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col items-center gap-1.5 shrink-0">
           <div
             className="h-8 w-8 flex items-center justify-center shrink-0 cursor-pointer"
-            title={`${whiteLabel.companyName || 'Sentinel Consig'} - ${displayCompanyName}`}
+            title={`${SYSTEM_IDENTITY.name} - ${effectiveBranding.tenantName}`}
             onClick={() => onNavigate('torre-controle')}
           >
-            {whiteLabel.logoUrl ? (
-              <img
-                src={
-                  whiteLabel.logoUrl.startsWith('/branding/sentinel-')
-                    ? '/branding/sentinel-consig-symbol.png'
-                    : whiteLabel.logoUrl
-                }
-                alt={whiteLabel.companyName || 'Sentinel Consig'}
-                className="h-full w-full object-contain rounded-lg shadow-2xs"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs ring-1 ring-blue-500/30">
-                {(displayCompanyName || 'SC').slice(0, 2).toUpperCase()}
-              </div>
-            )}
+            <img
+              src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo}
+              alt={effectiveBranding.tenantName}
+              className="h-full w-full object-contain rounded-lg shadow-2xs"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <span className="text-[8px] font-black uppercase tracking-tighter text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-400/15 px-1 py-0.2 rounded border border-blue-200 dark:border-blue-800/50 text-center leading-tight">
             ENT
@@ -400,36 +399,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
           {/* IDENTIDADE DO SISTEMA */}
           <div className="flex items-start gap-2.5">
             <div className="h-8.5 w-8.5 flex items-center justify-center shrink-0 mt-0.5">
-              {whiteLabel.logoUrl ? (
-                <img
-                  src={
-                    whiteLabel.logoUrl.startsWith('/branding/sentinel-')
-                      ? '/branding/sentinel-consig-symbol.png'
-                      : whiteLabel.logoUrl
-                  }
-                  alt={whiteLabel.companyName || 'Sentinel Consig'}
-                  className="h-full w-full object-contain rounded-lg shadow-2xs"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="h-8.5 w-8.5 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs ring-1 ring-blue-500/30">
-                  SC
-                </div>
-              )}
+              <img
+                src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo}
+                alt={effectiveBranding.tenantName}
+                className="h-full w-full object-contain rounded-lg shadow-2xs"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
               {/* Linha principal: Nome da Empresa / Sistema + ENTERPRISE */}
               <div className="flex items-center gap-1.5 flex-nowrap">
                 <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight truncate">
-                  {whiteLabel.companyName || 'Sentinel Consig'}
+                  {SYSTEM_IDENTITY.name}
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 dark:bg-blue-400/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shrink-0 leading-none">
-                  ENTERPRISE
+                  {SYSTEM_IDENTITY.badge}
                 </span>
               </div>
               {/* Segunda linha: Razão / Subtítulo da Marca */}
               <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight mt-0.5 truncate">
-                {whiteLabel.tradeName || whiteLabel.companyName || 'SENTINEL CONSIG'}
+                {SYSTEM_IDENTITY.subtitle}
               </span>
             </div>
           </div>
@@ -453,9 +442,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             </div>
             <div
               className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate leading-snug"
-              title={displayCompanyName}
+              title={effectiveBranding.tenantName}
             >
-              {displayCompanyName}
+              {effectiveBranding.tenantName}
             </div>
           </div>
         </div>

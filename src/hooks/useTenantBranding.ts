@@ -70,6 +70,7 @@ export function useTenantBranding() {
     try {
       const response = await fetch('/api/public/tenant-branding', {
         headers: { 'Accept': 'application/json' },
+        credentials: 'include',
       });
 
       if (!response.ok) {

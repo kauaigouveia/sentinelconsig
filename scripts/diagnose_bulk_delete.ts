@@ -11,8 +11,8 @@ async function diagnose() {
   console.log('====================================================\n');
 
   // 1. Fetch tenants exactly as UI does
-  const rootSlugs = ['sentinel-consig', 'evolve'];
-  const rootIds = ['tenant_evolve', 'sentinel-consig'];
+  const rootSlugs = ['sentinel-consig'];
+  const rootIds = ['sentinel-consig'];
 
   const allTenants = await prisma.tenant.findMany({
     where: {

@@ -54,8 +54,9 @@ export const PortabilityView: React.FC = () => {
     return () => window.removeEventListener('credit_gestao_storage_update', refreshData);
   }, []);
 
-  const handleRunCron = () => {
-    const res = AutomationService.runPortabilityCron();
+  const handleRunCron = async () => {
+    setCronFeedback('Executando cron server-side de CIP...');
+    const res = await AutomationService.runPortabilityCron();
     setCronFeedback(
       `Verificação concluída: ${res.checkedCount} propostas verificadas | ${res.saldoRetornadoCount} saldos retornados automaticamente!`
     );

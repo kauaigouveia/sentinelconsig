@@ -268,6 +268,20 @@ export function getPermissionsForRole(role: Role): Permission[] {
   return DEFAULT_ROLE_PERMISSIONS[role] || DEFAULT_ROLE_PERMISSIONS.DIGITADOR;
 }
 
+export function getEffectivePermissions(
+  role?: Role | null,
+  customPermissions?: string[] | null
+): Permission[] {
+  if (!role) return [];
+  if (role === 'PLATFORM_MASTER') return [...ALL_PERMISSIONS];
+
+  if (Array.isArray(customPermissions) && customPermissions.length > 0) {
+    return Array.from(new Set(customPermissions as Permission[]));
+  }
+
+  return getPermissionsForRole(role);
+}
+
 export function hasPermission(
   role?: Role | null,
   customPermissions?: string[] | null,
@@ -279,14 +293,6 @@ export function hasPermission(
   // PLATFORM_MASTER has unrestricted global authority
   if (role === 'PLATFORM_MASTER') return true;
 
-  // Custom permissions overrides
-  if (Array.isArray(customPermissions) && customPermissions.length > 0) {
-    if (customPermissions.includes(requiredPermission)) {
-      return true;
-    }
-  }
-
-  // Default permissions for role
-  const roleDefaults = DEFAULT_ROLE_PERMISSIONS[role] || [];
-  return roleDefaults.includes(requiredPermission);
+  const effective = getEffectivePermissions(role, customPermissions);
+  return effective.includes(requiredPermission);
 }

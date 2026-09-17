@@ -59,8 +59,9 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = () => {
-    setSnapshots(BackupService.getSnapshots());
+  const loadData = async () => {
+    const snaps = await BackupService.getSnapshots();
+    setSnapshots(snaps);
     setSchedule(BackupService.getScheduleConfig());
   };
 
@@ -78,19 +79,29 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
     setTimeout(() => setFeedbackMessage(null), 5000);
   };
 
-  const handleManualBackup = () => {
+  const handleManualBackup = async () => {
     try {
-      const snap = BackupService.createBackupSnapshot('MANUAL', 'Backup manual disparado pelo painel');
-      loadData();
-      showFeedback(`Backup manual criado com sucesso! (${snap.stats.proposalsCount} propostas salvas)`, 'success');
+      const res = await fetch('/api/admin/backups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: 'Backup manual disparado pelo painel', type: 'MANUAL' }),
+        credentials: 'include',
+      });
+      if (res.ok) {
+        await loadData();
+        showFeedback('Backup manual gerado e armazenado com sucesso no servidor!', 'success');
+      } else {
+        const errData = await res.json();
+        showFeedback(`Erro ao gerar backup: ${errData.error || 'Falha no servidor'}`, 'error');
+      }
     } catch (e: any) {
-      showFeedback(`Erro ao gerar backup: ${e?.message || 'Falha no armazenamento'}`, 'error');
+      showFeedback(`Erro ao gerar backup: ${e?.message || 'Falha de conexão'}`, 'error');
     }
   };
 
-  const handleRunCronCheck = () => {
-    const res = BackupService.checkAndExecuteScheduledBackup();
-    loadData();
+  const handleRunCronCheck = async () => {
+    const res = await BackupService.checkAndExecuteScheduledBackup();
+    await loadData();
     showFeedback(res.message, res.executed ? 'success' : 'success');
   };
 

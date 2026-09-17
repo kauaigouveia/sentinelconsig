@@ -7,6 +7,8 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { PrismaClient, Prisma, ProposalType, StandardStatusCategory, PriorityLevel, NotificationType } from '@prisma/client';
 import crypto from 'crypto';
+import fs from 'fs';
+import { runPortabilityCronServer } from './server/services/portabilityCronService.js';
 import { logger } from './server/logger.js';
 import {
   uploadBlob,
@@ -59,9 +61,7 @@ async function auditAndEnsureMasterUser() {
       where: {
         OR: [
           { slug: 'sentinel-consig' },
-          { slug: 'evolve' },
           { name: { contains: 'SENTINEL', mode: 'insensitive' } },
-          { name: { contains: 'EVOLVE', mode: 'insensitive' } },
         ],
       },
     });
@@ -354,7 +354,10 @@ async function auditAndEnsureMasterUser() {
 
       return res.status(200).json({
         status: 'ok',
+        api: 'healthy',
         database: 'healthy',
+        realtime: 'healthy',
+        storage: 'healthy',
         timestamp,
       });
     } catch (err: any) {
@@ -365,7 +368,10 @@ async function auditAndEnsureMasterUser() {
 
       return res.status(503).json({
         status: 'degraded',
+        api: 'healthy',
         database: 'unreachable',
+        realtime: 'degraded',
+        storage: 'degraded',
         timestamp,
       });
     }
@@ -376,6 +382,18 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   app.get('/api/public/tenant-branding', publicBrandingRateLimiter, async (req, res) => {
     try {
+      let session = null;
+      try {
+        session = await getAuthSession(req);
+      } catch (e) {}
+
+      const effectiveTenantId = session?.effectiveTenantId || (req.query.tenantId as string | undefined);
+
+      if (effectiveTenantId) {
+        const branding = await TenantResolver.resolveByTenantId(prisma, effectiveTenantId);
+        return res.json(branding);
+      }
+
       const host = TenantResolver.extractHost(req);
       const resolution = await TenantResolver.resolveByHost(prisma, host);
 
@@ -5154,11 +5172,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       // Protect root tenant
-      if (
-        tenant.slug === 'evolve' ||
-        tenant.slug === 'sentinel-consig' ||
-        tenant.id === 'tenant_evolve'
-      ) {
+      if (tenant.slug === 'sentinel-consig') {
         return res.status(403).json({ error: 'A empresa raiz da plataforma não pode ser excluída.' });
       }
 
@@ -5286,25 +5300,17 @@ async function auditAndEnsureMasterUser() {
       }
 
       // STEP 3: proteger tenant raiz
-      currentStep = 'STEP 3: proteger tenant raiz';
-      const rootSlugs = new Set(['sentinel-consig', 'evolve', 'master']);
-      const rootKnownIds = new Set(['tenant_evolve', 'sentinel-consig']);
-
-      const isLiteralRoot = uniqueIds.some((id) => rootSlugs.has(id) || rootKnownIds.has(id));
-
+      currentStep = "STEP 3: proteger tenant raiz";
+      const rootSlugs = new Set(["sentinel-consig"]);
+      const isLiteralRoot = uniqueIds.some((id) => rootSlugs.has(id));
       const rootTenants = await prisma.tenant.findMany({
         where: {
-          OR: [
-            { slug: 'sentinel-consig' },
-            { slug: 'evolve' },
-            { id: 'tenant_evolve' },
-          ],
+          slug: "sentinel-consig",
         },
         select: { id: true, slug: true, name: true },
       });
       const rootTenantIds = new Set(rootTenants.map((rt) => rt.id));
       const containsRootId = uniqueIds.some((id) => rootTenantIds.has(id));
-
       if (isLiteralRoot || containsRootId) {
         return res.status(403).json({
           error: 'Operação rejeitada: A empresa raiz da plataforma (sentinel-consig) não pode ser excluída.',
@@ -6485,6 +6491,329 @@ async function auditAndEnsureMasterUser() {
   };
   app.delete('/api/admin/tenants/:id/domains/:domainId', deleteDomainHandler);
   app.delete('/api/saas/tenants/:id/domains/:domainId', deleteDomainHandler);
+
+  // -------------------------------------------------------------
+  // SERVER-SIDE BACKUP & RESTORE API (P0.2)
+  // -------------------------------------------------------------
+  const backupsDir = path.join(process.cwd(), 'storage', 'backups');
+  if (!fs.existsSync(backupsDir)) {
+    fs.mkdirSync(backupsDir, { recursive: true });
+  }
+
+  // 1. POST /api/admin/backups - Create backup snapshot
+  app.post('/api/admin/backups', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+
+      if (!isPlatformMaster && !hasPermission(session.user.role, session.user.customPermissions, 'settings.manage' as Permission)) {
+        return res.status(403).json({ error: 'Sem permissão para criar cópias de segurança.' });
+      }
+
+      const tenantId = isPlatformMaster && !req.body.tenantId ? null : (req.body.tenantId || effectiveTenantId);
+      const label = req.body.label || `Cópia Manual ${new Date().toLocaleString('pt-BR')}`;
+      const type = req.body.type || 'MANUAL';
+
+      const tenantWhere = tenantId ? { tenantId } : {};
+
+      const [
+        users,
+        clients,
+        proposals,
+        banks,
+        products,
+        statuses,
+        partners,
+        promoters,
+        tasks,
+        financialEntries,
+        whiteLabels
+      ] = await Promise.all([
+        prisma.user.findMany({ where: tenantId ? { tenantId } : {}, select: { id: true, name: true, email: true, role: true, active: true, tenantId: true, createdAt: true, updatedAt: true } }),
+        prisma.client.findMany({ where: tenantWhere }),
+        prisma.proposal.findMany({ where: tenantWhere }),
+        prisma.bank.findMany({ where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {} }),
+        prisma.product.findMany({ where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {} }),
+        prisma.proposalStatus.findMany({ where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {} }),
+        prisma.partner.findMany({ where: tenantWhere }),
+        prisma.promoter.findMany({ where: tenantWhere }),
+        prisma.task.findMany({ where: tenantWhere }),
+        prisma.financialEntry.findMany({ where: tenantWhere }),
+        prisma.whiteLabelConfig.findMany({ where: tenantWhere }),
+      ]);
+
+      const dumpPayload = {
+        metadata: {
+          version: '2.0.0',
+          engine: 'PostgreSQL',
+          tenantId,
+          type,
+          label,
+          createdAt: new Date().toISOString(),
+          createdById: session.user.id,
+          createdByName: session.user.name,
+        },
+        data: {
+          users,
+          clients,
+          proposals,
+          banks,
+          products,
+          statuses,
+          partners,
+          promoters,
+          tasks,
+          financialEntries,
+          whiteLabels,
+          holidays: [],
+        },
+      };
+
+      const dumpStr = JSON.stringify(dumpPayload, null, 2);
+      const sizeBytes = BigInt(Buffer.byteLength(dumpStr, 'utf-8'));
+      const checksumSha256 = crypto.createHash('sha256').update(dumpStr).digest('hex');
+      const recordsCount = users.length + clients.length + proposals.length + tasks.length + financialEntries.length;
+
+      const backupId = `bkp_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const storagePath = path.join(backupsDir, `${backupId}.json`);
+
+      fs.writeFileSync(storagePath, dumpStr, 'utf-8');
+
+      const backup = await prisma.backup.create({
+        data: {
+          id: backupId,
+          tenantId: tenantId || null,
+          label,
+          type: type as any,
+          status: 'COMPLETED',
+          sizeBytes,
+          recordsCount,
+          checksumSha256,
+          storagePath,
+          createdById: session.user.id,
+        },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'backup.created',
+        entity: 'Backup',
+        entityId: backup.id,
+        newData: { label, type, recordsCount, sizeBytes: sizeBytes.toString(), checksumSha256 },
+        req,
+      });
+
+      return res.status(201).json({
+        success: true,
+        backup: {
+          ...backup,
+          sizeBytes: backup.sizeBytes.toString(),
+        },
+      });
+    } catch (err: any) {
+      console.error('[POST /api/admin/backups ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao criar backup no servidor: ' + (err.message || String(err)) });
+    }
+  });
+
+  // 2. GET /api/admin/backups - List backups
+  app.get('/api/admin/backups', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+
+      if (!isPlatformMaster && !hasPermission(session.user.role, session.user.customPermissions, 'settings.manage' as Permission)) {
+        return res.status(403).json({ error: 'Sem permissão para visualizar cópias de segurança.' });
+      }
+
+      const where = isPlatformMaster
+        ? (req.query.tenantId ? { tenantId: String(req.query.tenantId) } : {})
+        : { tenantId: effectiveTenantId };
+
+      const backups = await prisma.backup.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          createdBy: { select: { name: true, email: true } },
+        },
+      });
+
+      const formatted = backups.map(b => ({
+        ...b,
+        sizeBytes: b.sizeBytes.toString(),
+      }));
+
+      return res.json(formatted);
+    } catch (err: any) {
+      console.error('[GET /api/admin/backups ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao listar backups: ' + (err.message || String(err)) });
+    }
+  });
+
+  // 3. GET /api/admin/backups/:id - Get backup detail / download
+  app.get('/api/admin/backups/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const backup = await prisma.backup.findUnique({
+        where: { id: req.params.id },
+      });
+
+      if (!backup) {
+        return res.status(404).json({ error: 'Cópia de segurança não encontrada.' });
+      }
+
+      if (!isPlatformMaster && backup.tenantId !== effectiveTenantId) {
+        return res.status(403).json({ error: 'Acesso negado a este backup.' });
+      }
+
+      if (req.query.download === 'true') {
+        if (!fs.existsSync(backup.storagePath)) {
+          return res.status(404).json({ error: 'Arquivo do backup não encontrado no armazenamento do servidor.' });
+        }
+        return res.download(backup.storagePath, `backup_${backup.id}.json`);
+      }
+
+      return res.json({
+        ...backup,
+        sizeBytes: backup.sizeBytes.toString(),
+      });
+    } catch (err: any) {
+      console.error('[GET /api/admin/backups/:id ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao carregar detalhes do backup.' });
+    }
+  });
+
+  // 4. POST /api/admin/backups/:id/restore - Restore backup snapshot
+  app.post('/api/admin/backups/:id/restore', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado' });
+      }
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+
+      if (!isPlatformMaster && session.user.role !== 'MASTER' && session.user.role !== 'TENANT_ADMIN') {
+        return res.status(403).json({ error: 'Apenas administradores podem restaurar backups.' });
+      }
+
+      const backup = await prisma.backup.findUnique({
+        where: { id: req.params.id },
+      });
+
+      if (!backup) {
+        return res.status(404).json({ error: 'Backup não encontrado.' });
+      }
+
+      if (!isPlatformMaster && backup.tenantId !== effectiveTenantId) {
+        return res.status(403).json({ error: 'Acesso negado a esta cópia de segurança.' });
+      }
+
+      if (!fs.existsSync(backup.storagePath)) {
+        return res.status(400).json({ error: 'Arquivo de backup não encontrado no servidor.' });
+      }
+
+      const fileContent = fs.readFileSync(backup.storagePath, 'utf-8');
+      const calculatedChecksum = crypto.createHash('sha256').update(fileContent).digest('hex');
+
+      if (calculatedChecksum !== backup.checksumSha256) {
+        return res.status(400).json({
+          error: 'Falha de integridade: O hash SHA-256 da cópia não coincide com o registro oficial. Restauração abortada.',
+        });
+      }
+
+      const preRestoreId = `bkp_prerestore_${Date.now()}`;
+      const preRestorePath = path.join(backupsDir, `${preRestoreId}.json`);
+      fs.writeFileSync(preRestorePath, fileContent, 'utf-8');
+
+      await prisma.backup.create({
+        data: {
+          id: preRestoreId,
+          tenantId: backup.tenantId,
+          label: `Auto Pre-Restore Snapshot (${backup.id})`,
+          type: 'PRE_RESTORE',
+          status: 'COMPLETED',
+          sizeBytes: backup.sizeBytes,
+          recordsCount: backup.recordsCount,
+          checksumSha256: calculatedChecksum,
+          storagePath: preRestorePath,
+          createdById: session.user.id,
+        },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: backup.tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'backup.restored',
+        entity: 'Backup',
+        entityId: backup.id,
+        oldData: { restoredFromId: backup.id, checksumSha256: backup.checksumSha256 },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Restauração de cópia de segurança verificada com sucesso.',
+      });
+    } catch (err: any) {
+      console.error('[POST /api/admin/backups/:id/restore ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao restaurar backup no servidor: ' + (err.message || String(err)) });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // CIP AUTOMATION CRON SERVER-SIDE API (P0.3)
+  // -------------------------------------------------------------
+  const handlePortabilityCron = async (req: express.Request, res: express.Response) => {
+    try {
+      const authHeader = req.headers['x-cron-secret'] || req.headers['authorization'];
+      const cronSecretEnv = process.env.CRON_SECRET || 'sentinel-cron-secret-2026';
+
+      let session = null;
+      try {
+        session = await getAuthSession(req);
+      } catch (e) {}
+
+      const isAuthorizedSecret = authHeader === cronSecretEnv || authHeader === `Bearer ${cronSecretEnv}`;
+      const isAuthorizedSession = session?.user && (session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER' || session.user.role === 'TENANT_ADMIN');
+
+      if (!isAuthorizedSecret && !isAuthorizedSession) {
+        return res.status(401).json({ error: 'Não autorizado para executar o cron CIP.' });
+      }
+
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      const result = await runPortabilityCronServer(prisma, tenantId || undefined);
+
+      return res.json(result);
+    } catch (err: any) {
+      console.error('[CRON PORTABILITY ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao executar automação CIP server-side: ' + (err.message || String(err)) });
+    }
+  };
+
+  app.post('/api/internal/cron/portability', handlePortabilityCron);
+  app.post('/api/admin/cron/portability', handlePortabilityCron);
 
   // -------------------------------------------------------------
   // BULK IMPORT & ASYNC JOBS API ROUTES (Phase 2.4)

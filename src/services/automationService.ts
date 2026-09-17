@@ -17,79 +17,43 @@ export class AutomationService {
    *   transitions status to SALDO_RETORNADO (unless CANCELADO or REPROVADO).
    * If = 4 or 5 days, generates warning notification.
    */
-  public static runPortabilityCron(): AutomationResult {
-    const proposals = StorageService.getProposals();
-    const statuses = StorageService.getStatuses();
-    const holidays = StorageService.getHolidays();
-    const config = StorageService.getConfig();
-    const targetDays = config.portabilityBalanceDays || 5;
+  public static async runPortabilityCron(): Promise<AutomationResult> {
+    try {
+      const res = await fetch('/api/internal/cron/portability', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
 
-    const cipStatus = statuses.find(s => s.code === 'AGUARDAR_RETORNO_CIP');
-    const saldoRetornadoStatus = statuses.find(s => s.code === 'SALDO_RETORNADO');
-
-    if (!cipStatus || !saldoRetornadoStatus) {
-      return { checkedCount: 0, saldoRetornadoCount: 0, alertsGenerated: 0, details: ['Status CIP ou Saldo Retornado não encontrados.'] };
-    }
-
-    const details: string[] = [];
-    let checkedCount = 0;
-    let saldoRetornadoCount = 0;
-    let alertsGenerated = 0;
-
-    const now = new Date();
-
-    for (const proposal of proposals) {
-      if (proposal.statusId !== cipStatus.id) continue;
-
-      checkedCount++;
-      const startDate = proposal.portabilitySlaStartedAt || proposal.createdAt;
-      const businessDays = calculateBusinessDays(startDate, now, holidays);
-
-      // Rule: After completing 5 business days, if not REPROVADO and not CANCELADO -> SALDO RETORNADO
-      if (businessDays >= targetDays) {
-        StorageService.updateProposalStatus(
-          proposal.id,
-          saldoRetornadoStatus.id,
-          `Automação Vercel Cron: Completou ${businessDays}/${targetDays} dias úteis em AGUARDAR RETORNO CIP. Saldo retornado pelo banco.`,
-          {
-            id: 'system-cron',
-            name: 'Vercel Cron Automatizado',
-            email: 'cron@creditgestao.com.br',
-            role: 'MASTER',
-            active: true,
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-          },
-          'SISTEMA'
-        );
-
-        StorageService.addNotification({
-          proposalId: proposal.id,
-          title: 'Saldo Retornado Automaticamente',
-          message: `ADE ${proposal.proposalNumber}: Atingiu ${businessDays} dias úteis em CIP. Status alterado para SALDO RETORNADO.`,
-          type: 'SALDO_RETORNADO',
-          priority: 'NORMAL',
-        });
-
-        saldoRetornadoCount++;
-        details.push(`ADE ${proposal.proposalNumber}: Saldo retornado com ${businessDays} dias úteis.`);
-      } else if (businessDays === targetDays - 1) {
-        // 4th day warning (atencao)
-        alertsGenerated++;
-        details.push(`ADE ${proposal.proposalNumber}: Alerta 4º dia útil.`);
-      } else if (businessDays === targetDays) {
-        // 5th day warning (urgente)
-        alertsGenerated++;
-        details.push(`ADE ${proposal.proposalNumber}: No 5º dia útil em CIP.`);
+      if (res.ok) {
+        const data = await res.json();
+        // Sync local storage state after server cron execution
+        StorageService.syncWithPostgreSQL().catch(() => {});
+        return {
+          checkedCount: data.checkedCount || 0,
+          saldoRetornadoCount: data.saldoRetornadoCount || 0,
+          alertsGenerated: data.alertsGenerated || 0,
+          details: data.details || [],
+        };
       }
+      return {
+        checkedCount: 0,
+        saldoRetornadoCount: 0,
+        alertsGenerated: 0,
+        details: [`Erro ao executar cron server-side (HTTP ${res.status}).`],
+      };
+    } catch (err: any) {
+      console.error('[AutomationService] Falha ao invocar cron server-side:', err);
+      return {
+        checkedCount: 0,
+        saldoRetornadoCount: 0,
+        alertsGenerated: 0,
+        details: [`Falha na comunicação com o servidor: ${err.message || err}`],
+      };
     }
-
-    return {
-      checkedCount,
-      saldoRetornadoCount,
-      alertsGenerated,
-      details,
-    };
   }
 
   /**
