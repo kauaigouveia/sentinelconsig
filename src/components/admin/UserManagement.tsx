@@ -335,10 +335,7 @@ export const UserManagement: React.FC = () => {
       alert('Você não pode excluir o seu próprio usuário logado.');
       return;
     }
-    if (u.isMasterProtected || u.role === 'PLATFORM_MASTER') {
-      alert('Usuários MASTER OP protegidos não podem ser excluídos por esta ação.');
-      return;
-    }
+
 
     setDeleteModalConfig({
       isOpen: true,
@@ -843,7 +840,7 @@ export const UserManagement: React.FC = () => {
                             <KeyRound className="h-4 w-4" />
                           </button>
 
-                          {!isActive && !isMasterProtected && (
+                          {!isActive && (
                             <button
                               onClick={() => handleDeleteUser(u)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"

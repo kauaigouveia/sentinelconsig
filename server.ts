@@ -3912,8 +3912,9 @@ async function auditAndEnsureMasterUser() {
           });
 
           if (remainingMasters < 1) {
-            return res.status(403).json({
-              error: 'Operação bloqueada: Não é possível remover, rebaixar ou desativar o último PLATFORM_MASTER ativo da plataforma.',
+            return res.status(409).json({
+              error: 'É necessário manter pelo menos um MASTER OP ativo na plataforma.',
+              code: 'ZERO_PLATFORM_MASTER_PROTECTION',
             });
           }
         }
@@ -4027,8 +4028,9 @@ async function auditAndEnsureMasterUser() {
         });
 
         if (remainingMasters < 1) {
-          return res.status(403).json({
-            error: 'Operação bloqueada: Não é possível excluir o último PLATFORM_MASTER ativo da plataforma.',
+          return res.status(409).json({
+            error: 'É necessário manter pelo menos um MASTER OP ativo na plataforma.',
+            code: 'ZERO_PLATFORM_MASTER_PROTECTION',
           });
         }
       }
@@ -5632,28 +5634,22 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
-      // STEP 5: verificar proteção PLATFORM_MASTER e root (TUDO OU NADA)
-      currentStep = 'STEP 5: verificar proteção PLATFORM_MASTER';
-      const hasPlatformMaster = existingUsers.some((u) => u.role === 'PLATFORM_MASTER');
-      if (hasPlatformMaster) {
-        return res.status(403).json({
-          error: 'Operação rejeitada: Usuários com perfil PLATFORM_MASTER não podem ser excluídos em lote.',
-          code: 'PLATFORM_MASTER_PROTECTED',
-          step: currentStep,
+      // STEP 5: salvaguarda de PLATFORM_MASTER ativo (mínimo 1 ativo na plataforma)
+      currentStep = 'STEP 5: verificar salvaguarda de PLATFORM_MASTER ativo';
+      const mastersInBatch = existingUsers.filter((u) => u.role === 'PLATFORM_MASTER' && u.active && u.deletedAt === null);
+      if (mastersInBatch.length > 0) {
+        const totalActiveMasters = await prisma.user.count({
+          where: { role: 'PLATFORM_MASTER', active: true, deletedAt: null },
         });
-      }
-
-      const protectedEmails = new Set(['master@sentinel.com', 'kauaigouveia@gmail.com', 'admin@sentinelconsig.com.br']);
-      const protectedIds = new Set(['u-master']);
-      const hasRootProtected = existingUsers.some(
-        (u) => protectedEmails.has(u.email.toLowerCase()) || protectedIds.has(u.id)
-      );
-      if (hasRootProtected) {
-        return res.status(403).json({
-          error: 'Operação rejeitada: Usuário master/root protegido não pode ser excluído.',
-          code: 'ROOT_USER_PROTECTED',
-          step: currentStep,
-        });
+        const remainingActiveMasters = totalActiveMasters - mastersInBatch.length;
+        if (remainingActiveMasters < 1) {
+          return res.status(409).json({
+            success: false,
+            error: 'É necessário manter pelo menos um MASTER OP ativo na plataforma.',
+            code: 'ZERO_PLATFORM_MASTER_PROTECTION',
+            step: currentStep,
+          });
+        }
       }
 
       // STEP 6: separar aptos vs falhas (já deletados ou não encontrados)

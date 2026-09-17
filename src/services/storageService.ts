@@ -2014,12 +2014,7 @@ export class StorageService {
       throw new Error('Você não pode excluir o seu próprio usuário logado.');
     }
     const users = this.getUsers();
-    const protectedInList = users.find(
-      u => ids.includes(u.id) && (u.role === 'PLATFORM_MASTER' || u.isMasterProtected || u.id === 'u-master' || u.email === 'kauaigouveia@gmail.com')
-    );
-    if (protectedInList) {
-      throw new Error('Usuários protegidos / MASTER OP não podem ser excluídos em lote.');
-    }
+
 
     const res = await fetch('/api/saas/users/bulk-delete', {
       method: 'POST',
