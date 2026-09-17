@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="672" viewBox="0 0 2400 672">
+<defs>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#00D8FF"/>
+        <stop offset="45%" stop-color="#1677FF"/>
+        <stop offset="100%" stop-color="#0E3E68"/>
+      </linearGradient>
+      <linearGradient id="gBlue2" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#0A2B53"/>
+        <stop offset="50%" stop-color="#0B68C7"/>
+        <stop offset="100%" stop-color="#00D8FF"/>
+      </linearGradient>
+      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#00152B" flood-opacity="0.18"/>
+      </filter>
+    </defs>
+
+  <g transform="translate(40,36) scale(0.75)">
+    
+<defs>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#00D8FF"/>
+        <stop offset="45%" stop-color="#1677FF"/>
+        <stop offset="100%" stop-color="#0E3E68"/>
+      </linearGradient>
+      <linearGradient id="gBlue2" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#0A2B53"/>
+        <stop offset="50%" stop-color="#0B68C7"/>
+        <stop offset="100%" stop-color="#00D8FF"/>
+      </linearGradient>
+      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#00152B" flood-opacity="0.18"/>
+      </filter>
+    </defs>
+
+  <g filter="url(#shadow)">
+    <!-- outer shield -->
+    <path d="M400 62 L674 210 L674 438 Q674 606 400 742 Q126 606 126 438 L126 210 Z"
+          fill="none" stroke="url(#gBlue)" stroke-width="46" stroke-linejoin="round"/>
+    <!-- ribbon S -->
+    <path d="M520 220 C460 155 336 154 258 222 C210 264 214 327 270 362 L438 467 C487 498 492 531 456 557 C406 593 327 592 276 548"
+          fill="none" stroke="url(#gBlue)" stroke-width="74" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M520 220 C551 255 560 299 538 332 C516 365 474 373 425 343 L297 262"
+          fill="none" stroke="#00D8FF" stroke-opacity="0.95" stroke-width="22" stroke-linecap="round"/>
+    <path d="M276 548 C244 514 235 469 255 436 C276 401 322 392 366 419 L500 501"
+          fill="none" stroke="#0B55A3" stroke-opacity="0.95" stroke-width="22" stroke-linecap="round"/>
+  </g>
+
+  </g>
+  <g font-family="Inter, Noto Sans, Arial, sans-serif">
+    <text x="770" y="320" fill="#FFFFFF" font-size="204" font-weight="800" letter-spacing="3">S</text>
+    <!-- stylized E with cyan center bar -->
+    <path d="M902 185 H1040 V237 H944 V259 H1028 V309 H944 V334 H1040 V386 H902 Z" fill="#FFFFFF"/>
+    <rect x="902" y="259" width="126" height="50" fill="#00D8FF"/>
+    <text x="1065" y="320" fill="#FFFFFF" font-size="204" font-weight="800" letter-spacing="2">NTINEL</text>
+    <line x1="770" y1="412" x2="1780" y2="412" stroke="#00D8FF" stroke-width="4"/>
+    <text x="1025" y="492" text-anchor="middle" fill="#FFFFFF" font-size="72" font-weight="600" letter-spacing="26">C O N S I G</text>
+    <line x1="770" y1="528" x2="1780" y2="528" stroke="#00D8FF" stroke-width="4"/>
+    <text x="1275" y="608" text-anchor="middle" fill="#FFFFFF" font-size="34" font-weight="600" letter-spacing="7">CRÉDITO INTELIGENTE. MAIS POSSIBILIDADES.</text>
+  </g>
+</svg>
