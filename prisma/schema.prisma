@@ -154,27 +154,27 @@ model Tenant {
   subscriptions Subscription[]
 
   // Core Relations
-  users            User[]
-  partners         Partner[]
-  promoters        Promoter[]
-  banks            Bank[]
-  bankPromoters    BankPromoter[]
-  products         Product[]
-  clients          Client[]
-  proposals        Proposal[]
-  ades             ADE[]
-  statusHistories  StatusHistory[]
-  comments         Comment[]
-  documents        ClientDocument[]
-  statuses         ProposalStatus[]
-  tasks            Task[]
-  notifications    Notification[]
-  financialEntries FinancialEntry[]
-  auditLogs        AuditLog[]
-  backups          Backup[]
-  systemConfigs    SystemConfig[]
-  importJobs       ImportJob[]
-  domains          TenantDomain[]
+  users              User[]
+  partners           Partner[]
+  promoters          Promoter[]
+  banks              Bank[]
+  bankPromoters      BankPromoter[]
+  products           Product[]
+  clients            Client[]
+  proposals          Proposal[]
+  ades               ADE[]
+  statusHistories    StatusHistory[]
+  comments           Comment[]
+  documents          ClientDocument[]
+  statuses           ProposalStatus[]
+  tasks              Task[]
+  notifications      Notification[]
+  financialEntries   FinancialEntry[]
+  auditLogs          AuditLog[]
+  backups            Backup[]
+  systemConfigs      SystemConfig[]
+  importJobs         ImportJob[]
+  domains            TenantDomain[]
   simulationRequests SimulationRequest[]
 
   // Soft Delete & Timestamps
@@ -254,19 +254,19 @@ model User {
   customPermissions String[] @default([]) @map("custom_permissions")
 
   // Audit Relations
-  createdProposals     Proposal[]         @relation("CreatedProposals")
-  assignedProposals    Proposal[]         @relation("AssignedProposals")
-  statusHistories      StatusHistory[]
-  createdAnnouncements Announcement[]     @relation("CreatedAnnouncements")
-  readAnnouncements    AnnouncementRead[] @relation("ReadAnnouncements")
-  comments             Comment[]
-  tasks                Task[]
-  notifications        Notification[]
-  auditLogs            AuditLog[]
-  uploadedDocs         ClientDocument[]
-  createdBackups       Backup[]
-  importJobs           ImportJob[]
-  sessions             Session[]
+  createdProposals                   Proposal[]          @relation("CreatedProposals")
+  assignedProposals                  Proposal[]          @relation("AssignedProposals")
+  statusHistories                    StatusHistory[]
+  createdAnnouncements               Announcement[]      @relation("CreatedAnnouncements")
+  readAnnouncements                  AnnouncementRead[]  @relation("ReadAnnouncements")
+  comments                           Comment[]
+  tasks                              Task[]
+  notifications                      Notification[]
+  auditLogs                          AuditLog[]
+  uploadedDocs                       ClientDocument[]
+  createdBackups                     Backup[]
+  importJobs                         ImportJob[]
+  sessions                           Session[]
   createdSimulationRequests          SimulationRequest[] @relation("CreatedSimulationRequests")
   matchedDigitizerSimulationRequests SimulationRequest[] @relation("MatchedDigitizerSimulationRequests")
 
@@ -544,13 +544,13 @@ model Proposal {
   documents       ClientDocument[]
 
   // Concurrency & Soft Delete
-  version       Int            @default(1)
-  deletedAt     DateTime?      @map("deleted_at")
-  deletedBy     String?        @map("deleted_by")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  tasks         Task[]
-  notifications Notification[]
+  version                   Int                 @default(1)
+  deletedAt                 DateTime?           @map("deleted_at")
+  deletedBy                 String?             @map("deleted_by")
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
+  tasks                     Task[]
+  notifications             Notification[]
   matchedSimulationRequests SimulationRequest[] @relation("MatchedSimulationRequests")
 
   @@unique([tenantId, proposalNumber])
@@ -786,14 +786,14 @@ model Notification {
   proposalId String?          @map("proposal_id")
   proposal   Proposal?        @relation(fields: [proposalId], references: [id], onDelete: SetNull)
 
-  eventKey   String?          @map("event_key")
+  eventKey String? @map("event_key")
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@unique([tenantId, eventKey])
   @@index([tenantId])
   @@index([userId])
   @@index([read])
-  @@unique([tenantId, eventKey])
   @@map("notifications")
 }
 
@@ -802,26 +802,26 @@ model Notification {
 // ==========================================
 
 model AuditLog {
-  id           String   @id @default(cuid())
-  tenantId     String?  @map("tenant_id")
-  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  id       String  @id @default(cuid())
+  tenantId String? @map("tenant_id")
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
-  userId       String?  @map("user_id")
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userName     String?  @map("user_name")
+  userId   String? @map("user_id")
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName String? @map("user_name")
 
-  action       String
-  entity       String
-  entityId     String?  @map("entity_id")
-  oldData      String?  @map("old_data") // JSON
-  newData      String?  @map("new_data") // JSON
-  ipAddress    String?  @map("ip_address")
+  action    String
+  entity    String
+  entityId  String? @map("entity_id")
+  oldData   String? @map("old_data") // JSON
+  newData   String? @map("new_data") // JSON
+  ipAddress String? @map("ip_address")
 
   // Hash de Integridade Criptográfica (SHA-256)
-  previousHash String?  @map("previous_hash")
-  recordHash   String?  @map("record_hash")
+  previousHash String? @map("previous_hash")
+  recordHash   String? @map("record_hash")
 
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([userId])
@@ -940,19 +940,19 @@ model TenantDomain {
 // ==========================================
 
 model SimulationRequest {
-  id                    String    @id @default(cuid())
-  tenantId              String    @map("tenant_id")
-  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  cpf                   String
-  partnerId             String    @map("partner_id")
-  partner               Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  cpf       String
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
-  createdById           String    @map("created_by_id")
-  createdBy             User      @relation("CreatedSimulationRequests", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById String @map("created_by_id")
+  createdBy   User   @relation("CreatedSimulationRequests", fields: [createdById], references: [id], onDelete: Cascade)
 
-  status                String    @default("SIMULAÇÃO ENVIADA")
-  rejectionReason       String?   @map("rejection_reason")
+  status          String  @default("SIMULAÇÃO ENVIADA")
+  rejectionReason String? @map("rejection_reason")
 
   matchedProposalId     String?   @map("matched_proposal_id")
   matchedProposal       Proposal? @relation("MatchedSimulationRequests", fields: [matchedProposalId], references: [id], onDelete: SetNull)
@@ -962,10 +962,10 @@ model SimulationRequest {
   matchedDigitizerName  String?   @map("matched_digitizer_name")
   matchedAt             DateTime? @map("matched_at")
 
-  deletedAt             DateTime? @map("deleted_at")
-  deletedBy             String?   @map("deleted_by")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([tenantId])
   @@index([tenantId, status])

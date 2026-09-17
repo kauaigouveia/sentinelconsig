@@ -340,12 +340,15 @@ async function auditAndEnsureMasterUser() {
     const timestamp = new Date().toISOString();
 
     try {
-      // 3-second timeout for database health query
+      // 5-second timeout for database health query with proper timer cleanup
+      let timer: NodeJS.Timeout | undefined;
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database health check timeout')), 3000);
+        timer = setTimeout(() => reject(new Error('Database health check timeout')), 5000);
       });
 
-      const dbPromise = prisma.$queryRaw`SELECT 1`;
+      const dbPromise = prisma.$queryRaw`SELECT 1`.finally(() => {
+        if (timer) clearTimeout(timer);
+      });
 
       await Promise.race([dbPromise, timeoutPromise]);
 
@@ -7384,6 +7387,7 @@ async function auditAndEnsureMasterUser() {
     standardHeaders: true,
     legacyHeaders: false,
     statusCode: 429,
+    validate: { keyGeneratorIpFallback: false },
     keyGenerator: (req) => {
       const sessionToken = extractSessionToken(req);
       return sessionToken || req.ip || 'anonymous';
