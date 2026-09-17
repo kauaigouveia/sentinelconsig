@@ -5230,6 +5230,220 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/saas/tenants/:id', deleteTenantHandler);
   app.delete('/api/admin/tenants/:id', deleteTenantHandler);
 
+  // 6.6. POST /api/saas/tenants/bulk-delete (and alias /api/admin/tenants/bulk-delete) - Soft delete in batch
+  const bulkDeleteTenantsHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const { tenantIds } = req.body;
+      if (!Array.isArray(tenantIds) || tenantIds.length === 0) {
+        return res.status(400).json({ error: 'Lista de IDs de empresas (tenantIds) é obrigatória.' });
+      }
+
+      // Sanitize and deduplicate
+      const rawIds = tenantIds
+        .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        .map((id) => id.trim());
+      const uniqueIds = Array.from(new Set(rawIds));
+      if (uniqueIds.length === 0) {
+        return res.status(400).json({ error: 'Nenhum ID de empresa válido fornecido.' });
+      }
+
+      // Root tenant protection - check literal inputs
+      const isLiteralRoot = uniqueIds.some(
+        (id) => id === 'sentinel-consig' || id === 'evolve' || id === 'tenant_evolve'
+      );
+
+      // Root tenant protection - check DB for root tenant IDs
+      const rootTenants = await prisma.tenant.findMany({
+        where: {
+          OR: [
+            { slug: 'sentinel-consig' },
+            { slug: 'evolve' },
+            { id: 'tenant_evolve' },
+          ],
+        },
+        select: { id: true, slug: true },
+      });
+      const rootTenantIds = new Set(rootTenants.map((rt) => rt.id));
+      const containsRootId = uniqueIds.some((id) => rootTenantIds.has(id));
+
+      // If root tenant is present in the request, REJECT ENTIRE OPERATION (Atomic protection)
+      if (isLiteralRoot || containsRootId) {
+        return res.status(403).json({
+          error: 'Operação rejeitada: A empresa raiz da plataforma (sentinel-consig) não pode ser excluída.',
+          code: 'ROOT_TENANT_PROTECTED',
+        });
+      }
+
+      // Fetch target tenants
+      const existingTenants = await prisma.tenant.findMany({
+        where: { id: { in: uniqueIds } },
+        include: {
+          _count: {
+            select: {
+              users: true,
+              proposals: true,
+              clients: true,
+            },
+          },
+        },
+      });
+
+      const existingMap = new Map(existingTenants.map((t) => [t.id, t]));
+      const toDelete: typeof existingTenants = [];
+      const failedDetails: Array<{ tenantId: string; reason: string }> = [];
+
+      for (const id of uniqueIds) {
+        const t = existingMap.get(id);
+        if (!t) {
+          failedDetails.push({ tenantId: id, reason: 'Empresa não encontrada no banco de dados.' });
+        } else if (t.deletedAt || t.status === 'CANCELLED') {
+          failedDetails.push({ tenantId: id, reason: 'Empresa já se encontra cancelada/excluída.' });
+        } else if (t.slug === 'sentinel-consig' || t.slug === 'evolve' || t.id === 'tenant_evolve') {
+          return res.status(403).json({
+            error: 'Operação rejeitada: A empresa raiz da plataforma não pode ser excluída.',
+            code: 'ROOT_TENANT_PROTECTED',
+          });
+        } else {
+          toDelete.push(t);
+        }
+      }
+
+      if (toDelete.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Nenhuma empresa válida pôde ser excluída.',
+          processed: uniqueIds.length,
+          cancelled: 0,
+          failed: failedDetails.length,
+          failedDetails,
+        });
+      }
+
+      const targetIds = toDelete.map((t) => t.id);
+      const now = new Date();
+      const actorId = session.user.id;
+      const actorName = session.user.name;
+      const actorRole = session.user.role;
+
+      // Execute atomic transaction for bulk soft delete and session cleanup
+      await prisma.$transaction(async (tx) => {
+        // 1. Soft delete all valid tenants
+        await tx.tenant.updateMany({
+          where: { id: { in: targetIds } },
+          data: {
+            status: 'CANCELLED',
+            deletedAt: now,
+            deletedBy: actorId,
+          },
+        });
+
+        // 2. Soft delete users of cancelled tenants
+        await tx.user.updateMany({
+          where: { tenantId: { in: targetIds }, deletedAt: null },
+          data: {
+            deletedAt: now,
+            deletedBy: actorId,
+            active: false,
+          },
+        });
+
+        // 3. Kill active sessions of users belonging to these tenants
+        await tx.session.deleteMany({
+          where: { user: { tenantId: { in: targetIds } } },
+        });
+
+        // 4. Invalidate any admin context sessions currently pointing to any of these tenants
+        await tx.session.updateMany({
+          where: { adminTargetTenantId: { in: targetIds } },
+          data: {
+            adminTargetTenantId: null,
+            adminTargetTenantName: null,
+            adminSwitchedAt: null,
+            adminContextExpiresAt: null,
+          },
+        });
+      });
+
+      // Post-transaction cleanup: clear memory contexts, domain caches, events, and audit logs
+      for (const t of toDelete) {
+        await AdminContextManager.clearContextByTenantId(t.id, prisma);
+
+        if (t.customDomain) TenantResolver.invalidateCache(t.customDomain);
+        TenantResolver.invalidateCache(t.slug + '.sentinelconsig.com.br');
+
+        eventBus.publishToTenant(t.id, {
+          type: 'TENANT_DELETED',
+          entity: 'tenant',
+          entityId: t.id,
+        }).catch(() => {});
+
+        // Audit log per tenant
+        await AuditLogService.record(prisma, {
+          tenantId: t.id,
+          userId: actorId,
+          userName: actorName,
+          action: 'tenant.bulk_deleted',
+          entity: 'Tenant',
+          entityId: t.id,
+          newData: {
+            deletedAt: now,
+            deletedBy: actorId,
+            status: 'CANCELLED',
+            operation: 'BULK_DELETE',
+            tenantName: t.name,
+            tenantSlug: t.slug,
+          },
+          req,
+        });
+      }
+
+      // Audit log for the global batch event
+      const primaryRootTenantId = rootTenants[0]?.id || null;
+      await AuditLogService.record(prisma, {
+        tenantId: primaryRootTenantId || toDelete[0]?.id || null,
+        userId: actorId,
+        userName: actorName,
+        action: 'tenant.bulk_delete_batch',
+        entity: 'TenantBatch',
+        entityId: `batch_${now.getTime()}`,
+        newData: {
+          totalRequested: uniqueIds.length,
+          cancelledCount: toDelete.length,
+          failedCount: failedDetails.length,
+          affectedTenantIds: targetIds,
+          failedDetails,
+          actorRole,
+        },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: failedDetails.length === 0
+          ? `Exclusão concluída: ${toDelete.length} empresas processadas e canceladas com sucesso.`
+          : `Exclusão concluída com ressalvas: ${toDelete.length} canceladas, ${failedDetails.length} falharam.`,
+        processed: uniqueIds.length,
+        cancelled: toDelete.length,
+        failed: failedDetails.length,
+        cancelledIds: targetIds,
+        failedDetails,
+      });
+    } catch (err) {
+      console.error('[POST /api/saas/tenants/bulk-delete ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao processar exclusão em massa de tenants.' });
+    }
+  };
+  app.post('/api/saas/tenants/bulk-delete', bulkDeleteTenantsHandler);
+  app.post('/api/admin/tenants/bulk-delete', bulkDeleteTenantsHandler);
+
   // 7. CONTEXT SWITCHING API (PLATFORM_MASTER Support/Admin Inspection)
   const contextSwitchHandler = async (req: express.Request, res: express.Response) => {
     try {

@@ -27,6 +27,7 @@ import {
   Search,
   Filter,
   Trash2,
+  ShieldAlert,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { TenantPlan, TenantStatus } from '../../types';
@@ -142,6 +143,19 @@ export const PlatformMasterCentral: React.FC = () => {
   const [confirmName, setConfirmName] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Bulk Delete State
+  const [selectedTenantIds, setSelectedTenantIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkConfirmText, setBulkConfirmText] = useState('');
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
+  const [bulkResultSummary, setBulkResultSummary] = useState<{
+    processed: number;
+    cancelled: number;
+    failed: number;
+    failedDetails?: Array<{ tenantId: string; reason: string }>;
+  } | null>(null);
 
   // Active Tab for SaaS Admin
   const [activeTab, setActiveTab] = useState<'tenants' | 'health_consumo'>('tenants');
@@ -564,6 +578,107 @@ export const PlatformMasterCentral: React.FC = () => {
     });
   }, [tenants, searchTerm, statusFilter, planFilter]);
 
+  // Helper to identify root protected tenant
+  const isRootTenant = useCallback((t: { id: string; slug: string }) => {
+    return (
+      t.id === 'sentinel-consig' ||
+      t.slug === 'sentinel-consig' ||
+      t.id === 'tenant_evolve' ||
+      t.slug === 'evolve'
+    );
+  }, []);
+
+  // Filtered tenants that are selectable (excluding protected root tenants)
+  const selectableFilteredTenants = useMemo(() => {
+    return filteredTenants.filter((t) => !isRootTenant(t));
+  }, [filteredTenants, isRootTenant]);
+
+  const isAllFilteredSelected =
+    selectableFilteredTenants.length > 0 &&
+    selectableFilteredTenants.every((t) => selectedTenantIds.has(t.id));
+
+  const handleToggleSelectAllFiltered = () => {
+    if (isAllFilteredSelected) {
+      const next = new Set(selectedTenantIds);
+      selectableFilteredTenants.forEach((t) => next.delete(t.id));
+      setSelectedTenantIds(next);
+    } else {
+      const next = new Set(selectedTenantIds);
+      selectableFilteredTenants.forEach((t) => next.add(t.id));
+      setSelectedTenantIds(next);
+    }
+  };
+
+  const handleToggleSelectTenant = (id: string) => {
+    const next = new Set(selectedTenantIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedTenantIds(next);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTenantIds(new Set());
+  };
+
+  const selectedTenantsList = useMemo(() => {
+    return tenants.filter((t) => selectedTenantIds.has(t.id));
+  }, [tenants, selectedTenantIds]);
+
+  const handleConfirmBulkDelete = async () => {
+    if (selectedTenantIds.size === 0) return;
+    if (bulkConfirmText !== 'EXCLUIR') {
+      setBulkDeleteError('Digite exatamente EXCLUIR para confirmar.');
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    setBulkDeleteError(null);
+
+    try {
+      const res = await fetch('/api/saas/tenants/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantIds: Array.from(selectedTenantIds),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao processar exclusão em massa.');
+      }
+
+      // Clear business cache
+      StorageService.clearBusinessCache();
+
+      // Record result summary for modal feedback
+      setBulkResultSummary({
+        processed: data.processed ?? selectedTenantIds.size,
+        cancelled: data.cancelled ?? 0,
+        failed: data.failed ?? 0,
+        failedDetails: data.failedDetails ?? [],
+      });
+
+      // Reset selection and form
+      setSelectedTenantIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+      setBulkConfirmText('');
+
+      // Refresh list, overview and context
+      await fetchTenants();
+      await fetchOverviewData();
+      await fetchContextStatus();
+    } catch (err: any) {
+      setBulkDeleteError(err.message || 'Erro ao excluir empresas em massa.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Active Context Banner */}
@@ -724,10 +839,65 @@ export const PlatformMasterCentral: React.FC = () => {
             </div>
           </div>
 
+          {/* Contextual Bulk Action Bar */}
+          {selectedTenantIds.size > 0 && (
+            <div className="p-3 bg-slate-900 text-white border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-black text-xs">
+                  {selectedTenantIds.size}
+                </span>
+                <span className="text-xs font-bold text-slate-200">
+                  {selectedTenantIds.size === 1 ? 'empresa selecionada' : 'empresas selecionadas'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAllFiltered}
+                  className="px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                >
+                  {isAllFilteredSelected ? 'Desmarcar visíveis' : 'Selecionar todos'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearSelection}
+                  className="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                >
+                  Limpar seleção
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkConfirmText('');
+                    setBulkDeleteError(null);
+                    setIsBulkDeleteModalOpen(true);
+                  }}
+                  className="px-3 py-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-md shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Excluir selecionadas</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300">
               <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider">
                 <tr>
+                  <th className="p-3.5 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllFilteredSelected}
+                      onChange={handleToggleSelectAllFiltered}
+                      disabled={selectableFilteredTenants.length === 0}
+                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40"
+                      title="Selecionar todos os resultados visíveis do filtro atual"
+                    />
+                  </th>
                   <th className="p-3.5">Empresa / White Label</th>
                   <th className="p-3.5">Slug & Subdomínio</th>
                   <th className="p-3.5">Domínio Personalizado</th>
@@ -741,7 +911,7 @@ export const PlatformMasterCentral: React.FC = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTenants.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    <td colSpan={9} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                       Nenhuma empresa encontrada com os filtros atuais.
                     </td>
                   </tr>
@@ -749,14 +919,30 @@ export const PlatformMasterCentral: React.FC = () => {
                   filteredTenants.map((t) => {
                     const isActive = t.status === 'ACTIVE';
                     const isCurrentInspected = adminContext.context?.targetTenantId === t.id;
+                    const isRoot = isRootTenant(t);
+                    const isSelected = selectedTenantIds.has(t.id);
 
                     return (
                       <tr
                         key={t.id}
                         className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
                           isCurrentInspected ? 'bg-purple-50/60 dark:bg-purple-950/30' : ''
-                        }`}
+                        } ${isSelected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}
                       >
+                        <td className="p-3.5 w-10 text-center">
+                          {isRoot ? (
+                            <div className="flex items-center justify-center text-amber-500 dark:text-amber-400" title="Empresa Raiz Protegida (Exclusão Bloqueada)">
+                              <ShieldAlert className="h-4 w-4" />
+                            </div>
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectTenant(t.id)}
+                              className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                          )}
+                        </td>
                         <td className="p-3.5">
                           <div className="flex items-center gap-2.5">
                             {t.whiteLabel?.logoUrl ? (
@@ -1529,6 +1715,189 @@ export const PlatformMasterCentral: React.FC = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {isBulkDeleteModalOpen && selectedTenantsList.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-rose-200 dark:border-rose-900/80 shadow-2xl max-w-xl w-full p-6 animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-rose-100 dark:bg-rose-950/60 rounded-xl text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-black text-rose-950 dark:text-rose-300">
+                  ATENÇÃO — Exclusão em Massa de Empresas
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                  Você está prestes a excluir <strong className="text-rose-600 dark:text-rose-400">{selectedTenantsList.length} empresas</strong>.
+                  A operação fará soft delete das empresas selecionadas e invalidará seus acessos/sessões conforme as regras existentes.
+                </p>
+              </div>
+            </div>
+
+            {/* List of Selected Tenants (first 10 preview) */}
+            <div className="flex-1 overflow-y-auto mb-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-850 p-3 space-y-2">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                Empresas Selecionadas para Cancelamento ({selectedTenantsList.length})
+              </div>
+              <div className="divide-y divide-slate-200 dark:divide-slate-700/60 text-xs">
+                {selectedTenantsList.slice(0, 10).map((t) => (
+                  <div key={t.id} className="py-2 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 dark:text-slate-100 truncate">{t.name}</div>
+                      <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        {t.slug}.sentinelconsig.com.br
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right text-[11px] shrink-0">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                        t.status === 'ACTIVE'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+                      }`}>
+                        {t.status === 'ACTIVE' ? 'Ativo' : 'Suspenso'}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {t._count?.users ?? 0} usuários · {t._count?.proposals ?? 0} propostas · {t._count?.clients ?? 0} clientes
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedTenantsList.length > 10 && (
+                <div className="pt-2 text-center text-xs font-bold text-blue-600 dark:text-blue-400 border-t border-slate-200 dark:border-slate-700">
+                  + {selectedTenantsList.length - 10} outras empresas selecionadas
+                </div>
+              )}
+            </div>
+
+            {/* Extra Confirmation Step */}
+            <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Digite <strong className="text-rose-600 dark:text-rose-400">EXCLUIR</strong> para confirmar a operação em lote:
+                </label>
+                <input
+                  type="text"
+                  value={bulkConfirmText}
+                  onChange={(e) => setBulkConfirmText(e.target.value)}
+                  placeholder="EXCLUIR"
+                  className="w-full text-xs font-mono font-bold uppercase rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                />
+              </div>
+
+              {bulkDeleteError && (
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 p-2.5 rounded-lg border border-rose-200 dark:border-rose-900/50">
+                  {bulkDeleteError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBulkDeleteModalOpen(false);
+                    setBulkConfirmText('');
+                    setBulkDeleteError(null);
+                  }}
+                  disabled={isBulkDeleting}
+                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs text-slate-700 dark:text-slate-300 cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBulkDelete}
+                  disabled={isBulkDeleting || bulkConfirmText !== 'EXCLUIR'}
+                  className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 font-bold text-xs text-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  {isBulkDeleting ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Excluindo em Lote...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Excluir {selectedTenantsList.length} empresas</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Result Feedback Modal */}
+      {bulkResultSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-4 mb-4">
+              <div className={`p-3 rounded-xl ${
+                bulkResultSummary.failed === 0
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+              }`}>
+                {bulkResultSummary.failed === 0 ? (
+                  <CheckCircle className="h-6 w-6" />
+                ) : (
+                  <AlertTriangle className="h-6 w-6" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                  {bulkResultSummary.failed === 0 ? 'EXCLUSÃO CONCLUÍDA' : 'EXCLUSÃO CONCLUÍDA COM RESSALVAS'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Resumo detalhado da operação em lote:
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500">Solicitadas / Processadas:</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">{bulkResultSummary.processed}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Canceladas com sucesso:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{bulkResultSummary.cancelled}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-rose-600 dark:text-rose-400 font-semibold">Falhas:</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400">{bulkResultSummary.failed}</span>
+              </div>
+
+              {bulkResultSummary.failedDetails && bulkResultSummary.failedDetails.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-[11px]">
+                    Detalhes das falhas:
+                  </span>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {bulkResultSummary.failedDetails.map((f, i) => (
+                      <div key={i} className="text-[10px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded border border-rose-200 dark:border-rose-900/40">
+                        <strong className="font-mono">{f.tenantId}</strong>: {f.reason}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setBulkResultSummary(null)}
+                className="px-4 py-2 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs hover:bg-slate-800 dark:hover:bg-white cursor-pointer transition-colors"
+              >
+                Concluir
+              </button>
             </div>
           </div>
         </div>
