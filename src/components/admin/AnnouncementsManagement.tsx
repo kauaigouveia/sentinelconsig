@@ -120,7 +120,7 @@ export const AnnouncementsManagement: React.FC = () => {
     <div className="space-y-6">
       <ActionBar
         title="Gestão de Comunicados"
-        subtitle="Publique anúncios para sua equipe ou para todos os tenants (Platform Master)"
+        subtitle="Publique anúncios para sua equipe ou para todos os tenants (MASTER OP)"
         badgeText="COMMUNICATION HUB"
         actions={
           <button

@@ -13,7 +13,7 @@ export interface RoleConfig {
 export const ROLE_CONFIG: Record<Role, RoleConfig> = {
   PLATFORM_MASTER: {
     role: 'PLATFORM_MASTER',
-    label: 'Platform Master SaaS',
+    label: 'MASTER OP',
     emoji: '⚡',
     badgeClass: 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-950 dark:text-indigo-200 border-indigo-400 dark:border-indigo-600',
     pillClass: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black shadow-xs',

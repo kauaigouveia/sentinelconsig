@@ -649,7 +649,10 @@ export const PlatformMasterCentral: React.FC = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Erro ao processar exclusão em massa.');
+        const errorText = data.message || data.error || 'Erro ao processar exclusão em massa de empresas.';
+        const reasonText = data.reason ? ` (${data.reason})` : '';
+        const stepText = data.step ? ` [${data.step}]` : '';
+        throw new Error(`${errorText}${reasonText}${stepText}`);
       }
 
       // Clear business cache
@@ -710,7 +713,7 @@ export const PlatformMasterCentral: React.FC = () => {
       <ActionBar
         title="Central de Empresas & Assinaturas"
         subtitle="Controle corporativo de empresas, planos, domínios e personalização da plataforma"
-        badge="PLATFORM MASTER"
+        badge="MASTER OP"
         actions={
           <div className="flex items-center gap-2">
             <button

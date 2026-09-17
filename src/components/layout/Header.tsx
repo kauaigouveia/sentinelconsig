@@ -30,6 +30,7 @@ import { BackupService } from '../../services/backupService';
 import { User, Role } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { getRoleEmoji } from '../../lib/roleUtils';
+import { getRoleLabel } from '../../lib/roleLabels';
 import { db } from '../../firebase';
 import { doc, getDocFromServer } from 'firebase/firestore';
 
@@ -288,9 +289,9 @@ export const Header: React.FC<HeaderProps> = ({
         const masterName = currentT?.users?.[0]?.name || 'Master Tenant';
         return `MASTER - ${masterName}`;
       }
-      return `PLATFORM_MASTER - ${activeUser.name}`;
+      return `MASTER OP - ${activeUser.name}`;
     }
-    return `${activeUser.role} - ${activeUser.name}`;
+    return `${getRoleLabel(activeUser.role)} - ${activeUser.name}`;
   };
 
   // Overall system health indicator
@@ -501,7 +502,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onChange={e => handleCompanySwitch(e.target.value)}
                     className="w-full text-[11px] font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-200"
                   >
-                    <option value="PLATFORM">🌐 [PLATFORM_MASTER] PLATAFORMA</option>
+                    <option value="PLATFORM">🌐 [MASTER OP] PLATAFORMA</option>
                     {tenants.map(t => {
                       const masters = t.users || [];
                       const masterUser = masters[0];

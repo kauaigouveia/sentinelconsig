@@ -2008,6 +2008,35 @@ export class StorageService {
     });
   }
 
+  public static async deleteUsersBulk(ids: string[]): Promise<any> {
+    const active = this.getActiveUser();
+    if (ids.includes(active.id)) {
+      throw new Error('Você não pode excluir o seu próprio usuário logado.');
+    }
+    const users = this.getUsers();
+    const protectedInList = users.find(
+      u => ids.includes(u.id) && (u.role === 'PLATFORM_MASTER' || u.isMasterProtected || u.id === 'u-master' || u.email === 'kauaigouveia@gmail.com')
+    );
+    if (protectedInList) {
+      throw new Error('Usuários protegidos / MASTER OP não podem ser excluídos em lote.');
+    }
+
+    const res = await fetch('/api/saas/users/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userIds: ids }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || data.message || 'Erro ao processar exclusão em massa de usuários.');
+    }
+
+    const idSet = new Set(ids);
+    const updated = users.filter(u => !idSet.has(u.id));
+    this.set(STORAGE_KEYS.USERS, updated);
+    return data;
+  }
+
   // Partners
   public static getPartners(): Partner[] {
     return this.get<Partner[]>(STORAGE_KEYS.PARTNERS, INITIAL_PARTNERS);

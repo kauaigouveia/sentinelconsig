@@ -36,6 +36,7 @@ import { PlatformMasterCentral } from './components/saas/PlatformMasterCentral';
 import { TenantSaaSCapacityView } from './components/admin/TenantSaaSCapacityView';
 import { AnnouncementsManagement } from './components/admin/AnnouncementsManagement';
 import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
+import { getRoleLabel } from './lib/roleLabels';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
 import { ExcelImportModal } from './components/production/ExcelImportModal';
@@ -590,8 +591,8 @@ export default function App() {
               <span className="hidden sm:inline">
                 Contexto: <strong className="text-slate-700 dark:text-slate-300 font-medium">
                   {activeUser?.role === 'PLATFORM_MASTER'
-                    ? (adminContext ? 'MASTER' : 'PLATFORM_MASTER')
-                    : activeUser?.role}
+                    ? (adminContext ? 'MASTER' : 'MASTER OP')
+                    : getRoleLabel(activeUser?.role)}
                 </strong>
               </span>
             </div>

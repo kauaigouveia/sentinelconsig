@@ -18,12 +18,16 @@ import {
   Search,
   UserPlus,
   Filter,
+  AlertTriangle,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { User, Role, Tenant } from '../../types';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { NewUserCredentialsModal } from './NewUserCredentialsModal';
 import { getRoleEmoji, ROLE_CONFIG } from '../../lib/roleUtils';
+import { getRoleLabel } from '../../lib/roleLabels';
 import {
   PERMISSION_CATEGORIES,
   Permission,
@@ -55,6 +59,18 @@ export const UserManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [message, setMessage] = useState<string | null>(null);
 
+  // Multi-selection & Bulk Delete states
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteConfirmationText, setBulkDeleteConfirmationText] = useState('');
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteFeedback, setBulkDeleteFeedback] = useState<{
+    isOpen: boolean;
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const matchSearch =
@@ -73,6 +89,84 @@ export const UserManagement: React.FC = () => {
   const activeCount = users.filter(u => u.active).length;
   const pendingFirstLoginCount = users.filter(u => u.mustChangePassword).length;
   const distinctRolesCount = new Set(users.map(u => u.role)).size;
+
+  // Multi-selection calculations
+  const visibleUserIds = useMemo(() => filteredUsers.map(u => u.id), [filteredUsers]);
+  const isAllVisibleSelected =
+    visibleUserIds.length > 0 && visibleUserIds.every(id => selectedUserIds.has(id));
+  const isSomeVisibleSelected =
+    visibleUserIds.some(id => selectedUserIds.has(id)) && !isAllVisibleSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllVisibleSelected) {
+      const next = new Set(selectedUserIds);
+      visibleUserIds.forEach(id => next.delete(id));
+      setSelectedUserIds(next);
+    } else {
+      const next = new Set(selectedUserIds);
+      visibleUserIds.forEach(id => next.add(id));
+      setSelectedUserIds(next);
+    }
+  };
+
+  const handleToggleSelectUser = (id: string) => {
+    const next = new Set(selectedUserIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedUserIds(next);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedUserIds(new Set());
+  };
+
+  const selectedUsers = useMemo(
+    () => users.filter(u => selectedUserIds.has(u.id)),
+    [users, selectedUserIds]
+  );
+
+  const containsSelf = selectedUsers.some(u => u.id === activeUser.id);
+  const containsPlatformMaster = selectedUsers.some(u => u.role === 'PLATFORM_MASTER');
+  const containsProtectedRoot = selectedUsers.some(
+    u => u.id === 'u-master' || u.email?.toLowerCase() === 'kauaigouveia@gmail.com' || u.email?.toLowerCase() === 'master@sentinel.com'
+  );
+  const isBulkDeleteBlocked = containsSelf || containsPlatformMaster || containsProtectedRoot;
+
+  const handleExecuteBulkDelete = async () => {
+    if (bulkDeleteConfirmationText.trim().toUpperCase() !== 'EXCLUIR') return;
+    if (isBulkDeleteBlocked) {
+      alert('A seleção contém usuários protegidos (você mesmo, MASTER OP ou root). A operação foi bloqueada.');
+      return;
+    }
+
+    try {
+      setIsBulkDeleting(true);
+      const res = await StorageService.deleteUsersBulk(Array.from(selectedUserIds));
+      setUsers(StorageService.getUsers());
+      setSelectedUserIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+      setBulkDeleteConfirmationText('');
+      setBulkDeleteFeedback({
+        isOpen: true,
+        success: true,
+        message:
+          res.message ||
+          `Exclusão concluída: ${res.deleted || selectedUserIds.size} usuários processados e desativados com sucesso.`,
+        details: res,
+      });
+    } catch (err: any) {
+      setBulkDeleteFeedback({
+        isOpen: true,
+        success: false,
+        message: err.message || 'Erro ao processar exclusão em massa de usuários.',
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   // Edit user modal state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -242,7 +336,7 @@ export const UserManagement: React.FC = () => {
       return;
     }
     if (u.isMasterProtected || u.role === 'PLATFORM_MASTER') {
-      alert('Usuários PLATFORM_MASTER protegidos não podem ser excluídos por esta ação.');
+      alert('Usuários MASTER OP protegidos não podem ser excluídos por esta ação.');
       return;
     }
 
@@ -250,7 +344,7 @@ export const UserManagement: React.FC = () => {
       isOpen: true,
       itemType: 'Usuário do Sistema',
       itemName: `${u.name} (${u.email})`,
-      description: `O acesso do perfil ${u.role} será revogado e excluído do sistema.`,
+      description: `O acesso do perfil ${getRoleLabel(u.role)} será revogado e excluído do sistema.`,
       onConfirm: () => {
         try {
           StorageService.deleteUser(u.id);
@@ -371,7 +465,7 @@ export const UserManagement: React.FC = () => {
                   onChange={e => handleRoleChange(e.target.value as any)}
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
                 >
-                  {isPlatformMaster && <option value="PLATFORM_MASTER">⚡ PLATFORM_MASTER (Global)</option>}
+                  {isPlatformMaster && <option value="PLATFORM_MASTER">⚡ MASTER OP (Global)</option>}
                   <option value="TENANT_ADMIN">🏢 TENANT_ADMIN (Admin Empresa)</option>
                   <option value="MASTER">👑 MASTER (Master Operacional)</option>
                   <option value="GESTOR">🛡️ GESTOR</option>
@@ -439,7 +533,7 @@ export const UserManagement: React.FC = () => {
                       <span>Ajuste Fino de Permissões Individuais</span>
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      O perfil <strong>{role}</strong> inicia com {getPermissionsForRole(role).length} permissões padrão. Você pode personalizar abaixo.
+                      O perfil <strong>{getRoleLabel(role)}</strong> inicia com {getPermissionsForRole(role).length} permissões padrão. Você pode personalizar abaixo.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -558,14 +652,14 @@ export const UserManagement: React.FC = () => {
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
             >
               <option value="ALL">Todos os Perfis</option>
-              {isPlatformMaster && <option value="PLATFORM_MASTER">PLATFORM_MASTER</option>}
-              <option value="TENANT_ADMIN">TENANT_ADMIN</option>
+              {isPlatformMaster && <option value="PLATFORM_MASTER">MASTER OP</option>}
+              <option value="TENANT_ADMIN">ADMINISTRADOR</option>
               <option value="MASTER">MASTER</option>
               <option value="GESTOR">GESTOR</option>
               <option value="GERENTE">GERENTE</option>
               <option value="SUPORTE">SUPORTE</option>
               <option value="DIGITADOR">DIGITADOR</option>
-              <option value="SIMULACAO">SIMULACAO</option>
+              <option value="SIMULACAO">CANAL DE SIMULAÇÃO</option>
             </select>
 
             {/* Status Filter */}
@@ -585,10 +679,54 @@ export const UserManagement: React.FC = () => {
           </div>
         </div>
 
+        {/* Multi-selection Contextual Action Bar */}
+        {selectedUserIds.size > 0 && (
+          <div className="px-4 py-2.5 bg-indigo-50/90 dark:bg-indigo-950/60 border-b border-indigo-200 dark:border-indigo-800/80 flex items-center justify-between gap-3 animate-in fade-in duration-100">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse" />
+              <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                {selectedUserIds.size} {selectedUserIds.size === 1 ? 'usuário selecionado' : 'usuários selecionados'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer"
+              >
+                Limpar seleção
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkDeleteConfirmationText('');
+                  setIsBulkDeleteModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs cursor-pointer transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Excluir selecionados</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
             <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
+                <th className="px-3 py-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllVisibleSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = isSomeVisibleSelected;
+                    }}
+                    onChange={handleToggleSelectAll}
+                    className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                    title={isAllVisibleSelected ? 'Desmarcar todos' : 'Selecionar todos visíveis'}
+                  />
+                </th>
                 <th className="px-4 py-3">Nome / Usuário</th>
                 <th className="px-4 py-3">E-mail</th>
                 <th className="px-4 py-3">Perfil de Acesso</th>
@@ -601,7 +739,7 @@ export const UserManagement: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                     Nenhum operador encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -610,9 +748,23 @@ export const UserManagement: React.FC = () => {
                   const isActive = activeUser.id === u.id;
                   const isMasterProtected = u.role === 'PLATFORM_MASTER' || u.isMasterProtected;
                   const activePermsCount = u.customPermissions?.length ?? getPermissionsForRole(u.role).length;
+                  const isSelected = selectedUserIds.has(u.id);
 
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr
+                      key={u.id}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
+                        isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectUser(u.id)}
+                          className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
                         <div className="flex items-center gap-1.5">
                           <span>{u.name}</span>
@@ -636,7 +788,7 @@ export const UserManagement: React.FC = () => {
                           }`}
                         >
                           <span>{getRoleEmoji(u.role)}</span>
-                          <span>{u.role}</span>
+                          <span>{getRoleLabel(u.role)}</span>
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -758,7 +910,7 @@ export const UserManagement: React.FC = () => {
                   onChange={e => handleEditRoleChange(e.target.value as any)}
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
                 >
-                  {isPlatformMaster && <option value="PLATFORM_MASTER">⚡ PLATFORM_MASTER</option>}
+                  {isPlatformMaster && <option value="PLATFORM_MASTER">⚡ MASTER OP</option>}
                   <option value="TENANT_ADMIN">🏢 TENANT_ADMIN</option>
                   <option value="MASTER">👑 MASTER</option>
                   <option value="GESTOR">🛡️ GESTOR</option>
@@ -843,6 +995,171 @@ export const UserManagement: React.FC = () => {
                 className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-xs cursor-pointer"
               >
                 Salvar Alterações
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE CONFIRMATION MODAL */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-xl rounded-2xl border border-rose-300 dark:border-rose-900/80 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 my-8 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="p-2.5 bg-rose-100 dark:bg-rose-950/80 rounded-xl text-rose-600 dark:text-rose-400 shrink-0">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-rose-950 dark:text-rose-200">
+                  ATENÇÃO — Exclusão em Massa de Usuários
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  Você está prestes a excluir{' '}
+                  <strong className="text-rose-600 dark:text-rose-400 font-bold">
+                    {selectedUsers.length} usuários
+                  </strong>
+                  . Os acessos serão revogados e os registros serão preservados conforme as regras de soft delete.
+                </p>
+              </div>
+            </div>
+
+            {/* Blocked Protection Warning */}
+            {isBulkDeleteBlocked && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800/80 rounded-xl text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>Operação Bloqueada por Proteção do Sistema</span>
+                </p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  {containsSelf && '• A seleção inclui seu próprio usuário logado.'}
+                  {containsPlatformMaster && ' • A seleção inclui usuário(s) com perfil MASTER OP.'}
+                  {containsProtectedRoot && ' • A seleção inclui usuário(s) raiz/master protegidos.'}
+                </p>
+                <p className="text-[11px] font-semibold">
+                  Remova estes usuários da seleção para poder prosseguir com a exclusão dos demais.
+                </p>
+              </div>
+            )}
+
+            {/* Selected Users List Preview */}
+            <div className="space-y-1.5">
+              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Usuários selecionados ({selectedUsers.length}):
+              </span>
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-2 divide-y divide-slate-200/60 dark:divide-slate-800/60 text-xs">
+                {selectedUsers.slice(0, 10).map(u => (
+                  <div key={u.id} className="py-1.5 px-2 flex items-center justify-between gap-2">
+                    <div className="truncate flex-1">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{u.name}</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] ml-1.5">({u.email})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {getRoleLabel(u.role)}
+                      </span>
+                      <span
+                        className={`text-[9.5px] font-semibold px-1 rounded ${
+                          u.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
+                        }`}
+                      >
+                        {u.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {selectedUsers.length > 10 && (
+                  <div className="py-1.5 px-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/80 rounded">
+                    + {selectedUsers.length - 10} outros usuários selecionados
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Confirmation typing requirement */}
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Para confirmar a exclusão em lote, digite <span className="text-rose-600 dark:text-rose-400 font-mono font-black">EXCLUIR</span> abaixo:
+              </label>
+              <input
+                type="text"
+                value={bulkDeleteConfirmationText}
+                onChange={e => setBulkDeleteConfirmationText(e.target.value)}
+                placeholder="Digite EXCLUIR para confirmar"
+                className="w-full rounded-xl border border-rose-300 dark:border-rose-900/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono font-bold text-rose-600 dark:text-rose-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500/30"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                disabled={isBulkDeleting}
+                className="rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteBulkDelete}
+                disabled={
+                  bulkDeleteConfirmationText.trim().toUpperCase() !== 'EXCLUIR' ||
+                  isBulkDeleting ||
+                  isBulkDeleteBlocked
+                }
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2 shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Processando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Confirmar Exclusão em Massa</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE FEEDBACK MODAL */}
+      {bulkDeleteFeedback?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 animate-in fade-in duration-100">
+            <div className="flex items-start gap-3">
+              <div
+                className={`p-2 rounded-xl shrink-0 ${
+                  bulkDeleteFeedback.success
+                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-400'
+                    : 'bg-rose-100 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400'
+                }`}
+              >
+                {bulkDeleteFeedback.success ? (
+                  <CheckCircle2 className="h-6 w-6" />
+                ) : (
+                  <AlertTriangle className="h-6 w-6" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  {bulkDeleteFeedback.success ? 'Operação Concluída' : 'Falha na Operação'}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  {bulkDeleteFeedback.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteFeedback(null)}
+                className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 cursor-pointer shadow-xs"
+              >
+                Entendido
               </button>
             </div>
           </div>

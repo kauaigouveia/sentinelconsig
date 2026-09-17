@@ -5231,36 +5231,62 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/admin/tenants/:id', deleteTenantHandler);
 
   // 6.6. POST /api/saas/tenants/bulk-delete (and alias /api/admin/tenants/bulk-delete) - Soft delete in batch
+  class DryRunRollbackSignal extends Error {
+    public details: any;
+    constructor(details: any) {
+      super('DRY_RUN_ROLLBACK_SIGNAL');
+      this.name = 'DryRunRollbackSignal';
+      this.details = details;
+    }
+  }
+
   const bulkDeleteTenantsHandler = async (req: express.Request, res: express.Response) => {
+    let currentStep = 'STEP 1: validar sessão/PLATFORM_MASTER';
+    let processingTenantId: string | null = null;
+
     try {
+      // STEP 1: validar sessão/PLATFORM_MASTER
+      currentStep = 'STEP 1: validar sessão/PLATFORM_MASTER';
       const session = await getAuthSession(req);
       if (!session) {
-        return res.status(401).json({ error: 'Não autenticado.' });
+        return res.status(401).json({ error: 'Não autenticado.', code: 'UNAUTHENTICATED' });
       }
       if (session.user.role !== 'PLATFORM_MASTER') {
-        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.', code: 'FORBIDDEN' });
       }
 
-      const { tenantIds } = req.body;
+      const isDryRun = req.query.dryRun === 'true' || req.body?.dryRun === true;
+      const { tenantIds } = req.body || {};
+
+      // STEP 2: normalizar IDs
+      currentStep = 'STEP 2: normalizar IDs';
       if (!Array.isArray(tenantIds) || tenantIds.length === 0) {
-        return res.status(400).json({ error: 'Lista de IDs de empresas (tenantIds) é obrigatória.' });
+        return res.status(400).json({
+          error: 'Lista de IDs de empresas (tenantIds) é obrigatória.',
+          code: 'INVALID_INPUT',
+          step: currentStep,
+        });
       }
 
-      // Sanitize and deduplicate
       const rawIds = tenantIds
         .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
         .map((id) => id.trim());
       const uniqueIds = Array.from(new Set(rawIds));
       if (uniqueIds.length === 0) {
-        return res.status(400).json({ error: 'Nenhum ID de empresa válido fornecido.' });
+        return res.status(400).json({
+          error: 'Nenhum ID de empresa válido fornecido.',
+          code: 'INVALID_INPUT',
+          step: currentStep,
+        });
       }
 
-      // Root tenant protection - check literal inputs
-      const isLiteralRoot = uniqueIds.some(
-        (id) => id === 'sentinel-consig' || id === 'evolve' || id === 'tenant_evolve'
-      );
+      // STEP 3: proteger tenant raiz
+      currentStep = 'STEP 3: proteger tenant raiz';
+      const rootSlugs = new Set(['sentinel-consig', 'evolve', 'master']);
+      const rootKnownIds = new Set(['tenant_evolve', 'sentinel-consig']);
 
-      // Root tenant protection - check DB for root tenant IDs
+      const isLiteralRoot = uniqueIds.some((id) => rootSlugs.has(id) || rootKnownIds.has(id));
+
       const rootTenants = await prisma.tenant.findMany({
         where: {
           OR: [
@@ -5269,20 +5295,21 @@ async function auditAndEnsureMasterUser() {
             { id: 'tenant_evolve' },
           ],
         },
-        select: { id: true, slug: true },
+        select: { id: true, slug: true, name: true },
       });
       const rootTenantIds = new Set(rootTenants.map((rt) => rt.id));
       const containsRootId = uniqueIds.some((id) => rootTenantIds.has(id));
 
-      // If root tenant is present in the request, REJECT ENTIRE OPERATION (Atomic protection)
       if (isLiteralRoot || containsRootId) {
         return res.status(403).json({
           error: 'Operação rejeitada: A empresa raiz da plataforma (sentinel-consig) não pode ser excluída.',
           code: 'ROOT_TENANT_PROTECTED',
+          step: currentStep,
         });
       }
 
-      // Fetch target tenants
+      // STEP 4: buscar tenants
+      currentStep = 'STEP 4: buscar tenants';
       const existingTenants = await prisma.tenant.findMany({
         where: { id: { in: uniqueIds } },
         include: {
@@ -5300,30 +5327,40 @@ async function auditAndEnsureMasterUser() {
       const toDelete: typeof existingTenants = [];
       const failedDetails: Array<{ tenantId: string; reason: string }> = [];
 
+      // STEP 5 & STEP 6: validar existência e status
+      currentStep = 'STEP 5: validar existência e status';
       for (const id of uniqueIds) {
+        processingTenantId = id;
         const t = existingMap.get(id);
         if (!t) {
           failedDetails.push({ tenantId: id, reason: 'Empresa não encontrada no banco de dados.' });
-        } else if (t.deletedAt || t.status === 'CANCELLED') {
-          failedDetails.push({ tenantId: id, reason: 'Empresa já se encontra cancelada/excluída.' });
-        } else if (t.slug === 'sentinel-consig' || t.slug === 'evolve' || t.id === 'tenant_evolve') {
+        } else if (t.deletedAt !== null) {
+          // Already soft-deleted with timestamp
+          failedDetails.push({ tenantId: id, reason: 'Empresa já se encontra excluída (deletedAt definido).' });
+        } else if (rootSlugs.has(t.slug) || rootTenantIds.has(t.id)) {
           return res.status(403).json({
             error: 'Operação rejeitada: A empresa raiz da plataforma não pode ser excluída.',
             code: 'ROOT_TENANT_PROTECTED',
+            step: 'STEP 3: proteger tenant raiz',
+            failedTenantId: t.id,
           });
         } else {
+          // Apt for soft delete (ACTIVE, SUSPENDED, PENDING_DELETION or status CANCELLED with deletedAt=null)
           toDelete.push(t);
         }
       }
+      processingTenantId = null;
 
       if (toDelete.length === 0) {
         return res.status(400).json({
           success: false,
           error: 'Nenhuma empresa válida pôde ser excluída.',
+          code: 'NO_VALID_TENANTS',
           processed: uniqueIds.length,
           cancelled: 0,
           failed: failedDetails.length,
           failedDetails,
+          step: currentStep,
         });
       }
 
@@ -5333,9 +5370,24 @@ async function auditAndEnsureMasterUser() {
       const actorName = session.user.name;
       const actorRole = session.user.role;
 
-      // Execute atomic transaction for bulk soft delete and session cleanup
+      // STEP 7 a 17: Executar transação atômica
       await prisma.$transaction(async (tx) => {
-        // 1. Soft delete all valid tenants
+        // STEP 7: identificar usuários
+        currentStep = 'STEP 7: identificar usuários';
+        const affectedUsers = await tx.user.findMany({
+          where: { tenantId: { in: targetIds }, deletedAt: null },
+          select: { id: true, tenantId: true },
+        });
+
+        // STEP 8: identificar sessões
+        currentStep = 'STEP 8: identificar sessões';
+        const userIds = affectedUsers.map((u) => u.id);
+
+        // STEP 9: identificar contexto administrativo
+        currentStep = 'STEP 9: identificar contexto administrativo';
+
+        // STEP 10: atualizar tenants
+        currentStep = 'STEP 10: atualizar tenants';
         await tx.tenant.updateMany({
           where: { id: { in: targetIds } },
           data: {
@@ -5345,22 +5397,29 @@ async function auditAndEnsureMasterUser() {
           },
         });
 
-        // 2. Soft delete users of cancelled tenants
-        await tx.user.updateMany({
-          where: { tenantId: { in: targetIds }, deletedAt: null },
-          data: {
-            deletedAt: now,
-            deletedBy: actorId,
-            active: false,
-          },
-        });
+        // STEP 11: atualizar usuários
+        currentStep = 'STEP 11: atualizar usuários';
+        if (targetIds.length > 0) {
+          await tx.user.updateMany({
+            where: { tenantId: { in: targetIds }, deletedAt: null },
+            data: {
+              deletedAt: now,
+              deletedBy: actorId,
+              active: false,
+            },
+          });
+        }
 
-        // 3. Kill active sessions of users belonging to these tenants
-        await tx.session.deleteMany({
-          where: { user: { tenantId: { in: targetIds } } },
-        });
+        // STEP 12: invalidar sessões dos usuários dos tenants
+        currentStep = 'STEP 12: invalidar sessões';
+        if (userIds.length > 0) {
+          await tx.session.deleteMany({
+            where: { userId: { in: userIds } },
+          });
+        }
 
-        // 4. Invalidate any admin context sessions currently pointing to any of these tenants
+        // STEP 13: limpar contexto administrativo ativo apontando para os tenants
+        currentStep = 'STEP 13: limpar contexto administrativo';
         await tx.session.updateMany({
           where: { adminTargetTenantId: { in: targetIds } },
           data: {
@@ -5370,11 +5429,80 @@ async function auditAndEnsureMasterUser() {
             adminContextExpiresAt: null,
           },
         });
-      });
 
-      // Post-transaction cleanup: clear memory contexts, domain caches, events, and audit logs
+        // STEP 14: desabilitar domínios
+        currentStep = 'STEP 14: desabilitar domínios';
+        await tx.tenantDomain.updateMany({
+          where: { tenantId: { in: targetIds } },
+          data: {
+            status: 'DISABLED',
+          },
+        });
+
+        // STEP 15: registrar AuditLog individual por tenant dentro da mesma transação
+        currentStep = 'STEP 15: registrar AuditLog individual por tenant';
+        for (const t of toDelete) {
+          processingTenantId = t.id;
+          await AuditLogService.record(tx as any, {
+            tx: tx as any,
+            tenantId: t.id,
+            userId: actorId,
+            userName: actorName,
+            action: 'tenant.bulk_deleted',
+            entity: 'Tenant',
+            entityId: t.id,
+            newData: {
+              deletedAt: now,
+              deletedBy: actorId,
+              status: 'CANCELLED',
+              operation: 'BULK_DELETE',
+              tenantName: t.name,
+              tenantSlug: t.slug,
+            },
+            req,
+          });
+        }
+        processingTenantId = null;
+
+        // STEP 16: registrar AuditLog em lote (batch) dentro da mesma transação
+        currentStep = 'STEP 16: registrar AuditLog em lote';
+        const primaryRootTenantId = rootTenants[0]?.id || null;
+        await AuditLogService.record(tx as any, {
+          tx: tx as any,
+          tenantId: primaryRootTenantId || toDelete[0]?.id || null,
+          userId: actorId,
+          userName: actorName,
+          action: 'tenant.bulk_delete_batch',
+          entity: 'TenantBatch',
+          entityId: `batch_${now.getTime()}`,
+          newData: {
+            totalRequested: uniqueIds.length,
+            cancelledCount: toDelete.length,
+            failedCount: failedDetails.length,
+            affectedTenantIds: targetIds,
+            failedDetails,
+            actorRole,
+          },
+          req,
+        });
+
+        // STEP 17: commit da transaction ou rollback para dryRun
+        currentStep = 'STEP 17: commit da transaction';
+        if (isDryRun) {
+          throw new DryRunRollbackSignal({
+            processed: uniqueIds.length,
+            cancelled: toDelete.length,
+            failed: failedDetails.length,
+            cancelledIds: targetIds,
+            failedDetails,
+            stepsExecuted: 17,
+          });
+        }
+      }, { timeout: 30000, maxWait: 10000 });
+
+      // Post-transaction caches and event dispatching (executed only upon successful commit)
       for (const t of toDelete) {
-        await AdminContextManager.clearContextByTenantId(t.id, prisma);
+        AdminContextManager.clearContextByTenantId(t.id).catch(() => {});
 
         if (t.customDomain) TenantResolver.invalidateCache(t.customDomain);
         TenantResolver.invalidateCache(t.slug + '.sentinelconsig.com.br');
@@ -5384,46 +5512,7 @@ async function auditAndEnsureMasterUser() {
           entity: 'tenant',
           entityId: t.id,
         }).catch(() => {});
-
-        // Audit log per tenant
-        await AuditLogService.record(prisma, {
-          tenantId: t.id,
-          userId: actorId,
-          userName: actorName,
-          action: 'tenant.bulk_deleted',
-          entity: 'Tenant',
-          entityId: t.id,
-          newData: {
-            deletedAt: now,
-            deletedBy: actorId,
-            status: 'CANCELLED',
-            operation: 'BULK_DELETE',
-            tenantName: t.name,
-            tenantSlug: t.slug,
-          },
-          req,
-        });
       }
-
-      // Audit log for the global batch event
-      const primaryRootTenantId = rootTenants[0]?.id || null;
-      await AuditLogService.record(prisma, {
-        tenantId: primaryRootTenantId || toDelete[0]?.id || null,
-        userId: actorId,
-        userName: actorName,
-        action: 'tenant.bulk_delete_batch',
-        entity: 'TenantBatch',
-        entityId: `batch_${now.getTime()}`,
-        newData: {
-          totalRequested: uniqueIds.length,
-          cancelledCount: toDelete.length,
-          failedCount: failedDetails.length,
-          affectedTenantIds: targetIds,
-          failedDetails,
-          actorRole,
-        },
-        req,
-      });
 
       return res.json({
         success: true,
@@ -5435,14 +5524,336 @@ async function auditAndEnsureMasterUser() {
         failed: failedDetails.length,
         cancelledIds: targetIds,
         failedDetails,
+        stepsExecuted: 17,
       });
-    } catch (err) {
-      console.error('[POST /api/saas/tenants/bulk-delete ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao processar exclusão em massa de tenants.' });
+    } catch (err: any) {
+      if (err instanceof DryRunRollbackSignal) {
+        return res.json({
+          success: true,
+          dryRun: true,
+          message: `Simulação concluída com sucesso: ${err.details.cancelled} empresas válidas para cancelamento. Nenhuma alteração foi gravada no banco de dados.`,
+          processed: err.details.processed,
+          cancelled: err.details.cancelled,
+          failed: err.details.failed,
+          cancelledIds: err.details.cancelledIds,
+          failedDetails: err.details.failedDetails,
+          stepsExecuted: 17,
+        });
+      }
+
+      console.error('[POST /api/saas/tenants/bulk-delete ERROR]', {
+        step: currentStep,
+        processingTenantId,
+        errorName: err?.name,
+        errorMessage: err?.message,
+        prismaCode: err?.code,
+        prismaMeta: err?.meta,
+        stack: process.env.NODE_ENV !== 'production' ? err?.stack : undefined,
+      });
+
+      const isDev = process.env.NODE_ENV !== 'production';
+      return res.status(500).json({
+        success: false,
+        code: 'TENANT_BULK_DELETE_FAILED',
+        error: 'Erro ao processar exclusão em massa de tenants.',
+        message: 'Não foi possível concluir a exclusão em massa.',
+        step: currentStep,
+        failedTenantId: processingTenantId || undefined,
+        reason: err?.message || 'Erro interno de processamento transacional.',
+        details: isDev ? err?.message : undefined,
+        prismaCode: isDev ? err?.code : undefined,
+      });
     }
   };
   app.post('/api/saas/tenants/bulk-delete', bulkDeleteTenantsHandler);
   app.post('/api/admin/tenants/bulk-delete', bulkDeleteTenantsHandler);
+
+  // 6.7. POST /api/saas/users/bulk-delete (and alias /api/admin/users/bulk-delete) - Soft delete users in batch
+  const bulkDeleteUsersHandler = async (req: express.Request, res: express.Response) => {
+    let currentStep = 'STEP 1: validar sessão/PLATFORM_MASTER';
+    let processingUserId: string | null = null;
+
+    try {
+      // STEP 1: validar sessão/PLATFORM_MASTER
+      currentStep = 'STEP 1: validar sessão/PLATFORM_MASTER';
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.', code: 'UNAUTHENTICATED' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.', code: 'FORBIDDEN' });
+      }
+
+      const isDryRun = req.query.dryRun === 'true' || req.body?.dryRun === true;
+      const { userIds } = req.body || {};
+
+      // STEP 2: normalizar IDs
+      currentStep = 'STEP 2: normalizar IDs';
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({
+          error: 'Lista de IDs de usuários (userIds) é obrigatória.',
+          code: 'INVALID_INPUT',
+          step: currentStep,
+        });
+      }
+
+      const rawIds = userIds
+        .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        .map((id) => id.trim());
+      const uniqueIds = Array.from(new Set(rawIds));
+      if (uniqueIds.length === 0) {
+        return res.status(400).json({
+          error: 'Nenhum ID de usuário válido fornecido.',
+          code: 'INVALID_INPUT',
+          step: currentStep,
+        });
+      }
+
+      // STEP 3: impedir exclusão do próprio usuário autenticado
+      if (uniqueIds.includes(session.user.id)) {
+        return res.status(403).json({
+          error: 'Operação rejeitada: Você não pode excluir seu próprio usuário autenticado.',
+          code: 'CANNOT_DELETE_SELF',
+          step: 'STEP 3: proteger usuário logado',
+        });
+      }
+
+      // STEP 4: buscar usuários no banco
+      currentStep = 'STEP 4: buscar usuários';
+      const existingUsers = await prisma.user.findMany({
+        where: { id: { in: uniqueIds } },
+        include: {
+          tenant: {
+            select: { id: true, name: true, slug: true },
+          },
+        },
+      });
+
+      // STEP 5: verificar proteção PLATFORM_MASTER e root (TUDO OU NADA)
+      currentStep = 'STEP 5: verificar proteção PLATFORM_MASTER';
+      const hasPlatformMaster = existingUsers.some((u) => u.role === 'PLATFORM_MASTER');
+      if (hasPlatformMaster) {
+        return res.status(403).json({
+          error: 'Operação rejeitada: Usuários com perfil PLATFORM_MASTER não podem ser excluídos em lote.',
+          code: 'PLATFORM_MASTER_PROTECTED',
+          step: currentStep,
+        });
+      }
+
+      const protectedEmails = new Set(['master@sentinel.com', 'kauaigouveia@gmail.com', 'admin@sentinelconsig.com.br']);
+      const protectedIds = new Set(['u-master']);
+      const hasRootProtected = existingUsers.some(
+        (u) => protectedEmails.has(u.email.toLowerCase()) || protectedIds.has(u.id)
+      );
+      if (hasRootProtected) {
+        return res.status(403).json({
+          error: 'Operação rejeitada: Usuário master/root protegido não pode ser excluído.',
+          code: 'ROOT_USER_PROTECTED',
+          step: currentStep,
+        });
+      }
+
+      // STEP 6: separar aptos vs falhas (já deletados ou não encontrados)
+      currentStep = 'STEP 6: validar existência e status';
+      const existingMap = new Map(existingUsers.map((u) => [u.id, u]));
+      const toDelete: typeof existingUsers = [];
+      const failedDetails: Array<{ userId: string; reason: string }> = [];
+
+      for (const id of uniqueIds) {
+        processingUserId = id;
+        const u = existingMap.get(id);
+        if (!u) {
+          failedDetails.push({ userId: id, reason: 'Usuário não encontrado no banco de dados.' });
+        } else if (u.deletedAt !== null) {
+          failedDetails.push({ userId: id, reason: 'Usuário já se encontra excluído (deletedAt definido).' });
+        } else {
+          toDelete.push(u);
+        }
+      }
+      processingUserId = null;
+
+      if (toDelete.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Nenhum usuário válido pôde ser excluído.',
+          code: 'NO_VALID_USERS',
+          processed: uniqueIds.length,
+          deleted: 0,
+          failed: failedDetails.length,
+          failedDetails,
+          step: currentStep,
+        });
+      }
+
+      const targetUserIds = toDelete.map((u) => u.id);
+      const now = new Date();
+      const actorId = session.user.id;
+      const actorName = session.user.name;
+      const actorRole = session.user.role;
+
+      // STEP 7 a 11: Executar transação atômica
+      await prisma.$transaction(
+        async (tx) => {
+          // STEP 7: soft delete dos usuários selecionados
+          currentStep = 'STEP 7: soft delete usuários';
+          await tx.user.updateMany({
+            where: { id: { in: targetUserIds } },
+            data: {
+              active: false,
+              deletedAt: now,
+              deletedBy: actorId,
+            },
+          });
+
+          // STEP 8: invalidar sessões ativas dos usuários
+          currentStep = 'STEP 8: invalidar sessões';
+          await tx.session.deleteMany({
+            where: { userId: { in: targetUserIds } },
+          });
+
+          // STEP 9: limpar contexto administrativo órfão
+          currentStep = 'STEP 9: limpar contexto administrativo';
+          await tx.session.updateMany({
+            where: { userId: { in: targetUserIds } },
+            data: {
+              adminTargetTenantId: null,
+              adminTargetTenantName: null,
+              adminSwitchedAt: null,
+              adminContextExpiresAt: null,
+            },
+          });
+
+          // STEP 10: registrar AuditLog individual por usuário na mesma transação
+          currentStep = 'STEP 10: registrar AuditLog individual por usuário';
+          for (const u of toDelete) {
+            processingUserId = u.id;
+            await AuditLogService.record(tx as any, {
+              tx: tx as any,
+              tenantId: u.tenantId || null,
+              userId: actorId,
+              userName: actorName,
+              action: 'USER_SOFT_DELETED',
+              entity: 'User',
+              entityId: u.id,
+              oldData: { email: u.email, name: u.name, role: u.role, active: u.active },
+              newData: {
+                deletedAt: now,
+                deletedBy: actorId,
+                active: false,
+                operation: 'BULK_DELETE',
+                userEmail: u.email,
+                userName: u.name,
+                userRole: u.role,
+              },
+              req,
+            });
+          }
+          processingUserId = null;
+
+          // STEP 11: registrar AuditLog em lote na mesma transação
+          currentStep = 'STEP 11: registrar AuditLog em lote';
+          await AuditLogService.record(tx as any, {
+            tx: tx as any,
+            tenantId: toDelete[0]?.tenantId || null,
+            userId: actorId,
+            userName: actorName,
+            action: 'USER_BULK_SOFT_DELETED',
+            entity: 'UserBatch',
+            entityId: `user_batch_${now.getTime()}`,
+            newData: {
+              totalRequested: uniqueIds.length,
+              deletedCount: toDelete.length,
+              failedCount: failedDetails.length,
+              affectedUserIds: targetUserIds,
+              failedDetails,
+              actorRole,
+            },
+            req,
+          });
+
+          // Rollback para simulação dryRun se solicitado
+          if (isDryRun) {
+            throw new DryRunRollbackSignal({
+              processed: uniqueIds.length,
+              deleted: toDelete.length,
+              failed: failedDetails.length,
+              deletedIds: targetUserIds,
+              failedDetails,
+              stepsExecuted: 11,
+            });
+          }
+        },
+        { timeout: 30000, maxWait: 10000 }
+      );
+
+      // Post-transaction events
+      const tenantIdsToBroadcast = Array.from(new Set(toDelete.map((u) => u.tenantId).filter(Boolean)));
+      for (const tid of tenantIdsToBroadcast) {
+        if (tid) {
+          sseRegistry.broadcastToTenant(tid, {
+            type: 'USER_DELETED',
+            entity: 'User',
+            entityId: 'BULK_DELETE',
+            userId: actorId,
+            data: { batchSize: toDelete.length },
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        message:
+          failedDetails.length === 0
+            ? `Exclusão concluída: ${toDelete.length} usuários processados e desativados com sucesso.`
+            : `Exclusão concluída com ressalvas: ${toDelete.length} desativados, ${failedDetails.length} falharam.`,
+        processed: uniqueIds.length,
+        deleted: toDelete.length,
+        failed: failedDetails.length,
+        deletedIds: targetUserIds,
+        failedDetails,
+        stepsExecuted: 11,
+      });
+    } catch (err: any) {
+      if (err instanceof DryRunRollbackSignal) {
+        return res.json({
+          success: true,
+          dryRun: true,
+          message: `Simulação concluída com sucesso: ${err.details.deleted} usuários válidos para cancelamento. Nenhuma alteração foi gravada no banco de dados.`,
+          processed: err.details.processed,
+          deleted: err.details.deleted,
+          failed: err.details.failed,
+          deletedIds: err.details.deletedIds,
+          failedDetails: err.details.failedDetails,
+          stepsExecuted: 11,
+        });
+      }
+
+      console.error('[POST /api/saas/users/bulk-delete ERROR]', {
+        step: currentStep,
+        processingUserId,
+        errorName: err?.name,
+        errorMessage: err?.message,
+        prismaCode: err?.code,
+        prismaMeta: err?.meta,
+        stack: process.env.NODE_ENV !== 'production' ? err?.stack : undefined,
+      });
+
+      const isDev = process.env.NODE_ENV !== 'production';
+      return res.status(500).json({
+        success: false,
+        code: 'USER_BULK_DELETE_FAILED',
+        error: 'Erro ao processar exclusão em massa de usuários.',
+        message: 'Não foi possível concluir a exclusão em massa de usuários.',
+        step: currentStep,
+        failedUserId: processingUserId || undefined,
+        reason: err?.message || 'Erro interno de processamento transacional.',
+        details: isDev ? err?.message : undefined,
+        prismaCode: isDev ? err?.code : undefined,
+      });
+    }
+  };
+  app.post('/api/saas/users/bulk-delete', bulkDeleteUsersHandler);
+  app.post('/api/admin/users/bulk-delete', bulkDeleteUsersHandler);
 
   // 7. CONTEXT SWITCHING API (PLATFORM_MASTER Support/Admin Inspection)
   const contextSwitchHandler = async (req: express.Request, res: express.Response) => {

@@ -132,6 +132,15 @@ async function simulateBulkDeleteRequest(
       },
     });
 
+    // 1.1. Soft delete de todos os usuários dos tenants
+    await tx.user.updateMany({
+      where: { tenantId: { in: uniqueTenantIds }, deletedAt: null },
+      data: {
+        active: false,
+        deletedAt: now,
+      },
+    });
+
     // 2. Soft delete / cancelamento dos domínios associados
     await tx.tenantDomain.updateMany({
       where: { tenantId: { in: uniqueTenantIds } },
