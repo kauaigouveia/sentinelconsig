@@ -61,77 +61,74 @@ export async function runPortabilityCronServer(
 ): Promise<PortabilityCronResult> {
   const executedAt = new Date().toISOString();
 
-  // Acquire advisory lock for concurrency protection (using arbitrary 64-bit lock key 778899)
-  try {
-    await prisma.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(778899)`);
-  } catch (err) {
-    console.warn('[PORTABILITY CRON] Advisory lock warning (continuing transaction):', err);
-  }
+  // Entire operation wrapped in a single Prisma transaction
+  return await prisma.$transaction(async (tx) => {
+    console.log('[CRON_DEBUG] Inside transaction, acquiring advisory lock 778899...');
+    // 1. Acquire advisory lock inside this transaction (using 778899)
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(778899)::text as lock_res`;
+    console.log('[CRON_DEBUG] Advisory lock 778899 acquired successfully.');
 
-  // 1. National holidays static list
-  const holidayDates: string[] = [
-    '2026-01-01', '2026-04-03', '2026-04-21', '2026-05-01',
-    '2026-06-04', '2026-09-07', '2026-10-12', '2026-11-02', '2026-11-15', '2026-12-25'
-  ];
+    // 2. National holidays static list
+    const holidayDates: string[] = [
+      '2026-01-01', '2026-04-03', '2026-04-21', '2026-05-01',
+      '2026-06-04', '2026-09-07', '2026-10-12', '2026-11-02', '2026-11-15', '2026-12-25'
+    ];
 
-  // 2. Query proposal statuses to find AGUARDAR_RETORNO_CIP and SALDO_RETORNADO
-  const cipStatus = await prisma.proposalStatus.findFirst({
-    where: {
-      code: 'AGUARDAR_RETORNO_CIP',
-      ...(tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {}),
-    },
-  });
+    // 3. Query proposal statuses to find AGUARDAR_RETORNO_CIP and SALDO_RETORNADO
+    const cipStatus = await tx.proposalStatus.findFirst({
+      where: {
+        code: 'AGUARDAR_RETORNO_CIP',
+        ...(tenantId ? { tenantId } : {}),
+      },
+    });
 
-  const saldoRetornadoStatus = await prisma.proposalStatus.findFirst({
-    where: {
-      code: 'SALDO_RETORNADO',
-      ...(tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {}),
-    },
-  });
+    const saldoRetornadoStatus = await tx.proposalStatus.findFirst({
+      where: {
+        code: 'SALDO_RETORNADO',
+        ...(tenantId ? { tenantId } : {}),
+      },
+    });
 
-  if (!cipStatus || !saldoRetornadoStatus) {
-    return {
-      success: false,
-      checkedCount: 0,
-      saldoRetornadoCount: 0,
-      alertsGenerated: 0,
-      details: ['Status AGUARDAR_RETORNO_CIP ou SALDO_RETORNADO não configurado no banco de dados.'],
-      executedAt,
-    };
-  }
+    if (!cipStatus || !saldoRetornadoStatus) {
+      return {
+        success: false,
+        checkedCount: 0,
+        saldoRetornadoCount: 0,
+        alertsGenerated: 0,
+        details: ['Status AGUARDAR_RETORNO_CIP ou SALDO_RETORNADO não configurado no banco de dados.'],
+        executedAt,
+      };
+    }
 
-  const targetDays = 5;
+    const targetDays = 5;
 
-  // 3. Find proposals in CIP status
-  const proposalsInCip = await prisma.proposal.findMany({
-    where: {
-      statusId: cipStatus.id,
-      deletedAt: null,
-      ...(tenantId ? { tenantId } : {}),
-    },
-    include: {
-      tenant: true,
-      client: true,
-    },
-  });
+    // 4. Find proposals in CIP status
+    const proposalsInCip = await tx.proposal.findMany({
+      where: {
+        statusId: cipStatus.id,
+        deletedAt: null,
+        ...(tenantId ? { tenantId } : {}),
+      },
+      include: {
+        tenant: true,
+        client: true,
+      },
+    });
 
-  const details: string[] = [];
-  let checkedCount = 0;
-  let saldoRetornadoCount = 0;
-  let alertsGenerated = 0;
+    const details: string[] = [];
+    let checkedCount = 0;
+    let saldoRetornadoCount = 0;
+    let alertsGenerated = 0;
 
-  const now = new Date();
+    const now = new Date();
 
-  for (const proposal of proposalsInCip) {
-    checkedCount++;
-    const startDate = proposal.retentionDeadline || proposal.createdAt;
-    const businessDays = calculateServerBusinessDays(startDate, now, holidayDates);
+    for (const proposal of proposalsInCip) {
+      checkedCount++;
+      const startDate = proposal.retentionDeadline || proposal.createdAt;
+      const businessDays = calculateServerBusinessDays(startDate, now, holidayDates);
 
-    // FIXED SLA logic without unreachable branches:
-    if (businessDays >= targetDays) {
-      // Reached or exceeded 5 business days: transition to SALDO_RETORNADO
-      await prisma.$transaction(async (tx) => {
-        // Update status
+      if (businessDays >= targetDays) {
+        // Update status using transaction tx
         await tx.proposal.update({
           where: { id: proposal.id },
           data: {
@@ -140,7 +137,7 @@ export async function runPortabilityCronServer(
           },
         });
 
-        // Add Status History
+        // Add Status History using transaction tx
         await tx.statusHistory.create({
           data: {
             proposalId: proposal.id,
@@ -151,7 +148,7 @@ export async function runPortabilityCronServer(
           },
         });
 
-        // Check idempotency for notification
+        // Check idempotency for notification using tx
         const existingNotif = await tx.notification.findFirst({
           where: {
             proposalId: proposal.id,
@@ -173,7 +170,7 @@ export async function runPortabilityCronServer(
           });
         }
 
-        // Audit Log
+        // Audit Log using tx
         await tx.auditLog.create({
           data: {
             tenantId: proposal.tenantId,
@@ -189,27 +186,30 @@ export async function runPortabilityCronServer(
             }),
           },
         });
-      });
 
-      saldoRetornadoCount++;
-      details.push(`Proposta ${proposal.proposalNumber}: Saldo retornado com ${businessDays} dias úteis.`);
-    } else if (businessDays === targetDays - 1) {
-      // 4th business day warning
-      alertsGenerated++;
-      details.push(`Proposta ${proposal.proposalNumber}: Alerta 4º dia útil em CIP.`);
-    } else if (businessDays === targetDays - 2) {
-      // 3rd business day notification
-      alertsGenerated++;
-      details.push(`Proposta ${proposal.proposalNumber}: Acompanhamento 3º dia útil em CIP.`);
+        saldoRetornadoCount++;
+        details.push(`Proposta ${proposal.proposalNumber}: Saldo retornado com ${businessDays} dias úteis.`);
+      } else if (businessDays === targetDays - 1) {
+        // 4th business day warning
+        alertsGenerated++;
+        details.push(`Proposta ${proposal.proposalNumber}: Alerta 4º dia útil em CIP.`);
+      } else if (businessDays === targetDays - 2) {
+        // 3rd business day notification
+        alertsGenerated++;
+        details.push(`Proposta ${proposal.proposalNumber}: Acompanhamento 3º dia útil em CIP.`);
+      }
     }
-  }
 
-  return {
-    success: true,
-    checkedCount,
-    saldoRetornadoCount,
-    alertsGenerated,
-    details,
-    executedAt,
-  };
+    return {
+      success: true,
+      checkedCount,
+      saldoRetornadoCount,
+      alertsGenerated,
+      details,
+      executedAt,
+    };
+  }, {
+    timeout: 30000,
+    maxWait: 15000,
+  });
 }

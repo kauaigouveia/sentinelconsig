@@ -176,6 +176,7 @@ model Tenant {
   importJobs         ImportJob[]
   domains            TenantDomain[]
   simulationRequests SimulationRequest[]
+  memberships        UserTenantMembership[]
 
   // Soft Delete & Timestamps
   deletedAt     DateTime?      @map("deleted_at")
@@ -269,6 +270,7 @@ model User {
   sessions                           Session[]
   createdSimulationRequests          SimulationRequest[] @relation("CreatedSimulationRequests")
   matchedDigitizerSimulationRequests SimulationRequest[] @relation("MatchedDigitizerSimulationRequests")
+  memberships                        UserTenantMembership[]
 
   // Security & Lifecycle
   lastLoginAt          DateTime? @map("last_login_at")
@@ -303,6 +305,12 @@ model Session {
   adminTargetTenantName String?   @map("admin_target_tenant_name")
   adminSwitchedAt       DateTime? @map("admin_switched_at")
   adminContextExpiresAt DateTime? @map("admin_context_expires_at")
+
+  // Multi-tenant Session Context
+  effectiveTenantId     String?   @map("effective_tenant_id")
+  effectiveMembershipId String?   @map("effective_membership_id")
+  activeRole            String?   @map("active_role")
+  activePermissions     String[]  @default([]) @map("active_permissions")
 
   @@index([userId])
   @@index([token])
@@ -974,4 +982,23 @@ model SimulationRequest {
   @@index([tenantId, createdById])
   @@index([createdAt])
   @@map("simulation_requests")
+}
+
+model UserTenantMembership {
+  id                String            @id @default(cuid())
+  userId            String            @map("user_id")
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId          String            @map("tenant_id")
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role              UserRole
+  customPermissions String[]          @default([]) @map("custom_permissions")
+  active            Boolean           @default(true)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([active])
+  @@map("user_tenant_memberships")
 }

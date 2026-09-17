@@ -132,10 +132,8 @@ export const UserManagement: React.FC = () => {
 
   const containsSelf = selectedUsers.some(u => u.id === activeUser.id);
   const containsPlatformMaster = selectedUsers.some(u => u.role === 'PLATFORM_MASTER');
-  const containsProtectedRoot = selectedUsers.some(
-    u => u.id === 'u-master' || u.email?.toLowerCase() === 'kauaigouveia@gmail.com' || u.email?.toLowerCase() === 'master@sentinel.com'
-  );
-  const isBulkDeleteBlocked = containsSelf || containsPlatformMaster || containsProtectedRoot;
+  const containsProtectedRoot = false; // Não existe usuário root. Apenas PLATFORM_MASTER.
+  const isBulkDeleteBlocked = containsSelf || containsPlatformMaster;
 
   const handleExecuteBulkDelete = async () => {
     if (bulkDeleteConfirmationText.trim().toUpperCase() !== 'EXCLUIR') return;

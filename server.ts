@@ -46,15 +46,18 @@ let serverInstance: any = null;
 
 const prisma = new PrismaClient();
 const app = express();
-export { app };
+export { app, prisma };
 
 // Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
 app.set('trust proxy', 1);
 
+let isBootstrapDone = false;
+
 async function auditAndEnsureMasterUser() {
   try {
-    const masterEmail = (process.env.INITIAL_MASTER_EMAIL || 'kauaigouveia@gmail.com').trim().toLowerCase();
-    const masterPassword = process.env.INITIAL_MASTER_PASSWORD?.trim();
+    if (isBootstrapDone) {
+      return;
+    }
 
     // 1. Tenant inicial idempotente
     let tenant = await prisma.tenant.findFirst({
@@ -99,121 +102,114 @@ async function auditAndEnsureMasterUser() {
       console.log(`[RBAC BOOTSTRAP] Tenant inicial reutilizado: ${tenant.id} (${tenant.name})`);
     }
 
-    // 2. Usuário Master inicial idempotente
-    const user = await prisma.user.findFirst({
+    // 2. Count active PLATFORM_MASTERs
+    const activeMasterCount = await prisma.user.count({
+      where: {
+        role: 'PLATFORM_MASTER',
+        active: true,
+        deletedAt: null,
+      },
+    });
+
+    if (activeMasterCount > 0) {
+      isBootstrapDone = true;
+      console.log(`[RBAC BOOTSTRAP] Plataforma já possui ${activeMasterCount} MASTER OP ativos. Bootstrap ignorado.`);
+      return;
+    }
+
+    // No active PLATFORM_MASTER. Create first master user only if INITIAL_MASTER_EMAIL is configured
+    const initialEmailEnv = process.env.INITIAL_MASTER_EMAIL;
+    if (!initialEmailEnv) {
+      console.log('[RBAC BOOTSTRAP] Nenhum MASTER OP ativo e INITIAL_MASTER_EMAIL não configurado. Impossível criar primeiro MASTER OP.');
+      return;
+    }
+
+    const masterEmail = initialEmailEnv.trim().toLowerCase();
+    const masterPassword = (process.env.INITIAL_MASTER_PASSWORD || 'Sentinel@123').trim();
+
+    // Check if the user already exists (maybe inactive/deleted or has another role, but we need to promote it or create it if not exists)
+    let user = await prisma.user.findFirst({
       where: { email: { equals: masterEmail, mode: 'insensitive' } },
     });
 
     if (user) {
-      console.log(`[RBAC BOOTSTRAP] Usuario Master localizado no PostgreSQL:`, {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-        active: user.active,
-        isMasterProtected: user.isMasterProtected,
+      // If user exists, activate and promote them to PLATFORM_MASTER since active count is 0
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          role: 'PLATFORM_MASTER',
+          active: true,
+          deletedAt: null,
+          tenantId: user.tenantId || tenant.id,
+        },
       });
-
-      const updates: any = {};
-      if (user.role !== 'PLATFORM_MASTER') updates.role = 'PLATFORM_MASTER';
-      if (!user.active) updates.active = true;
-      if (!user.isMasterProtected) updates.isMasterProtected = true;
-      if (!user.tenantId && tenant) updates.tenantId = tenant.id;
-
-      if (Object.keys(updates).length > 0) {
-        const updated = await prisma.user.update({
-          where: { id: user.id },
-          data: updates,
-        });
-        logger.info({ role: updated.role }, '[RBAC BOOTSTRAP] Master profile synchronized for PLATFORM_MASTER');
-      }
-
-      // Migração segura e condicional de credencial legada para o PLATFORM_MASTER
-      if (!isArgon2Hash(user.passwordHash)) {
-        if (!masterPassword) {
-          logger.warn('[RBAC BOOTSTRAP] PLATFORM_MASTER possui credencial legada, mas INITIAL_MASTER_PASSWORD não está configurada no ambiente. Migração adiada para o login interativo.');
-        } else {
-          // Validação estrita: nunca assumir que INITIAL_MASTER_PASSWORD corresponde à senha atual
-          const match = await verifyPassword(masterPassword, user.passwordHash);
-          if (match.valid) {
-            try {
-              // Gerar hash Argon2id a partir da senha validada (nunca do hash bruto)
-              const newHash = await hashPassword(masterPassword);
-
-              // Atualização atômica unificada: senha e evento SYSTEM_CREDENTIAL_MIGRATION na mesma transação PostgreSQL
-              const migrationSuccess = await prisma.$transaction(async (tx) => {
-                // 1. Atualização com controle estrito de concorrência dentro da transação
-                const updateResult = await tx.user.updateMany({
-                  where: {
-                    id: user.id,
-                    passwordHash: user.passwordHash, // Garante que nenhum outro processo alterou a senha
-                  },
-                  data: {
-                    passwordHash: newHash,
-                  },
-                });
-
-                if (updateResult.count === 0) {
-                  // Concorrência detectada: credencial já foi modificada por outro processo
-                  return { migrated: false, reason: 'CONCURRENCY_CONFLICT' };
-                }
-
-                // 2. Registro de auditoria usando o MESMO cliente transacional tx
-                await AuditLogService.record(tx, {
-                  tx,
-                  tenantId: user.tenantId || tenant.id,
-                  userId: user.id,
-                  userName: user.name,
-                  action: 'SYSTEM_CREDENTIAL_MIGRATION',
-                  entity: 'User',
-                  entityId: user.id,
-                  newData: {
-                    migrationType: 'LEGACY_TO_ARGON2ID',
-                    algorithm: 'argon2id',
-                    status: 'SUCCESS',
-                    source: 'RBAC_BOOTSTRAP_VALIDATED',
-                  },
-                  ipAddress: '127.0.0.1',
-                });
-
-                return { migrated: true };
-              }, { timeout: 15000, maxWait: 10000 });
-
-              if (migrationSuccess.migrated) {
-                logger.info({ id: user.id }, '[RBAC BOOTSTRAP] Credencial do PLATFORM_MASTER migrada com sucesso para Argon2id e auditada atomicamente na cadeia.');
-              } else {
-                logger.warn({ id: user.id, reason: migrationSuccess.reason }, '[RBAC BOOTSTRAP] Concorrência detectada: credencial do PLATFORM_MASTER foi alterada concorrentemente; atualização cancelada de forma atômica.');
-              }
-            } catch (migErr: any) {
-              logger.error({ error: migErr?.message || String(migErr) }, '[RBAC BOOTSTRAP] Falha atômica durante migração da credencial do PLATFORM_MASTER (rollback garantido)');
-            }
-          } else {
-            logger.warn({ id: user.id }, '[RBAC BOOTSTRAP] INITIAL_MASTER_PASSWORD não corresponde à credencial preexistente do PLATFORM_MASTER. Senha preservada intacta; migração adiada para o login interativo.');
-          }
-        }
-      }
+      console.log(`[RBAC BOOTSTRAP] Usuário existente ${user.email} promovido a primeiro PLATFORM_MASTER.`);
     } else {
-      if (!masterPassword) {
-        logger.error('[RBAC BOOTSTRAP CRITICAL] INITIAL_MASTER_PASSWORD não configurada no ambiente. Usuário master não criado.');
-        return;
-      }
-
-      const created = await prisma.user.create({
+      // Create new user
+      user = await prisma.user.create({
         data: {
           name: 'Kauai Gouveia',
           email: masterEmail,
           passwordHash: await hashPassword(masterPassword),
           role: 'PLATFORM_MASTER',
           active: true,
-          isMasterProtected: true,
           tenantId: tenant.id,
           customPermissions: [],
         },
       });
-      logger.info({ id: created.id, role: created.role }, '[RBAC BOOTSTRAP] Usuario PLATFORM_MASTER criado com sucesso no PostgreSQL');
+      console.log(`[RBAC BOOTSTRAP] Primeiro PLATFORM_MASTER criado: ${user.email}`);
     }
-  } catch (err) {
+
+    isBootstrapDone = true;
+  } catch (err: any) {
     logger.warn({ error: err?.message || String(err) }, '[RBAC BOOTSTRAP WARNING]');
+  }
+}
+
+async function migrateLegacyUserMemberships() {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        tenantId: { not: null },
+        deletedAt: null,
+      },
+    });
+
+    console.log(`[RBAC MIGRATION] Iniciando migração de memberships para ${users.length} usuários.`);
+
+    let migratedCount = 0;
+    for (const user of users) {
+      if (!user.tenantId) continue;
+
+      // Wrap in a safe transaction with unique constraint check / findFirst
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.userTenantMembership.findUnique({
+          where: {
+            userId_tenantId: {
+              userId: user.id,
+              tenantId: user.tenantId!,
+            },
+          },
+        });
+
+        if (!existing) {
+          await tx.userTenantMembership.create({
+            data: {
+              userId: user.id,
+              tenantId: user.tenantId!,
+              role: user.role,
+              customPermissions: { set: user.customPermissions || [] },
+              active: user.active,
+            },
+          });
+          migratedCount++;
+        }
+      });
+    }
+
+    console.log(`[RBAC MIGRATION] Migração de memberships concluída com sucesso. ${migratedCount} novas memberships criadas.`);
+  } catch (err: any) {
+    console.error('[RBAC MIGRATION ERROR] Falha ao executar migração de memberships:', err);
   }
 }
 
@@ -558,15 +554,69 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
+      // Resolve Session context fields
+      let effectiveTenantId = dbUser.tenantId || null;
+      let effectiveMembershipId = null;
+      let activeRole = dbUser.role;
+      let activePermissions = dbUser.customPermissions || [];
+
+      if (dbUser.role === 'PLATFORM_MASTER') {
+        if (!effectiveTenantId) {
+          const firstTenant = await prisma.tenant.findFirst({
+            where: { status: 'ACTIVE', deletedAt: null },
+          });
+          effectiveTenantId = firstTenant ? firstTenant.id : null;
+        }
+        activeRole = 'PLATFORM_MASTER';
+        activePermissions = [];
+      } else {
+        // Load active memberships
+        const activeMemberships = await prisma.userTenantMembership.findMany({
+          where: {
+            userId: dbUser.id,
+            active: true,
+          },
+          include: { tenant: true },
+        });
+
+        // Filter memberships where tenant is active
+        const validMemberships = activeMemberships.filter(
+          m => m.tenant && m.tenant.status === 'ACTIVE' && !m.tenant.deletedAt
+        );
+
+        if (validMemberships.length === 0) {
+          await AuditLogService.record(prisma, {
+            tenantId: dbUser.tenantId || null,
+            userId: dbUser.id,
+            userName: dbUser.name,
+            action: 'LOGIN_FAILED',
+            entity: 'AUTH',
+            entityId: dbUser.id,
+            oldData: { email: cleanEmail, reason: 'Usuário sem empresas/memberships ativas vinculadas.' },
+            req,
+          });
+          return res.status(401).json({
+            code: 'USER_HAS_NO_ACTIVE_MEMBERSHIPS',
+            message: 'Este usuário não possui nenhum vínculo ativo com uma organização.'
+          });
+        }
+
+        const primaryMembership = validMemberships[0];
+        effectiveTenantId = primaryMembership.tenantId;
+        effectiveMembershipId = primaryMembership.id;
+        activeRole = primaryMembership.role;
+        activePermissions = primaryMembership.customPermissions || [];
+      }
+
       // Safe user output object (NO PASSWORDS, NO HASHES)
       const safeUser = {
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
-        role: dbUser.role,
+        role: activeRole,
         active: dbUser.active,
-        tenantId: dbUser.tenantId || undefined,
-        customPermissions: dbUser.customPermissions || [],
+        tenantId: effectiveTenantId || undefined,
+        customPermissions: activePermissions,
         isMasterProtected: dbUser.isMasterProtected || false,
         mustChangePassword: dbUser.mustChangePassword,
         createdAt: dbUser.createdAt.toISOString(),
@@ -585,6 +635,10 @@ async function auditAndEnsureMasterUser() {
             ipAddress: req.ip || '127.0.0.1',
             userAgent: (req.headers['user-agent'] as string) || 'Unknown',
             expiresAt,
+            effectiveTenantId,
+            effectiveMembershipId,
+            activeRole,
+            activePermissions: { set: activePermissions },
           },
         });
       } catch (sessErr) {
@@ -699,17 +753,8 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
-      const token = extractSessionToken(req);
-      if (!token) {
-        return res.status(401).json({ authenticated: false, message: 'Nenhuma sessão ativa.' });
-      }
-
-      const session = await prisma.session.findUnique({
-        where: { token },
-        include: { user: { include: { tenant: true } } },
-      });
-
-      if (!session || session.expiresAt < new Date()) {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
         res.clearCookie('cg_session_id', {
           httpOnly: true,
           secure: isRequestHttps(req),
@@ -719,74 +764,13 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ authenticated: false, message: 'Sessão expirada ou inválida.' });
       }
 
-      if (
-        !session.user.active ||
-        (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
-      ) {
-        await AdminContextManager.clearContext(session.id, prisma);
-        await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
-        res.clearCookie('cg_session_id', {
-          httpOnly: true,
-          secure: isRequestHttps(req),
-          sameSite: 'lax',
-          path: '/',
-        });
-        return res.status(403).json({ authenticated: false, message: 'Tenant suspenso ou usuário desativado.' });
-      }
-
-      // Check active AdminContext for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
-      let adminContext: any = null;
-      let effectiveTenantId = session.user.tenantId;
-
-      if (session.user.role === 'PLATFORM_MASTER') {
-        // 1. Primary: PostgreSQL persistent session columns
-        if (session.adminTargetTenantId && session.adminContextExpiresAt) {
-          if (new Date(session.adminContextExpiresAt) > new Date()) {
-            const targetTenant = await prisma.tenant.findUnique({
-              where: { id: session.adminTargetTenantId },
-            });
-            if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
-              adminContext = {
-                targetTenantId: targetTenant.id,
-                targetTenantName: session.adminTargetTenantName || targetTenant.name,
-                switchedAt: session.adminSwitchedAt || session.createdAt,
-                expiresAt: session.adminContextExpiresAt,
-              };
-              effectiveTenantId = targetTenant.id;
-              AdminContextManager.warmCache(session.id, adminContext);
-            } else {
-              // Tenant deleted or cancelled: clear invalid persistent context
-              await AdminContextManager.clearContext(session.id, prisma);
-            }
-          } else {
-            // Expired context: clear persistent state
-            await AdminContextManager.clearContext(session.id, prisma);
-          }
-        } else {
-          // 2. Fallback: in-memory cache
-          adminContext = AdminContextManager.getContext(session.id);
-          if (adminContext) {
-            effectiveTenantId = adminContext.targetTenantId;
-            await prisma.session.update({
-              where: { id: session.id },
-              data: {
-                adminTargetTenantId: adminContext.targetTenantId,
-                adminTargetTenantName: adminContext.targetTenantName,
-                adminSwitchedAt: adminContext.switchedAt,
-                adminContextExpiresAt: adminContext.expiresAt,
-              },
-            }).catch(() => {});
-          }
-        }
-      }
-
       const safeUser = {
         id: session.user.id,
         name: session.user.name,
         email: session.user.email,
         role: session.user.role,
         active: session.user.active,
-        tenantId: session.user.tenantId || undefined,
+        tenantId: session.effectiveTenantId || undefined,
         customPermissions: session.user.customPermissions || [],
         isMasterProtected: session.user.isMasterProtected || false,
         mustChangePassword: session.user.mustChangePassword,
@@ -797,13 +781,14 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         authenticated: true,
         user: safeUser,
-        effectiveTenantId,
-        adminContext: adminContext
+        effectiveTenantId: session.effectiveTenantId,
+        effectiveMembershipId: session.effectiveMembershipId,
+        adminContext: session.adminContext
           ? {
-              targetTenantId: adminContext.targetTenantId,
-              targetTenantName: adminContext.targetTenantName,
-              switchedAt: adminContext.switchedAt,
-              expiresAt: adminContext.expiresAt,
+              targetTenantId: session.adminContext.targetTenantId,
+              targetTenantName: session.adminContext.targetTenantName,
+              switchedAt: session.adminContext.switchedAt,
+              expiresAt: session.adminContext.expiresAt,
             }
           : null,
       });
@@ -860,6 +845,112 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  // 5. POST /api/auth/switch-tenant
+  app.post('/api/auth/switch-tenant', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ message: 'Sessão inválida ou expirada.' });
+      }
+
+      const { tenantId } = req.body || {};
+      if (!tenantId) {
+        return res.status(400).json({ message: 'O ID da organização é obrigatório.' });
+      }
+
+      if (session.user.role === 'PLATFORM_MASTER') {
+        const targetTenant = await prisma.tenant.findUnique({
+          where: { id: tenantId, deletedAt: null },
+        });
+
+        if (!targetTenant || targetTenant.status === 'CANCELLED') {
+          return res.status(404).json({ message: 'Organização não encontrada ou cancelada.' });
+        }
+
+        // Update session context switch fields
+        await prisma.session.update({
+          where: { id: session.id },
+          data: {
+            effectiveTenantId: targetTenant.id,
+            effectiveMembershipId: null,
+            activeRole: 'PLATFORM_MASTER',
+            activePermissions: { set: [] },
+            adminTargetTenantId: targetTenant.id,
+            adminTargetTenantName: targetTenant.name,
+            adminSwitchedAt: new Date(),
+            adminContextExpiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours
+          },
+        });
+
+        // Audit Log
+        await AuditLogService.record(prisma, {
+          tenantId: targetTenant.id,
+          userId: session.userId,
+          userName: session.user.name,
+          action: 'PLATFORM_MASTER_CONTEXT_SWITCH',
+          entity: 'Session',
+          entityId: session.id,
+          newData: { targetTenantId: targetTenant.id },
+          req,
+        });
+
+        return res.json({
+          success: true,
+          role: 'PLATFORM_MASTER',
+          tenantId: targetTenant.id,
+          customPermissions: [],
+        });
+      } else {
+        // Standard user: validate membership
+        const membership = await prisma.userTenantMembership.findFirst({
+          where: {
+            userId: session.userId,
+            tenantId,
+            active: true,
+          },
+          include: { tenant: true },
+        });
+
+        if (!membership || !membership.tenant || membership.tenant.status !== 'ACTIVE' || membership.tenant.deletedAt) {
+          return res.status(403).json({ message: 'Você não possui permissão ou vínculo ativo com esta organização.' });
+        }
+
+        // Update session
+        await prisma.session.update({
+          where: { id: session.id },
+          data: {
+            effectiveTenantId: membership.tenantId,
+            effectiveMembershipId: membership.id,
+            activeRole: membership.role,
+            activePermissions: { set: membership.customPermissions || [] },
+          },
+        });
+
+        // Audit Log
+        await AuditLogService.record(prisma, {
+          tenantId: membership.tenantId,
+          userId: session.userId,
+          userName: session.user.name,
+          action: 'USER_CONTEXT_SWITCH',
+          entity: 'Session',
+          entityId: session.id,
+          newData: { targetTenantId: membership.tenantId },
+          req,
+        });
+
+        return res.json({
+          success: true,
+          role: membership.role,
+          tenantId: membership.tenantId,
+          customPermissions: membership.customPermissions || [],
+        });
+      }
+    } catch (err: any) {
+      console.error('[SWITCH TENANT ERROR]', err);
+      return res.status(500).json({ message: 'Erro interno ao trocar de organização.' });
+    }
+  });
+
   // Helper middleware/function for tenant context & session auth with instant suspension protection
   const getAuthSession = async (req: express.Request) => {
     const token = extractSessionToken(req);
@@ -872,11 +963,8 @@ async function auditAndEnsureMasterUser() {
 
     if (!session || session.expiresAt < new Date()) return null;
 
-    // Instant suspension/inactivation protection: if user is not active or non-master tenant is not ACTIVE, kill session
-    if (
-      !session.user.active ||
-      (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && session.user.tenant.status !== 'ACTIVE')
-    ) {
+    // Instant suspension/inactivation protection: if user is not active, kill session
+    if (!session.user.active) {
       await AdminContextManager.clearContext(session.id, prisma);
       await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
       return null;
@@ -889,22 +977,17 @@ async function auditAndEnsureMasterUser() {
     if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
       return null;
     }
-    if (
-      domainResolution.tenant &&
-      (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
-    ) {
-      if (session.user.role !== 'PLATFORM_MASTER' && session.user.tenantId !== domainResolution.tenant.id) {
-        // Cross-tenant access forbidden: user from Tenant A accessing domain of Tenant B
-        return null;
-      }
-    }
 
-    // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
-    let effectiveTenantId = session.user.tenantId;
-    let adminContext: any = null;
+    let effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+    let effectiveMembershipId = session.effectiveMembershipId;
+    let activeRole = session.activeRole || session.user.role;
+    let activePermissions = session.activePermissions || session.user.customPermissions || [];
 
     if (session.user.role === 'PLATFORM_MASTER') {
-      // 1. Primary: PostgreSQL persistent session columns
+      // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
+      effectiveTenantId = session.user.tenantId || effectiveTenantId;
+      let adminContext: any = null;
+
       if (session.adminTargetTenantId && session.adminContextExpiresAt) {
         if (new Date(session.adminContextExpiresAt) > new Date()) {
           const targetTenant = await prisma.tenant.findUnique({
@@ -929,7 +1012,7 @@ async function auditAndEnsureMasterUser() {
           await AdminContextManager.clearContext(session.id, prisma);
         }
       } else {
-        // 2. Fallback: in-memory cache
+        // Fallback: in-memory cache
         adminContext = AdminContextManager.getContext(session.id);
         if (adminContext) {
           effectiveTenantId = adminContext.targetTenantId;
@@ -944,13 +1027,143 @@ async function auditAndEnsureMasterUser() {
           }).catch(() => {});
         }
       }
-    }
 
-    return {
-      ...session,
-      effectiveTenantId,
-      adminContext,
-    };
+      // PLATFORM_MASTER has global access
+      activeRole = 'PLATFORM_MASTER';
+      activePermissions = [];
+
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          role: activeRole as any,
+          customPermissions: activePermissions,
+        },
+        effectiveTenantId,
+        effectiveMembershipId: null,
+        adminContext,
+      };
+    } else {
+      // Standard user: validate domain context if target matches domain organization
+      if (
+        domainResolution.tenant &&
+        (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
+      ) {
+        if (session.user.tenantId !== domainResolution.tenant.id) {
+          // Cross-tenant access forbidden
+          return null;
+        }
+      }
+
+      // Standard user: Must have active membership in the effectiveTenantId
+      if (!effectiveTenantId) {
+        // Find first active membership to initialize context
+        const firstMem = await prisma.userTenantMembership.findFirst({
+          where: { userId: session.userId, active: true },
+          include: { tenant: true },
+        });
+
+        if (!firstMem || !firstMem.tenant || firstMem.tenant.status !== 'ACTIVE' || firstMem.tenant.deletedAt) {
+          // Revoke session
+          await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+          return null;
+        }
+
+        effectiveTenantId = firstMem.tenantId;
+        effectiveMembershipId = firstMem.id;
+        activeRole = firstMem.role;
+        activePermissions = firstMem.customPermissions;
+
+        // Persist on session
+        await prisma.session.update({
+          where: { id: session.id },
+          data: {
+            effectiveTenantId,
+            effectiveMembershipId,
+            activeRole,
+            activePermissions: { set: activePermissions },
+          },
+        }).catch(() => {});
+      }
+
+      // Query database to ensure membership is still active in real-time
+      const membership = await prisma.userTenantMembership.findFirst({
+        where: {
+          userId: session.userId,
+          tenantId: effectiveTenantId,
+          active: true,
+        },
+        include: { tenant: true },
+      });
+
+      if (!membership || !membership.tenant || membership.tenant.status !== 'ACTIVE' || membership.tenant.deletedAt) {
+        // Membership revoked or organization suspended/deleted, try to fallback or revoke session
+        const anotherMem = await prisma.userTenantMembership.findFirst({
+          where: {
+            userId: session.userId,
+            active: true,
+            tenantId: { not: effectiveTenantId },
+          },
+          include: { tenant: true },
+        });
+
+        const fallbackMem = anotherMem && anotherMem.tenant && anotherMem.tenant.status === 'ACTIVE' && !anotherMem.tenant.deletedAt ? anotherMem : null;
+
+        if (!fallbackMem) {
+          // No more active memberships: revoke session
+          await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+          return null;
+        }
+
+        // Fallback to the other active membership
+        effectiveTenantId = fallbackMem.tenantId;
+        effectiveMembershipId = fallbackMem.id;
+        activeRole = fallbackMem.role;
+        activePermissions = fallbackMem.customPermissions;
+
+        await prisma.session.update({
+          where: { id: session.id },
+          data: {
+            effectiveTenantId,
+            effectiveMembershipId,
+            activeRole,
+            activePermissions: { set: activePermissions },
+          },
+        }).catch(() => {});
+      } else {
+        // Live update session cached values if different
+        if (
+          session.activeRole !== membership.role ||
+          session.effectiveMembershipId !== membership.id ||
+          JSON.stringify(session.activePermissions) !== JSON.stringify(membership.customPermissions)
+        ) {
+          activeRole = membership.role;
+          activePermissions = membership.customPermissions;
+          effectiveMembershipId = membership.id;
+
+          await prisma.session.update({
+            where: { id: session.id },
+            data: {
+              effectiveMembershipId,
+              activeRole,
+              activePermissions: { set: activePermissions },
+            },
+          }).catch(() => {});
+        }
+      }
+
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          role: activeRole as any,
+          customPermissions: activePermissions,
+        },
+        effectiveTenantId,
+        effectiveMembershipId,
+        adminContext: null,
+      };
+    }
   };
 
   // -------------------------------------------------------------
@@ -3842,6 +4055,18 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
+      if (user.tenantId) {
+        await prisma.userTenantMembership.create({
+          data: {
+            userId: user.id,
+            tenantId: user.tenantId,
+            role: user.role,
+            customPermissions: { set: user.customPermissions },
+            active: user.active,
+          },
+        });
+      }
+
       await AuditLogService.record(prisma, {
         tenantId: targetTenantId || null,
         userId: session.user.id,
@@ -3969,6 +4194,29 @@ async function auditAndEnsureMasterUser() {
           passwordHash: hashedPassword,
         },
       });
+
+      if (updatedUser.tenantId) {
+        await prisma.userTenantMembership.upsert({
+          where: {
+            userId_tenantId: {
+              userId: updatedUser.id,
+              tenantId: updatedUser.tenantId,
+            },
+          },
+          create: {
+            userId: updatedUser.id,
+            tenantId: updatedUser.tenantId,
+            role: updatedUser.role,
+            customPermissions: { set: updatedUser.customPermissions },
+            active: updatedUser.active,
+          },
+          update: {
+            role: updatedUser.role,
+            customPermissions: { set: updatedUser.customPermissions },
+            active: updatedUser.active,
+          },
+        });
+      }
 
       for (const item of auditActions) {
         await AuditLogService.record(prisma, {
@@ -8469,6 +8717,7 @@ async function startServer() {
   serverInstance = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
     await auditAndEnsureMasterUser();
+    await migrateLegacyUserMemberships();
   });
 }
 
@@ -8538,7 +8787,7 @@ process.on('SIGINT', () => {
   gracefulShutdown('SIGINT', 0);
 });
 
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   startServer();
 }
 

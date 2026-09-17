@@ -346,10 +346,7 @@ export class AuditLogService {
       const executeRecordLogic = async (tx: Prisma.TransactionClient) => {
         // Acquire PostgreSQL transactional advisory lock per tenant
         // hashtext('audit_chain_' || tenantKey) returns a tenant-specific 32-bit int lock key
-        await tx.$executeRawUnsafe(
-          `SELECT pg_advisory_xact_lock(hashtext('audit_chain_' || $1));`,
-          tenantKey
-        );
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'audit_chain_' + tenantKey}));`;
 
         const {
           tenantId,
