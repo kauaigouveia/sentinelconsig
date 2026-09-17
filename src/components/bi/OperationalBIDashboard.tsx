@@ -258,7 +258,7 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
         {/* 1. Backlog em Aberto */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Backlog Esteira</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">VALORES NA ESTEIRA</span>
             <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <Layers className="w-4 h-4" />
             </div>
@@ -309,7 +309,7 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
         {/* 4. Retenção Portabilidades (CIP) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider">CIP Retenção</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Saldo na CIP</span>
             <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center">
               <Coins className="w-4 h-4" />
             </div>

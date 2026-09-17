@@ -375,7 +375,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
           >
             {whiteLabel.logoUrl ? (
               <img
-                src={whiteLabel.logoUrl}
+                src={
+                  whiteLabel.logoUrl.includes('sentinel')
+                    ? '/branding/sentinel-consig-symbol.png'
+                    : whiteLabel.logoUrl
+                }
                 alt={whiteLabel.companyName || 'Sentinel Consig'}
                 className="h-full w-full object-contain rounded-lg shadow-2xs"
                 referrerPolicy="no-referrer"
@@ -398,7 +402,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             <div className="h-8.5 w-8.5 flex items-center justify-center shrink-0 mt-0.5">
               {whiteLabel.logoUrl ? (
                 <img
-                  src={whiteLabel.logoUrl}
+                  src={
+                    whiteLabel.logoUrl.includes('sentinel')
+                      ? '/branding/sentinel-consig-symbol.png'
+                      : whiteLabel.logoUrl
+                  }
                   alt={whiteLabel.companyName || 'Sentinel Consig'}
                   className="h-full w-full object-contain rounded-lg shadow-2xs"
                   referrerPolicy="no-referrer"

@@ -69,7 +69,7 @@ async function auditAndEnsureMasterUser() {
     if (!tenant) {
       tenant = await prisma.tenant.create({
         data: {
-          name: 'SENTINEL CONSIG / EVOLVE',
+          name: 'SENTINEL CONSIG',
           tradeName: 'Sentinel Consig',
           slug: 'sentinel-consig',
           status: 'ACTIVE',
@@ -1244,12 +1244,12 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'CPF inválido. Informe os 11 dígitos do CPF.' });
       }
 
-      // Verify partner belongs to tenant
+      // Verify partner belongs to tenant and is active
       const partner = await prisma.partner.findFirst({
-        where: { id: partnerId, tenantId, deletedAt: null },
+        where: { id: partnerId, tenantId, deletedAt: null, status: 'ATIVO' },
       });
       if (!partner) {
-        return res.status(400).json({ error: 'Parceiro não encontrado ou não pertence a este tenant.' });
+        return res.status(400).json({ error: 'Parceiro não encontrado, inativo ou não pertence a este tenant.' });
       }
 
       // Check duplicate pending simulation
@@ -2185,13 +2185,34 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
       const partners = await prisma.partner.findMany({
         where: { tenantId, deletedAt: null },
+        orderBy: { name: 'asc' },
       });
-      return res.json(partners);
+
+      const normalized = partners.map(p => {
+        const fullName = p.name || 'Parceiro sem Nome';
+        const code = p.code || '';
+        const login = code ? (code.includes('@') ? code : `${fullName}@${code}`) : fullName;
+
+        return {
+          id: p.id,
+          fullName,
+          login,
+          promoterId: p.promoterId || '',
+          active: p.status === 'ATIVO',
+          createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
+          updatedAt: p.updatedAt ? p.updatedAt.toISOString() : new Date().toISOString(),
+        };
+      });
+
+      return res.json(normalized);
     } catch (err) {
+      console.error('[API PARTNERS GET ERROR]', err);
       return res.status(500).json({ error: 'Erro ao buscar parceiros.' });
     }
   });
@@ -2806,72 +2827,295 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
-  // PARTNERS (POST, PUT, DELETE)
+  // PARTNERS (POST, PUT, PATCH, DELETE, SYNC-LOCAL)
   // -------------------------------------------------------------
   app.post('/api/partners', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
-      const { id, name, code, promoterId, status, email, phone, document } = req.body;
-      if (!name || !code) return res.status(400).json({ error: 'Nome e Código são obrigatórios.' });
-      const partner = await prisma.partner.create({
-        data: {
-          id: id || undefined,
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id, fullName, name, login, code, promoterId, active, status, email, phone, document } = req.body;
+
+      const partnerName = (fullName || name || '').trim().toUpperCase();
+      const partnerLogin = (login || code || '').trim().toUpperCase();
+
+      if (!partnerName) {
+        return res.status(400).json({ error: 'Nome do parceiro é obrigatório.' });
+      }
+      if (!partnerLogin) {
+        return res.status(400).json({ error: 'Login/Código do parceiro é obrigatório.' });
+      }
+
+      // Validate promoterId belongs to same tenant
+      if (promoterId) {
+        const validPromoter = await prisma.promoter.findFirst({
+          where: { id: promoterId, tenantId, status: 'ATIVO' },
+        });
+        if (!validPromoter) {
+          return res.status(400).json({ error: 'A promotora vinculada é inválida ou pertence a outro tenant.' });
+        }
+      }
+
+      // Check if already exists in tenant (including soft-deleted)
+      const existing = await prisma.partner.findFirst({
+        where: {
           tenantId,
-          name,
-          code,
-          promoterId: promoterId || null,
-          status: status || 'ATIVO',
-          email: email || null,
-          phone: phone || null,
-          document: document || null,
-        },
+          OR: [
+            { code: partnerLogin },
+            { name: partnerName }
+          ]
+        }
       });
-      return res.json(partner);
-    } catch (err) {
-      return res.status(500).json({ error: 'Erro ao criar parceiro.' });
+
+      const isPartnerActive = active !== undefined ? Boolean(active) : (status === 'ATIVO');
+
+      let created;
+      if (existing) {
+        if (existing.deletedAt === null) {
+          return res.status(400).json({ error: 'Este login ou nome de parceiro já está cadastrado.' });
+        }
+        // Reactivate soft-deleted partner
+        created = await prisma.partner.update({
+          where: { id: existing.id },
+          data: {
+            name: partnerName,
+            code: partnerLogin,
+            promoterId: promoterId || null,
+            status: isPartnerActive ? 'ATIVO' : 'INATIVO',
+            email: email || null,
+            phone: phone || null,
+            document: document || null,
+            deletedAt: null,
+          },
+        });
+      } else {
+        created = await prisma.partner.create({
+          data: {
+            id: id || undefined,
+            tenantId,
+            name: partnerName,
+            code: partnerLogin,
+            promoterId: promoterId || null,
+            status: isPartnerActive ? 'ATIVO' : 'INATIVO',
+            email: email || null,
+            phone: phone || null,
+            document: document || null,
+          },
+        });
+      }
+
+      try {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: session.user.id || 'system',
+            userName: session.user.name || 'System',
+            action: 'CREATE_PARTNER',
+            entity: 'Partner',
+            entityId: created.id,
+            newData: JSON.stringify({ details: `Criado parceiro ${created.name} (${created.code})` }),
+          }
+        });
+      } catch (auditErr) {}
+
+      const codeStr = created.code || '';
+      const loginStr = codeStr ? (codeStr.includes('@') ? codeStr : `${created.name}@${codeStr}`) : created.name;
+
+      return res.json({
+        id: created.id,
+        fullName: created.name,
+        login: loginStr,
+        promoterId: created.promoterId || '',
+        active: created.status === 'ATIVO',
+        createdAt: created.createdAt ? created.createdAt.toISOString() : new Date().toISOString(),
+        updatedAt: created.updatedAt ? created.updatedAt.toISOString() : new Date().toISOString(),
+      });
+    } catch (err: any) {
+      console.error('[API PARTNERS POST ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao criar parceiro.' });
     }
   });
 
-  app.put('/api/partners/:id', async (req, res) => {
+  const handleUpdatePartner = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
       const { id } = req.params;
-      const { name, code, promoterId, status, email, phone, document } = req.body;
-      const partner = await prisma.partner.updateMany({
+      const { fullName, name, login, code, promoterId, active, status, email, phone, document } = req.body;
+
+      const partnerName = name || fullName;
+      const partnerLogin = code || login;
+      const partnerStatus = active !== undefined ? (active ? 'ATIVO' : 'INATIVO') : status;
+
+      if (promoterId) {
+        const validPromoter = await prisma.promoter.findFirst({
+          where: { id: promoterId, tenantId, status: 'ATIVO' },
+        });
+        if (!validPromoter) {
+          return res.status(400).json({ error: 'A promotora vinculada é inválida ou pertence a outro tenant.' });
+        }
+      }
+
+      await prisma.partner.updateMany({
         where: { id, tenantId },
         data: {
-          name,
-          code,
-          promoterId: promoterId !== undefined ? promoterId : undefined,
-          status: status !== undefined ? status : undefined,
-          email: email !== undefined ? email : undefined,
-          phone: phone !== undefined ? phone : undefined,
-          document: document !== undefined ? document : undefined,
+          ...(partnerName ? { name: partnerName.trim().toUpperCase() } : {}),
+          ...(partnerLogin ? { code: partnerLogin.trim().toUpperCase() } : {}),
+          ...(promoterId !== undefined ? { promoterId: promoterId || null } : {}),
+          ...(partnerStatus ? { status: partnerStatus } : {}),
+          ...(email !== undefined ? { email: email || null } : {}),
+          ...(phone !== undefined ? { phone: phone || null } : {}),
+          ...(document !== undefined ? { document: document || null } : {}),
         },
       });
-      return res.json({ success: true, partner });
+
+      try {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: session.user.id || 'system',
+            userName: session.user.name || 'System',
+            action: 'UPDATE_PARTNER',
+            entity: 'Partner',
+            entityId: id,
+            newData: JSON.stringify({ details: `Atualizado parceiro ID ${id}` }),
+          }
+        });
+      } catch (auditErr) {}
+
+      return res.json({ success: true });
     } catch (err) {
+      console.error('[API PARTNERS UPDATE ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar parceiro.' });
     }
-  });
+  };
+
+  app.put('/api/partners/:id', handleUpdatePartner);
+  app.patch('/api/partners/:id', handleUpdatePartner);
 
   app.delete('/api/partners/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
       const { id } = req.params;
+
       await prisma.partner.updateMany({
         where: { id, tenantId },
         data: { deletedAt: new Date() },
       });
+
+      try {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: session.user.id || 'system',
+            userName: session.user.name || 'System',
+            action: 'DELETE_PARTNER',
+            entity: 'Partner',
+            entityId: id,
+            newData: JSON.stringify({ details: `Removido parceiro ID ${id}` }),
+          }
+        });
+      } catch (auditErr) {}
+
       return res.json({ success: true });
     } catch (err) {
+      console.error('[API PARTNERS DELETE ERROR]', err);
       return res.status(500).json({ error: 'Erro ao remover parceiro.' });
+    }
+  });
+
+  app.post('/api/partners/sync-local', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { items } = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'items deve ser um array de parceiros.' });
+      }
+
+      let createdCount = 0;
+      let ignoredCount = 0;
+      const errors: string[] = [];
+
+      for (const item of items) {
+        try {
+          const fullName = (item.fullName || item.name || '').trim().toUpperCase();
+          const login = (item.login || item.code || '').trim().toUpperCase();
+
+          if (!fullName || !login) {
+            ignoredCount++;
+            continue;
+          }
+
+          const existing = await prisma.partner.findFirst({
+            where: {
+              tenantId,
+              deletedAt: null,
+              OR: [{ code: login }, { name: fullName }],
+            },
+          });
+
+          if (existing) {
+            ignoredCount++;
+          } else {
+            let promoterId: string | null = null;
+            if (item.promoterId) {
+              const p = await prisma.promoter.findFirst({
+                where: { id: item.promoterId, tenantId, status: 'ATIVO' },
+              });
+              if (p) promoterId = p.id;
+            }
+
+            await prisma.partner.create({
+              data: {
+                tenantId,
+                name: fullName,
+                code: login,
+                promoterId,
+                status: item.active === false ? 'INATIVO' : 'ATIVO',
+              },
+            });
+            createdCount++;
+          }
+        } catch (itemErr: any) {
+          errors.push(`Erro ao migrar ${item.fullName || item.name}: ${itemErr.message}`);
+        }
+      }
+
+      try {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: session.user.id || 'system',
+            userName: session.user.name || 'System',
+            action: 'MIGRATE_PARTNERS',
+            entity: 'Partner',
+            entityId: 'batch',
+            newData: JSON.stringify({ details: `Migrados ${createdCount} parceiros, ${ignoredCount} ignorados, ${errors.length} erros.` }),
+          },
+        });
+      } catch (auditErr) {}
+
+      return res.json({ createdCount, ignoredCount, errors });
+    } catch (err: any) {
+      console.error('[API PARTNERS SYNC ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao migrar parceiros.' });
     }
   });
 

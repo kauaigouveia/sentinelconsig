@@ -136,12 +136,14 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       const pRes = await fetch('/api/partners');
       if (pRes.ok) {
         const pData = await pRes.json();
-        setPartners(pData.filter((p: any) => p.status === 'ATIVO' || p.active));
+        setPartners(pData.filter((p: any) => p.status === 'ATIVO' || p.active === true));
       } else {
-        setPartners(StorageService.getPartners().filter(p => p.active));
+        console.error('Erro ao carregar parceiros da API:', pRes.statusText);
+        setPartners([]);
       }
-    } catch {
-      setPartners(StorageService.getPartners().filter(p => p.active));
+    } catch (err) {
+      console.error('Falha de rede ao carregar parceiros da API:', err);
+      setPartners([]);
     }
 
     try {
@@ -181,9 +183,12 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
     const query = partnerQuery.trim().toLowerCase();
     return partners.filter(p => {
-      const code = extractPartnerCode(p.login).toLowerCase();
-      const login = p.login.toLowerCase();
-      const name = p.fullName.toLowerCase();
+      if (!p) return false;
+      const loginStr = String(p.login ?? (p as any).code ?? '');
+      const fullNameStr = String(p.fullName ?? (p as any).name ?? '');
+      const code = extractPartnerCode(loginStr).toLowerCase();
+      const login = loginStr.toLowerCase();
+      const name = fullNameStr.toLowerCase();
 
       return code.includes(query) || login.includes(query) || name.includes(query);
     });
@@ -1829,25 +1834,6 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                     />
                   </div>
                 )}
-
-                {/* Info de Automobilismo / Auditoria */}
-                <div className="p-3.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-slate-700 dark:text-slate-300 text-xs space-y-1">
-                  <div className="flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-300">
-                    <ShieldCheck className="h-4 w-4 text-blue-600" />
-                    Preenchimento Automático do Sistema
-                  </div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                    • <strong>Responsável:</strong> {activeUser.name} ({activeUser.role})
-                  </div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                    • <strong>Status Selecionado:</strong> {initialStatus}
-                  </div>
-                  {initialStatus === 'SIMULAÇÃO ENVIADA' && (
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                      • <strong>Vínculo Automático:</strong> O sistema mudará para <strong>DIGITADA PELA MESA</strong> assim que a proposta for digitada.
-                    </div>
-                  )}
-                </div>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
                   <button

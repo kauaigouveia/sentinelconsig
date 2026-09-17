@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Handshake,
   Plus,
@@ -14,6 +14,7 @@ import {
   Search,
   Users,
   ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { extractPartnerCode } from '../../lib/utils';
@@ -24,7 +25,8 @@ import { ActionBar } from '../ui/ActionBar';
 import { MetricCard } from '../ui/MetricCard';
 
 export const PartnerManagement: React.FC = () => {
-  const [partners, setPartners] = useState<Partner[]>(() => StorageService.getPartners());
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const promoters = StorageService.getPromoters();
   const proposals = StorageService.getProposals();
 
@@ -39,7 +41,35 @@ export const PartnerManagement: React.FC = () => {
 
   const derivedCode = extractPartnerCode(login);
 
-  const handleCreatePartner = (e: React.FormEvent) => {
+  const loadPartnersFromApi = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/partners', {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) {
+        throw new Error(`Erro na API ao carregar parceiros (HTTP ${res.status}).`);
+      }
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setPartners(data);
+      } else {
+        setPartners([]);
+      }
+    } catch (err: any) {
+      console.error('[PartnerManagement] Error loading partners from API:', err);
+      setErrorMsg(err.message || 'Falha ao carregar parceiros do servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPartnersFromApi();
+  }, []);
+
+  const handleCreatePartner = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -60,14 +90,23 @@ export const PartnerManagement: React.FC = () => {
     }
 
     try {
-      const created = StorageService.createPartner({
-        fullName: fullName.trim(),
-        login: login.trim().toUpperCase(),
-        promoterId,
+      const res = await fetch('/api/partners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          login: login.trim().toUpperCase(),
+          promoterId: promoterId || null,
+        }),
       });
 
-      setPartners(StorageService.getPartners());
-      setSuccessMsg(`Parceiro ${created.login} cadastrado com sucesso! Código extraído: ${extractPartnerCode(created.login)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao cadastrar parceiro no servidor.');
+      }
+
+      await loadPartnersFromApi();
+      setSuccessMsg(`Parceiro ${data.login || login} cadastrado com sucesso! Código extraído: ${extractPartnerCode(data.login || login)}`);
       setFullName('');
       setLogin('');
       setShowAddForm(false);
@@ -95,10 +134,17 @@ export const PartnerManagement: React.FC = () => {
       itemType: 'Parceiro Comercial',
       itemName: `${p.fullName} (${p.login})`,
       description: 'O cadastro do parceiro e seus vínculos serão removidos permanentemente.',
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deletePartner(p.id);
-          setPartners(StorageService.getPartners());
+          const res = await fetch(`/api/partners/${p.id}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || 'Erro ao excluir parceiro no servidor.');
+          }
+
+          await loadPartnersFromApi();
           setSuccessMsg(`Parceiro ${p.login} excluído com sucesso.`);
           setTimeout(() => setSuccessMsg(null), 3000);
         } catch (err: any) {
@@ -108,10 +154,21 @@ export const PartnerManagement: React.FC = () => {
     });
   };
 
-  const handleToggleActive = (p: Partner) => {
+  const handleToggleActive = async (p: Partner) => {
     try {
-      StorageService.updatePartner(p.id, { active: !p.active });
-      setPartners(StorageService.getPartners());
+      const res = await fetch(`/api/partners/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          active: !p.active,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao alterar status do parceiro.');
+      }
+
+      await loadPartnersFromApi();
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao alterar status do parceiro.');
     }
@@ -409,7 +466,7 @@ export const PartnerManagement: React.FC = () => {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportCompleted={() => {
-          setPartners(StorageService.getPartners());
+          loadPartnersFromApi();
           setSuccessMsg('Correspondentes importados com sucesso!');
         }}
       />

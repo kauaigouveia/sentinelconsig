@@ -181,11 +181,11 @@ const STORAGE_KEYS = {
 export const INITIAL_TENANTS: Tenant[] = [
   {
     id: 'tenant_evolve',
-    name: 'SENTINEL EVOLVE',
+    name: 'SENTINEL CONSIG',
     slug: 'evolve',
     customDomain: 'app.sentinelevolve.com.br',
     cnpj: '48.912.456/0001-80',
-    razaoSocial: 'Sentinel Evolve Tecnologia em Crédito LTDA',
+    razaoSocial: 'Sentinel Consig Tecnologia em Crédito LTDA',
     tradeName: 'Sentinel Consig Operações',
     plan: 'ENTERPRISE',
     status: 'ACTIVE',
@@ -3489,7 +3489,7 @@ export class StorageService {
       whiteLabel: {
         companyName: 'SENTINEL CONSIG',
         tradeName: 'Gestão de Produção de Consignado',
-        logoUrl: '/sentinel_logo.png',
+        logoUrl: '/branding/sentinel-consig-logo-transparent.png',
         primaryColor: '#2563eb',
         supportEmail: 'suporte@sentinelconsig.com.br',
         footerText: 'SENTINEL CONSIG © 2026 - Central de Produção de Consignado',
@@ -3501,8 +3501,8 @@ export class StorageService {
     if (!wl.companyName || wl.companyName === 'EVOLVE GESTÃO' || wl.companyName === 'CREDITPRO GESTÃO') {
       wl.companyName = 'SENTINEL CONSIG';
     }
-    if (!wl.logoUrl || wl.logoUrl === '/evolve_logo.png' || wl.logoUrl === '/app_logo.png') {
-      wl.logoUrl = '/sentinel_logo.png';
+    if (!wl.logoUrl || wl.logoUrl === '/evolve_logo.png' || wl.logoUrl === '/app_logo.png' || wl.logoUrl === '/sentinel_logo.png') {
+      wl.logoUrl = '/branding/sentinel-consig-logo-transparent.png';
     }
     if (!wl.supportEmail || wl.supportEmail.includes('evolvegestao') || wl.supportEmail.includes('creditpro')) {
       wl.supportEmail = 'suporte@sentinelconsig.com.br';
@@ -3525,7 +3525,7 @@ export class StorageService {
     return this.getConfig().whiteLabel || {
       companyName: 'SENTINEL CONSIG',
       tradeName: 'Gestão de Produção de Consignado',
-      logoUrl: '/sentinel_logo.png',
+      logoUrl: '/branding/sentinel-consig-logo-transparent.png',
       primaryColor: '#2563eb',
       supportEmail: 'suporte@sentinelconsig.com.br',
       footerText: 'SENTINEL CONSIG © 2026 - Central de Produção de Consignado',

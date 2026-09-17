@@ -33,7 +33,27 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedPartner = partners.find(p => p.id === selectedPartnerId);
+  const safePartners = Array.isArray(partners) ? partners : [];
+
+  // Helper to extract code safely
+  const extractCode = (partnerObj?: any) => {
+    if (!partnerObj) return 'S/C';
+    const login = String(partnerObj.login ?? '');
+    const code = String(partnerObj.code ?? '');
+    if (code) return code;
+    const parts = login.split('@');
+    return parts[1] || parts[0] || 'S/C';
+  };
+
+  // Helper to get safe partner strings
+  const getPartnerStrings = (p: any) => {
+    const fullName = String(p?.fullName ?? p?.name ?? 'Parceiro');
+    const login = String(p?.login ?? p?.code ?? fullName);
+    return { fullName, login };
+  };
+
+  const selectedPartner = safePartners.find(p => p && p.id === selectedPartnerId);
+  const selectedStrings = selectedPartner ? getPartnerStrings(selectedPartner) : null;
 
   // Close when clicking outside
   useEffect(() => {
@@ -46,20 +66,22 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter partners based on query
-  const filteredPartners = partners.filter(p => {
+  // Filter partners based on query (defensive case-insensitive search by code, name or login)
+  const filteredPartners = safePartners.filter(p => {
+    if (!p) return false;
+    const { fullName, login } = getPartnerStrings(p);
+    
     if (!query.trim()) return true;
     const q = query.trim().toLowerCase();
     
-    // Extract code after @ if exists
-    const loginParts = p.login.split('@');
-    const code = loginParts[1] || '';
+    const loginParts = login.split('@');
     const loginName = loginParts[0] || '';
+    const codePart = loginParts[1] || (p as any).code || '';
 
     return (
-      code.toLowerCase().includes(q) ||
-      p.login.toLowerCase().includes(q) ||
-      p.fullName.toLowerCase().includes(q) ||
+      codePart.toLowerCase().includes(q) ||
+      login.toLowerCase().includes(q) ||
+      fullName.toLowerCase().includes(q) ||
       loginName.toLowerCase().includes(q)
     );
   });
@@ -84,6 +106,7 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
     }
 
     const totalCount = allowAll ? filteredPartners.length + 1 : filteredPartners.length;
+    if (totalCount === 0) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -106,11 +129,6 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
     }
   };
 
-  const extractCode = (login: string) => {
-    const parts = login.split('@');
-    return parts[1] || login;
-  };
-
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {label && (
@@ -120,7 +138,7 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
       )}
 
       {/* Selected State View (When partner is chosen and dropdown is closed) */}
-      {selectedPartner && !isOpen ? (
+      {selectedPartner && !isOpen && selectedStrings ? (
         <div
           onClick={() => {
             setIsOpen(true);
@@ -130,14 +148,14 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
         >
           <div className="flex items-center gap-2 overflow-hidden min-w-0">
             <span className="shrink-0 px-2 py-0.5 rounded-md bg-blue-600 text-white font-mono font-black text-[11px] shadow-xs">
-              {extractCode(selectedPartner.login)}
+              {extractCode(selectedPartner)}
             </span>
             <div className="min-w-0">
               <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
-                {selectedPartner.fullName}
+                {selectedStrings.fullName}
               </span>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block -mt-0.5">
-                Login: {selectedPartner.login}
+                Login: {selectedStrings.login}
               </span>
             </div>
           </div>
@@ -238,7 +256,8 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
                 const itemIndex = allowAll ? index + 1 : index;
                 const isSelected = p.id === selectedPartnerId;
                 const isHighlighted = itemIndex === highlightedIndex;
-                const code = extractCode(p.login);
+                const code = extractCode(p);
+                const { fullName: itemFullName, login: itemLogin } = getPartnerStrings(p);
 
                 return (
                   <div
@@ -259,10 +278,10 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
                       </span>
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {p.fullName}
+                          {itemFullName}
                         </div>
                         <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
-                          Login: {p.login}
+                          Login: {itemLogin}
                         </div>
                       </div>
                     </div>

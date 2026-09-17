@@ -29,7 +29,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
   const [companyName, setCompanyName] = useState(currentWl.companyName || 'SENTINEL CONSIG');
   const [tradeName, setTradeName] = useState(currentWl.tradeName || 'Plataforma de Gestão de Crédito Consignado');
   const [cnpj, setCnpj] = useState(currentWl.cnpj || '');
-  const [logoUrl, setLogoUrl] = useState(currentWl.logoUrl || '/sentinel_logo.png');
+  const [logoUrl, setLogoUrl] = useState(currentWl.logoUrl || '/branding/sentinel-consig-logo-transparent.png');
   const [primaryColor, setPrimaryColor] = useState(currentWl.primaryColor || '#2563eb');
   const [supportEmail, setSupportEmail] = useState(currentWl.supportEmail || 'suporte@sentinelconsig.com.br');
   const [supportPhone, setSupportPhone] = useState(currentWl.supportPhone || '');
@@ -154,7 +154,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
     setCompanyName('SENTINEL CONSIG');
     setTradeName('Plataforma de Gestão de Crédito Consignado');
     setCnpj('');
-    setLogoUrl('/sentinel_logo.png');
+    setLogoUrl('/branding/sentinel-consig-logo-transparent.png');
     setPrimaryColor('#2563eb');
     setSupportEmail('suporte@sentinelconsig.com.br');
     setSupportPhone('');

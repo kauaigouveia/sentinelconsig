@@ -395,7 +395,7 @@ export const UserManagement: React.FC = () => {
                         {t.name}
                       </option>
                     ))}
-                    {tenants.length === 0 && <option value="tenant_evolve">Evolve Gestão</option>}
+                    {tenants.length === 0 && <option value="tenant_evolve">Sentinel Consig</option>}
                   </select>
                 </div>
               ) : (
