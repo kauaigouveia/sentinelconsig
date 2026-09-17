@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    
+  <defs>
+    <!-- Gradientes do Escudo -->
+    <linearGradient id="shieldLeftEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2FF"/>
+      <stop offset="50%" stop-color="#0066FF"/>
+      <stop offset="100%" stop-color="#003399"/>
+    </linearGradient>
+
+    <linearGradient id="shieldRightEdge" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="40%" stop-color="#0077FF"/>
+      <stop offset="100%" stop-color="#051B38"/>
+    </linearGradient>
+
+    <linearGradient id="shieldTopFacet" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0099FF"/>
+      <stop offset="50%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#0077FF"/>
+    </linearGradient>
+
+    <linearGradient id="shieldBottomPoint" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#0066FF"/>
+      <stop offset="50%" stop-color="#00D2FF"/>
+      <stop offset="100%" stop-color="#003388"/>
+    </linearGradient>
+
+    <!-- Gradientes da fita 'S' -->
+    <linearGradient id="ribbonTopCurve" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="30%" stop-color="#0099FF"/>
+      <stop offset="70%" stop-color="#0055EE"/>
+      <stop offset="100%" stop-color="#051D3B"/>
+    </linearGradient>
+
+    <linearGradient id="ribbonUnderfoldTop" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#020C1B"/>
+      <stop offset="50%" stop-color="#051A33"/>
+      <stop offset="100%" stop-color="#003F88"/>
+    </linearGradient>
+
+    <linearGradient id="ribbonCenterDiag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0055EE"/>
+      <stop offset="40%" stop-color="#00B4D8"/>
+      <stop offset="70%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#0055EE"/>
+    </linearGradient>
+
+    <linearGradient id="ribbonUnderfoldBottom" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#020C1B"/>
+      <stop offset="60%" stop-color="#071E3D"/>
+      <stop offset="100%" stop-color="#0044AA"/>
+    </linearGradient>
+
+    <linearGradient id="ribbonBottomCurve" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0077FF"/>
+      <stop offset="50%" stop-color="#00C8FF"/>
+      <stop offset="100%" stop-color="#0044CC"/>
+    </linearGradient>
+
+    <!-- Gradiente Wordmark SENTINEL (Light) -->
+    <linearGradient id="textSentinelLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#14345C"/>
+      <stop offset="45%" stop-color="#0A1E38"/>
+      <stop offset="100%" stop-color="#051224"/>
+    </linearGradient>
+
+    <!-- Gradiente Wordmark SENTINEL (Dark) -->
+    <linearGradient id="textSentinelDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+
+    <!-- Gradiente Barra Ciano do 'E' -->
+    <linearGradient id="accentCyanBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00A8FF"/>
+      <stop offset="50%" stop-color="#00D8FF"/>
+      <stop offset="100%" stop-color="#00A8FF"/>
+    </linearGradient>
+
+    <!-- Gradiente Linhas Horizontais CONSIG -->
+    <linearGradient id="consigLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0077FF"/>
+      <stop offset="50%" stop-color="#00C8FF"/>
+      <stop offset="100%" stop-color="#0077FF"/>
+    </linearGradient>
+  </defs>
+  
+    <g transform="translate(6, 20) scale(1.0)">
+      
+  <g id="sentinel-shield-symbol" transform="translate(0, 0)">
+    <!-- 1. MOLDURA EXTERNA DO ESCUDO HEXAGONAL FACETADO -->
+    <!-- Faceta Superior Esquerda da Moldura -->
+    <path d="M 250,35 L 340,75 L 315,100 L 250,70 L 185,100 L 160,75 Z" 
+          fill="url(#shieldTopFacet)"/>
+
+    <!-- Faceta Lateral Esquerda Superior -->
+    <path d="M 160,75 L 250,35 L 150,75 L 145,215 L 180,205 L 185,100 Z" 
+          fill="url(#shieldLeftEdge)"/>
+
+    <!-- Faceta Lateral Esquerda Inferior com Chanfro 3D -->
+    <path d="M 145,215 L 180,205 L 205,275 L 175,290 L 145,215 Z" 
+          fill="#0055DD"/>
+
+    <!-- Curvatura e Faceta do Escudo convergindo para o vértice inferior -->
+    <path d="M 175,290 L 205,275 L 250,380 L 250,425 L 175,290 Z" 
+          fill="url(#shieldBottomPoint)"/>
+
+    <!-- Vértice Inferior Direito do Escudo -->
+    <path d="M 250,425 L 250,380 L 295,275 L 325,290 Z" 
+          fill="url(#shieldRightEdge)"/>
+
+    <!-- Faceta Lateral Direita Superior -->
+    <path d="M 340,75 L 355,85 L 355,215 L 320,205 L 315,100 Z" 
+          fill="url(#shieldRightEdge)"/>
+
+    <!-- Borda externa afiada do Escudo (Highlights e Chanfros Metálicos) -->
+    <!-- Moldura chanfrada esquerda -->
+    <path d="M 250,35 L 150,80 L 150,230 L 250,425 L 250,395 L 175,230 L 175,100 L 250,60 Z" 
+          fill="url(#shieldLeftEdge)" opacity="0.95"/>
+
+    <!-- Moldura chanfrada direita -->
+    <path d="M 250,35 L 350,80 L 350,230 L 250,425 L 250,395 L 325,230 L 325,100 L 250,60 Z" 
+          fill="url(#shieldRightEdge)" opacity="0.95"/>
+
+    <!-- Chanfro refletivo de luz na crista superior esquerda -->
+    <polygon points="250,35 150,80 162,90 250,50" fill="#E0F7FF" opacity="0.8"/>
+    <!-- Chanfro refletivo de luz na crista superior direita -->
+    <polygon points="250,35 350,80 338,90 250,50" fill="#70D6FF" opacity="0.6"/>
+
+    <!-- 2. A FITA SINUOSA ESCULPIDA EM FORMA DE 'S' (RIBBON 3D) -->
+
+    <!-- [S-PARTE 1]: Dobra interna profunda superior (sombra cavidade) -->
+    <path d="M 220,95 Q 260,85 300,105 Q 330,125 330,160 Q 330,195 285,225 L 255,200 Q 285,180 285,160 Q 285,140 260,130 Q 235,120 215,135 Z" 
+          fill="url(#ribbonUnderfoldTop)"/>
+
+    <!-- [S-PARTE 2]: Curva Superior Externa da Fita (Azul Ciano Metálico Fluido) -->
+    <path d="M 180,135 Q 180,85 250,85 Q 315,85 335,130 Q 345,155 335,180 L 305,165 Q 315,145 300,125 Q 275,105 240,105 Q 205,105 200,130 Z" 
+          fill="url(#ribbonTopCurve)"/>
+
+    <!-- [S-PARTE 3]: Faixa Diagonal Central Dinâmica (Cruza do alto à direita para baixo à esquerda) -->
+    <path d="M 335,180 L 295,215 L 205,285 L 165,250 Q 160,225 180,185 L 210,205 Q 195,230 205,245 L 265,195 L 305,165 Z" 
+          fill="url(#ribbonCenterDiag)"/>
+
+    <!-- [S-PARTE 4]: Dobra interna inferior da fita (sombra cavidade inferior) -->
+    <path d="M 205,245 L 265,195 L 295,225 Q 250,265 215,290 L 195,265 Q 200,255 205,245 Z" 
+          fill="url(#ribbonUnderfoldBottom)"/>
+
+    <!-- [S-PARTE 5]: Curva Inferior Externa da Fita (Dobra fluida em direção à direita) -->
+    <path d="M 175,275 Q 160,335 225,355 Q 285,365 315,320 L 340,345 Q 300,395 230,385 Q 140,365 145,290 Q 150,260 175,245 Z" 
+          fill="url(#ribbonBottomCurve)"/>
+
+    <!-- [S-PARTE 6]: Extremidade final da cauda inferior do S -->
+    <path d="M 315,320 L 340,345 L 320,360 L 285,365 Q 310,345 315,320 Z" 
+          fill="#0099FF"/>
+
+    <!-- [REFLEXOS METÁLICOS ESPECULARES (HIGHLIGHTS)] -->
+    <!-- Filete de luz na crista superior do S -->
+    <path d="M 215,92 Q 255,87 295,105 Q 320,120 325,140" 
+          fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+
+    <!-- Filete de luz na diagonal central do S -->
+    <path d="M 290,175 L 215,245" 
+          fill="none" stroke="#E0F7FF" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+
+    <!-- Filete de luz na curva inferior do S -->
+    <path d="M 175,310 Q 190,360 250,370 Q 285,370 315,345" 
+          fill="none" stroke="#BAE6FD" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  </g>
+  
+    </g>
+  </svg>

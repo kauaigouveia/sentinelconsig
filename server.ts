@@ -702,7 +702,7 @@ async function auditAndEnsureMasterUser() {
         !session.user.active ||
         (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
       ) {
-        AdminContextManager.clearContext(session.id);
+        await AdminContextManager.clearContext(session.id, prisma);
         await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
         res.clearCookie('cg_session_id', {
           httpOnly: true,
@@ -713,10 +713,50 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ authenticated: false, message: 'Tenant suspenso ou usuário desativado.' });
       }
 
-      // Check active AdminContext for PLATFORM_MASTER
+      // Check active AdminContext for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
       let adminContext: any = null;
+      let effectiveTenantId = session.user.tenantId;
+
       if (session.user.role === 'PLATFORM_MASTER') {
-        adminContext = AdminContextManager.getContext(session.id);
+        // 1. Primary: PostgreSQL persistent session columns
+        if (session.adminTargetTenantId && session.adminContextExpiresAt) {
+          if (new Date(session.adminContextExpiresAt) > new Date()) {
+            const targetTenant = await prisma.tenant.findUnique({
+              where: { id: session.adminTargetTenantId },
+            });
+            if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
+              adminContext = {
+                targetTenantId: targetTenant.id,
+                targetTenantName: session.adminTargetTenantName || targetTenant.name,
+                switchedAt: session.adminSwitchedAt || session.createdAt,
+                expiresAt: session.adminContextExpiresAt,
+              };
+              effectiveTenantId = targetTenant.id;
+              AdminContextManager.warmCache(session.id, adminContext);
+            } else {
+              // Tenant deleted or cancelled: clear invalid persistent context
+              await AdminContextManager.clearContext(session.id, prisma);
+            }
+          } else {
+            // Expired context: clear persistent state
+            await AdminContextManager.clearContext(session.id, prisma);
+          }
+        } else {
+          // 2. Fallback: in-memory cache
+          adminContext = AdminContextManager.getContext(session.id);
+          if (adminContext) {
+            effectiveTenantId = adminContext.targetTenantId;
+            await prisma.session.update({
+              where: { id: session.id },
+              data: {
+                adminTargetTenantId: adminContext.targetTenantId,
+                adminTargetTenantName: adminContext.targetTenantName,
+                adminSwitchedAt: adminContext.switchedAt,
+                adminContextExpiresAt: adminContext.expiresAt,
+              },
+            }).catch(() => {});
+          }
+        }
       }
 
       const safeUser = {
@@ -736,6 +776,7 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         authenticated: true,
         user: safeUser,
+        effectiveTenantId,
         adminContext: adminContext
           ? {
               targetTenantId: adminContext.targetTenantId,
@@ -815,7 +856,7 @@ async function auditAndEnsureMasterUser() {
       !session.user.active ||
       (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && session.user.tenant.status !== 'ACTIVE')
     ) {
-      AdminContextManager.clearContext(session.id);
+      await AdminContextManager.clearContext(session.id, prisma);
       await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
       return null;
     }
@@ -837,13 +878,50 @@ async function auditAndEnsureMasterUser() {
       }
     }
 
-    // Context switch support for PLATFORM_MASTER
+    // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
     let effectiveTenantId = session.user.tenantId;
     let adminContext: any = null;
+
     if (session.user.role === 'PLATFORM_MASTER') {
-      adminContext = AdminContextManager.getContext(session.id);
-      if (adminContext) {
-        effectiveTenantId = adminContext.targetTenantId;
+      // 1. Primary: PostgreSQL persistent session columns
+      if (session.adminTargetTenantId && session.adminContextExpiresAt) {
+        if (new Date(session.adminContextExpiresAt) > new Date()) {
+          const targetTenant = await prisma.tenant.findUnique({
+            where: { id: session.adminTargetTenantId },
+          });
+
+          if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
+            adminContext = {
+              targetTenantId: targetTenant.id,
+              targetTenantName: session.adminTargetTenantName || targetTenant.name,
+              switchedAt: session.adminSwitchedAt || session.createdAt,
+              expiresAt: session.adminContextExpiresAt,
+            };
+            effectiveTenantId = targetTenant.id;
+            AdminContextManager.warmCache(session.id, adminContext);
+          } else {
+            // Target tenant deleted or cancelled: clear invalid persistent context
+            await AdminContextManager.clearContext(session.id, prisma);
+          }
+        } else {
+          // Expired context: clear persistent state
+          await AdminContextManager.clearContext(session.id, prisma);
+        }
+      } else {
+        // 2. Fallback: in-memory cache
+        adminContext = AdminContextManager.getContext(session.id);
+        if (adminContext) {
+          effectiveTenantId = adminContext.targetTenantId;
+          await prisma.session.update({
+            where: { id: session.id },
+            data: {
+              adminTargetTenantId: adminContext.targetTenantId,
+              adminTargetTenantName: adminContext.targetTenantName,
+              adminSwitchedAt: adminContext.switchedAt,
+              adminContextExpiresAt: adminContext.expiresAt,
+            },
+          }).catch(() => {});
+        }
       }
     }
 
@@ -933,7 +1011,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Autenticação obrigatória para SSE.' });
       }
 
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) {
         return res.status(403).json({ error: 'Tenant ativo é obrigatório para conexão Realtime.' });
       }
@@ -1001,7 +1079,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
       
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) {
         return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       }
@@ -1024,7 +1102,7 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar cliente.' });
       }
@@ -1113,7 +1191,7 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/clients/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -1571,7 +1649,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const whereCondition = { tenantId };
       const proposals = await prisma.proposal.findMany({
@@ -1589,7 +1667,7 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/proposals', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar proposta.' });
       }
@@ -1668,7 +1746,7 @@ async function auditAndEnsureMasterUser() {
   app.patch('/api/proposals/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para atualizar proposta.' });
       }
@@ -1887,7 +1965,7 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/proposals/:id/comments', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários.' });
       }
@@ -1975,7 +2053,7 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/proposals/:id/comments', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Acesso não autorizado.' });
       }
@@ -1996,7 +2074,7 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/proposals/:id/timeline', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Acesso não autorizado: sessão ou tenant inválido.' });
       
       const { id } = req.params;
@@ -2138,7 +2216,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const statuses = await prisma.proposalStatus.findMany({
         where: { tenantId, active: true },
@@ -2155,7 +2233,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const banks = await prisma.bank.findMany({
         where: { tenantId },
@@ -2170,7 +2248,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const promoters = await prisma.promoter.findMany({
         where: { tenantId },
@@ -2221,7 +2299,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const products = await prisma.product.findMany({
         where: { tenantId },
@@ -2239,7 +2317,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const entries = await prisma.financialEntry.findMany({
         where: { tenantId },
@@ -2255,7 +2333,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const count = await prisma.notification.count({
         where: { tenantId, userId: session.user.id, read: false },
@@ -2270,7 +2348,7 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.user.tenantId;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const userId = session.user.id;
       
@@ -2304,7 +2382,7 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/notifications', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const effectiveTenantId = session?.user?.tenantId;
+      const effectiveTenantId = session.effectiveTenantId || session?.user?.tenantId;
       if (!session?.user || !effectiveTenantId) {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
@@ -2387,7 +2465,7 @@ async function auditAndEnsureMasterUser() {
   app.patch('/api/notifications/:id/read', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id } = req.params;
 
@@ -2405,7 +2483,7 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/notifications/read-all', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const userId = session.user.id;
 
@@ -2426,7 +2504,7 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/tasks', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const tasks = await prisma.task.findMany({
         where: { tenantId },
@@ -2441,7 +2519,7 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/tasks', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id, title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body;
       if (!title) return res.status(400).json({ error: 'Título é obrigatório.' });
@@ -2590,7 +2668,7 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/documents', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
       const clientId = req.query.clientId as string | undefined;
@@ -2614,7 +2692,7 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/documents', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { clientId, proposalId, name, type, fileBase64, mimeType } = req.body || {};
@@ -2728,7 +2806,7 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/documents/:id', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { id } = req.params;
@@ -3674,8 +3752,8 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.view'." });
       }
 
-      const tenantId = session.user.tenantId;
-      const whereCondition = isPlatformMaster
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const whereCondition = isPlatformMaster && !session.adminContext
         ? { deletedAt: null }
         : { tenantId: tenantId || undefined, deletedAt: null };
 
@@ -3718,7 +3796,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Apenas um PLATFORM_MASTER pode atribuir o perfil PLATFORM_MASTER.' });
       }
 
-      const targetTenantId = isPlatformMaster && tenantId ? tenantId : session.user.tenantId;
+      const targetTenantId = isPlatformMaster && !session.adminContext && tenantId ? tenantId : (session.effectiveTenantId || session.user.tenantId);
 
       const existing = await prisma.user.findUnique({
         where: { email: String(email).trim().toLowerCase() },
@@ -5109,8 +5187,8 @@ async function auditAndEnsureMasterUser() {
         return updatedTenant;
       });
 
-      // Clear any active context switch for this tenant
-      AdminContextManager.clearContextByTenantId(id);
+      // Clear any active context switch for this tenant (both memory and DB)
+      await AdminContextManager.clearContextByTenantId(id, prisma);
 
       // Invalidation of cache
       if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
@@ -5173,11 +5251,12 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Tenant alvo não encontrado.' });
       }
 
-      const contextData = AdminContextManager.setContext(
+      const contextData = await AdminContextManager.setContext(
         session.id,
         targetTenant.id,
         targetTenant.name,
-        session.user.id
+        session.user.id,
+        prisma
       );
 
       // Auditoria obrigatória de início de contexto administrativo
@@ -5225,8 +5304,8 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
-      const currentContext = AdminContextManager.getContext(session.id);
-      AdminContextManager.clearContext(session.id);
+      const currentContext = session.adminContext || AdminContextManager.getContext(session.id);
+      await AdminContextManager.clearContext(session.id, prisma);
 
       if (currentContext) {
         // Auditoria de encerramento de contexto
@@ -5267,7 +5346,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
-      const context = AdminContextManager.getContext(session.id);
+      const context = session.adminContext || AdminContextManager.getContext(session.id);
       return res.json({ active: Boolean(context), context });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao obter status do contexto.' });
@@ -5800,7 +5879,8 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/import/proposals', importRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || !session.user || !session.user.tenantId) {
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session || !session.user || !tenantId) {
         return res.status(401).json({ error: 'Autenticação necessária para iniciar importação.' });
       }
 
@@ -5808,7 +5888,6 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Você não tem permissão para importar propostas.' });
       }
 
-      const tenantId = session.user.tenantId;
       const userId = session.user.id;
 
       // Rate limit / Concurrency protection: Check if there's already an active job in PROCESSING for this tenant
@@ -5910,7 +5989,8 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/import/status', importRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || !session.user || !session.user.tenantId) {
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session || !session.user || !tenantId) {
         return res.status(401).json({ error: 'Autenticação necessária para atualizar status em lote.' });
       }
 
@@ -5919,7 +5999,6 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Você não tem permissão para gerenciar status de propostas.' });
       }
 
-      const tenantId = session.user.tenantId;
       const userId = session.user.id;
 
       const activeJob = await prisma.importJob.findFirst({
@@ -6016,7 +6095,8 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/import/partners', importRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || !session.user || !session.user.tenantId) {
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session || !session.user || !tenantId) {
         return res.status(401).json({ error: 'Autenticação necessária para importar parceiros.' });
       }
 
@@ -6024,7 +6104,6 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Você não tem permissão para cadastrar parceiros.' });
       }
 
-      const tenantId = session.user.tenantId;
       const userId = session.user.id;
 
       const { fileName, fileSize, rows } = req.body || {};
@@ -6093,12 +6172,12 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/import/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || !session.user || !session.user.tenantId) {
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session || !session.user || !tenantId) {
         return res.status(401).json({ error: 'Autenticação necessária.' });
       }
 
       const { id } = req.params;
-      const tenantId = session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER';
 
       const job = await prisma.importJob.findUnique({
@@ -6130,12 +6209,12 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/import/:id/cancel', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      if (!session || !session.user || !session.user.tenantId) {
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session || !session.user || !tenantId) {
         return res.status(401).json({ error: 'Autenticação necessária.' });
       }
 
       const { id } = req.params;
-      const tenantId = session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER';
 
       const job = await prisma.importJob.findUnique({
@@ -6900,13 +6979,14 @@ async function startServer() {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       
-      const { role, tenantId: userTenantId, id: userId } = session.user;
+      const { role, id: userId } = session.user;
+      const effectiveTenant = session.effectiveTenantId || session.user.tenantId;
       
       let { title, content, priority, scheduledAt, expiresAt, isGlobal } = req.body;
-      let targetTenantId = userTenantId;
+      let targetTenantId = effectiveTenant;
 
       if (role === 'PLATFORM_MASTER') {
-        if (isGlobal) {
+        if (isGlobal && !session.adminContext) {
           targetTenantId = null;
         }
       } else if (role === 'MASTER') {
@@ -6951,15 +7031,16 @@ async function startServer() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const { role, tenantId: userTenantId } = session.user;
+      const { role } = session.user;
+      const effectiveTenant = session.effectiveTenantId || session.user.tenantId;
 
       if (role !== 'PLATFORM_MASTER' && role !== 'MASTER') {
         return res.status(403).json({ error: 'Acesso negado.' });
       }
 
-      const whereClause = role === 'PLATFORM_MASTER' 
+      const whereClause = role === 'PLATFORM_MASTER' && !session.adminContext
         ? {} 
-        : { tenantId: userTenantId };
+        : { tenantId: effectiveTenant };
 
       const announcements = await prisma.announcement.findMany({
         where: whereClause,
@@ -6976,7 +7057,8 @@ async function startServer() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const { tenantId, id: userId } = session.user;
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const userId = session.user.id;
 
       const limit = Number(req.query.limit) || 20;
       const cursor = req.query.cursor ? String(req.query.cursor) : undefined;

@@ -365,7 +365,10 @@ async function runAllAdversarialTests() {
     const logoutRes = await makeRequest({
       method: 'POST',
       path: '/api/auth/logout',
-      headers: { Cookie: extractedCookie },
+      headers: { 
+        Cookie: extractedCookie,
+        Origin: 'http://127.0.0.1:3000',
+      },
     });
     const postLogoutCookie = logoutRes.headers['set-cookie'];
     const cookieCleared = Array.isArray(postLogoutCookie)

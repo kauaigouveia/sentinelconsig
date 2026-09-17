@@ -233,6 +233,7 @@ export const Header: React.FC<HeaderProps> = ({
       if (targetValue === 'PLATFORM') {
         const res = await fetch('/api/saas/context-switch/exit', { method: 'POST' });
         if (res.ok) {
+          StorageService.clearBusinessCache();
           await StorageService.syncWithPostgreSQL();
           window.location.reload();
         } else {
@@ -245,6 +246,7 @@ export const Header: React.FC<HeaderProps> = ({
           body: JSON.stringify({ targetTenantId: targetValue }),
         });
         if (res.ok) {
+          StorageService.clearBusinessCache();
           StorageService.setCurrentTenantId(targetValue);
           await StorageService.syncWithPostgreSQL();
           window.location.reload();

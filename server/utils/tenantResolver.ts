@@ -357,7 +357,7 @@ export class TenantResolver {
           return suspendedResult;
         }
 
-        if (tenant.status !== 'ACTIVE') {
+        if (tenant.deletedAt || tenant.status !== 'ACTIVE') {
           // CANCELLED, PENDING_DELETION, etc.
           const inactiveResult: DomainResolutionResult = {
             type: 'DOMAIN_NOT_CONFIGURED',
@@ -532,7 +532,7 @@ export class TenantResolver {
           return suspendedResult;
         }
 
-        if (tenantDomain.tenant.status !== 'ACTIVE') {
+        if (tenantDomain.tenant.deletedAt || tenantDomain.tenant.status !== 'ACTIVE') {
           const inactiveResult: DomainResolutionResult = {
             type: 'DOMAIN_NOT_CONFIGURED',
             resolvedHost: cleanHost,

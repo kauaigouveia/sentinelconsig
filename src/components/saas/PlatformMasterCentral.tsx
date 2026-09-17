@@ -518,6 +518,8 @@ export const PlatformMasterCentral: React.FC = () => {
 
       await fetchContextStatus();
       // Synchronize business cache for the target tenant
+      StorageService.clearBusinessCache();
+      StorageService.setCurrentTenantId(targetTenantId);
       await StorageService.syncWithPostgreSQL();
       alert(`Modo de Inspeção ativado para: ${targetTenantName}`);
     } catch (err: any) {
@@ -532,6 +534,8 @@ export const PlatformMasterCentral: React.FC = () => {
       if (!res.ok) throw new Error(data.error || 'Erro ao sair do contexto.');
 
       await fetchContextStatus();
+      StorageService.clearBusinessCache();
+      StorageService.setCurrentTenantId('tenant_evolve');
       await StorageService.syncWithPostgreSQL();
       alert('Contexto de inspeção encerrado.');
     } catch (err: any) {

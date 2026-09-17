@@ -298,8 +298,15 @@ model Session {
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
 
+  // Admin Context Switch Persistence (PLATFORM_MASTER)
+  adminTargetTenantId   String?   @map("admin_target_tenant_id")
+  adminTargetTenantName String?   @map("admin_target_tenant_name")
+  adminSwitchedAt       DateTime? @map("admin_switched_at")
+  adminContextExpiresAt DateTime? @map("admin_context_expires_at")
+
   @@index([userId])
   @@index([token])
+  @@index([adminTargetTenantId])
   @@map("sessions")
 }
 

@@ -70,7 +70,7 @@ async function runValidationSuite() {
     // Garante status ACTIVE para teste
     await prisma.tenant.update({
       where: { id: evolveTenant.id },
-      data: { status: TenantStatus.ACTIVE },
+      data: { status: TenantStatus.ACTIVE, deletedAt: null, deletedBy: null },
     });
   }
 
@@ -114,7 +114,35 @@ async function runValidationSuite() {
   } else {
     await prisma.tenant.update({
       where: { id: dmaisTenant.id },
-      data: { status: TenantStatus.ACTIVE },
+      data: { status: TenantStatus.ACTIVE, deletedAt: null, deletedBy: null },
+    });
+    await prisma.whiteLabelConfig.upsert({
+      where: { tenantId: dmaisTenant.id },
+      create: {
+        tenantId: dmaisTenant.id,
+        companyName: 'DMAIS CRÉDITO',
+        legalName: 'DMAIS PROMOTORA DE CRÉDITO S/A',
+        logoUrl: 'https://cdn.sentinelconsig.com.br/dmais-logo.png',
+        faviconUrl: 'https://cdn.sentinelconsig.com.br/dmais-favicon.ico',
+        primaryColor: '#ea580c',
+        secondaryColor: '#c2410c',
+        accentColor: '#f97316',
+        footerText: '© 2026 DMAIS Crédito. Todos os direitos reservados.',
+        supportEmail: 'contato@dmaiscredito.com.br',
+        supportPhone: '(21) 97777-6666',
+      },
+      update: {
+        companyName: 'DMAIS CRÉDITO',
+        legalName: 'DMAIS PROMOTORA DE CRÉDITO S/A',
+        logoUrl: 'https://cdn.sentinelconsig.com.br/dmais-logo.png',
+        faviconUrl: 'https://cdn.sentinelconsig.com.br/dmais-favicon.ico',
+        primaryColor: '#ea580c',
+        secondaryColor: '#c2410c',
+        accentColor: '#f97316',
+        footerText: '© 2026 DMAIS Crédito. Todos os direitos reservados.',
+        supportEmail: 'contato@dmaiscredito.com.br',
+        supportPhone: '(21) 97777-6666',
+      },
     });
   }
 
@@ -387,7 +415,7 @@ async function runValidationSuite() {
     const testSessionId = 'test-session-master-123';
     
     // 1. Alternância de Contexto Administrativo Server-Side
-    const contextData = AdminContextManager.setContext(
+    const contextData = await AdminContextManager.setContext(
       testSessionId,
       dmaisTenant.id,
       dmaisTenant.name,
@@ -413,7 +441,7 @@ async function runValidationSuite() {
     });
 
     // 3. Encerramento de Contexto
-    AdminContextManager.clearContext(testSessionId);
+    await AdminContextManager.clearContext(testSessionId);
     const clearedContext = AdminContextManager.getContext(testSessionId);
     const isContextCleared = clearedContext === null;
 

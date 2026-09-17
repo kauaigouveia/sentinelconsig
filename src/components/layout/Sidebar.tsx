@@ -376,7 +376,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             {whiteLabel.logoUrl ? (
               <img
                 src={
-                  whiteLabel.logoUrl.includes('sentinel')
+                  whiteLabel.logoUrl.startsWith('/branding/sentinel-')
                     ? '/branding/sentinel-consig-symbol.png'
                     : whiteLabel.logoUrl
                 }
@@ -403,7 +403,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               {whiteLabel.logoUrl ? (
                 <img
                   src={
-                    whiteLabel.logoUrl.includes('sentinel')
+                    whiteLabel.logoUrl.startsWith('/branding/sentinel-')
                       ? '/branding/sentinel-consig-symbol.png'
                       : whiteLabel.logoUrl
                   }
