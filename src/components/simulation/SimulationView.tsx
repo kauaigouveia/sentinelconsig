@@ -119,10 +119,42 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
   const comboboxRef = useRef<HTMLDivElement>(null);
 
-  const loadData = () => {
-    setSimulations(StorageService.getSimulationRequests());
-    setPartners(StorageService.getPartners().filter(p => p.active));
-    setUsers(StorageService.getUsers());
+  const loadData = async () => {
+    try {
+      const res = await fetch('/api/simulations', { credentials: 'same-origin' });
+      if (res.ok) {
+        const data = await res.json();
+        setSimulations(data);
+      } else {
+        console.error('Erro ao carregar simulações da API:', res.statusText);
+      }
+    } catch (err) {
+      console.error('Falha de rede ao carregar simulações da API:', err);
+    }
+
+    try {
+      const pRes = await fetch('/api/partners');
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        setPartners(pData.filter((p: any) => p.status === 'ATIVO' || p.active));
+      } else {
+        setPartners(StorageService.getPartners().filter(p => p.active));
+      }
+    } catch {
+      setPartners(StorageService.getPartners().filter(p => p.active));
+    }
+
+    try {
+      const uRes = await fetch('/api/users');
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        setUsers(uData);
+      } else {
+        setUsers(StorageService.getUsers());
+      }
+    } catch {
+      setUsers(StorageService.getUsers());
+    }
   };
 
   useEffect(() => {
@@ -185,19 +217,49 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     setIsNewModalOpen(true);
   };
 
-  const executeCreateSimulation = (
+  const executeCreateSimulation = async (
     cleanCpf: string,
     partnerId: string,
     statusOverride?: SimulationStatus,
     reasonOverride?: string
   ) => {
     try {
-      StorageService.createSimulationRequest({
-        cpf: cleanCpf,
-        partnerId,
-        status: statusOverride || initialStatus,
-        rejectionReason: reasonOverride || initialRejectionReason,
+      const res = await fetch('/api/simulations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ cpf: cleanCpf, partnerId }),
       });
+
+      if (res.status === 409) {
+        const data = await res.json();
+        setDuplicateWarning({
+          pendingSim: data.existing,
+          cleanCpf,
+          partnerId,
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json();
+        setModalError(data.error || 'Erro ao registrar solicitação de simulação.');
+        return;
+      }
+
+      const created = await res.json();
+
+      if (statusOverride && statusOverride !== 'SIMULAÇÃO ENVIADA') {
+        await fetch(`/api/simulations/${created.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            status: statusOverride,
+            rejectionReason: reasonOverride,
+          }),
+        });
+      }
 
       setIsNewModalOpen(false);
       setNewCpf('');
@@ -206,8 +268,9 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       setDuplicateWarning(null);
       setInitialStatus('SIMULAÇÃO ENVIADA');
       setInitialRejectionReason('');
+      await loadData();
     } catch (err: any) {
-      setModalError(err.message || 'Erro ao registrar solicitação de simulação.');
+      setModalError(err.message || 'Erro de comunicação ao registrar solicitação de simulação.');
     }
   };
 
@@ -231,8 +294,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       return;
     }
 
-    // Check for existing pending duplicate
-    const existingPending = StorageService.checkExistingPendingSimulation(cleanCpf, selectedPartner.id);
+    // Check for existing pending duplicate in state
+    const existingPending = simulations.find(
+      s => s.status === 'SIMULAÇÃO ENVIADA' && s.cpf === cleanCpf && s.partnerId === selectedPartner.id
+    );
     if (existingPending) {
       setDuplicateWarning({
         pendingSim: existingPending,
@@ -245,62 +310,105 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     executeCreateSimulation(cleanCpf, selectedPartner.id);
   };
 
-  const handleConfirmStatusChange = () => {
+  const handleConfirmStatusChange = async () => {
     if (!statusModalTarget) return;
 
     try {
-      StorageService.updateSimulationRequestStatus(
-        statusModalTarget.id,
-        selectedTargetStatus,
-        {
-          reason: rejectionReason || (selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'Inviabilidade de crédito / sem margem ou política de crédito' : 'Alteração manual de status'),
-          proposalNumber: selectedAdeNumber,
-        }
-      );
+      const res = await fetch(`/api/simulations/${statusModalTarget.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          status: selectedTargetStatus,
+          rejectionReason: rejectionReason || (selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'Inviabilidade de crédito / sem margem ou política de crédito' : 'Alteração manual de status'),
+          matchedProposalNumber: selectedAdeNumber,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Erro ao atualizar status.');
+        return;
+      }
+
       setStatusModalTarget(null);
       setRejectionReason('');
       setSelectedAdeNumber('');
       window.dispatchEvent(new Event('credit_gestao_storage_update'));
       window.dispatchEvent(new Event('proposalsUpdated'));
-      loadData();
+      await loadData();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Erro de comunicação ao atualizar status.');
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteModalTarget) return;
     setDeleteError(null);
 
     try {
-      StorageService.deleteSimulationRequest(deleteModalTarget.id, deleteReason || 'Exclusão solicitada');
+      const res = await fetch(`/api/simulations/${deleteModalTarget.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ reason: deleteReason || 'Exclusão solicitada' }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setDeleteError(data.error || 'Erro ao excluir solicitação de simulação.');
+        return;
+      }
+
       setDeleteModalTarget(null);
       setDeleteReason('');
       setSelectedIds(prev => prev.filter(id => id !== deleteModalTarget.id));
+      await loadData();
     } catch (err: any) {
-      setDeleteError(err.message || 'Erro ao excluir solicitação de simulação.');
+      setDeleteError(err.message || 'Erro de comunicação ao excluir solicitação de simulação.');
     }
   };
 
-  const handleConfirmBulkDelete = () => {
+  const handleConfirmBulkDelete = async () => {
     if (selectedIds.length === 0) return;
     setBulkDeleteError(null);
 
-    const result = StorageService.bulkDeleteSimulationRequests(
-      selectedIds,
-      bulkDeleteReason || 'Exclusão em massa de simulações'
-    );
+    try {
+      const res = await fetch('/api/simulations/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          ids: selectedIds,
+          reason: bulkDeleteReason || 'Exclusão em massa de simulações',
+        }),
+      });
 
-    if (result.errors.length > 0) {
-      setBulkDeleteError(result.errors.join(' | '));
-    }
-
-    if (result.successCount > 0) {
-      setSelectedIds([]);
-      if (result.errors.length === 0) {
-        setIsBulkDeleteModalOpen(false);
-        setBulkDeleteReason('');
+      if (!res.ok) {
+        const data = await res.json();
+        setBulkDeleteError(data.error || 'Erro ao executar exclusão em massa.');
+        return;
       }
+
+      const result = await res.json();
+      if (result.failedCount > 0) {
+        const failedErrors = result.results
+          .filter((r: any) => !r.success)
+          .map((r: any) => `${r.id}: ${r.error}`)
+          .join(' | ');
+        setBulkDeleteError(`Excluídos ${result.deletedCount} de ${result.requestedCount}. Erros: ${failedErrors}`);
+      }
+
+      if (result.deletedCount > 0) {
+        setSelectedIds([]);
+        if (result.failedCount === 0) {
+          setIsBulkDeleteModalOpen(false);
+          setBulkDeleteReason('');
+        }
+        await loadData();
+      }
+    } catch (err: any) {
+      setBulkDeleteError(err.message || 'Erro de comunicação ao processar exclusão em massa.');
     }
   };
 
@@ -530,10 +638,31 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   const hasActiveFilters =
     cpfSearch || selectedPartnerId || selectedUserId || selectedStatus !== 'TODOS' || startDate || endDate;
 
+  // UI Permission helpers for simulation view
+  const canDeleteSimulationUI = (user: UserType | null, sim: SimulationRequest): boolean => {
+    if (!user || !user.role || !sim) return false;
+    if (user.role === 'PLATFORM_MASTER' || ['MASTER', 'TENANT_ADMIN', 'GESTOR', 'GERENTE'].includes(user.role)) {
+      return true;
+    }
+    if (['SUPORTE', 'DIGITADOR'].includes(user.role)) {
+      return sim.createdById === user.id && sim.status !== 'DIGITADA PELA MESA';
+    }
+    return false;
+  };
+
+  const canChangeStatusUI = (user: UserType | null, sim: SimulationRequest): boolean => {
+    if (!user || !user.role || !sim) return false;
+    if (sim.status === 'DIGITADA PELA MESA' || sim.status === 'PERDIDA (NÃO DIGITADA)') return false;
+    return ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR', 'GERENTE', 'SUPORTE', 'DIGITADOR'].includes(user.role);
+  };
+
   // Bulk Selection Handlers
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(filteredSimulations.map(s => s.id));
+      const deletableIds = filteredSimulations
+        .filter(s => canDeleteSimulationUI(activeUser, s))
+        .map(s => s.id);
+      setSelectedIds(deletableIds);
     } else {
       setSelectedIds([]);
     }
@@ -594,15 +723,16 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     document.body.removeChild(link);
 
     // Audit log
-    StorageService.addAuditLog({
-      action: 'EXPORTAR_CENTRAL_SIMULACOES',
-      entity: 'SimulationRequest',
-      entityId: 'EXPORT',
-      newData: JSON.stringify({
-        quantity: dataToExport.length,
-        exportedBy: activeUser.name,
+    fetch('/api/audit-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'EXPORTAR_CENTRAL_SIMULACOES',
+        entity: 'SimulationRequest',
+        entityId: 'EXPORT',
+        newData: { quantity: dataToExport.length },
       }),
-    });
+    }).catch(() => {});
   };
 
   return (
@@ -1017,8 +1147,14 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                             <input
                               type="checkbox"
                               checked={isSelected}
+                              disabled={!canDeleteSimulationUI(activeUser, sim)}
                               onChange={() => handleToggleSelectRow(sim.id)}
-                              className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              title={
+                                canDeleteSimulationUI(activeUser, sim)
+                                  ? "Selecionar para exclusão em massa"
+                                  : "Sem permissão para excluir esta simulação"
+                              }
+                              className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             />
                           </td>
 
@@ -1076,7 +1212,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                             <div className="flex items-center gap-1.5">
                               <select
                                 value={sim.status}
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   const val = e.target.value as SimulationStatus;
                                   if (val === 'DIGITADA PELA MESA' || val === 'NÃO PASSÍVEL DE CONTRATAÇÃO') {
                                     setStatusModalTarget(sim);
@@ -1085,9 +1221,15 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                                     setSelectedAdeNumber(sim.matchedProposalNumber || '');
                                   } else {
                                     try {
-                                      StorageService.updateSimulationRequestStatus(sim.id, val);
-                                      window.dispatchEvent(new Event('credit_gestao_storage_update'));
-                                      window.dispatchEvent(new Event('proposalsUpdated'));
+                                      const res = await fetch(`/api/simulations/${sim.id}/status`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ status: val }),
+                                      });
+                                      if (!res.ok) {
+                                        const errData = await res.json().catch(() => ({}));
+                                        throw new Error(errData.error || 'Erro ao atualizar status.');
+                                      }
                                       loadData();
                                     } catch (err: any) {
                                       alert(err.message);
@@ -1173,7 +1315,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                                 <Info className="h-3.5 w-3.5" />
                               </button>
 
-                              {StorageService.canChangeSimulationStatus(activeUser, sim) && (
+                              {canChangeStatusUI(activeUser, sim) && (
                                 <button
                                   onClick={() => {
                                     setStatusModalTarget(sim);
@@ -1191,7 +1333,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                                 </button>
                               )}
 
-                              {StorageService.canDeleteSimulationRequest(activeUser, sim) && (
+                              {canDeleteSimulationUI(activeUser, sim) && (
                                 <button
                                   title="Excluir Solicitação"
                                   onClick={() => {

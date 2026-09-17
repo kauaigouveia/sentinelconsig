@@ -3939,6 +3939,7 @@ export class StorageService {
       cpf: cleanCpf,
       partnerId: partner.id,
       createdById: activeUser.id,
+      tenantId: activeUser.tenantId || (partner as any).tenantId || this.getCurrentTenantId() || 'tenant_evolve',
       status: initialStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -4107,23 +4108,74 @@ export class StorageService {
    * Verifica permissão de alteração de status para NÃO PASSÍVEL DE CONTRATAÇÃO.
    * Regra: Perfis operacionais e gerenciais podem alterar se a simulação estiver em SIMULAÇÃO ENVIADA.
    */
+  /**
+   * Resolve o tenantId associado a uma solicitação de simulação.
+   */
+  public static getSimulationTenantId(simulation: SimulationRequest): string {
+    if (simulation.tenantId) {
+      return simulation.tenantId;
+    }
+    if (simulation.createdById) {
+      const creator = this.getUsers().find(u => u.id === simulation.createdById);
+      if (creator && creator.tenantId) {
+        return creator.tenantId;
+      }
+    }
+    if (simulation.partnerId) {
+      const partner = this.getPartners().find(p => p.id === simulation.partnerId);
+      if (partner && (partner as any).tenantId) {
+        return (partner as any).tenantId;
+      }
+    }
+    return this.getCurrentTenantId() || 'tenant_evolve';
+  }
+
   public static canChangeSimulationStatus(user: User, simulation: SimulationRequest): boolean {
     if (simulation.status === 'DIGITADA PELA MESA' || simulation.status === 'PERDIDA (NÃO DIGITADA)') return false;
-    return ['MASTER', 'GESTOR', 'GERENTE', 'SUPORTE', 'DIGITADOR'].includes(user.role);
+    return ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR', 'GERENTE', 'SUPORTE', 'DIGITADOR'].includes(user.role);
   }
 
   /**
    * Verifica permissão para exclusão de simulação.
-   * Regra: MASTER, GESTOR e GERENTE podem excluir qualquer simulação.
-   * DIGITADOR/SUPORTE podem excluir apenas solicitações criadas por eles próprios e que ainda não foram digitadas.
+   * Regra por Matriz de Acesso:
+   * - PLATFORM_MASTER: pode excluir qualquer simulação no contexto permitido. Quando operando em tenant específico, respeita o tenant ativo.
+   * - MASTER / TENANT_ADMIN / GESTOR / GERENTE: podem excluir qualquer simulação do próprio tenant.
+   * - DIGITADOR / SUPORTE: podem excluir apenas solicitações criadas por eles próprios, no próprio tenant, e que ainda não foram digitadas.
+   * - Nenhuma role pode excluir solicitações cross-tenant.
    */
   public static canDeleteSimulationRequest(user: User, simulation: SimulationRequest): boolean {
-    if (['MASTER', 'GESTOR', 'GERENTE'].includes(user.role)) {
+    if (!user || !user.role || !simulation) {
+      return false;
+    }
+
+    const simTenantId = this.getSimulationTenantId(simulation);
+    const currentTenantId = this.getCurrentTenantId();
+    const userTenantId = user.tenantId || currentTenantId || 'tenant_evolve';
+
+    // 1. PLATFORM_MASTER
+    if (user.role === 'PLATFORM_MASTER') {
+      // Se PLATFORM_MASTER estiver atuando em contexto de tenant específico, respeita o tenant ativo
+      if (currentTenantId && simTenantId !== currentTenantId) {
+        return false;
+      }
       return true;
     }
+
+    // Isolar por tenant para todas as demais funções: não permitir exclusão cross-tenant
+    if (userTenantId && simTenantId && userTenantId !== simTenantId) {
+      return false;
+    }
+
+    // 2. MASTER, TENANT_ADMIN, GESTOR e GERENTE do próprio tenant
+    if (['MASTER', 'TENANT_ADMIN', 'GESTOR', 'GERENTE'].includes(user.role)) {
+      return true;
+    }
+
+    // 3. DIGITADOR e SUPORTE (apenas criadas por eles próprios e que ainda não foram digitadas pela mesa)
     if (['SUPORTE', 'DIGITADOR'].includes(user.role)) {
       return simulation.createdById === user.id && simulation.status !== 'DIGITADA PELA MESA';
     }
+
     return false;
   }
 
@@ -4142,7 +4194,7 @@ export class StorageService {
   }
 
   /**
-   * Exclui uma solicitação de simulação com validação e auditoria.
+   * Exclui uma solicitação de simulação com validação rigorosa de autorização e auditoria.
    */
   public static deleteSimulationRequest(id: string, reason?: string): boolean {
     const requests = this.getSimulationRequests();
@@ -4158,6 +4210,7 @@ export class StorageService {
       throw new Error('Você não possui permissão para excluir esta solicitação de simulação.');
     }
 
+    const simTenantId = this.getSimulationTenantId(sim);
     const deletedData = JSON.stringify(sim);
     requests.splice(index, 1);
     this.set(STORAGE_KEYS.SIMULATION_REQUESTS, requests);
@@ -4170,6 +4223,8 @@ export class StorageService {
       newData: JSON.stringify({
         deletedBy: activeUser.name,
         userRole: activeUser.role,
+        tenantId: simTenantId,
+        cpfMasked: formatCpf(sim.cpf),
         reason: reason || 'Exclusão solicitada pelo usuário',
         deletedAt: new Date().toISOString(),
       }),
@@ -4179,7 +4234,7 @@ export class StorageService {
   }
 
   /**
-   * Exclusão em massa de solicitações de simulação com validação individual de permissão e auditoria.
+   * Exclusão em massa de solicitações de simulação com validação individual de permissão, isolamento de tenant e auditoria.
    */
   public static bulkDeleteSimulationRequests(
     ids: string[],
@@ -4197,6 +4252,13 @@ export class StorageService {
     const idsToDeleteSet = new Set(ids);
     const remainingRequests: SimulationRequest[] = [];
 
+    // Validar existência de cada ID solicitado
+    for (const id of ids) {
+      if (!requests.some(s => s.id === id)) {
+        errors.push(`Simulação com ID ${id} não foi encontrada.`);
+      }
+    }
+
     for (const sim of requests) {
       if (idsToDeleteSet.has(sim.id)) {
         if (!this.canDeleteSimulationRequest(activeUser, sim)) {
@@ -4204,6 +4266,7 @@ export class StorageService {
           remainingRequests.push(sim);
         } else {
           successCount++;
+          const simTenantId = this.getSimulationTenantId(sim);
           this.addAuditLog({
             action: 'EXCLUSAO_EM_MASSA_SIMULACAO',
             entity: 'SimulationRequest',
@@ -4212,6 +4275,8 @@ export class StorageService {
             newData: JSON.stringify({
               deletedBy: activeUser.name,
               userRole: activeUser.role,
+              tenantId: simTenantId,
+              cpfMasked: formatCpf(sim.cpf),
               reason: reason || 'Exclusão em massa solicitada pelo usuário',
               deletedAt: new Date().toISOString(),
             }),

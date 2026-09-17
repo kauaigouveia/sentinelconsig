@@ -35,6 +35,7 @@ import { SaasLimitsService } from './server/services/saasLimitsService.js';
 import { TenantHealthService } from './server/services/tenantHealthService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
+import { SimulationService } from './server/services/simulationService.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
 
@@ -407,6 +408,20 @@ async function auditAndEnsureMasterUser() {
       const host = TenantResolver.extractHost(req);
       const domainResolution = await TenantResolver.resolveByHost(prisma, host);
 
+      if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
+        await AuditLogService.record(prisma, {
+          tenantId: null,
+          action: 'LOGIN_FAILED',
+          entity: 'AUTH',
+          oldData: { email: cleanEmail, reason: 'Tentativa de login em domínio não configurado ou inativo', host },
+          req,
+        });
+        return res.status(403).json({
+          status: 'DOMAIN_NOT_CONFIGURED',
+          message: 'Este domínio não está associado a nenhuma organização ativa do Sentinel Consig.',
+        });
+      }
+
       // Query PostgreSQL via Prisma
       let dbUser = null;
       try {
@@ -652,6 +667,17 @@ async function auditAndEnsureMasterUser() {
   // 3. GET /api/auth/session
   app.get('/api/auth/session', async (req, res) => {
     try {
+      const host = TenantResolver.extractHost(req);
+      const domainResolution = await TenantResolver.resolveByHost(prisma, host);
+
+      if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
+        return res.status(403).json({
+          authenticated: false,
+          status: 'DOMAIN_NOT_CONFIGURED',
+          message: 'Acesso negado: este domínio não está configurado.',
+        });
+      }
+
       const token = extractSessionToken(req);
       if (!token) {
         return res.status(401).json({ authenticated: false, message: 'Nenhuma sessão ativa.' });
@@ -795,9 +821,12 @@ async function auditAndEnsureMasterUser() {
     }
 
     // Hostname / Domain tenant boundary validation:
-    // If request arrives via a specific tenant domain/subdomain, non-PLATFORM_MASTER user MUST belong to that tenant
+    // If request arrives via an unconfigured domain, deny access immediately
     const reqHost = TenantResolver.extractHost(req);
     const domainResolution = await TenantResolver.resolveByHost(prisma, reqHost);
+    if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
+      return null;
+    }
     if (
       domainResolution.tenant &&
       (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
@@ -1131,6 +1160,407 @@ async function auditAndEnsureMasterUser() {
     } catch (err) {
       console.error('[API CLIENTS DELETE ERROR]', err);
       return res.status(500).json({ error: 'Erro ao remover cliente.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // SIMULATIONS API (PostgreSQL / Prisma)
+  // -------------------------------------------------------------
+  app.get('/api/simulations', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const simulations = await prisma.simulationRequest.findMany({
+        where: { tenantId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          partner: true,
+          createdBy: { select: { id: true, name: true, email: true, role: true } },
+        },
+      });
+
+      return res.json(simulations);
+    } catch (err) {
+      console.error('[API SIMULATIONS GET ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao buscar solicitações de simulação.' });
+    }
+  });
+
+  app.get('/api/simulations/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão inválida.' });
+      }
+
+      const simulation = await prisma.simulationRequest.findFirst({
+        where: { id: req.params.id, tenantId, deletedAt: null },
+        include: {
+          partner: true,
+          createdBy: { select: { id: true, name: true, email: true, role: true } },
+        },
+      });
+
+      if (!simulation) {
+        return res.status(404).json({ error: 'Solicitação de simulação não encontrada.' });
+      }
+
+      return res.json(simulation);
+    } catch (err) {
+      console.error('[API SIMULATIONS GET BY ID ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao buscar solicitação de simulação.' });
+    }
+  });
+
+  app.post('/api/simulations', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const { cpf, partnerId } = req.body;
+      if (!cpf || !partnerId) {
+        return res.status(400).json({ error: 'CPF e Parceiro são obrigatórios.' });
+      }
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      if (cleanCpf.length !== 11) {
+        return res.status(400).json({ error: 'CPF inválido. Informe os 11 dígitos do CPF.' });
+      }
+
+      // Verify partner belongs to tenant
+      const partner = await prisma.partner.findFirst({
+        where: { id: partnerId, tenantId, deletedAt: null },
+      });
+      if (!partner) {
+        return res.status(400).json({ error: 'Parceiro não encontrado ou não pertence a este tenant.' });
+      }
+
+      // Check duplicate pending simulation
+      const existing = await SimulationService.checkExistingPendingSimulation(
+        prisma,
+        tenantId,
+        cleanCpf,
+        partnerId
+      );
+      if (existing) {
+        return res.status(409).json({
+          error: 'Já existe uma solicitação de simulação pendente para este CPF e Parceiro.',
+          existing,
+        });
+      }
+
+      const newSimulation = await prisma.simulationRequest.create({
+        data: {
+          tenantId,
+          cpf: cleanCpf,
+          partnerId,
+          createdById: session.user.id,
+          status: 'SIMULAÇÃO ENVIADA',
+        },
+        include: {
+          partner: true,
+          createdBy: { select: { id: true, name: true, email: true, role: true } },
+        },
+      });
+
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'SIMULATION_CREATED',
+        entity: 'SimulationRequest',
+        entityId: newSimulation.id,
+        userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CRIAR_SOLICITACAO_SIMULACAO',
+        entity: 'SimulationRequest',
+        entityId: newSimulation.id,
+        newData: {
+          id: newSimulation.id,
+          cpfMasked: maskCPF(newSimulation.cpf),
+          partnerId: newSimulation.partnerId,
+          createdById: newSimulation.createdById,
+          status: newSimulation.status,
+        },
+        req,
+      });
+
+      return res.status(201).json(newSimulation);
+    } catch (err) {
+      console.error('[API SIMULATIONS POST ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao criar solicitação de simulação.' });
+    }
+  });
+
+  app.patch('/api/simulations/:id/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const { id } = req.params;
+      const {
+        status,
+        rejectionReason,
+        matchedProposalId,
+        matchedProposalNumber,
+        matchedDigitizerId,
+        matchedDigitizerName,
+        matchedAt,
+      } = req.body;
+
+      const existing = await prisma.simulationRequest.findFirst({
+        where: { id, tenantId, deletedAt: null },
+      });
+      if (!existing) {
+        return res.status(404).json({ error: 'Solicitação de simulação não encontrada ou pertence a outro tenant.' });
+      }
+
+      const updated = await prisma.simulationRequest.update({
+        where: { id },
+        data: {
+          status: status || existing.status,
+          rejectionReason: rejectionReason !== undefined ? rejectionReason : existing.rejectionReason,
+          matchedProposalId: matchedProposalId !== undefined ? matchedProposalId : existing.matchedProposalId,
+          matchedProposalNumber: matchedProposalNumber !== undefined ? matchedProposalNumber : existing.matchedProposalNumber,
+          matchedDigitizerId: matchedDigitizerId !== undefined ? matchedDigitizerId : existing.matchedDigitizerId,
+          matchedDigitizerName: matchedDigitizerName !== undefined ? matchedDigitizerName : existing.matchedDigitizerName,
+          matchedAt: matchedAt ? new Date(matchedAt) : existing.matchedAt,
+        },
+        include: {
+          partner: true,
+          createdBy: { select: { id: true, name: true, email: true, role: true } },
+        },
+      });
+
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'SIMULATION_STATUS_UPDATED',
+        entity: 'SimulationRequest',
+        entityId: updated.id,
+        userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'ATUALIZAR_STATUS_SIMULACAO',
+        entity: 'SimulationRequest',
+        entityId: updated.id,
+        oldData: {
+          id: existing.id,
+          cpfMasked: maskCPF(existing.cpf),
+          status: existing.status,
+        },
+        newData: {
+          id: updated.id,
+          cpfMasked: maskCPF(updated.cpf),
+          status: updated.status,
+          rejectionReason: updated.rejectionReason,
+        },
+        req,
+      });
+
+      return res.json(updated);
+    } catch (err) {
+      console.error('[API SIMULATIONS PATCH STATUS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar status da solicitação de simulação.' });
+    }
+  });
+
+  app.delete('/api/simulations/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const { id } = req.params;
+      const reason = (req.body?.reason || req.query?.reason || 'Exclusão solicitada') as string;
+
+      const simulation = await prisma.simulationRequest.findFirst({
+        where: { id, tenantId, deletedAt: null },
+      });
+
+      if (!simulation) {
+        return res.status(404).json({ error: 'Solicitação de simulação não encontrada ou pertence a outro tenant.' });
+      }
+
+      // RBAC validation
+      const canDelete = SimulationService.canDeleteSimulationRequest(
+        session.user,
+        tenantId,
+        simulation
+      );
+
+      if (!canDelete) {
+        return res.status(403).json({
+          error: 'Você não tem permissão para excluir esta solicitação de simulação.',
+        });
+      }
+
+      // Soft delete
+      await prisma.simulationRequest.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(),
+          deletedBy: session.user.id,
+        },
+      });
+
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'SIMULATION_DELETED',
+        entity: 'SimulationRequest',
+        entityId: id,
+        userId: session.user.id,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'EXCLUIR_SOLICITACAO_SIMULACAO',
+        entity: 'SimulationRequest',
+        entityId: id,
+        oldData: {
+          id: simulation.id,
+          cpfMasked: maskCPF(simulation.cpf),
+          partnerId: simulation.partnerId,
+          status: simulation.status,
+          reason,
+        },
+        req,
+      });
+
+      return res.json({ success: true, message: 'Solicitação de simulação excluída com sucesso.' });
+    } catch (err) {
+      console.error('[API SIMULATIONS DELETE ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao excluir solicitação de simulação.' });
+    }
+  });
+
+  app.post('/api/simulations/bulk-delete', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const { ids, reason } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'A lista de IDs para exclusão é obrigatória.' });
+      }
+
+      // Fetch simulations inside tenant only
+      const simulations = await prisma.simulationRequest.findMany({
+        where: {
+          id: { in: ids },
+          tenantId,
+          deletedAt: null,
+        },
+      });
+
+      const results: Array<{ id: string; success: boolean; error?: string }> = [];
+      const deletedIds: string[] = [];
+
+      for (const id of ids) {
+        const sim = simulations.find(s => s.id === id);
+        if (!sim) {
+          results.push({ id, success: false, error: 'Simulação não encontrada no tenant ativo.' });
+          continue;
+        }
+
+        const canDelete = SimulationService.canDeleteSimulationRequest(
+          session.user,
+          tenantId,
+          sim
+        );
+
+        if (!canDelete) {
+          results.push({ id, success: false, error: 'Permissão negada para excluir este registro.' });
+          continue;
+        }
+
+        await prisma.simulationRequest.update({
+          where: { id: sim.id },
+          data: {
+            deletedAt: new Date(),
+            deletedBy: session.user.id,
+          },
+        });
+
+        deletedIds.push(sim.id);
+        results.push({ id: sim.id, success: true });
+      }
+
+      if (deletedIds.length > 0) {
+        sseRegistry.broadcastToTenant(tenantId, {
+          type: 'SIMULATION_BULK_DELETED',
+          entity: 'SimulationRequest',
+          entityId: 'bulk',
+          userId: session.user.id,
+        });
+
+        await AuditLogService.record(prisma, {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'EXCLUSAO_EM_MASSA_SIMULACAO',
+          entity: 'SimulationRequest',
+          entityId: 'bulk',
+          newData: {
+            requestedCount: ids.length,
+            deletedCount: deletedIds.length,
+            failedCount: ids.length - deletedIds.length,
+            deletedIds,
+            reason: reason || 'Exclusão em massa solicitada',
+          },
+          req,
+        });
+      }
+
+      return res.json({
+        success: true,
+        requestedCount: ids.length,
+        deletedCount: deletedIds.length,
+        failedCount: ids.length - deletedIds.length,
+        results,
+      });
+    } catch (err) {
+      console.error('[API SIMULATIONS BULK DELETE ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao processar exclusão em massa.' });
     }
   });
 

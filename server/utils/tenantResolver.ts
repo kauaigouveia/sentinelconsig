@@ -296,8 +296,37 @@ export class TenantResolver {
         include: { whiteLabel: true, domains: true },
       });
 
-      if (tenant) {
-        if (tenant.status === 'SUSPENDED') {
+      if (!tenant) {
+        const notConfiguredResult: DomainResolutionResult = {
+          type: 'DOMAIN_NOT_CONFIGURED',
+          resolvedHost: cleanHost,
+          tenant: null,
+          branding: {
+            status: 'DOMAIN_NOT_CONFIGURED',
+            domainType: 'DOMAIN_NOT_CONFIGURED',
+            resolvedHost: cleanHost,
+            companyName: 'Domínio Não Configurado',
+            tradeName: 'Domínio Não Configurado',
+            logoUrl: null,
+            faviconUrl: null,
+            primaryColor: '#64748b',
+            secondaryColor: '#475569',
+            accentColor: '#94a3b8',
+            loginBannerUrl: null,
+            footerText: 'Sentinel Consig SaaS',
+            supportEmail: 'suporte@sentinelconsig.com.br',
+            supportPhone: null,
+            themeMode: 'LIGHT',
+          },
+        };
+        this.brandingCache.set(cleanHost, {
+          result: notConfiguredResult,
+          expiresAt: Date.now() + this.CACHE_TTL_MS,
+        });
+        return notConfiguredResult;
+      }
+
+      if (tenant.status === 'SUSPENDED') {
           const wl = tenant.whiteLabel;
           const suspendedResult: DomainResolutionResult = {
             type: 'DOMAIN_NOT_CONFIGURED',
@@ -425,7 +454,6 @@ export class TenantResolver {
 
         return result;
       }
-    }
 
     // Validação estrita do host antes de prosseguir com a busca do domínio customizado
     if (!this.isValidHostname(cleanHost)) {

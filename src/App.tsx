@@ -28,6 +28,7 @@ import { SimulationView } from './components/simulation/SimulationView';
 import { TVOperationsMonitor } from './components/monitor/TVOperationsMonitor';
 import { CommercialRadarView } from './components/bi/CommercialRadarView';
 import { SentinelaAIChat } from './components/bi/SentinelaAIChat';
+import { useTenantBranding } from './hooks/useTenantBranding';
 import { OperationalAgendaView } from './components/agenda/OperationalAgendaView';
 import { GamificationCenter } from './components/gamification/GamificationCenter';
 import { GeneralFinanceView } from './components/finance/GeneralFinanceView';
@@ -57,6 +58,8 @@ import { ToastContainer } from './components/ui/ToastContainer';
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
   const activeUser = StorageService.getActiveUser();
+  const { branding } = useTenantBranding();
+  const isUnconfiguredDomain = branding.status === 'DOMAIN_NOT_CONFIGURED' || branding.domainType === 'DOMAIN_NOT_CONFIGURED';
 
   // Validate server-side session as the ultimate authority via HttpOnly cookies
   const verifyServerSession = useCallback(async () => {
@@ -382,7 +385,7 @@ export default function App() {
     setCurrentView('producao');
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || isUnconfiguredDomain) {
     return <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
 

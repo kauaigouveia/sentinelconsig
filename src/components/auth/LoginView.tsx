@@ -35,7 +35,89 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSuspended = branding.status === 'SUSPENDED';
-  const isUnconfigured = branding.status === 'DOMAIN_NOT_CONFIGURED';
+  const isUnconfigured =
+    branding.status === 'DOMAIN_NOT_CONFIGURED' ||
+    branding.domainType === 'DOMAIN_NOT_CONFIGURED';
+
+  // 1. Loading State
+  if (isBrandingLoading) {
+    return (
+      <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[#080D18] text-slate-100 font-sans antialiased">
+        <div className="h-8 w-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mb-4" />
+        <span className="text-xs text-slate-400 font-medium">Carregando ambiente...</span>
+      </div>
+    );
+  }
+
+  // 2. Domain Not Configured Screen (Requirement 2 & 3)
+  if (isUnconfigured) {
+    return (
+      <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[#080D18] text-slate-100 font-sans antialiased p-6 selection:bg-blue-600 selection:text-white">
+        <div className="max-w-md w-full bg-slate-900/90 border border-slate-800/80 rounded-2xl p-8 shadow-2xl text-center space-y-6 backdrop-blur-md relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600" />
+
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-amber-400 shadow-inner">
+            <AlertTriangle className="h-8 w-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl font-black tracking-tight text-white">
+              Domínio não configurado
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed font-normal">
+              Este endereço ainda não está associado a uma organização do Sentinel Consig.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 space-y-1 text-left font-mono">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Endereço acessado:</span>
+              <span className="text-slate-200 font-bold">{branding.resolvedHost || window.location.hostname}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Status da resolução:</span>
+              <span className="text-amber-400 font-semibold">DOMAIN_NOT_CONFIGURED</span>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-500">
+            <span>Para registrar ou vincular este subdomínio, contate o suporte técnico.</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Instance Suspended Screen
+  if (isSuspended) {
+    return (
+      <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[#080D18] text-slate-100 font-sans antialiased p-6 selection:bg-rose-600 selection:text-white">
+        <div className="max-w-md w-full bg-slate-900/90 border border-slate-800/80 rounded-2xl p-8 shadow-2xl text-center space-y-6 backdrop-blur-md relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-600 to-red-600" />
+
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-rose-950/60 border border-rose-800/80 flex items-center justify-center text-rose-400 shadow-inner">
+            <AlertTriangle className="h-8 w-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl font-black tracking-tight text-white">
+              Acesso Temporariamente Suspenso
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed font-normal">
+              A organização vinculada a este endereço está temporariamente suspensa. Entre em contato com o gestor de conta ou suporte técnico.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 space-y-1 text-left font-mono">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Organização:</span>
+              <span className="text-slate-200 font-bold">{branding.companyName || 'Instância Suspensa'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

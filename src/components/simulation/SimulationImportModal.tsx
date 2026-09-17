@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -10,7 +10,6 @@ import {
   Calculator,
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
-import { StorageService } from '../../services/storageService';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { Partner } from '../../types';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
@@ -36,9 +35,25 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
   onClose,
   onImportCompleted,
 }) => {
-  const partners = StorageService.getPartners();
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [defaultPartnerId, setDefaultPartnerId] = useState<string>('');
 
-  const [defaultPartnerId, setDefaultPartnerId] = useState<string>(partners[0]?.id || '');
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/partners')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            const activePartners = data.filter((p: any) => p.status === 'ATIVO' || p.active);
+            setPartners(activePartners);
+            if (activePartners.length > 0) {
+              setDefaultPartnerId(activePartners[0].id);
+            }
+          }
+        })
+        .catch(err => console.warn('[API PARTNERS GET FAIL]', err));
+    }
+  }, [isOpen]);
   const [pastedText, setPastedText] = useState('');
   const [parsedRows, setParsedRows] = useState<ParsedSimulationRow[]>([]);
   const [importing, setImporting] = useState(false);
@@ -227,12 +242,12 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
   };
 
   // Confirm Import
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     const validItems = parsedRows
       .filter(r => (r.status === 'VALID' || r.status === 'WARNING') && r.matchedPartner)
       .map(r => ({
         cpf: r.cleanCpf,
-        partnerIdentifier: r.matchedPartner!.id,
+        partnerId: r.matchedPartner!.id,
       }));
 
     if (validItems.length === 0) {
@@ -241,18 +256,41 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
     }
 
     setImporting(true);
-    try {
-      const res = StorageService.createSimulationsBatch(validItems);
-      setSuccessMsg(`Sucesso! ${res.createdCount} solicitações de simulação foram criadas com o status 'SIMULAÇÃO ENVIADA'.`);
-      setTimeout(() => {
-        onImportCompleted();
-        onClose();
-      }, 1500);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao importar simulações em lote.');
-    } finally {
-      setImporting(false);
+    let createdCount = 0;
+    let duplicateCount = 0;
+    let errorCount = 0;
+
+    for (const item of validItems) {
+      try {
+        const res = await fetch('/api/simulations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ cpf: item.cpf, partnerId: item.partnerId }),
+        });
+
+        if (res.ok) {
+          createdCount++;
+        } else if (res.status === 409) {
+          duplicateCount++;
+        } else {
+          errorCount++;
+        }
+      } catch {
+        errorCount++;
+      }
     }
+
+    setImporting(false);
+    let msg = `Sucesso! ${createdCount} solicitações de simulação foram criadas via API.`;
+    if (duplicateCount > 0) msg += ` (${duplicateCount} duplicidades pendentes ignoradas)`;
+    if (errorCount > 0) msg += ` (${errorCount} falhas de processamento)`;
+
+    setSuccessMsg(msg);
+    setTimeout(() => {
+      onImportCompleted();
+      onClose();
+    }, 1500);
   };
 
   const validCount = parsedRows.filter(r => r.status === 'VALID' || r.status === 'WARNING').length;

@@ -573,6 +573,7 @@ export interface SimulationRequest {
   cpf: string; // 11 raw digits normalized
   partnerId: string;
   createdById: string;
+  tenantId?: string;
   status: SimulationStatus;
   createdAt: string;
   updatedAt: string;

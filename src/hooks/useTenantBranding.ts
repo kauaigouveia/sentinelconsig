@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 export interface TenantBranding {
   status: 'ACTIVE' | 'SUSPENDED' | 'DOMAIN_NOT_CONFIGURED' | 'PLATFORM_DEFAULT';
   domainType: 'PLATFORM_DEFAULT' | 'PLATFORM_SUBDOMAIN' | 'CUSTOM_DOMAIN' | 'DOMAIN_NOT_CONFIGURED';
+  resolvedHost?: string;
   companyName: string;
   legalName?: string;
   logoUrl?: string | null;
@@ -79,9 +80,31 @@ export function useTenantBranding() {
       setBranding(data);
       applyBrandingToDOM(data);
     } catch (err: any) {
-      console.warn('[useTenantBranding] Fallback para branding padrão:', err);
+      console.warn('[useTenantBranding] Fallback de marca:', err);
       setError(err.message || 'Erro de conexão');
-      applyBrandingToDOM(DEFAULT_BRANDING);
+
+      const host = window.location.hostname.toLowerCase();
+      const isSubdomain =
+        host.endsWith('.sentinelconsig.com.br') &&
+        host !== 'sentinelconsig.com.br' &&
+        host !== 'app.sentinelconsig.com.br' &&
+        host !== 'www.sentinelconsig.com.br';
+
+      if (isSubdomain) {
+        const unconfiguredBranding: TenantBranding = {
+          status: 'DOMAIN_NOT_CONFIGURED',
+          domainType: 'DOMAIN_NOT_CONFIGURED',
+          companyName: 'Domínio Não Configurado',
+          primaryColor: '#64748b',
+          secondaryColor: '#475569',
+          accentColor: '#94a3b8',
+          footerText: 'Sentinel Consig SaaS',
+        };
+        setBranding(unconfiguredBranding);
+        applyBrandingToDOM(unconfiguredBranding);
+      } else {
+        applyBrandingToDOM(DEFAULT_BRANDING);
+      }
     } finally {
       setIsLoading(false);
     }

@@ -175,6 +175,7 @@ model Tenant {
   systemConfigs    SystemConfig[]
   importJobs       ImportJob[]
   domains          TenantDomain[]
+  simulationRequests SimulationRequest[]
 
   // Soft Delete & Timestamps
   deletedAt     DateTime?      @map("deleted_at")
@@ -266,6 +267,8 @@ model User {
   createdBackups       Backup[]
   importJobs           ImportJob[]
   sessions             Session[]
+  createdSimulationRequests          SimulationRequest[] @relation("CreatedSimulationRequests")
+  matchedDigitizerSimulationRequests SimulationRequest[] @relation("MatchedDigitizerSimulationRequests")
 
   // Security & Lifecycle
   lastLoginAt          DateTime? @map("last_login_at")
@@ -318,7 +321,8 @@ model Partner {
   phone      String?
   document   String?
 
-  proposals Proposal[]
+  proposals          Proposal[]
+  simulationRequests SimulationRequest[]
 
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -540,6 +544,7 @@ model Proposal {
   updatedAt     DateTime       @updatedAt @map("updated_at")
   tasks         Task[]
   notifications Notification[]
+  matchedSimulationRequests SimulationRequest[] @relation("MatchedSimulationRequests")
 
   @@unique([tenantId, proposalNumber])
   @@index([tenantId])
@@ -921,4 +926,45 @@ model TenantDomain {
   @@index([tenantId])
   @@index([domain])
   @@map("tenant_domains")
+}
+
+// ==========================================
+// SIMULATION REQUESTS (Central de Simulações)
+// ==========================================
+
+model SimulationRequest {
+  id                    String    @id @default(cuid())
+  tenantId              String    @map("tenant_id")
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  cpf                   String
+  partnerId             String    @map("partner_id")
+  partner               Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  createdById           String    @map("created_by_id")
+  createdBy             User      @relation("CreatedSimulationRequests", fields: [createdById], references: [id], onDelete: Cascade)
+
+  status                String    @default("SIMULAÇÃO ENVIADA")
+  rejectionReason       String?   @map("rejection_reason")
+
+  matchedProposalId     String?   @map("matched_proposal_id")
+  matchedProposal       Proposal? @relation("MatchedSimulationRequests", fields: [matchedProposalId], references: [id], onDelete: SetNull)
+  matchedProposalNumber String?   @map("matched_proposal_number")
+  matchedDigitizerId    String?   @map("matched_digitizer_id")
+  matchedDigitizer      User?     @relation("MatchedDigitizerSimulationRequests", fields: [matchedDigitizerId], references: [id], onDelete: SetNull)
+  matchedDigitizerName  String?   @map("matched_digitizer_name")
+  matchedAt             DateTime? @map("matched_at")
+
+  deletedAt             DateTime? @map("deleted_at")
+  deletedBy             String?   @map("deleted_by")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, cpf])
+  @@index([tenantId, partnerId])
+  @@index([tenantId, createdById])
+  @@index([createdAt])
+  @@map("simulation_requests")
 }
