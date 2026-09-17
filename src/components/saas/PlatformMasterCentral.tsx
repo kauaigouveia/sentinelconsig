@@ -26,6 +26,7 @@ import {
   FileText,
   Search,
   Filter,
+  Trash2,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { TenantPlan, TenantStatus } from '../../types';
@@ -134,6 +135,13 @@ export const PlatformMasterCentral: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [planFilter, setPlanFilter] = useState<string>('ALL');
+
+  // Soft Delete State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<any>(null);
+  const [confirmName, setConfirmName] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Active Tab for SaaS Admin
   const [activeTab, setActiveTab] = useState<'tenants' | 'health_consumo'>('tenants');
@@ -444,6 +452,56 @@ export const PlatformMasterCentral: React.FC = () => {
       await fetchTenants();
     } catch (err: any) {
       alert(err.message || 'Erro ao reativar tenant.');
+    }
+  };
+
+  const handleRequestDelete = async (t: any) => {
+    if (t.id === 'sentinel-consig') {
+      alert('Atenção: Não é permitido excluir o tenant raiz (sentinel-consig).');
+      return;
+    }
+    setDeleteError(null);
+    setConfirmName('');
+    setTenantToDelete(t);
+    setIsDeleteModalOpen(true);
+
+    // Fetch details to get all counts
+    try {
+      const res = await fetch(`/api/saas/tenants/${t.id}`);
+      if (res.ok) {
+        const detail = await res.json();
+        setTenantToDelete(detail);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar detalhes para exclusão:', e);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!tenantToDelete) return;
+    if (confirmName !== tenantToDelete.name) {
+      setDeleteError('O nome digitado não corresponde ao nome da empresa.');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/saas/tenants/${tenantToDelete.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao excluir a empresa.');
+      }
+      setIsDeleteModalOpen(false);
+      setTenantToDelete(null);
+      alert('Empresa excluída com sucesso.');
+      await fetchTenants();
+    } catch (err: any) {
+      setDeleteError(err.message || 'Erro ao excluir a empresa.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -812,6 +870,16 @@ export const PlatformMasterCentral: React.FC = () => {
                               title="Reativar Empresa"
                             >
                               <Unlock className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+
+                          {t.id !== 'sentinel-consig' && (
+                            <button
+                              onClick={() => handleRequestDelete(t)}
+                              className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded cursor-pointer animate-in fade-in"
+                              title="Excluir Empresa (Soft-Delete)"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
                         </td>
@@ -1367,6 +1435,97 @@ export const PlatformMasterCentral: React.FC = () => {
               </div>
             </div>
           )}
+          </div>
+        </div>
+      )}
+
+      {/* Soft Delete Confirmation Modal */}
+      {isDeleteModalOpen && tenantToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-rose-100 dark:border-rose-950/60 shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-black text-rose-950 dark:text-rose-300">Excluir Empresa</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Esta ação desativa a empresa de forma permanente no ambiente operacional e encerra todas as sessões.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-lg p-3.5 mb-5 space-y-2 text-xs">
+              <div>
+                <span className="font-bold text-slate-400 block uppercase text-[10px]">Empresa</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete.name}</span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-400 block uppercase text-[10px]">Slug / Domínio</span>
+                <span className="font-mono text-slate-800 dark:text-slate-200">{tenantToDelete.slug}.sentinelconsig.com.br</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                <div>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Usuários</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete._count?.users ?? 0}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Propostas</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete._count?.proposals ?? 0}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Documentos</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete._count?.documents ?? 0}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                  Para confirmar, digite o nome completo da empresa abaixo:
+                </label>
+                <input
+                  type="text"
+                  value={confirmName}
+                  onChange={(e) => setConfirmName(e.target.value)}
+                  placeholder={tenantToDelete.name}
+                  className="w-full text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-rose-500 focus:border-rose-500"
+                />
+              </div>
+
+              {deleteError && (
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                  {deleteError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs text-slate-700 dark:text-slate-300 cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting || confirmName !== tenantToDelete.name}
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 font-semibold text-xs text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-xs"
+                >
+                  {isDeleting ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      <span>Excluindo...</span>
+                    </>
+                  ) : (
+                    <span>Confirmar Exclusão</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -50,14 +50,15 @@ import { WhiteLabelModal } from './components/admin/WhiteLabelModal';
 import { InteractiveTourModal } from './components/common/InteractiveTourModal';
 import { LoginView } from './components/auth/LoginView';
 import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
-import { ResponsibleAlçada } from './types';
+import { ResponsibleAlçada, User } from './types';
 import { Maximize2, Minimize2, Plus, Search, Keyboard, Database, Sparkles } from 'lucide-react';
 import { Breadcrumbs } from './components/ui/Breadcrumbs';
 import { ToastContainer } from './components/ui/ToastContainer';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => StorageService.isAuthenticated());
-  const activeUser = StorageService.getActiveUser();
+  const [activeUser, setActiveUser] = useState<User | null>(() => StorageService.getActiveUser());
+  const [adminContext, setAdminContext] = useState<{ targetTenantId: string; targetTenantName: string } | null>(null);
   const { branding } = useTenantBranding();
   const isUnconfiguredDomain = branding.status === 'DOMAIN_NOT_CONFIGURED' || branding.domainType === 'DOMAIN_NOT_CONFIGURED';
 
@@ -80,6 +81,13 @@ export default function App() {
         if (data && data.authenticated && data.user) {
           // Update active user with valid server session data
           StorageService.setActiveUser(data.user);
+          setActiveUser(data.user);
+          setAdminContext(data.adminContext || null);
+          if (data.adminContext) {
+            StorageService.setCurrentTenantId(data.adminContext.targetTenantId);
+          } else {
+            StorageService.setCurrentTenantId(data.user.tenantId || 'tenant_evolve');
+          }
           localStorage.setItem('cg_is_authenticated', 'true');
           setIsAuthenticated(true);
           return;
@@ -91,11 +99,15 @@ export default function App() {
         StorageService.clearBusinessCache();
         localStorage.setItem('cg_is_authenticated', 'false');
         setIsAuthenticated(false);
+        setActiveUser(null);
+        setAdminContext(null);
       }
     } catch (err) {
       // Network error during offline/mock fallback: let StorageService validate local user integrity
       if (!StorageService.isAuthenticated()) {
         setIsAuthenticated(false);
+        setActiveUser(null);
+        setAdminContext(null);
       }
     }
   }, []);
@@ -114,9 +126,11 @@ export default function App() {
       setIsAuthenticated(auth);
       if (auth) {
         const user = StorageService.getActiveUser();
+        setActiveUser(user);
         if (user) realtimeHub.setUserContext(user.id);
         realtimeHub.connect(StorageService.getCurrentTenantId());
       } else {
+        setActiveUser(null);
         realtimeHub.disconnect();
       }
     };
@@ -566,11 +580,19 @@ export default function App() {
               </span>
               <span className="text-slate-300 dark:text-slate-700">|</span>
               <span className="truncate max-w-[200px]">
-                Empresa: <strong className="text-slate-700 dark:text-slate-300 font-medium">{StorageService.getCurrentTenant().name}</strong>
+                Empresa: <strong className="text-slate-700 dark:text-slate-300 font-medium">
+                  {activeUser?.role === 'PLATFORM_MASTER'
+                    ? (adminContext ? adminContext.targetTenantName : 'PLATAFORMA')
+                    : StorageService.getCurrentTenant().name}
+                </strong>
               </span>
               <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
               <span className="hidden sm:inline">
-                Contexto: <strong className="text-slate-700 dark:text-slate-300 font-medium">{activeUser?.role === 'PLATFORM_MASTER' ? 'MASTER' : activeUser?.role}</strong>
+                Contexto: <strong className="text-slate-700 dark:text-slate-300 font-medium">
+                  {activeUser?.role === 'PLATFORM_MASTER'
+                    ? (adminContext ? 'MASTER' : 'PLATFORM_MASTER')
+                    : activeUser?.role}
+                </strong>
               </span>
             </div>
             <div className="flex items-center gap-3 font-medium text-[10px]">

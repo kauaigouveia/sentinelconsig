@@ -4109,6 +4109,20 @@ async function auditAndEnsureMasterUser() {
             where: whereClause,
             include: {
               whiteLabel: true,
+              users: {
+                where: {
+                  role: 'MASTER',
+                  active: true,
+                  deletedAt: null
+                },
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                  active: true
+                }
+              },
               _count: {
                 select: {
                   users: { where: { deletedAt: null } },
@@ -4137,6 +4151,20 @@ async function auditAndEnsureMasterUser() {
         where: whereClause,
         include: {
           whiteLabel: true,
+          users: {
+            where: {
+              role: 'MASTER',
+              active: true,
+              deletedAt: null
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              active: true
+            }
+          },
           _count: {
             select: {
               users: { where: { deletedAt: null } },
@@ -5024,6 +5052,105 @@ async function auditAndEnsureMasterUser() {
   };
   app.post('/api/saas/tenants/:id/reactivate', reactivateTenantHandler);
   app.post('/api/admin/tenants/:id/reactivate', reactivateTenantHandler);
+
+  // 6.5. DELETE /api/saas/tenants/:id (and alias /api/admin/tenants/:id) - Soft delete a tenant
+  const deleteTenantHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (session.user.role !== 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+      }
+
+      const { id } = req.params;
+      const tenant = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenant || tenant.deletedAt) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      // Protect root tenant
+      if (
+        tenant.slug === 'evolve' ||
+        tenant.slug === 'sentinel-consig' ||
+        tenant.id === 'tenant_evolve'
+      ) {
+        return res.status(403).json({ error: 'A empresa raiz da plataforma não pode ser excluída.' });
+      }
+
+      // Soft delete in PostgreSQL using transaction to ensure consistency
+      const updated = await prisma.$transaction(async (tx) => {
+        // Soft delete the tenant
+        const updatedTenant = await tx.tenant.update({
+          where: { id },
+          data: {
+            deletedAt: new Date(),
+            deletedBy: session.user.id,
+            status: 'CANCELLED',
+          },
+        });
+
+        // Soft delete all users belonging to this tenant
+        await tx.user.updateMany({
+          where: { tenantId: id, deletedAt: null },
+          data: {
+            deletedAt: new Date(),
+            deletedBy: session.user.id,
+            active: false,
+          },
+        });
+
+        // Kill active sessions for this tenant
+        await tx.session.deleteMany({
+          where: { user: { tenantId: id } },
+        });
+
+        return updatedTenant;
+      });
+
+      // Clear any active context switch for this tenant
+      AdminContextManager.clearContextByTenantId(id);
+
+      // Invalidation of cache
+      if (tenant.customDomain) TenantResolver.invalidateCache(tenant.customDomain);
+      TenantResolver.invalidateCache(tenant.slug + '.sentinelconsig.com.br');
+
+      // Publish realtime update
+      eventBus.publishToTenant(id, {
+        type: 'TENANT_DELETED',
+        entity: 'tenant',
+        entityId: id,
+      }).catch(() => {});
+
+      // Register Audit Log
+      await AuditLogService.record(prisma, {
+        tenantId: id,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'tenant.deleted',
+        entity: 'Tenant',
+        entityId: id,
+        newData: {
+          deletedAt: updated.deletedAt,
+          deletedBy: updated.deletedBy,
+          status: 'CANCELLED',
+        },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Empresa excluída com sucesso (soft-delete realizado).',
+        tenant: updated,
+      });
+    } catch (err) {
+      console.error('[DELETE /api/saas/tenants/:id ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao excluir tenant.' });
+    }
+  };
+  app.delete('/api/saas/tenants/:id', deleteTenantHandler);
+  app.delete('/api/admin/tenants/:id', deleteTenantHandler);
 
   // 7. CONTEXT SWITCHING API (PLATFORM_MASTER Support/Admin Inspection)
   const contextSwitchHandler = async (req: express.Request, res: express.Response) => {

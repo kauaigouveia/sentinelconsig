@@ -178,6 +178,42 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
+  const [adminContext, setAdminContext] = useState<{ active: boolean; context?: { targetTenantId: string; targetTenantName: string } } | null>(null);
+  const [tenants, setTenants] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchContextStatus = async () => {
+      if (activeUser?.role !== 'PLATFORM_MASTER') return;
+      try {
+        const res = await fetch('/api/saas/context-switch/status');
+        if (res.ok) {
+          const data = await res.json();
+          setAdminContext(data);
+        }
+      } catch {}
+    };
+
+    const fetchTenants = async () => {
+      if (activeUser?.role !== 'PLATFORM_MASTER') return;
+      try {
+        const res = await fetch('/api/saas/tenants');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setTenants(data);
+          }
+        }
+      } catch (e) {
+        console.error('[Header] Erro ao carregar tenants:', e);
+      }
+    };
+
+    if (activeUser?.role === 'PLATFORM_MASTER') {
+      fetchContextStatus();
+      fetchTenants();
+    }
+  }, [activeUser?.id, activeUser?.role]);
+
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -192,11 +228,34 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleRoleSwitch = (userId: string) => {
-    const selected = allUsers.find(u => u.id === userId);
-    if (selected) {
-      StorageService.setActiveUser(selected);
-      window.location.reload();
+  const handleCompanySwitch = async (targetValue: string) => {
+    try {
+      if (targetValue === 'PLATFORM') {
+        const res = await fetch('/api/saas/context-switch/exit', { method: 'POST' });
+        if (res.ok) {
+          await StorageService.syncWithPostgreSQL();
+          window.location.reload();
+        } else {
+          alert('Erro ao retornar ao contexto global.');
+        }
+      } else {
+        const res = await fetch('/api/saas/context-switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetTenantId: targetValue }),
+        });
+        if (res.ok) {
+          StorageService.setCurrentTenantId(targetValue);
+          await StorageService.syncWithPostgreSQL();
+          window.location.reload();
+        } else {
+          const errData = await res.json();
+          alert(errData.error || 'Erro ao trocar de empresa.');
+        }
+      }
+    } catch (err) {
+      console.error('[Header] Erro ao alternar contexto:', err);
+      alert('Erro de conexão ao trocar de empresa.');
     }
   };
 
@@ -219,10 +278,17 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   // Format display name strictly as [NÍVEL] - [NOME]
-  const getUserDisplayTitle = (user?: User | null) => {
-    if (!user) return 'DIGITADOR - Operador';
-    const roleNormalized = user.role === 'PLATFORM_MASTER' ? 'MASTER' : user.role;
-    return `${roleNormalized} - ${user.name}`;
+  const getUserDisplayTitle = () => {
+    if (!activeUser) return 'DIGITADOR - Operador';
+    if (activeUser.role === 'PLATFORM_MASTER') {
+      if (adminContext?.active && adminContext?.context) {
+        const currentT = tenants.find(t => t.id === adminContext.context?.targetTenantId);
+        const masterName = currentT?.users?.[0]?.name || 'Master Tenant';
+        return `MASTER - ${masterName}`;
+      }
+      return `PLATFORM_MASTER - ${activeUser.name}`;
+    }
+    return `${activeUser.role} - ${activeUser.name}`;
   };
 
   // Overall system health indicator
@@ -399,13 +465,13 @@ export const Header: React.FC<HeaderProps> = ({
             id="btn-user-profile-menu"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className="flex items-center gap-2 h-8.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
-            title={getUserDisplayTitle(activeUser)}
+            title={getUserDisplayTitle()}
           >
             <div className="h-5.5 w-5.5 rounded-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
               {activeUser?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[150px] truncate hidden md:inline">
-              {getUserDisplayTitle(activeUser)}
+              {getUserDisplayTitle()}
             </span>
             <ChevronDown className="h-3 w-3 text-slate-400 shrink-0" />
           </button>
@@ -415,29 +481,42 @@ export const Header: React.FC<HeaderProps> = ({
               {/* User Info Header */}
               <div className="px-2.5 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
                 <p className="font-black text-slate-900 dark:text-slate-100 truncate">
-                  {getUserDisplayTitle(activeUser)}
+                  {getUserDisplayTitle()}
                 </p>
                 <p className="text-[10.5px] text-slate-400 dark:text-slate-500 font-mono truncate">
                   {activeUser?.email || 'usuario@sentinel.com'}
                 </p>
               </div>
 
-              {/* Context Role Switcher (Platform Master / Master) */}
-              {(activeUser?.role === 'MASTER' || activeUser?.role === 'PLATFORM_MASTER') && (
+              {/* Context Selector for PLATFORM_MASTER */}
+              {activeUser?.role === 'PLATFORM_MASTER' && (
                 <div className="px-2 py-1.5 mb-2 border-b border-slate-100 dark:border-slate-800">
                   <label className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-                    Simular Perfil (Switch)
+                    Selecionar Empresa
                   </label>
                   <select
-                    value={activeUser.id}
-                    onChange={e => handleRoleSwitch(e.target.value)}
-                    className="w-full text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 text-slate-800 dark:text-slate-200"
+                    value={adminContext?.active && adminContext?.context ? adminContext.context.targetTenantId : 'PLATFORM'}
+                    onChange={e => handleCompanySwitch(e.target.value)}
+                    className="w-full text-[11px] font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-200"
                   >
-                    {allUsers.map(u => (
-                      <option key={u.id} value={u.id}>
-                        {getRoleEmoji(u.role)} [{u.role === 'PLATFORM_MASTER' ? 'MASTER' : u.role}] - {u.name}
-                      </option>
-                    ))}
+                    <option value="PLATFORM">🌐 [PLATFORM_MASTER] PLATAFORMA</option>
+                    {tenants.map(t => {
+                      const masters = t.users || [];
+                      const masterUser = masters[0];
+                      let displayLabel = `🏢 [MASTER] ${t.name}`;
+                      if (masters.length === 0) {
+                        displayLabel += ' [Nenhum MASTER cadastrado/ativo]';
+                      } else if (masters.length > 1) {
+                        displayLabel += ' [CONFLITO: Múltiplos MASTERs]';
+                      } else if (masterUser) {
+                        displayLabel += ` (${masterUser.name})`;
+                      }
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {displayLabel}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}

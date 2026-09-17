@@ -52,4 +52,12 @@ export class AdminContextManager {
   public static clearContext(sessionId: string): boolean {
     return this.contexts.delete(sessionId);
   }
+
+  public static clearContextByTenantId(tenantId: string): void {
+    for (const [sessionId, data] of this.contexts.entries()) {
+      if (data.targetTenantId === tenantId) {
+        this.contexts.delete(sessionId);
+      }
+    }
+  }
 }

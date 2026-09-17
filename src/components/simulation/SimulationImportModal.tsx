@@ -99,13 +99,19 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
         // Try matching partner
         const identifier = rawPartner.trim().toUpperCase();
         if (identifier) {
-          matchedPartner = partners.find(
-            p =>
-              p.id === identifier ||
-              p.login.toUpperCase() === identifier ||
-              extractPartnerCode(p.login) === identifier ||
-              p.fullName.toUpperCase().includes(identifier)
-          ) || null;
+          matchedPartner = partners.find(p => {
+            if (!p) return false;
+            const pId = String(p.id ?? '').toUpperCase();
+            const pLogin = String(p.login ?? '').toUpperCase();
+            const pCode = String(extractPartnerCode(p.login ?? '')).toUpperCase();
+            const pFullName = String(p.fullName ?? (p as any).name ?? '').toUpperCase();
+            return (
+              pId === identifier ||
+              pLogin === identifier ||
+              pCode === identifier ||
+              pFullName.includes(identifier)
+            );
+          }) || null;
         }
 
         if (!matchedPartner) {

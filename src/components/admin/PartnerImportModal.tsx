@@ -41,8 +41,11 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   onImportCompleted,
 }) => {
   const promoters = StorageService.getPromoters();
-  const existingPartners = StorageService.getPartners();
-  const existingLoginsSet = new Set(existingPartners.map(p => p.login.toUpperCase()));
+  const [existingPartners, setExistingPartners] = useState<Partner[]>([]);
+  const [loadingPartners, setLoadingPartners] = useState(false);
+  const [partnersLoadFailed, setPartnersLoadFailed] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
+  const [existingLoginsSet, setExistingLoginsSet] = useState<Set<string>>(new Set());
 
   const [defaultPromoterId, setDefaultPromoterId] = useState<string>(promoters[0]?.id || '');
   const [pastedText, setPastedText] = useState('');
@@ -50,6 +53,47 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   const [importing, setImporting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchExistingPartners = async () => {
+      setLoadingPartners(true);
+      setPartnersLoadFailed(false);
+      setErrorMsg(prev => prev === 'Não foi possível carregar os parceiros existentes. Tente novamente.' ? null : prev);
+      try {
+        const res = await fetch('/api/partners', {
+          headers: { 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setExistingPartners(data);
+            const logins = new Set<string>();
+            data.forEach(p => {
+              if (p && p.login) {
+                logins.add(String(p.login).trim().toUpperCase());
+              }
+            });
+            setExistingLoginsSet(logins);
+            setPartnersLoadFailed(false);
+          } else {
+            throw new Error('Formato inválido retornado pelo servidor.');
+          }
+        } else {
+          throw new Error(`Erro HTTP: ${res.status}`);
+        }
+      } catch (err) {
+        console.error('[PartnerImportModal] Erro ao carregar parceiros existentes:', err);
+        setPartnersLoadFailed(true);
+        setErrorMsg('Não foi possível carregar os parceiros existentes. Tente novamente.');
+      } finally {
+        setLoadingPartners(false);
+      }
+    };
+
+    fetchExistingPartners();
+  }, [isOpen, retryTrigger]);
 
   if (!isOpen) return null;
 
@@ -78,8 +122,8 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       let rawLogin = findVal(['login', 'codigo', 'código', 'code', 'id', 'user']) || (Array.isArray(row) ? String(row[1] || '') : '');
       const rawPromoter = findVal(['promotora', 'vinculo', 'vínculo', 'promoter']) || (Array.isArray(row) ? String(row[2] || '') : '');
 
-      let fullName = rawFullName.trim().toUpperCase();
-      let login = rawLogin.trim().toUpperCase();
+      let fullName = String(rawFullName ?? '').trim().toUpperCase();
+      let login = String(rawLogin ?? '').trim().toUpperCase();
 
       let status: 'VALID' | 'WARNING' | 'INVALID' = 'VALID';
       let statusMessage = 'Pronto para cadastro';
@@ -144,6 +188,11 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
   // Handle XLSX / CSV File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (loadingPartners) return;
+    if (partnersLoadFailed) {
+      setErrorMsg('Não foi possível carregar os parceiros existentes. Tente novamente.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -206,6 +255,11 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
   // Handle Raw Copy/Paste text
   const handleParsePastedText = () => {
+    if (loadingPartners) return;
+    if (partnersLoadFailed) {
+      setErrorMsg('Não foi possível carregar os parceiros existentes. Tente novamente.');
+      return;
+    }
     if (!pastedText.trim()) return;
 
     setErrorMsg(null);
@@ -252,6 +306,11 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
   // Confirm Import
   const handleConfirmImport = async () => {
+    if (loadingPartners) return;
+    if (partnersLoadFailed) {
+      setErrorMsg('Não foi possível carregar os parceiros existentes. Tente novamente.');
+      return;
+    }
     const validItems = parsedRows
       .filter(r => r.status === 'VALID' || r.status === 'WARNING')
       .map(r => ({
@@ -369,17 +428,18 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
             
             {/* File Upload Dropzone */}
             <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-5 text-center hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex flex-col items-center justify-center">
-              <Upload className="h-8 w-8 text-blue-500 mb-2" />
+              <Upload className={`h-8 w-8 mb-2 ${loadingPartners || partnersLoadFailed ? 'text-slate-400' : 'text-blue-500'}`} />
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Selecione uma planilha de parceiros
               </p>
               <p className="text-[10px] text-slate-500 mb-3">Formatos suportados: .XLSX, .CSV</p>
-              <label className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white cursor-pointer shadow-xs transition-colors">
-                <span>Escolher Arquivo</span>
+              <label className={`rounded-lg px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors ${loadingPartners || partnersLoadFailed ? 'bg-slate-400 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'}`}>
+                <span>{loadingPartners ? 'Carregando parceiros existentes...' : 'Escolher Arquivo'}</span>
                 <input
                   type="file"
                   accept=".xlsx,.csv"
                   onChange={handleFileUpload}
+                  disabled={loadingPartners || partnersLoadFailed}
                   className="hidden"
                 />
               </label>
@@ -394,16 +454,17 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                 rows={3}
                 value={pastedText}
                 onChange={e => setPastedText(e.target.value)}
+                disabled={loadingPartners || partnersLoadFailed}
                 placeholder="Exemplo:&#10;KAUAI AMORIM	KAUAI@16740	DG&#10;FOX AGENTE	FOX@16715	PROSPECTA"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-100 focus:outline-hidden"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-100 focus:outline-hidden disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={handleParsePastedText}
-                disabled={!pastedText.trim()}
+                disabled={loadingPartners || partnersLoadFailed || !pastedText.trim()}
                 className="w-full rounded-lg bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white py-1.5 text-xs font-bold transition-colors disabled:opacity-40"
               >
-                Processar Texto Colado
+                {loadingPartners ? 'Carregando parceiros existentes...' : 'Processar Texto Colado'}
               </button>
             </div>
 
@@ -411,9 +472,20 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
           {/* Feedback messages */}
           {errorMsg && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs text-rose-800 dark:text-rose-200 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-              <span>{errorMsg}</span>
+            <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+              {partnersLoadFailed && (
+                <button
+                  type="button"
+                  onClick={() => setRetryTrigger(prev => prev + 1)}
+                  className="px-2.5 py-1 text-[10px] font-bold bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 rounded transition-colors cursor-pointer shrink-0"
+                >
+                  Tentar Novamente
+                </button>
+              )}
             </div>
           )}
 
@@ -521,12 +593,20 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           <button
             type="button"
             onClick={handleConfirmImport}
-            disabled={importing || validCount === 0}
+            disabled={loadingPartners || partnersLoadFailed || importing || validCount === 0}
             className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-40 flex items-center gap-1.5"
           >
-            <Handshake className="h-4 w-4" />
+            {loadingPartners ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Handshake className="h-4 w-4" />
+            )}
             <span>
-              {importing
+              {loadingPartners
+                ? 'Carregando parceiros existentes...'
+                : partnersLoadFailed
+                ? 'Carregamento de parceiros falhou'
+                : importing
                 ? 'Importando...'
                 : `Confirmar e Cadastrar ${validCount} Parceiro(s)`}
             </span>

@@ -174,14 +174,20 @@ export const PartnerManagement: React.FC = () => {
     }
   };
 
-  const activeCount = partners.filter(p => p.active).length;
+  const activeCount = partners.filter(p => p && p.active).length;
   const filteredPartners = partners.filter(p => {
-    const match =
+    if (!p) return false;
+    const fName = String(p.fullName ?? (p as any).name ?? '').toLowerCase();
+    const loginVal = String(p.login ?? (p as any).code ?? '').toLowerCase();
+    const codeVal = extractPartnerCode(loginVal).toLowerCase();
+    const search = searchTerm.toLowerCase();
+
+    return (
       !searchTerm ||
-      p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.login.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      extractPartnerCode(p.login).toLowerCase().includes(searchTerm.toLowerCase());
-    return match;
+      fName.includes(search) ||
+      loginVal.includes(search) ||
+      codeVal.includes(search)
+    );
   });
 
   return (
