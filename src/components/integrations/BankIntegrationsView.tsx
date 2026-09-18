@@ -108,8 +108,18 @@ async function safeFetchJson<T = any>(
     contentType.toLowerCase().includes('text/html');
 
   if (isHtml) {
+    if (res.status === 404) {
+      throw new Error(
+        `Rota da API não encontrada (HTTP 404 em ${url}). O servidor não possui este endpoint registrado.`
+      );
+    }
+    if (res.status === 401 || res.status === 403 || res.status === 302) {
+      throw new Error(
+        `Sessão de usuário expirada ou não autorizada (HTTP ${res.status}). Recarregue a página ou renove a autenticação.`
+      );
+    }
     throw new Error(
-      `O servidor retornou uma página HTML inesperada (HTTP ${res.status}). Verifique a rota da API ou a autenticação da sessão.`
+      `O servidor retornou uma página HTML inesperada (HTTP ${res.status}). Verifique a rota da API ou a conectividade.`
     );
   }
 

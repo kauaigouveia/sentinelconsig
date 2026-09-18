@@ -9249,6 +9249,13 @@ async function startServer() {
     }
   });
 
+  // 404 Handler para rotas /api/* não mapeadas - assegura que requisições de API sempre retornem JSON
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({
+      error: `Endpoint de API não encontrado: ${req.method} ${req.originalUrl || req.url}`,
+      statusCode: 404,
+    });
+  });
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
