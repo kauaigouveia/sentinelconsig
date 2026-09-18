@@ -4,6 +4,7 @@ export interface EffectiveTenantBranding {
   tenantId: string;
   tenantName: string;
   logoUrl: string | null;
+  plan?: string | null;
   tradeName?: string | null;
   primaryColor?: string | null;
   secondaryColor?: string | null;
@@ -53,11 +54,13 @@ export function resolveEffectiveTenantBranding(
 
   // Fallback Rule for Logo
   const finalLogoUrl = logoUrl || SYSTEM_IDENTITY.defaultLogo;
+  let plan = whiteLabel?.plan || currentTenant?.plan || null;
 
   return {
     tenantId: effectiveTenantId,
     tenantName: effectiveTenantName,
     logoUrl: finalLogoUrl,
+    plan,
     tradeName: whiteLabel?.tradeName || currentTenant?.tradeName || null,
     primaryColor: whiteLabel?.primaryColor || currentTenant?.whiteLabel?.primaryColor || null,
     secondaryColor: whiteLabel?.secondaryColor || currentTenant?.whiteLabel?.secondaryColor || null,

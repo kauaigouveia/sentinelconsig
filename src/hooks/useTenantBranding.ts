@@ -6,6 +6,7 @@ export interface TenantBranding {
   resolvedHost?: string;
   companyName: string;
   legalName?: string;
+  plan?: string;
   logoUrl?: string | null;
   faviconUrl?: string | null;
   primaryColor: string;

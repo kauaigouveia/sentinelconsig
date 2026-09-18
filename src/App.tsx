@@ -426,7 +426,7 @@ export default function App() {
     <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased transition-colors">
       {/* Sidebar (Hidden in Focus Mode) */}
       {!isFocusMode && (
-        <Sidebar currentView={currentView} onNavigate={handleNavigate} />
+        <Sidebar currentView={currentView} onNavigate={handleNavigate} branding={branding} />
       )}
 
       {/* Main Content Area */}
@@ -602,7 +602,7 @@ export default function App() {
                 Empresa: <strong className="text-slate-700 dark:text-slate-300 font-medium">
                   {activeUser?.role === 'PLATFORM_MASTER'
                     ? (adminContext ? adminContext.targetTenantName : 'PLATAFORMA')
-                    : StorageService.getCurrentTenant().name}
+                    : branding?.companyName || StorageService.getCurrentTenant().name}
                 </strong>
               </span>
               <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>

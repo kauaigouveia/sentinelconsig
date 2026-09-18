@@ -31,11 +31,13 @@ import {
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
 import { Role } from '../../types';
-import { resolveEffectiveTenantBranding, SYSTEM_IDENTITY } from '../../lib/branding';
+
+import { TenantBranding } from "../../hooks/useTenantBranding";
 
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
+  branding?: TenantBranding;
 }
 
 type SemanticColor =
@@ -181,7 +183,7 @@ const colorStyles: Record<
   },
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, branding }) => {
   const activeUser = StorageService.getActiveUser();
   const role: Role = activeUser?.role || 'DIGITADOR';
 
@@ -203,7 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     setWhiteLabel(StorageService.getWhiteLabel());
     if (activeUser?.role === 'PLATFORM_MASTER') {
       try {
-        const res = await fetch('/api/admin/context-status');
+        const res = await fetch('/api/saas/context-switch/status');
         if (res.ok) {
           const data = await res.json();
           setAdminContext(data);
@@ -267,8 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
   // RBAC Permission checks (strictly preserved)
   const isPlatformMaster = role === 'PLATFORM_MASTER';
-  const isTenantAdmin = role === 'TENANT_ADMIN';
-  const isMaster = role === 'MASTER' || isPlatformMaster || isTenantAdmin;
+  const isMaster = role === 'MASTER' || isPlatformMaster;
   const isGestor = role === 'GESTOR' || isMaster;
   const isGerente = role === 'GERENTE' || isGestor;
   const isSuporte = role === 'SUPORTE' || isGestor;
@@ -358,13 +359,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     );
   };
 
-  const effectiveBranding = resolveEffectiveTenantBranding(
-    activeUser,
-    currentTenant,
-    whiteLabel,
-    adminContext
-  );
-
   return (
     <aside
       className={`border-r border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#080d18] flex flex-col shrink-0 transition-all duration-200 ease-in-out select-none ${
@@ -379,18 +373,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         <div className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col items-center gap-1.5 shrink-0">
           <div
             className="h-8 w-8 flex items-center justify-center shrink-0 cursor-pointer"
-            title={`${SYSTEM_IDENTITY.name} - ${effectiveBranding.tenantName}`}
+            title={`${SYSTEM_IDENTITY.name} - ${displayCompanyName}`}
             onClick={() => onNavigate('torre-controle')}
           >
-            <img
-              src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo}
-              alt={effectiveBranding.tenantName}
-              className="h-full w-full object-contain rounded-lg shadow-2xs"
-              referrerPolicy="no-referrer"
-            />
+            <img src={SYSTEM_IDENTITY.defaultLogo} alt={SYSTEM_IDENTITY.name} className="h-full w-full object-contain rounded-lg shadow-2xs" referrerPolicy="no-referrer" />
           </div>
           <span className="text-[8px] font-black uppercase tracking-tighter text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-400/15 px-1 py-0.2 rounded border border-blue-200 dark:border-blue-800/50 text-center leading-tight">
-            ENT
+            {(effectiveBranding.plan || SYSTEM_IDENTITY.badge).substring(0, 3).toUpperCase()}
           </span>
         </div>
       ) : (
@@ -399,12 +388,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
           {/* IDENTIDADE DO SISTEMA */}
           <div className="flex items-start gap-2.5">
             <div className="h-8.5 w-8.5 flex items-center justify-center shrink-0 mt-0.5">
-              <img
-                src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo}
-                alt={effectiveBranding.tenantName}
-                className="h-full w-full object-contain rounded-lg shadow-2xs"
-                referrerPolicy="no-referrer"
-              />
+              <img src={SYSTEM_IDENTITY.defaultLogo} alt={SYSTEM_IDENTITY.name} className="h-full w-full object-contain rounded-lg shadow-2xs" referrerPolicy="no-referrer" />
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
               {/* Linha principal: Nome da Empresa / Sistema + ENTERPRISE */}
@@ -413,7 +397,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
                   {SYSTEM_IDENTITY.name}
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 dark:bg-blue-400/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shrink-0 leading-none">
-                  {SYSTEM_IDENTITY.badge}
+                  {effectiveBranding.plan || SYSTEM_IDENTITY.badge}
                 </span>
               </div>
               {/* Segunda linha: Razão / Subtítulo da Marca */}
@@ -440,11 +424,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
                 </span>
               )}
             </div>
-            <div
-              className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate leading-snug"
-              title={effectiveBranding.tenantName}
-            >
-              {effectiveBranding.tenantName}
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded flex items-center justify-center shrink-0 bg-white dark:bg-slate-800 shadow-xs border border-slate-200/50 dark:border-slate-700/50">
+                <img 
+                  src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo} 
+                  alt={effectiveBranding.tenantName} 
+                  className="max-h-full max-w-full object-contain rounded-sm"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div
+                className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate leading-snug flex-1"
+                title={effectiveBranding.tenantName}
+              >
+                {effectiveBranding.tenantName}
+              </div>
             </div>
           </div>
         </div>
