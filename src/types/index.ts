@@ -94,9 +94,11 @@ export interface BankPromoter {
 export interface Partner {
   id: string;
   fullName: string;
-  login: string; // Format: NOME@CODIGO, e.g., KAUAI@16740
+  login: string; // Identifier/Login/Code, e.g., AL155, JOCYANE@155, KAUAI@16740, 00123
+  code?: string;
   promoterId: string;
   active: boolean;
+  tenantId?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -65,16 +65,64 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       const p = StorageService.getProducts().filter(x => x.active);
       const b = StorageService.getBanks().filter(x => x.active);
       const pr = StorageService.getPromoters().filter(x => x.active);
-      const pt = StorageService.getPartners().filter(x => x.active);
-
+      
       setProducts(p);
       setBanks(b);
       setPromoters(pr);
-      setPartners(pt);
 
-      if (pt.length > 0 && !selectedPartnerId) {
-        setSelectedPartnerId(pt[0].id);
+      // 1. Initial synchronous load from StorageService so partners are immediately available
+      const localPartners = StorageService.getPartners().filter(x => x.active !== false);
+      if (localPartners.length > 0) {
+        setPartners(localPartners);
+        if (!selectedPartnerId || !localPartners.some(pt => pt.id === selectedPartnerId)) {
+          setSelectedPartnerId(localPartners[0].id);
+        }
       }
+
+      // 2. Fetch fresh partners from API with tenant isolation
+      fetch('/api/partners', { headers: { 'Accept': 'application/json' } })
+        .then(async res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const currentTenantId = StorageService.getCurrentTenantId();
+            const activePartners = data
+              .map((pt: any) => ({
+                id: pt.id,
+                fullName: pt.fullName || pt.name || 'Parceiro sem Nome',
+                login: pt.login || pt.code || '',
+                code: pt.code || pt.login || '',
+                promoterId: pt.promoterId || '',
+                active: pt.active !== undefined ? Boolean(pt.active) : (pt.status !== 'INATIVO'),
+                tenantId: pt.tenantId || currentTenantId,
+                createdAt: pt.createdAt,
+                updatedAt: pt.updatedAt,
+              }))
+              .filter((pt: any) => {
+                if (pt.active === false || pt.status === 'INATIVO') return false;
+                if (pt.tenantId && currentTenantId && pt.tenantId !== currentTenantId) return false;
+                return true;
+              });
+
+            if (activePartners.length > 0) {
+              setPartners(activePartners);
+              if (!selectedPartnerId || !activePartners.some(pt => pt.id === selectedPartnerId)) {
+                setSelectedPartnerId(activePartners[0].id);
+              }
+              localStorage.setItem('cg_partners', JSON.stringify(activePartners));
+            }
+          }
+        })
+        .catch(err => {
+          console.warn('[NewProductionModal] Using partners from StorageService:', err);
+          const fallback = StorageService.getPartners().filter(x => x.active !== false);
+          setPartners(fallback);
+          if (fallback.length > 0 && (!selectedPartnerId || !fallback.some(pt => pt.id === selectedPartnerId))) {
+            setSelectedPartnerId(fallback[0].id);
+          }
+        });
 
       // Initial blank row
       if (adeRows.length === 0 && p.length > 0 && b.length > 0 && pr.length > 0) {
@@ -439,10 +487,10 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   const currentPartnerCode = currentPartner ? currentPartner.login : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-5xl rounded-xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 sm:p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-[98vw] 2xl:max-w-7xl rounded-xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[96vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/40 rounded-t-xl">
+        <div className="shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 dark:bg-slate-950/40 rounded-t-xl">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
               <Plus className="h-5 w-5" />
@@ -466,7 +514,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* Visual Error Log with Retry Mechanism */}
           {linkingErrorLog && (
             <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 shadow-sm animate-shake">
@@ -646,20 +694,20 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-left text-xs text-slate-700">
+            <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+              <table className="w-full min-w-[1100px] text-left text-xs text-slate-700">
                 <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
                   <tr>
-                    <th className="px-3 py-2.5 w-12 text-center">#</th>
-                    <th className="px-3 py-2.5">ADE / Nº Proposta *</th>
-                    <th className="px-3 py-2.5">Produto *</th>
-                    <th className="px-3 py-2.5">Banco *</th>
-                    <th className="px-3 py-2.5">Promotora Habilitada *</th>
-                    <th className="px-3 py-2.5 min-w-[130px]">Valor Liberado (R$)</th>
+                    <th className="px-3 py-2.5 w-12 text-center shrink-0">#</th>
+                    <th className="px-3 py-2.5 min-w-[160px]">ADE / Nº Proposta *</th>
+                    <th className="px-3 py-2.5 min-w-[180px]">Produto *</th>
+                    <th className="px-3 py-2.5 min-w-[210px]">Banco *</th>
+                    <th className="px-3 py-2.5 min-w-[200px]">Promotora Habilitada *</th>
+                    <th className="px-3 py-2.5 min-w-[140px]">Valor Liberado (R$)</th>
                     <th className="px-3 py-2.5 min-w-[140px]">Saldo Contrato (R$)</th>
-                    <th className="px-3 py-2.5">Vínculo Refin/Port</th>
-                    {mode === 'COMPLETO' && <th className="px-3 py-2.5">Observações</th>}
-                    <th className="px-3 py-2.5 w-12 text-center">Ações</th>
+                    <th className="px-3 py-2.5 min-w-[180px]">Vínculo Refin/Port</th>
+                    {mode === 'COMPLETO' && <th className="px-3 py-2.5 min-w-[200px]">Observações</th>}
+                    <th className="px-3 py-2.5 w-14 text-center shrink-0">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -674,7 +722,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-2 text-center font-bold text-slate-400">
+                        <td className="px-3 py-2 text-center font-bold text-slate-400 shrink-0">
                           {idx + 1}
                         </td>
                         <td className="px-3 py-2">
@@ -690,10 +738,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           <select
                             value={row.productId}
                             onChange={e => handleUpdateRow(idx, 'productId', e.target.value)}
-                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-900"
+                            title={products.find(p => p.id === row.productId)?.name || 'Produto'}
+                            className="w-full min-w-[165px] rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-hidden"
                           >
                             {products.map(p => (
-                              <option key={p.id} value={p.id}>
+                              <option key={p.id} value={p.id} title={p.name}>
                                 {p.name}
                               </option>
                             ))}
@@ -703,10 +752,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           <select
                             value={row.bankId}
                             onChange={e => handleUpdateRow(idx, 'bankId', e.target.value)}
-                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-900"
+                            title={banks.find(b => b.id === row.bankId)?.name || 'Banco'}
+                            className="w-full min-w-[195px] rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-hidden"
                           >
                             {banks.map(b => (
-                              <option key={b.id} value={b.id}>
+                              <option key={b.id} value={b.id} title={b.name}>
                                 {b.name}
                               </option>
                             ))}
@@ -716,10 +766,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           <select
                             value={row.promoterId}
                             onChange={e => handleUpdateRow(idx, 'promoterId', e.target.value)}
-                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-900"
+                            title={allowedPromoters.find(pr => pr.id === row.promoterId)?.name || 'Promotora'}
+                            className="w-full min-w-[185px] rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-hidden"
                           >
                             {allowedPromoters.map(pr => (
-                              <option key={pr.id} value={pr.id}>
+                              <option key={pr.id} value={pr.id} title={pr.name}>
                                 {pr.name}
                               </option>
                             ))}
@@ -847,7 +898,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 bg-slate-50 rounded-b-xl">
+        <div className="shrink-0 flex items-center justify-between border-t border-slate-200 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 rounded-b-xl">
           <div className="text-xs text-slate-500 font-medium">
             Total de propostas para salvar: <strong>{adeRows.length}</strong>
           </div>
@@ -855,14 +906,14 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer"
             >
               Cancelar
             </button>
             <button
               id="btn-save-all-ades"
               onClick={handleSave}
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>SALVAR TODAS AS ADEs</span>

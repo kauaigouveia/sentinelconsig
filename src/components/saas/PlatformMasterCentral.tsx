@@ -1533,7 +1533,7 @@ export const PlatformMasterCentral: React.FC = () => {
                         <input
                           type="file"
                           accept="image/png, image/jpeg, image/webp"
-                          onChange={(e) => selectedTenant && handlePlatformLogoUpload(e, selectedTenant.id)}
+                          onChange={(e) => editingTenant && handlePlatformLogoUpload(e, editingTenant.id)}
                           className="hidden"
                           disabled={isSubmitting}
                         />

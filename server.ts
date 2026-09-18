@@ -6772,7 +6772,8 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Autenticação necessária para importar produtos.' });
       }
 
-      if (session.user.role !== 'PLATFORM_MASTER' && session.user.role !== 'ADMIN') {
+      const userRole = session.user.role as string;
+      if (userRole !== 'PLATFORM_MASTER' && userRole !== 'MASTER' && userRole !== 'TENANT_ADMIN' && userRole !== 'ADMIN') {
         return res.status(403).json({ error: 'Você não tem permissão para gerenciar produtos.' });
       }
 

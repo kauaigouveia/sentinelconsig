@@ -37,6 +37,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,7 +66,7 @@ export const WhiteLabelModal: React.FC<WhiteLabelModalProps> = ({ isOpen, onClos
               fileBase64,
               mimeType: file.type,
               fileName: file.name,
-              targetTenantId: currentWl.tenantId
+              targetTenantId: (currentWl as any).tenantId || StorageService.getCurrentTenantId()
             })
           });
           const data = await res.json();

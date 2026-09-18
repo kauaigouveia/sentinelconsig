@@ -1225,12 +1225,15 @@ export class StorageService {
       // 6. Fetch Partners
       const dbPartners = await safeFetch('/api/partners');
       if (Array.isArray(dbPartners)) {
+        const currentTenantId = this.getCurrentTenantId();
         const formattedPartners = dbPartners.map((p: any) => ({
           id: p.id,
-          fullName: p.name,
-          login: p.code,
+          fullName: p.fullName || p.name || 'Parceiro sem Nome',
+          login: p.login || p.code || '',
+          code: p.code || p.login || '',
           promoterId: p.promoterId || '',
-          active: p.status === 'ATIVO',
+          active: p.active !== undefined ? Boolean(p.active) : (p.status === 'ATIVO' || p.status !== 'INATIVO'),
+          tenantId: p.tenantId || currentTenantId,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));
@@ -1502,6 +1505,23 @@ export class StorageService {
             updatedAt: t.updatedAt,
           }));
           localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(formattedTenants));
+        }
+      } else if (entity === 'Partner') {
+        const dbPartners = await safeFetch('/api/partners');
+        if (Array.isArray(dbPartners)) {
+          const currentTenantId = this.getCurrentTenantId();
+          const formattedPartners = dbPartners.map((p: any) => ({
+            id: p.id,
+            fullName: p.fullName || p.name || 'Parceiro sem Nome',
+            login: p.login || p.code || '',
+            code: p.code || p.login || '',
+            promoterId: p.promoterId || '',
+            active: p.active !== undefined ? Boolean(p.active) : (p.status === 'ATIVO' || p.status !== 'INATIVO'),
+            tenantId: p.tenantId || currentTenantId,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+          }));
+          localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(formattedPartners));
         }
       }
 
@@ -2034,7 +2054,33 @@ export class StorageService {
 
   // Partners
   public static getPartners(): Partner[] {
-    return this.get<Partner[]>(STORAGE_KEYS.PARTNERS, INITIAL_PARTNERS);
+    const raw = this.get<Partner[]>(STORAGE_KEYS.PARTNERS, INITIAL_PARTNERS);
+    const currentTenantId = this.getCurrentTenantId();
+
+    return (raw || [])
+      .map(p => {
+        const rawAny = p as any;
+        const fullName = p.fullName || rawAny.name || 'Parceiro sem Nome';
+        const login = p.login || rawAny.code || '';
+        const code = rawAny.code || login;
+        const active = p.active !== undefined ? Boolean(p.active) : (rawAny.status !== 'INATIVO');
+
+        return {
+          ...p,
+          fullName,
+          login,
+          code,
+          active,
+          tenantId: rawAny.tenantId || (INITIAL_PARTNERS.some(ip => ip.id === p.id) ? 'tenant_evolve' : undefined),
+        } as Partner;
+      })
+      .filter(p => {
+        const pTenant = (p as any).tenantId;
+        if (pTenant && currentTenantId && pTenant !== currentTenantId) {
+          return false;
+        }
+        return true;
+      });
   }
 
   public static createPartner(data: { fullName: string; login: string; promoterId: string }): Partner {
@@ -2046,15 +2092,17 @@ export class StorageService {
       throw new Error('Este login de parceiro já está cadastrado.');
     }
 
+    const currentTenantId = this.getCurrentTenantId();
     const newPartner: Partner = {
       id: `part-${Date.now()}`,
       fullName: data.fullName.trim().toUpperCase(),
       login: cleanLogin,
       promoterId: data.promoterId,
       active: true,
+      tenantId: currentTenantId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
+    } as any;
     partners.push(newPartner);
     this.set(STORAGE_KEYS.PARTNERS, partners);
 

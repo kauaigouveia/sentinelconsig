@@ -38,9 +38,9 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
   // Helper to extract code safely
   const extractCode = (partnerObj?: any) => {
     if (!partnerObj) return 'S/C';
-    const login = String(partnerObj.login ?? '');
     const code = String(partnerObj.code ?? '');
-    return login || code || 'S/C';
+    const login = String(partnerObj.login ?? '');
+    return code || login || 'S/C';
   };
 
   // Helper to get safe partner strings
@@ -64,23 +64,36 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const normalizeText = (text: string) =>
+    text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
   // Filter partners based on query (defensive case-insensitive search by code, name or login)
   const filteredPartners = safePartners.filter(p => {
     if (!p) return false;
     const { fullName, login } = getPartnerStrings(p);
+    const code = String(p.code ?? '');
     
     if (!query.trim()) return true;
-    const q = query.trim().toLowerCase();
-    
+    const q = normalizeText(query);
+
+    const normFullName = normalizeText(fullName);
+    const normLogin = normalizeText(login);
+    const normCode = normalizeText(code);
+
     const loginParts = login.split('@');
-    const loginName = loginParts[0] || '';
-    const codePart = loginParts[1] || (p as any).code || '';
+    const part0 = normalizeText(loginParts[0] || '');
+    const part1 = normalizeText(loginParts[1] || '');
 
     return (
-      codePart.toLowerCase().includes(q) ||
-      login.toLowerCase().includes(q) ||
-      fullName.toLowerCase().includes(q) ||
-      loginName.toLowerCase().includes(q)
+      normFullName.includes(q) ||
+      normLogin.includes(q) ||
+      normCode.includes(q) ||
+      part0.includes(q) ||
+      part1.includes(q)
     );
   });
 
@@ -219,7 +232,7 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
             <span>
               {query
                 ? `${filteredPartners.length} agentes encontrados para "${query}"`
-                : `Selecione um Agente/Parceiro (${partners.length} cadastrados)`}
+                : `Selecione um Agente/Parceiro (${safePartners.length} cadastrados)`}
             </span>
             <span className="text-[9px] text-slate-400 font-mono">
               Busca por Código ou Nome
