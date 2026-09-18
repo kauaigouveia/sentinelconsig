@@ -31,6 +31,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
 import { Role } from '../../types';
+import { resolveEffectiveTenantBranding, SYSTEM_IDENTITY } from '../../lib/branding';
 
 import { TenantBranding } from "../../hooks/useTenantBranding";
 
@@ -198,6 +199,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
   const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
   const [currentTenant, setCurrentTenant] = useState(StorageService.getCurrentTenant());
   const [adminContext, setAdminContext] = useState<{ active: boolean; context?: { targetTenantId: string; targetTenantName: string } }>({ active: false });
+  let effectiveBranding = resolveEffectiveTenantBranding(
+    activeUser,
+    currentTenant,
+    whiteLabel,
+    adminContext
+  );
+
+  if (branding && branding.status !== "DOMAIN_NOT_CONFIGURED") {
+    effectiveBranding.tenantName = branding.companyName || effectiveBranding.tenantName;
+    effectiveBranding.logoUrl = branding.logoUrl || effectiveBranding.logoUrl;
+    effectiveBranding.plan = branding.plan || effectiveBranding.plan;
+  }
 
   // Sync tenant and admin context status
   const syncTenantState = async () => {

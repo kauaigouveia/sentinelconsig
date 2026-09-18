@@ -20,7 +20,7 @@ export const SYSTEM_IDENTITY = {
 
 export function resolveEffectiveTenantBranding(
   activeUser: { role?: Role | string; tenantId?: string } | null,
-  currentTenant: { id?: string; name?: string; tradeName?: string; whiteLabel?: any } | null,
+  currentTenant: { id?: string; name?: string; tradeName?: string; whiteLabel?: any; plan?: string } | null,
   whiteLabel: any | null,
   adminContext?: { active: boolean; context?: { targetTenantId: string; targetTenantName: string } } | null
 ): EffectiveTenantBranding {

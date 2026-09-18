@@ -1,0 +1,11 @@
+server/utils/tenantResolver.ts(194,9): error TS2353: Object literal may only specify known properties, and 'plan' does not exist in type 'ResolvedTenantBranding'.
+server/utils/tenantResolver.ts(590,15): error TS2353: Object literal may only specify known properties, and 'plan' does not exist in type 'ResolvedTenantBranding'.
+server/utils/tenantResolver.ts(693,15): error TS2353: Object literal may only specify known properties, and 'plan' does not exist in type 'ResolvedTenantBranding'.
+server/utils/tenantResolver.ts(726,15): error TS2353: Object literal may only specify known properties, and 'plan' does not exist in type 'ResolvedTenantBranding'.
+src/components/layout/Sidebar.tsx(383,15): error TS2304: Cannot find name 'effectiveBranding'.
+src/components/layout/Sidebar.tsx(401,20): error TS2304: Cannot find name 'effectiveBranding'.
+src/components/layout/Sidebar.tsx(431,24): error TS2304: Cannot find name 'effectiveBranding'.
+src/components/layout/Sidebar.tsx(432,24): error TS2304: Cannot find name 'effectiveBranding'.
+src/components/layout/Sidebar.tsx(439,24): error TS2304: Cannot find name 'effectiveBranding'.
+src/components/layout/Sidebar.tsx(441,18): error TS2304: Cannot find name 'effectiveBranding'.
+src/lib/branding.ts(57,49): error TS2339: Property 'plan' does not exist on type '{ id?: string; name?: string; tradeName?: string; whiteLabel?: any; }'.

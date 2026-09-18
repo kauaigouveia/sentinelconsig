@@ -12,6 +12,7 @@ export interface ResolvedTenantBranding {
   domainType: DomainResolutionType;
   resolvedHost: string;
   tenantId?: string; // Mantido internamente no backend, não enviado em dados públicos sensíveis
+  plan?: string;
   companyName: string;
   tradeName: string;
   logoUrl: string | null;
@@ -37,6 +38,7 @@ export interface DomainResolutionResult {
     customDomain: string | null;
     status: string;
     whiteLabel: {
+  plan?: string;
       companyName: string;
       legalName: string | null;
       logoUrl: string | null;
