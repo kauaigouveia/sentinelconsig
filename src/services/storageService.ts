@@ -5,6 +5,8 @@ import {
   BankPromoter,
   Partner,
   Product,
+  Convenio,
+  OperationalRule,
   Client,
   ProposalStatus,
   Proposal,
@@ -155,6 +157,8 @@ const STORAGE_KEYS = {
   BANK_PROMOTERS: 'cg_bank_promoters',
   PARTNERS: 'cg_partners',
   PRODUCTS: 'cg_products',
+  CONVENIOS: 'cg_convenios',
+  OPERATIONAL_RULES: 'cg_operational_rules',
   CLIENTS: 'cg_clients',
   STATUSES: 'cg_statuses',
   PROPOSALS: 'cg_proposals',
@@ -400,14 +404,65 @@ const INITIAL_PARTNERS: Partner[] = [
   },
 ];
 
+// Initial Convenios
+const INITIAL_CONVENIOS: Convenio[] = [
+  { id: 'conv-inss', name: 'INSS', code: 'INSS', description: 'Beneficiários e Pensionistas do INSS', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-siape', name: 'SIAPE / FEDERAL', code: 'SIAPE', description: 'Servidores Públicos Federais (Poder Executivo)', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-govsp', name: 'GOV-SP', code: 'GOVSP', description: 'Governo do Estado de São Paulo', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-ffaa', name: 'FORÇAS ARMADAS', code: 'FFAA', description: 'Exército, Marinha e Aeronáutica', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-fgts', name: 'SAQUE ANIVERSÁRIO FGTS', code: 'FGTS', description: 'Antecipação de Saque Aniversário FGTS', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+];
+
 // Initial Products
 const INITIAL_PRODUCTS: Product[] = [
-  { id: 'prod-novo', name: 'NOVO', description: 'Contrato novo consignado', type: 'CONSIGNADO', allowsMultipleAde: true, requiresPortabilityRelation: false, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-refin', name: 'REFIN', description: 'Refinanciamento de contrato ativo', type: 'CONSIGNADO', allowsMultipleAde: true, requiresPortabilityRelation: false, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-cartao', name: 'CARTÃO', description: 'Cartão de crédito consignado RMC/RCC', type: 'CARTAO', allowsMultipleAde: true, requiresPortabilityRelation: false, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-saque', name: 'SAQUE COMPLEMENTAR', description: 'Saque complementar de limite', type: 'CARTAO', allowsMultipleAde: true, requiresPortabilityRelation: false, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-port', name: 'PORTABILIDADE', description: 'Portabilidade de contrato', type: 'PORTABILIDADE', allowsMultipleAde: true, requiresPortabilityRelation: false, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-refin-port', name: 'REFIN DA PORTABILIDADE', description: 'Refinanciamento atrelado a portabilidade', type: 'PORTABILIDADE', allowsMultipleAde: true, requiresPortabilityRelation: true, active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-novo', name: 'NOVO', code: 'NOVO', description: 'Contrato novo consignado', type: 'CONSIGNADO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-refin', name: 'REFIN', code: 'REFIN', description: 'Refinanciamento de contrato ativo', type: 'CONSIGNADO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-cartao', name: 'CARTÃO', code: 'CARTAO', description: 'Cartão de crédito consignado RMC/RCC', type: 'CARTAO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-saque', name: 'SAQUE COMPLEMENTAR', code: 'SAQUE', description: 'Saque complementar de limite', type: 'CARTAO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-port', name: 'PORTABILIDADE', code: 'PORT', description: 'Portabilidade de contrato', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-refin-port', name: 'REFIN DA PORTABILIDADE', code: 'REFIN_PORT', description: 'Refinanciamento atrelado a portabilidade', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: true, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+];
+
+// Initial Operational Rules
+const INITIAL_OPERATIONAL_RULES: OperationalRule[] = [
+  {
+    id: 'rule-inss-padrao',
+    name: 'Regra Padrão INSS',
+    description: 'Parâmetros operacionais para contratos de convênio INSS',
+    scope: 'GLOBAL',
+    active: true,
+    appliesToAllProducts: true,
+    productIds: [],
+    appliesToAllConvenios: false,
+    convenioIds: ['conv-inss'],
+    minInstallments: 12,
+    maxInstallments: 84,
+    minContractValue: 200,
+    maxContractValue: 100000,
+    requiresCipBalance: false,
+    allowsMultipleAde: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'rule-portabilidade-geral',
+    name: 'Regra Geral de Portabilidade',
+    description: 'Exige quitação e validação de saldo devedor retornado',
+    scope: 'GLOBAL',
+    active: true,
+    appliesToAllProducts: false,
+    productIds: ['prod-port', 'prod-refin-port'],
+    appliesToAllConvenios: true,
+    convenioIds: [],
+    minInstallments: 12,
+    maxInstallments: 96,
+    minContractValue: 1000,
+    maxContractValue: 250000,
+    requiresCipBalance: true,
+    allowsMultipleAde: true,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
 ];
 
 // Initial Statuses
@@ -2457,32 +2512,72 @@ export class StorageService {
   }
 
   // Products
-  public static getProducts(): Product[] {
-    return this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+  public static getProducts(includeInactive = false): Product[] {
+    const list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    let filtered = list;
+    if (!isMaster) {
+      filtered = list.filter(p => (p.scope ?? 'GLOBAL') === 'GLOBAL' || (p.scope === 'EXCLUSIVE' && p.tenantId === currentTenantId));
+    } else if (currentTenantId) {
+      filtered = list.filter(p => (p.scope ?? 'GLOBAL') === 'GLOBAL' || p.tenantId === currentTenantId);
+    }
+
+    if (!includeInactive) {
+      filtered = filtered.filter(p => p.active);
+    }
+    return filtered;
   }
 
-  public static createProduct(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Product {
-    const products = this.getProducts();
+  public static createProduct(data: {
+    name: string;
+    code?: string;
+    description?: string;
+    type?: string;
+    scope?: 'GLOBAL' | 'EXCLUSIVE';
+    active?: boolean;
+    allowsMultipleAde?: boolean;
+    requiresPortabilityRelation?: boolean;
+    convenioIds?: string[];
+    tenantId?: string;
+  }): Product {
+    const list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    const scope = (isMaster && data.scope === 'GLOBAL') ? 'GLOBAL' : 'EXCLUSIVE';
+    const tenantId = scope === 'GLOBAL' ? undefined : (data.tenantId || currentTenantId);
+
+    const tenants = this.getTenants();
+    const tenant = tenantId ? tenants.find(t => t.id === tenantId) : undefined;
     const newProduct: Product = {
-      ...data,
-      id: `prod-${Date.now()}`,
+      id: `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: data.name.trim(),
+      code: data.code?.trim() || undefined,
+      description: data.description?.trim() || undefined,
+      type: data.type || 'CONSIGNADO',
+      scope,
+      tenantId,
+      tenantName: tenant?.name,
+      allowsMultipleAde: data.allowsMultipleAde !== undefined ? data.allowsMultipleAde : true,
+      requiresPortabilityRelation: data.requiresPortabilityRelation !== undefined ? data.requiresPortabilityRelation : false,
+      convenioIds: data.convenioIds || [],
+      active: data.active !== undefined ? data.active : true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    products.push(newProduct);
-    this.set(STORAGE_KEYS.PRODUCTS, products);
+
+    list.push(newProduct);
+    this.set(STORAGE_KEYS.PRODUCTS, list);
 
     fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: newProduct.id,
-        name: newProduct.name,
-        code: newProduct.id,
-        type: newProduct.type,
-        active: newProduct.active,
-      }),
-    }).catch(err => console.warn('[API] Error creating product:', err));
+      body: JSON.stringify(newProduct),
+    }).catch(err => console.warn('[API] Erro ao sincronizar produto:', err));
 
     this.addAuditLog({
       action: 'CRIAR_PRODUTO',
@@ -2493,11 +2588,75 @@ export class StorageService {
     return newProduct;
   }
 
+  public static updateProduct(id: string, data: Partial<Product>): Product {
+    const list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    const index = list.findIndex(p => p.id === id);
+    if (index === -1) throw new Error('Produto não encontrado.');
+
+    const existing = list[index];
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    if ((existing.scope ?? 'GLOBAL') === 'GLOBAL' && !isMaster) {
+      throw new Error('Apenas o Administrador Master pode editar produtos globais.');
+    }
+    if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== currentTenantId && !isMaster) {
+      throw new Error('Permissão negada para editar este produto.');
+    }
+
+    const updated: Product = {
+      ...existing,
+      ...data,
+      name: data.name !== undefined ? data.name.trim() : existing.name,
+      code: data.code !== undefined ? (data.code?.trim() || undefined) : existing.code,
+      description: data.description !== undefined ? (data.description?.trim() || undefined) : existing.description,
+      type: data.type !== undefined ? data.type : existing.type,
+      active: data.active !== undefined ? Boolean(data.active) : existing.active,
+      allowsMultipleAde: data.allowsMultipleAde !== undefined ? Boolean(data.allowsMultipleAde) : existing.allowsMultipleAde,
+      requiresPortabilityRelation: data.requiresPortabilityRelation !== undefined ? Boolean(data.requiresPortabilityRelation) : existing.requiresPortabilityRelation,
+      convenioIds: data.convenioIds !== undefined ? data.convenioIds : existing.convenioIds,
+      updatedAt: new Date().toISOString(),
+    };
+
+    list[index] = updated;
+    this.set(STORAGE_KEYS.PRODUCTS, list);
+
+    fetch(`/api/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch(err => console.warn('[API] Erro ao atualizar produto:', err));
+
+    this.addAuditLog({
+      action: 'ATUALIZAR_PRODUTO',
+      entity: 'Product',
+      entityId: id,
+      previousData: JSON.stringify(existing),
+      newData: JSON.stringify(updated),
+    });
+
+    return updated;
+  }
+
   public static deleteProduct(id: string): void {
-    const list = this.getProducts();
+    const list = this.getProducts(true);
     const target = list.find(p => p.id === id);
     if (!target) throw new Error('Produto não encontrado.');
-    const updated = list.filter(p => p.id !== id);
+
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    if ((target.scope ?? 'GLOBAL') === 'GLOBAL' && !isMaster) {
+      throw new Error('Apenas administradores Master podem excluir produtos globais.');
+    }
+    if (target.scope === 'EXCLUSIVE' && target.tenantId !== currentTenantId && !isMaster) {
+      throw new Error('Permissão negada para excluir este produto.');
+    }
+
+    const allProducts = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    const updated = allProducts.filter(p => p.id !== id);
     this.set(STORAGE_KEYS.PRODUCTS, updated);
 
     fetch(`/api/products/${id}`, {
@@ -2510,6 +2669,321 @@ export class StorageService {
       entityId: id,
       previousData: JSON.stringify(target),
     });
+  }
+
+  // -------------------------------------------------------------
+  // CONVÊNIOS
+  // -------------------------------------------------------------
+  public static getConvenios(includeInactive = false): Convenio[] {
+    const list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    let filtered = list;
+    if (!isMaster) {
+      filtered = list.filter(c => (c.scope ?? 'GLOBAL') === 'GLOBAL' || (c.scope === 'EXCLUSIVE' && c.tenantId === currentTenantId));
+    } else if (currentTenantId) {
+      filtered = list.filter(c => (c.scope ?? 'GLOBAL') === 'GLOBAL' || c.tenantId === currentTenantId);
+    }
+
+    if (!includeInactive) {
+      filtered = filtered.filter(c => c.active);
+    }
+    return filtered;
+  }
+
+  public static getConvenioById(id: string): Convenio | undefined {
+    return this.getConvenios(true).find(c => c.id === id);
+  }
+
+  public static createConvenio(data: {
+    name: string;
+    code?: string;
+    description?: string;
+    scope?: 'GLOBAL' | 'EXCLUSIVE';
+    active?: boolean;
+    tenantId?: string;
+  }): Convenio {
+    const list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    const scope = (isMaster && data.scope === 'GLOBAL') ? 'GLOBAL' : 'EXCLUSIVE';
+    const tenantId = scope === 'GLOBAL' ? undefined : (data.tenantId || currentTenantId);
+
+    const cleanName = data.name.trim().toUpperCase();
+    const cleanCode = data.code ? data.code.trim().toUpperCase() : undefined;
+    const duplicate = list.find(c => {
+      const matchScope = c.scope === scope;
+      const matchTenant = scope === 'GLOBAL' || c.tenantId === tenantId;
+      if (!matchScope || !matchTenant) return false;
+      if (c.name.trim().toUpperCase() === cleanName) return true;
+      if (cleanCode && c.code && c.code.trim().toUpperCase() === cleanCode) return true;
+      return false;
+    });
+
+    if (duplicate) {
+      throw new Error(`Já existe um convênio cadastrado com este nome ou código (${duplicate.name}) no mesmo escopo.`);
+    }
+
+    const tenants = this.getTenants();
+    const tenant = tenantId ? tenants.find(t => t.id === tenantId) : undefined;
+    const newConvenio: Convenio = {
+      id: `conv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: data.name.trim(),
+      code: data.code?.trim() || undefined,
+      description: data.description?.trim() || undefined,
+      scope,
+      tenantId,
+      tenantName: tenant?.name,
+      active: data.active !== undefined ? data.active : true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    list.push(newConvenio);
+    this.set(STORAGE_KEYS.CONVENIOS, list);
+
+    fetch('/api/convenios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newConvenio),
+    }).catch(err => console.warn('[API] Erro ao sincronizar convênio:', err));
+
+    this.addAuditLog({
+      action: 'CRIAR_CONVENIO',
+      entity: 'Convenio',
+      entityId: newConvenio.id,
+      newData: JSON.stringify(newConvenio),
+    });
+
+    return newConvenio;
+  }
+
+  public static updateConvenio(id: string, data: Partial<Convenio>): Convenio {
+    const list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
+    const index = list.findIndex(c => c.id === id);
+    if (index === -1) throw new Error('Convênio não encontrado.');
+
+    const existing = list[index];
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    if ((existing.scope ?? 'GLOBAL') === 'GLOBAL' && !isMaster) {
+      throw new Error('Apenas o Administrador Master pode editar convênios globais.');
+    }
+    if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== currentTenantId && !isMaster) {
+      throw new Error('Permissão negada para editar este convênio.');
+    }
+
+    const updated: Convenio = {
+      ...existing,
+      ...data,
+      name: data.name !== undefined ? data.name.trim() : existing.name,
+      code: data.code !== undefined ? (data.code?.trim() || undefined) : existing.code,
+      description: data.description !== undefined ? (data.description?.trim() || undefined) : existing.description,
+      active: data.active !== undefined ? Boolean(data.active) : existing.active,
+      updatedAt: new Date().toISOString(),
+    };
+
+    list[index] = updated;
+    this.set(STORAGE_KEYS.CONVENIOS, list);
+
+    fetch(`/api/convenios/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch(err => console.warn('[API] Erro ao atualizar convênio:', err));
+
+    this.addAuditLog({
+      action: 'ATUALIZAR_CONVENIO',
+      entity: 'Convenio',
+      entityId: id,
+      previousData: JSON.stringify(existing),
+      newData: JSON.stringify(updated),
+    });
+
+    return updated;
+  }
+
+  public static deleteConvenio(id: string): void {
+    const list = this.getConvenios(true);
+    const target = list.find(c => c.id === id);
+    if (!target) throw new Error('Convênio não encontrado.');
+
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    if ((target.scope ?? 'GLOBAL') === 'GLOBAL' && !isMaster) {
+      throw new Error('Apenas administradores Master podem excluir convênios globais.');
+    }
+    if (target.scope === 'EXCLUSIVE' && target.tenantId !== currentTenantId && !isMaster) {
+      throw new Error('Permissão negada para excluir este convênio.');
+    }
+
+    const allConvenios = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
+    const updated = allConvenios.filter(c => c.id !== id);
+    this.set(STORAGE_KEYS.CONVENIOS, updated);
+
+    fetch(`/api/convenios/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting convenio:', err));
+
+    this.addAuditLog({
+      action: 'EXCLUIR_CONVENIO',
+      entity: 'Convenio',
+      entityId: id,
+      previousData: JSON.stringify(target),
+    });
+  }
+
+  // -------------------------------------------------------------
+  // OPERATIONAL RULES
+  // -------------------------------------------------------------
+  public static getOperationalRules(includeInactive = false): OperationalRule[] {
+    const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    let filtered = list;
+    if (!isMaster) {
+      filtered = list.filter(r => (r.scope ?? 'GLOBAL') === 'GLOBAL' || (r.scope === 'EXCLUSIVE' && r.tenantId === currentTenantId));
+    } else if (currentTenantId) {
+      filtered = list.filter(r => (r.scope ?? 'GLOBAL') === 'GLOBAL' || r.tenantId === currentTenantId);
+    }
+
+    if (!includeInactive) {
+      filtered = filtered.filter(r => r.active);
+    }
+    return filtered;
+  }
+
+  public static createOperationalRule(data: Omit<OperationalRule, 'id' | 'createdAt' | 'updatedAt'>): OperationalRule {
+    const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
+    const activeUser = this.getActiveUser();
+    const currentTenantId = this.getCurrentTenantId();
+    const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+
+    const scope = (isMaster && data.scope === 'GLOBAL') ? 'GLOBAL' : 'EXCLUSIVE';
+    const tenantId = scope === 'GLOBAL' ? undefined : (data.tenantId || currentTenantId);
+
+    const tenants = this.getTenants();
+    const tenant = tenantId ? tenants.find(t => t.id === tenantId) : undefined;
+    const newRule: OperationalRule = {
+      ...data,
+      id: `rule-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      scope,
+      tenantId,
+      tenantName: tenant?.name,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    list.push(newRule);
+    this.set(STORAGE_KEYS.OPERATIONAL_RULES, list);
+
+    fetch('/api/operational-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRule),
+    }).catch(err => console.warn('[API] Erro ao sincronizar regra:', err));
+
+    return newRule;
+  }
+
+  public static updateOperationalRule(id: string, data: Partial<OperationalRule>): OperationalRule {
+    const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
+    const index = list.findIndex(r => r.id === id);
+    if (index === -1) throw new Error('Regra não encontrada.');
+
+    const updated: OperationalRule = {
+      ...list[index],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+
+    list[index] = updated;
+    this.set(STORAGE_KEYS.OPERATIONAL_RULES, list);
+
+    fetch(`/api/operational-rules/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch(err => console.warn('[API] Erro ao atualizar regra:', err));
+
+    return updated;
+  }
+
+  public static deleteOperationalRule(id: string): void {
+    const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
+    const updated = list.filter(r => r.id !== id);
+    this.set(STORAGE_KEYS.OPERATIONAL_RULES, updated);
+
+    fetch(`/api/operational-rules/${id}`, {
+      method: 'DELETE',
+    }).catch(err => console.warn('[API] Error deleting rule:', err));
+  }
+
+  // -------------------------------------------------------------
+  // COMPATIBILITY & VALIDATION HELPERS
+  // -------------------------------------------------------------
+  public static isProductCompatibleWithConvenio(productId: string, convenioId: string): boolean {
+    if (!productId || !convenioId) return true;
+    const prod = this.getProducts(true).find(p => p.id === productId);
+    if (!prod) return true;
+    if (!prod.convenioIds || prod.convenioIds.length === 0) return true;
+    return prod.convenioIds.includes(convenioId);
+  }
+
+  public static getProductsForConvenio(convenioId?: string, includeInactive = false): Product[] {
+    const products = this.getProducts(includeInactive);
+    if (!convenioId) return products;
+    return products.filter(p => {
+      if (!p.convenioIds || p.convenioIds.length === 0) return true;
+      return p.convenioIds.includes(convenioId);
+    });
+  }
+
+  public static validateProposalAgainstRules(params: {
+    convenioId?: string;
+    productId?: string;
+    installmentsCount?: number;
+    contractValue?: number;
+    contractBalance?: number;
+  }): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    const rules = this.getOperationalRules(false);
+
+    for (const rule of rules) {
+      const matchProduct = rule.appliesToAllProducts || (params.productId && rule.productIds.includes(params.productId));
+      const matchConvenio = rule.appliesToAllConvenios || (params.convenioId && rule.convenioIds.includes(params.convenioId));
+
+      if (matchProduct && matchConvenio) {
+        if (params.installmentsCount !== undefined) {
+          if (rule.minInstallments && params.installmentsCount < rule.minInstallments) {
+            errors.push(`A regra "${rule.name}" exige no mínimo ${rule.minInstallments} parcelas.`);
+          }
+          if (rule.maxInstallments && params.installmentsCount > rule.maxInstallments) {
+            errors.push(`A regra "${rule.name}" permite no máximo ${rule.maxInstallments} parcelas.`);
+          }
+        }
+        if (params.contractValue !== undefined) {
+          if (rule.minContractValue && params.contractValue < rule.minContractValue) {
+            errors.push(`A regra "${rule.name}" exige valor de contrato mínimo de R$ ${rule.minContractValue.toLocaleString('pt-BR')}.`);
+          }
+          if (rule.maxContractValue && params.contractValue > rule.maxContractValue) {
+            errors.push(`A regra "${rule.name}" permite valor de contrato máximo de R$ ${rule.maxContractValue.toLocaleString('pt-BR')}.`);
+          }
+        }
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
   }
 
   // Statuses
@@ -2850,6 +3324,7 @@ export class StorageService {
       proposalNumber: string;
       clientId: string;
       productId: string;
+      convenioId?: string;
       bankId: string;
       promoterId: string;
       partnerId: string;
@@ -2899,6 +3374,7 @@ export class StorageService {
       proposalNumber: cleanNumber,
       clientId: data.clientId,
       productId: data.productId,
+      convenioId: data.convenioId,
       bankId: data.bankId,
       promoterId: data.promoterId,
       partnerId: data.partnerId,
@@ -2930,6 +3406,7 @@ export class StorageService {
         promoterId: newProposal.promoterId,
         partnerId: newProposal.partnerId,
         productId: newProposal.productId,
+        convenioId: newProposal.convenioId,
         type: 'NOVO',
         releasedValue: newProposal.disbursedValue || 0,
         contractValue: newProposal.contractBalance || 0,

@@ -11,6 +11,7 @@ export interface AuditLogEntryParams {
   entity: string;
   entityId?: string | null;
   oldData?: any;
+  previousData?: any;
   newData?: any;
   req?: express.Request;
   ipAddress?: string | null;
@@ -363,8 +364,9 @@ export class AuditLogService {
         } = params;
 
         const finalIp = ipAddress || extractClientIp(req);
-        const sanitizedOld = oldData !== undefined && oldData !== null
-          ? (typeof oldData === 'string' ? oldData : JSON.stringify(sanitizeAuditData(oldData)))
+        const resolvedOld = oldData !== undefined ? oldData : params.previousData;
+        const sanitizedOld = resolvedOld !== undefined && resolvedOld !== null
+          ? (typeof resolvedOld === 'string' ? resolvedOld : JSON.stringify(sanitizeAuditData(resolvedOld)))
           : null;
         const sanitizedNew = newData !== undefined && newData !== null
           ? (typeof newData === 'string' ? newData : JSON.stringify(sanitizeAuditData(newData)))

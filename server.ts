@@ -1293,6 +1293,8 @@ async function auditAndEnsureMasterUser() {
         orderBy: { createdAt: 'desc' },
         include: {
           partner: true,
+          convenio: true,
+          product: true,
           createdBy: { select: { id: true, name: true, email: true, role: true } },
         },
       });
@@ -1319,6 +1321,8 @@ async function auditAndEnsureMasterUser() {
         where: { id: req.params.id, tenantId, deletedAt: null },
         include: {
           partner: true,
+          convenio: true,
+          product: true,
           createdBy: { select: { id: true, name: true, email: true, role: true } },
         },
       });
@@ -1345,7 +1349,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
       }
 
-      const { cpf, partnerId } = req.body;
+      const { cpf, partnerId, convenioId, productId } = req.body;
       if (!cpf || !partnerId) {
         return res.status(400).json({ error: 'CPF e Parceiro são obrigatórios.' });
       }
@@ -1361,6 +1365,39 @@ async function auditAndEnsureMasterUser() {
       });
       if (!partner) {
         return res.status(400).json({ error: 'Parceiro não encontrado, inativo ou não pertence a este tenant.' });
+      }
+
+      // Validate Convenio if provided
+      if (convenioId) {
+        const convenio = await prisma.convenio.findFirst({
+          where: {
+            id: convenioId,
+            active: true,
+            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+          },
+        });
+        if (!convenio) {
+          return res.status(400).json({ error: 'Convênio selecionado inválido, inativo ou não disponível para este tenant.' });
+        }
+      }
+
+      // Validate Product if provided
+      if (productId) {
+        const product = await prisma.product.findFirst({
+          where: {
+            id: productId,
+            active: true,
+            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+          },
+        });
+        if (!product) {
+          return res.status(400).json({ error: 'Produto selecionado inválido, inativo ou não disponível para este tenant.' });
+        }
+        if (convenioId && product.convenioIds && product.convenioIds.length > 0) {
+          if (!product.convenioIds.includes(convenioId)) {
+            return res.status(400).json({ error: 'O produto selecionado não é compatível com o convênio escolhido.' });
+          }
+        }
       }
 
       // Check duplicate pending simulation
@@ -1382,11 +1419,15 @@ async function auditAndEnsureMasterUser() {
           tenantId,
           cpf: cleanCpf,
           partnerId,
+          convenioId: convenioId || null,
+          productId: productId || null,
           createdById: session.user.id,
           status: 'SIMULAÇÃO ENVIADA',
         },
         include: {
           partner: true,
+          convenio: true,
+          product: true,
           createdBy: { select: { id: true, name: true, email: true, role: true } },
         },
       });
@@ -1687,7 +1728,7 @@ async function auditAndEnsureMasterUser() {
       const whereCondition = { tenantId };
       const proposals = await prisma.proposal.findMany({
         where: whereCondition,
-        include: { client: true, bank: true, promoter: true, partner: true, product: true },
+        include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true },
         orderBy: { createdAt: 'desc' },
       });
       return res.json(proposals);
@@ -1705,7 +1746,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar proposta.' });
       }
 
-      const { proposalNumber, clientId, clientCpf, clientName, bankId, promoterId, partnerId, productId, type, releasedValue, contractValue, installmentValue, installmentsCount } = req.body;
+      const { proposalNumber, clientId, clientCpf, clientName, bankId, promoterId, partnerId, productId, convenioId, type, releasedValue, contractValue, installmentValue, installmentsCount } = req.body;
 
       let targetClientId = clientId;
 
@@ -1733,6 +1774,37 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
+      if (convenioId) {
+        const validConvenio = await prisma.convenio.findFirst({
+          where: {
+            id: convenioId,
+            active: true,
+            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+          },
+        });
+        if (!validConvenio) {
+          return res.status(400).json({ error: 'O convênio selecionado é inválido ou não pertence a este tenant.' });
+        }
+      }
+
+      if (productId) {
+        const validProduct = await prisma.product.findFirst({
+          where: {
+            id: productId,
+            active: true,
+            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+          },
+        });
+        if (!validProduct) {
+          return res.status(400).json({ error: 'O produto selecionado é inválido ou não pertence a este tenant.' });
+        }
+        if (convenioId && validProduct.convenioIds && validProduct.convenioIds.length > 0) {
+          if (!validProduct.convenioIds.includes(convenioId)) {
+            return res.status(400).json({ error: 'O produto selecionado não é compatível com o convênio escolhido.' });
+          }
+        }
+      }
+
       const proposal = await prisma.proposal.create({
         data: {
           tenantId,
@@ -1742,6 +1814,7 @@ async function auditAndEnsureMasterUser() {
           promoterId: promoterId || null,
           partnerId: partnerId || null,
           productId: productId || null,
+          convenioId: convenioId || null,
           type: type || 'NOVO',
           releasedValue: releasedValue ? Number(releasedValue) : 0,
           contractValue: contractValue ? Number(contractValue) : 0,
@@ -1749,7 +1822,7 @@ async function auditAndEnsureMasterUser() {
           installmentsCount: installmentsCount ? Number(installmentsCount) : 84,
           createdById: session?.user?.id || null,
         },
-        include: { client: true, bank: true, promoter: true, partner: true, product: true },
+        include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true },
       });
 
       // Emissão pós-commit de PROPOSAL_CREATED estritamente para o tenant da sessão
@@ -2342,13 +2415,76 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
-      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-      const products = await prisma.product.findMany({
-        where: { tenantId },
-      });
-      return res.json(products);
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+
+      let products;
+      if (isMaster && req.query.allTenants === 'true') {
+        products = await prisma.product.findMany({
+          include: { tenant: { select: { id: true, name: true } } },
+          orderBy: { name: 'asc' },
+        });
+      } else {
+        if (!tenantId && !isMaster) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+        products = await prisma.product.findMany({
+          where: {
+            OR: [
+              { scope: 'GLOBAL' },
+              ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
+            ],
+          },
+          include: { tenant: { select: { id: true, name: true } } },
+          orderBy: { name: 'asc' },
+        });
+      }
+
+      const formatted = products.map(p => ({
+        ...p,
+        tenantName: p.tenant?.name,
+      }));
+
+      return res.json(formatted);
     } catch (err) {
+      console.error('[API PRODUCTS GET ERROR]', err);
       return res.status(500).json({ error: 'Erro ao buscar produtos.' });
+    }
+  });
+
+  app.get('/api/convenios', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+
+      let convenios;
+      if (isMaster && req.query.allTenants === 'true') {
+        convenios = await prisma.convenio.findMany({
+          include: { tenant: { select: { id: true, name: true } } },
+          orderBy: { name: 'asc' },
+        });
+      } else {
+        if (!tenantId && !isMaster) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+        convenios = await prisma.convenio.findMany({
+          where: {
+            OR: [
+              { scope: 'GLOBAL' },
+              ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
+            ],
+          },
+          include: { tenant: { select: { id: true, name: true } } },
+          orderBy: { name: 'asc' },
+        });
+      }
+
+      const formatted = convenios.map(c => ({
+        ...c,
+        tenantName: c.tenant?.name,
+      }));
+
+      return res.json(formatted);
+    } catch (err) {
+      console.error('[API CONVENIOS GET ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao buscar convênios.' });
     }
   });
 
@@ -3449,22 +3585,54 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/products', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
-      const { id, name, code, type, active } = req.body;
-      if (!name || !code) return res.status(400).json({ error: 'Nome e Código são obrigatórios.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+
+      const { id, name, code, description, type, active, scope, convenioIds, allowsMultipleAde, requiresPortabilityRelation, targetTenantId } = req.body;
+      if (!name) return res.status(400).json({ error: 'Nome do produto é obrigatório.' });
+
+      const targetScope = isMaster && scope === 'GLOBAL' ? 'GLOBAL' : 'EXCLUSIVE';
+      const finalTenantId = targetScope === 'GLOBAL' ? null : (isMaster && targetTenantId ? targetTenantId : tenantId);
+
+      if (targetScope === 'EXCLUSIVE' && !finalTenantId) {
+        return res.status(400).json({ error: 'Produtos exclusivos necessitam de um tenantId associado.' });
+      }
+
       const product = await prisma.product.create({
         data: {
           id: id || undefined,
-          tenantId,
-          name,
-          code,
+          tenantId: finalTenantId,
+          name: name.trim(),
+          code: code ? code.trim() : null,
+          description: description ? description.trim() : null,
+          scope: targetScope,
           type: type || 'NOVO',
           active: active !== undefined ? Boolean(active) : true,
+          allowsMultipleAde: allowsMultipleAde !== undefined ? Boolean(allowsMultipleAde) : true,
+          requiresPortabilityRelation: requiresPortabilityRelation !== undefined ? Boolean(requiresPortabilityRelation) : false,
+          convenioIds: Array.isArray(convenioIds) ? convenioIds : [],
         },
+        include: { tenant: { select: { id: true, name: true } } },
       });
-      return res.json(product);
+
+      await AuditLogService.record(prisma, {
+        tenantId: finalTenantId || tenantId || 'GLOBAL',
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PRODUTO_CRIADO',
+        entity: 'Product',
+        entityId: product.id,
+        newData: product,
+        req,
+      });
+
+      return res.status(201).json({
+        ...product,
+        tenantName: product.tenant?.name,
+      });
     } catch (err) {
+      console.error('[API PRODUCTS POST ERROR]', err);
       return res.status(500).json({ error: 'Erro ao criar produto.' });
     }
   });
@@ -3472,21 +3640,55 @@ async function auditAndEnsureMasterUser() {
   app.put('/api/products/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
-      const { name, code, type, active } = req.body;
-      const product = await prisma.product.updateMany({
-        where: { id, tenantId },
+
+      const existing = await prisma.product.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+      if (existing.scope === 'GLOBAL' && !isMaster) {
+        return res.status(403).json({ error: 'Apenas administradores Master podem editar produtos globais.' });
+      }
+      if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== tenantId && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado para editar este produto.' });
+      }
+
+      const { name, code, description, type, active, allowsMultipleAde, requiresPortabilityRelation, convenioIds } = req.body;
+      const updated = await prisma.product.update({
+        where: { id },
         data: {
-          name,
-          code,
+          name: name !== undefined ? name.trim() : undefined,
+          code: code !== undefined ? (code ? code.trim() : null) : undefined,
+          description: description !== undefined ? (description ? description.trim() : null) : undefined,
           type: type !== undefined ? type : undefined,
           active: active !== undefined ? Boolean(active) : undefined,
+          allowsMultipleAde: allowsMultipleAde !== undefined ? Boolean(allowsMultipleAde) : undefined,
+          requiresPortabilityRelation: requiresPortabilityRelation !== undefined ? Boolean(requiresPortabilityRelation) : undefined,
+          convenioIds: Array.isArray(convenioIds) ? convenioIds : undefined,
         },
+        include: { tenant: { select: { id: true, name: true } } },
       });
-      return res.json({ success: true, product });
+
+      await AuditLogService.record(prisma, {
+        tenantId: updated.tenantId || tenantId || 'GLOBAL',
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PRODUTO_ATUALIZADO',
+        entity: 'Product',
+        entityId: id,
+        previousData: existing,
+        newData: updated,
+        req,
+      });
+
+      return res.json({
+        ...updated,
+        tenantName: updated.tenant?.name,
+      });
     } catch (err) {
+      console.error('[API PRODUCTS PUT ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar produto.' });
     }
   });
@@ -3494,15 +3696,344 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/products/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
-      await prisma.product.deleteMany({
-        where: { id, tenantId },
+
+      const existing = await prisma.product.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+      if (existing.scope === 'GLOBAL' && !isMaster) {
+        return res.status(403).json({ error: 'Apenas administradores Master podem excluir produtos globais.' });
+      }
+      if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== tenantId && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado para excluir este produto.' });
+      }
+
+      await prisma.product.delete({ where: { id } });
+
+      await AuditLogService.record(prisma, {
+        tenantId: existing.tenantId || tenantId || 'GLOBAL',
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PRODUTO_EXCLUIDO',
+        entity: 'Product',
+        entityId: id,
+        previousData: existing,
+        req,
       });
+
       return res.json({ success: true });
     } catch (err) {
+      console.error('[API PRODUCTS DELETE ERROR]', err);
       return res.status(500).json({ error: 'Erro ao deletar produto.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // CONVÊNIOS (POST, PUT, DELETE)
+  // -------------------------------------------------------------
+  app.post('/api/convenios', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+
+      const { id, name, code, description, scope, active, targetTenantId } = req.body;
+      if (!name) return res.status(400).json({ error: 'Nome do convênio é obrigatório.' });
+
+      const targetScope = isMaster && scope === 'GLOBAL' ? 'GLOBAL' : 'EXCLUSIVE';
+      const finalTenantId = targetScope === 'GLOBAL' ? null : (isMaster && targetTenantId ? targetTenantId : tenantId);
+
+      if (targetScope === 'EXCLUSIVE' && !finalTenantId) {
+        return res.status(400).json({ error: 'Convênios exclusivos necessitam de um tenantId associado.' });
+      }
+
+      const existing = await prisma.convenio.findFirst({
+        where: {
+          name: { equals: name.trim(), mode: 'insensitive' },
+          scope: targetScope,
+          tenantId: finalTenantId,
+        },
+      });
+      if (existing) {
+        return res.status(409).json({ error: 'Já existe um convênio cadastrado com este nome para este escopo.' });
+      }
+
+      const convenio = await prisma.convenio.create({
+        data: {
+          id: id || undefined,
+          name: name.trim(),
+          code: code ? code.trim() : null,
+          description: description ? description.trim() : null,
+          scope: targetScope,
+          tenantId: finalTenantId,
+          active: active !== undefined ? Boolean(active) : true,
+        },
+        include: { tenant: { select: { id: true, name: true } } },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: finalTenantId || tenantId || 'GLOBAL',
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CONVENIO_CRIADO',
+        entity: 'Convenio',
+        entityId: convenio.id,
+        newData: convenio,
+        req,
+      });
+
+      return res.status(201).json({
+        ...convenio,
+        tenantName: convenio.tenant?.name,
+      });
+    } catch (err) {
+      console.error('[API CONVENIOS POST ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao criar convênio.' });
+    }
+  });
+
+  app.put('/api/convenios/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      const { id } = req.params;
+
+      const existing = await prisma.convenio.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Convênio não encontrado.' });
+
+      if (existing.scope === 'GLOBAL' && !isMaster) {
+        return res.status(403).json({ error: 'Apenas administradores Master podem editar convênios globais.' });
+      }
+      if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== tenantId && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado para editar este convênio.' });
+      }
+
+      const { name, code, description, active } = req.body;
+      const updated = await prisma.convenio.update({
+        where: { id },
+        data: {
+          name: name !== undefined ? name.trim() : undefined,
+          code: code !== undefined ? (code ? code.trim() : null) : undefined,
+          description: description !== undefined ? (description ? description.trim() : null) : undefined,
+          active: active !== undefined ? Boolean(active) : undefined,
+        },
+        include: { tenant: { select: { id: true, name: true } } },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: updated.tenantId || tenantId || 'GLOBAL',
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CONVENIO_ATUALIZADO',
+        entity: 'Convenio',
+        entityId: id,
+        previousData: existing,
+        newData: updated,
+        req,
+      });
+
+      return res.json({
+        ...updated,
+        tenantName: updated.tenant?.name,
+      });
+    } catch (err) {
+      console.error('[API CONVENIOS PUT ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar convênio.' });
+    }
+  });
+
+  app.delete('/api/convenios/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      const { id } = req.params;
+
+      const existing = await prisma.convenio.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Convênio não encontrado.' });
+
+      if (existing.scope === 'GLOBAL' && !isMaster) {
+        return res.status(403).json({ error: 'Apenas administradores Master podem excluir convênios globais.' });
+      }
+      if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== tenantId && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado para excluir este convênio.' });
+      }
+
+      await prisma.convenio.delete({ where: { id } });
+
+      await AuditLogService.record(prisma, {
+        tenantId: existing.tenantId || tenantId || 'GLOBAL',
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CONVENIO_EXCLUIDO',
+        entity: 'Convenio',
+        entityId: id,
+        previousData: existing,
+        req,
+      });
+
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('[API CONVENIOS DELETE ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao excluir convênio.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // OPERATIONAL RULES (GET, POST, PUT, DELETE)
+  // -------------------------------------------------------------
+  app.get('/api/operational-rules', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+
+      let rules;
+      if (isMaster && req.query.allTenants === 'true') {
+        rules = await prisma.operationalRule.findMany({
+          include: { tenant: { select: { id: true, name: true } } },
+          orderBy: { name: 'asc' },
+        });
+      } else {
+        if (!tenantId && !isMaster) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+        rules = await prisma.operationalRule.findMany({
+          where: {
+            OR: [
+              { scope: 'GLOBAL' },
+              ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
+            ],
+          },
+          include: { tenant: { select: { id: true, name: true } } },
+          orderBy: { name: 'asc' },
+        });
+      }
+
+      return res.json(rules.map(r => ({ ...r, tenantName: r.tenant?.name })));
+    } catch (err) {
+      console.error('[API OPERATIONAL RULES GET ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao buscar regras operacionais.' });
+    }
+  });
+
+  app.post('/api/operational-rules', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+
+      const { id, name, description, scope, active, appliesToAllProducts, productIds, appliesToAllConvenios, convenioIds, minInstallments, maxInstallments, minContractValue, maxContractValue, requiresCipBalance, allowsMultipleAde, targetTenantId } = req.body;
+      if (!name) return res.status(400).json({ error: 'Nome da regra é obrigatório.' });
+
+      const targetScope = isMaster && scope === 'GLOBAL' ? 'GLOBAL' : 'EXCLUSIVE';
+      const finalTenantId = targetScope === 'GLOBAL' ? null : (isMaster && targetTenantId ? targetTenantId : tenantId);
+
+      const rule = await prisma.operationalRule.create({
+        data: {
+          id: id || undefined,
+          tenantId: finalTenantId,
+          name: name.trim(),
+          description: description ? description.trim() : null,
+          scope: targetScope,
+          active: active !== undefined ? Boolean(active) : true,
+          appliesToAllProducts: appliesToAllProducts !== undefined ? Boolean(appliesToAllProducts) : true,
+          productIds: Array.isArray(productIds) ? productIds : [],
+          appliesToAllConvenios: appliesToAllConvenios !== undefined ? Boolean(appliesToAllConvenios) : true,
+          convenioIds: Array.isArray(convenioIds) ? convenioIds : [],
+          minInstallments: minInstallments !== undefined && minInstallments !== null ? Number(minInstallments) : null,
+          maxInstallments: maxInstallments !== undefined && maxInstallments !== null ? Number(maxInstallments) : null,
+          minContractValue: minContractValue !== undefined && minContractValue !== null ? Number(minContractValue) : null,
+          maxContractValue: maxContractValue !== undefined && maxContractValue !== null ? Number(maxContractValue) : null,
+          requiresCipBalance: requiresCipBalance !== undefined ? Boolean(requiresCipBalance) : false,
+          allowsMultipleAde: allowsMultipleAde !== undefined ? Boolean(allowsMultipleAde) : true,
+        },
+        include: { tenant: { select: { id: true, name: true } } },
+      });
+
+      return res.status(201).json({ ...rule, tenantName: rule.tenant?.name });
+    } catch (err) {
+      console.error('[API OPERATIONAL RULES POST ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao criar regra operacional.' });
+    }
+  });
+
+  app.put('/api/operational-rules/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      const { id } = req.params;
+
+      const existing = await prisma.operationalRule.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Regra operacional não encontrada.' });
+
+      if (existing.scope === 'GLOBAL' && !isMaster) {
+        return res.status(403).json({ error: 'Apenas administradores Master podem editar regras globais.' });
+      }
+      if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== tenantId && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado para editar esta regra.' });
+      }
+
+      const { name, description, active, appliesToAllProducts, productIds, appliesToAllConvenios, convenioIds, minInstallments, maxInstallments, minContractValue, maxContractValue, requiresCipBalance, allowsMultipleAde } = req.body;
+      const updated = await prisma.operationalRule.update({
+        where: { id },
+        data: {
+          name: name !== undefined ? name.trim() : undefined,
+          description: description !== undefined ? (description ? description.trim() : null) : undefined,
+          active: active !== undefined ? Boolean(active) : undefined,
+          appliesToAllProducts: appliesToAllProducts !== undefined ? Boolean(appliesToAllProducts) : undefined,
+          productIds: Array.isArray(productIds) ? productIds : undefined,
+          appliesToAllConvenios: appliesToAllConvenios !== undefined ? Boolean(appliesToAllConvenios) : undefined,
+          convenioIds: Array.isArray(convenioIds) ? convenioIds : undefined,
+          minInstallments: minInstallments !== undefined ? (minInstallments !== null ? Number(minInstallments) : null) : undefined,
+          maxInstallments: maxInstallments !== undefined ? (maxInstallments !== null ? Number(maxInstallments) : null) : undefined,
+          minContractValue: minContractValue !== undefined ? (minContractValue !== null ? Number(minContractValue) : null) : undefined,
+          maxContractValue: maxContractValue !== undefined ? (maxContractValue !== null ? Number(maxContractValue) : null) : undefined,
+          requiresCipBalance: requiresCipBalance !== undefined ? Boolean(requiresCipBalance) : undefined,
+          allowsMultipleAde: allowsMultipleAde !== undefined ? Boolean(allowsMultipleAde) : undefined,
+        },
+        include: { tenant: { select: { id: true, name: true } } },
+      });
+
+      return res.json({ ...updated, tenantName: updated.tenant?.name });
+    } catch (err) {
+      console.error('[API OPERATIONAL RULES PUT ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar regra operacional.' });
+    }
+  });
+
+  app.delete('/api/operational-rules/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      const { id } = req.params;
+
+      const existing = await prisma.operationalRule.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Regra operacional não encontrada.' });
+
+      if (existing.scope === 'GLOBAL' && !isMaster) {
+        return res.status(403).json({ error: 'Apenas administradores Master podem excluir regras globais.' });
+      }
+      if (existing.scope === 'EXCLUSIVE' && existing.tenantId !== tenantId && !isMaster) {
+        return res.status(403).json({ error: 'Acesso negado para excluir esta regra.' });
+      }
+
+      await prisma.operationalRule.delete({ where: { id } });
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('[API OPERATIONAL RULES DELETE ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao excluir regra operacional.' });
     }
   });
 

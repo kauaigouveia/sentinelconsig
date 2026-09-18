@@ -207,7 +207,7 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
               placeholder={placeholder}
               autoFocus={autoFocus}
               required={required && !selectedPartnerId}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-9 pr-8 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-all shadow-xs"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-9 pr-8 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-all shadow-xs"
             />
             {query && (
               <button

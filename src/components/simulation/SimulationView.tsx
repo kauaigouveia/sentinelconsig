@@ -34,7 +34,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { SimulationRequest, SimulationStatus, Partner, User as UserType } from '../../types';
+import { SimulationRequest, SimulationStatus, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { SimulationImportModal } from './SimulationImportModal';
 
@@ -87,6 +87,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   const [modalError, setModalError] = useState<string | null>(null);
   const [initialStatus, setInitialStatus] = useState<SimulationStatus>('SIMULAÇÃO ENVIADA');
   const [initialRejectionReason, setInitialRejectionReason] = useState<string>('');
+  const [conveniosList, setConveniosList] = useState<Convenio[]>([]);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [selectedConvenioId, setSelectedConvenioId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
 
   // Duplicate Warning State
   const [duplicateWarning, setDuplicateWarning] = useState<{
@@ -157,6 +161,30 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     } catch {
       setUsers(StorageService.getUsers());
     }
+
+    try {
+      const cRes = await fetch('/api/convenios');
+      if (cRes.ok) {
+        const cData = await cRes.json();
+        setConveniosList(cData.filter((c: any) => c.active !== false));
+      } else {
+        setConveniosList(StorageService.getConvenios().filter(c => c.active));
+      }
+    } catch {
+      setConveniosList(StorageService.getConvenios().filter(c => c.active));
+    }
+
+    try {
+      const prRes = await fetch('/api/products');
+      if (prRes.ok) {
+        const prData = await prRes.json();
+        setProductsList(prData.filter((p: any) => p.active !== false));
+      } else {
+        setProductsList(StorageService.getProducts().filter(p => p.active));
+      }
+    } catch {
+      setProductsList(StorageService.getProducts().filter(p => p.active));
+    }
   };
 
   useEffect(() => {
@@ -219,6 +247,8 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     setDuplicateWarning(null);
     setInitialStatus('SIMULAÇÃO ENVIADA');
     setInitialRejectionReason('');
+    setSelectedConvenioId('');
+    setSelectedProductId('');
     setIsNewModalOpen(true);
   };
 
@@ -233,7 +263,12 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ cpf: cleanCpf, partnerId }),
+        body: JSON.stringify({
+          cpf: cleanCpf,
+          partnerId,
+          convenioId: selectedConvenioId || undefined,
+          productId: selectedProductId || undefined,
+        }),
       });
 
       if (res.status === 409) {
@@ -1179,6 +1214,20 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                                 )}
                               </button>
                             </div>
+                            {(sim.convenioName || sim.productName) && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1 font-sans">
+                                {sim.convenioName && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                    {sim.convenioName}
+                                  </span>
+                                )}
+                                {sim.productName && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-xs bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                    {sim.productName}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
 
                           {/* Partner */}
@@ -1777,6 +1826,56 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   <p className="mt-1 text-[11px] text-slate-400">
                     Pesquise por código (ex: 16740), login (ex: KAUAI@16740) ou nome do parceiro.
                   </p>
+                </div>
+
+                {/* CONVÊNIO E PRODUTO */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      CONVÊNIO (OPCIONAL)
+                    </label>
+                    <select
+                      value={selectedConvenioId}
+                      onChange={e => {
+                        const newConv = e.target.value;
+                        setSelectedConvenioId(newConv);
+                        if (newConv) {
+                          const compat = StorageService.getProductsForConvenio(newConv).filter(p => p.active);
+                          if (compat.length > 0 && !compat.some(p => p.id === selectedProductId)) {
+                            setSelectedProductId(compat[0].id);
+                          }
+                        }
+                      }}
+                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    >
+                      <option value="">(Todos / Geral)</option>
+                      {conveniosList.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.code ? `(${c.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      PRODUTO (OPCIONAL)
+                    </label>
+                    <select
+                      value={selectedProductId}
+                      onChange={e => setSelectedProductId(e.target.value)}
+                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    >
+                      <option value="">(Nenhum selecionado)</option>
+                      {(selectedConvenioId
+                        ? StorageService.getProductsForConvenio(selectedConvenioId).filter(p => p.active)
+                        : productsList
+                      ).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* 3. STATUS DA SIMULAÇÃO */}

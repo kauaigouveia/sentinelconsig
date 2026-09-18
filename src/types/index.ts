@@ -103,14 +103,54 @@ export interface Partner {
   updatedAt: string;
 }
 
-export interface Product {
+export interface Convenio {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  scope: 'GLOBAL' | 'EXCLUSIVE';
+  tenantId?: string;
+  tenantName?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OperationalRule {
   id: string;
   name: string;
   description?: string;
+  scope: 'GLOBAL' | 'EXCLUSIVE';
+  tenantId?: string;
+  tenantName?: string;
+  active: boolean;
+  appliesToAllProducts: boolean;
+  productIds: string[];
+  appliesToAllConvenios: boolean;
+  convenioIds: string[];
+  minInstallments?: number;
+  maxInstallments?: number;
+  minContractValue?: number;
+  maxContractValue?: number;
+  requiresCipBalance?: boolean;
+  allowsMultipleAde?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  scope?: 'GLOBAL' | 'EXCLUSIVE';
+  tenantId?: string;
+  tenantName?: string;
   active: boolean;
   type: string;
   allowsMultipleAde: boolean;
   requiresPortabilityRelation: boolean;
+  convenioIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -332,6 +372,8 @@ export interface Proposal {
   proposalNumber: string; // ADE / Identifier (can be number, text, or UUID)
   clientId: string;
   productId: string;
+  convenioId?: string;
+  convenioName?: string;
   bankId: string;
   promoterId: string;
   partnerId: string;
@@ -579,6 +621,10 @@ export interface SimulationRequest {
   createdById: string;
   tenantId?: string;
   status: SimulationStatus;
+  convenioId?: string;
+  convenioName?: string;
+  productId?: string;
+  productName?: string;
   createdAt: string;
   updatedAt: string;
   matchedProposalId?: string;

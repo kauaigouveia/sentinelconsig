@@ -177,6 +177,8 @@ model Tenant {
   domains            TenantDomain[]
   simulationRequests SimulationRequest[]
   memberships        UserTenantMembership[]
+  convenios          Convenio[]
+  operationalRules   OperationalRule[]
 
   // Soft Delete & Timestamps
   deletedAt     DateTime?      @map("deleted_at")
@@ -414,23 +416,87 @@ model BankPromoter {
 }
 
 model Product {
-  id       String @id @default(cuid())
-  tenantId String @map("tenant_id")
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String  @id @default(cuid())
+  tenantId String? @map("tenant_id")
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  name   String
-  code   String
-  type   ProposalType @default(NOVO)
-  active Boolean      @default(true)
+  name                        String
+  code                        String?
+  description                 String?
+  scope                       String       @default("GLOBAL")
+  type                        ProposalType @default(NOVO)
+  allowsMultipleAde           Boolean      @default(true) @map("allows_multiple_ade")
+  requiresPortabilityRelation Boolean      @default(false) @map("requires_portability_relation")
+  active                      Boolean      @default(true)
+  convenioIds                 String[]     @default([]) @map("convenio_ids")
 
-  proposals Proposal[]
+  proposals   Proposal[]
+  ades        ADE[]
+  simulations SimulationRequest[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([tenantId, code])
   @@index([tenantId])
+  @@index([scope])
+  @@index([active])
   @@map("products")
+}
+
+model Convenio {
+  id          String   @id @default(cuid())
+  tenantId    String?  @map("tenant_id")
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  code        String?
+  description String?
+  scope       String   @default("GLOBAL")
+  active      Boolean  @default(true)
+
+  proposals   Proposal[]
+  ades        ADE[]
+  simulations SimulationRequest[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([scope])
+  @@index([active])
+  @@map("convenios")
+}
+
+model OperationalRule {
+  id                    String   @id @default(cuid())
+  tenantId              String?  @map("tenant_id")
+  tenant                Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name                  String
+  description           String?
+  scope                 String   @default("GLOBAL")
+  active                Boolean  @default(true)
+
+  appliesToAllProducts  Boolean  @default(true) @map("applies_to_all_products")
+  productIds            String[] @default([]) @map("product_ids")
+
+  appliesToAllConvenios Boolean  @default(true) @map("applies_to_all_convenios")
+  convenioIds           String[] @default([]) @map("convenio_ids")
+
+  minInstallments       Int?     @map("min_installments")
+  maxInstallments       Int?     @map("max_installments")
+  minContractValue      Decimal? @map("min_contract_value") @db.Decimal(12, 2)
+  maxContractValue      Decimal? @map("max_contract_value") @db.Decimal(12, 2)
+  requiresCipBalance    Boolean  @default(false) @map("requires_cip_balance")
+  allowsMultipleAde     Boolean  @default(true) @map("allows_multiple_ade")
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([scope])
+  @@index([active])
+  @@map("operational_rules")
 }
 
 model Client {
@@ -519,6 +585,8 @@ model Proposal {
   bank       Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
   productId  String?   @map("product_id")
   product    Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  convenioId String?   @map("convenio_id")
+  convenio   Convenio? @relation(fields: [convenioId], references: [id], onDelete: SetNull)
 
   type             ProposalType           @default(NOVO)
   statusId         String?                @map("status_id")
@@ -589,6 +657,11 @@ model ADE {
   installments Int     @default(84)
   bankName     String? @map("bank_name")
   status       String  @default("ATIVA")
+
+  convenioId   String?   @map("convenio_id")
+  convenio     Convenio? @relation(fields: [convenioId], references: [id], onDelete: SetNull)
+  productId    String?   @map("product_id")
+  product      Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -961,6 +1034,11 @@ model SimulationRequest {
 
   status          String  @default("SIMULAÇÃO ENVIADA")
   rejectionReason String? @map("rejection_reason")
+
+  convenioId      String?   @map("convenio_id")
+  convenio        Convenio? @relation(fields: [convenioId], references: [id], onDelete: SetNull)
+  productId       String?   @map("product_id")
+  product         Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   matchedProposalId     String?   @map("matched_proposal_id")
   matchedProposal       Proposal? @relation("MatchedSimulationRequests", fields: [matchedProposalId], references: [id], onDelete: SetNull)
