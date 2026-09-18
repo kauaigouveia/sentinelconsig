@@ -186,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
     const fetchContextStatus = async () => {
       if (activeUser?.role !== 'PLATFORM_MASTER') return;
       try {
-        const res = await fetch('/api/saas/context-switch/status');
+        const res = await fetch('/api/admin/context-status');
         if (res.ok) {
           const data = await res.json();
           setAdminContext(data);
@@ -232,28 +232,25 @@ export const Header: React.FC<HeaderProps> = ({
   const handleCompanySwitch = async (targetValue: string) => {
     try {
       if (targetValue === 'PLATFORM') {
-        const res = await fetch('/api/saas/context-switch/exit', { method: 'POST' });
+        const res = await fetch('/api/admin/exit-context', { method: 'POST' });
         if (res.ok) {
           StorageService.clearBusinessCache();
-          await StorageService.syncWithPostgreSQL();
           window.location.reload();
         } else {
           alert('Erro ao retornar ao contexto global.');
         }
       } else {
-        const res = await fetch('/api/saas/context-switch', {
+        const res = await fetch('/api/auth/switch-tenant', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetTenantId: targetValue }),
+          body: JSON.stringify({ tenantId: targetValue }),
         });
         if (res.ok) {
           StorageService.clearBusinessCache();
-          StorageService.setCurrentTenantId(targetValue);
-          await StorageService.syncWithPostgreSQL();
           window.location.reload();
         } else {
           const errData = await res.json();
-          alert(errData.error || 'Erro ao trocar de empresa.');
+          alert(errData.message || errData.error || 'Erro ao trocar de empresa.');
         }
       }
     } catch (err) {

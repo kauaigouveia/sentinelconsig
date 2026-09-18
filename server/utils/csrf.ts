@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient, DomainStatus } from '@prisma/client';
 import { logger } from '../logger.js';
+import { TenantResolver } from './tenantResolver.js';
 
 let cachedVerifiedTenantOrigins: Set<string> = new Set();
 let lastDomainCacheUpdate = 0;
@@ -269,6 +270,19 @@ export async function isOriginTrusted(
         return false;
       }
 
+      // Check using TenantResolver to validate existence, status, and correct domain matching
+      const resolution = await TenantResolver.resolveByHost(prisma, hostname);
+      if (
+        resolution.tenant &&
+        resolution.tenant.status === 'ACTIVE' &&
+        (resolution.type === 'PLATFORM_SUBDOMAIN' || resolution.type === 'CUSTOM_DOMAIN')
+      ) {
+        trustedOrigins.add(normalized);
+        cachedVerifiedTenantOrigins.add(normalized);
+        return true;
+      }
+
+      // Fallback/direct check in TenantDomain table if needed
       const candidates = await prisma.tenantDomain.findMany({
         where: {
           status: DomainStatus.VERIFIED,

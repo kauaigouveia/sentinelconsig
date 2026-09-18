@@ -4438,7 +4438,7 @@ export class StorageService {
   }
 
   public static getCurrentTenantId(): string {
-    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, 'sentinel-consig');
+    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, '');
   }
 
   public static getCurrentTenant(): Tenant {

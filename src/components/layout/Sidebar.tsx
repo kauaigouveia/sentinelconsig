@@ -203,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     setWhiteLabel(StorageService.getWhiteLabel());
     if (activeUser?.role === 'PLATFORM_MASTER') {
       try {
-        const res = await fetch('/api/saas/context-switch/status');
+        const res = await fetch('/api/admin/context-status');
         if (res.ok) {
           const data = await res.json();
           setAdminContext(data);

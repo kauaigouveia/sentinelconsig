@@ -577,7 +577,9 @@ async function migrateLegacyUserMemberships() {
       let activePermissions = dbUser.customPermissions || [];
 
       if (dbUser.role === 'PLATFORM_MASTER') {
-        if (!effectiveTenantId) {
+        if (domainResolution.tenant) {
+          effectiveTenantId = domainResolution.tenant.id;
+        } else if (!effectiveTenantId) {
           const firstTenant = await prisma.tenant.findFirst({
             where: { status: 'ACTIVE', deletedAt: null },
           });
@@ -586,11 +588,15 @@ async function migrateLegacyUserMemberships() {
         activeRole = 'PLATFORM_MASTER';
         activePermissions = [];
       } else {
+        // Se a requisição foi feita em domínio/subdomínio específico de tenant, filtra pelo tenant resolvido
+        const hasDomainTenant = domainResolution.tenant && (domainResolution.type === 'PLATFORM_SUBDOMAIN' || domainResolution.type === 'CUSTOM_DOMAIN');
+
         // Load active memberships
         const activeMemberships = await prisma.userTenantMembership.findMany({
           where: {
             userId: dbUser.id,
             active: true,
+            ...(hasDomainTenant ? { tenantId: domainResolution.tenant!.id } : {}),
           },
           include: { tenant: true },
         });
@@ -602,19 +608,19 @@ async function migrateLegacyUserMemberships() {
 
         if (validMemberships.length === 0) {
           await AuditLogService.record(prisma, {
-            tenantId: dbUser.tenantId || null,
+            tenantId: domainResolution.tenant?.id || dbUser.tenantId || null,
             userId: dbUser.id,
             userName: dbUser.name,
             action: 'LOGIN_FAILED',
             entity: 'AUTH',
             entityId: dbUser.id,
-            oldData: { email: cleanEmail, reason: 'Usuário sem empresas/memberships ativas vinculadas.' },
+            oldData: { email: cleanEmail, reason: 'Usuário sem vínculo ativo com o tenant do domínio.' },
             req,
           });
-          console.log('[AUTH DEBUG] user has no active memberships');
-          return res.status(401).json({
+          console.log('[AUTH DEBUG] user has no active memberships for this domain context');
+          return res.status(403).json({
             code: 'USER_HAS_NO_ACTIVE_MEMBERSHIPS',
-            message: 'Este usuário não possui nenhum vínculo ativo com uma organização.'
+            message: 'Acesso restrito: você não possui permissão ou vínculo ativo nesta organização.',
           });
         }
 
@@ -4011,7 +4017,13 @@ async function migrateLegacyUserMemberships() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const whereCondition = isPlatformMaster && !session.adminContext
         ? { deletedAt: null }
-        : { tenantId: tenantId || undefined, deletedAt: null };
+        : {
+            deletedAt: null,
+            OR: [
+              { tenantId: tenantId || undefined },
+              { memberships: { some: { tenantId: tenantId || undefined, active: true } } }
+            ]
+          };
 
       const users = await prisma.user.findMany({
         where: whereCondition,
@@ -4323,10 +4335,43 @@ async function migrateLegacyUserMemberships() {
         }
       }
 
-      await prisma.user.update({
-        where: { id },
-        data: { deletedAt: new Date(), active: false },
-      });
+      const currentTenantId = session.effectiveTenantId;
+
+      if (currentTenantId) {
+        // Remove membership do tenant atual de forma atômica
+        await prisma.userTenantMembership.deleteMany({
+          where: {
+            userId: id,
+            tenantId: currentTenantId,
+          },
+        });
+
+        // Se o usuário não possuir mais nenhum outro membership ativo na plataforma, fazemos o soft-delete global
+        const remainingMemberships = await prisma.userTenantMembership.count({
+          where: {
+            userId: id,
+            active: true,
+          },
+        });
+
+        if (remainingMemberships === 0) {
+          await prisma.user.update({
+            where: { id },
+            data: { deletedAt: new Date(), active: false },
+          });
+        }
+      } else {
+        // Exclusão global direta (Platform Master fora de contexto ou escopo raiz)
+        await prisma.user.update({
+          where: { id },
+          data: { deletedAt: new Date(), active: false },
+        });
+
+        // Deleta todos os memberships associados globalmente
+        await prisma.userTenantMembership.deleteMany({
+          where: { userId: id },
+        });
+      }
 
       await AuditLogService.record(prisma, {
         tenantId: targetUser.tenantId,
@@ -4352,6 +4397,58 @@ async function migrateLegacyUserMemberships() {
     } catch (err) {
       console.error('[DELETE /api/users/:id ERROR]', err);
       return res.status(500).json({ error: 'Erro ao excluir usuário.' });
+    }
+  });
+
+  app.post('/api/users/:id/reset-password', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.update')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
+      }
+
+      const { id } = req.params;
+      const targetUser = await prisma.user.findFirst({ where: { id } });
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+      }
+
+      if (!isPlatformMaster && targetUser.tenantId !== session.user.tenantId) {
+        return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
+      }
+
+      const tempPassword = 'Mudar@' + crypto.randomBytes(4).toString('hex');
+      const hashedPassword = await hashPassword(tempPassword);
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          passwordHash: hashedPassword,
+          mustChangePassword: true,
+        },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: targetUser.tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'USER_PASSWORD_RESET',
+        entity: 'User',
+        entityId: id,
+        req,
+      });
+
+      const { passwordHash, ...safeUser } = updated;
+      return res.json({ user: safeUser, tempPassword });
+    } catch (err) {
+      console.error('[POST /api/users/:id/reset-password ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao redefinir senha do usuário.' });
     }
   });
 
@@ -5006,13 +5103,14 @@ async function migrateLegacyUserMemberships() {
           },
         });
 
-        // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial
+        // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial ou reativa se existente, e cria o membership correspondente
         if (adminEmail && adminName) {
           const cleanAdminEmail = String(adminEmail).trim().toLowerCase();
-          const existingUser = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
-          if (!existingUser) {
+          let targetUser = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
+
+          if (!targetUser) {
             const initialHashedPassword = await hashPassword('Mudar@123');
-            await tx.user.create({
+            targetUser = await tx.user.create({
               data: {
                 tenantId: newTenant.id,
                 name: String(adminName).trim(),
@@ -5023,7 +5121,38 @@ async function migrateLegacyUserMemberships() {
                 mustChangePassword: true,
               },
             });
+          } else {
+            // Se o usuário existir mas estiver com soft-delete, reativamos
+            if (targetUser.deletedAt) {
+              targetUser = await tx.user.update({
+                where: { id: targetUser.id },
+                data: {
+                  deletedAt: null,
+                  active: true,
+                },
+              });
+            }
           }
+
+          // Cria ou atualiza o UserTenantMembership para este tenant
+          await tx.userTenantMembership.upsert({
+            where: {
+              userId_tenantId: {
+                userId: targetUser.id,
+                tenantId: newTenant.id,
+              },
+            },
+            update: {
+              role: 'MASTER',
+              active: true,
+            },
+            create: {
+              userId: targetUser.id,
+              tenantId: newTenant.id,
+              role: 'MASTER',
+              active: true,
+            },
+          });
         }
 
         return newTenant;
@@ -5966,19 +6095,53 @@ async function migrateLegacyUserMemberships() {
       const actorName = session.user.name;
       const actorRole = session.user.role;
 
+      const currentTenantId = session.effectiveTenantId;
+
       // STEP 7 a 11: Executar transação atômica
       await prisma.$transaction(
         async (tx) => {
-          // STEP 7: soft delete dos usuários selecionados
-          currentStep = 'STEP 7: soft delete usuários';
-          await tx.user.updateMany({
-            where: { id: { in: targetUserIds } },
-            data: {
-              active: false,
-              deletedAt: now,
-              deletedBy: actorId,
-            },
-          });
+          if (currentTenantId) {
+            // STEP 7: Deleta memberships do tenant atual
+            currentStep = 'STEP 7: delete memberships';
+            await tx.userTenantMembership.deleteMany({
+              where: {
+                userId: { in: targetUserIds },
+                tenantId: currentTenantId,
+              },
+            });
+
+            // Se o usuário não possuir mais nenhum membership ativo na plataforma, faz soft-delete global
+            for (const id of targetUserIds) {
+              const remainingMems = await tx.userTenantMembership.count({
+                where: { userId: id, active: true },
+              });
+              if (remainingMems === 0) {
+                await tx.user.update({
+                  where: { id },
+                  data: {
+                    active: false,
+                    deletedAt: now,
+                    deletedBy: actorId,
+                  },
+                });
+              }
+            }
+          } else {
+            // STEP 7: soft delete dos usuários selecionados globalmente
+            currentStep = 'STEP 7: soft delete usuários';
+            await tx.user.updateMany({
+              where: { id: { in: targetUserIds } },
+              data: {
+                active: false,
+                deletedAt: now,
+                deletedBy: actorId,
+              },
+            });
+
+            await tx.userTenantMembership.deleteMany({
+              where: { userId: { in: targetUserIds } },
+            });
+          }
 
           // STEP 8: invalidar sessões ativas dos usuários
           currentStep = 'STEP 8: invalidar sessões';
@@ -6146,20 +6309,28 @@ async function migrateLegacyUserMemberships() {
         return res.status(400).json({ error: 'targetTenantId é obrigatório.' });
       }
 
-      const targetTenant = await prisma.tenant.findUnique({ where: { id: targetTenantId } });
-      if (!targetTenant || targetTenant.deletedAt) {
+      const targetTenant = await prisma.tenant.findUnique({ where: { id: targetTenantId, deletedAt: null } });
+      if (!targetTenant) {
         return res.status(404).json({ error: 'Tenant alvo não encontrado.' });
       }
 
-      const contextData = await AdminContextManager.setContext(
-        session.id,
-        targetTenant.id,
-        targetTenant.name,
-        session.user.id,
-        prisma
-      );
+      const switchedAt = new Date();
+      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
-      // Auditoria obrigatória de início de contexto administrativo
+      await prisma.session.update({
+        where: { id: session.id },
+        data: {
+          effectiveTenantId: targetTenant.id,
+          effectiveMembershipId: null,
+          activeRole: 'PLATFORM_MASTER',
+          activePermissions: { set: [] },
+          adminTargetTenantId: targetTenant.id,
+          adminTargetTenantName: targetTenant.name,
+          adminSwitchedAt: switchedAt,
+          adminContextExpiresAt: expiresAt,
+        },
+      });
+
       await AuditLogService.record(prisma, {
         tenantId: targetTenant.id,
         userId: session.user.id,
@@ -6171,7 +6342,7 @@ async function migrateLegacyUserMemberships() {
           platformMasterUserId: session.user.id,
           targetTenantId: targetTenant.id,
           targetTenantName: targetTenant.name,
-          timestamp: contextData.switchedAt.toISOString(),
+          timestamp: switchedAt.toISOString(),
         },
         req,
       });
@@ -6180,11 +6351,11 @@ async function migrateLegacyUserMemberships() {
         success: true,
         message: `Contexto administrativo alternado para '${targetTenant.name}'.`,
         context: {
-          targetTenantId: contextData.targetTenantId,
-          targetTenantName: contextData.targetTenantName,
-          switchedAt: contextData.switchedAt,
-          expiresAt: contextData.expiresAt,
-        },
+          targetTenantId: targetTenant.id,
+          targetTenantName: targetTenant.name,
+          switchedAt,
+          expiresAt,
+        }
       });
     } catch (err) {
       console.error('[POST /api/saas/context-switch ERROR]', err);
@@ -6204,21 +6375,33 @@ async function migrateLegacyUserMemberships() {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
-      const currentContext = session.adminContext || AdminContextManager.getContext(session.id);
-      await AdminContextManager.clearContext(session.id, prisma);
+      const currentTargetTenantId = session.adminTargetTenantId;
 
-      if (currentContext) {
-        // Auditoria de encerramento de contexto
+      await prisma.session.update({
+        where: { id: session.id },
+        data: {
+          effectiveTenantId: null,
+          effectiveMembershipId: null,
+          activeRole: 'PLATFORM_MASTER',
+          activePermissions: { set: [] },
+          adminTargetTenantId: null,
+          adminTargetTenantName: null,
+          adminSwitchedAt: null,
+          adminContextExpiresAt: null,
+        },
+      });
+
+      if (currentTargetTenantId) {
         await AuditLogService.record(prisma, {
-          tenantId: currentContext.targetTenantId,
+          tenantId: currentTargetTenantId,
           userId: session.user.id,
           userName: session.user.name,
           action: 'admin.context_exited',
           entity: 'Tenant',
-          entityId: currentContext.targetTenantId,
+          entityId: currentTargetTenantId,
           newData: {
             platformMasterUserId: session.user.id,
-            targetTenantId: currentContext.targetTenantId,
+            targetTenantId: currentTargetTenantId,
             timestamp: new Date().toISOString(),
           },
           req,
@@ -6246,8 +6429,15 @@ async function migrateLegacyUserMemberships() {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
-      const context = session.adminContext || AdminContextManager.getContext(session.id);
-      return res.json({ active: Boolean(context), context });
+      const active = Boolean(session.adminTargetTenantId);
+      const context = active ? {
+        targetTenantId: session.adminTargetTenantId,
+        targetTenantName: session.adminTargetTenantName,
+        switchedAt: session.adminSwitchedAt,
+        expiresAt: session.adminContextExpiresAt,
+      } : null;
+
+      return res.json({ active, context });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao obter status do contexto.' });
     }

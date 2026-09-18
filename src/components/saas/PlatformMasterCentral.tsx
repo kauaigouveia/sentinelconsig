@@ -274,7 +274,7 @@ export const PlatformMasterCentral: React.FC = () => {
   // Fetch admin context switch status
   const fetchContextStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/saas/context-switch/status');
+      const res = await fetch('/api/admin/context-status');
       if (res.ok) {
         const data = await res.json();
         setAdminContext(data);
@@ -522,20 +522,17 @@ export const PlatformMasterCentral: React.FC = () => {
   // Context Switch (Inspection Mode)
   const handleStartContextSwitch = async (targetTenantId: string, targetTenantName: string) => {
     try {
-      const res = await fetch('/api/saas/context-switch', {
+      const res = await fetch('/api/auth/switch-tenant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetTenantId }),
+        body: JSON.stringify({ tenantId: targetTenantId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao alternar contexto.');
+      if (!res.ok) throw new Error(data.message || data.error || 'Erro ao alternar contexto.');
 
-      await fetchContextStatus();
-      // Synchronize business cache for the target tenant
-      StorageService.clearBusinessCache();
-      StorageService.setCurrentTenantId(targetTenantId);
-      await StorageService.syncWithPostgreSQL();
       alert(`Modo de Inspeção ativado para: ${targetTenantName}`);
+      StorageService.clearBusinessCache();
+      window.location.reload();
     } catch (err: any) {
       alert(err.message || 'Erro ao alternar contexto.');
     }
@@ -543,16 +540,13 @@ export const PlatformMasterCentral: React.FC = () => {
 
   const handleExitContextSwitch = async () => {
     try {
-      const res = await fetch('/api/saas/context-switch/exit', { method: 'POST' });
+      const res = await fetch('/api/admin/exit-context', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao sair do contexto.');
 
-      await fetchContextStatus();
-      StorageService.clearBusinessCache();
-      const currentUser = StorageService.getActiveUser();
-      StorageService.setCurrentTenantId(currentUser?.tenantId || 'sentinel-consig');
-      await StorageService.syncWithPostgreSQL();
       alert('Contexto de inspeção encerrado.');
+      StorageService.clearBusinessCache();
+      window.location.reload();
     } catch (err: any) {
       alert(err.message || 'Erro ao sair do contexto.');
     }

@@ -41,7 +41,8 @@ import { ActionBar } from '../common/ActionBar';
 import { MetricCard } from '../common/MetricCard';
 
 export const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(() => StorageService.getUsers());
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const activeUser = StorageService.getActiveUser();
   const isPlatformMaster = activeUser.role === 'PLATFORM_MASTER';
 
@@ -72,6 +73,27 @@ export const UserManagement: React.FC = () => {
     message: string;
     details?: any;
   } | null>(null);
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/users');
+      if (!res.ok) throw new Error('Falha ao carregar usuários.');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setUsers(data);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setMessage(err.message || 'Erro ao carregar usuários do servidor.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
@@ -144,8 +166,19 @@ export const UserManagement: React.FC = () => {
 
     try {
       setIsBulkDeleting(true);
-      const res = await StorageService.deleteUsersBulk(Array.from(selectedUserIds));
-      setUsers(StorageService.getUsers());
+      const apiRes = await fetch('/api/saas/users/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: Array.from(selectedUserIds) }),
+      });
+
+      if (!apiRes.ok) {
+        const errorData = await apiRes.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao realizar exclusão em massa no servidor.');
+      }
+
+      const res = await apiRes.json();
+      await fetchUsers();
       setSelectedUserIds(new Set());
       setIsBulkDeleteModalOpen(false);
       setBulkDeleteConfirmationText('');
@@ -154,7 +187,7 @@ export const UserManagement: React.FC = () => {
         success: true,
         message:
           res.message ||
-          `Exclusão concluída: ${res.deleted || selectedUserIds.size} usuários processados e desativados com sucesso.`,
+          `Exclusão concluída: ${res.deleted || selectedUserIds.size} usuários processados com sucesso.`,
         details: res,
       });
     } catch (err: any) {
@@ -228,16 +261,27 @@ export const UserManagement: React.FC = () => {
     if (!name.trim() || !email.trim()) return;
 
     try {
-      const created = StorageService.createUser({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        role,
-        active: true,
-        tenantId: selectedTenantId,
-        customPermissions: selectedPermissions,
+      const randomPassword = 'Mudar@' + Math.random().toString(36).slice(-8);
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password: randomPassword,
+          role,
+          tenantId: selectedTenantId || undefined,
+          customPermissions: selectedPermissions,
+        }),
       });
 
-      setUsers(StorageService.getUsers());
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erro ao cadastrar usuário no servidor.');
+      }
+
+      const created = await res.json();
+      await fetchUsers();
       setName('');
       setEmail('');
       setSelectedPermissions(getPermissionsForRole('DIGITADOR'));
@@ -247,7 +291,7 @@ export const UserManagement: React.FC = () => {
       setCredentialsModal({
         isOpen: true,
         user: created,
-        tempPassword: created.password || '',
+        tempPassword: randomPassword,
         isReset: false,
       });
     } catch (err: any) {
@@ -276,19 +320,28 @@ export const UserManagement: React.FC = () => {
     );
   };
 
-  const handleSaveEditUser = () => {
+  const handleSaveEditUser = async () => {
     if (!editingUser) return;
 
     try {
-      StorageService.updateUser(editingUser.id, {
-        name: editName.trim(),
-        role: editRole,
-        active: editActive,
-        tenantId: editTenantId,
-        customPermissions: editPermissions,
+      const res = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName.trim(),
+          role: editRole,
+          active: editActive,
+          tenantId: editTenantId || undefined,
+          customPermissions: editPermissions,
+        }),
       });
 
-      setUsers(StorageService.getUsers());
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erro ao atualizar usuário no servidor.');
+      }
+
+      await fetchUsers();
       setEditingUser(null);
       setMessage(`Usuário ${editName} atualizado com sucesso!`);
       setTimeout(() => setMessage(null), 3000);
@@ -297,14 +350,23 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const handleResetPassword = (u: User) => {
+  const handleResetPassword = async (u: User) => {
     try {
-      const res = StorageService.resetUserPassword(u.id);
-      setUsers(StorageService.getUsers());
+      const res = await fetch(`/api/users/${u.id}/reset-password`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erro ao redefinir senha no servidor.');
+      }
+
+      const data = await res.json();
+      await fetchUsers();
       setCredentialsModal({
         isOpen: true,
-        user: res.user,
-        tempPassword: res.tempPassword,
+        user: data.user,
+        tempPassword: data.tempPassword,
         isReset: true,
       });
     } catch (err: any) {
@@ -336,16 +398,20 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
-
     setDeleteModalConfig({
       isOpen: true,
       itemType: 'Usuário do Sistema',
       itemName: `${u.name} (${u.email})`,
       description: `O acesso do perfil ${getRoleLabel(u.role)} será revogado e excluído do sistema.`,
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deleteUser(u.id);
-          setUsers(StorageService.getUsers());
+          const res = await fetch(`/api/users/${u.id}`, { method: 'DELETE' });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Erro ao excluir usuário no servidor.');
+          }
+
+          await fetchUsers();
           setMessage(`Usuário ${u.name} excluído com sucesso.`);
           setTimeout(() => setMessage(null), 3000);
         } catch (err: any) {
