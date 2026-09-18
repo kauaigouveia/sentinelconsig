@@ -968,28 +968,7 @@ const INITIAL_FINANCIAL_ENTRIES: FinancialEntry[] = [
 ];
 
 // Initial Gamification Achievements
-const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [
-  {
-    id: 'ach-1',
-    code: 'PRIMEIRA_VENDA',
-    title: 'Primeira Venda',
-    description: 'Primeira proposta com status PAGO cadastrada na mesa.',
-    icon: '🚀',
-    unlockedAt: oneDayAgo,
-    operatorId: 'u-digitador',
-    operatorName: 'Ana Beatriz (Digitadora)',
-  },
-  {
-    id: 'ach-2',
-    code: 'MELHOR_CONVERSAO',
-    title: 'Alta Precisão',
-    description: 'Taxa de aprovação e integração superior a 85% no mês.',
-    icon: '🎯',
-    unlockedAt: twoDaysAgo,
-    operatorId: 'u-digitador',
-    operatorName: 'Ana Beatriz (Digitadora)',
-  },
-];
+const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [];
 
 export class StorageService {
   private static KEY_TO_COLLECTION: Record<string, string> = {
@@ -4840,7 +4819,16 @@ export class StorageService {
   // GAMIFICATION & OPERATOR ACHIEVEMENTS
   // ==========================================
   public static getAchievements(): GamificationAchievement[] {
-    return this.get<GamificationAchievement[]>(STORAGE_KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
+    const raw = this.get<GamificationAchievement[]>(STORAGE_KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
+    const validUsers = this.getUsers();
+    
+    return raw.map(ach => {
+      const user = validUsers.find(u => u.id === ach.operatorId);
+      if (user) {
+        return { ...ach, operatorName: user.name };
+      }
+      return { ...ach, operatorName: 'Sem responsável' };
+    });
   }
 
   public static unlockAchievement(operatorId: string, operatorName: string, code: GamificationAchievement['code']): void {
