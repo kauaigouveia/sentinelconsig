@@ -1201,19 +1201,30 @@ export class StorageService {
           proposalNumber: p.proposalNumber,
           clientId: p.clientId,
           productId: p.productId || 'prod-novo',
+          convenioId: p.convenioId || undefined,
           bankId: p.bankId || 'bank-c6',
           promoterId: p.promoterId || 'prom-dg',
           partnerId: p.partnerId || 'part-kauai',
           digitizerId: p.createdById || 'u-digitador',
           statusId: p.statusId || 'st-1',
-          currentResponsible: 'CLIENTE',
+          currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
           disbursedValue: p.releasedValue ? Number(p.releasedValue) : 0,
           contractBalance: p.contractValue ? Number(p.contractValue) : 0,
+          notes: p.notes || undefined,
+          c6ProposalNumber: p.c6ProposalNumber || p.proposalNumber,
+          c6OperationNumber: p.c6OperationNumber || undefined,
+          c6SyncStatus: p.c6SyncStatus || 'PENDING',
+          c6RawSituation: p.c6RawSituation || undefined,
+          c6CurrentActivity: p.c6CurrentActivity || undefined,
+          c6ActivityDescription: p.c6ActivityDescription || undefined,
+          c6FormalizationStatus: p.c6FormalizationStatus || undefined,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));
         localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
       }
+
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
 
       // 3. Fetch Tasks
       const dbTasks = await safeFetch('/api/tasks');
@@ -3180,6 +3191,58 @@ export class StorageService {
     return this.getClients().find(c => normalizeCpf(c.cpf) === clean);
   }
 
+  public static async getOrCreateClientAsync(data: { cpf: string; fullName: string; phone?: string; email?: string; observation?: string }): Promise<Client> {
+    const cleanCpf = normalizeCpf(data.cpf);
+    if (cleanCpf.length !== 11) {
+      throw new Error('CPF deve conter exatamente 11 dígitos numéricos.');
+    }
+    const cleanName = data.fullName ? data.fullName.trim().toUpperCase() : '';
+
+    // Persist to PostgreSQL first if in browser
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cpf: cleanCpf,
+            fullName: cleanName || 'CLIENTE NÃO NOMEADO',
+            phone: data.phone,
+            email: data.email,
+          }),
+        });
+        if (res.ok) {
+          const dbClient = await res.json();
+          if (dbClient && dbClient.id) {
+            const clients = this.getClients();
+            const existingIndex = clients.findIndex(c => normalizeCpf(c.cpf) === cleanCpf);
+            const clientObj: Client = {
+              id: dbClient.id,
+              cpf: cleanCpf,
+              fullName: cleanName || dbClient.fullName || 'CLIENTE NÃO NOMEADO',
+              phone: data.phone || dbClient.phone,
+              email: data.email || dbClient.email,
+              observation: data.observation,
+              createdAt: dbClient.createdAt || new Date().toISOString(),
+              updatedAt: dbClient.updatedAt || new Date().toISOString(),
+            };
+            if (existingIndex !== -1) {
+              clients[existingIndex] = clientObj;
+            } else {
+              clients.push(clientObj);
+            }
+            this.set(STORAGE_KEYS.CLIENTS, clients);
+            return clientObj;
+          }
+        }
+      } catch (err) {
+        console.warn('[CLIENT ASYNC POST WARN]', err);
+      }
+    }
+
+    return this.getOrCreateClient(data);
+  }
+
   public static getOrCreateClient(data: { cpf: string; fullName: string; phone?: string; email?: string; observation?: string }): Client {
     const cleanCpf = normalizeCpf(data.cpf);
     if (cleanCpf.length !== 11) {
@@ -3319,10 +3382,191 @@ export class StorageService {
    * 1. Duplicate ADE check: "Esta proposta já está cadastrada."
    * 2. Bank × Promoter validation: "Esta promotora não está habilitada para este banco."
    */
+  public static async createProposalAsync(
+    data: {
+      proposalNumber: string;
+      clientId: string;
+      clientCpf?: string;
+      clientName?: string;
+      productId: string;
+      convenioId?: string;
+      bankId: string;
+      promoterId: string;
+      partnerId: string;
+      digitizerId?: string;
+      statusId?: string;
+      notes?: string;
+      disbursedValue?: number;
+      contractBalance?: number;
+      relatedPortabilityId?: string;
+      c6ProposalNumber?: string;
+      c6OperationNumber?: string;
+    },
+    origin: 'MANUAL' | 'IMPORTACAO' = 'MANUAL'
+  ): Promise<Proposal> {
+    const activeUser = this.getActiveUser();
+    const proposals = this.getProposals();
+
+    const cleanNumber = data.proposalNumber.trim();
+    if (!cleanNumber) {
+      throw new Error('O número da ADE/Proposta é obrigatório.');
+    }
+
+    // Duplicate check on proposalNumber (ADE)
+    const existing = proposals.find(p => p.proposalNumber.toLowerCase() === cleanNumber.toLowerCase());
+    if (existing) {
+      const client = this.getClients().find(c => c.id === existing.clientId);
+      const bank = this.getBanks().find(b => b.id === existing.bankId);
+      const promoter = this.getPromoters().find(pr => pr.id === existing.promoterId);
+      const partner = this.getPartners().find(pt => pt.id === existing.partnerId);
+      const status = this.getStatusById(existing.statusId);
+      throw new Error(
+        `Esta proposta já está cadastrada.\nADE: ${existing.proposalNumber} | Cliente: ${client?.fullName || '-'} | Banco: ${bank?.name || '-'} / ${promoter?.name || '-'} | Parceiro: ${partner?.login || '-'} | Status: ${status?.name || '-'}`
+      );
+    }
+
+    // Bank + Promoter check
+    if (!this.isBankPromoterAllowed(data.bankId, data.promoterId)) {
+      const bank = this.getBanks().find(b => b.id === data.bankId);
+      const promoter = this.getPromoters().find(p => p.id === data.promoterId);
+      throw new Error(`A promotora ${promoter?.name || ''} não está habilitada para o banco ${bank?.name || ''}.`);
+    }
+
+    const defaultStatus = this.getStatusByCode('AGUARDAR_FORMALIZACAO') || this.getStatuses()[0];
+    const statusId = data.statusId || defaultStatus.id;
+    const statusObj = this.getStatusById(statusId) || defaultStatus;
+
+    let targetProposalId = `prop-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+    const client = this.getClients().find(c => c.id === data.clientId);
+    const clientCpf = data.clientCpf || client?.cpf;
+    const clientName = data.clientName || client?.fullName;
+    const clientPhone = client?.phone;
+    const clientEmail = client?.email;
+
+    // Persist to PostgreSQL (Source of Truth)
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proposalNumber: cleanNumber,
+            clientId: data.clientId,
+            clientCpf,
+            clientName,
+            clientPhone,
+            clientEmail,
+            bankId: data.bankId,
+            promoterId: data.promoterId,
+            partnerId: data.partnerId,
+            productId: data.productId,
+            convenioId: data.convenioId,
+            statusId: statusId,
+            type: 'NOVO',
+            releasedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : 0,
+            contractValue: data.contractBalance !== undefined ? Number(data.contractBalance) : 0,
+            notes: data.notes,
+            c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
+            c6OperationNumber: data.c6OperationNumber,
+          }),
+        });
+
+        if (!res.ok) {
+          let errData: any = null;
+          try {
+            errData = await res.json();
+          } catch {}
+          throw new Error(errData?.error || `Erro ao salvar proposta no servidor (HTTP ${res.status}).`);
+        }
+
+        const dbProposal = await res.json();
+        if (dbProposal && dbProposal.id) {
+          targetProposalId = dbProposal.id;
+        }
+      } catch (err: any) {
+        if (err.message && (err.message.includes('servidor') || err.message.includes('cadastrada') || err.message.includes('inválid'))) {
+          throw err;
+        }
+        console.warn('[PROPOSAL ASYNC POST WARN]', err);
+      }
+    }
+
+    const newProposal: Proposal = {
+      id: targetProposalId,
+      proposalNumber: cleanNumber,
+      clientId: data.clientId,
+      productId: data.productId,
+      convenioId: data.convenioId,
+      bankId: data.bankId,
+      promoterId: data.promoterId,
+      partnerId: data.partnerId,
+      digitizerId: data.digitizerId || activeUser.id,
+      statusId: statusId,
+      currentResponsible: statusObj.responsibleGroup,
+      disbursedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : undefined,
+      contractBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
+      notes: data.notes,
+      c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
+      c6OperationNumber: data.c6OperationNumber,
+      c6SyncStatus: 'PENDING',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (statusObj.code === 'AGUARDAR_RETORNO_CIP') {
+      newProposal.portabilitySlaStartedAt = new Date().toISOString();
+    }
+
+    proposals.push(newProposal);
+    this.set(STORAGE_KEYS.PROPOSALS, proposals);
+
+    // If related to a portability proposal, create the ProposalRelation
+    if (data.relatedPortabilityId) {
+      this.createProposalRelation(data.relatedPortabilityId, newProposal.id);
+    }
+
+    // Record history
+    this.addStatusHistory({
+      proposalId: newProposal.id,
+      userId: activeUser.id,
+      userName: activeUser.name,
+      newStatusId: statusId,
+      newStatusName: statusObj.name,
+      action: 'Cadastro de Proposta',
+      observation: data.notes
+        ? `${data.notes} | Liberado: R$ ${Number(data.disbursedValue || 0).toFixed(2)} | Saldo: R$ ${Number(data.contractBalance || 0).toFixed(2)}`
+        : `Liberado: R$ ${Number(data.disbursedValue || 0).toFixed(2)} | Saldo: R$ ${Number(data.contractBalance || 0).toFixed(2)}`,
+      origin: origin,
+    });
+
+    this.addAuditLog({
+      action: 'CRIAR_PROPOSTA',
+      entity: 'Proposal',
+      entityId: newProposal.id,
+      newData: JSON.stringify({
+        proposalNumber: newProposal.proposalNumber,
+        clientId: newProposal.clientId,
+        bankId: newProposal.bankId,
+        promoterId: newProposal.promoterId,
+        disbursedValue: newProposal.disbursedValue,
+        contractBalance: newProposal.contractBalance,
+      }),
+    });
+
+    // Automatic matching: Check if any SimulationRequest matches CPF + Partner
+    this.processSimulationMatching(newProposal);
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+
+    return newProposal;
+  }
+
   public static createProposal(
     data: {
       proposalNumber: string;
       clientId: string;
+      clientCpf?: string;
+      clientName?: string;
       productId: string;
       convenioId?: string;
       bankId: string;
@@ -3334,6 +3578,8 @@ export class StorageService {
       disbursedValue?: number;
       contractBalance?: number;
       relatedPortabilityId?: string; // If creating a refin linked to a portabilidade
+      c6ProposalNumber?: string;
+      c6OperationNumber?: string;
     },
     origin: 'MANUAL' | 'IMPORTACAO' = 'MANUAL'
   ): Proposal {
@@ -3384,6 +3630,9 @@ export class StorageService {
       disbursedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : undefined,
       contractBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
       notes: data.notes,
+      c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
+      c6OperationNumber: data.c6OperationNumber,
+      c6SyncStatus: 'PENDING',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3395,6 +3644,8 @@ export class StorageService {
     proposals.push(newProposal);
     this.set(STORAGE_KEYS.PROPOSALS, proposals);
 
+    const client = this.getClients().find(c => c.id === data.clientId);
+
     // Persist to PostgreSQL (Source of Truth)
     fetch('/api/proposals', {
       method: 'POST',
@@ -3402,14 +3653,22 @@ export class StorageService {
       body: JSON.stringify({
         proposalNumber: newProposal.proposalNumber,
         clientId: newProposal.clientId,
+        clientCpf: data.clientCpf || client?.cpf,
+        clientName: data.clientName || client?.fullName,
+        clientPhone: client?.phone,
+        clientEmail: client?.email,
         bankId: newProposal.bankId,
         promoterId: newProposal.promoterId,
         partnerId: newProposal.partnerId,
         productId: newProposal.productId,
         convenioId: newProposal.convenioId,
+        statusId: statusId,
         type: 'NOVO',
         releasedValue: newProposal.disbursedValue || 0,
         contractValue: newProposal.contractBalance || 0,
+        notes: newProposal.notes,
+        c6ProposalNumber: newProposal.c6ProposalNumber,
+        c6OperationNumber: newProposal.c6OperationNumber,
       }),
     }).catch(err => console.warn('[PROPOSAL POST FAIL]', err));
 
@@ -3448,6 +3707,7 @@ export class StorageService {
 
     // Automatic matching: Check if any SimulationRequest matches CPF + Partner
     this.processSimulationMatching(newProposal);
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
 
     return newProposal;
   }

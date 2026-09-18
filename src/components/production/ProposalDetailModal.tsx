@@ -62,7 +62,28 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
   if (!proposal) return null;
 
-  const client = StorageService.getClients().find(c => c.id === proposal.clientId);
+  const allClients = StorageService.getClients();
+  const matchedClient =
+    allClients.find(c => c.id === proposal.clientId) ||
+    (proposal.clientId ? allClients.find(c => c.id?.toLowerCase() === proposal.clientId?.toLowerCase()) : undefined) ||
+    ((proposal as any).clientCpf ? allClients.find(c => c.cpf?.replace(/\D/g, '') === (proposal as any).clientCpf?.replace(/\D/g, '')) : undefined) ||
+    ((proposal as any).client || null);
+
+  const client = matchedClient;
+  const clientFullName =
+    matchedClient?.fullName ||
+    matchedClient?.name ||
+    (proposal as any).clientName ||
+    (proposal as any).client?.fullName ||
+    (proposal as any).client?.name ||
+    'Cliente não informado';
+
+  const clientCpf =
+    matchedClient?.cpf ||
+    (proposal as any).clientCpf ||
+    (proposal as any).client?.cpf ||
+    '';
+
   const product = StorageService.getProducts().find(p => p.id === proposal.productId);
   const bank = StorageService.getBanks().find(b => b.id === proposal.bankId);
   const promoter = StorageService.getPromoters().find(p => p.id === proposal.promoterId);
@@ -439,8 +460,8 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="relative w-full max-w-5xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Header with Navigation and Copy Buttons */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-3.5 bg-slate-50 dark:bg-slate-950/60 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -460,7 +481,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                     onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}
                     title="Copiar número da ADE"
                     aria-label="Copiar número da ADE"
-                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
@@ -470,16 +491,16 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                 <span>Cliente:</span>
-                <strong className="text-slate-800 dark:text-slate-200 truncate">
-                  {client?.fullName || 'CLIENTE NÃO NOMEADO'}
+                <strong className="text-slate-800 dark:text-slate-200 truncate font-semibold">
+                  {clientFullName}
                 </strong>
-                {client?.cpf && (
+                {clientCpf && (
                   <button
-                    onClick={() => toastService.copyToClipboard(client.cpf, 'CPF')}
+                    onClick={() => toastService.copyToClipboard(clientCpf, 'CPF')}
                     className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                     title="Clique para copiar CPF"
                   >
-                    <span>({formatCpf(client.cpf)})</span>
+                    <span>({formatCpf(clientCpf)})</span>
                     <Copy className="h-3 w-3 inline" />
                   </button>
                 )}
@@ -709,22 +730,54 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           )}
         </div>
 
-        {/* Integração C6 Bank */}
+        {/* Integração C6 Bank Status Bar */}
         {isC6Bank && (
-          <div className="px-6 py-3 bg-slate-50/70 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
-            <C6ProposalCard
-              proposal={proposal}
-              onProposalUpdated={(updated) => {
-                setLiveProposal(updated);
-                StorageService.updateProposal(updated.id, updated, 'Consulta C6 Bank');
-                if (onProposalUpdated) onProposalUpdated();
-              }}
-            />
+          <div className="px-6 py-2.5 bg-slate-900 text-white dark:bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span className="font-bold uppercase tracking-wider text-[10.5px] text-amber-300">C6 Bank</span>
+              </div>
+              <div className="flex items-center gap-1 text-slate-300 text-[11px]">
+                <span className="text-slate-400">Nº C6:</span>
+                <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                  {proposal.c6ProposalNumber || proposal.proposalNumber || 'Não vinculado'}
+                </span>
+              </div>
+              {proposal.c6RawSituation && (
+                <div className="flex items-center gap-1 text-[11px]">
+                  <span className="text-slate-400">Situação:</span>
+                  <span className="font-semibold text-emerald-300">{proposal.c6RawSituation}</span>
+                </div>
+              )}
+              {proposal.c6CurrentActivity && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-300">
+                  <span className="text-slate-400">Atividade:</span>
+                  <span className="font-medium text-slate-200">
+                    {proposal.c6CurrentActivity} {proposal.c6ActivityDescription ? `— ${proposal.c6ActivityDescription}` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('C6_BANK')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'C6_BANK'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'
+                }`}
+              >
+                <span>Ver Esteira C6 Completa</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         )}
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900 shrink-0">
           <button
             onClick={() => setActiveTab('HISTORICO')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
@@ -791,7 +844,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-900">
+        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-900 min-h-[360px]">
           {/* TAB 1: HISTÓRICO */}
           {activeTab === 'HISTORICO' && (
             <div className="space-y-4">
@@ -1042,17 +1095,22 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <span className="text-slate-400 block text-[10.5px]">Nome Completo:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{client?.fullName || '—'}</strong>
+                    <strong className="text-slate-800 dark:text-slate-200">{clientFullName}</strong>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10.5px]">CPF:</span>
-                    <button
-                      onClick={() => client?.cpf && toastService.copyToClipboard(client.cpf, 'CPF')}
-                      className="text-left font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                    >
-                      <span>{client?.cpf ? formatCpf(client.cpf) : '—'}</span>
-                      <Copy className="h-3 w-3" />
-                    </button>
+                    {clientCpf ? (
+                      <button
+                        onClick={() => toastService.copyToClipboard(clientCpf, 'CPF')}
+                        className="text-left font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        title="Copiar CPF"
+                      >
+                        <span>{formatCpf(clientCpf)}</span>
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10.5px]">Telefone:</span>

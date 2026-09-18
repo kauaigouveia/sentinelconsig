@@ -248,10 +248,38 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     });
   };
 
+  // Helper to safely resolve client information from ID, CPF, or attached object
+  const getProposalClientInfo = useCallback(
+    (p: Proposal) => {
+      const matched =
+        clients.find(c => c.id === p.clientId) ||
+        (p.clientId ? clients.find(c => c.id.toLowerCase() === p.clientId.toLowerCase()) : undefined) ||
+        ((p as any).clientCpf ? clients.find(c => c.cpf?.replace(/\D/g, '') === (p as any).clientCpf?.replace(/\D/g, '')) : undefined) ||
+        ((p as any).client || null);
+
+      const fullName =
+        matched?.fullName ||
+        matched?.name ||
+        (p as any).clientName ||
+        (p as any).client?.fullName ||
+        (p as any).client?.name ||
+        '';
+
+      const cpf =
+        matched?.cpf ||
+        (p as any).clientCpf ||
+        (p as any).client?.cpf ||
+        '';
+
+      return { fullName, cpf, client: matched };
+    },
+    [clients]
+  );
+
   // Filter & Sorting logic
   const filteredProposals = useMemo(() => {
     const filtered = proposals.filter(p => {
-      const client = clients.find(c => c.id === p.clientId);
+      const clientInfo = getProposalClientInfo(p);
       const partner = partners.find(pt => pt.id === p.partnerId);
       const status = statuses.find(s => s.id === p.statusId);
 
@@ -259,8 +287,8 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       if (searchTerm.trim()) {
         const term = searchTerm.trim().toLowerCase();
         const cleanTerm = normalizeCpf(term);
-        const matchCpf = cleanTerm && client?.cpf.includes(cleanTerm);
-        const matchName = client?.fullName.toLowerCase().includes(term);
+        const matchCpf = cleanTerm && clientInfo.cpf.includes(cleanTerm);
+        const matchName = clientInfo.fullName.toLowerCase().includes(term);
         const matchAde = p.proposalNumber.toLowerCase().includes(term);
         const matchPartner = partner?.login.toLowerCase().includes(term);
 
@@ -299,12 +327,12 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       if (sortField === 'proposalNumber') {
         comparison = a.proposalNumber.localeCompare(b.proposalNumber);
       } else if (sortField === 'clientName') {
-        const nameA = clients.find(c => c.id === a.clientId)?.fullName || '';
-        const nameB = clients.find(c => c.id === b.clientId)?.fullName || '';
+        const nameA = getProposalClientInfo(a).fullName;
+        const nameB = getProposalClientInfo(b).fullName;
         comparison = nameA.localeCompare(nameB);
       } else if (sortField === 'cpf') {
-        const cpfA = clients.find(c => c.id === a.clientId)?.cpf || '';
-        const cpfB = clients.find(c => c.id === b.clientId)?.cpf || '';
+        const cpfA = getProposalClientInfo(a).cpf;
+        const cpfB = getProposalClientInfo(b).cpf;
         comparison = cpfA.localeCompare(cpfB);
       } else if (sortField === 'bank') {
         const bankA = banks.find(bk => bk.id === a.bankId)?.name || '';
@@ -322,7 +350,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     });
   }, [
     proposals,
-    clients,
+    getProposalClientInfo,
     partners,
     statuses,
     banks,
@@ -892,7 +920,10 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
                 {filteredProposals.map(p => {
-                  const client = clients.find(c => c.id === p.clientId);
+                  const clientInfo = getProposalClientInfo(p);
+                  const client = clientInfo.client;
+                  const clientFullName = clientInfo.fullName;
+                  const clientCpf = clientInfo.cpf;
                   const product = products.find(pr => pr.id === p.productId);
                   const bank = banks.find(b => b.id === p.bankId);
                   const promoter = promoters.find(pr => pr.id === p.promoterId);
@@ -954,21 +985,21 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       <td className={cellPadding}>
                         <span
                           className="font-semibold text-slate-900 dark:text-slate-100 block max-w-[150px] truncate"
-                          title={client?.fullName}
+                          title={clientFullName}
                         >
-                          {client?.fullName || '—'}
+                          {clientFullName || '—'}
                         </span>
                       </td>
 
                       {/* CPF */}
                       <td className={cellPadding}>
-                        {client?.cpf ? (
+                        {clientCpf ? (
                           <div className="flex items-center gap-1 font-mono text-slate-600 dark:text-slate-400">
-                            <span>{formatCpf(client.cpf)}</span>
+                            <span>{formatCpf(clientCpf)}</span>
                             <button
                               onClick={e => {
                                 e.stopPropagation();
-                                toastService.copyToClipboard(client.cpf, 'CPF');
+                                toastService.copyToClipboard(clientCpf, 'CPF');
                               }}
                               className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                               title="Copiar CPF"

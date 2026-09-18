@@ -1742,10 +1742,10 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-      const whereCondition = { tenantId };
+      const whereCondition = { tenantId, deletedAt: null };
       const proposals = await prisma.proposal.findMany({
         where: whereCondition,
-        include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true },
+        include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
         orderBy: { createdAt: 'desc' },
       });
       return res.json(proposals);
@@ -1763,83 +1763,247 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar proposta.' });
       }
 
-      const { proposalNumber, clientId, clientCpf, clientName, bankId, promoterId, partnerId, productId, convenioId, type, releasedValue, contractValue, installmentValue, installmentsCount } = req.body;
+      const {
+        proposalNumber,
+        clientId,
+        clientCpf,
+        clientName,
+        clientPhone,
+        clientEmail,
+        bankId,
+        promoterId,
+        partnerId,
+        productId,
+        convenioId,
+        statusId,
+        type,
+        releasedValue,
+        contractValue,
+        installmentValue,
+        installmentsCount,
+        notes,
+        c6ProposalNumber,
+        c6OperationNumber,
+      } = req.body;
 
       let targetClientId = clientId;
 
-      // Upsert client if CPF provided
-      if (!targetClientId && clientCpf) {
+      // 1. Resolve client with robust fallback to CPF / upsert
+      let client = targetClientId ? await prisma.client.findFirst({ where: { id: targetClientId, tenantId } }) : null;
+
+      if (!client && clientCpf) {
         const cleanCpf = String(clientCpf).replace(/\D/g, '');
-        const client = await prisma.client.upsert({
-          where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
-          update: { fullName: clientName || 'Cliente' },
-          create: { tenantId, cpf: cleanCpf, fullName: clientName || 'Cliente' },
-        });
-        targetClientId = client.id;
+        if (cleanCpf.length === 11) {
+          client = await prisma.client.upsert({
+            where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
+            update: {
+              fullName: clientName ? String(clientName).trim() : undefined,
+              phone: clientPhone || undefined,
+              email: clientEmail || undefined,
+              deletedAt: null,
+            },
+            create: {
+              tenantId,
+              cpf: cleanCpf,
+              fullName: (clientName && String(clientName).trim()) || 'Cliente',
+              phone: clientPhone || null,
+              email: clientEmail || null,
+            },
+          });
+        }
       }
 
-      if (!targetClientId) {
+      if (!client) {
         return res.status(400).json({ error: 'Cliente é obrigatório para cadastrar proposta.' });
       }
+      targetClientId = client.id;
 
-      if (partnerId) {
-        const validPartner = await prisma.partner.findFirst({
-          where: { id: partnerId, tenantId }
+      // 2. Resolve Partner
+      let targetPartnerId = partnerId || null;
+      if (targetPartnerId) {
+        let validPartner = await prisma.partner.findFirst({
+          where: { id: targetPartnerId, tenantId }
         });
         if (!validPartner) {
-          return res.status(400).json({ error: 'O parceiro selecionado é inválido ou não pertence a este tenant.' });
+          validPartner = await prisma.partner.findFirst({
+            where: {
+              tenantId,
+              OR: [
+                { code: targetPartnerId },
+                { name: { equals: targetPartnerId, mode: 'insensitive' } }
+              ]
+            }
+          });
         }
+        targetPartnerId = validPartner ? validPartner.id : null;
       }
 
-      if (convenioId) {
-        const validConvenio = await prisma.convenio.findFirst({
-          where: {
-            id: convenioId,
-            active: true,
-            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
-          },
+      // 3. Resolve Bank
+      let targetBankId = bankId || null;
+      if (targetBankId) {
+        let validBank = await prisma.bank.findFirst({
+          where: { id: targetBankId }
         });
-        if (!validConvenio) {
-          return res.status(400).json({ error: 'O convênio selecionado é inválido ou não pertence a este tenant.' });
+        if (!validBank) {
+          validBank = await prisma.bank.findFirst({
+            where: {
+              OR: [
+                { code: targetBankId },
+                { name: { equals: targetBankId, mode: 'insensitive' } }
+              ]
+            }
+          });
         }
+        targetBankId = validBank ? validBank.id : null;
       }
 
-      if (productId) {
-        const validProduct = await prisma.product.findFirst({
+      // 4. Resolve Promoter
+      let targetPromoterId = promoterId || null;
+      if (targetPromoterId) {
+        let validPromoter = await prisma.promoter.findFirst({
+          where: { id: targetPromoterId }
+        });
+        if (!validPromoter) {
+          validPromoter = await prisma.promoter.findFirst({
+            where: {
+              name: { equals: targetPromoterId, mode: 'insensitive' }
+            }
+          });
+        }
+        targetPromoterId = validPromoter ? validPromoter.id : null;
+      }
+
+      // 5. Resolve Product
+      let targetProductId = productId || null;
+      if (targetProductId) {
+        let validProduct = await prisma.product.findFirst({
           where: {
-            id: productId,
+            id: targetProductId,
             active: true,
             OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
           },
         });
         if (!validProduct) {
-          return res.status(400).json({ error: 'O produto selecionado é inválido ou não pertence a este tenant.' });
+          validProduct = await prisma.product.findFirst({
+            where: {
+              active: true,
+              OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+              AND: [
+                {
+                  OR: [
+                    { code: targetProductId },
+                    { name: { equals: targetProductId, mode: 'insensitive' } }
+                  ]
+                }
+              ]
+            }
+          });
         }
-        if (convenioId && validProduct.convenioIds && validProduct.convenioIds.length > 0) {
-          if (!validProduct.convenioIds.includes(convenioId)) {
-            return res.status(400).json({ error: 'O produto selecionado não é compatível com o convênio escolhido.' });
+        targetProductId = validProduct ? validProduct.id : null;
+      }
+
+      // 6. Resolve Convenio
+      let targetConvenioId = convenioId || null;
+      if (targetConvenioId) {
+        let validConvenio = await prisma.convenio.findFirst({
+          where: {
+            id: targetConvenioId,
+            active: true,
+            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+          },
+        });
+        if (!validConvenio) {
+          validConvenio = await prisma.convenio.findFirst({
+            where: {
+              active: true,
+              OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
+              AND: [
+                {
+                  OR: [
+                    { code: targetConvenioId },
+                    { name: { equals: targetConvenioId, mode: 'insensitive' } }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+        targetConvenioId = validConvenio ? validConvenio.id : null;
+      }
+
+      // 7. Resolve Status
+      let targetStatusId = statusId || null;
+      if (targetStatusId) {
+        let validStatus = await prisma.proposalStatus.findFirst({
+          where: {
+            tenantId,
+            OR: [
+              { id: targetStatusId },
+              { code: targetStatusId },
+              { name: { equals: targetStatusId, mode: 'insensitive' } }
+            ]
           }
+        });
+        if (!validStatus) {
+          validStatus = await prisma.proposalStatus.findFirst({
+            where: {
+              OR: [
+                { id: targetStatusId },
+                { code: targetStatusId },
+                { name: { equals: targetStatusId, mode: 'insensitive' } }
+              ]
+            }
+          });
         }
+        targetStatusId = validStatus ? validStatus.id : null;
+      }
+      if (!targetStatusId) {
+        const defaultStatus = await prisma.proposalStatus.findFirst({
+          where: {
+            OR: [
+              { tenantId, code: 'AGUARDAR_FORMALIZACAO' },
+              { code: 'AGUARDAR_FORMALIZACAO' }
+            ]
+          }
+        });
+        targetStatusId = defaultStatus?.id || null;
+      }
+
+      const cleanPropNumber = (proposalNumber && String(proposalNumber).trim()) || `PROP-${Date.now()}`;
+
+      // Check if proposal already exists with this number for this tenant
+      const existingProposal = await prisma.proposal.findFirst({
+        where: { tenantId, proposalNumber: cleanPropNumber, deletedAt: null }
+      });
+      if (existingProposal) {
+        return res.status(409).json({
+          error: `Proposta/ADE "${cleanPropNumber}" já está cadastrada no sistema.`,
+          proposalId: existingProposal.id
+        });
       }
 
       const proposal = await prisma.proposal.create({
         data: {
           tenantId,
-          proposalNumber: proposalNumber || `PROP-${Date.now()}`,
+          proposalNumber: cleanPropNumber,
           clientId: targetClientId,
-          bankId: bankId || null,
-          promoterId: promoterId || null,
-          partnerId: partnerId || null,
-          productId: productId || null,
-          convenioId: convenioId || null,
+          bankId: targetBankId,
+          promoterId: targetPromoterId,
+          partnerId: targetPartnerId,
+          productId: targetProductId,
+          convenioId: targetConvenioId,
+          statusId: targetStatusId,
           type: type || 'NOVO',
           releasedValue: releasedValue ? Number(releasedValue) : 0,
           contractValue: contractValue ? Number(contractValue) : 0,
           installmentValue: installmentValue ? Number(installmentValue) : 0,
           installmentsCount: installmentsCount ? Number(installmentsCount) : 84,
           createdById: session?.user?.id || null,
+          c6ProposalNumber: c6ProposalNumber || cleanPropNumber,
+          c6OperationNumber: c6OperationNumber || null,
+          c6SyncStatus: 'PENDING',
         },
-        include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true },
+        include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
       });
 
       // Emissão pós-commit de PROPOSAL_CREATED estritamente para o tenant da sessão
@@ -1867,7 +2031,7 @@ async function auditAndEnsureMasterUser() {
         req,
       });
 
-      return res.json(proposal);
+      return res.status(201).json(proposal);
     } catch (err) {
       console.error('[API PROPOSALS POST ERROR]', err);
       return res.status(500).json({ error: 'Erro ao criar proposta no PostgreSQL.' });

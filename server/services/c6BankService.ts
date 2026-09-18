@@ -693,8 +693,8 @@ export class C6BankService {
       const mapping = mapC6StatusToInternal(c6Data);
 
       // Identificadores retornados
-      const returnedC6Number = c6Data.proposal_number || targetC6Number.trim();
-      const returnedOpNumber = c6Data.operation_number || proposal.c6OperationNumber || null;
+      const returnedC6Number = c6Data.proposal_number != null ? String(c6Data.proposal_number).trim() : targetC6Number.trim();
+      const returnedOpNumber = c6Data.operation_number != null ? String(c6Data.operation_number).trim() : (proposal.c6OperationNumber || null);
       const returnedSituation = c6Data.loan_track?.situation || proposal.c6RawSituation || null;
       const returnedActivity =
         c6Data.loan_track?.current_activity_number != null

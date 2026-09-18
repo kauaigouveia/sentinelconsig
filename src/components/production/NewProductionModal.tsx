@@ -300,7 +300,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   };
 
   // Save All
-  const handleSave = () => {
+  const handleSave = async () => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
@@ -410,8 +410,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
     try {
       setLinkingErrorLog(null);
 
-      // 1. Get or Create Client - Ensure name and CPF are explicitly saved
-      const client = StorageService.getOrCreateClient({
+      // 1. Get or Create Client - Ensure name and CPF are explicitly saved in PostgreSQL
+      const client = await StorageService.getOrCreateClientAsync({
         cpf: cleanCpf,
         fullName: fullName.trim(),
         phone: phone.trim() || undefined,
@@ -433,9 +433,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
         const isPort = prod?.name === 'PORTABILIDADE' || prod?.type === 'PORTABILIDADE';
 
         if (isPort) {
-          const prop = StorageService.createProposal({
+          const prop = await StorageService.createProposalAsync({
             proposalNumber: row.proposalNumber.trim(),
             clientId: client.id,
+            clientCpf: cleanCpf,
+            clientName: fullName.trim(),
             convenioId: row.convenioId || undefined,
             productId: row.productId,
             bankId: row.bankId,
@@ -481,9 +483,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             }
           }
 
-          const prop = StorageService.createProposal({
+          const prop = await StorageService.createProposalAsync({
             proposalNumber: row.proposalNumber.trim(),
             clientId: client.id,
+            clientCpf: cleanCpf,
+            clientName: fullName.trim(),
             convenioId: row.convenioId || undefined,
             productId: row.productId,
             bankId: row.bankId,
