@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { normalizeCpf, formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
-import { Proposal, ResponsibleAlçada } from '../../types';
+import { Proposal, ProposalStatus, ResponsibleAlçada } from '../../types';
 import { BulkStatusModal } from './BulkStatusModal';
 import { ExcelExportModal } from './ExcelExportModal';
 import { ProposalDetailModal } from './ProposalDetailModal';

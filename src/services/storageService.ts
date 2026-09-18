@@ -3072,14 +3072,41 @@ export class StorageService {
     statuses.sort((a, b) => a.order - b.order);
     this.saveStatuses(statuses);
 
-    this.addAuditLog({
-      action: 'CRIAR_STATUS',
-      entity: 'ProposalStatus',
-      entityId: newStatus.id,
-      newData: JSON.stringify(newStatus),
-    });
+    // Fire and forget backend sync for sync callers
+    this.addStatusAsync(data).catch(err => console.warn('[StorageService] Sync addStatus warning:', err));
 
     return newStatus;
+  }
+
+  public static async addStatusAsync(data: {
+    name: string;
+    code?: string;
+    responsibleGroup: Alcada;
+    slaHours?: number;
+    color?: string;
+    active?: boolean;
+    finalStatus?: boolean;
+    manualChangeAllowed?: boolean;
+    automaticChangeAllowed?: boolean;
+  }): Promise<ProposalStatus> {
+    const res = await fetch('/api/statuses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Erro ao criar status no PostgreSQL.');
+    }
+
+    const created: ProposalStatus = await res.json();
+    const statuses = this.getStatuses().filter(s => s.id !== created.id);
+    statuses.push(created);
+    statuses.sort((a, b) => a.order - b.order);
+    this.saveStatuses(statuses);
+    return created;
   }
 
   public static updateStatus(id: string, updates: Partial<ProposalStatus>): ProposalStatus {
@@ -3113,15 +3140,54 @@ export class StorageService {
     statuses.sort((a, b) => a.order - b.order);
     this.saveStatuses(statuses);
 
-    this.addAuditLog({
-      action: 'ATUALIZAR_STATUS',
-      entity: 'ProposalStatus',
-      entityId: id,
-      previousData: JSON.stringify(old),
-      newData: JSON.stringify(updated),
-    });
+    // Fire and forget backend sync for sync callers
+    this.updateStatusAsync(id, updates).catch(err => console.warn('[StorageService] Sync updateStatus warning:', err));
 
     return updated;
+  }
+
+  public static async updateStatusAsync(id: string, updates: Partial<ProposalStatus>): Promise<ProposalStatus> {
+    const res = await fetch(`/api/statuses/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Erro ao atualizar status no PostgreSQL.');
+    }
+
+    const updated: ProposalStatus = await res.json();
+    const statuses = this.getStatuses();
+    const idx = statuses.findIndex(s => s.id === id);
+    if (idx !== -1) {
+      statuses[idx] = updated;
+    } else {
+      statuses.push(updated);
+    }
+    statuses.sort((a, b) => a.order - b.order);
+    this.saveStatuses(statuses);
+    return updated;
+  }
+
+  public static async reorderStatusesAsync(items: { id: string; order: number }[]): Promise<ProposalStatus[]> {
+    const res = await fetch('/api/statuses/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ items }),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Erro ao reordenar status no PostgreSQL.');
+    }
+
+    const updatedList: ProposalStatus[] = await res.json();
+    this.saveStatuses(updatedList);
+    return updatedList;
   }
 
   public static deleteStatus(id: string, targetFallbackStatusId?: string): void {
@@ -3171,12 +3237,24 @@ export class StorageService {
 
     this.saveStatuses(statuses);
 
-    this.addAuditLog({
-      action: 'EXCLUIR_STATUS',
-      entity: 'ProposalStatus',
-      entityId: id,
-      previousData: JSON.stringify(statusToDelete),
+    this.deleteStatusAsync(id, targetFallbackStatusId).catch(err => console.warn('[StorageService] Sync deleteStatus warning:', err));
+  }
+
+  public static async deleteStatusAsync(id: string, targetFallbackStatusId?: string): Promise<void> {
+    const res = await fetch(`/api/statuses/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ targetFallbackStatusId }),
     });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Erro ao excluir status no PostgreSQL.');
+    }
+
+    const statuses = this.getStatuses().filter(s => s.id !== id);
+    this.saveStatuses(statuses);
   }
 
   public static moveStatusOrder(id: string, direction: 'UP' | 'DOWN'): void {
@@ -3194,6 +3272,9 @@ export class StorageService {
 
     statuses.sort((a, b) => a.order - b.order);
     this.saveStatuses(statuses);
+
+    const itemsToReorder = statuses.map((s, i) => ({ id: s.id, order: s.order || i + 1 }));
+    this.reorderStatusesAsync(itemsToReorder).catch(err => console.warn('[StorageService] Sync moveStatusOrder warning:', err));
   }
 
   // Clients

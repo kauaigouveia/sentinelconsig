@@ -2536,20 +2536,236 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       let statuses = await prisma.proposalStatus.findMany({
-        where: { tenantId, active: true },
+        where: { tenantId },
         orderBy: { order: 'asc' },
       });
       if (statuses.length === 0) {
         await ensureDefaultStatusesForTenant(prisma, tenantId);
         statuses = await prisma.proposalStatus.findMany({
-          where: { tenantId, active: true },
+          where: { tenantId },
           orderBy: { order: 'asc' },
         });
       }
-      return res.json(statuses);
+      const mapped = statuses.map(s => ({
+        ...s,
+        responsible: s.responsibleGroup,
+      }));
+      return res.json(mapped);
     } catch (err) {
       console.error('[API /api/statuses] Erro ao buscar status no PostgreSQL:', err);
       return res.status(500).json({ error: 'Erro ao buscar status.' });
+    }
+  });
+
+  app.post('/api/statuses', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { name, code, color, standardCategory, slaHours, active, responsibleGroup, responsible, finalStatus, manualChangeAllowed, automaticChangeAllowed } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'O nome do status é obrigatório.' });
+      }
+
+      const nameUpper = name.trim().toUpperCase();
+      const cleanCode = (code || nameUpper.replace(/[^A-Z0-9]/g, '_')).trim().toUpperCase();
+
+      const existing = await prisma.proposalStatus.findFirst({
+        where: { tenantId, code: cleanCode },
+      });
+      if (existing) {
+        return res.status(400).json({ error: `Já existe um status cadastrado com o código "${cleanCode}".` });
+      }
+
+      const maxOrder = await prisma.proposalStatus.findFirst({
+        where: { tenantId },
+        orderBy: { order: 'desc' },
+        select: { order: true },
+      });
+      const nextOrder = (maxOrder?.order ?? 0) + 1;
+
+      const respGroup = responsibleGroup || responsible || 'NOSSA EQUIPE';
+
+      const newStatus = await prisma.proposalStatus.create({
+        data: {
+          tenantId,
+          name: nameUpper,
+          code: cleanCode,
+          color: color || '#3b82f6',
+          standardCategory: standardCategory || 'ESTEIRA',
+          slaHours: Number(slaHours) || 0,
+          order: nextOrder,
+          active: active !== undefined ? Boolean(active) : true,
+          responsibleGroup: respGroup,
+          finalStatus: Boolean(finalStatus),
+          manualChangeAllowed: manualChangeAllowed !== undefined ? Boolean(manualChangeAllowed) : true,
+          automaticChangeAllowed: automaticChangeAllowed !== undefined ? Boolean(automaticChangeAllowed) : true,
+        },
+      });
+
+      return res.status(201).json({
+        ...newStatus,
+        responsible: newStatus.responsibleGroup,
+      });
+    } catch (err: any) {
+      console.error('[API POST /api/statuses] Erro ao criar status:', err);
+      return res.status(500).json({ error: err.message || 'Erro ao criar status.' });
+    }
+  });
+
+  app.put('/api/statuses/reorder', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { items } = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Lista de reordenação inválida.' });
+      }
+
+      await prisma.$transaction(
+        items.map(item =>
+          prisma.proposalStatus.updateMany({
+            where: { id: item.id, tenantId },
+            data: { order: Number(item.order) || 0 },
+          })
+        )
+      );
+
+      const updated = await prisma.proposalStatus.findMany({
+        where: { tenantId },
+        orderBy: { order: 'asc' },
+      });
+
+      return res.json(updated.map(s => ({ ...s, responsible: s.responsibleGroup })));
+    } catch (err: any) {
+      console.error('[API PUT /api/statuses/reorder] Erro ao reordenar status:', err);
+      return res.status(500).json({ error: err.message || 'Erro ao reordenar status.' });
+    }
+  });
+
+  app.put('/api/statuses/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+
+      const existing = await prisma.proposalStatus.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing) {
+        return res.status(404).json({ error: 'Status não encontrado.' });
+      }
+
+      const { name, code, color, standardCategory, slaHours, order, active, responsibleGroup, responsible, finalStatus, manualChangeAllowed, automaticChangeAllowed } = req.body;
+
+      let cleanCode = existing.code;
+      if (code && code.trim().toUpperCase() !== existing.code.toUpperCase()) {
+        cleanCode = code.trim().toUpperCase();
+        const duplicate = await prisma.proposalStatus.findFirst({
+          where: { tenantId, code: cleanCode, NOT: { id } },
+        });
+        if (duplicate) {
+          return res.status(400).json({ error: `Já existe outro status cadastrado com o código "${cleanCode}".` });
+        }
+      }
+
+      const respGroup = responsibleGroup || responsible || existing.responsibleGroup;
+
+      const updated = await prisma.proposalStatus.update({
+        where: { id },
+        data: {
+          name: name ? name.trim().toUpperCase() : existing.name,
+          code: cleanCode,
+          color: color ?? existing.color,
+          standardCategory: standardCategory ?? existing.standardCategory,
+          slaHours: slaHours !== undefined ? Number(slaHours) : existing.slaHours,
+          order: order !== undefined ? Number(order) : existing.order,
+          active: active !== undefined ? Boolean(active) : existing.active,
+          responsibleGroup: respGroup,
+          finalStatus: finalStatus !== undefined ? Boolean(finalStatus) : existing.finalStatus,
+          manualChangeAllowed: manualChangeAllowed !== undefined ? Boolean(manualChangeAllowed) : existing.manualChangeAllowed,
+          automaticChangeAllowed: automaticChangeAllowed !== undefined ? Boolean(automaticChangeAllowed) : existing.automaticChangeAllowed,
+        },
+      });
+
+      return res.json({
+        ...updated,
+        responsible: updated.responsibleGroup,
+      });
+    } catch (err: any) {
+      console.error('[API PUT /api/statuses/:id] Erro ao atualizar status:', err);
+      return res.status(500).json({ error: err.message || 'Erro ao atualizar status.' });
+    }
+  });
+
+  app.delete('/api/statuses/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const { targetFallbackStatusId } = req.body || {};
+
+      const statusToDelete = await prisma.proposalStatus.findFirst({
+        where: { id, tenantId },
+      });
+      if (!statusToDelete) {
+        return res.status(404).json({ error: 'Status não encontrado.' });
+      }
+
+      const totalCount = await prisma.proposalStatus.count({
+        where: { tenantId },
+      });
+      if (totalCount <= 1) {
+        return res.status(400).json({ error: 'Não é possível excluir todos os status. O sistema necessita de pelo menos 1 status ativo.' });
+      }
+
+      const proposalsCount = await prisma.proposal.count({
+        where: { tenantId, statusId: id },
+      });
+
+      if (proposalsCount > 0) {
+        if (!targetFallbackStatusId) {
+          return res.status(400).json({ error: `Existem ${proposalsCount} propostas com este status. Selecione um status de destino para migrar estas propostas antes de excluir.` });
+        }
+
+        const fallback = await prisma.proposalStatus.findFirst({
+          where: { id: targetFallbackStatusId, tenantId, NOT: { id } },
+        });
+        if (!fallback) {
+          return res.status(400).json({ error: 'Status de destino para migração não encontrado.' });
+        }
+
+        await prisma.$transaction([
+          prisma.proposal.updateMany({
+            where: { tenantId, statusId: id },
+            data: { statusId: fallback.id },
+          }),
+          prisma.proposalStatus.delete({
+            where: { id },
+          }),
+        ]);
+      } else {
+        await prisma.proposalStatus.delete({
+          where: { id },
+        });
+      }
+
+      return res.json({ success: true, message: 'Status excluído com sucesso.' });
+    } catch (err: any) {
+      console.error('[API DELETE /api/statuses/:id] Erro ao excluir status:', err);
+      return res.status(500).json({ error: err.message || 'Erro ao excluir status.' });
     }
   });
 

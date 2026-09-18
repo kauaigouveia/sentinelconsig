@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PlusCircle,
   FileSpreadsheet,
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
-import { Proposal } from '../../types';
+import { Proposal, ProposalStatus } from '../../types';
 import { ProposalDetailModal } from '../production/ProposalDetailModal';
 import { ActionBar } from '../ui/ActionBar';
 import { MetricCard } from '../ui/MetricCard';

@@ -89,8 +89,10 @@ export const StatusManagement: React.FC = () => {
   const [formManualAllowed, setFormManualAllowed] = useState(true);
   const [formAutoAllowed, setFormAutoAllowed] = useState(true);
 
-  const loadData = () => {
-    const list = StorageService.getStatuses();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadData = async () => {
+    const list = await StorageService.fetchAndSyncStatuses();
     setStatuses(list);
 
     // Calculate proposal counts per status
@@ -104,7 +106,10 @@ export const StatusManagement: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    const handleStorage = () => loadData();
+    const handleStorage = () => {
+      const list = StorageService.getStatuses();
+      setStatuses(list);
+    };
     window.addEventListener('credit_gestao_storage_update', handleStorage);
     return () => window.removeEventListener('credit_gestao_storage_update', handleStorage);
   }, []);
@@ -139,7 +144,7 @@ export const StatusManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -148,9 +153,10 @@ export const StatusManagement: React.FC = () => {
       return;
     }
 
+    setIsSaving(true);
     try {
       if (editingStatus) {
-        StorageService.updateStatus(editingStatus.id, {
+        await StorageService.updateStatusAsync(editingStatus.id, {
           name: formName,
           code: formCode || undefined,
           responsibleGroup: formAlcada,
@@ -162,9 +168,9 @@ export const StatusManagement: React.FC = () => {
           manualChangeAllowed: formManualAllowed,
           automaticChangeAllowed: formAutoAllowed,
         });
-        setSuccessMsg(`Status "${formName.toUpperCase()}" atualizado com sucesso.`);
+        setSuccessMsg(`Status "${formName.toUpperCase()}" atualizado com sucesso no banco de dados.`);
       } else {
-        StorageService.addStatus({
+        await StorageService.addStatusAsync({
           name: formName,
           code: formCode || undefined,
           responsibleGroup: formAlcada,
@@ -175,34 +181,54 @@ export const StatusManagement: React.FC = () => {
           manualChangeAllowed: formManualAllowed,
           automaticChangeAllowed: formAutoAllowed,
         });
-        setSuccessMsg(`Novo status "${formName.toUpperCase()}" cadastrado com sucesso.`);
+        setSuccessMsg(`Novo status "${formName.toUpperCase()}" cadastrado com sucesso no banco de dados.`);
       }
 
       setIsModalOpen(false);
-      loadData();
+      await loadData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao salvar o status.');
+      setErrorMsg(err.message || 'Erro ao salvar o status no banco de dados.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleQuickAlcadaChange = (statusId: string, newAlcada: Alcada) => {
+  const handleQuickAlcadaChange = async (statusId: string, newAlcada: Alcada) => {
     try {
-      StorageService.updateStatus(statusId, {
+      await StorageService.updateStatusAsync(statusId, {
         responsibleGroup: newAlcada,
         responsible: newAlcada,
       });
-      loadData();
-      setSuccessMsg(`Alçada alterada para ${newAlcada}.`);
+      await loadData();
+      setSuccessMsg(`Alçada alterada para ${newAlcada} e salva no PostgreSQL.`);
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       alert(err.message || 'Erro ao alterar alçada.');
     }
   };
 
-  const handleMoveOrder = (id: string, direction: 'UP' | 'DOWN') => {
-    StorageService.moveStatusOrder(id, direction);
-    loadData();
+  const handleMoveOrder = async (id: string, direction: 'UP' | 'DOWN') => {
+    const idx = statuses.findIndex(s => s.id === id);
+    if (idx === -1) return;
+
+    const targetIdx = direction === 'UP' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= statuses.length) return;
+
+    const currentList = [...statuses];
+    const tempOrder = currentList[idx].order;
+    currentList[idx].order = currentList[targetIdx].order;
+    currentList[targetIdx].order = tempOrder;
+
+    const itemsToReorder = currentList.map((s, i) => ({ id: s.id, order: s.order || i + 1 }));
+
+    try {
+      await StorageService.reorderStatusesAsync(itemsToReorder);
+      await loadData();
+    } catch (err: any) {
+      console.error('Erro ao reordenar status:', err);
+      alert(err.message || 'Erro ao reordenar status.');
+    }
   };
 
   const handleDeleteRequest = (s: ProposalStatus) => {
@@ -219,17 +245,20 @@ export const StatusManagement: React.FC = () => {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
 
+    setIsSaving(true);
     try {
-      StorageService.deleteStatus(deleteTarget.id, fallbackStatusId || undefined);
-      setSuccessMsg(`Status "${deleteTarget.name}" excluído com sucesso.`);
+      await StorageService.deleteStatusAsync(deleteTarget.id, fallbackStatusId || undefined);
+      setSuccessMsg(`Status "${deleteTarget.name}" excluído com sucesso do PostgreSQL.`);
       setDeleteTarget(null);
-      loadData();
+      await loadData();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao excluir status.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -651,10 +680,11 @@ export const StatusManagement: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  disabled={isSaving}
+                  className="rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="h-4 w-4" />
-                  <span>{editingStatus ? 'Salvar Alterações' : 'Cadastrar Status'}</span>
+                  <span>{isSaving ? 'Salvando no Banco...' : editingStatus ? 'Salvar Alterações' : 'Cadastrar Status'}</span>
                 </button>
               </div>
             </form>
@@ -724,10 +754,11 @@ export const StatusManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-rose-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                disabled={isSaving}
+                className="rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-rose-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
-                <span>Confirmar Exclusão</span>
+                <span>{isSaving ? 'Excluindo...' : 'Confirmar Exclusão'}</span>
               </button>
             </div>
           </div>

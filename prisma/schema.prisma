@@ -719,9 +719,13 @@ model ProposalStatus {
   code             String
   color            String                 @default("#3b82f6")
   standardCategory StandardStatusCategory @default(ESTEIRA) @map("standard_category")
-  slaHours         Int                    @default(24) @map("sla_hours")
-  order            Int                    @default(0)
-  active           Boolean                @default(true)
+  slaHours               Int                    @default(24) @map("sla_hours")
+  order                  Int                    @default(0)
+  active                 Boolean                @default(true)
+  responsibleGroup       String                 @default("NOSSA EQUIPE") @map("responsible_group")
+  finalStatus            Boolean                @default(false) @map("final_status")
+  manualChangeAllowed    Boolean                @default(true) @map("manual_change_allowed")
+  automaticChangeAllowed Boolean                @default(true) @map("automatic_change_allowed")
 
   proposals       Proposal[]
   statusHistories StatusHistory[]
