@@ -138,22 +138,47 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password: password.trim() }),
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setErrorMsg(data.message || data.error || 'Credenciais de acesso inválidas.');
+      let response: Response;
+      try {
+        response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, password: password.trim() }),
+          credentials: 'include',
+        });
+      } catch (fetchErr: any) {
+        setErrorMsg('Não foi possível alcançar a API. Verifique se o servidor está online ou sua conexão de rede.');
         setIsSubmitting(false);
         return;
       }
 
-      if (data.user) {
+      let data: any;
+      try {
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch (jsonErr) {
+          setErrorMsg('A API de autenticação retornou uma resposta inválida (Formato não-JSON).');
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (readErr: any) {
+        setErrorMsg('Falha ao ler os dados retornados pelo servidor de autenticação.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!response.ok) {
+        if (response.status === 500) {
+          setErrorMsg('Erro interno do servidor de autenticação.');
+        } else {
+          setErrorMsg(data?.message || data?.error || `Erro de autenticação (HTTP ${response.status}).`);
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data && data.user) {
         // P0-B: Session identifier is managed strictly via HttpOnly cookie.
         // Purge any legacy token residue if present.
         try {
@@ -168,7 +193,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         setIsSubmitting(false);
       }
     } catch (err: any) {
-      setErrorMsg('Não foi possível conectar ao servidor de autenticação. Verifique sua conexão.');
+      setErrorMsg('Erro inesperado ao tentar realizar a autenticação.');
       setIsSubmitting(false);
     }
   };

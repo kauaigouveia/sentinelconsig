@@ -38,6 +38,7 @@ import { TenantHealthService } from './server/services/tenantHealthService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
 import { SimulationService } from './server/services/simulationService.js';
+import { backupStorageService } from './server/services/backupStorageService.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
 
@@ -413,8 +414,10 @@ async function migrateLegacyUserMemberships() {
   // 1. POST /api/auth/login - Rate limited & Domain-aware
   app.post('/api/auth/login', authRateLimiter, async (req, res) => {
     try {
+      console.log('[AUTH DEBUG] request received', { email: req.body?.email ? String(req.body.email).trim().toLowerCase() : null });
       const { email, password } = req.body || {};
       if (!email || !password) {
+        console.log('[AUTH DEBUG] missing email or password');
         return res.status(400).json({ message: 'E-mail e senha são obrigatórios.' });
       }
 
@@ -423,7 +426,9 @@ async function migrateLegacyUserMemberships() {
 
       // Resolve domain context to enforce domain-level tenant boundaries
       const host = TenantResolver.extractHost(req);
+      console.log('[AUTH DEBUG] host resolved', { host });
       const domainResolution = await TenantResolver.resolveByHost(prisma, host);
+      console.log('[AUTH DEBUG] tenant resolution', { type: domainResolution.type, resolvedHost: domainResolution.resolvedHost, tenantId: domainResolution.tenant?.id });
 
       if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
         await AuditLogService.record(prisma, {
@@ -433,6 +438,7 @@ async function migrateLegacyUserMemberships() {
           oldData: { email: cleanEmail, reason: 'Tentativa de login em domínio não configurado ou inativo', host },
           req,
         });
+        console.log('[AUTH DEBUG] domain not configured or inactive', { host });
         return res.status(403).json({
           status: 'DOMAIN_NOT_CONFIGURED',
           message: 'Este domínio não está associado a nenhuma organização ativa do Sentinel Consig.',
@@ -446,13 +452,17 @@ async function migrateLegacyUserMemberships() {
           where: { email: { equals: cleanEmail, mode: 'insensitive' } },
           include: { tenant: true },
         });
-      } catch (err) {
+        console.log('[AUTH DEBUG] prisma user lookup', { found: !!dbUser, userId: dbUser?.id, userRole: dbUser?.role });
+      } catch (err: any) {
+        console.error('[AUTH DEBUG] prisma user lookup error', err?.message || String(err));
         console.warn('[AUTH] Falha ao consultar usuário no banco de dados:', err);
       }
 
       if (!dbUser) {
         // Equalize response time to prevent account enumeration
+        console.log('[AUTH DEBUG] user not found, executing dummy verify');
         await dummyVerify(cleanPassword);
+        console.log('[AUTH DEBUG] dummy verify completed');
 
         // Audit log failed login
         await AuditLogService.record(prisma, {
@@ -477,6 +487,7 @@ async function migrateLegacyUserMemberships() {
           oldData: { email: cleanEmail, reason: 'Usuário desativado' },
           req,
         });
+        console.log('[AUTH DEBUG] user is deactivated', { userId: dbUser.id });
         return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
@@ -500,6 +511,7 @@ async function migrateLegacyUserMemberships() {
             oldData: { email: cleanEmail, reason: 'Acesso negado: domínio de outra organização' },
             req,
           });
+          console.log('[AUTH DEBUG] domain-level tenant access rejected', { userTenantId: dbUser.tenantId, domainTenantId: domainResolution.tenant.id });
           return res.status(403).json({
             message: 'Este usuário não pertence a esta organização.',
           });
@@ -521,11 +533,13 @@ async function migrateLegacyUserMemberships() {
           oldData: { email: cleanEmail, reason },
           req,
         });
+        console.log('[AUTH DEBUG] tenant status is not active', { tenantId: dbUser.tenantId, status: dbUser.tenant.status });
         return res.status(403).json({ message: dbUser.tenant.status === 'SUSPENDED' ? 'Tenant suspenso.' : 'Tenant inativo ou cancelado.' });
       }
 
       // P0-A: Cryptographic password validation using Argon2id (No includes, no partial matches)
       const { valid: isPasswordValid, needsRehash } = await verifyPassword(cleanPassword, dbUser.passwordHash);
+      console.log('[AUTH DEBUG] password verification', { valid: isPasswordValid, needsRehash });
       if (!isPasswordValid) {
         await AuditLogService.record(prisma, {
           tenantId: dbUser.tenantId,
@@ -549,8 +563,10 @@ async function migrateLegacyUserMemberships() {
             data: { passwordHash: modernHash },
           });
           logger.info({ userId: dbUser.id }, '[AUTH] Hash de credencial atualizado para Argon2id com sucesso');
-        } catch (rehashErr) {
+          console.log('[AUTH DEBUG] legacy password rehashing completed', { userId: dbUser.id });
+        } catch (rehashErr: any) {
           logger.warn({ err: rehashErr }, '[AUTH] Falha não impeditiva na migração de hash');
+          console.warn('[AUTH DEBUG] legacy password rehashing failed', rehashErr?.message || String(rehashErr));
         }
       }
 
@@ -595,6 +611,7 @@ async function migrateLegacyUserMemberships() {
             oldData: { email: cleanEmail, reason: 'Usuário sem empresas/memberships ativas vinculadas.' },
             req,
           });
+          console.log('[AUTH DEBUG] user has no active memberships');
           return res.status(401).json({
             code: 'USER_HAS_NO_ACTIVE_MEMBERSHIPS',
             message: 'Este usuário não possui nenhum vínculo ativo com uma organização.'
@@ -641,7 +658,9 @@ async function migrateLegacyUserMemberships() {
             activePermissions: { set: activePermissions },
           },
         });
-      } catch (sessErr) {
+        console.log('[AUTH DEBUG] session creation', { userId: dbUser.id, effectiveTenantId, activeRole });
+      } catch (sessErr: any) {
+        console.error('[AUTH DEBUG] session creation error', sessErr?.message || String(sessErr));
         console.warn('[AUTH] Não foi possível persistir sessão no banco:', sessErr);
         return res.status(500).json({ message: 'Erro ao criar sessão no servidor.' });
       }
@@ -669,14 +688,17 @@ async function migrateLegacyUserMemberships() {
         },
         req,
       });
+      console.log('[AUTH DEBUG] audit log success', { userId: dbUser.id });
 
       // P0-B: NEVER return the session token in the JSON body.
       // The session token is transmitted solely via the HttpOnly cookie.
+      console.log('[AUTH DEBUG] response sent', { userId: dbUser.id });
       return res.json({
         success: true,
         user: safeUser,
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[AUTH DEBUG] critical unhandled login error', error?.message || String(error));
       console.error('[AUTH ERROR]', error);
       return res.status(500).json({ message: 'Erro interno durante a autenticação.' });
     }
@@ -6743,10 +6765,6 @@ async function migrateLegacyUserMemberships() {
   // -------------------------------------------------------------
   // SERVER-SIDE BACKUP & RESTORE API (P0.2)
   // -------------------------------------------------------------
-  const backupsDir = path.join(process.cwd(), 'storage', 'backups');
-  if (!fs.existsSync(backupsDir)) {
-    fs.mkdirSync(backupsDir, { recursive: true });
-  }
 
   // 1. POST /api/admin/backups - Create backup snapshot
   app.post('/api/admin/backups', async (req, res) => {
@@ -6828,9 +6846,7 @@ async function migrateLegacyUserMemberships() {
       const recordsCount = users.length + clients.length + proposals.length + tasks.length + financialEntries.length;
 
       const backupId = `bkp_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const storagePath = path.join(backupsDir, `${backupId}.json`);
-
-      fs.writeFileSync(storagePath, dumpStr, 'utf-8');
+      const storagePath = await backupStorageService.putBackup(backupId, dumpStr);
 
       const backup = await prisma.backup.create({
         data: {
@@ -6934,10 +6950,14 @@ async function migrateLegacyUserMemberships() {
       }
 
       if (req.query.download === 'true') {
-        if (!fs.existsSync(backup.storagePath)) {
+        const fileExists = await backupStorageService.existsBackup(backup.storagePath);
+        if (!fileExists) {
           return res.status(404).json({ error: 'Arquivo do backup não encontrado no armazenamento do servidor.' });
         }
-        return res.download(backup.storagePath, `backup_${backup.id}.json`);
+        const fileContent = await backupStorageService.getBackup(backup.storagePath);
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="backup_${backup.id}.json"`);
+        return res.send(fileContent);
       }
 
       return res.json({
@@ -6977,11 +6997,12 @@ async function migrateLegacyUserMemberships() {
         return res.status(403).json({ error: 'Acesso negado a esta cópia de segurança.' });
       }
 
-      if (!fs.existsSync(backup.storagePath)) {
-        return res.status(400).json({ error: 'Arquivo de backup não encontrado no servidor.' });
+      const fileExists = await backupStorageService.existsBackup(backup.storagePath);
+      if (!fileExists) {
+        return res.status(400).json({ error: 'Arquivo de backup não encontrado no armazenamento.' });
       }
 
-      const fileContent = fs.readFileSync(backup.storagePath, 'utf-8');
+      const fileContent = await backupStorageService.getBackup(backup.storagePath);
       const calculatedChecksum = crypto.createHash('sha256').update(fileContent).digest('hex');
 
       if (calculatedChecksum !== backup.checksumSha256) {
@@ -6991,8 +7012,7 @@ async function migrateLegacyUserMemberships() {
       }
 
       const preRestoreId = `bkp_prerestore_${Date.now()}`;
-      const preRestorePath = path.join(backupsDir, `${preRestoreId}.json`);
-      fs.writeFileSync(preRestorePath, fileContent, 'utf-8');
+      const preRestorePath = await backupStorageService.putBackup(preRestoreId, fileContent);
 
       await prisma.backup.create({
         data: {

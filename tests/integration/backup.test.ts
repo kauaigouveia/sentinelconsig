@@ -3,6 +3,7 @@ import { app, prisma } from '../../server';
 import type { Server } from 'http';
 import fs from 'fs';
 import path from 'path';
+import { backupStorageService } from '../../server/services/backupStorageService';
 
 describe('Integration: Database Backup & Restore with SHA-256 Checksum Validation', () => {
   let server: Server;
@@ -107,12 +108,12 @@ describe('Integration: Database Backup & Restore with SHA-256 Checksum Validatio
     expect(data.backup.status).toBe('COMPLETED');
     expect(data.backup.checksumSha256).toBeDefined();
 
-    // Verify file exists on server disk
-    const fileExists = fs.existsSync(data.backup.storagePath);
+    // Verify file exists on server disk/storage provider
+    const fileExists = await backupStorageService.existsBackup(data.backup.storagePath);
     expect(fileExists).toBe(true);
 
     // Verify content calculation and integrity of generated JSON file
-    const content = fs.readFileSync(data.backup.storagePath, 'utf-8');
+    const content = await backupStorageService.getBackup(data.backup.storagePath);
     const parsed = JSON.parse(content);
     expect(parsed.data.users).toBeDefined();
     expect(parsed.data.proposals).toBeDefined();

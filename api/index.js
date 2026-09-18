@@ -1,3 +1,17 @@
+import 'dotenv/config';
+import 'express';
+import 'cookie-parser';
+import 'express-rate-limit';
+import 'helmet';
+import '@prisma/client';
+import 'argon2';
+import 'pusher';
+import 'pino';
+import '@azure/identity';
+import '@azure/storage-blob';
+import 'exceljs';
+import '@google/genai';
+
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
