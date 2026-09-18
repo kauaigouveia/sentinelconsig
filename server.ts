@@ -380,6 +380,7 @@ async function auditAndEnsureMasterUser() {
       const resolution = await TenantResolver.resolveByHost(prisma, host);
 
       // Safe public payload - NO internal IDs, passwords or sensitive metrics
+      console.log("Branding resolved:", resolution.branding);
       return res.json(resolution.branding);
     } catch (err) {
       console.error('[PUBLIC BRANDING ERROR]', err);
