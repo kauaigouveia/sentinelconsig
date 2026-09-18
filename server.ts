@@ -43,6 +43,7 @@ import { C6BankService } from './server/services/c6BankService.js';
 import { C6SyncWorker } from './server/services/c6SyncWorker.js';
 import { FactaBankService } from './server/services/factaBankService.js';
 import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
+import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -103,6 +104,9 @@ async function auditAndEnsureMasterUser() {
     } else {
       console.log(`[RBAC BOOTSTRAP] Tenant inicial reutilizado: ${tenant.id} (${tenant.name})`);
     }
+
+    // Ensure status defaults exist for all tenants
+    await ensureDefaultStatusesForAllTenants(prisma);
 
     // 2. Usuário Master inicial idempotente
     const user = await prisma.user.findFirst({
@@ -636,8 +640,17 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  // P0-B: Extract session token EXCLUSIVELY from the HttpOnly cookie
+  // P0-B: Extract session token from Authorization header or HttpOnly cookie
   const extractSessionToken = (req: express.Request): string | null => {
+    if (req.headers && req.headers.authorization) {
+      const authHeader = req.headers.authorization.trim();
+      if (authHeader.toLowerCase().startsWith('bearer ')) {
+        return authHeader.substring(7).trim();
+      }
+      if (authHeader && !authHeader.includes(' ')) {
+        return authHeader;
+      }
+    }
     if (req.cookies && req.cookies.cg_session_id) {
       return req.cookies.cg_session_id;
     }
@@ -2522,10 +2535,17 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-      const statuses = await prisma.proposalStatus.findMany({
+      let statuses = await prisma.proposalStatus.findMany({
         where: { tenantId, active: true },
         orderBy: { order: 'asc' },
       });
+      if (statuses.length === 0) {
+        await ensureDefaultStatusesForTenant(prisma, tenantId);
+        statuses = await prisma.proposalStatus.findMany({
+          where: { tenantId, active: true },
+          orderBy: { order: 'asc' },
+        });
+      }
       return res.json(statuses);
     } catch (err) {
       console.error('[API /api/statuses] Erro ao buscar status no PostgreSQL:', err);

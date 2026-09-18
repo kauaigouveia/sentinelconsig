@@ -620,7 +620,7 @@ export class C6BankService {
       if (!targetC6Number || targetC6Number.trim() === '') {
         // Atualizar proposta com status MISSING_IDENTIFIER
         await prisma.proposal.update({
-          where: { id: proposalId },
+          where: { id: proposal.id },
           data: {
             c6SyncStatus: 'MISSING_IDENTIFIER',
             c6SyncError: 'Número da proposta C6 não informado.',
@@ -632,7 +632,7 @@ export class C6BankService {
         await prisma.c6SyncHistory.create({
           data: {
             tenantId,
-            proposalId,
+            proposalId: proposal.id,
             c6ProposalNumber: 'N/A',
             success: false,
             technicalError: 'Número da proposta C6 não informado.',
@@ -667,7 +667,7 @@ export class C6BankService {
         const statusCode = apiErr?.statusCode || 500;
 
         await prisma.proposal.update({
-          where: { id: proposalId },
+          where: { id: proposal.id },
           data: {
             c6SyncStatus: 'ERROR',
             c6SyncError: errorMessage,
@@ -678,7 +678,7 @@ export class C6BankService {
         await prisma.c6SyncHistory.create({
           data: {
             tenantId,
-            proposalId,
+            proposalId: proposal.id,
             c6ProposalNumber: targetC6Number.trim(),
             success: false,
             technicalError: errorMessage,
@@ -781,7 +781,7 @@ export class C6BankService {
       await prisma.$transaction(async (tx) => {
         // Atualizar campos da proposta
         await tx.proposal.update({
-          where: { id: proposalId },
+          where: { id: proposal.id },
           data: {
             c6ProposalNumber: returnedC6Number,
             c6OperationNumber: returnedOpNumber,
@@ -810,7 +810,7 @@ export class C6BankService {
           await tx.statusHistory.create({
             data: {
               tenantId,
-              proposalId,
+              proposalId: proposal.id,
               statusId: targetStatusRecord.id,
               statusName: targetStatusRecord.name,
               userId: options.queriedBy && options.queriedBy !== 'AUTO_WORKER' ? options.queriedBy : null,
@@ -823,7 +823,7 @@ export class C6BankService {
         await tx.c6SyncHistory.create({
           data: {
             tenantId,
-            proposalId,
+            proposalId: proposal.id,
             c6ProposalNumber: returnedC6Number,
             c6OperationNumber: returnedOpNumber,
             success: true,

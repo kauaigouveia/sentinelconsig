@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Clock,
@@ -105,16 +105,18 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const [dbStatuses, setDbStatuses] = useState<any[]>([]);
   const [statusesLoading, setStatusesLoading] = useState<boolean>(true);
   const [statusesError, setStatusesError] = useState<string | null>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   const fetchOfficialStatuses = () => {
     setStatusesLoading(true);
     setStatusesError(null);
-    fetch('/api/statuses')
+    fetch('/api/statuses', { credentials: 'include' })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then(data => {
+        if (!isMountedRef.current) return;
         if (Array.isArray(data) && data.length > 0) {
           setDbStatuses(data);
           setStatusesError(null);
@@ -124,17 +126,24 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         }
       })
       .catch(err => {
+        if (!isMountedRef.current) return;
         console.error('[ProposalDetailModal] Erro ao buscar status do PostgreSQL:', err);
         setDbStatuses([]);
         setStatusesError('Não foi possível carregar os status oficiais. Atualize a página ou tente novamente.');
       })
       .finally(() => {
-        setStatusesLoading(false);
+        if (isMountedRef.current) {
+          setStatusesLoading(false);
+        }
       });
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchOfficialStatuses();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Catálogo estritamente oficial do PostgreSQL — NENHUM fallback para INITIAL_STATUSES / StorageService
