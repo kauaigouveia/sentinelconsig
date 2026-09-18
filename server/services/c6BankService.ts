@@ -375,12 +375,10 @@ export class C6BankService {
   }
 
   /**
-   * Consulta a proposta diretamente no endpoint C6 Bank:
+   * Consulta a proposta diretamente no endpoint C6 Bank (Multiproduto: Portabilidade, Consignado, FGTS, etc.):
    * GET /marketplace/proposal?proposalNumber={proposalNumber}
    * Headers:
-   *   access_token: {access_token} (conforme documentação oficial C6, SEM prefixo "Bearer")
-   *   Authorization: {access_token} (contingência para proxies de rede)
-   *   Accept: application/vnd.c6bank_fgts_consult_v2+json
+   *   Authorization: {access_token} (conforme documentação oficial C6, SEM prefixo "Bearer")
    */
   public static async queryProposalFromC6(
     prisma: PrismaClient,
@@ -402,11 +400,7 @@ export class C6BankService {
       const response = await fetch(targetUrl, {
         method: 'GET',
         headers: {
-          // Documentação oficial C6: header access_token SEM Bearer
-          'access_token': token,
-          // Compatibilidade para proxies que reescrevem ou repassam Authorization
           'Authorization': token,
-          'Accept': 'application/vnd.c6bank_fgts_consult_v2+json',
         },
         signal: controller.signal,
       });
@@ -690,8 +684,8 @@ export class C6BankService {
       const returnedFormalizationStatus =
         c6Data.formalization_status || proposal.c6FormalizationStatus || null;
       const returnedFormalizationCode =
-        c6Data.formalizationCode != null
-          ? String(c6Data.formalizationCode)
+        (c6Data.formalization_code ?? c6Data.formalizationCode) != null
+          ? String(c6Data.formalization_code ?? c6Data.formalizationCode)
           : proposal.c6FormalizationCode || null;
 
       let lastActivityDate: Date | null = null;

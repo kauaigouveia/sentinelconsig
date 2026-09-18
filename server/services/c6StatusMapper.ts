@@ -74,7 +74,7 @@ export function mapC6StatusToInternal(
     : undefined;
   const currentActivityDescription = c6Data.loan_track?.current_activity_description?.trim();
   const formalizationStatus = c6Data.formalization_status?.trim();
-  const formalizationCode = c6Data.formalizationCode;
+  const formalizationCode = c6Data.formalization_code ?? c6Data.formalizationCode;
 
   const combinedDictionary: Record<string, string> = {
     ...DEFAULT_C6_STATUS_MAPPINGS,

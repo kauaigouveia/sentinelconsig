@@ -21,7 +21,7 @@ export interface C6Agreement {
 }
 
 export interface C6Product {
-  code?: string;
+  code?: string | number;
   description?: string;
   [key: string]: any;
 }
@@ -38,6 +38,7 @@ export interface C6ProposalResponse {
   formalization_type?: string;
   formalization_sub_type_description?: string;
   formalization_status?: string;
+  formalization_code?: string | number;
   formalizationCode?: string | number;
   loan_track?: C6LoanTrack;
   agreement?: C6Agreement;
