@@ -573,9 +573,13 @@ export class C6BankService {
       // 2. Buscar proposta no banco com tenant e relacionamentos
       const proposal = await prisma.proposal.findFirst({
         where: {
-          id: proposalId,
           tenantId,
           deletedAt: null,
+          OR: [
+            { id: proposalId },
+            { proposalNumber: proposalId },
+            { c6ProposalNumber: proposalId },
+          ],
         },
         include: {
           status: true,
@@ -597,7 +601,17 @@ export class C6BankService {
         throw new Error('Esta proposta não pertence ao C6 Bank.');
       }
 
-      // Identificar o número da proposta C6 a ser consultado
+      // Garantir nome do status interno anterior sem N/A
+      let previousInternalStatusName = proposal.status?.name;
+      if (!previousInternalStatusName && proposal.statusId) {
+        const foundSt = await prisma.proposalStatus.findFirst({
+          where: { id: proposal.statusId },
+        });
+        if (foundSt) previousInternalStatusName = foundSt.name;
+      }
+      if (!previousInternalStatusName) {
+        previousInternalStatusName = 'AGUARDAR FORMALIZAÇÃO';
+      }
       const targetC6Number =
         options.forceProposalNumber ||
         proposal.c6ProposalNumber ||
@@ -623,8 +637,8 @@ export class C6BankService {
             success: false,
             technicalError: 'Número da proposta C6 não informado.',
             queriedBy: options.queriedBy || 'MANUAL',
-            previousInternalStatus: proposal.status?.name || 'N/A',
-            currentInternalStatus: proposal.status?.name || 'N/A',
+            previousInternalStatus: previousInternalStatusName,
+            currentInternalStatus: previousInternalStatusName,
           },
         });
 
@@ -669,8 +683,8 @@ export class C6BankService {
             success: false,
             technicalError: errorMessage,
             queriedBy: options.queriedBy || 'MANUAL',
-            previousInternalStatus: proposal.status?.name || 'N/A',
-            currentInternalStatus: proposal.status?.name || 'N/A',
+            previousInternalStatus: previousInternalStatusName,
+            currentInternalStatus: previousInternalStatusName,
           },
         });
 
@@ -728,13 +742,31 @@ export class C6BankService {
       let targetStatusRecord: any = null;
 
       if (mapping.isMapped && mapping.targetStatusCode) {
+        const targetCode = mapping.targetStatusCode;
+        // Search by tenant first
         targetStatusRecord = await prisma.proposalStatus.findFirst({
           where: {
             tenantId,
-            code: mapping.targetStatusCode,
-            active: true,
+            OR: [
+              { code: targetCode },
+              { code: { equals: targetCode, mode: 'insensitive' } },
+              { name: { equals: targetCode, mode: 'insensitive' } },
+            ],
           },
         });
+
+        // Fallback search without tenant restriction if not found
+        if (!targetStatusRecord) {
+          targetStatusRecord = await prisma.proposalStatus.findFirst({
+            where: {
+              OR: [
+                { code: targetCode },
+                { code: { equals: targetCode, mode: 'insensitive' } },
+                { name: { equals: targetCode, mode: 'insensitive' } },
+              ],
+            },
+          });
+        }
 
         if (targetStatusRecord && targetStatusRecord.id !== proposal.statusId) {
           newInternalStatusId = targetStatusRecord.id;
@@ -800,8 +832,8 @@ export class C6BankService {
             currentRawSituation: returnedSituation || 'N/A',
             previousActivity: proposal.c6ActivityDescription || proposal.c6CurrentActivity || 'N/A',
             currentActivity: returnedActivityDesc || returnedActivity || 'N/A',
-            previousInternalStatus: proposal.status?.name || 'N/A',
-            currentInternalStatus: targetStatusRecord?.name || proposal.status?.name || 'N/A',
+            previousInternalStatus: previousInternalStatusName,
+            currentInternalStatus: targetStatusRecord?.name || previousInternalStatusName,
             rawResponse: sanitizedRaw,
             queriedBy: options.queriedBy || 'MANUAL',
           },
@@ -821,9 +853,12 @@ export class C6BankService {
         formalizationStatus: returnedFormalizationStatus || undefined,
         formalizationCode: returnedFormalizationCode || undefined,
         lastActivityDate: lastActivityDate ? lastActivityDate.toISOString() : undefined,
-        previousInternalStatus: proposal.status?.name,
-        currentInternalStatus: targetStatusRecord?.name || proposal.status?.name,
+        previousInternalStatus: previousInternalStatusName,
+        currentInternalStatus: targetStatusRecord?.name || previousInternalStatusName,
+        statusId: targetStatusRecord?.id || proposal.statusId,
+        statusName: targetStatusRecord?.name || previousInternalStatusName,
         statusMapped: mapping.isMapped,
+        internalStatusUpdated: internalStatusChanged,
         mappingNotes: mapping.notes,
         rawData: sanitizedRaw,
       };

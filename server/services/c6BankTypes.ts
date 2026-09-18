@@ -62,7 +62,10 @@ export interface C6SyncResult {
   lastActivityDate?: string;
   previousInternalStatus?: string;
   currentInternalStatus?: string;
+  statusId?: string;
+  statusName?: string;
   statusMapped: boolean;
+  internalStatusUpdated?: boolean;
   mappingNotes?: string;
   error?: string;
   statusCode?: number;

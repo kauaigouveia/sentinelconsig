@@ -22,7 +22,14 @@ import {
   Sparkles,
   Search,
 } from 'lucide-react';
-import { C6ConfigState, C6WorkerStatusState, C6SyncHistoryItem } from '../../types';
+import {
+  C6ConfigState,
+  C6WorkerStatusState,
+  C6SyncHistoryItem,
+  FactaConfigState,
+  FactaWorkerStatusState,
+  FactaSyncHistoryItem,
+} from '../../types';
 
 type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros';
 
@@ -53,9 +60,13 @@ const BANKS_META: BankMeta[] = [
     id: 'facta',
     name: 'FACTA Financeira',
     code: '149',
-    tagline: 'Esteira Digital / Barramento Corban',
-    status: 'coming_soon',
-    products: ['FGTS Digital', 'Crédito Consignado'],
+    tagline: 'API REST / Esteira Digital — Consulta de Andamento de Propostas & Robô de Sincronização',
+    status: 'active',
+    products: [
+      'FGTS Digital / Antecipação Saque-Aniversário',
+      'Empréstimo Consignado INSS / Conveniados',
+      'Portabilidade de Crédito Consignado',
+    ],
   },
   {
     id: 'bmg',
@@ -175,6 +186,43 @@ export const BankIntegrationsView: React.FC = () => {
   const [recentLogs, setRecentLogs] = useState<C6SyncHistoryItem[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
+  // --- Estado da FACTA Financeira ---
+  const [factaConfig, setFactaConfig] = useState<FactaConfigState>({
+    environment: 'homologation',
+    username: '',
+    baseUrl: 'https://desenvolvimento.facta.com.br/sistemaPropostas/api',
+    autoSyncEnabled: false,
+    syncIntervalMinutes: 15,
+    pageSize: 50,
+    dateQueryType: 'data_movimento',
+    consultaSub: 'N',
+    isConfigured: false,
+    hasPassword: false,
+  });
+
+  const [factaPassword, setFactaPassword] = useState('');
+  const [showFactaPassword, setShowFactaPassword] = useState(false);
+  const [isLoadingFactaConfig, setIsLoadingFactaConfig] = useState(false);
+  const [isSavingFactaConfig, setIsSavingFactaConfig] = useState(false);
+  const [factaSaveSuccessMsg, setFactaSaveSuccessMsg] = useState<string | null>(null);
+
+  const [factaWorkerStatus, setFactaWorkerStatus] = useState<FactaWorkerStatusState | null>(null);
+  const [isLoadingFactaStatus, setIsLoadingFactaStatus] = useState(false);
+
+  const [isTestingFacta, setIsTestingFacta] = useState(false);
+  const [factaTestResult, setFactaTestResult] = useState<{
+    success: boolean;
+    message: string;
+    responseTimeMs?: number;
+    isHomologation?: boolean;
+  } | null>(null);
+
+  const [isTriggeringFactaSync, setIsTriggeringFactaSync] = useState(false);
+  const [factaBatchSyncResult, setFactaBatchSyncResult] = useState<string | null>(null);
+
+  const [factaRecentLogs, setFactaRecentLogs] = useState<FactaSyncHistoryItem[]>([]);
+  const [isLoadingFactaLogs, setIsLoadingFactaLogs] = useState(false);
+
   // Busca configurações e status do C6
   const fetchC6ConfigAndStatus = async () => {
     setIsLoadingConfig(true);
@@ -213,7 +261,145 @@ export const BankIntegrationsView: React.FC = () => {
   useEffect(() => {
     fetchC6ConfigAndStatus();
     fetchC6Logs();
+    fetchFactaConfigAndStatus();
+    fetchFactaLogs();
   }, []);
+
+  // Busca configurações e status da FACTA
+  const fetchFactaConfigAndStatus = async () => {
+    setIsLoadingFactaConfig(true);
+    setIsLoadingFactaStatus(true);
+    try {
+      const [cfgRes, statusRes] = await Promise.all([
+        safeFetchJson<FactaConfigState>('/api/integrations/facta/config'),
+        safeFetchJson<FactaWorkerStatusState>('/api/integrations/facta/status'),
+      ]);
+
+      if (cfgRes.ok) setFactaConfig(cfgRes.data);
+      if (statusRes.ok) setFactaWorkerStatus(statusRes.data);
+    } catch (err: any) {
+      console.error('[FACTA CONFIG] Erro ao carregar configurações:', err);
+    } finally {
+      setIsLoadingFactaConfig(false);
+      setIsLoadingFactaStatus(false);
+    }
+  };
+
+  // Busca logs recentes de sincronização da FACTA
+  const fetchFactaLogs = async () => {
+    setIsLoadingFactaLogs(true);
+    try {
+      const { ok, data } = await safeFetchJson<FactaSyncHistoryItem[]>('/api/integrations/facta/recent-logs?limit=15');
+      if (ok && Array.isArray(data)) {
+        setFactaRecentLogs(data);
+      }
+    } catch (err) {
+      console.error('[FACTA LOGS] Erro ao carregar logs:', err);
+    } finally {
+      setIsLoadingFactaLogs(false);
+    }
+  };
+
+  // Salvar configurações FACTA
+  const handleSaveFactaConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingFactaConfig(true);
+    setFactaSaveSuccessMsg(null);
+    setFactaTestResult(null);
+
+    try {
+      const { ok, data } = await safeFetchJson('/api/integrations/facta/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          environment: factaConfig.environment,
+          username: factaConfig.username,
+          password: factaPassword ? factaPassword : undefined,
+          baseUrl: factaConfig.baseUrl,
+          autoSyncEnabled: factaConfig.autoSyncEnabled,
+          syncIntervalMinutes: factaConfig.syncIntervalMinutes,
+          pageSize: factaConfig.pageSize,
+          dateQueryType: factaConfig.dateQueryType,
+          convenio: factaConfig.convenio,
+          averbador: factaConfig.averbador,
+          codigoAf: factaConfig.codigoAf,
+          consultaSub: factaConfig.consultaSub,
+          codigoSub: factaConfig.codigoSub,
+        }),
+      });
+
+      if (!ok) {
+        throw new Error(data?.error || 'Falha ao salvar as configurações.');
+      }
+
+      setFactaSaveSuccessMsg('Configurações da FACTA Financeira salvas com sucesso!');
+      setFactaPassword('');
+      await fetchFactaConfigAndStatus();
+    } catch (err: any) {
+      alert(err.message || 'Falha ao salvar configurações da FACTA Financeira.');
+    } finally {
+      setIsSavingFactaConfig(false);
+    }
+  };
+
+  // Testar conexão FACTA
+  const handleTestFactaConnection = async () => {
+    setIsTestingFacta(true);
+    setFactaTestResult(null);
+
+    try {
+      const payload: any = {};
+      if (factaConfig.username?.trim()) payload.username = factaConfig.username.trim();
+      if (factaPassword?.trim()) payload.password = factaPassword.trim();
+      if (factaConfig.baseUrl?.trim()) payload.baseUrl = factaConfig.baseUrl.trim();
+
+      const { ok, data } = await safeFetchJson('/api/integrations/facta/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
+      });
+
+      if (!ok) {
+        setFactaTestResult({
+          success: false,
+          message: data?.error || data?.message || 'Falha ao testar conexão com a FACTA Financeira.',
+        });
+      } else {
+        setFactaTestResult(data);
+      }
+    } catch (err: any) {
+      setFactaTestResult({
+        success: false,
+        message: err.message || 'Falha de comunicação com a FACTA Financeira.',
+      });
+    } finally {
+      setIsTestingFacta(false);
+    }
+  };
+
+  // Disparar sincronização manual FACTA
+  const handleRunFactaBatchSync = async () => {
+    setIsTriggeringFactaSync(true);
+    setFactaBatchSyncResult(null);
+
+    try {
+      const { ok, data } = await safeFetchJson('/api/integrations/facta/run-sync', {
+        method: 'POST',
+      });
+
+      if (ok) {
+        setFactaBatchSyncResult(data?.message || 'Sincronização FACTA em lote finalizada.');
+        await fetchFactaConfigAndStatus();
+        await fetchFactaLogs();
+      } else {
+        setFactaBatchSyncResult(data?.error || 'Falha ao sincronizar propostas FACTA em lote.');
+      }
+    } catch (err: any) {
+      setFactaBatchSyncResult(err.message || 'Erro inesperado durante a sincronização FACTA.');
+    } finally {
+      setIsTriggeringFactaSync(false);
+    }
+  };
 
   // Salvar configurações C6
   const handleSaveC6Config = async (e: React.FormEvent) => {
@@ -873,42 +1059,462 @@ export const BankIntegrationsView: React.FC = () => {
 
       {/* ABA FACTA FINANCEIRA */}
       {activeTab === 'facta' && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center space-y-4">
-          <div className="h-16 w-16 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center font-bold text-2xl">
-            149
-          </div>
-          <div className="max-w-md mx-auto space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                FACTA Financeira (Código 149)
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                Não configurado / Em breve
-              </span>
+        <div className="space-y-6">
+          {/* Banner de Identificação da FACTA Financeira */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-900 via-orange-800 to-slate-900 text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-white text-orange-600 flex items-center justify-center font-black text-xl tracking-tighter shadow-md">
+                FAC
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-black">FACTA Financeira (Código 149)</h2>
+                  {factaConfig.isConfigured ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Conectado & Habilitado
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Credenciais Pendentes
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/20 text-orange-200 border border-orange-500/30">
+                    Ambiente: {factaConfig.environment === 'production' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'}
+                  </span>
+                </div>
+                <p className="text-xs text-orange-100/80 mt-0.5">
+                  Integração via API /proposta/andamento-propostas — Autenticação de Corban e Sincronização de Esteira
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              A integração oficial da esteira FACTA (FGTS Digital e Crédito Consignado) está em fase de homologação técnica.
-            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRunFactaBatchSync}
+                disabled={isTriggeringFactaSync || !factaConfig.isConfigured}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs disabled:opacity-50 transition-all shadow-xs cursor-pointer"
+              >
+                <Play className={`h-3.5 w-3.5 ${isTriggeringFactaSync ? 'animate-spin' : ''}`} />
+                <span>{isTriggeringFactaSync ? 'Sincronizando...' : 'Sincronizar Lote Agora'}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="max-w-lg mx-auto p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-left space-y-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-              Especificações Técnicas Futuras
-            </span>
-            <ul className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span>Autenticação via Token de Corban / Certificado Digital FACTA.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span>Consulta de status de propostas de Antecipação Saque-Aniversário FGTS.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span>Acompanhamento da formalização biométrica e assinatura digital.</span>
-              </li>
-            </ul>
+          {/* Grid de 2 Colunas: Status do Worker & Formulário de Credenciais */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Coluna Esquerda: Worker Status & Mapeamento */}
+            <div className="space-y-6 lg:col-span-1">
+              {/* Card de Status do Worker FACTA */}
+              <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-orange-500" />
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                      Robô Automático de Sincronização (Worker FACTA)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] text-slate-400">Varredura automática</span>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Varre periodicamente o andamento de propostas da FACTA e atualiza o status interno do Sentinel Consig.
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Estado do Robô</span>
+                    <span className={`font-bold flex items-center gap-1 ${
+                      factaConfig.autoSyncEnabled
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-slate-500'
+                    }`}>
+                      <div className={`h-2 w-2 rounded-full ${
+                        factaConfig.autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                      }`} />
+                      {factaConfig.autoSyncEnabled ? 'Ativo (Rodando)' : 'Desativado'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Intervalo de Busca</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {factaConfig.syncIntervalMinutes} minutos
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Propostas Pendentes</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {factaWorkerStatus?.pendingProposalsCount ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Última Execução</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">
+                      {formatDateTime(factaWorkerStatus?.lastRunAt)}
+                    </span>
+                  </div>
+                </div>
+
+                {factaBatchSyncResult && (
+                  <div className="p-3 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-900 dark:text-orange-200 border border-orange-200 dark:border-orange-800 text-xs">
+                    <span className="font-bold block mb-0.5">Resultado da Varredura:</span>
+                    <span>{factaBatchSyncResult}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Mapeamento de Status FACTA */}
+              <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <ShieldCheck className="h-4 w-4 text-orange-600" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                    Regras de Mapeamento FACTA → Status Interno
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Conforme regras da FACTA, o status e o crivo são convertidos preservando a integridade dos registros:
+                </p>
+
+                <div className="space-y-1.5 text-[11px] text-slate-700 dark:text-slate-300 font-mono">
+                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 flex justify-between">
+                    <span>Aprovado / Pago</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">PAGA / LIQUIDADA</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 flex justify-between">
+                    <span>Reprovado / Recusado / Cancelado</span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400">REPROVADA</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 flex justify-between">
+                    <span>Aguardando Digitação / Assinatura</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">AGUARDAR FORMALIZAÇÃO</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 flex justify-between">
+                    <span>Em Análise / Pendente</span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">EM ANÁLISE CORBAN</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna Direita: Formulário de Credenciais e Configurações */}
+            <div className="lg:col-span-2">
+              <form onSubmit={handleSaveFactaConfig} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-orange-600" />
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                      Credenciais e Parâmetros FACTA Financeira
+                    </h3>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    {factaConfig.hasPassword ? '✓ Senha cadastrada no cofre' : '⚠️ Senha não informada'}
+                  </span>
+                </div>
+
+                {factaSaveSuccessMsg && (
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>{factaSaveSuccessMsg}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Ambiente */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Ambiente da API *
+                    </label>
+                    <select
+                      value={factaConfig.environment}
+                      onChange={(e) => {
+                        const env = e.target.value as 'homologation' | 'production';
+                        const defaultUrl = env === 'production'
+                          ? 'https://proposta.facta.com.br/sistemaPropostas/api'
+                          : 'https://desenvolvimento.facta.com.br/sistemaPropostas/api';
+                        setFactaConfig({ ...factaConfig, environment: env, baseUrl: defaultUrl });
+                      }}
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="homologation">Homologação (desenvolvimento.facta.com.br)</option>
+                      <option value="production">Produção (proposta.facta.com.br)</option>
+                    </select>
+                  </div>
+
+                  {/* Usuário */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Usuário Corban FACTA (username) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={factaConfig.username}
+                      onChange={(e) => setFactaConfig({ ...factaConfig, username: e.target.value })}
+                      placeholder="Ex: CORBAN_SUL"
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  {/* Senha */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Senha FACTA (password) {factaConfig.hasPassword ? '(Cadastrada)' : '*'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showFactaPassword ? 'text' : 'password'}
+                        value={factaPassword}
+                        onChange={(e) => setFactaPassword(e.target.value)}
+                        placeholder={factaConfig.hasPassword ? '•••••••• (Preencha para alterar)' : 'Digite a senha da FACTA'}
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowFactaPassword(!showFactaPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        {showFactaPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tipo de Filtro por Data */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Filtro Temporal de Busca
+                    </label>
+                    <select
+                      value={factaConfig.dateQueryType || 'data_movimento'}
+                      onChange={(e) => setFactaConfig({ ...factaConfig, dateQueryType: e.target.value as any })}
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="data_movimento">Data de Movimento (Recomendado)</option>
+                      <option value="data_alteracao">Data de Alteração da Esteira</option>
+                    </select>
+                  </div>
+
+                  {/* URL Base */}
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      URL Base da API FACTA
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      value={factaConfig.baseUrl}
+                      onChange={(e) => setFactaConfig({ ...factaConfig, baseUrl: e.target.value })}
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  {/* Parâmetros Opcionais FACTA */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Convênio (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={factaConfig.convenio || ''}
+                      onChange={(e) => setFactaConfig({ ...factaConfig, convenio: e.target.value })}
+                      placeholder="Ex: INSS"
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Código AF Padrão (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={factaConfig.codigoAf || ''}
+                      onChange={(e) => setFactaConfig({ ...factaConfig, codigoAf: e.target.value })}
+                      placeholder="Ex: 12345"
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Opções de Automação */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-900/60">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                        Ativar Varredura Automática (Background Worker)
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        O robô consulta a FACTA periodicamente sem intervenção humana.
+                      </span>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={factaConfig.autoSyncEnabled}
+                        onChange={(e) => setFactaConfig({ ...factaConfig, autoSyncEnabled: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-orange-600"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Intervalo entre Varreduras (Minutos)
+                    </label>
+                    <select
+                      value={factaConfig.syncIntervalMinutes}
+                      onChange={(e) => setFactaConfig({ ...factaConfig, syncIntervalMinutes: parseInt(e.target.value, 10) || 15 })}
+                      className="w-full sm:w-64 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-medium text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value={5}>A cada 5 minutos</option>
+                      <option value={10}>A cada 10 minutos</option>
+                      <option value={15}>A cada 15 minutos (Padrão)</option>
+                      <option value={30}>A cada 30 minutos</option>
+                      <option value={60}>A cada 60 minutos (1 hora)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handleTestFactaConnection}
+                    disabled={isTestingFacta}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 text-orange-600 ${isTestingFacta ? 'animate-spin' : ''}`} />
+                    <span>{isTestingFacta ? 'Testando Conexão...' : 'Testar Conexão com FACTA'}</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isSavingFactaConfig}
+                    className="flex items-center gap-1.5 px-6 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold disabled:opacity-50 transition-all shadow-xs cursor-pointer"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>{isSavingFactaConfig ? 'Salvando...' : 'Salvar Configurações FACTA'}</span>
+                  </button>
+                </div>
+
+                {/* Resultado do Teste de Conexão */}
+                {factaTestResult && (
+                  <div
+                    className={`p-3.5 rounded-xl text-xs border flex items-start gap-2.5 animate-in fade-in duration-150 ${
+                      factaTestResult.success
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+                    }`}
+                  >
+                    {factaTestResult.success ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <span className="font-bold block text-sm">
+                        {factaTestResult.success ? 'Conexão Estabelecida com Sucesso!' : 'Falha na Conexão com a FACTA'}
+                      </span>
+                      <span className="block mt-0.5">{factaTestResult.message}</span>
+                      {factaTestResult.responseTimeMs && (
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-1 font-mono">
+                          Tempo de resposta do endpoint /gera-token: {factaTestResult.responseTimeMs} ms
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+
+          {/* Histórico e Auditoria FACTA */}
+          <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-orange-600" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  Últimas Consultas e Auditoria FACTA Financeira
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={fetchFactaLogs}
+                className="text-xs text-orange-600 dark:text-orange-400 font-semibold hover:underline cursor-pointer"
+              >
+                Atualizar logs
+              </button>
+            </div>
+
+            {isLoadingFactaLogs ? (
+              <div className="py-8 text-center text-slate-400">
+                <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-1 text-orange-500" />
+                <span>Carregando logs de auditoria FACTA...</span>
+              </div>
+            ) : factaRecentLogs.length === 0 ? (
+              <div className="py-6 text-center text-slate-400 text-xs">
+                Nenhuma consulta à FACTA Financeira registrada recentemente no sistema.
+              </div>
+            ) : (
+              <div className="overflow-x-auto mt-3">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Data / Hora</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Código AF</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Nº Proposta FACTA</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Status Proposta</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Status Crivo</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Status Interno</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Executor</th>
+                      <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Resultado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {factaRecentLogs.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2 px-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {formatDateTime(item.queryDate)}
+                        </td>
+                        <td className="py-2 px-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                          {item.factaAfCode || '—'}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-slate-800 dark:text-slate-200">
+                          {item.factaProposalNumber || '—'}
+                        </td>
+                        <td className="py-2 px-3 text-slate-800 dark:text-slate-200 font-medium">
+                          {item.currentRawStatus || '—'}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
+                          {item.currentCrivoStatus || '—'}
+                        </td>
+                        <td className="py-2 px-3 text-slate-700 dark:text-slate-300">
+                          {item.currentInternalStatus || '—'}
+                        </td>
+                        <td className="py-2 px-3 text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {item.queriedBy === 'AUTO_WORKER' ? 'Robô Automático' : 'Manual'}
+                        </td>
+                        <td className="py-2 px-3 whitespace-nowrap">
+                          {item.success ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3 w-3" /> Sucesso
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400" title={item.technicalError || ''}>
+                              <AlertTriangle className="h-3 w-3" /> Falha
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

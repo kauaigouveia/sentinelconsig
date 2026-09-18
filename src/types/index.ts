@@ -408,6 +408,18 @@ export interface Proposal {
   c6SyncStatus?: 'SYNCED' | 'PENDING' | 'ERROR' | 'MISSING_IDENTIFIER';
   c6SyncError?: string;
   c6RawData?: any;
+
+  // FACTA Financeira Integration
+  factaProposalNumber?: string;
+  factaAfCode?: string;
+  factaContractNumber?: string;
+  factaRawStatus?: string;
+  factaCrivoStatus?: string;
+  factaLastMovementAt?: string;
+  factaLastSyncAt?: string;
+  factaSyncStatus?: 'SYNCED' | 'PENDING' | 'ERROR' | 'UNLINKED';
+  factaSyncError?: string;
+  factaRawData?: any;
 }
 
 export interface C6SyncHistoryItem {
@@ -431,11 +443,52 @@ export interface C6SyncHistoryItem {
   createdAt: string;
 }
 
+export interface FactaSyncHistoryItem {
+  id: string;
+  tenantId: string;
+  proposalId?: string;
+  factaProposalNumber?: string;
+  factaAfCode?: string;
+  factaContractNumber?: string;
+  queryDate: string;
+  success: boolean;
+  previousRawStatus?: string;
+  currentRawStatus?: string;
+  previousCrivoStatus?: string;
+  currentCrivoStatus?: string;
+  previousInternalStatus?: string;
+  currentInternalStatus?: string;
+  hasChanged: boolean;
+  statusMapped: boolean;
+  unlinkedReason?: string;
+  technicalError?: string;
+  rawResponse?: any;
+  queriedBy?: string;
+  createdAt: string;
+}
+
 export interface C6ConfigState {
   username: string;
   baseUrl: string;
   autoSyncEnabled: boolean;
   syncIntervalMinutes: number;
+  isConfigured: boolean;
+  hasPassword: boolean;
+}
+
+export interface FactaConfigState {
+  environment: 'homologation' | 'production';
+  username: string;
+  baseUrl: string;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  pageSize: number;
+  dateQueryType: 'data_movimento' | 'data_alteracao';
+  convenio?: string;
+  averbador?: string;
+  codigoAf?: string;
+  consultaSub: 'S' | 'N';
+  codigoSub?: string;
   isConfigured: boolean;
   hasPassword: boolean;
 }
@@ -447,6 +500,21 @@ export interface C6WorkerStatusState {
   lastRunAt: string | null;
   lastRunSuccess: boolean;
   lastRunItemCount: number;
+  lastRunError: string | null;
+  pendingProposalsCount: number;
+  recentFailuresCount: number;
+  activeLock: boolean;
+}
+
+export interface FactaWorkerStatusState {
+  isRunning: boolean;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  lastRunAt: string | null;
+  lastRunSuccess: boolean;
+  lastRunProcessedCount: number;
+  lastRunUpdatedCount: number;
+  lastRunUnlinkedCount: number;
   lastRunError: string | null;
   pendingProposalsCount: number;
   recentFailuresCount: number;

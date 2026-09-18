@@ -25,14 +25,16 @@ export interface C6MappingResult {
  * - Não considera uma proposta aprovada apenas por possuir formalization_status preenchido.
  */
 export const DEFAULT_C6_STATUS_MAPPINGS: Record<string, string> = {
-  // Situações conhecidas de esteira formal
+  // Situações e Atividades conhecidas do C6 Bank
   'AGUARDANDO_FORMALIZACAO': 'AGUARDAR_FORMALIZACAO',
   'PENDENTE_FORMALIZACAO': 'AGUARDAR_FORMALIZACAO',
   'FORMALIZACAO_PENDENTE': 'AGUARDAR_FORMALIZACAO',
   'AGUARDANDO_ASSINATURA': 'AGUARDAR_FORMALIZACAO',
+  'FOR': 'AGUARDAR_FORMALIZACAO',
   'AGUARDANDO_AVERBACAO': 'AGUARDAR_PORTABILIDADE',
   'AGUARDANDO_CIP': 'AGUARDAR_RETORNO_CIP',
   'RETORNO_CIP_PENDENTE': 'AGUARDAR_RETORNO_CIP',
+  'CIP': 'AGUARDAR_RETORNO_CIP',
   'SALDO_INFORMADO': 'SALDO_RETORNADO',
   'SALDO_RETORNADO': 'SALDO_RETORNADO',
   'DOCUMENTACAO_PENDENTE': 'PENDENTE_ENVIO_DOCUMENTACAO',
@@ -40,9 +42,21 @@ export const DEFAULT_C6_STATUS_MAPPINGS: Record<string, string> = {
   'PROPOSTA_PAGA': 'PAGO',
   'LIQUIDADA': 'PAGO',
   'CREDITO_EFETUADO': 'PAGO',
+  'PAGO': 'PAGO',
+  'PAG': 'PAGO',
+  'EFETUADO': 'PAGO',
+  // Atividades numéricas conhecidas do C6 Bank
+  '960': 'REPROVADO',
+  '961': 'CANCELADO',
+  '962': 'PAGO',
   'REPROVADA': 'REPROVADO',
+  'REPROVADO': 'REPROVADO',
   'RECUSADA': 'REPROVADO',
+  'RECUSADO': 'REPROVADO',
+  'REP': 'REPROVADO',
   'CANCELADA': 'CANCELADO',
+  'CANCELADO': 'CANCELADO',
+  'CAN': 'CANCELADO',
 };
 
 /**
@@ -84,14 +98,15 @@ export function mapC6StatusToInternal(
   const situationKey = normalizeC6Key(situation);
   const formalizationKey = normalizeC6Key(formalizationStatus);
   const activityDescKey = normalizeC6Key(currentActivityDescription);
+  const activityNumKey = normalizeC6Key(currentActivityNumber);
 
-  // 1. Tentar mapeamento pela situação explícita da esteira (loan_track.situation)
-  if (situationKey && combinedDictionary[situationKey]) {
-    const targetCode = combinedDictionary[situationKey];
+  // 1. Priorizar verificação por atividade atual explícita (descrição ou número 960)
+  if (activityDescKey && combinedDictionary[activityDescKey]) {
+    const targetCode = combinedDictionary[activityDescKey];
     return {
       isMapped: true,
       targetStatusCode: targetCode,
-      notes: `Mapeado com base em loan_track.situation: "${situation}" -> ${targetCode}`,
+      notes: `Mapeado com base em loan_track.current_activity_description: "${currentActivityDescription}" -> ${targetCode}`,
       rawSituation: situation,
       currentActivity: currentActivityNumber,
       activityDescription: currentActivityDescription,
@@ -100,13 +115,27 @@ export function mapC6StatusToInternal(
     };
   }
 
-  // 2. Se situation não tiver mapeamento, verificar atividade específica (loan_track.current_activity_description)
-  if (activityDescKey && combinedDictionary[activityDescKey]) {
-    const targetCode = combinedDictionary[activityDescKey];
+  if (activityNumKey && combinedDictionary[activityNumKey]) {
+    const targetCode = combinedDictionary[activityNumKey];
     return {
       isMapped: true,
       targetStatusCode: targetCode,
-      notes: `Mapeado com base em loan_track.current_activity_description: "${currentActivityDescription}" -> ${targetCode}`,
+      notes: `Mapeado com base em loan_track.current_activity_number: "${currentActivityNumber}" -> ${targetCode}`,
+      rawSituation: situation,
+      currentActivity: currentActivityNumber,
+      activityDescription: currentActivityDescription,
+      formalizationStatus,
+      formalizationCode,
+    };
+  }
+
+  // 2. Tentar mapeamento pela situação explícita da esteira (loan_track.situation)
+  if (situationKey && combinedDictionary[situationKey]) {
+    const targetCode = combinedDictionary[situationKey];
+    return {
+      isMapped: true,
+      targetStatusCode: targetCode,
+      notes: `Mapeado com base em loan_track.situation: "${situation}" -> ${targetCode}`,
       rawSituation: situation,
       currentActivity: currentActivityNumber,
       activityDescription: currentActivityDescription,

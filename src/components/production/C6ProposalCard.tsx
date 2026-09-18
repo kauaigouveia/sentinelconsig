@@ -27,7 +27,7 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{
-    type: 'success' | 'error' | 'info';
+    type: 'success' | 'error' | 'info' | 'warning';
     message: string;
   } | null>(null);
 
@@ -82,17 +82,29 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
       }
 
       if (data.success) {
-        setSyncFeedback({
-          type: 'success',
-          message: data.hasChanged
-            ? `Status C6 atualizado com sucesso! Situação: "${data.rawSituation || 'Atualizada'}"`
-            : 'Consulta executada no C6 com sucesso. Não houve alteração na situação da esteira.',
-        });
+        if (data.statusMapped === false) {
+          setSyncFeedback({
+            type: 'warning',
+            message: `Consulta C6 realizada com sucesso, mas o status interno não foi atualizado. Verifique o mapeamento da atividade ${data.currentActivity || 'desconhecida'} (${data.activityDescription || 'sem descrição'}).`,
+          });
+        } else if (data.internalStatusUpdated) {
+          setSyncFeedback({
+            type: 'success',
+            message: `Status C6 e status interno atualizados com sucesso! Novo status: "${data.currentInternalStatus || 'Atualizado'}"`,
+          });
+        } else {
+          setSyncFeedback({
+            type: 'success',
+            message: `Consulta executada no C6 com sucesso. A proposta já está no status interno "${data.currentInternalStatus || 'atual'}".`,
+          });
+        }
 
         // Notificar pai da proposta atualizada
         if (onProposalUpdated) {
           const updatedProposal: Proposal = {
             ...proposal,
+            ...(data.statusId ? { statusId: data.statusId } : {}),
+            ...(data.statusName || data.currentInternalStatus ? { status: data.statusName || data.currentInternalStatus } : {}),
             c6ProposalNumber: data.c6ProposalNumber || proposal.c6ProposalNumber,
             c6OperationNumber: data.c6OperationNumber || proposal.c6OperationNumber,
             c6RawSituation: data.rawSituation || proposal.c6RawSituation,
@@ -267,12 +279,15 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
               : syncFeedback.type === 'error'
               ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+              : syncFeedback.type === 'warning'
+              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800'
               : 'bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800'
           }`}
         >
           <div className="flex items-center gap-2">
             {syncFeedback.type === 'success' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
             {syncFeedback.type === 'error' && <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />}
+            {syncFeedback.type === 'warning' && <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />}
             {syncFeedback.type === 'info' && <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />}
             <span>{syncFeedback.message}</span>
           </div>

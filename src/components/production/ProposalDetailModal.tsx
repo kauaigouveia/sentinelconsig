@@ -31,6 +31,7 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { toastService } from '../ui/toastService';
 import { C6ProposalCard } from './C6ProposalCard';
+import { FactaProposalCard } from './FactaProposalCard';
 
 interface ProposalDetailModalProps {
   proposalId: string | null;
@@ -94,6 +95,11 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     bank?.code === '336' ||
     (bank?.name && bank.name.toUpperCase().includes('C6')) ||
     Boolean(proposal.c6ProposalNumber);
+
+  const isFactaBank =
+    bank?.code === '149' ||
+    (bank?.name && bank.name.toUpperCase().includes('FACTA')) ||
+    Boolean(proposal.factaAfCode || proposal.factaProposalNumber);
 
   // Status reais sincronizados do PostgreSQL
   const [dbStatuses, setDbStatuses] = useState<any[]>([]);
@@ -213,7 +219,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     }
   }, [proposalId]);
 
-  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK'>('HISTORICO');
+  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK' | 'FACTA'>('HISTORICO');
 
   // Status update form
   const [selectedStatusId, setSelectedStatusId] = useState(proposal.statusId);
@@ -776,6 +782,60 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           </div>
         )}
 
+        {/* Integração FACTA Status Bar */}
+        {isFactaBank && (
+          <div className="px-6 py-2.5 bg-gradient-to-r from-orange-950 via-slate-900 to-slate-950 text-white border-b border-orange-900/50 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-orange-400 animate-pulse"></span>
+                <span className="font-bold uppercase tracking-wider text-[10.5px] text-orange-300">FACTA Financeira</span>
+              </div>
+              {proposal.factaAfCode && (
+                <div className="flex items-center gap-1 text-slate-300 text-[11px]">
+                  <span className="text-slate-400">Código AF:</span>
+                  <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                    {proposal.factaAfCode}
+                  </span>
+                </div>
+              )}
+              {proposal.factaProposalNumber && (
+                <div className="flex items-center gap-1 text-slate-300 text-[11px]">
+                  <span className="text-slate-400">Nº FACTA:</span>
+                  <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                    {proposal.factaProposalNumber}
+                  </span>
+                </div>
+              )}
+              {proposal.factaRawStatus && (
+                <div className="flex items-center gap-1 text-[11px]">
+                  <span className="text-slate-400">Status:</span>
+                  <span className="font-semibold text-orange-300">{proposal.factaRawStatus}</span>
+                </div>
+              )}
+              {proposal.factaCrivoStatus && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-300">
+                  <span className="text-slate-400">Crivo:</span>
+                  <span className="font-medium text-slate-200">{proposal.factaCrivoStatus}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('FACTA')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'FACTA'
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'bg-slate-800 hover:bg-slate-700 text-orange-300 border border-orange-400/30'
+                }`}
+              >
+                <span>Ver Esteira FACTA Completa</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900 shrink-0">
           <button
@@ -839,6 +899,22 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                 C6
               </div>
               <span>Esteira C6 Bank</span>
+            </button>
+          )}
+
+          {isFactaBank && (
+            <button
+              onClick={() => setActiveTab('FACTA')}
+              className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'FACTA'
+                  ? 'border-orange-600 text-orange-600 dark:text-orange-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <div className="h-3.5 w-3.5 rounded-xs bg-orange-600 text-white flex items-center justify-center font-black text-[7px] leading-none">
+                FAC
+              </div>
+              <span>Esteira FACTA</span>
             </button>
           )}
         </div>
@@ -1181,7 +1257,48 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                 standalone
                 onProposalUpdated={(updated) => {
                   setLiveProposal(updated);
+                  if (updated.statusId && updated.statusId !== proposal.statusId) {
+                    try {
+                      StorageService.updateProposalStatus(
+                        updated.id,
+                        updated.statusId,
+                        `Sincronização C6 Bank: Situação "${updated.c6RawSituation || ''}" - Atividade "${updated.c6ActivityDescription || ''}"`,
+                        undefined,
+                        'SISTEMA'
+                      );
+                    } catch (e) {
+                      console.warn('[C6 SYNC] Status local não alterado:', e);
+                    }
+                  }
                   StorageService.updateProposal(updated.id, updated, 'Consulta C6 Bank');
+                  if (onProposalUpdated) onProposalUpdated();
+                }}
+              />
+            </div>
+          )}
+
+          {/* TAB 6: ESTEIRA FACTA */}
+          {activeTab === 'FACTA' && isFactaBank && (
+            <div className="space-y-4">
+              <FactaProposalCard
+                proposal={proposal}
+                standalone
+                onProposalUpdated={(updated) => {
+                  setLiveProposal(updated);
+                  if (updated.statusId && updated.statusId !== proposal.statusId) {
+                    try {
+                      StorageService.updateProposalStatus(
+                        updated.id,
+                        updated.statusId,
+                        `Sincronização FACTA: Status "${updated.factaRawStatus || ''}" - Crivo "${updated.factaCrivoStatus || ''}"`,
+                        undefined,
+                        'SISTEMA'
+                      );
+                    } catch (e) {
+                      console.warn('[FACTA SYNC] Status local não alterado:', e);
+                    }
+                  }
+                  StorageService.updateProposal(updated.id, updated, 'Consulta FACTA Financeira');
                   if (onProposalUpdated) onProposalUpdated();
                 }}
               />

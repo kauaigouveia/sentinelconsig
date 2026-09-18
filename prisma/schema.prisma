@@ -189,6 +189,7 @@ model Tenant {
   monitoredServices MonitoredService[]
   apiIncidents      ApiIncident[]
   c6SyncHistories   C6SyncHistory[]
+  factaSyncHistories FactaSyncHistory[]
 
   @@index([slug])
   @@index([customDomain])
@@ -637,6 +638,19 @@ model Proposal {
   c6RawData             Json?            @map("c6_raw_data")
   c6SyncHistories       C6SyncHistory[]
 
+  // FACTA Integration Identifiers & Sync Status
+  factaProposalNumber String?            @map("facta_proposal_number")
+  factaAfCode         String?            @map("facta_af_code")
+  factaContractNumber String?            @map("facta_contract_number")
+  factaRawStatus      String?            @map("facta_raw_status")
+  factaCrivoStatus    String?            @map("facta_crivo_status")
+  factaLastMovementAt DateTime?          @map("facta_last_movement_at")
+  factaLastSyncAt     DateTime?          @map("facta_last_sync_at")
+  factaSyncStatus     String?            @default("PENDING") @map("facta_sync_status") // SYNCED, PENDING, ERROR, UNLINKED
+  factaSyncError      String?            @map("facta_sync_error")
+  factaRawData        Json?              @map("facta_raw_data")
+  factaSyncHistories  FactaSyncHistory[]
+
   // Concurrency & Soft Delete
   version                   Int                 @default(1)
   deletedAt                 DateTime?           @map("deleted_at")
@@ -661,6 +675,9 @@ model Proposal {
   @@index([tenantId, clientId])
   @@index([tenantId, c6ProposalNumber])
   @@index([c6SyncStatus])
+  @@index([tenantId, factaProposalNumber])
+  @@index([tenantId, factaAfCode])
+  @@index([factaSyncStatus])
   @@map("proposals")
 }
 
@@ -1226,5 +1243,50 @@ model C6SyncHistory {
   @@index([queryDate])
   @@map("c6_sync_histories")
 }
+
+// FACTA FINANCEIRA INTEGRATION & AUDIT HISTORY
+// ==========================================
+
+model FactaSyncHistory {
+  id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proposalId String?   @map("proposal_id")
+  proposal   Proposal? @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  factaProposalNumber String? @map("facta_proposal_number")
+  factaAfCode         String? @map("facta_af_code")
+  factaContractNumber String? @map("facta_contract_number")
+
+  queryDate DateTime @default(now()) @map("query_date")
+  success   Boolean  @default(true)
+
+  previousRawStatus String? @map("previous_raw_status")
+  currentRawStatus  String? @map("current_raw_status")
+
+  previousCrivoStatus String? @map("previous_crivo_status")
+  currentCrivoStatus  String? @map("current_crivo_status")
+
+  previousInternalStatus String? @map("previous_internal_status")
+  currentInternalStatus  String? @map("current_internal_status")
+
+  hasChanged     Boolean @default(false) @map("has_changed")
+  statusMapped   Boolean @default(true) @map("status_mapped")
+  unlinkedReason String? @map("unlinked_reason")
+
+  technicalError String? @map("technical_error")
+  rawResponse    Json?   @map("raw_response")
+  queriedBy      String? @map("queried_by") // 'AUTO_WORKER' | userId
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([proposalId])
+  @@index([factaProposalNumber])
+  @@index([factaAfCode])
+  @@index([queryDate])
+  @@map("facta_sync_histories")
+}
+
 
 

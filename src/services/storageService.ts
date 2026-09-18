@@ -3881,7 +3881,12 @@ export class StorageService {
 
     const proposal = proposals[idx];
     const prevStatus = this.getStatusById(proposal.statusId);
-    const newStatus = this.getStatusById(newStatusId);
+    let newStatus = this.getStatusById(newStatusId) || this.getStatusByCode(newStatusId);
+    if (!newStatus) {
+      newStatus = this.getStatuses().find(
+        s => s.name.toUpperCase() === newStatusId.toUpperCase() || s.code.toUpperCase() === newStatusId.toUpperCase()
+      );
+    }
     if (!newStatus) throw new Error('Status inválido.');
 
     const user = customUser || this.getActiveUser();

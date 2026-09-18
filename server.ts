@@ -41,6 +41,8 @@ import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './serve
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
 import { C6BankService } from './server/services/c6BankService.js';
 import { C6SyncWorker } from './server/services/c6SyncWorker.js';
+import { FactaBankService } from './server/services/factaBankService.js';
+import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -368,6 +370,12 @@ async function auditAndEnsureMasterUser() {
             baseEndpoint: '/api/integrations/c6',
             authProtocol: 'OAuth-Token Direct (x-www-form-urlencoded)',
             proposalEndpoint: 'GET /marketplace/proposal',
+          },
+          facta: {
+            status: 'active',
+            baseEndpoint: '/api/integrations/facta',
+            authProtocol: 'Basic Auth / Bearer Token',
+            proposalEndpoint: 'GET /proposta/andamento-propostas',
           },
         },
         timestamp,
@@ -9394,6 +9402,329 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  // -------------------------------------------------------------
+  // FACTA FINANCEIRA INTEGRATION & PROPOSAL STATUS SYNC ENDPOINTS
+  // -------------------------------------------------------------
+
+  // POST /api/proposals/:id/facta-sync - Manual status sync triggered by operator or manager
+  app.post('/api/proposals/:id/facta-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const { forceAfCode } = req.body || {};
+
+      const result = await FactaBankService.syncProposalStatus(prisma, id, tenantId, {
+        queriedBy: session.user.id,
+        forceAfCode,
+      });
+
+      if (result.success && result.hasChanged) {
+        eventBus.publishToTenant(tenantId, {
+          type: 'proposal_status_changed',
+          entity: 'Proposal',
+          entityId: id,
+          data: {
+            proposalId: id,
+            statusName: result.currentInternalStatus,
+            updatedBy: session.user.name,
+          },
+        });
+
+        if (sseRegistry) {
+          sseRegistry.broadcastToTenant(tenantId, {
+            type: 'PROPOSAL_UPDATED',
+            entity: 'Proposal',
+            entityId: id,
+            data: {
+              id,
+              factaSyncStatus: 'SYNCED',
+              factaRawStatus: result.rawStatus,
+              factaCrivoStatus: result.crivoStatus,
+              statusName: result.currentInternalStatus,
+            },
+          });
+        }
+      }
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'facta_bank.manual_sync',
+        entity: 'Proposal',
+        entityId: id,
+        newData: {
+          success: result.success,
+          factaProposalNumber: result.factaProposalNumber,
+          factaAfCode: result.factaAfCode,
+          rawStatus: result.rawStatus,
+          crivoStatus: result.crivoStatus,
+          statusMapped: result.statusMapped,
+          error: result.error,
+        },
+        req,
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      logger.error({ err, proposalId: req.params.id }, '[API FACTA SYNC] Erro ao sincronizar proposta');
+      res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao sincronizar status na FACTA Financeira.' });
+    }
+  });
+
+  // GET /api/proposals/:id/facta-history - List query history for a specific proposal
+  app.get('/api/proposals/:id/facta-history', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const history = await FactaBankService.getProposalFactaHistory(prisma, id, tenantId);
+      res.json(history);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao buscar histórico FACTA.' });
+    }
+  });
+
+  // POST /api/proposals/:id/facta-link - Manually link or correct FACTA proposal identifiers
+  app.post('/api/proposals/:id/facta-link', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const { factaProposalNumber, factaAfCode, factaContractNumber } = req.body || {};
+
+      if (!factaAfCode && !factaProposalNumber && !factaContractNumber) {
+        return res.status(400).json({ error: 'Informe ao menos um identificador FACTA (AF Code, Proposta ou Contrato).' });
+      }
+
+      const updated = await FactaBankService.linkFactaIdentifiers(prisma, id, tenantId, {
+        factaProposalNumber,
+        factaAfCode,
+        factaContractNumber,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'facta_bank.link_identifier',
+        entity: 'Proposal',
+        entityId: id,
+        newData: { factaProposalNumber, factaAfCode, factaContractNumber },
+        req,
+      });
+
+      res.json({ success: true, proposal: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao vincular identificadores FACTA.' });
+    }
+  });
+
+  // GET /api/integrations/facta/config - Secure tenant configuration
+  app.get('/api/integrations/facta/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const config = await FactaBankService.getTenantConfig(prisma, tenantId);
+
+      // Nunca expor a senha no retorno JSON
+      res.json({
+        environment: config.environment,
+        username: config.username,
+        baseUrl: config.baseUrl,
+        autoSyncEnabled: config.autoSyncEnabled,
+        syncIntervalMinutes: config.syncIntervalMinutes,
+        pageSize: config.pageSize,
+        dateQueryType: config.dateQueryType,
+        convenio: config.convenio,
+        averbador: config.averbador,
+        codigoAf: config.codigoAf,
+        consultaSub: config.consultaSub,
+        codigoSub: config.codigoSub,
+        isConfigured: config.isConfigured,
+        hasPassword: config.hasPassword,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao carregar configurações da FACTA Financeira.' });
+    }
+  });
+
+  // POST /api/integrations/facta/config - Save secure tenant configuration
+  app.post('/api/integrations/facta/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'];
+      if (!allowedRoles.includes(session.user.role)) {
+        return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
+      }
+
+      const {
+        environment,
+        username,
+        password,
+        baseUrl,
+        autoSyncEnabled,
+        syncIntervalMinutes,
+        pageSize,
+        dateQueryType,
+        convenio,
+        averbador,
+        codigoAf,
+        consultaSub,
+        codigoSub,
+      } = req.body || {};
+
+      const saved = await FactaBankService.saveTenantConfig(prisma, tenantId, {
+        environment,
+        username,
+        password,
+        baseUrl,
+        autoSyncEnabled,
+        syncIntervalMinutes,
+        pageSize,
+        dateQueryType,
+        convenio,
+        averbador,
+        codigoAf,
+        consultaSub,
+        codigoSub,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'facta_bank.config_updated',
+        entity: 'SystemConfig',
+        entityId: 'facta_bank',
+        newData: {
+          environment: saved.environment,
+          username: saved.username,
+          baseUrl: saved.baseUrl,
+          autoSyncEnabled: saved.autoSyncEnabled,
+          syncIntervalMinutes: saved.syncIntervalMinutes,
+          passwordUpdated: Boolean(password),
+        },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: 'Configurações da FACTA Financeira salvas com sucesso.',
+        config: {
+          environment: saved.environment,
+          username: saved.username,
+          baseUrl: saved.baseUrl,
+          autoSyncEnabled: saved.autoSyncEnabled,
+          syncIntervalMinutes: saved.syncIntervalMinutes,
+          pageSize: saved.pageSize,
+          dateQueryType: saved.dateQueryType,
+          convenio: saved.convenio,
+          averbador: saved.averbador,
+          codigoAf: saved.codigoAf,
+          consultaSub: saved.consultaSub,
+          codigoSub: saved.codigoSub,
+          isConfigured: saved.isConfigured,
+          hasPassword: saved.hasPassword,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao salvar configurações da FACTA Financeira.' });
+    }
+  });
+
+  // POST /api/integrations/facta/test-connection - Test credentials against live FACTA /gera-token endpoint
+  app.post('/api/integrations/facta/test-connection', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { username, password, baseUrl } = req.body || {};
+      const override = (username || password || baseUrl) ? { username, password, baseUrl } : undefined;
+
+      const result = await FactaBankService.testConnection(prisma, tenantId, override);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao testar conexão com FACTA Financeira.' });
+    }
+  });
+
+  // GET /api/integrations/facta/status - Operational worker metrics and queue status
+  app.get('/api/integrations/facta/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const status = await FactaSyncWorker.getWorkerStatus(prisma, tenantId);
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao carregar status do sincronizador FACTA.' });
+    }
+  });
+
+  // POST /api/integrations/facta/run-sync - Trigger immediate batch sync
+  app.post('/api/integrations/facta/run-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const config = await FactaBankService.getTenantConfig(prisma, tenantId);
+      const result = await FactaSyncWorker.processTenantProposals(
+        prisma,
+        tenantId,
+        config.syncIntervalMinutes
+      );
+
+      res.json({
+        success: true,
+        message: `Sincronização FACTA concluída: ${result.processedCount} processadas (${result.updatedCount} atualizadas, ${result.unlinkedCount} não vinculadas, ${result.failedCount} falhas).`,
+        ...result,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao disparar sincronização FACTA.' });
+    }
+  });
+
+  // GET /api/integrations/facta/recent-logs - Recent sync history logs for tenant
+  app.get('/api/integrations/facta/recent-logs', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const logs = await FactaBankService.getRecentLogs(prisma, tenantId, limit);
+
+      res.json(logs);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao listar histórico recente de sincronizações FACTA.' });
+    }
+  });
+
   // 404 Handler para rotas /api/* não mapeadas - assegura que requisições de API sempre retornem JSON
   app.all('/api/*', (req, res) => {
     res.status(404).json({
@@ -9451,6 +9782,7 @@ async function startServer() {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
     await auditAndEnsureMasterUser();
     C6SyncWorker.start(prisma);
+    FactaSyncWorker.start(prisma);
   });
 }
 
@@ -9475,6 +9807,7 @@ async function gracefulShutdown(reason: string | Error, exitCode = 0) {
 
   try {
     C6SyncWorker.stop();
+    FactaSyncWorker.stop();
 
     if (sseRegistry) {
       logger.info('[SHUTDOWN] Encerrando conexões SSE ativas...');
