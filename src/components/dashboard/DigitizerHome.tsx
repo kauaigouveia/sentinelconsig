@@ -39,7 +39,17 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
   const products = StorageService.getProducts();
   const banks = StorageService.getBanks();
   const partners = StorageService.getPartners();
-  const statuses = StorageService.getStatuses();
+  const [statuses, setStatuses] = useState<ProposalStatus[]>(() => StorageService.getStatuses());
+
+  useEffect(() => {
+    StorageService.fetchAndSyncStatuses().then(setStatuses).catch(() => {});
+  }, []);
+
+  const getEffectiveStatus = (p: Proposal) => {
+    if ((p as any).status) return (p as any).status;
+    if (!p.statusId) return null;
+    return statuses.find(st => st.id === p.statusId || st.code === (p as any).status?.code) || null;
+  };
 
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,11 +63,11 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
   const todayStr = new Date().toISOString().split('T')[0];
   const digitadasHoje = myProposals.filter(p => p.createdAt.startsWith(todayStr));
   const pendentesAnexo = myProposals.filter(p => {
-    const s = statuses.find(st => st.id === p.statusId);
+    const s = getEffectiveStatus(p);
     return s?.code === 'PENDENTE_ANEXO_DOCUMENTACAO' || s?.code === 'PENDENCIA';
   });
   const pagas = myProposals.filter(p => {
-    const s = statuses.find(st => st.id === p.statusId);
+    const s = getEffectiveStatus(p);
     return s?.code === 'PAGO';
   });
 
@@ -77,11 +87,11 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
 
     if (filterTab === 'TODAY') return p.createdAt.startsWith(todayStr);
     if (filterTab === 'PENDING') {
-      const s = statuses.find(st => st.id === p.statusId);
+      const s = getEffectiveStatus(p);
       return s?.code === 'PENDENTE_ANEXO_DOCUMENTACAO' || s?.code === 'PENDENCIA';
     }
     if (filterTab === 'PAID') {
-      const s = statuses.find(st => st.id === p.statusId);
+      const s = getEffectiveStatus(p);
       return s?.code === 'PAGO';
     }
 
@@ -268,7 +278,7 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
                         {partner?.login || '—'}
                       </td>
                       <td className="px-3.5 py-2.5">
-                        <StatusBadge status={statuses.find(st => st.id === p.statusId)} />
+                        <StatusBadge status={getEffectiveStatus(p)} />
                       </td>
                       <td className="px-3.5 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
                         {formatCurrency(p.disbursedValue || 0)}

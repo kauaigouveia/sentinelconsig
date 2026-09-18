@@ -3003,6 +3003,22 @@ export class StorageService {
     return list.slice().sort((a, b) => a.order - b.order);
   }
 
+  public static async fetchAndSyncStatuses(): Promise<ProposalStatus[]> {
+    try {
+      const res = await fetch('/api/statuses', { credentials: 'include' });
+      if (res.ok) {
+        const statuses = await res.json();
+        if (Array.isArray(statuses) && statuses.length > 0) {
+          this.saveStatuses(statuses);
+          return statuses;
+        }
+      }
+    } catch (err) {
+      console.warn('[StorageService] Erro ao sincronizar status do PostgreSQL:', err);
+    }
+    return this.getStatuses();
+  }
+
   public static getStatusById(id: string): ProposalStatus | undefined {
     return this.getStatuses().find(s => s.id === id);
   }

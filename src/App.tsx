@@ -95,6 +95,7 @@ export default function App() {
           }
           localStorage.setItem('cg_is_authenticated', 'true');
           setIsAuthenticated(true);
+          StorageService.fetchAndSyncStatuses().catch(() => {});
           return;
         }
       }

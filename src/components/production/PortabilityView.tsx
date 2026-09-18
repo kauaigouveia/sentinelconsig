@@ -67,7 +67,7 @@ export const PortabilityView: React.FC = () => {
   // Classify proposals
   const classified = proposals.map(p => {
     const sla = AutomationService.getPortabilitySlaInfo(p);
-    const status = statuses.find(s => s.id === p.statusId);
+    const status = (p as any).status || statuses.find(s => s.id === p.statusId || s.code === (p as any).status?.code);
     return {
       proposal: p,
       sla,

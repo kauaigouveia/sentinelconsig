@@ -75,8 +75,18 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const banks = StorageService.getBanks();
   const promoters = StorageService.getPromoters();
   const partners = StorageService.getPartners();
-  const statuses = StorageService.getStatuses();
+  const [statuses, setStatuses] = useState<ProposalStatus[]>(() => StorageService.getStatuses());
   const users = StorageService.getUsers();
+
+  useEffect(() => {
+    StorageService.fetchAndSyncStatuses().then(setStatuses).catch(() => {});
+  }, []);
+
+  const getEffectiveStatus = useCallback((p: Proposal) => {
+    if ((p as any).status) return (p as any).status;
+    if (!p.statusId) return null;
+    return statuses.find(s => s.id === p.statusId || s.code === (p as any).status?.code) || null;
+  }, [statuses]);
 
   // Load initial filters from sessionStorage if available
   const savedFilters = useMemo(() => {
@@ -198,10 +208,13 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     statuses.forEach(s => {
-      counts[s.id] = proposals.filter(p => p.statusId === s.id).length;
+      counts[s.id] = proposals.filter(p => {
+        const eff = getEffectiveStatus(p);
+        return p.statusId === s.id || eff?.id === s.id || eff?.code === s.code;
+      }).length;
     });
     return counts;
-  }, [statuses, proposals]);
+  }, [statuses, proposals, getEffectiveStatus]);
 
   const bankCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -281,7 +294,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     const filtered = proposals.filter(p => {
       const clientInfo = getProposalClientInfo(p);
       const partner = partners.find(pt => pt.id === p.partnerId);
-      const status = statuses.find(s => s.id === p.statusId);
+      const status = getEffectiveStatus(p);
 
       // Search term (CPF, Name, ADE, Partner)
       if (searchTerm.trim()) {
@@ -301,8 +314,8 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       if (filterBank && p.bankId !== filterBank) return false;
       if (filterPromoter && p.promoterId !== filterPromoter) return false;
       if (filterPartner && p.partnerId !== filterPartner) return false;
-      if (filterStatus && p.statusId !== filterStatus) return false;
-      if (filterAlçada && status?.responsible !== filterAlçada) return false;
+      if (filterStatus && p.statusId !== filterStatus && status?.id !== filterStatus && status?.code !== filterStatus) return false;
+      if (filterAlçada && status?.responsible !== filterAlçada && (status as any)?.responsibleGroup !== filterAlçada) return false;
 
       // SLA filter for portability
       if (filterSla !== 'TODOS') {
@@ -928,7 +941,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                   const bank = banks.find(b => b.id === p.bankId);
                   const promoter = promoters.find(pr => pr.id === p.promoterId);
                   const partner = partners.find(pt => pt.id === p.partnerId);
-                  const status = statuses.find(s => s.id === p.statusId);
+                  const status = getEffectiveStatus(p);
                   const isSelected = selectedIds.includes(p.id);
 
                   return (

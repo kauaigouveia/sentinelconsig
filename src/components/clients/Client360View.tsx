@@ -515,7 +515,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                         const bank = banks.find(b => b.id === p.bankId);
                         const promoter = promoters.find(pr => pr.id === p.promoterId);
                         const partner = partners.find(pt => pt.id === p.partnerId);
-                        const status = statuses.find(s => s.id === p.statusId);
+                        const status = (p as any).status || statuses.find(s => s.id === p.statusId || s.code === (p as any).status?.code);
 
                         return (
                           <div
@@ -601,7 +601,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                           {clientProposals.map(p => {
                             const prod = products.find(pr => pr.id === p.productId);
                             const bank = banks.find(b => b.id === p.bankId);
-                            const status = statuses.find(s => s.id === p.statusId);
+                            const status = (p as any).status || statuses.find(s => s.id === p.statusId || s.code === (p as any).status?.code);
                             return (
                               <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                 <td className="p-3 font-mono font-bold text-slate-900 dark:text-slate-100">{p.proposalNumber}</td>
