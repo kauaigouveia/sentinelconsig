@@ -40,8 +40,7 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
     if (!partnerObj) return 'S/C';
     const login = String(partnerObj.login ?? '');
     const code = String(partnerObj.code ?? '');
-    if (code) return code;
-    return login || 'S/C';
+    return login || code || 'S/C';
   };
 
   // Helper to get safe partner strings

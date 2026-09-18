@@ -10,7 +10,12 @@ import { Holiday } from '../types';
  */
 export function extractPartnerCode(login: string): string {
   if (!login) return '';
-  return login.trim();
+  const trimmed = login.trim();
+  const lastAtIndex = trimmed.lastIndexOf('@');
+  if (lastAtIndex !== -1) {
+    return trimmed.substring(lastAtIndex + 1).trim();
+  }
+  return trimmed;
 }
 
 /**

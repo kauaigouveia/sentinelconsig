@@ -157,10 +157,10 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
   // Add new ADE Row
   const handleAddRow = () => {
-    const defaultProduct = products[0];
-    const defaultBank = banks[0];
-    const allowed = StorageService.getPromotersForBank(defaultBank.id);
-    const defaultPromoter = allowed[0] || promoters[0];
+    const defaultProduct = products[0] || { id: '' };
+    const defaultBank = banks[0] || { id: '' };
+    const allowed = defaultBank.id ? StorageService.getPromotersForBank(defaultBank.id) : [];
+    const defaultPromoter = allowed[0] || promoters[0] || { id: '' };
 
     // Check if there's already a PORTABILIDADE row in adeRows
     let defaultLinkIndex: number | undefined = undefined;

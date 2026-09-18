@@ -968,7 +968,28 @@ const INITIAL_FINANCIAL_ENTRIES: FinancialEntry[] = [
 ];
 
 // Initial Gamification Achievements
-const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [];
+const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [
+  {
+    id: 'ach-1',
+    code: 'PRIMEIRA_VENDA',
+    title: 'Primeira Venda',
+    description: 'Primeira proposta com status PAGO cadastrada na mesa.',
+    icon: '🚀',
+    unlockedAt: oneDayAgo,
+    operatorId: 'u-digitador',
+    operatorName: 'Ana Beatriz (Digitadora)',
+  },
+  {
+    id: 'ach-2',
+    code: 'MELHOR_CONVERSAO',
+    title: 'Alta Precisão',
+    description: 'Taxa de aprovação e integração superior a 85% no mês.',
+    icon: '🎯',
+    unlockedAt: twoDaysAgo,
+    operatorId: 'u-digitador',
+    operatorName: 'Ana Beatriz (Digitadora)',
+  },
+];
 
 export class StorageService {
   private static KEY_TO_COLLECTION: Record<string, string> = {
@@ -1206,10 +1227,10 @@ export class StorageService {
       if (Array.isArray(dbPartners)) {
         const formattedPartners = dbPartners.map((p: any) => ({
           id: p.id,
-          fullName: p.fullName || p.name || 'Parceiro sem Nome',
-          login: p.login || p.code || '',
+          fullName: p.name,
+          login: p.code,
           promoterId: p.promoterId || '',
-          active: p.active !== undefined ? p.active : p.status === 'ATIVO',
+          active: p.status === 'ATIVO',
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));
@@ -1225,7 +1246,7 @@ export class StorageService {
           description: pr.description || '',
           type: pr.type || 'NOVO',
           allowsMultipleAde: true,
-          requiresPortabilityRelation: false,
+          requiresPortabilityRelation: pr.type === 'PORTABILIDADE' && (pr.name.includes('REFIN') || pr.name.includes('PORT')),
           active: pr.active,
           createdAt: pr.createdAt,
           updatedAt: pr.updatedAt,
@@ -1611,7 +1632,7 @@ export class StorageService {
     this.set(STORAGE_KEYS.USERS, INITIAL_USERS);
     this.set(STORAGE_KEYS.ACTIVE_USER, INITIAL_USERS[0]); // Master as active
     this.set(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
-    this.set(STORAGE_KEYS.CURRENT_TENANT_ID, 'sentinel-consig');
+    this.set(STORAGE_KEYS.CURRENT_TENANT_ID, 'tenant_evolve');
     this.set(STORAGE_KEYS.PROMOTERS, INITIAL_PROMOTERS);
     this.set(STORAGE_KEYS.BANKS, INITIAL_BANKS);
     this.set(STORAGE_KEYS.BANK_PROMOTERS, INITIAL_BANK_PROMOTERS);
@@ -3942,7 +3963,7 @@ export class StorageService {
       cpf: cleanCpf,
       partnerId: partner.id,
       createdById: activeUser.id,
-      tenantId: activeUser.tenantId || (partner as any).tenantId || this.getCurrentTenantId() || 'sentinel-consig',
+      tenantId: activeUser.tenantId || (partner as any).tenantId || this.getCurrentTenantId() || 'tenant_evolve',
       status: initialStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -4130,7 +4151,7 @@ export class StorageService {
         return (partner as any).tenantId;
       }
     }
-    return this.getCurrentTenantId() || 'sentinel-consig';
+    return this.getCurrentTenantId() || 'tenant_evolve';
   }
 
   public static canChangeSimulationStatus(user: User, simulation: SimulationRequest): boolean {
@@ -4153,7 +4174,7 @@ export class StorageService {
 
     const simTenantId = this.getSimulationTenantId(simulation);
     const currentTenantId = this.getCurrentTenantId();
-    const userTenantId = user.tenantId || currentTenantId || 'sentinel-consig';
+    const userTenantId = user.tenantId || currentTenantId || 'tenant_evolve';
 
     // 1. PLATFORM_MASTER
     if (user.role === 'PLATFORM_MASTER') {
@@ -4417,7 +4438,7 @@ export class StorageService {
   }
 
   public static getCurrentTenantId(): string {
-    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, '');
+    return this.get<string>(STORAGE_KEYS.CURRENT_TENANT_ID, 'tenant_evolve');
   }
 
   public static getCurrentTenant(): Tenant {
@@ -4819,16 +4840,7 @@ export class StorageService {
   // GAMIFICATION & OPERATOR ACHIEVEMENTS
   // ==========================================
   public static getAchievements(): GamificationAchievement[] {
-    const raw = this.get<GamificationAchievement[]>(STORAGE_KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
-    const validUsers = this.getUsers();
-    
-    return raw.map(ach => {
-      const user = validUsers.find(u => u.id === ach.operatorId);
-      if (user) {
-        return { ...ach, operatorName: user.name };
-      }
-      return { ...ach, operatorName: 'Sem responsável' };
-    });
+    return this.get<GamificationAchievement[]>(STORAGE_KEYS.ACHIEVEMENTS, INITIAL_ACHIEVEMENTS);
   }
 
   public static unlockAchievement(operatorId: string, operatorName: string, code: GamificationAchievement['code']): void {

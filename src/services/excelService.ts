@@ -624,7 +624,7 @@ export class ExcelService {
     const dataRows = proposals.map(p => {
       const client = clients.find(c => c.id === p.clientId);
       const partner = partners.find(pt => pt.id === p.partnerId);
-      const partnerCode = partner?.login || '';
+      const partnerCode = partner?.login ? extractPartnerCode(partner.login) : '';
 
       return {
         ADE: p.proposalNumber,
@@ -710,7 +710,7 @@ export class ExcelService {
       if (selectedColumns.includes('PROMOTORA')) row['PROMOTORA'] = promoter?.name || '';
       if (selectedColumns.includes('PARCEIRO')) row['PARCEIRO'] = partner?.fullName || '';
       if (selectedColumns.includes('LOGIN')) row['LOGIN PARCEIRO'] = partner?.login || '';
-      if (selectedColumns.includes('CODIGO_PARCEIRO')) row['CÓDIGO PARCEIRO'] = partner?.login || '';
+      if (selectedColumns.includes('CODIGO_PARCEIRO')) row['CÓDIGO PARCEIRO'] = partner?.login ? extractPartnerCode(partner.login) : '';
       if (selectedColumns.includes('STATUS')) row['STATUS ATUAL'] = status?.name || '';
       if (selectedColumns.includes('ALCADA')) row['ALÇADA RESPONSÁVEL'] = status?.responsibleGroup || status?.responsible || p.currentResponsible || 'NOSSA EQUIPE';
       if (selectedColumns.includes('DATA')) row['DATA DE CADASTRO'] = formatDateOnly(p.createdAt);
