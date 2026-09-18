@@ -103,7 +103,7 @@ export const ExecutiveDashboard: React.FC = () => {
           id: pt.id,
           name: pt.fullName,
           login: pt.login,
-          code: extractPartnerCode(pt.login),
+          code: pt.login,
           total: ptTotal,
           pagas: ptPagas,
           disbursed: ptDisbursed,

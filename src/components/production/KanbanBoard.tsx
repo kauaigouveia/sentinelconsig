@@ -123,7 +123,7 @@ export const KanbanBoard: React.FC = () => {
 
       const client = clients.find(c => c.id === p.clientId);
       const partner = partners.find(pt => pt.id === p.partnerId);
-      const partnerCode = partner ? extractPartnerCode(partner.login) : '';
+      const partnerCode = partner?.login || '';
 
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
@@ -375,7 +375,7 @@ export const KanbanBoard: React.FC = () => {
                           {/* Partner & Code */}
                           <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
                             <span className="font-bold text-blue-700 dark:text-blue-400 font-mono">
-                              Cód: {partner ? extractPartnerCode(partner.login) : ''}
+                              Identificador: {partner?.login || ''}
                             </span>
                             <span className="truncate max-w-[120px] font-medium" title={partner?.login}>
                               {partner?.login}

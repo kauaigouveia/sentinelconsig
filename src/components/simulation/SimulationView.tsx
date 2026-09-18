@@ -186,7 +186,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       if (!p) return false;
       const loginStr = String(p.login ?? (p as any).code ?? '');
       const fullNameStr = String(p.fullName ?? (p as any).name ?? '');
-      const code = extractPartnerCode(loginStr).toLowerCase();
+      const code = loginStr.trim().toLowerCase();
       const login = loginStr.toLowerCase();
       const name = fullNameStr.toLowerCase();
 

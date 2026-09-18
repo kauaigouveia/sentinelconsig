@@ -295,10 +295,10 @@ export class TestRunnerService {
       });
     }
 
-    // TEST 9: Exportação com Código do Parceiro (extractPartnerCode)
+    // TEST 9: Exportação com Código do Parceiro (Mantido)
     try {
       const partner = StorageService.getPartners().find(p => p.login === 'KAUAI@16740');
-      const code = partner ? extractPartnerCode(partner.login) : '';
+      const code = partner?.login || '';
       const pass = code === '16740' && !code.includes('@');
 
       results.push({

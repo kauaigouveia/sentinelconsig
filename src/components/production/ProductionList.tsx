@@ -1018,7 +1018,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       {/* Parceiro */}
                       <td className={cellPadding}>
                         <span className="font-mono text-blue-700 dark:text-blue-400 font-bold block">
-                          {partner ? extractPartnerCode(partner.login) : '—'}
+                          {partner?.login || '—'}
                         </span>
                         <span
                           className="text-slate-400 dark:text-slate-500 text-[10px] block truncate max-w-[110px]"

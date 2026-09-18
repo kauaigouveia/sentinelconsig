@@ -1724,6 +1724,15 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'Cliente é obrigatório para cadastrar proposta.' });
       }
 
+      if (partnerId) {
+        const validPartner = await prisma.partner.findFirst({
+          where: { id: partnerId, tenantId }
+        });
+        if (!validPartner) {
+          return res.status(400).json({ error: 'O parceiro selecionado é inválido ou não pertence a este tenant.' });
+        }
+      }
+
       const proposal = await prisma.proposal.create({
         data: {
           tenantId,

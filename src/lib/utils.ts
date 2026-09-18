@@ -10,25 +10,14 @@ import { Holiday } from '../types';
  */
 export function extractPartnerCode(login: string): string {
   if (!login) return '';
-  const trimmed = login.trim();
-  const atIndex = trimmed.lastIndexOf('@');
-  if (atIndex === -1 || atIndex === trimmed.length - 1) {
-    return '';
-  }
-  return trimmed.substring(atIndex + 1).trim();
+  return login.trim();
 }
 
 /**
  * Validates partner login format: NOME@CODIGO
  */
 export function isValidPartnerLogin(login: string): boolean {
-  if (!login) return false;
-  const trimmed = login.trim();
-  const atIndex = trimmed.lastIndexOf('@');
-  if (atIndex <= 0 || atIndex === trimmed.length - 1) return false;
-  const prefix = trimmed.substring(0, atIndex);
-  const code = trimmed.substring(atIndex + 1);
-  return prefix.length >= 2 && code.length >= 1;
+  return !!login && login.trim().length > 0;
 }
 
 /**

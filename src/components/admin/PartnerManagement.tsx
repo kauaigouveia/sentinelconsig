@@ -80,12 +80,7 @@ export const PartnerManagement: React.FC = () => {
     }
 
     if (!login.trim()) {
-      setErrorMsg('Informe o login do parceiro no formato NOME@CODIGO (ex: KAUAI@16740).');
-      return;
-    }
-
-    if (!login.includes('@')) {
-      setErrorMsg('O login do parceiro DEVE seguir o padrão NOME@CODIGO (ex: FOX@16715).');
+      setErrorMsg('Informe o login institucional / código do parceiro.');
       return;
     }
 
@@ -106,7 +101,7 @@ export const PartnerManagement: React.FC = () => {
       }
 
       await loadPartnersFromApi();
-      setSuccessMsg(`Parceiro ${data.login || login} cadastrado com sucesso! Código extraído: ${extractPartnerCode(data.login || login)}`);
+      setSuccessMsg(`Parceiro ${data.login || login} cadastrado com sucesso!`);
       setFullName('');
       setLogin('');
       setShowAddForm(false);
@@ -312,21 +307,19 @@ export const PartnerManagement: React.FC = () => {
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Login (NOME@CODIGO) *
+                Identificador Institucional / Login *
               </label>
               <input
                 type="text"
                 required
                 value={login}
                 onChange={e => setLogin(e.target.value)}
-                placeholder="Ex: KAUAI@16740"
+                placeholder="Ex: 16740, AL15963, ou KAUAI@16740"
                 className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden font-mono"
               />
-              {derivedCode && (
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">
-                  Código extraído: {derivedCode}
-                </span>
-              )}
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                Insira o código exato exigido pela promotora (alfanumérico).
+              </span>
             </div>
 
             <div className="space-y-1">
@@ -421,7 +414,7 @@ export const PartnerManagement: React.FC = () => {
                         {p.login}
                       </td>
                       <td className="px-3.5 py-2.5 text-center font-mono font-bold text-blue-600 dark:text-blue-400">
-                        {extractPartnerCode(p.login)}
+                        {p.login}
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                         {promoter?.name || '—'}

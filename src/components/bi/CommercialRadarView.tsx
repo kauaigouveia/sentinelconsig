@@ -50,7 +50,7 @@ export const CommercialRadarView: React.FC = () => {
       const paid = ptProps.filter(p => p.statusId === paidStatus?.id).length;
       const conversion = total > 0 ? Math.round((paid / total) * 100) : 0;
       const ticket = total > 0 ? disbursed / total : 0;
-      const code = extractPartnerCode(pt.login);
+      const code = pt.login;
 
       // Segment classification based on actual data
       let segment: 'DIAMOND' | 'GROWTH' | 'RISK' | 'INACTIVE' = 'INACTIVE';

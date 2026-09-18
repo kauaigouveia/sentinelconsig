@@ -254,7 +254,7 @@ export const PortabilityView: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-mono font-bold text-blue-700 dark:text-blue-400">
-                          {partner ? extractPartnerCode(partner.login) : ''}
+                          {partner?.login || ''}
                         </span>
                         <span className="text-slate-400 dark:text-slate-500 text-[10px] block truncate max-w-[120px]">
                           {partner?.login}

@@ -265,7 +265,7 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
                         <span className="text-[10px] text-slate-500">{product?.name}</span>
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
-                        {partner?.login ? extractPartnerCode(partner.login) : '—'}
+                        {partner?.login || '—'}
                       </td>
                       <td className="px-3.5 py-2.5">
                         <StatusBadge status={statuses.find(st => st.id === p.statusId)} />

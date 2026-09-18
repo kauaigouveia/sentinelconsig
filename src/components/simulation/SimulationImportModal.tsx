@@ -103,7 +103,7 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
             if (!p) return false;
             const pId = String(p.id ?? '').toUpperCase();
             const pLogin = String(p.login ?? '').toUpperCase();
-            const pCode = String(extractPartnerCode(p.login ?? '')).toUpperCase();
+            const pCode = String(p.login ?? '').trim().toUpperCase();
             const pFullName = String(p.fullName ?? (p as any).name ?? '').toUpperCase();
             return (
               pId === identifier ||

@@ -169,7 +169,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         }
       }
 
-      const extractedCode = extractPartnerCode(login);
+      const extractedCode = login;
 
       results.push({
         rowIndex: idx + 1,

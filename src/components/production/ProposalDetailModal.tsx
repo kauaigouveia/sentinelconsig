@@ -528,7 +528,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Parceiro</span>
             <span className="font-semibold text-slate-900 dark:text-slate-100 truncate block">
-              {partner?.login || '—'} ({partner ? extractPartnerCode(partner.login) : ''})
+              {partner?.login || '—'}
             </span>
           </div>
           <div>
@@ -1053,7 +1053,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Banco: {bk?.name} | Parceiro: {pt?.login} ({pt ? extractPartnerCode(pt.login) : ''})
+                            Banco: {bk?.name} | Parceiro: {pt?.login}
                           </p>
                         </div>
 

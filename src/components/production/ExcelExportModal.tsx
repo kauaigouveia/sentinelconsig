@@ -247,7 +247,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                 <span>Regras de Integridade e Formatação Padrão:</span>
               </div>
               <ul className="list-disc pl-5 space-y-1.5 text-[11px] leading-relaxed">
-                <li>O código do parceiro é isolado automaticamente pelo algoritmo <code>extractPartnerCode()</code> (ex: <em>KAUAI@16740</em> resulta estritamente em <strong>16740</strong>).</li>
+                <li>O código do parceiro reflete exatamente o login/identificador cadastrado no sistema (ex: <em>KAUAI@16740</em>, <em>AL15963</em>, <em>16740</em>).</li>
                 <li>Gera o arquivo no formato <code>PROPOSTAS_PORTABILIDADE_AAAA-MM-DD.xlsx</code>.</li>
                 <li>Registrado de forma imutável na trilha de auditoria e logs de exportação.</li>
               </ul>

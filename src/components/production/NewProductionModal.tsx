@@ -436,7 +436,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   if (!isOpen) return null;
 
   const currentPartner = partners.find(p => p.id === selectedPartnerId);
-  const currentPartnerCode = currentPartner ? extractPartnerCode(currentPartner.login) : '';
+  const currentPartnerCode = currentPartner ? currentPartner.login : '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
@@ -595,7 +595,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
               />
               {currentPartner && (
                 <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 mt-1 block">
-                  Código derivado: <strong>{currentPartnerCode}</strong> (Login: {currentPartner.login})
+                  Identificador Institucional selecionado: <strong>{currentPartnerCode}</strong>
                 </span>
               )}
             </div>

@@ -151,7 +151,7 @@ export const SupportCenter: React.FC = () => {
                       </div>
                       <p className="font-medium text-slate-800 dark:text-slate-200">{pendency.description}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Parceiro: <strong>{partner?.login}</strong> (Cód: {partner ? extractPartnerCode(partner.login) : ''})
+                        Parceiro: <strong>{partner?.login}</strong>
                       </p>
                     </div>
 

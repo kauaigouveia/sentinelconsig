@@ -41,8 +41,7 @@ export const PartnerSearchSelect: React.FC<PartnerSearchSelectProps> = ({
     const login = String(partnerObj.login ?? '');
     const code = String(partnerObj.code ?? '');
     if (code) return code;
-    const parts = login.split('@');
-    return parts[1] || parts[0] || 'S/C';
+    return login || 'S/C';
   };
 
   // Helper to get safe partner strings

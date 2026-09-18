@@ -1206,10 +1206,10 @@ export class StorageService {
       if (Array.isArray(dbPartners)) {
         const formattedPartners = dbPartners.map((p: any) => ({
           id: p.id,
-          fullName: p.name,
-          login: p.code,
+          fullName: p.fullName || p.name || 'Parceiro sem Nome',
+          login: p.login || p.code || '',
           promoterId: p.promoterId || '',
-          active: p.status === 'ATIVO',
+          active: p.active !== undefined ? p.active : p.status === 'ATIVO',
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));
@@ -3995,7 +3995,7 @@ export class StorageService {
       let partner = partners.find(
         p => p.id === identifier ||
              p.login.toUpperCase() === identifier ||
-             extractPartnerCode(p.login) === identifier ||
+             
              p.fullName.toUpperCase().includes(identifier)
       );
 
@@ -4331,7 +4331,7 @@ export class StorageService {
 
     const partnerId = proposal.partnerId;
     const proposalPartner = this.getPartners().find(p => p.id === partnerId);
-    const proposalPartnerCode = proposalPartner ? extractPartnerCode(proposalPartner.login) : '';
+    const proposalPartnerCode = proposalPartner?.login || '';
 
     const requests = this.getSimulationRequests();
 
@@ -4347,7 +4347,7 @@ export class StorageService {
 
         if (proposalPartnerCode) {
           const simPartner = this.getPartners().find(p => p.id === sim.partnerId);
-          const simPartnerCode = simPartner ? extractPartnerCode(simPartner.login) : '';
+          const simPartnerCode = simPartner?.login || '';
           if (simPartnerCode && simPartnerCode === proposalPartnerCode) return true;
         }
 
