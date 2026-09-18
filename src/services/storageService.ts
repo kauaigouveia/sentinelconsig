@@ -1,3 +1,4 @@
+import { normalizeProposalType } from '../lib/proposalTypeNormalizer';
 import {
   User,
   Promoter,
@@ -415,12 +416,12 @@ const INITIAL_CONVENIOS: Convenio[] = [
 
 // Initial Products
 const INITIAL_PRODUCTS: Product[] = [
-  { id: 'prod-novo', name: 'NOVO', code: 'NOVO', description: 'Contrato novo consignado', type: 'CONSIGNADO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-refin', name: 'REFIN', code: 'REFIN', description: 'Refinanciamento de contrato ativo', type: 'CONSIGNADO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-cartao', name: 'CARTÃO', code: 'CARTAO', description: 'Cartão de crédito consignado RMC/RCC', type: 'CARTAO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-saque', name: 'SAQUE COMPLEMENTAR', code: 'SAQUE', description: 'Saque complementar de limite', type: 'CARTAO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-novo', name: 'NOVO', code: 'NOVO', description: 'Contrato novo consignado', type: 'NOVO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-refin', name: 'REFIN', code: 'REFIN', description: 'Refinanciamento de contrato ativo', type: 'REFIN', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-cartao', name: 'CARTÃO RMC', code: 'CARTAO_RMC', description: 'Cartão de crédito consignado RMC', type: 'CARTAO_RMC', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-saque', name: 'SAQUE COMPLEMENTAR', code: 'SAQUE', description: 'Saque complementar de limite', type: 'SAQUE_COMPLEMENTAR', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   { id: 'prod-port', name: 'PORTABILIDADE', code: 'PORT', description: 'Portabilidade de contrato', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-refin-port', name: 'REFIN DA PORTABILIDADE', code: 'REFIN_PORT', description: 'Refinanciamento atrelado a portabilidade', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: true, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-refin-port', name: 'REFIN DA PORTABILIDADE', code: 'REFIN_PORT', description: 'Refinanciamento atrelado a portabilidade', type: 'REFIN_PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: true, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
 ];
 
 // Initial Operational Rules
@@ -2569,7 +2570,7 @@ export class StorageService {
       name: data.name.trim(),
       code: data.code?.trim() || undefined,
       description: data.description?.trim() || undefined,
-      type: data.type || 'CONSIGNADO',
+      type: normalizeProposalType(data.type, data.requiresPortabilityRelation),
       scope,
       tenantId,
       tenantName: tenant?.name,
@@ -2622,7 +2623,7 @@ export class StorageService {
       name: data.name !== undefined ? data.name.trim() : existing.name,
       code: data.code !== undefined ? (data.code?.trim() || undefined) : existing.code,
       description: data.description !== undefined ? (data.description?.trim() || undefined) : existing.description,
-      type: data.type !== undefined ? data.type : existing.type,
+      type: data.type !== undefined ? normalizeProposalType(data.type, data.requiresPortabilityRelation ?? existing.requiresPortabilityRelation) : existing.type,
       active: data.active !== undefined ? Boolean(data.active) : existing.active,
       allowsMultipleAde: data.allowsMultipleAde !== undefined ? Boolean(data.allowsMultipleAde) : existing.allowsMultipleAde,
       requiresPortabilityRelation: data.requiresPortabilityRelation !== undefined ? Boolean(data.requiresPortabilityRelation) : existing.requiresPortabilityRelation,

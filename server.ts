@@ -16,6 +16,7 @@ import {
   sanitizeFileName,
 } from './server/services/azureBlobStorage.js';
 import { hasPermission, Permission } from './src/lib/permissions.js';
+import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
 import { Role } from './src/types/index.js';
 import { sseRegistry } from './server/realtime.js';
 import { eventBus } from './server/services/pusherService.js';
@@ -4024,6 +4025,13 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'Produtos exclusivos necessitam de um tenantId associado.' });
       }
 
+      let validatedType: ProposalType;
+      try {
+        validatedType = normalizeProposalType(type, Boolean(requiresPortabilityRelation));
+      } catch (errMsg: any) {
+        return res.status(400).json({ error: errMsg.message });
+      }
+
       const product = await prisma.product.create({
         data: {
           id: id || undefined,
@@ -4032,7 +4040,7 @@ async function auditAndEnsureMasterUser() {
           code: code ? code.trim() : null,
           description: description ? description.trim() : null,
           scope: targetScope,
-          type: type || 'NOVO',
+          type: validatedType,
           active: active !== undefined ? Boolean(active) : true,
           allowsMultipleAde: allowsMultipleAde !== undefined ? Boolean(allowsMultipleAde) : true,
           requiresPortabilityRelation: requiresPortabilityRelation !== undefined ? Boolean(requiresPortabilityRelation) : false,
@@ -4081,13 +4089,24 @@ async function auditAndEnsureMasterUser() {
       }
 
       const { name, code, description, type, active, allowsMultipleAde, requiresPortabilityRelation, convenioIds } = req.body;
+
+      let validatedType: ProposalType | undefined = undefined;
+      if (type !== undefined) {
+        try {
+          const checkPort = requiresPortabilityRelation !== undefined ? Boolean(requiresPortabilityRelation) : existing.requiresPortabilityRelation;
+          validatedType = normalizeProposalType(type, checkPort);
+        } catch (errMsg: any) {
+          return res.status(400).json({ error: errMsg.message });
+        }
+      }
+
       const updated = await prisma.product.update({
         where: { id },
         data: {
           name: name !== undefined ? name.trim() : undefined,
           code: code !== undefined ? (code ? code.trim() : null) : undefined,
           description: description !== undefined ? (description ? description.trim() : null) : undefined,
-          type: type !== undefined ? type : undefined,
+          type: validatedType,
           active: active !== undefined ? Boolean(active) : undefined,
           allowsMultipleAde: allowsMultipleAde !== undefined ? Boolean(allowsMultipleAde) : undefined,
           requiresPortabilityRelation: requiresPortabilityRelation !== undefined ? Boolean(requiresPortabilityRelation) : undefined,
@@ -7742,29 +7761,59 @@ async function auditAndEnsureMasterUser() {
       let updatedCount = 0;
       let ignoredCount = 0;
       let errorCount = 0;
-      let errors = [];
+      let errors: any[] = [];
 
-      // Execute within a transaction for safety if possible, or sequentially to handle duplicates gracefully
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const lineNum = row.rowIndex || i + 1;
         try {
-          const { name, type, action } = row;
-          if (!name) {
+          const { name, type, action, requiresPortabilityRelation, requiresPortability } = row;
+          if (!name || typeof name !== 'string' || !name.trim()) {
             errorCount++;
-            errors.push({ name: 'Desconhecido', error: 'Nome não fornecido' });
+            errors.push({
+              line: lineNum,
+              name: name || 'Desconhecido',
+              error: `Linha ${lineNum}: Nome do produto não fornecido.`
+            });
             continue;
           }
 
-          const code = `prod-${name.replace(/\s+/g, '-').toLowerCase()}`;
+          const trimmedName = name.trim();
+          const isPortabilityRequired = Boolean(requiresPortabilityRelation ?? requiresPortability);
 
+          let validatedType: ProposalType;
+          try {
+            validatedType = normalizeProposalType(type, isPortabilityRequired);
+          } catch (normErr: any) {
+            errorCount++;
+            errors.push({
+              line: lineNum,
+              name: trimmedName,
+              error: `Linha ${lineNum}: ${normErr.message}`
+            });
+            continue;
+          }
+
+          const code = row.code ? String(row.code).trim() : `prod-${trimmedName.replace(/\s+/g, '-').toLowerCase()}`;
+
+          // Respect multi-tenant isolation: check existing product for this tenant
           const existingProduct = await prisma.product.findFirst({
-            where: { tenantId, name }
+            where: {
+              OR: [
+                { tenantId, name: { equals: trimmedName, mode: 'insensitive' } },
+                { scope: 'GLOBAL', name: { equals: trimmedName, mode: 'insensitive' } },
+              ]
+            }
           });
 
           if (existingProduct) {
-            if (action === 'UPDATE') {
+            if (action === 'UPDATE' || (existingProduct.type !== validatedType || existingProduct.requiresPortabilityRelation !== isPortabilityRequired)) {
               await prisma.product.update({
                 where: { id: existingProduct.id },
-                data: { type: type || existingProduct.type }
+                data: {
+                  type: validatedType,
+                  requiresPortabilityRelation: isPortabilityRequired,
+                }
               });
               updatedCount++;
             } else {
@@ -7774,24 +7823,38 @@ async function auditAndEnsureMasterUser() {
             await prisma.product.create({
               data: {
                 tenantId,
-                name,
+                name: trimmedName,
                 code,
-                type: type || 'NOVO',
+                type: validatedType,
+                requiresPortabilityRelation: isPortabilityRequired,
                 active: true,
+                scope: 'EXCLUSIVE',
               }
             });
             createdCount++;
           }
         } catch (err: any) {
           errorCount++;
-          errors.push({ name: row.name, error: err.message });
+          errors.push({
+            line: lineNum,
+            name: row.name || 'Desconhecido',
+            error: `Linha ${lineNum}: ${err.message}`
+          });
         }
       }
 
+      const totalProcessed = rows.length;
+      const isPartial = errorCount > 0 && (createdCount > 0 || updatedCount > 0);
+      const isFullSuccess = errorCount === 0;
+
       return res.json({
         success: true,
+        status: isFullSuccess ? 'COMPLETED' : (isPartial ? 'PARTIALLY_COMPLETED' : 'FAILED'),
+        message: isFullSuccess
+          ? 'Importação concluída integralmente com sucesso!'
+          : (isPartial ? 'Importação concluída parcialmente com alguns erros.' : 'Falha ao processar registros da importação.'),
         summary: {
-          total: rows.length,
+          total: totalProcessed,
           created: createdCount,
           updated: updatedCount,
           ignored: ignoredCount,

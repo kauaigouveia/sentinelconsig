@@ -37,7 +37,7 @@ export const ProductManagement: React.FC = () => {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState('CONSIGNADO');
+  const [type, setType] = useState('NOVO');
   const [scope, setScope] = useState<'GLOBAL' | 'EXCLUSIVE'>('EXCLUSIVE');
   const [requiresPort, setRequiresPort] = useState(false);
   const [allowsMultipleAde, setAllowsMultipleAde] = useState(true);
@@ -77,7 +77,7 @@ export const ProductManagement: React.FC = () => {
     setName('');
     setCode('');
     setDescription('');
-    setType('CONSIGNADO');
+    setType('NOVO');
     setScope(isMaster ? 'GLOBAL' : 'EXCLUSIVE');
     setRequiresPort(false);
     setAllowsMultipleAde(true);
@@ -392,15 +392,19 @@ export const ProductManagement: React.FC = () => {
                     value={type}
                     onChange={e => {
                       setType(e.target.value);
-                      if (e.target.value === 'PORTABILIDADE') setRequiresPort(true);
+                      if (e.target.value === 'PORTABILIDADE' || e.target.value === 'REFIN_PORTABILIDADE') {
+                        setRequiresPort(true);
+                      }
                     }}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                   >
-                    <option value="CONSIGNADO">Empréstimo Consignado</option>
-                    <option value="CARTAO">Cartão de Crédito (RMC / RCC)</option>
-                    <option value="PORTABILIDADE">Portabilidade</option>
-                    <option value="REFINANCIAMENTO">Refinanciamento</option>
-                    <option value="OUTROS">Outros</option>
+                    <option value="NOVO">Empréstimo Consignado (NOVO)</option>
+                    <option value="REFIN">Refinanciamento (REFIN)</option>
+                    <option value="PORTABILIDADE">Portabilidade de Crédito (PORTABILIDADE)</option>
+                    <option value="REFIN_PORTABILIDADE">Refinanciamento da Portabilidade (REFIN_PORTABILIDADE)</option>
+                    <option value="CARTAO_RMC">Cartão Consignado RMC (CARTAO_RMC)</option>
+                    <option value="CARTAO_RCC">Cartão Benefício RCC (CARTAO_RCC)</option>
+                    <option value="SAQUE_COMPLEMENTAR">Saque Complementar (SAQUE_COMPLEMENTAR)</option>
                   </select>
                 </div>
 
