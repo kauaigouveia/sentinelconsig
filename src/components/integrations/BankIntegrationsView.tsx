@@ -40,9 +40,14 @@ const BANKS_META: BankMeta[] = [
     id: 'c6',
     name: 'C6 Bank',
     code: '336',
-    tagline: 'API REST Oficial — Consulta de Status FGTS & Consignado',
+    tagline: 'API REST Oficial — Consulta Multiproduto (Portabilidade, Consignado, FGTS & Cartão)',
     status: 'active',
-    products: ['Antecipação Saque-Aniversário FGTS', 'Consignado INSS / Servidores'],
+    products: [
+      'Portabilidade de Crédito Consignado',
+      'Empréstimo Consignado INSS / Servidores',
+      'Antecipação Saque-Aniversário FGTS',
+      'Cartão de Crédito Consignado / Benefício',
+    ],
   },
   {
     id: 'facta',
