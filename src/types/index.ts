@@ -394,6 +394,63 @@ export interface Proposal {
   paidAt?: string;
   cancelledAt?: string;
   rejectedAt?: string;
+
+  // C6 Bank Integration
+  c6ProposalNumber?: string;
+  c6OperationNumber?: string;
+  c6RawSituation?: string;
+  c6CurrentActivity?: string;
+  c6ActivityDescription?: string;
+  c6FormalizationStatus?: string;
+  c6FormalizationCode?: string;
+  c6LastActivityDate?: string;
+  c6LastSyncAt?: string;
+  c6SyncStatus?: 'SYNCED' | 'PENDING' | 'ERROR' | 'MISSING_IDENTIFIER';
+  c6SyncError?: string;
+  c6RawData?: any;
+}
+
+export interface C6SyncHistoryItem {
+  id: string;
+  tenantId: string;
+  proposalId: string;
+  c6ProposalNumber: string;
+  c6OperationNumber?: string;
+  queryDate: string;
+  success: boolean;
+  previousRawSituation?: string;
+  currentRawSituation?: string;
+  previousActivity?: string;
+  currentActivity?: string;
+  previousInternalStatus?: string;
+  currentInternalStatus?: string;
+  hasChanged: boolean;
+  technicalError?: string;
+  rawResponse?: any;
+  queriedBy?: string;
+  createdAt: string;
+}
+
+export interface C6ConfigState {
+  username: string;
+  baseUrl: string;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  isConfigured: boolean;
+  hasPassword: boolean;
+}
+
+export interface C6WorkerStatusState {
+  isRunning: boolean;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  lastRunAt: string | null;
+  lastRunSuccess: boolean;
+  lastRunItemCount: number;
+  lastRunError: string | null;
+  pendingProposalsCount: number;
+  recentFailuresCount: number;
+  activeLock: boolean;
 }
 
 export interface ProposalRelation {

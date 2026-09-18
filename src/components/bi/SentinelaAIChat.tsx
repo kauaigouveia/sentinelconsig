@@ -93,10 +93,11 @@ export const SentinelaAIChat: React.FC<SentinelaAIChatProps> = ({ startDate, end
   };
 
   const quickPrompts = [
-    'Qual a produção total paga e digitada este mês?',
-    'Quais bancos possuem a maior taxa de conversão?',
+    'Como está a saúde e latência das APIs e bancos integrados?',
+    'Quais os comunicados operacionais ativos para a equipe?',
     'Existem gargalos ou estouros de SLA na esteira?',
-    'Qual a pontuação de saúde (Health Score) atual?',
+    'Quais bancos possuem a maior taxa de conversão?',
+    'Qual a produção total paga e digitada este mês?',
   ];
 
   return (

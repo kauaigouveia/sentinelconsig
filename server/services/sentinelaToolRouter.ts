@@ -4,6 +4,7 @@ import { BIService } from './biService.js';
 import { BIComparisonService } from './biComparisonService.js';
 import { AnalyticsService, AnalyticsFilterOptions } from './analyticsService.js';
 import { ManagerialIntelligenceService } from './managerialIntelligenceService.js';
+import { ApiMonitoringService } from './apiMonitoringService.js';
 import { BIFilterOptions } from '../../src/types/bi.js';
 
 export interface ToolContextSession {
@@ -338,6 +339,81 @@ export class SentinelaToolRouter {
               phoneMasked: maskPhone(client.phone),
               totalProposalsCount: client.proposals.length,
               recentProposals: client.proposals,
+            },
+          };
+        }
+
+        case 'getApiMonitoringStatus': {
+          const overview = await ApiMonitoringService.getSystemHealthOverview(prisma, tenantId);
+          const services = await ApiMonitoringService.listServices(prisma, tenantId);
+          return {
+            success: true,
+            toolName,
+            data: {
+              overview,
+              services: services.map(s => ({
+                name: s.name,
+                category: s.category,
+                status: s.status,
+                criticality: s.criticality,
+                latencyMs: s.latencyMs,
+                uptimePercent: s.uptimePercent,
+                lastCheckedAt: s.lastCheckedAt,
+                activeIncidentsCount: s.incidents?.length || 0,
+              })),
+            },
+          };
+        }
+
+        case 'getApiIncidents': {
+          const incidents = await ApiMonitoringService.listIncidents(prisma, tenantId, { limit: 10 });
+          return {
+            success: true,
+            toolName,
+            data: {
+              total: incidents.length,
+              incidents: incidents.map(i => ({
+                id: i.id,
+                title: i.title,
+                serviceName: i.service.name,
+                severity: i.severity,
+                status: i.status,
+                description: i.description,
+                impactDetails: i.impactDetails,
+                identifiedAt: i.identifiedAt,
+                resolvedAt: i.resolvedAt,
+              })),
+            },
+          };
+        }
+
+        case 'getActiveAnnouncements': {
+          const now = new Date();
+          const announcements = await prisma.announcement.findMany({
+            where: {
+              OR: [
+                { tenantId: null },
+                { tenantId },
+              ],
+              status: 'PUBLISHED',
+              publishedAt: { lte: now },
+            },
+            orderBy: [{ priority: 'desc' }, { publishedAt: 'desc' }],
+            take: 10,
+          });
+
+          return {
+            success: true,
+            toolName,
+            data: {
+              count: announcements.length,
+              announcements: announcements.map(a => ({
+                id: a.id,
+                title: a.title,
+                priority: a.priority,
+                publishedAt: a.publishedAt,
+                contentSummary: a.content.substring(0, 300),
+              })),
             },
           };
         }

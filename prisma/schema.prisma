@@ -185,7 +185,10 @@ model Tenant {
   deletedBy     String?        @map("deleted_by")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
-  announcements Announcement[]
+  announcements     Announcement[]
+  monitoredServices MonitoredService[]
+  apiIncidents      ApiIncident[]
+  c6SyncHistories   C6SyncHistory[]
 
   @@index([slug])
   @@index([customDomain])
@@ -619,6 +622,21 @@ model Proposal {
   comments        Comment[]
   documents       ClientDocument[]
 
+  // C6 Bank Integration Identifiers & Sync Status
+  c6ProposalNumber      String?          @map("c6_proposal_number")
+  c6OperationNumber     String?          @map("c6_operation_number")
+  c6RawSituation        String?          @map("c6_raw_situation")
+  c6CurrentActivity     String?          @map("c6_current_activity")
+  c6ActivityDescription String?          @map("c6_activity_description")
+  c6FormalizationStatus String?          @map("c6_formalization_status")
+  c6FormalizationCode   String?          @map("c6_formalization_code")
+  c6LastActivityDate    DateTime?        @map("c6_last_activity_date")
+  c6LastSyncAt          DateTime?        @map("c6_last_sync_at")
+  c6SyncStatus          String?          @default("PENDING") @map("c6_sync_status") // SYNCED, PENDING, ERROR, MISSING_IDENTIFIER
+  c6SyncError           String?          @map("c6_sync_error")
+  c6RawData             Json?            @map("c6_raw_data")
+  c6SyncHistories       C6SyncHistory[]
+
   // Concurrency & Soft Delete
   version                   Int                 @default(1)
   deletedAt                 DateTime?           @map("deleted_at")
@@ -641,6 +659,8 @@ model Proposal {
   @@index([createdAt])
   @@index([tenantId, statusId, createdAt])
   @@index([tenantId, clientId])
+  @@index([tenantId, c6ProposalNumber])
+  @@index([c6SyncStatus])
   @@map("proposals")
 }
 
@@ -1080,3 +1100,131 @@ model UserTenantMembership {
   @@index([active])
   @@map("user_tenant_memberships")
 }
+
+// ==========================================
+// MONITORAMENTO DE APIS & INTEGRAÇÕES
+// ==========================================
+
+enum ServiceStatus {
+  OPERATIONAL
+  DEGRADED
+  OUTAGE
+  MAINTENANCE
+}
+
+enum ServiceCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+model MonitoredService {
+  id               String             @id @default(cuid())
+  tenantId         String?            @map("tenant_id")
+  tenant           Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  slug             String
+  category         String             @default("INTEGRATION") // "BANK", "GOVERNMENT", "INTERNAL", "STORAGE", "AI"
+  description      String?
+  endpointUrl      String?            @map("endpoint_url")
+  status           ServiceStatus      @default(OPERATIONAL)
+  criticality      ServiceCriticality @default(HIGH)
+  latencyMs        Int                @default(45) @map("latency_ms")
+  uptimePercent    Float              @default(99.9) @map("uptime_percent")
+  lastCheckedAt    DateTime?          @map("last_checked_at")
+  lastStatusChange DateTime?          @map("last_status_change")
+  checkIntervalSec Int                @default(60) @map("check_interval_sec")
+  isActive         Boolean            @default(true) @map("is_active")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  incidents        ApiIncident[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([category])
+  @@map("monitored_services")
+}
+
+model ApiIncident {
+  id            String           @id @default(cuid())
+  tenantId      String?          @map("tenant_id")
+  tenant        Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId     String           @map("service_id")
+  service       MonitoredService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  severity      IncidentSeverity @default(HIGH)
+  status        IncidentStatus   @default(INVESTIGATING)
+  impactDetails String?          @map("impact_details")
+  identifiedAt  DateTime         @default(now()) @map("identified_at")
+  resolvedAt    DateTime?        @map("resolved_at")
+  createdById   String?          @map("created_by_id")
+  createdByName String?          @map("created_by_name")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([serviceId])
+  @@index([status])
+  @@index([severity])
+  @@map("api_incidents")
+}
+
+// ==========================================
+// C6 BANK INTEGRATION & AUDIT HISTORY
+// ==========================================
+
+model C6SyncHistory {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proposalId String   @map("proposal_id")
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  c6ProposalNumber  String  @map("c6_proposal_number")
+  c6OperationNumber String? @map("c6_operation_number")
+
+  queryDate DateTime @default(now()) @map("query_date")
+  success   Boolean  @default(true)
+
+  previousRawSituation String? @map("previous_raw_situation")
+  currentRawSituation  String? @map("current_raw_situation")
+
+  previousActivity String? @map("previous_activity")
+  currentActivity  String? @map("current_activity")
+
+  previousInternalStatus String? @map("previous_internal_status")
+  currentInternalStatus  String? @map("current_internal_status")
+
+  hasChanged Boolean @default(false) @map("has_changed")
+
+  technicalError String? @map("technical_error")
+  rawResponse    Json?   @map("raw_response")
+  queriedBy      String? @map("queried_by") // 'AUTO_WORKER' | userId
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([proposalId])
+  @@index([c6ProposalNumber])
+  @@index([queryDate])
+  @@map("c6_sync_histories")
+}
+
+

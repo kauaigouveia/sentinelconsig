@@ -49,6 +49,11 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
           { label: 'Inteligência' },
           { label: 'Sentinela IA Copilot', view: 'sentinela-ai' },
         ];
+      case 'central-operacoes':
+        return [
+          { label: 'Operação' },
+          { label: 'Central de Operações', view: 'central-operacoes' },
+        ];
       case 'gamificacao':
         return [
           { label: 'Operação' },

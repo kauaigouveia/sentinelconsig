@@ -30,6 +30,7 @@ import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { StatusBadge } from '../ui/StatusBadge';
 import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { toastService } from '../ui/toastService';
+import { C6ProposalCard } from './C6ProposalCard';
 
 interface ProposalDetailModalProps {
   proposalId: string | null;
@@ -48,7 +49,15 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 }) => {
   if (!proposalId) return null;
 
-  const proposal = StorageService.getProposalById(proposalId);
+  const initialProposal = StorageService.getProposalById(proposalId);
+  const [liveProposal, setLiveProposal] = useState<Proposal | null>(initialProposal || null);
+
+  useEffect(() => {
+    const fresh = StorageService.getProposalById(proposalId);
+    setLiveProposal(fresh || null);
+  }, [proposalId]);
+
+  const proposal = liveProposal || initialProposal;
   const activeUser = StorageService.getActiveUser();
 
   if (!proposal) return null;
@@ -59,6 +68,11 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const promoter = StorageService.getPromoters().find(p => p.id === proposal.promoterId);
   const partner = StorageService.getPartners().find(p => p.id === proposal.partnerId);
   const digitizer = StorageService.getUsers().find(u => u.id === proposal.digitizerId);
+
+  const isC6Bank =
+    bank?.code === '336' ||
+    (bank?.name && bank.name.toUpperCase().includes('C6')) ||
+    Boolean(proposal.c6ProposalNumber);
 
   // Status reais sincronizados do PostgreSQL
   const [dbStatuses, setDbStatuses] = useState<any[]>([]);
@@ -178,7 +192,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     }
   }, [proposalId]);
 
-  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE'>('HISTORICO');
+  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK'>('HISTORICO');
 
   // Status update form
   const [selectedStatusId, setSelectedStatusId] = useState(proposal.statusId);
@@ -695,6 +709,20 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           )}
         </div>
 
+        {/* Integração C6 Bank */}
+        {isC6Bank && (
+          <div className="px-6 py-3 bg-slate-50/70 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
+            <C6ProposalCard
+              proposal={proposal}
+              onProposalUpdated={(updated) => {
+                setLiveProposal(updated);
+                StorageService.updateProposal(updated.id, updated, 'Consulta C6 Bank');
+                if (onProposalUpdated) onProposalUpdated();
+              }}
+            />
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900">
           <button
@@ -744,6 +772,22 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             <User className="h-3.5 w-3.5" />
             <span>Cliente 360 ({otherClientProposals.length} outras)</span>
           </button>
+
+          {isC6Bank && (
+            <button
+              onClick={() => setActiveTab('C6_BANK')}
+              className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'C6_BANK'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <div className="h-3.5 w-3.5 rounded-xs bg-black text-white flex items-center justify-center font-black text-[8px] leading-none">
+                C6
+              </div>
+              <span>Esteira C6 Bank</span>
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -1068,6 +1112,21 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 5: ESTEIRA C6 BANK */}
+          {activeTab === 'C6_BANK' && isC6Bank && (
+            <div className="space-y-4">
+              <C6ProposalCard
+                proposal={proposal}
+                standalone
+                onProposalUpdated={(updated) => {
+                  setLiveProposal(updated);
+                  StorageService.updateProposal(updated.id, updated, 'Consulta C6 Bank');
+                  if (onProposalUpdated) onProposalUpdated();
+                }}
+              />
             </div>
           )}
         </div>

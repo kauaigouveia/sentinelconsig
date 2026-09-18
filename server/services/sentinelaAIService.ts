@@ -217,6 +217,30 @@ const toolDeclarations: FunctionDeclaration[] = [
       },
     },
   },
+  {
+    name: 'getApiMonitoringStatus',
+    description: 'Obtém o status de saúde e conectividade em tempo real de todas as APIs integradas (Dataprev, CIP, barramentos bancários Pan, Daycoval, Facta, BMG, Receita Federal, Azure Storage, Pusher).',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'getApiIncidents',
+    description: 'Obtém a lista de incidentes e instabilidades operacionais ativos ou recentes nas APIs e serviços parceiros.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'getActiveAnnouncements',
+    description: 'Consulta os comunicados operacionais, avisos gerais e diretrizes vigentes publicados pela gestão para a equipe.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
 ];
 
 export class SentinelaAIService {
@@ -303,7 +327,7 @@ export class SentinelaAIService {
     }
 
     // Recommended model for text/function calling tasks
-    const model = 'gemini-3.6-flash';
+    const model = 'gemini-3.8-flash';
 
     // Build context parameters if passed
     const defaultArgs = {

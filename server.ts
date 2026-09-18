@@ -33,11 +33,14 @@ import { SentinelaAIService } from './server/services/sentinelaAIService.js';
 import { SaasUsageService } from './server/services/saasUsageService.js';
 import { SaasLimitsService } from './server/services/saasLimitsService.js';
 import { TenantHealthService } from './server/services/tenantHealthService.js';
+import { ApiMonitoringService } from './server/services/apiMonitoringService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
 import { SimulationService } from './server/services/simulationService.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
+import { C6BankService } from './server/services/c6BankService.js';
+import { C6SyncWorker } from './server/services/c6SyncWorker.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -8788,6 +8791,461 @@ async function startServer() {
     }
   });
 
+  // ==================================================
+  // MONITORAMENTO DE APIS & INTEGRAÇÕES
+  // ==================================================
+
+  app.get('/api/monitoring/services', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const services = await ApiMonitoringService.listServices(prisma, tenantId);
+      res.json(services);
+    } catch (err: any) {
+      logger.error({ err }, '[API MONITORING] Erro ao listar serviços');
+      res.status(500).json({ error: 'Erro ao listar serviços monitorados.' });
+    }
+  });
+
+  app.get('/api/monitoring/health', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const health = await ApiMonitoringService.getSystemHealthOverview(prisma, tenantId);
+      res.json(health);
+    } catch (err: any) {
+      logger.error({ err }, '[API MONITORING] Erro ao obter visão geral de saúde');
+      res.status(500).json({ error: 'Erro ao carregar visão geral de monitoramento.' });
+    }
+  });
+
+  app.post('/api/monitoring/services/:id/ping', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const result = await ApiMonitoringService.pingService(prisma, req.params.id, tenantId);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao testar conectividade do serviço.' });
+    }
+  });
+
+  app.post('/api/monitoring/ping-all', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const result = await ApiMonitoringService.pingAllServices(prisma, tenantId);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao verificar todas as APIs.' });
+    }
+  });
+
+  app.patch('/api/monitoring/services/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role } = session.user;
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER' && role !== 'GESTOR') {
+        return res.status(403).json({ error: 'Acesso negado para alterar status de serviços.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const updated = await ApiMonitoringService.updateService(prisma, req.params.id, req.body, tenantId);
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'api_service.updated',
+        entity: 'MonitoredService',
+        entityId: updated.id,
+        newData: req.body,
+        req,
+      });
+
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao atualizar serviço.' });
+    }
+  });
+
+  app.get('/api/monitoring/incidents', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const incidents = await ApiMonitoringService.listIncidents(prisma, tenantId, {
+        status: req.query.status as any,
+      });
+      res.json(incidents);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao listar histórico de incidentes.' });
+    }
+  });
+
+  app.post('/api/monitoring/incidents', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role, id: userId, name: userName } = session.user;
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER' && role !== 'GESTOR') {
+        return res.status(403).json({ error: 'Acesso negado para registrar incidentes.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const { serviceId, title, description, severity, status, impactDetails } = req.body;
+      if (!serviceId || !title || !description || !severity) {
+        return res.status(400).json({ error: 'Campos obrigatórios ausentes (serviceId, title, description, severity).' });
+      }
+
+      const incident = await ApiMonitoringService.createIncident(
+        prisma,
+        { serviceId, title, description, severity, status, impactDetails },
+        tenantId,
+        { id: userId, name: userName || 'Usuário' }
+      );
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId,
+        userName,
+        action: 'api_incident.created',
+        entity: 'ApiIncident',
+        entityId: incident.id,
+        newData: { serviceId, title, severity },
+        req,
+      });
+
+      res.json(incident);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao registrar incidente.' });
+    }
+  });
+
+  app.patch('/api/monitoring/incidents/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const { role } = session.user;
+      if (role !== 'PLATFORM_MASTER' && role !== 'MASTER' && role !== 'GESTOR') {
+        return res.status(403).json({ error: 'Acesso negado para atualizar incidentes.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+
+      const updated = await ApiMonitoringService.updateIncident(prisma, req.params.id, req.body, tenantId);
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'api_incident.updated',
+        entity: 'ApiIncident',
+        entityId: updated.id,
+        newData: req.body,
+        req,
+      });
+
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao atualizar incidente.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // C6 BANK INTEGRATION & PROPOSAL STATUS SYNC ENDPOINTS
+  // -------------------------------------------------------------
+
+  // POST /api/proposals/:id/c6-sync - Manual status sync triggered by operator or manager
+  app.post('/api/proposals/:id/c6-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const { forceProposalNumber } = req.body || {};
+
+      const result = await C6BankService.syncProposalStatus(prisma, id, tenantId, {
+        queriedBy: session.user.id,
+        forceProposalNumber,
+      });
+
+      // Se o status da proposta foi alterado ou atualizado, emitir eventos de tempo real
+      if (result.success && result.hasChanged) {
+        eventBus.publishToTenant(tenantId, {
+          type: 'proposal_status_changed',
+          entity: 'Proposal',
+          entityId: id,
+          data: {
+            proposalId: id,
+            statusName: result.currentInternalStatus,
+            updatedBy: session.user.name,
+          },
+        });
+
+        if (sseRegistry) {
+          sseRegistry.broadcastToTenant(tenantId, {
+            type: 'PROPOSAL_UPDATED',
+            entity: 'Proposal',
+            entityId: id,
+            data: {
+              id,
+              c6SyncStatus: 'SYNCED',
+              c6RawSituation: result.rawSituation,
+              c6ActivityDescription: result.activityDescription,
+              statusName: result.currentInternalStatus,
+            },
+          });
+        }
+      }
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'c6_bank.manual_sync',
+        entity: 'Proposal',
+        entityId: id,
+        newData: {
+          success: result.success,
+          c6ProposalNumber: result.c6ProposalNumber,
+          rawSituation: result.rawSituation,
+          activity: result.activityDescription,
+          statusMapped: result.statusMapped,
+          error: result.error,
+        },
+        req,
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      logger.error({ err, proposalId: req.params.id }, '[API C6 SYNC] Erro ao sincronizar proposta');
+      res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao sincronizar status no C6 Bank.' });
+    }
+  });
+
+  // GET /api/proposals/:id/c6-history - List query history for a specific proposal
+  app.get('/api/proposals/:id/c6-history', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const history = await C6BankService.getProposalC6History(prisma, id, tenantId);
+      res.json(history);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao buscar histórico C6.' });
+    }
+  });
+
+  // POST /api/proposals/:id/c6-link - Manually link or correct C6 proposal identifier
+  app.post('/api/proposals/:id/c6-link', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const { c6ProposalNumber, c6OperationNumber } = req.body || {};
+
+      if (!c6ProposalNumber || typeof c6ProposalNumber !== 'string' || !c6ProposalNumber.trim()) {
+        return res.status(400).json({ error: 'O número da proposta C6 é obrigatório.' });
+      }
+
+      const updated = await C6BankService.linkC6Identifiers(prisma, id, tenantId, {
+        c6ProposalNumber,
+        c6OperationNumber,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'c6_bank.link_identifier',
+        entity: 'Proposal',
+        entityId: id,
+        newData: { c6ProposalNumber, c6OperationNumber },
+        req,
+      });
+
+      res.json({ success: true, proposal: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao vincular identificador C6.' });
+    }
+  });
+
+  // GET /api/integrations/c6/config - Secure tenant configuration
+  app.get('/api/integrations/c6/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const config = await C6BankService.getTenantConfig(prisma, tenantId);
+
+      // Nunca expor a senha no retorno JSON
+      res.json({
+        username: config.username,
+        baseUrl: config.baseUrl,
+        autoSyncEnabled: config.autoSyncEnabled,
+        syncIntervalMinutes: config.syncIntervalMinutes,
+        isConfigured: config.isConfigured,
+        hasPassword: config.hasPassword,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao carregar configurações do C6 Bank.' });
+    }
+  });
+
+  // POST /api/integrations/c6/config - Save secure tenant configuration
+  app.post('/api/integrations/c6/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      // Apenas gestores e administradores
+      const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'];
+      if (!allowedRoles.includes(session.user.role)) {
+        return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
+      }
+
+      const { username, password, baseUrl, autoSyncEnabled, syncIntervalMinutes } = req.body || {};
+
+      const saved = await C6BankService.saveTenantConfig(prisma, tenantId, {
+        username,
+        password,
+        baseUrl,
+        autoSyncEnabled,
+        syncIntervalMinutes,
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'c6_bank.config_updated',
+        entity: 'SystemConfig',
+        entityId: 'c6_bank',
+        newData: {
+          username: saved.username,
+          baseUrl: saved.baseUrl,
+          autoSyncEnabled: saved.autoSyncEnabled,
+          syncIntervalMinutes: saved.syncIntervalMinutes,
+          passwordUpdated: Boolean(password),
+        },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: 'Configurações do C6 Bank salvas com sucesso.',
+        config: {
+          username: saved.username,
+          baseUrl: saved.baseUrl,
+          autoSyncEnabled: saved.autoSyncEnabled,
+          syncIntervalMinutes: saved.syncIntervalMinutes,
+          isConfigured: saved.isConfigured,
+          hasPassword: saved.hasPassword,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao salvar configurações do C6 Bank.' });
+    }
+  });
+
+  // POST /api/integrations/c6/test-connection - Test credentials against live C6 auth endpoint
+  app.post('/api/integrations/c6/test-connection', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const result = await C6BankService.testConnection(prisma, tenantId);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao testar conexão com C6 Bank.' });
+    }
+  });
+
+  // GET /api/integrations/c6/status - Operational worker metrics and queue status
+  app.get('/api/integrations/c6/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const status = await C6SyncWorker.getWorkerStatus(prisma, tenantId);
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao carregar status do sincronizador C6.' });
+    }
+  });
+
+  // POST /api/integrations/c6/run-sync - Trigger immediate batch sync
+  app.post('/api/integrations/c6/run-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const config = await C6BankService.getTenantConfig(prisma, tenantId);
+      const result = await C6SyncWorker.processTenantProposals(
+        prisma,
+        tenantId,
+        config.syncIntervalMinutes
+      );
+
+      res.json({
+        success: true,
+        message: `Sincronização concluída: ${result.processedCount} processadas (${result.successCount} com sucesso, ${result.failedCount} com falhas).`,
+        ...result,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao disparar sincronização C6.' });
+    }
+  });
+
+  // GET /api/integrations/c6/recent-logs - Recent sync history logs for tenant
+  app.get('/api/integrations/c6/recent-logs', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const logs = await prisma.c6SyncHistory.findMany({
+        where: { tenantId },
+        orderBy: { queryDate: 'desc' },
+        take: limit,
+      });
+
+      res.json(logs);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao listar histórico recente de sincronizações C6.' });
+    }
+  });
+
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -8806,6 +9264,7 @@ async function startServer() {
   serverInstance = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
     await auditAndEnsureMasterUser();
+    C6SyncWorker.start(prisma);
   });
 }
 
@@ -8829,6 +9288,8 @@ async function gracefulShutdown(reason: string | Error, exitCode = 0) {
   forceExitTimeout.unref();
 
   try {
+    C6SyncWorker.stop();
+
     if (sseRegistry) {
       logger.info('[SHUTDOWN] Encerrando conexões SSE ativas...');
       sseRegistry.closeAllConnections();

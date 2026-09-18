@@ -27,6 +27,8 @@ import {
   ChevronRight,
   UserCheck,
   Sparkles,
+  Activity,
+  Zap,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
@@ -512,7 +514,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
         ================================================== */}
         {(isGestor || isSuporte || isDigitador) && (
           <div className="space-y-0.5">
-            {renderSectionHeader('Inteligência')}
+            {renderSectionHeader('Inteligência & Operações')}
+            {renderNavItem({
+              id: 'central-operacoes',
+              label: 'Central de Operações',
+              icon: Activity,
+              color: 'blue',
+              badge: { text: 'Hub', variant: 'live' },
+            })}
             {renderNavItem({
               id: 'sentinela-ai',
               label: 'Sentinela AI',
@@ -689,6 +698,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
               label: 'Bancos & Vínculos',
               icon: Building2,
               color: 'cyan',
+            })}
+
+            {renderNavItem({
+              id: 'admin-c6-bank',
+              label: 'Integração C6 Bank',
+              icon: Zap,
+              color: 'amber',
+              badge: {
+                text: 'API',
+                variant: 'live',
+              },
             })}
 
             {renderNavItem({

@@ -35,7 +35,9 @@ import { GeneralFinanceView } from './components/finance/GeneralFinanceView';
 import { PlatformMasterCentral } from './components/saas/PlatformMasterCentral';
 import { TenantSaaSCapacityView } from './components/admin/TenantSaaSCapacityView';
 import { AnnouncementsManagement } from './components/admin/AnnouncementsManagement';
+import { OperationsCentral } from './components/operations/OperationsCentral';
 import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
+import { C6BankConfigView } from './components/integrations/C6BankConfigView';
 import { getRoleLabel } from './lib/roleLabels';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
@@ -519,6 +521,8 @@ export default function App() {
 
           {currentView === 'sentinela-ai' && <SentinelaAIChat />}
 
+          {currentView === 'central-operacoes' && <OperationsCentral />}
+
           {currentView === 'gamificacao' && <GamificationCenter />}
 
           {currentView === 'agenda-operacional' && <OperationalAgendaView />}
@@ -582,6 +586,8 @@ export default function App() {
           {currentView === 'admin-calendario' && <HolidayManagement />}
 
           {currentView === 'admin-auditoria' && <AuditLogView />}
+
+          {currentView === 'admin-c6-bank' && <C6BankConfigView />}
 
           {currentView === 'admin-comunicados' && (<AnnouncementsManagement />)}
           {currentView === 'admin-import-status' && (
