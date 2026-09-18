@@ -673,11 +673,13 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autorizado.' });
       
-      const { password } = req.body;
-      if (!password) return res.status(400).json({ error: 'Senha é obrigatória.' });
+      const { newPassword } = req.body;
+      if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 6) {
+        return res.status(400).json({ error: 'Senha inválida ou ausente (mínimo de 6 caracteres).' });
+      }
 
       
-      const passwordHash = await hashPassword(password);
+      const passwordHash = await hashPassword(newPassword.trim());
       
       await prisma.user.update({
         where: { id: session.user.id },
