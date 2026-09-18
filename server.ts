@@ -357,7 +357,19 @@ async function auditAndEnsureMasterUser() {
 
       return res.status(200).json({
         status: 'ok',
+        service: 'sentinel-consig-api',
+        version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        runtime: process.env.VERCEL ? 'vercel-serverless' : 'node-express',
         database: 'healthy',
+        integrations: {
+          c6: {
+            status: 'active',
+            baseEndpoint: '/api/integrations/c6',
+            authProtocol: 'OAuth-Token Direct (x-www-form-urlencoded)',
+            proposalEndpoint: 'GET /marketplace/proposal',
+          },
+        },
         timestamp,
       });
     } catch (err: any) {
@@ -368,7 +380,9 @@ async function auditAndEnsureMasterUser() {
 
       return res.status(503).json({
         status: 'degraded',
+        service: 'sentinel-consig-api',
         database: 'unreachable',
+        error: err?.message || 'Database unreachable',
         timestamp,
       });
     }
@@ -8219,39 +8233,6 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  // -------------------------------------------------------------
-  // P0.2 GLOBAL ERROR HANDLER MIDDLEWARE
-  // -------------------------------------------------------------
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const requestId = req.requestId || (req as any).requestId || crypto.randomUUID();
-
-    logger.error({
-      requestId,
-      method: req.method,
-      url: req.originalUrl || req.url,
-      ip: req.ip,
-      code: err?.code,
-      error: err?.message || String(err),
-    }, '[GLOBAL ERROR HANDLER]');
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    const rawStatus = err?.status || err?.statusCode;
-    const statusCode = typeof rawStatus === 'number' && rawStatus >= 400 && rawStatus < 600 ? rawStatus : 500;
-
-    return res.status(statusCode).json({
-      error: statusCode === 500 ? 'Internal server error' : (err.message || 'Erro interno no servidor.'),
-      requestId,
-    });
-  });
-
-async function startServer() {
-  const PORT = 3000;
-
-  // Vite middleware for development
-  
   // ==========================================
   // ANNOUNCEMENTS
   // ==========================================
@@ -9257,6 +9238,37 @@ async function startServer() {
     });
   });
 
+  // -------------------------------------------------------------
+  // P0.2 GLOBAL ERROR HANDLER MIDDLEWARE
+  // -------------------------------------------------------------
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const requestId = req.requestId || (req as any).requestId || crypto.randomUUID();
+
+    logger.error({
+      requestId,
+      method: req.method,
+      url: req.originalUrl || req.url,
+      ip: req.ip,
+      code: err?.code,
+      error: err?.message || String(err),
+    }, '[GLOBAL ERROR HANDLER]');
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    const rawStatus = err?.status || err?.statusCode;
+    const statusCode = typeof rawStatus === 'number' && rawStatus >= 400 && rawStatus < 600 ? rawStatus : 500;
+
+    return res.status(statusCode).json({
+      error: statusCode === 500 ? 'Internal server error' : (err.message || 'Erro interno no servidor.'),
+      requestId,
+    });
+  });
+
+async function startServer() {
+  const PORT = 3000;
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -9346,7 +9358,7 @@ process.on('SIGINT', () => {
   gracefulShutdown('SIGINT', 0);
 });
 
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && !process.env.TEST_MODE && !process.env.VITEST) {
   startServer();
 }
 
