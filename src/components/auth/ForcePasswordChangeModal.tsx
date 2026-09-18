@@ -19,7 +19,7 @@ export const ForcePasswordChangeModal: React.FC<ForcePasswordChangeModalProps> =
   const isMatching = newPassword.length > 0 && newPassword === confirmPassword;
   const isValid = isMinLength && isMatching;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -34,16 +34,28 @@ export const ForcePasswordChangeModal: React.FC<ForcePasswordChangeModalProps> =
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      try {
-        StorageService.updateUserPassword(user.id, newPassword);
-        setIsSubmitting(false);
-        onSuccess();
-      } catch (err: any) {
-        setIsSubmitting(false);
-        setErrorMsg(err.message || 'Erro ao redefinir senha.');
+    try {
+      const res = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'Erro ao redefinir senha.');
       }
-    }, 400);
+      
+      // Update active user in local storage to prevent flicker before reload
+      const updatedUser = { ...user, mustChangePassword: false };
+      StorageService.setActiveUser(updatedUser);
+      
+      setIsSubmitting(false);
+      onSuccess();
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMsg(err.message || 'Erro ao redefinir senha.');
+    }
   };
 
   return (

@@ -19,6 +19,8 @@ export interface User {
   isMasterProtected?: boolean;
   password?: string;
   mustChangePassword?: boolean;
+  requireTenantSelection?: boolean;
+  availableMemberships?: any[];
   avatarUrl?: string;
   createdAt: string;
   updatedAt: string;

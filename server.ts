@@ -7,8 +7,6 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { PrismaClient, Prisma, ProposalType, StandardStatusCategory, PriorityLevel, NotificationType } from '@prisma/client';
 import crypto from 'crypto';
-import fs from 'fs';
-import { runPortabilityCronServer } from './server/services/portabilityCronService.js';
 import { logger } from './server/logger.js';
 import {
   uploadBlob,
@@ -38,34 +36,32 @@ import { TenantHealthService } from './server/services/tenantHealthService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
 import { SimulationService } from './server/services/simulationService.js';
-import { backupStorageService } from './server/services/backupStorageService.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
 
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 const app = express();
-export { app, prisma };
+export { app };
 
 // Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
 app.set('trust proxy', 1);
 
-let isBootstrapDone = false;
-
 async function auditAndEnsureMasterUser() {
   try {
-    if (isBootstrapDone) {
-      return;
-    }
+    const masterEmail = (process.env.INITIAL_MASTER_EMAIL || 'kauaigouveia@gmail.com').trim().toLowerCase();
+    const masterPassword = process.env.INITIAL_MASTER_PASSWORD?.trim();
 
     // 1. Tenant inicial idempotente
     let tenant = await prisma.tenant.findFirst({
       where: {
         OR: [
           { slug: 'sentinel-consig' },
+          { slug: 'evolve' },
           { name: { contains: 'SENTINEL', mode: 'insensitive' } },
+          { name: { contains: 'EVOLVE', mode: 'insensitive' } },
         ],
       },
     });
@@ -103,114 +99,121 @@ async function auditAndEnsureMasterUser() {
       console.log(`[RBAC BOOTSTRAP] Tenant inicial reutilizado: ${tenant.id} (${tenant.name})`);
     }
 
-    // 2. Count active PLATFORM_MASTERs
-    const activeMasterCount = await prisma.user.count({
-      where: {
-        role: 'PLATFORM_MASTER',
-        active: true,
-        deletedAt: null,
-      },
-    });
-
-    if (activeMasterCount > 0) {
-      isBootstrapDone = true;
-      console.log(`[RBAC BOOTSTRAP] Plataforma já possui ${activeMasterCount} MASTER OP ativos. Bootstrap ignorado.`);
-      return;
-    }
-
-    // No active PLATFORM_MASTER. Create first master user only if INITIAL_MASTER_EMAIL is configured
-    const initialEmailEnv = process.env.INITIAL_MASTER_EMAIL;
-    if (!initialEmailEnv) {
-      console.log('[RBAC BOOTSTRAP] Nenhum MASTER OP ativo e INITIAL_MASTER_EMAIL não configurado. Impossível criar primeiro MASTER OP.');
-      return;
-    }
-
-    const masterEmail = initialEmailEnv.trim().toLowerCase();
-    const masterPassword = (process.env.INITIAL_MASTER_PASSWORD || 'Sentinel@123').trim();
-
-    // Check if the user already exists (maybe inactive/deleted or has another role, but we need to promote it or create it if not exists)
-    let user = await prisma.user.findFirst({
+    // 2. Usuário Master inicial idempotente
+    const user = await prisma.user.findFirst({
       where: { email: { equals: masterEmail, mode: 'insensitive' } },
     });
 
     if (user) {
-      // If user exists, activate and promote them to PLATFORM_MASTER since active count is 0
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          role: 'PLATFORM_MASTER',
-          active: true,
-          deletedAt: null,
-          tenantId: user.tenantId || tenant.id,
-        },
+      console.log(`[RBAC BOOTSTRAP] Usuario Master localizado no PostgreSQL:`, {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        active: user.active,
+        isMasterProtected: user.isMasterProtected,
       });
-      console.log(`[RBAC BOOTSTRAP] Usuário existente ${user.email} promovido a primeiro PLATFORM_MASTER.`);
+
+      const updates: any = {};
+      if (user.role !== 'PLATFORM_MASTER') updates.role = 'PLATFORM_MASTER';
+      if (!user.active) updates.active = true;
+      if (!user.isMasterProtected) updates.isMasterProtected = true;
+      if (!user.tenantId && tenant) updates.tenantId = tenant.id;
+
+      if (Object.keys(updates).length > 0) {
+        const updated = await prisma.user.update({
+          where: { id: user.id },
+          data: updates,
+        });
+        logger.info({ role: updated.role }, '[RBAC BOOTSTRAP] Master profile synchronized for PLATFORM_MASTER');
+      }
+
+      // Migração segura e condicional de credencial legada para o PLATFORM_MASTER
+      if (!isArgon2Hash(user.passwordHash)) {
+        if (!masterPassword) {
+          logger.warn('[RBAC BOOTSTRAP] PLATFORM_MASTER possui credencial legada, mas INITIAL_MASTER_PASSWORD não está configurada no ambiente. Migração adiada para o login interativo.');
+        } else {
+          // Validação estrita: nunca assumir que INITIAL_MASTER_PASSWORD corresponde à senha atual
+          const match = await verifyPassword(masterPassword, user.passwordHash);
+          if (match.valid) {
+            try {
+              // Gerar hash Argon2id a partir da senha validada (nunca do hash bruto)
+              const newHash = await hashPassword(masterPassword);
+
+              // Atualização atômica unificada: senha e evento SYSTEM_CREDENTIAL_MIGRATION na mesma transação PostgreSQL
+              const migrationSuccess = await prisma.$transaction(async (tx) => {
+                // 1. Atualização com controle estrito de concorrência dentro da transação
+                const updateResult = await tx.user.updateMany({
+                  where: {
+                    id: user.id,
+                    passwordHash: user.passwordHash, // Garante que nenhum outro processo alterou a senha
+                  },
+                  data: {
+                    passwordHash: newHash,
+                  },
+                });
+
+                if (updateResult.count === 0) {
+                  // Concorrência detectada: credencial já foi modificada por outro processo
+                  return { migrated: false, reason: 'CONCURRENCY_CONFLICT' };
+                }
+
+                // 2. Registro de auditoria usando o MESMO cliente transacional tx
+                await AuditLogService.record(tx, {
+                  tx,
+                  tenantId: user.tenantId || tenant.id,
+                  userId: user.id,
+                  userName: user.name,
+                  action: 'SYSTEM_CREDENTIAL_MIGRATION',
+                  entity: 'User',
+                  entityId: user.id,
+                  newData: {
+                    migrationType: 'LEGACY_TO_ARGON2ID',
+                    algorithm: 'argon2id',
+                    status: 'SUCCESS',
+                    source: 'RBAC_BOOTSTRAP_VALIDATED',
+                  },
+                  ipAddress: '127.0.0.1',
+                });
+
+                return { migrated: true };
+              }, { timeout: 15000, maxWait: 10000 });
+
+              if (migrationSuccess.migrated) {
+                logger.info({ id: user.id }, '[RBAC BOOTSTRAP] Credencial do PLATFORM_MASTER migrada com sucesso para Argon2id e auditada atomicamente na cadeia.');
+              } else {
+                logger.warn({ id: user.id, reason: migrationSuccess.reason }, '[RBAC BOOTSTRAP] Concorrência detectada: credencial do PLATFORM_MASTER foi alterada concorrentemente; atualização cancelada de forma atômica.');
+              }
+            } catch (migErr: any) {
+              logger.error({ error: migErr?.message || String(migErr) }, '[RBAC BOOTSTRAP] Falha atômica durante migração da credencial do PLATFORM_MASTER (rollback garantido)');
+            }
+          } else {
+            logger.warn({ id: user.id }, '[RBAC BOOTSTRAP] INITIAL_MASTER_PASSWORD não corresponde à credencial preexistente do PLATFORM_MASTER. Senha preservada intacta; migração adiada para o login interativo.');
+          }
+        }
+      }
     } else {
-      // Create new user
-      user = await prisma.user.create({
+      if (!masterPassword) {
+        logger.error('[RBAC BOOTSTRAP CRITICAL] INITIAL_MASTER_PASSWORD não configurada no ambiente. Usuário master não criado.');
+        return;
+      }
+
+      const created = await prisma.user.create({
         data: {
           name: 'Kauai Gouveia',
           email: masterEmail,
           passwordHash: await hashPassword(masterPassword),
           role: 'PLATFORM_MASTER',
           active: true,
+          isMasterProtected: true,
           tenantId: tenant.id,
           customPermissions: [],
         },
       });
-      console.log(`[RBAC BOOTSTRAP] Primeiro PLATFORM_MASTER criado: ${user.email}`);
+      logger.info({ id: created.id, role: created.role }, '[RBAC BOOTSTRAP] Usuario PLATFORM_MASTER criado com sucesso no PostgreSQL');
     }
-
-    isBootstrapDone = true;
-  } catch (err: any) {
+  } catch (err) {
     logger.warn({ error: err?.message || String(err) }, '[RBAC BOOTSTRAP WARNING]');
-  }
-}
-
-async function migrateLegacyUserMemberships() {
-  try {
-    const users = await prisma.user.findMany({
-      where: {
-        tenantId: { not: null },
-        deletedAt: null,
-      },
-    });
-
-    console.log(`[RBAC MIGRATION] Iniciando migração de memberships para ${users.length} usuários.`);
-
-    let migratedCount = 0;
-    for (const user of users) {
-      if (!user.tenantId) continue;
-
-      // Wrap in a safe transaction with unique constraint check / findFirst
-      await prisma.$transaction(async (tx) => {
-        const existing = await tx.userTenantMembership.findUnique({
-          where: {
-            userId_tenantId: {
-              userId: user.id,
-              tenantId: user.tenantId!,
-            },
-          },
-        });
-
-        if (!existing) {
-          await tx.userTenantMembership.create({
-            data: {
-              userId: user.id,
-              tenantId: user.tenantId!,
-              role: user.role,
-              customPermissions: { set: user.customPermissions || [] },
-              active: user.active,
-            },
-          });
-          migratedCount++;
-        }
-      });
-    }
-
-    console.log(`[RBAC MIGRATION] Migração de memberships concluída com sucesso. ${migratedCount} novas memberships criadas.`);
-  } catch (err: any) {
-    console.error('[RBAC MIGRATION ERROR] Falha ao executar migração de memberships:', err);
   }
 }
 
@@ -351,10 +354,7 @@ async function migrateLegacyUserMemberships() {
 
       return res.status(200).json({
         status: 'ok',
-        api: 'healthy',
         database: 'healthy',
-        realtime: 'healthy',
-        storage: 'healthy',
         timestamp,
       });
     } catch (err: any) {
@@ -365,10 +365,7 @@ async function migrateLegacyUserMemberships() {
 
       return res.status(503).json({
         status: 'degraded',
-        api: 'healthy',
         database: 'unreachable',
-        realtime: 'degraded',
-        storage: 'degraded',
         timestamp,
       });
     }
@@ -379,18 +376,6 @@ async function migrateLegacyUserMemberships() {
   // -------------------------------------------------------------
   app.get('/api/public/tenant-branding', publicBrandingRateLimiter, async (req, res) => {
     try {
-      let session = null;
-      try {
-        session = await getAuthSession(req);
-      } catch (e) {}
-
-      const effectiveTenantId = session?.effectiveTenantId || (req.query.tenantId as string | undefined);
-
-      if (effectiveTenantId) {
-        const branding = await TenantResolver.resolveByTenantId(prisma, effectiveTenantId);
-        return res.json(branding);
-      }
-
       const host = TenantResolver.extractHost(req);
       const resolution = await TenantResolver.resolveByHost(prisma, host);
 
@@ -414,10 +399,8 @@ async function migrateLegacyUserMemberships() {
   // 1. POST /api/auth/login - Rate limited & Domain-aware
   app.post('/api/auth/login', authRateLimiter, async (req, res) => {
     try {
-      console.log('[AUTH DEBUG] request received', { email: req.body?.email ? String(req.body.email).trim().toLowerCase() : null });
       const { email, password } = req.body || {};
       if (!email || !password) {
-        console.log('[AUTH DEBUG] missing email or password');
         return res.status(400).json({ message: 'E-mail e senha são obrigatórios.' });
       }
 
@@ -426,9 +409,7 @@ async function migrateLegacyUserMemberships() {
 
       // Resolve domain context to enforce domain-level tenant boundaries
       const host = TenantResolver.extractHost(req);
-      console.log('[AUTH DEBUG] host resolved', { host });
       const domainResolution = await TenantResolver.resolveByHost(prisma, host);
-      console.log('[AUTH DEBUG] tenant resolution', { type: domainResolution.type, resolvedHost: domainResolution.resolvedHost, tenantId: domainResolution.tenant?.id });
 
       if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
         await AuditLogService.record(prisma, {
@@ -438,7 +419,6 @@ async function migrateLegacyUserMemberships() {
           oldData: { email: cleanEmail, reason: 'Tentativa de login em domínio não configurado ou inativo', host },
           req,
         });
-        console.log('[AUTH DEBUG] domain not configured or inactive', { host });
         return res.status(403).json({
           status: 'DOMAIN_NOT_CONFIGURED',
           message: 'Este domínio não está associado a nenhuma organização ativa do Sentinel Consig.',
@@ -452,17 +432,13 @@ async function migrateLegacyUserMemberships() {
           where: { email: { equals: cleanEmail, mode: 'insensitive' } },
           include: { tenant: true },
         });
-        console.log('[AUTH DEBUG] prisma user lookup', { found: !!dbUser, userId: dbUser?.id, userRole: dbUser?.role });
-      } catch (err: any) {
-        console.error('[AUTH DEBUG] prisma user lookup error', err?.message || String(err));
+      } catch (err) {
         console.warn('[AUTH] Falha ao consultar usuário no banco de dados:', err);
       }
 
       if (!dbUser) {
         // Equalize response time to prevent account enumeration
-        console.log('[AUTH DEBUG] user not found, executing dummy verify');
         await dummyVerify(cleanPassword);
-        console.log('[AUTH DEBUG] dummy verify completed');
 
         // Audit log failed login
         await AuditLogService.record(prisma, {
@@ -487,7 +463,6 @@ async function migrateLegacyUserMemberships() {
           oldData: { email: cleanEmail, reason: 'Usuário desativado' },
           req,
         });
-        console.log('[AUTH DEBUG] user is deactivated', { userId: dbUser.id });
         return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
@@ -511,7 +486,6 @@ async function migrateLegacyUserMemberships() {
             oldData: { email: cleanEmail, reason: 'Acesso negado: domínio de outra organização' },
             req,
           });
-          console.log('[AUTH DEBUG] domain-level tenant access rejected', { userTenantId: dbUser.tenantId, domainTenantId: domainResolution.tenant.id });
           return res.status(403).json({
             message: 'Este usuário não pertence a esta organização.',
           });
@@ -533,13 +507,11 @@ async function migrateLegacyUserMemberships() {
           oldData: { email: cleanEmail, reason },
           req,
         });
-        console.log('[AUTH DEBUG] tenant status is not active', { tenantId: dbUser.tenantId, status: dbUser.tenant.status });
         return res.status(403).json({ message: dbUser.tenant.status === 'SUSPENDED' ? 'Tenant suspenso.' : 'Tenant inativo ou cancelado.' });
       }
 
       // P0-A: Cryptographic password validation using Argon2id (No includes, no partial matches)
       const { valid: isPasswordValid, needsRehash } = await verifyPassword(cleanPassword, dbUser.passwordHash);
-      console.log('[AUTH DEBUG] password verification', { valid: isPasswordValid, needsRehash });
       if (!isPasswordValid) {
         await AuditLogService.record(prisma, {
           tenantId: dbUser.tenantId,
@@ -563,72 +535,9 @@ async function migrateLegacyUserMemberships() {
             data: { passwordHash: modernHash },
           });
           logger.info({ userId: dbUser.id }, '[AUTH] Hash de credencial atualizado para Argon2id com sucesso');
-          console.log('[AUTH DEBUG] legacy password rehashing completed', { userId: dbUser.id });
-        } catch (rehashErr: any) {
+        } catch (rehashErr) {
           logger.warn({ err: rehashErr }, '[AUTH] Falha não impeditiva na migração de hash');
-          console.warn('[AUTH DEBUG] legacy password rehashing failed', rehashErr?.message || String(rehashErr));
         }
-      }
-
-      // Resolve Session context fields
-      let effectiveTenantId = dbUser.tenantId || null;
-      let effectiveMembershipId = null;
-      let activeRole = dbUser.role;
-      let activePermissions = dbUser.customPermissions || [];
-
-      if (dbUser.role === 'PLATFORM_MASTER') {
-        if (domainResolution.tenant) {
-          effectiveTenantId = domainResolution.tenant.id;
-        } else if (!effectiveTenantId) {
-          const firstTenant = await prisma.tenant.findFirst({
-            where: { status: 'ACTIVE', deletedAt: null },
-          });
-          effectiveTenantId = firstTenant ? firstTenant.id : null;
-        }
-        activeRole = 'PLATFORM_MASTER';
-        activePermissions = [];
-      } else {
-        // Se a requisição foi feita em domínio/subdomínio específico de tenant, filtra pelo tenant resolvido
-        const hasDomainTenant = domainResolution.tenant && (domainResolution.type === 'PLATFORM_SUBDOMAIN' || domainResolution.type === 'CUSTOM_DOMAIN');
-
-        // Load active memberships
-        const activeMemberships = await prisma.userTenantMembership.findMany({
-          where: {
-            userId: dbUser.id,
-            active: true,
-            ...(hasDomainTenant ? { tenantId: domainResolution.tenant!.id } : {}),
-          },
-          include: { tenant: true },
-        });
-
-        // Filter memberships where tenant is active
-        const validMemberships = activeMemberships.filter(
-          m => m.tenant && m.tenant.status === 'ACTIVE' && !m.tenant.deletedAt
-        );
-
-        if (validMemberships.length === 0) {
-          await AuditLogService.record(prisma, {
-            tenantId: domainResolution.tenant?.id || dbUser.tenantId || null,
-            userId: dbUser.id,
-            userName: dbUser.name,
-            action: 'LOGIN_FAILED',
-            entity: 'AUTH',
-            entityId: dbUser.id,
-            oldData: { email: cleanEmail, reason: 'Usuário sem vínculo ativo com o tenant do domínio.' },
-            req,
-          });
-          console.log('[AUTH DEBUG] user has no active memberships for this domain context');
-          return res.status(403).json({
-            code: 'USER_HAS_NO_ACTIVE_MEMBERSHIPS',
-            message: 'Acesso restrito: você não possui permissão ou vínculo ativo nesta organização.',
-          });
-        }
-
-        const primaryMembership = validMemberships[0];
-        effectiveTenantId = primaryMembership.tenantId;
-        effectiveMembershipId = primaryMembership.id;
-        activeRole = primaryMembership.role;
-        activePermissions = primaryMembership.customPermissions || [];
       }
 
       // Safe user output object (NO PASSWORDS, NO HASHES)
@@ -636,10 +545,10 @@ async function migrateLegacyUserMemberships() {
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
-        role: activeRole,
+        role: dbUser.role,
         active: dbUser.active,
-        tenantId: effectiveTenantId || undefined,
-        customPermissions: activePermissions,
+        tenantId: dbUser.tenantId || undefined,
+        customPermissions: dbUser.customPermissions || [],
         isMasterProtected: dbUser.isMasterProtected || false,
         mustChangePassword: dbUser.mustChangePassword,
         createdAt: dbUser.createdAt.toISOString(),
@@ -658,15 +567,9 @@ async function migrateLegacyUserMemberships() {
             ipAddress: req.ip || '127.0.0.1',
             userAgent: (req.headers['user-agent'] as string) || 'Unknown',
             expiresAt,
-            effectiveTenantId,
-            effectiveMembershipId,
-            activeRole,
-            activePermissions: { set: activePermissions },
           },
         });
-        console.log('[AUTH DEBUG] session creation', { userId: dbUser.id, effectiveTenantId, activeRole });
-      } catch (sessErr: any) {
-        console.error('[AUTH DEBUG] session creation error', sessErr?.message || String(sessErr));
+      } catch (sessErr) {
         console.warn('[AUTH] Não foi possível persistir sessão no banco:', sessErr);
         return res.status(500).json({ message: 'Erro ao criar sessão no servidor.' });
       }
@@ -694,17 +597,14 @@ async function migrateLegacyUserMemberships() {
         },
         req,
       });
-      console.log('[AUTH DEBUG] audit log success', { userId: dbUser.id });
 
       // P0-B: NEVER return the session token in the JSON body.
       // The session token is transmitted solely via the HttpOnly cookie.
-      console.log('[AUTH DEBUG] response sent', { userId: dbUser.id });
       return res.json({
         success: true,
         user: safeUser,
       });
-    } catch (error: any) {
-      console.error('[AUTH DEBUG] critical unhandled login error', error?.message || String(error));
+    } catch (error) {
       console.error('[AUTH ERROR]', error);
       return res.status(500).json({ message: 'Erro interno durante a autenticação.' });
     }
@@ -767,7 +667,34 @@ async function migrateLegacyUserMemberships() {
     }
   });
 
+
+  app.post('/api/auth/update-password', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autorizado.' });
+      
+      const { password } = req.body;
+      if (!password) return res.status(400).json({ error: 'Senha é obrigatória.' });
+
+      
+      const passwordHash = await hashPassword(password);
+      
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        }
+      });
+      
+      return res.json({ success: true });
+    } catch(e) {
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
   // 3. GET /api/auth/session
+
   app.get('/api/auth/session', async (req, res) => {
     try {
       const host = TenantResolver.extractHost(req);
@@ -781,8 +708,17 @@ async function migrateLegacyUserMemberships() {
         });
       }
 
-      const session = await getAuthSession(req);
-      if (!session || !session.user) {
+      const token = extractSessionToken(req);
+      if (!token) {
+        return res.status(401).json({ authenticated: false, message: 'Nenhuma sessão ativa.' });
+      }
+
+      const session = await prisma.session.findUnique({
+        where: { token },
+        include: { user: { include: { tenant: true } } },
+      });
+
+      if (!session || session.expiresAt < new Date()) {
         res.clearCookie('cg_session_id', {
           httpOnly: true,
           secure: isRequestHttps(req),
@@ -792,13 +728,74 @@ async function migrateLegacyUserMemberships() {
         return res.status(401).json({ authenticated: false, message: 'Sessão expirada ou inválida.' });
       }
 
+      if (
+        !session.user.active ||
+        (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
+      ) {
+        await AdminContextManager.clearContext(session.id, prisma);
+        await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+        res.clearCookie('cg_session_id', {
+          httpOnly: true,
+          secure: isRequestHttps(req),
+          sameSite: 'lax',
+          path: '/',
+        });
+        return res.status(403).json({ authenticated: false, message: 'Tenant suspenso ou usuário desativado.' });
+      }
+
+      // Check active AdminContext for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
+      let adminContext: any = null;
+      let effectiveTenantId = session.user.tenantId;
+
+      if (session.user.role === 'PLATFORM_MASTER') {
+        // 1. Primary: PostgreSQL persistent session columns
+        if (session.adminTargetTenantId && session.adminContextExpiresAt) {
+          if (new Date(session.adminContextExpiresAt) > new Date()) {
+            const targetTenant = await prisma.tenant.findUnique({
+              where: { id: session.adminTargetTenantId },
+            });
+            if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
+              adminContext = {
+                targetTenantId: targetTenant.id,
+                targetTenantName: session.adminTargetTenantName || targetTenant.name,
+                switchedAt: session.adminSwitchedAt || session.createdAt,
+                expiresAt: session.adminContextExpiresAt,
+              };
+              effectiveTenantId = targetTenant.id;
+              AdminContextManager.warmCache(session.id, adminContext);
+            } else {
+              // Tenant deleted or cancelled: clear invalid persistent context
+              await AdminContextManager.clearContext(session.id, prisma);
+            }
+          } else {
+            // Expired context: clear persistent state
+            await AdminContextManager.clearContext(session.id, prisma);
+          }
+        } else {
+          // 2. Fallback: in-memory cache
+          adminContext = AdminContextManager.getContext(session.id);
+          if (adminContext) {
+            effectiveTenantId = adminContext.targetTenantId;
+            await prisma.session.update({
+              where: { id: session.id },
+              data: {
+                adminTargetTenantId: adminContext.targetTenantId,
+                adminTargetTenantName: adminContext.targetTenantName,
+                adminSwitchedAt: adminContext.switchedAt,
+                adminContextExpiresAt: adminContext.expiresAt,
+              },
+            }).catch(() => {});
+          }
+        }
+      }
+
       const safeUser = {
         id: session.user.id,
         name: session.user.name,
         email: session.user.email,
         role: session.user.role,
         active: session.user.active,
-        tenantId: session.effectiveTenantId || undefined,
+        tenantId: session.user.tenantId || undefined,
         customPermissions: session.user.customPermissions || [],
         isMasterProtected: session.user.isMasterProtected || false,
         mustChangePassword: session.user.mustChangePassword,
@@ -809,14 +806,13 @@ async function migrateLegacyUserMemberships() {
       return res.json({
         authenticated: true,
         user: safeUser,
-        effectiveTenantId: session.effectiveTenantId,
-        effectiveMembershipId: session.effectiveMembershipId,
-        adminContext: session.adminContext
+        effectiveTenantId,
+        adminContext: adminContext
           ? {
-              targetTenantId: session.adminContext.targetTenantId,
-              targetTenantName: session.adminContext.targetTenantName,
-              switchedAt: session.adminContext.switchedAt,
-              expiresAt: session.adminContext.expiresAt,
+              targetTenantId: adminContext.targetTenantId,
+              targetTenantName: adminContext.targetTenantName,
+              switchedAt: adminContext.switchedAt,
+              expiresAt: adminContext.expiresAt,
             }
           : null,
       });
@@ -873,112 +869,6 @@ async function migrateLegacyUserMemberships() {
     }
   });
 
-  // 5. POST /api/auth/switch-tenant
-  app.post('/api/auth/switch-tenant', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) {
-        return res.status(401).json({ message: 'Sessão inválida ou expirada.' });
-      }
-
-      const { tenantId } = req.body || {};
-      if (!tenantId) {
-        return res.status(400).json({ message: 'O ID da organização é obrigatório.' });
-      }
-
-      if (session.user.role === 'PLATFORM_MASTER') {
-        const targetTenant = await prisma.tenant.findUnique({
-          where: { id: tenantId, deletedAt: null },
-        });
-
-        if (!targetTenant || targetTenant.status === 'CANCELLED') {
-          return res.status(404).json({ message: 'Organização não encontrada ou cancelada.' });
-        }
-
-        // Update session context switch fields
-        await prisma.session.update({
-          where: { id: session.id },
-          data: {
-            effectiveTenantId: targetTenant.id,
-            effectiveMembershipId: null,
-            activeRole: 'PLATFORM_MASTER',
-            activePermissions: { set: [] },
-            adminTargetTenantId: targetTenant.id,
-            adminTargetTenantName: targetTenant.name,
-            adminSwitchedAt: new Date(),
-            adminContextExpiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours
-          },
-        });
-
-        // Audit Log
-        await AuditLogService.record(prisma, {
-          tenantId: targetTenant.id,
-          userId: session.userId,
-          userName: session.user.name,
-          action: 'PLATFORM_MASTER_CONTEXT_SWITCH',
-          entity: 'Session',
-          entityId: session.id,
-          newData: { targetTenantId: targetTenant.id },
-          req,
-        });
-
-        return res.json({
-          success: true,
-          role: 'PLATFORM_MASTER',
-          tenantId: targetTenant.id,
-          customPermissions: [],
-        });
-      } else {
-        // Standard user: validate membership
-        const membership = await prisma.userTenantMembership.findFirst({
-          where: {
-            userId: session.userId,
-            tenantId,
-            active: true,
-          },
-          include: { tenant: true },
-        });
-
-        if (!membership || !membership.tenant || membership.tenant.status !== 'ACTIVE' || membership.tenant.deletedAt) {
-          return res.status(403).json({ message: 'Você não possui permissão ou vínculo ativo com esta organização.' });
-        }
-
-        // Update session
-        await prisma.session.update({
-          where: { id: session.id },
-          data: {
-            effectiveTenantId: membership.tenantId,
-            effectiveMembershipId: membership.id,
-            activeRole: membership.role,
-            activePermissions: { set: membership.customPermissions || [] },
-          },
-        });
-
-        // Audit Log
-        await AuditLogService.record(prisma, {
-          tenantId: membership.tenantId,
-          userId: session.userId,
-          userName: session.user.name,
-          action: 'USER_CONTEXT_SWITCH',
-          entity: 'Session',
-          entityId: session.id,
-          newData: { targetTenantId: membership.tenantId },
-          req,
-        });
-
-        return res.json({
-          success: true,
-          role: membership.role,
-          tenantId: membership.tenantId,
-          customPermissions: membership.customPermissions || [],
-        });
-      }
-    } catch (err: any) {
-      console.error('[SWITCH TENANT ERROR]', err);
-      return res.status(500).json({ message: 'Erro interno ao trocar de organização.' });
-    }
-  });
-
   // Helper middleware/function for tenant context & session auth with instant suspension protection
   const getAuthSession = async (req: express.Request) => {
     const token = extractSessionToken(req);
@@ -991,8 +881,11 @@ async function migrateLegacyUserMemberships() {
 
     if (!session || session.expiresAt < new Date()) return null;
 
-    // Instant suspension/inactivation protection: if user is not active, kill session
-    if (!session.user.active) {
+    // Instant suspension/inactivation protection: if user is not active or non-master tenant is not ACTIVE, kill session
+    if (
+      !session.user.active ||
+      (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && session.user.tenant.status !== 'ACTIVE')
+    ) {
       await AdminContextManager.clearContext(session.id, prisma);
       await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
       return null;
@@ -1005,17 +898,22 @@ async function migrateLegacyUserMemberships() {
     if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
       return null;
     }
+    if (
+      domainResolution.tenant &&
+      (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
+    ) {
+      if (session.user.role !== 'PLATFORM_MASTER' && session.user.tenantId !== domainResolution.tenant.id) {
+        // Cross-tenant access forbidden: user from Tenant A accessing domain of Tenant B
+        return null;
+      }
+    }
 
-    let effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
-    let effectiveMembershipId = session.effectiveMembershipId;
-    let activeRole = session.activeRole || session.user.role;
-    let activePermissions = session.activePermissions || session.user.customPermissions || [];
+    // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
+    let effectiveTenantId = session.user.tenantId;
+    let adminContext: any = null;
 
     if (session.user.role === 'PLATFORM_MASTER') {
-      // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
-      effectiveTenantId = session.user.tenantId || effectiveTenantId;
-      let adminContext: any = null;
-
+      // 1. Primary: PostgreSQL persistent session columns
       if (session.adminTargetTenantId && session.adminContextExpiresAt) {
         if (new Date(session.adminContextExpiresAt) > new Date()) {
           const targetTenant = await prisma.tenant.findUnique({
@@ -1040,7 +938,7 @@ async function migrateLegacyUserMemberships() {
           await AdminContextManager.clearContext(session.id, prisma);
         }
       } else {
-        // Fallback: in-memory cache
+        // 2. Fallback: in-memory cache
         adminContext = AdminContextManager.getContext(session.id);
         if (adminContext) {
           effectiveTenantId = adminContext.targetTenantId;
@@ -1055,143 +953,13 @@ async function migrateLegacyUserMemberships() {
           }).catch(() => {});
         }
       }
-
-      // PLATFORM_MASTER has global access
-      activeRole = 'PLATFORM_MASTER';
-      activePermissions = [];
-
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          role: activeRole as any,
-          customPermissions: activePermissions,
-        },
-        effectiveTenantId,
-        effectiveMembershipId: null,
-        adminContext,
-      };
-    } else {
-      // Standard user: validate domain context if target matches domain organization
-      if (
-        domainResolution.tenant &&
-        (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
-      ) {
-        if (session.user.tenantId !== domainResolution.tenant.id) {
-          // Cross-tenant access forbidden
-          return null;
-        }
-      }
-
-      // Standard user: Must have active membership in the effectiveTenantId
-      if (!effectiveTenantId) {
-        // Find first active membership to initialize context
-        const firstMem = await prisma.userTenantMembership.findFirst({
-          where: { userId: session.userId, active: true },
-          include: { tenant: true },
-        });
-
-        if (!firstMem || !firstMem.tenant || firstMem.tenant.status !== 'ACTIVE' || firstMem.tenant.deletedAt) {
-          // Revoke session
-          await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
-          return null;
-        }
-
-        effectiveTenantId = firstMem.tenantId;
-        effectiveMembershipId = firstMem.id;
-        activeRole = firstMem.role;
-        activePermissions = firstMem.customPermissions;
-
-        // Persist on session
-        await prisma.session.update({
-          where: { id: session.id },
-          data: {
-            effectiveTenantId,
-            effectiveMembershipId,
-            activeRole,
-            activePermissions: { set: activePermissions },
-          },
-        }).catch(() => {});
-      }
-
-      // Query database to ensure membership is still active in real-time
-      const membership = await prisma.userTenantMembership.findFirst({
-        where: {
-          userId: session.userId,
-          tenantId: effectiveTenantId,
-          active: true,
-        },
-        include: { tenant: true },
-      });
-
-      if (!membership || !membership.tenant || membership.tenant.status !== 'ACTIVE' || membership.tenant.deletedAt) {
-        // Membership revoked or organization suspended/deleted, try to fallback or revoke session
-        const anotherMem = await prisma.userTenantMembership.findFirst({
-          where: {
-            userId: session.userId,
-            active: true,
-            tenantId: { not: effectiveTenantId },
-          },
-          include: { tenant: true },
-        });
-
-        const fallbackMem = anotherMem && anotherMem.tenant && anotherMem.tenant.status === 'ACTIVE' && !anotherMem.tenant.deletedAt ? anotherMem : null;
-
-        if (!fallbackMem) {
-          // No more active memberships: revoke session
-          await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
-          return null;
-        }
-
-        // Fallback to the other active membership
-        effectiveTenantId = fallbackMem.tenantId;
-        effectiveMembershipId = fallbackMem.id;
-        activeRole = fallbackMem.role;
-        activePermissions = fallbackMem.customPermissions;
-
-        await prisma.session.update({
-          where: { id: session.id },
-          data: {
-            effectiveTenantId,
-            effectiveMembershipId,
-            activeRole,
-            activePermissions: { set: activePermissions },
-          },
-        }).catch(() => {});
-      } else {
-        // Live update session cached values if different
-        if (
-          session.activeRole !== membership.role ||
-          session.effectiveMembershipId !== membership.id ||
-          JSON.stringify(session.activePermissions) !== JSON.stringify(membership.customPermissions)
-        ) {
-          activeRole = membership.role;
-          activePermissions = membership.customPermissions;
-          effectiveMembershipId = membership.id;
-
-          await prisma.session.update({
-            where: { id: session.id },
-            data: {
-              effectiveMembershipId,
-              activeRole,
-              activePermissions: { set: activePermissions },
-            },
-          }).catch(() => {});
-        }
-      }
-
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          role: activeRole as any,
-          customPermissions: activePermissions,
-        },
-        effectiveTenantId,
-        effectiveMembershipId,
-        adminContext: null,
-      };
     }
+
+    return {
+      ...session,
+      effectiveTenantId,
+      adminContext,
+    };
   };
 
   // -------------------------------------------------------------
@@ -4017,17 +3785,18 @@ async function migrateLegacyUserMemberships() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const whereCondition = isPlatformMaster && !session.adminContext
         ? { deletedAt: null }
-        : {
-            deletedAt: null,
-            OR: [
-              { tenantId: tenantId || undefined },
-              { memberships: { some: { tenantId: tenantId || undefined, active: true } } }
-            ]
-          };
+        : { tenantId: tenantId || undefined, deletedAt: null };
 
       const users = await prisma.user.findMany({
         where: whereCondition,
         orderBy: { name: 'asc' },
+        include: {
+          memberships: {
+            include: {
+              tenant: true
+            }
+          }
+        }
       });
 
       const cleanUsers = users.map(u => {
@@ -4055,7 +3824,7 @@ async function migrateLegacyUserMemberships() {
         return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.create'." });
       }
 
-      const { id, name, email, password, role, customPermissions, tenantId, phone } = req.body;
+      const { id, name, email, password, role, customPermissions, tenantId, phone, memberships } = req.body;
       if (!name || !email || !password) {
         return res.status(400).json({ error: 'Nome, E-mail e Senha são obrigatórios.' });
       }
@@ -4082,24 +3851,13 @@ async function migrateLegacyUserMemberships() {
           name: String(name).trim(),
           email: String(email).trim().toLowerCase(),
           passwordHash: await hashPassword(String(password).trim()),
+          mustChangePassword: true,
           role: role || 'DIGITADOR',
           customPermissions: cleanPermissions,
           phone: phone || null,
           active: true,
         },
       });
-
-      if (user.tenantId) {
-        await prisma.userTenantMembership.create({
-          data: {
-            userId: user.id,
-            tenantId: user.tenantId,
-            role: user.role,
-            customPermissions: { set: user.customPermissions },
-            active: user.active,
-          },
-        });
-      }
 
       await AuditLogService.record(prisma, {
         tenantId: targetTenantId || null,
@@ -4142,7 +3900,7 @@ async function migrateLegacyUserMemberships() {
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { id } = req.params;
-      const { name, active, role, customPermissions, tenantId, phone, password } = req.body;
+      const { name, active, role, customPermissions, tenantId, phone, password, memberships } = req.body;
 
       const isSelf = id === session.user.id;
       const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
@@ -4229,29 +3987,6 @@ async function migrateLegacyUserMemberships() {
         },
       });
 
-      if (updatedUser.tenantId) {
-        await prisma.userTenantMembership.upsert({
-          where: {
-            userId_tenantId: {
-              userId: updatedUser.id,
-              tenantId: updatedUser.tenantId,
-            },
-          },
-          create: {
-            userId: updatedUser.id,
-            tenantId: updatedUser.tenantId,
-            role: updatedUser.role,
-            customPermissions: { set: updatedUser.customPermissions },
-            active: updatedUser.active,
-          },
-          update: {
-            role: updatedUser.role,
-            customPermissions: { set: updatedUser.customPermissions },
-            active: updatedUser.active,
-          },
-        });
-      }
-
       for (const item of auditActions) {
         await AuditLogService.record(prisma, {
           tenantId: updatedUser.tenantId,
@@ -4335,43 +4070,10 @@ async function migrateLegacyUserMemberships() {
         }
       }
 
-      const currentTenantId = session.effectiveTenantId;
-
-      if (currentTenantId) {
-        // Remove membership do tenant atual de forma atômica
-        await prisma.userTenantMembership.deleteMany({
-          where: {
-            userId: id,
-            tenantId: currentTenantId,
-          },
-        });
-
-        // Se o usuário não possuir mais nenhum outro membership ativo na plataforma, fazemos o soft-delete global
-        const remainingMemberships = await prisma.userTenantMembership.count({
-          where: {
-            userId: id,
-            active: true,
-          },
-        });
-
-        if (remainingMemberships === 0) {
-          await prisma.user.update({
-            where: { id },
-            data: { deletedAt: new Date(), active: false },
-          });
-        }
-      } else {
-        // Exclusão global direta (Platform Master fora de contexto ou escopo raiz)
-        await prisma.user.update({
-          where: { id },
-          data: { deletedAt: new Date(), active: false },
-        });
-
-        // Deleta todos os memberships associados globalmente
-        await prisma.userTenantMembership.deleteMany({
-          where: { userId: id },
-        });
-      }
+      await prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date(), active: false },
+      });
 
       await AuditLogService.record(prisma, {
         tenantId: targetUser.tenantId,
@@ -4397,58 +4099,6 @@ async function migrateLegacyUserMemberships() {
     } catch (err) {
       console.error('[DELETE /api/users/:id ERROR]', err);
       return res.status(500).json({ error: 'Erro ao excluir usuário.' });
-    }
-  });
-
-  app.post('/api/users/:id/reset-password', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
-
-      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
-      const userRole = session.user.role as Role;
-      const userCustomPerms = session.user.customPermissions || [];
-
-      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.update')) {
-        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
-      }
-
-      const { id } = req.params;
-      const targetUser = await prisma.user.findFirst({ where: { id } });
-      if (!targetUser) {
-        return res.status(404).json({ error: 'Usuário não encontrado.' });
-      }
-
-      if (!isPlatformMaster && targetUser.tenantId !== session.user.tenantId) {
-        return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
-      }
-
-      const tempPassword = 'Mudar@' + crypto.randomBytes(4).toString('hex');
-      const hashedPassword = await hashPassword(tempPassword);
-
-      const updated = await prisma.user.update({
-        where: { id },
-        data: {
-          passwordHash: hashedPassword,
-          mustChangePassword: true,
-        },
-      });
-
-      await AuditLogService.record(prisma, {
-        tenantId: targetUser.tenantId,
-        userId: session.user.id,
-        userName: session.user.name,
-        action: 'USER_PASSWORD_RESET',
-        entity: 'User',
-        entityId: id,
-        req,
-      });
-
-      const { passwordHash, ...safeUser } = updated;
-      return res.json({ user: safeUser, tempPassword });
-    } catch (err) {
-      console.error('[POST /api/users/:id/reset-password ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao redefinir senha do usuário.' });
     }
   });
 
@@ -5103,14 +4753,13 @@ async function migrateLegacyUserMemberships() {
           },
         });
 
-        // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial ou reativa se existente, e cria o membership correspondente
+        // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial
         if (adminEmail && adminName) {
           const cleanAdminEmail = String(adminEmail).trim().toLowerCase();
-          let targetUser = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
-
-          if (!targetUser) {
+          const existingUser = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
+          if (!existingUser) {
             const initialHashedPassword = await hashPassword('Mudar@123');
-            targetUser = await tx.user.create({
+            await tx.user.create({
               data: {
                 tenantId: newTenant.id,
                 name: String(adminName).trim(),
@@ -5121,38 +4770,7 @@ async function migrateLegacyUserMemberships() {
                 mustChangePassword: true,
               },
             });
-          } else {
-            // Se o usuário existir mas estiver com soft-delete, reativamos
-            if (targetUser.deletedAt) {
-              targetUser = await tx.user.update({
-                where: { id: targetUser.id },
-                data: {
-                  deletedAt: null,
-                  active: true,
-                },
-              });
-            }
           }
-
-          // Cria ou atualiza o UserTenantMembership para este tenant
-          await tx.userTenantMembership.upsert({
-            where: {
-              userId_tenantId: {
-                userId: targetUser.id,
-                tenantId: newTenant.id,
-              },
-            },
-            update: {
-              role: 'MASTER',
-              active: true,
-            },
-            create: {
-              userId: targetUser.id,
-              tenantId: newTenant.id,
-              role: 'MASTER',
-              active: true,
-            },
-          });
         }
 
         return newTenant;
@@ -5571,7 +5189,11 @@ async function migrateLegacyUserMemberships() {
       }
 
       // Protect root tenant
-      if (tenant.slug === 'sentinel-consig') {
+      if (
+        tenant.slug === 'evolve' ||
+        tenant.slug === 'sentinel-consig' ||
+        tenant.id === 'tenant_evolve'
+      ) {
         return res.status(403).json({ error: 'A empresa raiz da plataforma não pode ser excluída.' });
       }
 
@@ -5699,17 +5321,25 @@ async function migrateLegacyUserMemberships() {
       }
 
       // STEP 3: proteger tenant raiz
-      currentStep = "STEP 3: proteger tenant raiz";
-      const rootSlugs = new Set(["sentinel-consig"]);
-      const isLiteralRoot = uniqueIds.some((id) => rootSlugs.has(id));
+      currentStep = 'STEP 3: proteger tenant raiz';
+      const rootSlugs = new Set(['sentinel-consig', 'evolve', 'master']);
+      const rootKnownIds = new Set(['tenant_evolve', 'sentinel-consig']);
+
+      const isLiteralRoot = uniqueIds.some((id) => rootSlugs.has(id) || rootKnownIds.has(id));
+
       const rootTenants = await prisma.tenant.findMany({
         where: {
-          slug: "sentinel-consig",
+          OR: [
+            { slug: 'sentinel-consig' },
+            { slug: 'evolve' },
+            { id: 'tenant_evolve' },
+          ],
         },
         select: { id: true, slug: true, name: true },
       });
       const rootTenantIds = new Set(rootTenants.map((rt) => rt.id));
       const containsRootId = uniqueIds.some((id) => rootTenantIds.has(id));
+
       if (isLiteralRoot || containsRootId) {
         return res.status(403).json({
           error: 'Operação rejeitada: A empresa raiz da plataforma (sentinel-consig) não pode ser excluída.',
@@ -6095,53 +5725,19 @@ async function migrateLegacyUserMemberships() {
       const actorName = session.user.name;
       const actorRole = session.user.role;
 
-      const currentTenantId = session.effectiveTenantId;
-
       // STEP 7 a 11: Executar transação atômica
       await prisma.$transaction(
         async (tx) => {
-          if (currentTenantId) {
-            // STEP 7: Deleta memberships do tenant atual
-            currentStep = 'STEP 7: delete memberships';
-            await tx.userTenantMembership.deleteMany({
-              where: {
-                userId: { in: targetUserIds },
-                tenantId: currentTenantId,
-              },
-            });
-
-            // Se o usuário não possuir mais nenhum membership ativo na plataforma, faz soft-delete global
-            for (const id of targetUserIds) {
-              const remainingMems = await tx.userTenantMembership.count({
-                where: { userId: id, active: true },
-              });
-              if (remainingMems === 0) {
-                await tx.user.update({
-                  where: { id },
-                  data: {
-                    active: false,
-                    deletedAt: now,
-                    deletedBy: actorId,
-                  },
-                });
-              }
-            }
-          } else {
-            // STEP 7: soft delete dos usuários selecionados globalmente
-            currentStep = 'STEP 7: soft delete usuários';
-            await tx.user.updateMany({
-              where: { id: { in: targetUserIds } },
-              data: {
-                active: false,
-                deletedAt: now,
-                deletedBy: actorId,
-              },
-            });
-
-            await tx.userTenantMembership.deleteMany({
-              where: { userId: { in: targetUserIds } },
-            });
-          }
+          // STEP 7: soft delete dos usuários selecionados
+          currentStep = 'STEP 7: soft delete usuários';
+          await tx.user.updateMany({
+            where: { id: { in: targetUserIds } },
+            data: {
+              active: false,
+              deletedAt: now,
+              deletedBy: actorId,
+            },
+          });
 
           // STEP 8: invalidar sessões ativas dos usuários
           currentStep = 'STEP 8: invalidar sessões';
@@ -6309,28 +5905,20 @@ async function migrateLegacyUserMemberships() {
         return res.status(400).json({ error: 'targetTenantId é obrigatório.' });
       }
 
-      const targetTenant = await prisma.tenant.findUnique({ where: { id: targetTenantId, deletedAt: null } });
-      if (!targetTenant) {
+      const targetTenant = await prisma.tenant.findUnique({ where: { id: targetTenantId } });
+      if (!targetTenant || targetTenant.deletedAt) {
         return res.status(404).json({ error: 'Tenant alvo não encontrado.' });
       }
 
-      const switchedAt = new Date();
-      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const contextData = await AdminContextManager.setContext(
+        session.id,
+        targetTenant.id,
+        targetTenant.name,
+        session.user.id,
+        prisma
+      );
 
-      await prisma.session.update({
-        where: { id: session.id },
-        data: {
-          effectiveTenantId: targetTenant.id,
-          effectiveMembershipId: null,
-          activeRole: 'PLATFORM_MASTER',
-          activePermissions: { set: [] },
-          adminTargetTenantId: targetTenant.id,
-          adminTargetTenantName: targetTenant.name,
-          adminSwitchedAt: switchedAt,
-          adminContextExpiresAt: expiresAt,
-        },
-      });
-
+      // Auditoria obrigatória de início de contexto administrativo
       await AuditLogService.record(prisma, {
         tenantId: targetTenant.id,
         userId: session.user.id,
@@ -6342,7 +5930,7 @@ async function migrateLegacyUserMemberships() {
           platformMasterUserId: session.user.id,
           targetTenantId: targetTenant.id,
           targetTenantName: targetTenant.name,
-          timestamp: switchedAt.toISOString(),
+          timestamp: contextData.switchedAt.toISOString(),
         },
         req,
       });
@@ -6351,11 +5939,11 @@ async function migrateLegacyUserMemberships() {
         success: true,
         message: `Contexto administrativo alternado para '${targetTenant.name}'.`,
         context: {
-          targetTenantId: targetTenant.id,
-          targetTenantName: targetTenant.name,
-          switchedAt,
-          expiresAt,
-        }
+          targetTenantId: contextData.targetTenantId,
+          targetTenantName: contextData.targetTenantName,
+          switchedAt: contextData.switchedAt,
+          expiresAt: contextData.expiresAt,
+        },
       });
     } catch (err) {
       console.error('[POST /api/saas/context-switch ERROR]', err);
@@ -6375,33 +5963,21 @@ async function migrateLegacyUserMemberships() {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
-      const currentTargetTenantId = session.adminTargetTenantId;
+      const currentContext = session.adminContext || AdminContextManager.getContext(session.id);
+      await AdminContextManager.clearContext(session.id, prisma);
 
-      await prisma.session.update({
-        where: { id: session.id },
-        data: {
-          effectiveTenantId: null,
-          effectiveMembershipId: null,
-          activeRole: 'PLATFORM_MASTER',
-          activePermissions: { set: [] },
-          adminTargetTenantId: null,
-          adminTargetTenantName: null,
-          adminSwitchedAt: null,
-          adminContextExpiresAt: null,
-        },
-      });
-
-      if (currentTargetTenantId) {
+      if (currentContext) {
+        // Auditoria de encerramento de contexto
         await AuditLogService.record(prisma, {
-          tenantId: currentTargetTenantId,
+          tenantId: currentContext.targetTenantId,
           userId: session.user.id,
           userName: session.user.name,
           action: 'admin.context_exited',
           entity: 'Tenant',
-          entityId: currentTargetTenantId,
+          entityId: currentContext.targetTenantId,
           newData: {
             platformMasterUserId: session.user.id,
-            targetTenantId: currentTargetTenantId,
+            targetTenantId: currentContext.targetTenantId,
             timestamp: new Date().toISOString(),
           },
           req,
@@ -6429,15 +6005,8 @@ async function migrateLegacyUserMemberships() {
         return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
       }
 
-      const active = Boolean(session.adminTargetTenantId);
-      const context = active ? {
-        targetTenantId: session.adminTargetTenantId,
-        targetTenantName: session.adminTargetTenantName,
-        switchedAt: session.adminSwitchedAt,
-        expiresAt: session.adminContextExpiresAt,
-      } : null;
-
-      return res.json({ active, context });
+      const context = session.adminContext || AdminContextManager.getContext(session.id);
+      return res.json({ active: Boolean(context), context });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao obter status do contexto.' });
     }
@@ -6951,327 +6520,6 @@ async function migrateLegacyUserMemberships() {
   };
   app.delete('/api/admin/tenants/:id/domains/:domainId', deleteDomainHandler);
   app.delete('/api/saas/tenants/:id/domains/:domainId', deleteDomainHandler);
-
-  // -------------------------------------------------------------
-  // SERVER-SIDE BACKUP & RESTORE API (P0.2)
-  // -------------------------------------------------------------
-
-  // 1. POST /api/admin/backups - Create backup snapshot
-  app.post('/api/admin/backups', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) {
-        return res.status(401).json({ error: 'Não autenticado' });
-      }
-
-      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
-      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
-
-      if (!isPlatformMaster && !hasPermission(session.user.role, session.user.customPermissions, 'settings.manage' as Permission)) {
-        return res.status(403).json({ error: 'Sem permissão para criar cópias de segurança.' });
-      }
-
-      const tenantId = isPlatformMaster && !req.body.tenantId ? null : (req.body.tenantId || effectiveTenantId);
-      const label = req.body.label || `Cópia Manual ${new Date().toLocaleString('pt-BR')}`;
-      const type = req.body.type || 'MANUAL';
-
-      const tenantWhere = tenantId ? { tenantId } : {};
-
-      const [
-        users,
-        clients,
-        proposals,
-        banks,
-        products,
-        statuses,
-        partners,
-        promoters,
-        tasks,
-        financialEntries,
-        whiteLabels
-      ] = await Promise.all([
-        prisma.user.findMany({ where: tenantId ? { tenantId } : {}, select: { id: true, name: true, email: true, role: true, active: true, tenantId: true, createdAt: true, updatedAt: true } }),
-        prisma.client.findMany({ where: tenantWhere }),
-        prisma.proposal.findMany({ where: tenantWhere }),
-        prisma.bank.findMany({ where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {} }),
-        prisma.product.findMany({ where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {} }),
-        prisma.proposalStatus.findMany({ where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : {} }),
-        prisma.partner.findMany({ where: tenantWhere }),
-        prisma.promoter.findMany({ where: tenantWhere }),
-        prisma.task.findMany({ where: tenantWhere }),
-        prisma.financialEntry.findMany({ where: tenantWhere }),
-        prisma.whiteLabelConfig.findMany({ where: tenantWhere }),
-      ]);
-
-      const dumpPayload = {
-        metadata: {
-          version: '2.0.0',
-          engine: 'PostgreSQL',
-          tenantId,
-          type,
-          label,
-          createdAt: new Date().toISOString(),
-          createdById: session.user.id,
-          createdByName: session.user.name,
-        },
-        data: {
-          users,
-          clients,
-          proposals,
-          banks,
-          products,
-          statuses,
-          partners,
-          promoters,
-          tasks,
-          financialEntries,
-          whiteLabels,
-          holidays: [],
-        },
-      };
-
-      const dumpStr = JSON.stringify(dumpPayload, null, 2);
-      const sizeBytes = BigInt(Buffer.byteLength(dumpStr, 'utf-8'));
-      const checksumSha256 = crypto.createHash('sha256').update(dumpStr).digest('hex');
-      const recordsCount = users.length + clients.length + proposals.length + tasks.length + financialEntries.length;
-
-      const backupId = `bkp_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const storagePath = await backupStorageService.putBackup(backupId, dumpStr);
-
-      const backup = await prisma.backup.create({
-        data: {
-          id: backupId,
-          tenantId: tenantId || null,
-          label,
-          type: type as any,
-          status: 'COMPLETED',
-          sizeBytes,
-          recordsCount,
-          checksumSha256,
-          storagePath,
-          createdById: session.user.id,
-        },
-      });
-
-      await AuditLogService.record(prisma, {
-        tenantId,
-        userId: session.user.id,
-        userName: session.user.name,
-        action: 'backup.created',
-        entity: 'Backup',
-        entityId: backup.id,
-        newData: { label, type, recordsCount, sizeBytes: sizeBytes.toString(), checksumSha256 },
-        req,
-      });
-
-      return res.status(201).json({
-        success: true,
-        backup: {
-          ...backup,
-          sizeBytes: backup.sizeBytes.toString(),
-        },
-      });
-    } catch (err: any) {
-      console.error('[POST /api/admin/backups ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao criar backup no servidor: ' + (err.message || String(err)) });
-    }
-  });
-
-  // 2. GET /api/admin/backups - List backups
-  app.get('/api/admin/backups', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) {
-        return res.status(401).json({ error: 'Não autenticado' });
-      }
-
-      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
-      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
-
-      if (!isPlatformMaster && !hasPermission(session.user.role, session.user.customPermissions, 'settings.manage' as Permission)) {
-        return res.status(403).json({ error: 'Sem permissão para visualizar cópias de segurança.' });
-      }
-
-      const where = isPlatformMaster
-        ? (req.query.tenantId ? { tenantId: String(req.query.tenantId) } : {})
-        : { tenantId: effectiveTenantId };
-
-      const backups = await prisma.backup.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          createdBy: { select: { name: true, email: true } },
-        },
-      });
-
-      const formatted = backups.map(b => ({
-        ...b,
-        sizeBytes: b.sizeBytes.toString(),
-      }));
-
-      return res.json(formatted);
-    } catch (err: any) {
-      console.error('[GET /api/admin/backups ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao listar backups: ' + (err.message || String(err)) });
-    }
-  });
-
-  // 3. GET /api/admin/backups/:id - Get backup detail / download
-  app.get('/api/admin/backups/:id', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) {
-        return res.status(401).json({ error: 'Não autenticado' });
-      }
-
-      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
-      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
-
-      const backup = await prisma.backup.findUnique({
-        where: { id: req.params.id },
-      });
-
-      if (!backup) {
-        return res.status(404).json({ error: 'Cópia de segurança não encontrada.' });
-      }
-
-      if (!isPlatformMaster && backup.tenantId !== effectiveTenantId) {
-        return res.status(403).json({ error: 'Acesso negado a este backup.' });
-      }
-
-      if (req.query.download === 'true') {
-        const fileExists = await backupStorageService.existsBackup(backup.storagePath);
-        if (!fileExists) {
-          return res.status(404).json({ error: 'Arquivo do backup não encontrado no armazenamento do servidor.' });
-        }
-        const fileContent = await backupStorageService.getBackup(backup.storagePath);
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="backup_${backup.id}.json"`);
-        return res.send(fileContent);
-      }
-
-      return res.json({
-        ...backup,
-        sizeBytes: backup.sizeBytes.toString(),
-      });
-    } catch (err: any) {
-      console.error('[GET /api/admin/backups/:id ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao carregar detalhes do backup.' });
-    }
-  });
-
-  // 4. POST /api/admin/backups/:id/restore - Restore backup snapshot
-  app.post('/api/admin/backups/:id/restore', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) {
-        return res.status(401).json({ error: 'Não autenticado' });
-      }
-
-      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
-      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
-
-      if (!isPlatformMaster && session.user.role !== 'MASTER' && session.user.role !== 'TENANT_ADMIN') {
-        return res.status(403).json({ error: 'Apenas administradores podem restaurar backups.' });
-      }
-
-      const backup = await prisma.backup.findUnique({
-        where: { id: req.params.id },
-      });
-
-      if (!backup) {
-        return res.status(404).json({ error: 'Backup não encontrado.' });
-      }
-
-      if (!isPlatformMaster && backup.tenantId !== effectiveTenantId) {
-        return res.status(403).json({ error: 'Acesso negado a esta cópia de segurança.' });
-      }
-
-      const fileExists = await backupStorageService.existsBackup(backup.storagePath);
-      if (!fileExists) {
-        return res.status(400).json({ error: 'Arquivo de backup não encontrado no armazenamento.' });
-      }
-
-      const fileContent = await backupStorageService.getBackup(backup.storagePath);
-      const calculatedChecksum = crypto.createHash('sha256').update(fileContent).digest('hex');
-
-      if (calculatedChecksum !== backup.checksumSha256) {
-        return res.status(400).json({
-          error: 'Falha de integridade: O hash SHA-256 da cópia não coincide com o registro oficial. Restauração abortada.',
-        });
-      }
-
-      const preRestoreId = `bkp_prerestore_${Date.now()}`;
-      const preRestorePath = await backupStorageService.putBackup(preRestoreId, fileContent);
-
-      await prisma.backup.create({
-        data: {
-          id: preRestoreId,
-          tenantId: backup.tenantId,
-          label: `Auto Pre-Restore Snapshot (${backup.id})`,
-          type: 'PRE_RESTORE',
-          status: 'COMPLETED',
-          sizeBytes: backup.sizeBytes,
-          recordsCount: backup.recordsCount,
-          checksumSha256: calculatedChecksum,
-          storagePath: preRestorePath,
-          createdById: session.user.id,
-        },
-      });
-
-      await AuditLogService.record(prisma, {
-        tenantId: backup.tenantId,
-        userId: session.user.id,
-        userName: session.user.name,
-        action: 'backup.restored',
-        entity: 'Backup',
-        entityId: backup.id,
-        oldData: { restoredFromId: backup.id, checksumSha256: backup.checksumSha256 },
-        req,
-      });
-
-      return res.json({
-        success: true,
-        message: 'Restauração de cópia de segurança verificada com sucesso.',
-      });
-    } catch (err: any) {
-      console.error('[POST /api/admin/backups/:id/restore ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao restaurar backup no servidor: ' + (err.message || String(err)) });
-    }
-  });
-
-  // -------------------------------------------------------------
-  // CIP AUTOMATION CRON SERVER-SIDE API (P0.3)
-  // -------------------------------------------------------------
-  const handlePortabilityCron = async (req: express.Request, res: express.Response) => {
-    try {
-      const authHeader = req.headers['x-cron-secret'] || req.headers['authorization'];
-      const cronSecretEnv = process.env.CRON_SECRET || 'sentinel-cron-secret-2026';
-
-      let session = null;
-      try {
-        session = await getAuthSession(req);
-      } catch (e) {}
-
-      const isAuthorizedSecret = authHeader === cronSecretEnv || authHeader === `Bearer ${cronSecretEnv}`;
-      const isAuthorizedSession = session?.user && (session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER' || session.user.role === 'TENANT_ADMIN');
-
-      if (!isAuthorizedSecret && !isAuthorizedSession) {
-        return res.status(401).json({ error: 'Não autorizado para executar o cron CIP.' });
-      }
-
-      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
-      const result = await runPortabilityCronServer(prisma, tenantId || undefined);
-
-      return res.json(result);
-    } catch (err: any) {
-      console.error('[CRON PORTABILITY ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao executar automação CIP server-side: ' + (err.message || String(err)) });
-    }
-  };
-
-  app.post('/api/internal/cron/portability', handlePortabilityCron);
-  app.post('/api/admin/cron/portability', handlePortabilityCron);
 
   // -------------------------------------------------------------
   // BULK IMPORT & ASYNC JOBS API ROUTES (Phase 2.4)
@@ -8927,7 +8175,6 @@ async function startServer() {
   serverInstance = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
     await auditAndEnsureMasterUser();
-    await migrateLegacyUserMemberships();
   });
 }
 
@@ -8997,7 +8244,7 @@ process.on('SIGINT', () => {
   gracefulShutdown('SIGINT', 0);
 });
 
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+if (!process.env.VERCEL) {
   startServer();
 }
 

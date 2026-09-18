@@ -50,6 +50,7 @@ import { BackupManagementModal } from './components/admin/BackupManagementModal'
 import { WhiteLabelModal } from './components/admin/WhiteLabelModal';
 import { InteractiveTourModal } from './components/common/InteractiveTourModal';
 import { LoginView } from './components/auth/LoginView';
+import { TenantSelectionView } from './components/auth/TenantSelectionView';
 import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { ResponsibleAlçada, User } from './types';
 import { Maximize2, Minimize2, Plus, Search, Keyboard, Database, Sparkles } from 'lucide-react';
@@ -415,6 +416,10 @@ export default function App() {
 
   if (!isAuthenticated) {
     return <LoginView onLoginSuccess={() => verifyServerSession()} />;
+  }
+
+  if (activeUser?.requireTenantSelection) {
+    return <TenantSelectionView user={activeUser} onSuccess={() => window.location.reload()} />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { MembershipEditor } from './MembershipEditor';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
@@ -56,6 +57,7 @@ export const UserManagement: React.FC = () => {
   );
 
   const [showPermissionSelector, setShowPermissionSelector] = useState(false);
+  const [memberships, setMemberships] = useState<any[]>([]);
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -208,6 +210,7 @@ export const UserManagement: React.FC = () => {
   const [editActive, setEditActive] = useState(true);
   const [editTenantId, setEditTenantId] = useState('');
   const [editPermissions, setEditPermissions] = useState<Permission[]>([]);
+  const [editMemberships, setEditMemberships] = useState<any[]>([]);
 
   const [credentialsModal, setCredentialsModal] = useState<{
     isOpen: boolean;
@@ -272,6 +275,7 @@ export const UserManagement: React.FC = () => {
           role,
           tenantId: selectedTenantId || undefined,
           customPermissions: selectedPermissions,
+          memberships,
         }),
       });
 
@@ -330,6 +334,7 @@ export const UserManagement: React.FC = () => {
         body: JSON.stringify({
           name: editName.trim(),
           role: editRole,
+          memberships: editMemberships,
           active: editActive,
           tenantId: editTenantId || undefined,
           customPermissions: editPermissions,
@@ -540,20 +545,12 @@ export const UserManagement: React.FC = () => {
               </div>
 
               {isPlatformMaster ? (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Empresa</label>
-                  <select
-                    value={selectedTenantId}
-                    onChange={e => setSelectedTenantId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
-                  >
-                    {tenants.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                    {tenants.length === 0 && <option value="">Selecione uma Empresa</option>}
-                  </select>
+                <div className="col-span-1 sm:col-span-4">
+                  <MembershipEditor 
+                    tenants={tenants} 
+                    memberships={memberships} 
+                    onChange={setMemberships} 
+                  />
                 </div>
               ) : (
                 <div className="flex items-end">
