@@ -64,6 +64,18 @@ export function buildBlobPath(tenantId: string, clientId: string, documentId: st
 }
 
 /**
+ * Generates a safe path for uploading a tenant's logo
+ */
+export function buildLogoBlobPath(tenantId: string, originalFileName: string): { blobPath: string; safeFileName: string } {
+  if (!tenantId || tenantId.includes('..') || tenantId.includes('/') || tenantId.includes('\\')) {
+    throw new Error('Invalid tenantId in blob path construction.');
+  }
+  const safeFileName = sanitizeFileName(originalFileName);
+  const blobPath = `logos/${tenantId}/${Date.now()}_${safeFileName}`;
+  return { blobPath, safeFileName };
+}
+
+/**
  * Uploads a file buffer/stream to Azure Blob Storage
  */
 export async function uploadBlob(blobPath: string, buffer: Buffer, mimeType?: string): Promise<void> {
