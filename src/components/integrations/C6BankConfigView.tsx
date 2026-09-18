@@ -133,11 +133,50 @@ export const C6BankConfigView: React.FC = () => {
     setTestResult(null);
 
     try {
+      const payload: any = {};
+      if (config.username?.trim()) payload.username = config.username.trim();
+      if (password?.trim()) payload.password = password.trim();
+      if (config.baseUrl?.trim()) payload.baseUrl = config.baseUrl.trim();
+
       const res = await fetch('/api/integrations/c6/test-connection', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
       });
-      const data = await res.json();
-      setTestResult(data);
+
+      const contentType = res.headers.get('content-type') || '';
+      const text = await res.text();
+      const trimmed = text.trim();
+
+      if (
+        trimmed.startsWith('<!DOCTYPE') ||
+        trimmed.startsWith('<html') ||
+        trimmed.startsWith('<head') ||
+        contentType.toLowerCase().includes('text/html')
+      ) {
+        throw new Error(
+          `O servidor retornou uma página HTML inesperada (HTTP ${res.status}). Verifique a rota da API ou a autenticação da sessão.`
+        );
+      }
+
+      let data: any;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(`Resposta com formato inválido recebida do servidor (HTTP ${res.status}).`);
+      }
+
+      if (!res.ok) {
+        setTestResult({
+          success: false,
+          message: data?.error || data?.message || `Falha na requisição (HTTP ${res.status}).`,
+        });
+      } else {
+        setTestResult(data);
+      }
     } catch (err: any) {
       setTestResult({
         success: false,

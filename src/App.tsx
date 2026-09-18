@@ -37,7 +37,7 @@ import { TenantSaaSCapacityView } from './components/admin/TenantSaaSCapacityVie
 import { AnnouncementsManagement } from './components/admin/AnnouncementsManagement';
 import { OperationsCentral } from './components/operations/OperationsCentral';
 import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
-import { C6BankConfigView } from './components/integrations/C6BankConfigView';
+import { BankIntegrationsView } from './components/integrations/BankIntegrationsView';
 import { getRoleLabel } from './lib/roleLabels';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
@@ -587,7 +587,9 @@ export default function App() {
 
           {currentView === 'admin-auditoria' && <AuditLogView />}
 
-          {currentView === 'admin-c6-bank' && <C6BankConfigView />}
+          {(currentView === 'admin-c6-bank' || currentView === 'admin-integracoes-bancos') && (
+            <BankIntegrationsView />
+          )}
 
           {currentView === 'admin-comunicados' && (<AnnouncementsManagement />)}
           {currentView === 'admin-import-status' && (

@@ -702,11 +702,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
 
             {renderNavItem({
               id: 'admin-c6-bank',
-              label: 'Integração C6 Bank',
+              label: 'Integração Bancos',
               icon: Zap,
               color: 'amber',
               badge: {
-                text: 'API',
+                text: 'APIs',
                 variant: 'live',
               },
             })}

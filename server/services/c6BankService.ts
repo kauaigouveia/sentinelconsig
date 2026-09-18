@@ -162,32 +162,47 @@ export class C6BankService {
   public static async getAccessToken(
     prisma: PrismaClient,
     tenantId: string,
-    forceRefresh = false
+    forceRefresh = false,
+    overrideCredentials?: {
+      username?: string;
+      password?: string;
+      baseUrl?: string;
+    }
   ): Promise<string> {
     const now = Date.now();
 
-    if (!forceRefresh) {
+    // Se não houver credenciais temporárias de teste, utilizar cache se válido
+    if (!overrideCredentials && !forceRefresh) {
       const cached = this.tokenCache.get(tenantId);
       if (cached && cached.expiresAt - now > this.EXPIRATION_BUFFER_MS) {
         return cached.token;
       }
     }
 
-    const config = await this.getTenantConfig(prisma, tenantId);
-    if (!config.isConfigured) {
+    // Carregar configurações do tenant
+    const savedConfig = await this.getTenantConfig(prisma, tenantId);
+
+    const username = (overrideCredentials?.username ?? savedConfig.username).trim();
+    // Se a senha foi informada no override, usá-la; caso contrário usar a salva no banco
+    const password = (overrideCredentials?.password !== undefined && overrideCredentials.password.trim() !== ''
+      ? overrideCredentials.password
+      : savedConfig.password || '').trim();
+    const baseUrl = (overrideCredentials?.baseUrl ?? savedConfig.baseUrl).trim().replace(/\/+$/, '');
+
+    if (!username || !password) {
       throw new Error(
-        'Credenciais do C6 Bank não configuradas para este tenant. Cadastre o usuário e senha nas configurações de integração.'
+        'Credenciais do C6 Bank não configuradas. Preencha o usuário e a senha da API.'
       );
     }
 
-    const tokenUrl = `${config.baseUrl}/auth/token`;
+    const tokenUrl = `${baseUrl}/auth/token`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT_MS);
 
     try {
       const bodyParams = new URLSearchParams();
-      bodyParams.append('username', config.username);
-      bodyParams.append('password', config.password || '');
+      bodyParams.append('username', username);
+      bodyParams.append('password', password);
 
       const response = await fetch(tokenUrl, {
         method: 'POST',
@@ -198,38 +213,98 @@ export class C6BankService {
         signal: controller.signal,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
+      const contentType = response.headers.get('content-type') || '';
+      const rawText = await response.text();
+      const trimmedText = rawText.trim();
+
+      // Detecção de respostas HTML (ex: 404, páginas de proxy, WAF ou login do gateway)
+      const isHtml =
+        trimmedText.startsWith('<!DOCTYPE') ||
+        trimmedText.startsWith('<html') ||
+        trimmedText.startsWith('<head') ||
+        contentType.toLowerCase().includes('text/html');
+
+      if (isHtml) {
         logger.warn(
-          { tenantId, status: response.status, errorText },
+          { tenantId, status: response.status, url: tokenUrl },
+          '[C6 BANK] Resposta em formato HTML recebida ao autenticar no C6'
+        );
+        throw new Error(
+          `O C6 retornou uma resposta inesperada em formato HTML (HTTP ${response.status}). Verifique a URL-base configurada e a disponibilidade do serviço.`
+        );
+      }
+
+      // Interpretação segura de JSON
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        logger.warn(
+          { tenantId, status: response.status, rawSnippet: trimmedText.slice(0, 150) },
+          '[C6 BANK] Resposta com formato não-JSON recebida da API C6'
+        );
+        throw new Error(
+          `O C6 retornou uma resposta inesperada com formato inválido (HTTP ${response.status}).`
+        );
+      }
+
+      if (!response.ok) {
+        logger.warn(
+          { tenantId, status: response.status, data },
           '[C6 BANK] Falha na autenticação POST /auth/token'
         );
+
         if (response.status === 401 || response.status === 403) {
-          throw new Error('Falha de autenticação no C6 Bank: Usuário ou senha incorretos.');
+          throw new Error('Falha de autenticação no C6. Verifique as credenciais.');
         }
+
+        if (response.status === 404) {
+          throw new Error(
+            `Endpoint de autenticação não encontrado no C6 Bank (HTTP 404 em ${tokenUrl}). Verifique a URL-base.`
+          );
+        }
+
+        if (response.status === 429) {
+          throw new Error(
+            'Limite de requisições excedido no C6 Bank (HTTP 429). Aguarde alguns instantes.'
+          );
+        }
+
         if (response.status >= 500) {
-          throw new Error(`Serviço de autenticação do C6 Bank indisponível (HTTP ${response.status}).`);
+          throw new Error(
+            `Serviço do C6 Bank indisponível (HTTP ${response.status}). Tente novamente mais tarde.`
+          );
         }
-        throw new Error(`Erro na autenticação C6 Bank (HTTP ${response.status}): ${errorText || 'Acesso recusado'}`);
+
+        throw new Error(
+          `Falha na autenticação C6 Bank (HTTP ${response.status}): ${data?.message || data?.error || 'Acesso recusado'}`
+        );
       }
 
-      const data = (await response.json()) as C6TokenResponse;
-      if (!data.access_token) {
-        throw new Error('Resposta inválida do C6 Bank: token de acesso não retornado.');
+      if (!data || typeof data !== 'object' || !data.access_token) {
+        throw new Error(
+          'O C6 retornou uma resposta inesperada: access_token não localizado na resposta.'
+        );
       }
 
-      const expiresInSeconds = Number(data.expires_in_seconds) || 3600;
+      // Validade retornada pela API (ex: 1199s ou valor retornado no payload)
+      const expiresInSeconds = Number(data.expires_in_seconds) || 1199;
       const expiresAt = now + expiresInSeconds * 1000;
 
-      this.tokenCache.set(tenantId, {
-        token: data.access_token,
-        expiresAt,
-      });
+      // Armazenar no cache em memória somente se for credencial persistida (não override efêmero)
+      if (!overrideCredentials) {
+        this.tokenCache.set(tenantId, {
+          token: data.access_token,
+          expiresAt,
+        });
+      }
 
       return data.access_token;
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        throw new Error('Tempo limite esgotado (timeout) ao autenticar com o C6 Bank.');
+        throw new Error(
+          'Não foi possível conectar ao C6. Verifique a URL e a disponibilidade do serviço.'
+        );
       }
       throw err;
     } finally {
@@ -242,22 +317,27 @@ export class C6BankService {
    */
   public static async testConnection(
     prisma: PrismaClient,
-    tenantId: string
+    tenantId: string,
+    overrideCredentials?: {
+      username?: string;
+      password?: string;
+      baseUrl?: string;
+    }
   ): Promise<{ success: boolean; message: string; responseTimeMs: number }> {
     const startTime = Date.now();
     try {
-      await this.getAccessToken(prisma, tenantId, true);
+      await this.getAccessToken(prisma, tenantId, true, overrideCredentials);
       const responseTimeMs = Date.now() - startTime;
       return {
         success: true,
-        message: 'Conexão com C6 Bank estabelecida com sucesso! Credenciais e token validados.',
+        message: 'Conexão com C6 estabelecida.',
         responseTimeMs,
       };
     } catch (err: any) {
       const responseTimeMs = Date.now() - startTime;
       return {
         success: false,
-        message: err?.message || 'Falha ao conectar ao C6 Bank.',
+        message: err?.message || 'Falha ao conectar com o C6 Bank.',
         responseTimeMs,
       };
     }
@@ -267,7 +347,8 @@ export class C6BankService {
    * Consulta a proposta diretamente no endpoint C6 Bank:
    * GET /marketplace/proposal?proposalNumber={proposalNumber}
    * Headers:
-   *   Authorization: {access_token} (SEM "Bearer")
+   *   access_token: {access_token} (conforme documentação oficial C6, SEM prefixo "Bearer")
+   *   Authorization: {access_token} (contingência para proxies de rede)
    *   Accept: application/vnd.c6bank_fgts_consult_v2+json
    */
   public static async queryProposalFromC6(
@@ -290,9 +371,11 @@ export class C6BankService {
       const response = await fetch(targetUrl, {
         method: 'GET',
         headers: {
-          // Conforme manual C6: Sem prefixo "Bearer"
-          Authorization: token,
-          Accept: 'application/vnd.c6bank_fgts_consult_v2+json',
+          // Documentação oficial C6: header access_token SEM Bearer
+          'access_token': token,
+          // Compatibilidade para proxies que reescrevem ou repassam Authorization
+          'Authorization': token,
+          'Accept': 'application/vnd.c6bank_fgts_consult_v2+json',
         },
         signal: controller.signal,
       });
@@ -304,10 +387,44 @@ export class C6BankService {
         return this.queryProposalFromC6(prisma, tenantId, proposalNumber, retryCount + 1);
       }
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
+      const contentType = response.headers.get('content-type') || '';
+      const rawText = await response.text();
+      const trimmedText = rawText.trim();
+
+      // Checagem de HTML
+      const isHtml =
+        trimmedText.startsWith('<!DOCTYPE') ||
+        trimmedText.startsWith('<html') ||
+        trimmedText.startsWith('<head') ||
+        contentType.toLowerCase().includes('text/html');
+
+      if (isHtml) {
         logger.warn(
-          { tenantId, proposalNumber, status: response.status, errorText },
+          { tenantId, proposalNumber, status: response.status },
+          '[C6 BANK] Resposta em HTML recebida na consulta de proposta C6'
+        );
+        const err: any = new Error(
+          `O C6 retornou uma resposta inesperada em HTML (HTTP ${response.status}) ao consultar a proposta.`
+        );
+        err.statusCode = response.status;
+        throw err;
+      }
+
+      // Parse seguro de JSON
+      let json: any;
+      try {
+        json = JSON.parse(rawText);
+      } catch (parseErr) {
+        const err: any = new Error(
+          `O C6 retornou uma resposta com formato inválido (HTTP ${response.status}) ao consultar a proposta.`
+        );
+        err.statusCode = response.status;
+        throw err;
+      }
+
+      if (!response.ok) {
+        logger.warn(
+          { tenantId, proposalNumber, status: response.status, json },
           '[C6 BANK] Resposta com erro da API do C6'
         );
 
@@ -336,14 +453,13 @@ export class C6BankService {
         }
 
         const err: any = new Error(
-          `Falha ao consultar proposta no C6 Bank (HTTP ${response.status}): ${errorText || 'Erro desconhecido'}`
+          `Falha ao consultar proposta no C6 Bank (HTTP ${response.status}): ${json?.message || json?.error || 'Erro desconhecido'}`
         );
         err.statusCode = response.status;
         throw err;
       }
 
-      const json = (await response.json()) as C6ProposalResponse;
-      return { data: json, statusCode: 200 };
+      return { data: json as C6ProposalResponse, statusCode: 200 };
     } catch (err: any) {
       if (err.name === 'AbortError') {
         const timeoutErr: any = new Error('Tempo limite esgotado ao consultar proposta no C6 Bank (Timeout).');

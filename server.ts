@@ -9178,7 +9178,10 @@ async function startServer() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const result = await C6BankService.testConnection(prisma, tenantId);
+      const { username, password, baseUrl } = req.body || {};
+      const override = (username || password || baseUrl) ? { username, password, baseUrl } : undefined;
+
+      const result = await C6BankService.testConnection(prisma, tenantId, override);
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Erro ao testar conexão com C6 Bank.' });
