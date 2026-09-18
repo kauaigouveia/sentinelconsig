@@ -31,13 +31,16 @@ export function normalizeFactaStatusKey(statusStr?: string | null): string {
   return cleaned;
 }
 
-// Dicionário unificado de mapeamento Facta -> Sentinel Status Code
+// Dicionário unificado de mapeamento Facta -> Sentinel Status Code (usando os códigos oficiais do banco de dados)
 const factaStatusDictionary: Record<string, string> = {
   // CANCELADO
   'CANCELADO': 'CANCELADO',
   'CANCELADA': 'CANCELADO',
   'CANCELAMENTO': 'CANCELADO',
   'SOLICITADO CANCELAMENTO': 'CANCELADO',
+  'CANCELADO PELO CLIENTE': 'CANCELADO',
+  'CANCELADA PELO CLIENTE': 'CANCELADO',
+  '961': 'CANCELADO',
   '28': 'CANCELADO',
   '10': 'CANCELADO',
 
@@ -49,9 +52,13 @@ const factaStatusDictionary: Record<string, string> = {
   'REPROVACAO': 'REPROVADO',
   'REPROVADA PELO CRIVO': 'REPROVADO',
   'REPROVADO PELO CRIVO': 'REPROVADO',
+  'REPROVADA PELO BANCO': 'REPROVADO',
+  'REPROVADO PELO BANCO': 'REPROVADO',
   'NEGADO': 'REPROVADO',
   'INDEFERIDO': 'REPROVADO',
   'CANCELADO PELO SISTEMA': 'REPROVADO',
+  '960': 'REPROVADO',
+  'REP': 'REPROVADO',
 
   // PAGO
   'PAGO': 'PAGO',
@@ -59,41 +66,77 @@ const factaStatusDictionary: Record<string, string> = {
   'PAGO AO CLIENTE': 'PAGO',
   'COMISSAO PAGA': 'PAGO',
   'LIQUIDADO': 'PAGO',
+  'LIQUIDADA': 'PAGO',
   'EFETUADO': 'PAGO',
   'PAGAMENTO EFETUADO': 'PAGO',
   'CONCLUIDO': 'PAGO',
+  'CONCLUIDA': 'PAGO',
   'FINALIZADO': 'PAGO',
+  'FINALIZADA': 'PAGO',
+  '962': 'PAGO',
 
   // AGUARDAR FORMALIZAÇÃO
-  'AGUARDANDO FORMALIZACAO': 'AGUARDAR FORMALIZAÇÃO',
-  'AGUARDAR FORMALIZACAO': 'AGUARDAR FORMALIZAÇÃO',
-  'FORMALIZACAO': 'AGUARDAR FORMALIZAÇÃO',
-  'PENDENTE FORMALIZACAO': 'AGUARDAR FORMALIZAÇÃO',
-  'AGUARDANDO ASSINATURA': 'AGUARDAR FORMALIZAÇÃO',
-  'DIGITADA': 'AGUARDAR FORMALIZAÇÃO',
-  'AGUARDA DIGITACAO': 'AGUARDAR FORMALIZAÇÃO',
+  'AGUARDANDO FORMALIZACAO': 'AGUARDAR_FORMALIZACAO',
+  'AGUARDAR FORMALIZACAO': 'AGUARDAR_FORMALIZACAO',
+  'FORMALIZACAO': 'AGUARDAR_FORMALIZACAO',
+  'PENDENTE FORMALIZACAO': 'AGUARDAR_FORMALIZACAO',
+  'AGUARDANDO ASSINATURA': 'AGUARDAR_FORMALIZACAO',
+  'DIGITADA': 'AGUARDAR_FORMALIZACAO',
+  'AGUARDA DIGITACAO': 'AGUARDAR_FORMALIZACAO',
+  'EM DIGITACAO': 'AGUARDAR_FORMALIZACAO',
+  'DIGITACAO': 'AGUARDAR_FORMALIZACAO',
 
-  // AVERBADO
-  'AVERBADO': 'AVERBADO',
-  'AVERBADA': 'AVERBADO',
-  'AVERBACAO CONCLUIDA': 'AVERBADO',
-  'INTEGRADO': 'AVERBADO',
-  'DEFERIDO': 'AVERBADO',
+  // INTEGRADO / AVERBADO
+  'AVERBADO': 'INTEGRADO',
+  'AVERBADA': 'INTEGRADO',
+  'AVERBACAO CONCLUIDA': 'INTEGRADO',
+  'INTEGRADO': 'INTEGRADO',
+  'DEFERIDO': 'INTEGRADO',
 
-  // EM ANDAMENTO
-  'EM ANDAMENTO': 'EM ANDAMENTO',
-  'EM ANALISE': 'EM ANDAMENTO',
-  'ANALISE': 'EM ANDAMENTO',
-  'PROCESSAMENTO': 'EM ANDAMENTO',
-  'AGUARDANDO AVERBACAO': 'EM ANDAMENTO',
-  'EM ESTEIRA': 'EM ANDAMENTO',
+  // AGUARDAR PORTABILIDADE / EM ANDAMENTO
+  'EM ANDAMENTO': 'AGUARDAR_PORTABILIDADE',
+  'EM ANALISE': 'AGUARDAR_PORTABILIDADE',
+  'ANALISE': 'AGUARDAR_PORTABILIDADE',
+  'PROCESSAMENTO': 'AGUARDAR_PORTABILIDADE',
+  'AGUARDANDO AVERBACAO': 'AGUARDAR_PORTABILIDADE',
+  'EM ESTEIRA': 'AGUARDAR_PORTABILIDADE',
 
-  // PENDENTE
-  'PENDENTE': 'PENDENTE',
-  'PENDENCIA': 'PENDENTE',
-  'DOCUMENTACAO PENDENTE': 'PENDENTE',
-  'PENDENTE DOCUMENTO': 'PENDENTE',
+  // PENDENTE DE DOCUMENTAÇÃO
+  'PENDENTE': 'PENDENTE_ENVIO_DOCUMENTACAO',
+  'PENDENCIA': 'PENDENTE_ENVIO_DOCUMENTACAO',
+  'DOCUMENTACAO PENDENTE': 'PENDENTE_ENVIO_DOCUMENTACAO',
+  'PENDENTE DOCUMENTO': 'PENDENTE_ENVIO_DOCUMENTACAO',
+  'PENDENTE ENVIO DOCUMENTACAO': 'PENDENTE_ENVIO_DOCUMENTACAO',
 };
+
+/**
+ * Função de fallback por substring caso a chave exata não esteja no dicionário.
+ */
+function resolveFallbackStatusCode(key: string): string | undefined {
+  if (!key) return undefined;
+  if (key.includes('REPROV') || key.includes('RECUS') || key.includes('NEGAD') || key.includes('INDEFER') || key.includes('960')) {
+    return 'REPROVADO';
+  }
+  if (key.includes('CANCEL')) {
+    return 'CANCELADO';
+  }
+  if (key.includes('PAGO') || key.includes('PAGA') || key.includes('LIQUID') || key.includes('CONCLU') || key.includes('EFETUAD') || key.includes('962')) {
+    return 'PAGO';
+  }
+  if (key.includes('FORMALIZ') || key.includes('ASSINATUR') || key.includes('DIGITA')) {
+    return 'AGUARDAR_FORMALIZACAO';
+  }
+  if (key.includes('AVERBAD') || key.includes('INTEGRAD') || key.includes('DEFERID')) {
+    return 'INTEGRADO';
+  }
+  if (key.includes('PENDEN') || key.includes('DOCUMENT')) {
+    return 'PENDENTE_ENVIO_DOCUMENTACAO';
+  }
+  if (key.includes('ANALIS') || key.includes('PROCESS') || key.includes('ESTEIRA')) {
+    return 'AGUARDAR_PORTABILIDADE';
+  }
+  return undefined;
+}
 
 /**
  * Mapeia os status retornados pela FACTA para o código de status interno do Sentinel.
@@ -101,16 +144,24 @@ const factaStatusDictionary: Record<string, string> = {
 export function mapFactaStatusToInternal(item: {
   status_proposta?: string;
   status_crivo?: string;
+  codigo_af?: string | number;
   [key: string]: any;
 }): FactaStatusMappingResult {
   const rawProp = item.status_proposta ? String(item.status_proposta) : '';
   const rawCrivo = item.status_crivo ? String(item.status_crivo) : '';
+  const rawAf = item.codigo_af != null ? String(item.codigo_af) : '';
 
   const propKey = normalizeFactaStatusKey(rawProp);
   const crivoKey = normalizeFactaStatusKey(rawCrivo);
+  const afKey = normalizeFactaStatusKey(rawAf);
 
-  const mappedPropCode = propKey ? factaStatusDictionary[propKey] : undefined;
-  const mappedCrivoCode = crivoKey ? factaStatusDictionary[crivoKey] : undefined;
+  let mappedPropCode = propKey ? factaStatusDictionary[propKey] || resolveFallbackStatusCode(propKey) : undefined;
+  let mappedCrivoCode = crivoKey ? factaStatusDictionary[crivoKey] || resolveFallbackStatusCode(crivoKey) : undefined;
+
+  // Checagem se o código AF retornado é um código numérico de reprovação / cancelamento (ex: 960)
+  if (!mappedPropCode && afKey && (afKey === '960' || afKey.includes('960'))) {
+    mappedPropCode = 'REPROVADO';
+  }
 
   // Verificar divergência explícita (ex: um diz PAGO e o outro diz REPROVADO)
   if (mappedPropCode && mappedCrivoCode && mappedPropCode !== mappedCrivoCode) {

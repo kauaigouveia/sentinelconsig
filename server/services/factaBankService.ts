@@ -65,9 +65,14 @@ export class FactaBankService {
     const environment: 'homologation' | 'production' = rawEnv === 'production' ? 'production' : 'homologation';
 
     const defaultUrl = environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
-    const baseUrl = (configMap.get('facta_base_url') || process.env.FACTA_BASE_URL || defaultUrl)
+    let baseUrl = (configMap.get('facta_base_url') || process.env.FACTA_BASE_URL || defaultUrl)
       .trim()
       .replace(/\/+$/, '');
+
+    // Sanitização de URLs legadas ou incorretas
+    if (baseUrl.includes('desenvolvimento.facta.com.br') || baseUrl.includes('proposta.facta.com.br')) {
+      baseUrl = environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
+    }
 
     const username = (configMap.get('facta_username') || process.env.FACTA_USERNAME || '').trim();
     const password = (configMap.get('facta_password') || process.env.FACTA_PASSWORD || '').trim();
@@ -328,21 +333,54 @@ export class FactaBankService {
     prisma: PrismaClient,
     tenantId: string,
     overrideConfig?: { username?: string; password?: string; baseUrl?: string }
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; responseTimeMs?: number; isHomologation?: boolean }> {
+    const startTime = Date.now();
     try {
       this.invalidateTokenCache(tenantId);
+      const config = await this.getTenantConfig(prisma, tenantId);
+      const activeBaseUrl = overrideConfig?.baseUrl || config.baseUrl;
+      const isHomol = activeBaseUrl.includes('homol') || config.environment === 'homologation';
+
       const token = await this.getToken(prisma, tenantId, overrideConfig);
-      if (token) {
+      const responseTimeMs = Date.now() - startTime;
+
+      if (token && typeof token === 'string' && token.length > 5) {
         return {
           success: true,
-          message: 'Autenticação com a FACTA realizada com sucesso! Token gerado e validado.',
+          message: `Conexão e autenticação com a FACTA Financeira estabelecidas com sucesso! Token de acesso gerado (${responseTimeMs}ms).`,
+          responseTimeMs,
+          isHomologation: isHomol,
         };
       }
-      return { success: false, message: 'Falha ao obter token da FACTA.' };
-    } catch (err: any) {
       return {
         success: false,
-        message: err.message || 'Erro ao conectar com a API da FACTA.',
+        message: 'A FACTA respondeu a requisição, porém não retornou um token de acesso válido.',
+        responseTimeMs,
+        isHomologation: isHomol,
+      };
+    } catch (err: any) {
+      const responseTimeMs = Date.now() - startTime;
+      const rawMsg = err.message || '';
+      let userFriendlyMsg = rawMsg;
+
+      if (rawMsg.includes('fetch failed') || rawMsg.includes('ENOTFOUND') || rawMsg.includes('ECONNREFUSED') || rawMsg.includes('getaddrinfo')) {
+        userFriendlyMsg = 'Falha de rede/DNS ao conectar no servidor FACTA (URL/Host inacessível). Verifique se o endereço do serviço está correto.';
+      } else if (rawMsg.includes('Timeout') || rawMsg.includes('AbortError')) {
+        userFriendlyMsg = 'Tempo limite de conexão esgotado (timeout de 15s). O servidor da FACTA demorou para responder.';
+      } else if (rawMsg.includes('401') || rawMsg.includes('403') || rawMsg.includes('autenticação') || rawMsg.includes('Usuário ou senha')) {
+        userFriendlyMsg = 'Credenciais inválidas ou acesso negado pela FACTA (HTTP 401/403). Verifique o usuário Corban e a senha cadastrada.';
+      } else if (rawMsg.includes('404')) {
+        userFriendlyMsg = 'Endpoint /gera-token não encontrado na FACTA (HTTP 404). Verifique a URL Base configurada.';
+      } else if (rawMsg.includes('429')) {
+        userFriendlyMsg = 'Limite de requisições excedido na FACTA (HTTP 429). Aguarde alguns instantes e tente novamente.';
+      } else if (rawMsg.includes('500') || rawMsg.includes('502') || rawMsg.includes('503') || rawMsg.includes('504')) {
+        userFriendlyMsg = 'Servidor da FACTA indisponível ou com erro interno (HTTP 5xx). Tente novamente mais tarde.';
+      }
+
+      return {
+        success: false,
+        message: userFriendlyMsg,
+        responseTimeMs,
       };
     }
   }
@@ -751,9 +789,23 @@ export class FactaBankService {
         targetStatusRecord = await prisma.proposalStatus.findFirst({
           where: {
             tenantId,
-            code: mapping.targetStatusCode,
+            OR: [
+              { code: mapping.targetStatusCode },
+              { name: mapping.targetStatusCode },
+              { code: mapping.targetStatusCode.replace(/\s+/g, '_') },
+            ],
           },
         });
+
+        if (!targetStatusRecord) {
+          const allStatuses = await prisma.proposalStatus.findMany({ where: { tenantId } });
+          const targetNorm = mapping.targetStatusCode.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+          targetStatusRecord = allStatuses.find((st) => {
+            const stCodeNorm = st.code.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+            const stNameNorm = st.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+            return stCodeNorm === targetNorm || stNameNorm === targetNorm;
+          }) || null;
+        }
       }
 
       const internalStatusChanged = Boolean(

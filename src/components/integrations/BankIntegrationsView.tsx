@@ -630,6 +630,14 @@ export const BankIntegrationsView: React.FC = () => {
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                   {c6Config.isConfigured ? 'Ativo' : 'Pendente'}
                 </span>
+              ) : b.id === 'facta' ? (
+                <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold border ${
+                  factaConfig.isConfigured
+                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                    : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                }`}>
+                  {factaConfig.isConfigured ? 'Ativo' : 'Pendente'}
+                </span>
               ) : (
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                   Em breve
