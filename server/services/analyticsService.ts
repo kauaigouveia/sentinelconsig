@@ -8,6 +8,7 @@ import {
   ProductionResponse,
   SlaResponse,
 } from '../../src/types/analytics.js';
+import { buildActiveProposalWhere, isStatusFinal } from './statusService.js';
 
 export interface AnalyticsFilterOptions {
   startDate?: Date;
@@ -30,14 +31,8 @@ export class AnalyticsService {
   ): Promise<BottlenecksResponse> {
     const now = new Date();
 
-    // Base WHERE condition strictly with tenantId and deletedAt null
-    const whereCondition: Prisma.ProposalWhereInput = {
-      tenantId,
-      deletedAt: null,
-      standardCategory: {
-        notIn: ['PAGO', 'CANCELADO'],
-      },
-    };
+    // Base WHERE condition strictly with tenantId and deletedAt null, excluding final statuses
+    const whereCondition: Prisma.ProposalWhereInput = buildActiveProposalWhere(tenantId);
 
     if (filters.startDate || filters.endDate) {
       whereCondition.createdAt = {};
@@ -61,6 +56,7 @@ export class AnalyticsService {
         bankId: true,
         partnerId: true,
         statusId: true,
+        standardCategory: true,
         client: {
           select: {
             fullName: true,
@@ -88,13 +84,14 @@ export class AnalyticsService {
             standardCategory: true,
             slaHours: true,
             order: true,
+            finalStatus: true,
           },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
 
-    let totalActive = proposals.length;
+    let totalActive = 0;
     let totalOverSla = 0;
     let totalNearSla = 0;
     let totalValueStuck = 0;
@@ -133,6 +130,12 @@ export class AnalyticsService {
     const stuckProposalsSample: BottlenecksResponse['stuckProposalsSample'] = [];
 
     for (const p of proposals) {
+      // Guard: strictly ignore proposals in final status (e.g. CANCELADO, PAGO, REPROVADO)
+      if (isStatusFinal(p.status) || isStatusFinal({ standardCategory: (p as any).standardCategory })) {
+        continue;
+      }
+
+      totalActive++;
       const relVal = Number(p.releasedValue || 0);
       const conVal = Number(p.contractValue || 0);
       totalValueStuck += relVal;
@@ -514,13 +517,7 @@ export class AnalyticsService {
   ): Promise<AgingResponse> {
     const now = new Date();
 
-    const where: Prisma.ProposalWhereInput = {
-      tenantId,
-      deletedAt: null,
-      standardCategory: {
-        notIn: ['PAGO', 'CANCELADO'],
-      },
-    };
+    const where: Prisma.ProposalWhereInput = buildActiveProposalWhere(tenantId);
 
     if (filters.bankId) where.bankId = filters.bankId;
     if (filters.partnerId) where.partnerId = filters.partnerId;
@@ -532,9 +529,14 @@ export class AnalyticsService {
         id: true,
         releasedValue: true,
         createdAt: true,
+        standardCategory: true,
         status: {
           select: {
+            id: true,
+            code: true,
             name: true,
+            standardCategory: true,
+            finalStatus: true,
           },
         },
       },
@@ -561,12 +563,17 @@ export class AnalyticsService {
       bucketMap.set(b.id, { count: 0, totalValue: 0, statuses: new Map() });
     }
 
-    let totalOpenProposals = proposals.length;
+    let totalOpenProposals = 0;
     let totalOpenValue = 0;
     let totalAgeDays = 0;
     let maxAgeDays = 0;
 
     for (const p of proposals) {
+      if (isStatusFinal(p.status) || isStatusFinal({ standardCategory: (p as any).standardCategory })) {
+        continue;
+      }
+
+      totalOpenProposals++;
       const relVal = Number(p.releasedValue || 0);
       totalOpenValue += relVal;
 
@@ -664,6 +671,7 @@ export class AnalyticsService {
             code: true,
             name: true,
             standardCategory: true,
+            finalStatus: true,
           },
         },
         bank: { select: { id: true, name: true } },
@@ -697,10 +705,14 @@ export class AnalyticsService {
 
       const isPaid = p.standardCategory === 'PAGO' || p.status?.code === 'PAGO' || p.status?.standardCategory === 'PAGO';
       const isCancelled =
-        p.standardCategory === 'CANCELADO' ||
-        p.status?.code === 'CANCELADO' ||
-        p.status?.code === 'REPROVADO' ||
-        p.status?.standardCategory === 'CANCELADO';
+        !isPaid &&
+        (isStatusFinal(p.status) ||
+          p.standardCategory === 'CANCELADO' ||
+          p.standardCategory === 'RECUSADO' ||
+          p.status?.code === 'CANCELADO' ||
+          p.status?.code === 'REPROVADO' ||
+          p.status?.standardCategory === 'CANCELADO' ||
+          p.status?.standardCategory === 'RECUSADO');
 
       if (isPaid) {
         paidCount++;
@@ -960,13 +972,7 @@ export class AnalyticsService {
   ): Promise<SlaResponse> {
     const now = new Date();
 
-    const where: Prisma.ProposalWhereInput = {
-      tenantId,
-      deletedAt: null,
-      standardCategory: {
-        notIn: ['PAGO', 'CANCELADO'],
-      },
-    };
+    const where: Prisma.ProposalWhereInput = buildActiveProposalWhere(tenantId);
 
     if (filters.bankId) where.bankId = filters.bankId;
     if (filters.partnerId) where.partnerId = filters.partnerId;
@@ -982,12 +988,15 @@ export class AnalyticsService {
         bankId: true,
         partnerId: true,
         productId: true,
+        standardCategory: true,
         status: {
           select: {
             id: true,
             name: true,
             code: true,
+            standardCategory: true,
             slaHours: true,
+            finalStatus: true,
           },
         },
         bank: { select: { id: true, name: true } },
@@ -995,7 +1004,7 @@ export class AnalyticsService {
       },
     });
 
-    let totalEvaluated = proposals.length;
+    let totalEvaluated = 0;
     let totalWithinSla = 0;
     let totalNearSla = 0;
     let totalOverSla = 0;
@@ -1013,6 +1022,11 @@ export class AnalyticsService {
     const partnerMap = new Map<string, { partnerId: string; partnerName: string; within: number; over: number }>();
 
     for (const p of proposals) {
+      if (isStatusFinal(p.status) || isStatusFinal({ standardCategory: (p as any).standardCategory })) {
+        continue;
+      }
+
+      totalEvaluated++;
       const createdTime = p.createdAt.getTime();
       const dwellHours = Math.max(0, Math.round((now.getTime() - createdTime) / (1000 * 3600)));
       const slaHours = p.status?.slaHours || 24;

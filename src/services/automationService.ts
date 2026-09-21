@@ -76,7 +76,17 @@ export class AutomationService {
       return { businessDays: 0, targetDays, statusBadge: 'NORMAL', progressPercent: 0, daysRemaining: targetDays };
     }
 
-    if (currentStatus.code === 'SALDO_RETORNADO' || currentStatus.code === 'PAGO') {
+    if (
+      currentStatus.finalStatus ||
+      currentStatus.code === 'CANCELADO' ||
+      currentStatus.code === 'REPROVADO' ||
+      currentStatus.standardCategory === 'CANCELADO' ||
+      currentStatus.standardCategory === 'RECUSADO'
+    ) {
+      return { businessDays: 0, targetDays, statusBadge: 'CONCLUIDO', progressPercent: 100, daysRemaining: 0 };
+    }
+
+    if (currentStatus.code === 'SALDO_RETORNADO' || currentStatus.code === 'PAGO' || currentStatus.standardCategory === 'PAGO') {
       return { businessDays: targetDays, targetDays, statusBadge: 'CONCLUIDO', progressPercent: 100, daysRemaining: 0 };
     }
 

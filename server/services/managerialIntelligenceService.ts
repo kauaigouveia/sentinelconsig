@@ -10,6 +10,7 @@ import { BIFilterOptions } from '../../src/types/bi.js';
 import { BIService } from './biService.js';
 import { BIComparisonService } from './biComparisonService.js';
 import { AnalyticsService } from './analyticsService.js';
+import { buildActiveProposalWhere, isStatusFinal } from './statusService.js';
 
 export class ManagerialIntelligenceService {
   /**
@@ -262,13 +263,7 @@ export class ManagerialIntelligenceService {
     const generatedAt = new Date().toISOString();
 
     // 1. Compute Operational Health Score (OHS)
-    const activeWhere: Prisma.ProposalWhereInput = {
-      tenantId,
-      deletedAt: null,
-      standardCategory: {
-        notIn: [StandardStatusCategory.PAGO, StandardStatusCategory.CANCELADO],
-      },
-    };
+    const activeWhere: Prisma.ProposalWhereInput = buildActiveProposalWhere(tenantId);
 
     if (filters.bankId) activeWhere.bankId = filters.bankId;
     if (filters.partnerId) activeWhere.partnerId = filters.partnerId;
@@ -280,23 +275,32 @@ export class ManagerialIntelligenceService {
       select: {
         id: true,
         createdAt: true,
+        standardCategory: true,
         status: {
           select: {
+            id: true,
+            code: true,
             name: true,
             slaHours: true,
             standardCategory: true,
+            finalStatus: true,
           },
         },
       },
     });
 
-    const activeProposalsCount = activeProposals.length;
+    let activeProposalsCount = 0;
     let overSlaCount = 0;
     let atRiskCount = 0;
     let cipRetainedCount = 0;
     const now = new Date();
 
     for (const prop of activeProposals) {
+      if (isStatusFinal(prop.status) || isStatusFinal({ standardCategory: prop.standardCategory as any })) {
+        continue;
+      }
+
+      activeProposalsCount++;
       const slaHours = prop.status?.slaHours ?? 24;
       const ageHours = (now.getTime() - new Date(prop.createdAt).getTime()) / (1000 * 60 * 60);
 

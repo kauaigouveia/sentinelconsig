@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma, StandardStatusCategory } from '@prisma/client';
 
 export const DEFAULT_PROPOSAL_STATUSES = [
   { name: 'AGUARDAR FORMALIZAÇÃO', code: 'AGUARDAR_FORMALIZACAO', color: '#64748b', standardCategory: 'ESTEIRA' as const, slaHours: 24, order: 1, active: true, responsibleGroup: 'CLIENTE', finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true },
@@ -13,6 +13,132 @@ export const DEFAULT_PROPOSAL_STATUSES = [
   { name: 'CANCELADO', code: 'CANCELADO', color: '#94a3b8', standardCategory: 'CANCELADO' as const, slaHours: 0, order: 10, active: true, responsibleGroup: 'SISTEMA', finalStatus: true, manualChangeAllowed: true, automaticChangeAllowed: true },
   { name: 'REPROVADO', code: 'REPROVADO', color: '#dc2626', standardCategory: 'RECUSADO' as const, slaHours: 0, order: 11, active: true, responsibleGroup: 'SISTEMA', finalStatus: true, manualChangeAllowed: true, automaticChangeAllowed: true },
 ];
+
+/**
+ * Checks if a status record or status-like object represents a final, closed operational state.
+ * Respects tenant-specific `finalStatus: true`, standardCategory, code and name aliases.
+ */
+export function isStatusFinal(
+  status?: {
+    finalStatus?: boolean | null;
+    standardCategory?: string | null;
+    code?: string | null;
+    name?: string | null;
+  } | null
+): boolean {
+  if (!status) return false;
+
+  // 1. Primary rule: explicit boolean flag on PostgreSQL proposal_statuses
+  if (status.finalStatus === true) return true;
+
+  // 2. Standard category rule
+  const cat = (status.standardCategory || '').toUpperCase();
+  if (cat === 'PAGO' || cat === 'CANCELADO' || cat === 'RECUSADO') {
+    return true;
+  }
+
+  // 3. Fallback code / name pattern recognition
+  const code = (status.code || '').toUpperCase();
+  const name = (status.name || '').toUpperCase();
+  if (
+    code === 'PAGO' ||
+    code === 'CANCELADO' ||
+    code === 'REPROVADO' ||
+    name.includes('CANCELAD') ||
+    name.includes('REPROVAD') ||
+    name.includes('LIQUIDADO') ||
+    name.includes('DISTRAT')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Builds a Prisma ProposalWhereInput clause that strictly excludes:
+ * - Proposals marked with finalStatus === true on their related ProposalStatus
+ * - Proposals with standardCategory in [PAGO, CANCELADO, RECUSADO]
+ * - Proposals with related status standardCategory in [PAGO, CANCELADO, RECUSADO]
+ * - Soft-deleted proposals
+ */
+export function buildActiveProposalWhere(
+  tenantId: string,
+  additionalWhere: Prisma.ProposalWhereInput = {}
+): Prisma.ProposalWhereInput {
+  return {
+    tenantId,
+    deletedAt: null,
+    standardCategory: {
+      notIn: [
+        StandardStatusCategory.PAGO,
+        StandardStatusCategory.CANCELADO,
+        StandardStatusCategory.RECUSADO,
+      ],
+    },
+    NOT: [
+      {
+        status: {
+          finalStatus: true,
+        },
+      },
+      {
+        status: {
+          standardCategory: {
+            in: [
+              StandardStatusCategory.PAGO,
+              StandardStatusCategory.CANCELADO,
+              StandardStatusCategory.RECUSADO,
+            ],
+          },
+        },
+      },
+      {
+        standardCategory: {
+          in: [
+            StandardStatusCategory.PAGO,
+            StandardStatusCategory.CANCELADO,
+            StandardStatusCategory.RECUSADO,
+          ],
+        },
+      },
+    ],
+    ...additionalWhere,
+  };
+}
+
+/**
+ * Retrieves all status IDs marked as final for a given tenant in PostgreSQL.
+ */
+export async function getTenantFinalStatusIds(
+  prisma: PrismaClient,
+  tenantId: string
+): Promise<Set<string>> {
+  try {
+    const statuses = await prisma.proposalStatus.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { finalStatus: true },
+          {
+            standardCategory: {
+              in: [
+                StandardStatusCategory.PAGO,
+                StandardStatusCategory.CANCELADO,
+                StandardStatusCategory.RECUSADO,
+              ],
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    return new Set(statuses.map((s) => s.id));
+  } catch (err) {
+    console.warn('[StatusService] Falha ao consultar status finais do tenant:', err);
+    return new Set();
+  }
+}
 
 export async function ensureDefaultStatusesForTenant(prisma: PrismaClient, tenantId: string) {
   if (!tenantId) return;

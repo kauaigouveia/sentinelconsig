@@ -363,6 +363,7 @@ export interface ProposalStatus {
   automaticChangeAllowed: boolean;
   productType?: string;
   color: string;
+  standardCategory?: string;
 }
 
 export type Status = ProposalStatus;

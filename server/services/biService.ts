@@ -10,6 +10,7 @@ import {
   BIPartnerAnalyticsResponse,
   BIPartnerAnalyticsItem,
 } from '../../src/types/bi.js';
+import { isStatusFinal } from './statusService.js';
 
 export interface DateRangeResult {
   startDate: Date;
@@ -202,8 +203,10 @@ export class BIService {
         status: {
           select: {
             code: true,
+            name: true,
             standardCategory: true,
             slaHours: true,
+            finalStatus: true,
           },
         },
       },
@@ -241,13 +244,19 @@ export class BIService {
         p.status?.code === 'PAGO' ||
         p.status?.standardCategory === 'PAGO';
 
-      const isReproved = p.status?.code === 'REPROVADO';
+      const isReproved =
+        !isPaid &&
+        (p.status?.code === 'REPROVADO' ||
+          p.status?.standardCategory === 'RECUSADO' ||
+          p.standardCategory === 'RECUSADO');
 
       const isCancelled =
-        p.standardCategory === 'CANCELADO' ||
-        p.status?.code === 'CANCELADO' ||
-        isReproved ||
-        p.status?.standardCategory === 'CANCELADO';
+        !isPaid &&
+        (isReproved ||
+          isStatusFinal(p.status) ||
+          p.standardCategory === 'CANCELADO' ||
+          p.status?.code === 'CANCELADO' ||
+          p.status?.standardCategory === 'CANCELADO');
 
       if (isPaid) {
         paidCount++;
@@ -552,8 +561,10 @@ export class BIService {
         status: {
           select: {
             code: true,
+            name: true,
             standardCategory: true,
             slaHours: true,
+            finalStatus: true,
           },
         },
       },
@@ -621,8 +632,18 @@ export class BIService {
         totalPaidValue += relVal;
       }
 
-      // SLA evaluation
-      const isOpen = !isPaid && p.standardCategory !== 'CANCELADO' && p.status?.code !== 'CANCELADO';
+      // SLA evaluation: only evaluated on open, non-final proposals
+      const isCancelledOrFinal =
+        !isPaid &&
+        (isStatusFinal(p.status) ||
+          p.standardCategory === 'CANCELADO' ||
+          p.standardCategory === 'RECUSADO' ||
+          p.status?.code === 'CANCELADO' ||
+          p.status?.code === 'REPROVADO' ||
+          p.status?.standardCategory === 'CANCELADO' ||
+          p.status?.standardCategory === 'RECUSADO');
+
+      const isOpen = !isPaid && !isCancelledOrFinal;
       if (isOpen) {
         entry.totalSlaEvaluated++;
         const dwellHours = Math.max(0, Math.round((now.getTime() - p.createdAt.getTime()) / (1000 * 3600)));
@@ -711,7 +732,9 @@ export class BIService {
         status: {
           select: {
             code: true,
+            name: true,
             standardCategory: true,
+            finalStatus: true,
           },
         },
       },
@@ -763,13 +786,25 @@ export class BIService {
       entry.gross += conVal;
       entry.net += relVal;
 
-      const dwellHours = Math.max(0, (now.getTime() - p.createdAt.getTime()) / (1000 * 3600));
-      entry.totalDwellHours += dwellHours;
-
       const isPaid =
         p.standardCategory === 'PAGO' ||
         p.status?.code === 'PAGO' ||
         p.status?.standardCategory === 'PAGO';
+
+      const isCancelledOrFinal =
+        !isPaid &&
+        (isStatusFinal(p.status) ||
+          p.standardCategory === 'CANCELADO' ||
+          p.standardCategory === 'RECUSADO' ||
+          p.status?.code === 'CANCELADO' ||
+          p.status?.code === 'REPROVADO' ||
+          p.status?.standardCategory === 'CANCELADO' ||
+          p.status?.standardCategory === 'RECUSADO');
+
+      if (!isPaid && !isCancelledOrFinal) {
+        const dwellHours = Math.max(0, (now.getTime() - p.createdAt.getTime()) / (1000 * 3600));
+        entry.totalDwellHours += dwellHours;
+      }
 
       if (isPaid) {
         entry.paidCount++;

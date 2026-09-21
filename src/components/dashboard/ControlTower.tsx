@@ -32,6 +32,7 @@ import { AnalyticsApiService } from '../../services/analyticsApiService';
 import { AgingResponse, BottlenecksResponse } from '../../types/analytics';
 import { ResponsibleAlçada } from '../../types';
 import { formatCurrency } from '../../lib/utils';
+import { isProposalFinal, isProposalOperationalActive, isStatusFinal } from '../../lib/statusUtils';
 
 interface ControlTowerProps {
   onNavigateToProductionWithFilter: (filter: {
@@ -71,23 +72,29 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
   const total = proposals.length;
   const pagas = proposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
-    return s?.code === 'PAGO';
+    return s?.code === 'PAGO' || s?.standardCategory === 'PAGO';
   }).length;
 
   const canceladasReprovadas = proposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
-    return s?.code === 'CANCELADO' || s?.code === 'REPROVADO';
+    return isProposalFinal(p, statuses) && s?.code !== 'PAGO' && s?.standardCategory !== 'PAGO';
   }).length;
 
   const pendentes = proposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
-    return s?.code.startsWith('PENDENTE');
+    return (
+      isProposalOperationalActive(p, statuses) &&
+      (s?.code?.startsWith('PENDENTE') || s?.standardCategory === 'PENDENTE')
+    );
   }).length;
 
-  // Portabilidades in CIP
+  // Portabilidades in CIP (active only)
   const cipStatus = statuses.find(s => s.code === 'AGUARDAR_RETORNO_CIP');
   const portInCip = proposals.filter(
-    p => p.productId === 'prod-port' && p.statusId === cipStatus?.id
+    p =>
+      p.productId === 'prod-port' &&
+      p.statusId === cipStatus?.id &&
+      isProposalOperationalActive(p, statuses)
   );
 
   let portNo5Dia = 0;
@@ -99,18 +106,19 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
   });
 
   // Financial values calculations
-  const totalDisbursed = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+  const activeProposals = proposals.filter(p => isProposalOperationalActive(p, statuses));
+  const totalDisbursedActive = activeProposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
   const totalDisbursedPaid = proposals
     .filter(p => {
       const s = statuses.find(st => st.id === p.statusId);
-      return s?.code === 'PAGO';
+      return s?.code === 'PAGO' || s?.standardCategory === 'PAGO';
     })
     .reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
 
   const totalBalanceCip = portInCip.reduce((acc, p) => acc + (p.contractBalance || 0), 0);
   const totalDisbursedCip = portInCip.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
 
-  // Alçadas breakdown
+  // Alçadas breakdown (strictly active proposals, excluding CANCELADO / finalStatus)
   const alcadas: Record<ResponsibleAlçada, number> = {
     CLIENTE: 0,
     PARCEIRO: 0,
@@ -120,13 +128,14 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
   };
 
   proposals.forEach(p => {
+    if (!isProposalOperationalActive(p, statuses)) return;
     const s = statuses.find(st => st.id === p.statusId);
     if (s && alcadas[s.responsible] !== undefined) {
       alcadas[s.responsible]++;
     }
   });
 
-  // Aging buckets (days since proposal created)
+  // Aging buckets (strictly active proposals, excluding CANCELADO / finalStatus)
   const agingBuckets = {
     '0 dias': 0,
     '1 dia': 0,
@@ -141,6 +150,7 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
 
   const now = new Date().getTime();
   proposals.forEach(p => {
+    if (!isProposalOperationalActive(p, statuses)) return;
     const diffDays = Math.floor((now - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) agingBuckets['0 dias']++;
     else if (diffDays === 1) agingBuckets['1 dia']++;
@@ -240,13 +250,13 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
         >
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
-              Volume Total em Esteira (R$)
+              Volume Ativo em Esteira (R$)
             </span>
             <p className="text-2xl font-black font-mono text-blue-900 dark:text-blue-300 mt-0.5 tracking-tight">
-              {formatCurrency(totalDisbursed)}
+              {formatCurrency(totalDisbursedActive)}
             </p>
             <span className="text-[11px] text-blue-600 dark:text-blue-400/80 font-bold">
-              {total} propostas cadastradas
+              {activeProposals.length} propostas em andamento
             </span>
           </div>
           <div className="h-10 w-10 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
