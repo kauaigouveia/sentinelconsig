@@ -32,6 +32,7 @@ import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { toastService } from '../ui/toastService';
 import { C6ProposalCard } from './C6ProposalCard';
 import { FactaProposalCard } from './FactaProposalCard';
+import { HappyProposalCard } from './HappyProposalCard';
 
 interface ProposalDetailModalProps {
   proposalId: string | null;
@@ -100,6 +101,11 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     bank?.code === '149' ||
     (bank?.name && bank.name.toUpperCase().includes('FACTA')) ||
     Boolean(proposal.factaAfCode || proposal.factaProposalNumber);
+
+  const isHappyBank =
+    bank?.code === 'HAPPY' ||
+    (bank?.name && (bank.name.toUpperCase().includes('HAPPY') || bank.name.toUpperCase().includes('BYX'))) ||
+    Boolean(proposal.happyContractId);
 
   // Status reais sincronizados do PostgreSQL
   const [dbStatuses, setDbStatuses] = useState<any[]>([]);
@@ -228,7 +234,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     }
   }, [proposalId]);
 
-  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK' | 'FACTA'>('HISTORICO');
+  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK' | 'FACTA' | 'HAPPY'>('HISTORICO');
 
   // Status update form
   const [selectedStatusId, setSelectedStatusId] = useState(proposal.statusId);
@@ -845,6 +851,54 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           </div>
         )}
 
+        {/* Integração Happy / BYX Capital Status Bar */}
+        {isHappyBank && (
+          <div className="px-6 py-2.5 bg-gradient-to-r from-pink-950 via-slate-900 to-slate-950 text-white border-b border-pink-900/50 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-pink-400 animate-pulse"></span>
+                <span className="font-bold uppercase tracking-wider text-[10.5px] text-pink-300">Happy / BYX Capital</span>
+              </div>
+              {proposal.happyContractId && (
+                <div className="flex items-center gap-1 text-slate-300 text-[11px]">
+                  <span className="text-slate-400">Contrato:</span>
+                  <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                    {proposal.happyContractId}
+                  </span>
+                </div>
+              )}
+              {proposal.happyStatusName && (
+                <div className="flex items-center gap-1 text-[11px]">
+                  <span className="text-slate-400">Status Happy:</span>
+                  <span className="font-semibold text-pink-300">{proposal.happyStatusName}</span>
+                </div>
+              )}
+              {proposal.happyLastSyncAt && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-300">
+                  <span className="text-slate-400">Última Sync:</span>
+                  <span className="font-medium text-slate-200">
+                    {new Date(proposal.happyLastSyncAt).toLocaleTimeString('pt-BR')}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('HAPPY')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'HAPPY'
+                    ? 'bg-pink-600 text-white shadow-xs'
+                    : 'bg-slate-800 hover:bg-slate-700 text-pink-300 border border-pink-400/30'
+                }`}
+              >
+                <span>Ver Esteira Happy Completa</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900 shrink-0">
           <button
@@ -924,6 +978,22 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                 FAC
               </div>
               <span>Esteira FACTA</span>
+            </button>
+          )}
+
+          {isHappyBank && (
+            <button
+              onClick={() => setActiveTab('HAPPY')}
+              className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'HAPPY'
+                  ? 'border-pink-600 text-pink-600 dark:text-pink-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <div className="h-3.5 w-3.5 rounded-xs bg-pink-600 text-white flex items-center justify-center font-black text-[7px] leading-none">
+                HP
+              </div>
+              <span>Esteira Happy</span>
             </button>
           )}
         </div>
@@ -1308,6 +1378,34 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                     }
                   }
                   StorageService.updateProposal(updated.id, updated, 'Consulta FACTA Financeira');
+                  if (onProposalUpdated) onProposalUpdated();
+                }}
+              />
+            </div>
+          )}
+
+          {/* TAB 7: ESTEIRA HAPPY */}
+          {activeTab === 'HAPPY' && isHappyBank && (
+            <div className="space-y-4">
+              <HappyProposalCard
+                proposal={proposal}
+                standalone
+                onProposalUpdated={(updated) => {
+                  setLiveProposal(updated);
+                  if (updated.statusId && updated.statusId !== proposal.statusId) {
+                    try {
+                      StorageService.updateProposalStatus(
+                        updated.id,
+                        updated.statusId,
+                        `Sincronização Happy: Status "${updated.happyStatusName || updated.happyStatus || ''}"`,
+                        undefined,
+                        'SISTEMA'
+                      );
+                    } catch (e) {
+                      console.warn('[HAPPY SYNC] Status local não alterado:', e);
+                    }
+                  }
+                  StorageService.updateProposal(updated.id, updated, 'Consulta Happy / BYX Capital');
                   if (onProposalUpdated) onProposalUpdated();
                 }}
               />

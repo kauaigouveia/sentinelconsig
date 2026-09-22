@@ -47,6 +47,7 @@ export interface Tenant {
   maxProposals?: number;
   modules?: string[];
   enabledModules?: string[];
+  simulationAccessEnabled?: boolean;
   whiteLabel?: WhiteLabelConfig;
   adminEmail?: string;
   adminName?: string;
@@ -421,6 +422,22 @@ export interface Proposal {
   factaSyncStatus?: 'SYNCED' | 'PENDING' | 'ERROR' | 'UNLINKED';
   factaSyncError?: string;
   factaRawData?: any;
+
+  // Happy / BYX Capital Integration
+  happyContractId?: string;
+  happyStatus?: string;
+  happyStatusCode?: number;
+  happyStatusName?: string;
+  happyStatusDescription?: string;
+  happyProductType?: string;
+  happyPortabilityStatus?: string;
+  happyDigitizer?: string;
+  happyProposalKey?: string;
+  happyCustomerId?: string;
+  happyLastSyncAt?: string;
+  happySyncStatus?: 'SYNCED' | 'PENDING' | 'ERROR' | 'UNMATCHED';
+  happySyncError?: string;
+  happyRawData?: any;
 }
 
 export interface C6SyncHistoryItem {
@@ -520,6 +537,75 @@ export interface FactaWorkerStatusState {
   pendingProposalsCount: number;
   recentFailuresCount: number;
   activeLock: boolean;
+}
+
+export interface HappyConfigState {
+  ambiente: 'staging' | 'production';
+  baseUrl: string;
+  clientId: string;
+  secret?: string;
+  usuario: string;
+  senha?: string;
+  cpfDigitador: string;
+  correspondenteBanqueiro: string;
+  ativo: boolean;
+  isConfigured: boolean;
+  hasSecret: boolean;
+  hasSenha: boolean;
+}
+
+export interface HappySyncHistoryItem {
+  id: string;
+  tenantId: string;
+  proposalId?: string;
+  happyContractId?: string;
+  operation: string;
+  status: string;
+  previousStatus?: string;
+  newStatus?: string;
+  requestId?: string;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+  rawResponse?: any;
+  proposal?: {
+    id: string;
+    proposalNumber: string;
+    client?: { fullName: string; cpf: string };
+  };
+}
+
+export interface HappyWebhookEventItem {
+  id: string;
+  tenantId?: string;
+  requestId: string;
+  eventName: string;
+  customerId?: string;
+  contractId?: string;
+  digitador?: string;
+  statusCode?: number;
+  statusName?: string;
+  statusDescription?: string;
+  proposalKey?: string;
+  payload: any;
+  receivedAt: string;
+  processedAt?: string;
+  processingStatus: string;
+  processingError?: string;
+  matchedProposalId?: string;
+}
+
+export interface HappyStatusState {
+  isConfigured: boolean;
+  isActive: boolean;
+  ambiente: 'staging' | 'production';
+  lastSyncAt: string | null;
+  lastWebhookReceivedAt: string | null;
+  lastWebhookProcessedAt: string | null;
+  unmatchedWebhooksCount: number;
+  totalSyncedCount: number;
+  recentErrorsCount: number;
+  lastError: string | null;
 }
 
 export interface ProposalRelation {
@@ -734,6 +820,10 @@ export interface ExecutiveWidgetConfig {
   minimized?: boolean;
 }
 
+export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT';
+
+export type SimulationOperationType = 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN' | 'CONSIGNADO_PRIVADO_CLT';
+
 export type SimulationStatus =
   | 'SIMULAÇÃO ENVIADA'
   | 'NÃO PASSÍVEL DE CONTRATAÇÃO'
@@ -743,10 +833,27 @@ export type SimulationStatus =
 export interface SimulationRequest {
   id: string;
   cpf: string; // 11 raw digits normalized
-  partnerId: string;
+  partnerId?: string;
+  partner?: Partner;
   createdById: string;
   tenantId?: string;
   status: SimulationStatus;
+  simulationType?: SimulationType;
+  operationType?: SimulationOperationType;
+  happyClientId?: string;
+  happySimulationId?: string;
+  happyApplicationKey?: string;
+  happyProposalKey?: string;
+  happyJourneyStatus?: string;
+  happyAuthUrl?: string;
+  happyBeneficioNumero?: string;
+  happyDataNascimento?: string;
+  happyClienteNome?: string;
+  happyClienteTelefone?: string;
+  happyRawData?: any;
+  happyRawConditions?: any;
+  happySelectedCondition?: any;
+  happyRawResult?: any;
   convenioId?: string;
   convenioName?: string;
   productId?: string;

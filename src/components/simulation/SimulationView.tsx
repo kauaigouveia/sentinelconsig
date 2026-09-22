@@ -32,11 +32,16 @@ import {
   Users,
   Hourglass,
   FileSpreadsheet,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { SimulationRequest, SimulationStatus, Partner, User as UserType, Convenio, Product } from '../../types';
+import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { SimulationImportModal } from './SimulationImportModal';
+import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
+import { HappyInssSimulationModal } from './HappyInssSimulationModal';
+import { HappyCltSimulationModal } from './HappyCltSimulationModal';
 
 interface SimulationViewProps {
   onOpenProposalDetail?: (proposalId: string) => void;
@@ -71,6 +76,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   const [selectedPartnerId, setSelectedPartnerId] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('TODOS');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('TODOS');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -78,7 +84,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals state
+  const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isHappyInssModalOpen, setIsHappyInssModalOpen] = useState(false);
+  const [isHappyCltModalOpen, setIsHappyCltModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [newCpf, setNewCpf] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
@@ -120,6 +129,80 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
   // Copy feedback
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Simulation Access Control State
+  const [simulationAccessEnabled, setSimulationAccessEnabled] = useState<boolean>(true);
+  const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
+  const [accessUpdateSuccessMsg, setAccessUpdateSuccessMsg] = useState<string | null>(null);
+
+  const isAdmin = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER' || activeUser?.role === 'TENANT_ADMIN';
+
+  const fetchSimulationAccess = async () => {
+    try {
+      const res = await fetch('/api/settings/simulation-access', { credentials: 'same-origin' });
+      if (res.ok) {
+        const data = await res.json();
+        setSimulationAccessEnabled(data.simulationAccessEnabled !== false);
+      } else {
+        // Fallback para o tenant local se rota ainda não estiver disponível
+        const currentTenant = StorageService.getCurrentTenant();
+        if (currentTenant && currentTenant.simulationAccessEnabled !== undefined) {
+          setSimulationAccessEnabled(currentTenant.simulationAccessEnabled);
+        }
+      }
+    } catch {
+      const currentTenant = StorageService.getCurrentTenant();
+      if (currentTenant && currentTenant.simulationAccessEnabled !== undefined) {
+        setSimulationAccessEnabled(currentTenant.simulationAccessEnabled);
+      }
+    }
+  };
+
+  const handleToggleSimulationAccess = async () => {
+    if (!isAdmin || isUpdatingAccess) return;
+    const newStatus = !simulationAccessEnabled;
+    const confirmText = newStatus
+      ? 'Deseja LIBERAR o acesso à Central de Simulações para todos os usuários autorizados deste tenant?'
+      : 'ATENÇÃO: Deseja BLOQUEAR o acesso à Central de Simulações?\n\nOs usuários NÃO poderão criar novas simulações (Manual, Happy INSS ou Happy CLT). As propostas já existentes continuarão operando normalmente.';
+    
+    if (!window.confirm(confirmText)) return;
+
+    setIsUpdatingAccess(true);
+    setAccessUpdateSuccessMsg(null);
+    try {
+      const res = await fetch('/api/settings/simulation-access', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          simulationAccessEnabled: newStatus,
+          reason: newStatus ? 'Acesso liberado pelo administrador na Central de Simulações' : 'Acesso bloqueado pelo administrador na Central de Simulações',
+        }),
+      });
+
+      if (res.ok) {
+        setSimulationAccessEnabled(newStatus);
+        // Atualiza cache local do tenant
+        const curr = StorageService.getCurrentTenant();
+        if (curr) {
+          StorageService.updateTenant({ ...curr, simulationAccessEnabled: newStatus });
+        }
+        setAccessUpdateSuccessMsg(
+          newStatus
+            ? 'Central de Simulações LIBERADA com sucesso!'
+            : 'Central de Simulações BLOQUEADA com sucesso!'
+        );
+        setTimeout(() => setAccessUpdateSuccessMsg(null), 4000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Erro ao alterar permissão da Central de Simulações.');
+      }
+    } catch (err) {
+      alert('Erro de conexão ao alterar status da Central de Simulações.');
+    } finally {
+      setIsUpdatingAccess(false);
+    }
+  };
 
   const comboboxRef = useRef<HTMLDivElement>(null);
 
@@ -189,9 +272,17 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
   useEffect(() => {
     loadData();
-    const handleUpdate = () => loadData();
+    fetchSimulationAccess();
+    const handleUpdate = () => {
+      loadData();
+      fetchSimulationAccess();
+    };
     window.addEventListener('credit_gestao_storage_update', handleUpdate);
-    return () => window.removeEventListener('credit_gestao_storage_update', handleUpdate);
+    window.addEventListener('tenantUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('credit_gestao_storage_update', handleUpdate);
+      window.removeEventListener('tenantUpdated', handleUpdate);
+    };
   }, []);
 
   // Close combobox when clicking outside
@@ -240,6 +331,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   };
 
   const handleOpenNewModal = () => {
+    setIsFlowSelectorOpen(true);
+  };
+
+  const handleOpenManualModal = () => {
     setModalError(null);
     setNewCpf('');
     setSelectedPartner(null);
@@ -266,6 +361,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
         body: JSON.stringify({
           cpf: cleanCpf,
           partnerId,
+          simulationType: 'MANUAL',
           convenioId: selectedConvenioId || undefined,
           productId: selectedProductId || undefined,
         }),
@@ -504,6 +600,12 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
         return false;
       }
 
+      // Simulation Type Filter
+      if (selectedTypeFilter !== 'TODOS') {
+        const type = sim.simulationType || 'MANUAL';
+        if (type !== selectedTypeFilter) return false;
+      }
+
       // Date Range Filter
       if (startDate) {
         const simDate = new Date(sim.createdAt).toISOString().split('T')[0];
@@ -516,7 +618,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
       return true;
     });
-  }, [simulations, cpfSearch, selectedPartnerId, selectedUserId, selectedStatus, startDate, endDate]);
+  }, [simulations, cpfSearch, selectedPartnerId, selectedUserId, selectedStatus, selectedTypeFilter, startDate, endDate]);
 
   // Aguardando Digitação (Fila da Mesa - sorted oldest first)
   const pendingQueueSimulations = useMemo(() => {
@@ -671,12 +773,13 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     setSelectedPartnerId('');
     setSelectedUserId('');
     setSelectedStatus('TODOS');
+    setSelectedTypeFilter('TODOS');
     setStartDate('');
     setEndDate('');
   };
 
   const hasActiveFilters =
-    cpfSearch || selectedPartnerId || selectedUserId || selectedStatus !== 'TODOS' || startDate || endDate;
+    cpfSearch || selectedPartnerId || selectedUserId || selectedStatus !== 'TODOS' || selectedTypeFilter !== 'TODOS' || startDate || endDate;
 
   // UI Permission helpers for simulation view
   const canDeleteSimulationUI = (user: UserType | null, sim: SimulationRequest): boolean => {
@@ -795,7 +898,39 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* Controle Administrativo de Acesso à Simulação (Apenas Administradores) */}
+          {isAdmin && (
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 px-1.5 flex items-center gap-1">
+                {simulationAccessEnabled ? (
+                  <Unlock className="h-3.5 w-3.5 text-emerald-600" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 text-rose-600" />
+                )}
+                <span className="hidden sm:inline">Central:</span>
+              </span>
+              <button
+                type="button"
+                id="btn-toggle-simulation-access"
+                disabled={isUpdatingAccess}
+                onClick={handleToggleSimulationAccess}
+                className={`px-2.5 py-1 text-[11px] font-extrabold uppercase rounded-md transition-all cursor-pointer flex items-center gap-1 shadow-2xs ${
+                  simulationAccessEnabled
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white'
+                }`}
+                title={
+                  simulationAccessEnabled
+                    ? 'Clique para BLOQUEAR a criação de novas simulações neste tenant'
+                    : 'Clique para LIBERAR a criação de novas simulações neste tenant'
+                }
+              >
+                {simulationAccessEnabled ? 'LIBERADA' : 'BLOQUEADA'}
+              </button>
+            </div>
+          )}
+
           <button
             onClick={handleExportCsv}
             className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
@@ -805,8 +940,19 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
           </button>
 
           <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg transition-all cursor-pointer border border-emerald-200 dark:border-emerald-800"
+            onClick={() => {
+              if (!simulationAccessEnabled) {
+                alert('A Central de Simulações está BLOQUEADA para novas criações neste tenant.');
+                return;
+              }
+              setIsImportModalOpen(true);
+            }}
+            disabled={!simulationAccessEnabled}
+            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all border ${
+              simulationAccessEnabled
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 cursor-pointer'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
+            }`}
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span>Importar em Lote</span>
@@ -814,14 +960,88 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
           <button
             id="btn-nova-simulacao"
-            onClick={handleOpenNewModal}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer shrink-0"
+            disabled={!simulationAccessEnabled}
+            onClick={() => {
+              if (!simulationAccessEnabled) return;
+              handleOpenNewModal();
+            }}
+            className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-all shrink-0 ${
+              simulationAccessEnabled
+                ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300 dark:border-slate-700 opacity-60'
+            }`}
+            title={
+              !simulationAccessEnabled
+                ? 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.'
+                : 'Iniciar nova simulação (Manual, Happy INSS ou Happy CLT)'
+            }
           >
-            <Plus className="h-4 w-4" />
+            {!simulationAccessEnabled ? (
+              <Lock className="h-4 w-4 text-slate-400" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
             <span>+ NOVA SIMULAÇÃO</span>
           </button>
         </div>
       </div>
+
+      {/* Feedback de Alteração de Acesso */}
+      {accessUpdateSuccessMsg && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span>{accessUpdateSuccessMsg}</span>
+          </div>
+          <button
+            onClick={() => setAccessUpdateSuccessMsg(null)}
+            className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Banner Informativo de Bloqueio da Central de Simulações */}
+      {!simulationAccessEnabled && (
+        <div
+          id="banner-simulacao-bloqueada"
+          className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in"
+        >
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-rose-800 dark:text-rose-300">
+                  Central de Simulações Bloqueada
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-200 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 rounded-md">
+                  NOVAS SIMULAÇÕES SUSPENSAS
+                </span>
+              </div>
+              <p className="text-xs text-rose-700 dark:text-rose-300/90 mt-0.5">
+                A criação de novas simulações (Manual, Happy INSS e Happy CLT) está temporariamente bloqueada pela administração da empresa.
+                <strong className="block sm:inline sm:ml-1 font-semibold text-rose-900 dark:text-rose-100">
+                  A visualização, esteira e atualização de propostas existentes continuam operando normalmente.
+                </strong>
+              </p>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <button
+              onClick={handleToggleSimulationAccess}
+              disabled={isUpdatingAccess}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
+            >
+              <Unlock className="h-4 w-4" />
+              <span>Liberar Acesso Agora</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 text-xs font-medium">
@@ -989,9 +1209,9 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
           {/* Filter Toolbar */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
               {/* Search CPF */}
-              <div className="lg:col-span-2">
+              <div>
                 <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                   Buscar CPF
                 </label>
@@ -1001,10 +1221,27 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                     type="text"
                     value={cpfSearch}
                     onChange={e => setCpfSearch(e.target.value)}
-                    placeholder="Ex: 01138777498 ou 011.387..."
+                    placeholder="Ex: 01138777498..."
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+
+              {/* Tipo / Fluxo Filter */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Tipo / Fluxo
+                </label>
+                <select
+                  value={selectedTypeFilter}
+                  onChange={e => setSelectedTypeFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="TODOS">Todos os Fluxos</option>
+                  <option value="MANUAL">Manual</option>
+                  <option value="HAPPY_INSS">Happy INSS</option>
+                  <option value="HAPPY_CLT">Happy CLT</option>
+                </select>
               </div>
 
               {/* Partner Filter */}
@@ -1148,6 +1385,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                       />
                     </th>
                     <th className="px-4 py-3">CPF DO CLIENTE</th>
+                    <th className="px-4 py-3">TIPO</th>
                     <th className="px-4 py-3">PARCEIRO</th>
                     <th className="px-4 py-3">RESPONSÁVEL</th>
                     <th className="px-4 py-3">DATA/HORA SOLICITAÇÃO</th>
@@ -1161,7 +1399,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredSimulations.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
+                      <td colSpan={11} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
                         <Calculator className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         <p className="font-medium text-sm">Nenhuma solicitação de simulação encontrada.</p>
                         <p className="text-xs mt-1">Clique no botão "+ NOVA SIMULAÇÃO" para cadastrar.</p>
@@ -1227,6 +1465,23 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                                   </span>
                                 )}
                               </div>
+                            )}
+                          </td>
+
+                          {/* Tipo / Fluxo */}
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {sim.simulationType === 'HAPPY_INSS' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                HAPPY INSS
+                              </span>
+                            ) : sim.simulationType === 'HAPPY_CLT' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                HAPPY CLT
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                MANUAL
+                              </span>
                             )}
                           </td>
 
@@ -2251,6 +2506,18 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   <span className="font-mono font-bold text-sm">{formatCpf(detailTarget.cpf)}</span>
                 </div>
                 <div>
+                  <span className="text-slate-400 block text-[10px]">TIPO / FLUXO</span>
+                  <span className="font-bold text-xs">
+                    {detailTarget.simulationType === 'HAPPY_INSS' ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">Happy INSS</span>
+                    ) : detailTarget.simulationType === 'HAPPY_CLT' ? (
+                      <span className="text-indigo-600 dark:text-indigo-400">Happy CLT</span>
+                    ) : (
+                      <span className="text-slate-600 dark:text-slate-400">Manual</span>
+                    )}
+                  </span>
+                </div>
+                <div>
                   <span className="text-slate-400 block text-[10px]">PARCEIRO</span>
                   <span className="font-mono font-bold text-xs">
                     {partners.find(p => p.id === detailTarget.partnerId)?.login}
@@ -2264,7 +2531,49 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   <span className="text-slate-400 block text-[10px]">DATA SOLICITAÇÃO</span>
                   <span>{new Date(detailTarget.createdAt).toLocaleString('pt-BR')}</span>
                 </div>
+                {detailTarget.operationType && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">OPERAÇÃO</span>
+                    <span className="font-semibold">{detailTarget.operationType}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Happy Metadata if applicable */}
+              {(detailTarget.happyClientId || detailTarget.happySimulationId || detailTarget.happyBeneficioNumero || detailTarget.happyJourneyStatus) && (
+                <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-lg space-y-2">
+                  <h5 className="font-bold text-[11px] text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-indigo-600" />
+                    Dados Happy Consignado
+                  </h5>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    {detailTarget.happyBeneficioNumero && (
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">Nº BENEFÍCIO</span>
+                        <span className="font-mono font-bold">{detailTarget.happyBeneficioNumero}</span>
+                      </div>
+                    )}
+                    {detailTarget.happyJourneyStatus && (
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">SITUAÇÃO / STATUS</span>
+                        <span className="font-bold text-indigo-700 dark:text-indigo-300">{detailTarget.happyJourneyStatus}</span>
+                      </div>
+                    )}
+                    {detailTarget.happyClientId && (
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">CLIENT ID</span>
+                        <span className="font-mono text-[10px] truncate block" title={detailTarget.happyClientId}>{detailTarget.happyClientId}</span>
+                      </div>
+                    )}
+                    {detailTarget.happySimulationId && (
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">SIMULATION ID</span>
+                        <span className="font-mono text-[10px] truncate block" title={detailTarget.happySimulationId}>{detailTarget.happySimulationId}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Timeline Flow */}
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
@@ -2362,6 +2671,42 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportCompleted={() => loadData()}
+      />
+
+      {/* Modal Seletor de Fluxo de Simulação (Manual vs Happy INSS vs Happy CLT) */}
+      <SimulationFlowSelectorModal
+        isOpen={isFlowSelectorOpen}
+        onClose={() => setIsFlowSelectorOpen(false)}
+        onSelectFlow={(flow) => {
+          setIsFlowSelectorOpen(false);
+          if (flow === 'MANUAL') {
+            handleOpenManualModal();
+          } else if (flow === 'HAPPY_INSS') {
+            setIsHappyInssModalOpen(true);
+          } else if (flow === 'HAPPY_CLT') {
+            setIsHappyCltModalOpen(true);
+          }
+        }}
+      />
+
+      {/* Modal Simulação Happy INSS */}
+      <HappyInssSimulationModal
+        isOpen={isHappyInssModalOpen}
+        onClose={() => setIsHappyInssModalOpen(false)}
+        partners={partners}
+        onSuccess={async () => {
+          await loadData();
+        }}
+      />
+
+      {/* Modal Simulação Happy CLT (Consignado Privado) */}
+      <HappyCltSimulationModal
+        isOpen={isHappyCltModalOpen}
+        onClose={() => setIsHappyCltModalOpen(false)}
+        partners={partners}
+        onSuccess={async () => {
+          await loadData();
+        }}
       />
     </div>
   );

@@ -44,6 +44,8 @@ import { C6BankService } from './server/services/c6BankService.js';
 import { C6SyncWorker } from './server/services/c6SyncWorker.js';
 import { FactaBankService } from './server/services/factaBankService.js';
 import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
+import { HappyBankService } from './server/services/happyBankService.js';
+import { HappySimulationService } from './server/services/happySimulationService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
 
 let isShuttingDown = false;
@@ -1388,9 +1390,47 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
       }
 
-      const { cpf, partnerId, convenioId, productId } = req.body;
-      if (!cpf || !partnerId) {
-        return res.status(400).json({ error: 'CPF e Parceiro são obrigatórios.' });
+      // Validação de Controle de Acesso à Central de Simulações
+      const tenantRecord = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { simulationAccessEnabled: true },
+      });
+      if (tenantRecord && tenantRecord.simulationAccessEnabled === false) {
+        return res.status(403).json({
+          error: 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.',
+          code: 'SIMULATION_ACCESS_DISABLED',
+        });
+      }
+
+      const {
+        cpf,
+        partnerId,
+        convenioId,
+        productId,
+        simulationType = 'MANUAL',
+        operationType,
+        happyClientId,
+        happySimulationId,
+        happyApplicationKey,
+        happyProposalKey,
+        happyJourneyStatus,
+        happyAuthUrl,
+        happyBeneficioNumero,
+        happyDataNascimento,
+        happyClienteNome,
+        happyClienteTelefone,
+        happyRawData,
+        happyRawConditions,
+        happySelectedCondition,
+        happyRawResult,
+      } = req.body;
+
+      if (!cpf) {
+        return res.status(400).json({ error: 'CPF é obrigatório.' });
+      }
+
+      if (simulationType === 'MANUAL' && !partnerId) {
+        return res.status(400).json({ error: 'CPF e Parceiro são obrigatórios para simulação manual.' });
       }
 
       const cleanCpf = SimulationService.normalizeCpf(cpf);
@@ -1398,12 +1438,14 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'CPF inválido. Informe os 11 dígitos do CPF.' });
       }
 
-      // Verify partner belongs to tenant and is active
-      const partner = await prisma.partner.findFirst({
-        where: { id: partnerId, tenantId, deletedAt: null, status: 'ATIVO' },
-      });
-      if (!partner) {
-        return res.status(400).json({ error: 'Parceiro não encontrado, inativo ou não pertence a este tenant.' });
+      // Verify partner belongs to tenant and is active (if provided)
+      if (partnerId) {
+        const partner = await prisma.partner.findFirst({
+          where: { id: partnerId, tenantId, deletedAt: null, status: 'ATIVO' },
+        });
+        if (!partner) {
+          return res.status(400).json({ error: 'Parceiro não encontrado, inativo ou não pertence a este tenant.' });
+        }
       }
 
       // Validate Convenio if provided
@@ -1439,29 +1481,47 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
-      // Check duplicate pending simulation
-      const existing = await SimulationService.checkExistingPendingSimulation(
-        prisma,
-        tenantId,
-        cleanCpf,
-        partnerId
-      );
-      if (existing) {
-        return res.status(409).json({
-          error: 'Já existe uma solicitação de simulação pendente para este CPF e Parceiro.',
-          existing,
-        });
+      // Check duplicate pending simulation (for manual simulation with partner)
+      if (simulationType === 'MANUAL' && partnerId) {
+        const existing = await SimulationService.checkExistingPendingSimulation(
+          prisma,
+          tenantId,
+          cleanCpf,
+          partnerId
+        );
+        if (existing) {
+          return res.status(409).json({
+            error: 'Já existe uma solicitação de simulação pendente para este CPF e Parceiro.',
+            existing,
+          });
+        }
       }
 
       const newSimulation = await prisma.simulationRequest.create({
         data: {
           tenantId,
           cpf: cleanCpf,
-          partnerId,
+          partnerId: partnerId || null,
           convenioId: convenioId || null,
           productId: productId || null,
           createdById: session.user.id,
           status: 'SIMULAÇÃO ENVIADA',
+          simulationType,
+          operationType: operationType || null,
+          happyClientId: happyClientId ? String(happyClientId) : null,
+          happySimulationId: happySimulationId ? String(happySimulationId) : null,
+          happyApplicationKey: happyApplicationKey || null,
+          happyProposalKey: happyProposalKey || null,
+          happyJourneyStatus: happyJourneyStatus || null,
+          happyAuthUrl: happyAuthUrl || null,
+          happyBeneficioNumero: happyBeneficioNumero || null,
+          happyDataNascimento: happyDataNascimento || null,
+          happyClienteNome: happyClienteNome || null,
+          happyClienteTelefone: happyClienteTelefone || null,
+          happyRawData: happyRawData || undefined,
+          happyRawConditions: happyRawConditions || undefined,
+          happySelectedCondition: happySelectedCondition || undefined,
+          happyRawResult: happyRawResult || undefined,
         },
         include: {
           partner: true,
@@ -1752,6 +1812,145 @@ async function auditAndEnsureMasterUser() {
     } catch (err) {
       console.error('[API SIMULATIONS BULK DELETE ERROR]', err);
       return res.status(500).json({ error: 'Erro ao processar exclusão em massa.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // CONTROLE DE ACESSO À CENTRAL DE SIMULAÇÕES
+  // -------------------------------------------------------------
+  app.get('/api/settings/simulation-access', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          name: true,
+          simulationAccessEnabled: true,
+        },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      return res.json({
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        simulationAccessEnabled: tenant.simulationAccessEnabled !== false,
+      });
+    } catch (err: any) {
+      console.error('[API GET SIMULATION ACCESS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao consultar status da Central de Simulações.' });
+    }
+  });
+
+  app.put('/api/settings/simulation-access', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) {
+        return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) {
+        return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
+      }
+
+      // Validação de papel administrativo: apenas PLATFORM_MASTER, MASTER ou TENANT_ADMIN podem alterar
+      const userRole = session.user.role;
+      const isAdminRole = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN'].includes(userRole);
+      if (!isAdminRole) {
+        return res.status(403).json({
+          error: 'Permissão negada. Apenas administradores podem configurar o acesso à Central de Simulações.',
+        });
+      }
+
+      const { simulationAccessEnabled, reason } = req.body;
+      if (typeof simulationAccessEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'O campo simulationAccessEnabled (booleano) é obrigatório.' });
+      }
+
+      const currentTenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { id: true, name: true, simulationAccessEnabled: true },
+      });
+
+      if (!currentTenant) {
+        return res.status(404).json({ error: 'Tenant não encontrado.' });
+      }
+
+      const previousStatus = currentTenant.simulationAccessEnabled !== false;
+
+      const updatedTenant = await prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          simulationAccessEnabled,
+        },
+        select: {
+          id: true,
+          name: true,
+          simulationAccessEnabled: true,
+          updatedAt: true,
+        },
+      });
+
+      // Registro de Auditoria detalhado
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: simulationAccessEnabled ? 'SIMULATION_ACCESS_LIBERADA' : 'SIMULATION_ACCESS_BLOQUEADA',
+        entity: 'Tenant',
+        entityId: tenantId,
+        oldData: {
+          simulationAccessEnabled: previousStatus,
+        },
+        newData: {
+          simulationAccessEnabled,
+          reason: reason || (simulationAccessEnabled ? 'Acesso liberado pelo administrador' : 'Acesso bloqueado pelo administrador'),
+          updatedBy: session.user.name,
+          updatedByRole: userRole,
+        },
+        req,
+      });
+
+      // Transmissão via SSE / Pusher em tempo real para os usuários do tenant
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'SIMULATION_ACCESS_CHANGED',
+        entity: 'Tenant',
+        entityId: tenantId,
+        data: {
+          simulationAccessEnabled,
+          updatedAt: updatedTenant.updatedAt,
+        },
+        userId: session.user.id,
+      });
+
+      eventBus.publishToTenant(tenantId, {
+        type: 'SIMULATION_ACCESS_CHANGED',
+        entity: 'Tenant',
+        entityId: tenantId,
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        tenantId: updatedTenant.id,
+        simulationAccessEnabled: updatedTenant.simulationAccessEnabled,
+        message: simulationAccessEnabled
+          ? 'Central de Simulações LIBERADA com sucesso para esta empresa.'
+          : 'Central de Simulações BLOQUEADA com sucesso para esta empresa.',
+      });
+    } catch (err: any) {
+      console.error('[API PUT SIMULATION ACCESS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar configuração da Central de Simulações.' });
     }
   });
 
@@ -5832,6 +6031,7 @@ async function auditAndEnsureMasterUser() {
         storageLimitMb,
         maxProposals,
         enabledModules,
+        simulationAccessEnabled,
         whiteLabel,
       } = req.body || {};
 
@@ -5926,6 +6126,7 @@ async function auditAndEnsureMasterUser() {
             storageLimitMb: storageLimitMb !== undefined ? Number(storageLimitMb) : undefined,
             maxProposals: maxProposals !== undefined ? Number(maxProposals) : undefined,
             enabledModules: Array.isArray(enabledModules) ? enabledModules : undefined,
+            simulationAccessEnabled: typeof simulationAccessEnabled === 'boolean' ? simulationAccessEnabled : undefined,
           },
         });
 
@@ -10021,6 +10222,756 @@ async function auditAndEnsureMasterUser() {
       res.json(logs);
     } catch (err: any) {
       res.status(500).json({ error: 'Erro ao listar histórico recente de sincronizações FACTA.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // HAPPY / BYX CAPITAL INTEGRATION & PROPOSAL STATUS SYNC ENDPOINTS
+  // -------------------------------------------------------------
+
+  // POST /api/proposals/:id/happy-sync - Manual status sync of a proposal via Happy API
+  app.post('/api/proposals/:id/happy-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const { id } = req.params;
+      const result = await HappyBankService.syncProposal(prisma, tenantId, id);
+
+      if (result.success && result.hasChanged) {
+        eventBus.publishToTenant(tenantId, {
+          type: 'proposal_status_changed',
+          entity: 'Proposal',
+          entityId: id,
+          data: {
+            proposalId: id,
+            statusName: result.currentInternalStatus,
+            updatedBy: session.user.name,
+          },
+        });
+
+        if (sseRegistry) {
+          sseRegistry.broadcastToTenant(tenantId, {
+            type: 'PROPOSAL_UPDATED',
+            entity: 'Proposal',
+            entityId: id,
+            data: {
+              id,
+              happySyncStatus: 'SYNCED',
+              happyStatus: result.statusName,
+              statusName: result.currentInternalStatus,
+            },
+          });
+        }
+      }
+
+      res.json(result);
+    } catch (err: any) {
+      logger.error({ err, proposalId: req.params.id }, '[HAPPY SYNC ROUTE] Erro ao sincronizar proposta com Happy');
+      res.status(500).json({ error: err.message || 'Erro ao sincronizar proposta com a Happy / BYX Capital.' });
+    }
+  });
+
+  // GET /api/integrations/happy/config - Secure tenant configuration
+  app.get('/api/integrations/happy/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const config = await HappyBankService.getTenantConfig(prisma, tenantId);
+      res.json(config);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao carregar configurações da Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/config - Save secure tenant configuration
+  app.post('/api/integrations/happy/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'];
+      if (!allowedRoles.includes(session.user.role)) {
+        return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
+      }
+
+      const updated = await HappyBankService.saveTenantConfig(prisma, tenantId, req.body);
+      res.json({
+        success: true,
+        message: 'Configurações da Happy / BYX Capital salvas com sucesso.',
+        config: updated,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao salvar configurações da Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/test-connection - Test credentials against live Happy auth endpoint
+  app.post('/api/integrations/happy/test-connection', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const result = await HappyBankService.testConnection(prisma, tenantId, req.body);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        message: err.message || 'Erro interno ao testar conexão com a Happy.',
+      });
+    }
+  });
+
+  // GET /api/integrations/happy/status - Operational metrics and status
+  app.get('/api/integrations/happy/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const status = await HappyBankService.getIntegrationStatus(prisma, tenantId);
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao obter status da integração Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/consult-contract - Consult contracts with filters
+  app.post('/api/integrations/happy/consult-contract', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const result = await HappyBankService.consultarContratos(prisma, tenantId, req.body);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao consultar contratos na Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/run-sync - Trigger immediate batch reconciliation
+  app.post('/api/integrations/happy/run-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const result = await HappyBankService.runBatchReconciliation(prisma, tenantId);
+      res.json({
+        success: true,
+        message: `Reconciliação Happy concluída: ${result.totalChecked} verificadas (${result.updatedCount} atualizadas, ${result.errorCount} falhas).`,
+        ...result,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao reconciliar propostas com a Happy.' });
+    }
+  });
+
+  // GET /api/integrations/happy/recent-logs - Recent sync history logs for tenant
+  app.get('/api/integrations/happy/recent-logs', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const logs = await prisma.happySyncHistory.findMany({
+        where: { tenantId },
+        orderBy: { startedAt: 'desc' },
+        take: limit,
+        include: {
+          proposal: {
+            select: {
+              id: true,
+              proposalNumber: true,
+              client: { select: { fullName: true, cpf: true } },
+            },
+          },
+        },
+      });
+
+      res.json(logs);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao listar histórico de sincronizações Happy.' });
+    }
+  });
+
+  // GET /api/integrations/happy/unmatched-webhooks - List unmatched webhooks for investigation
+  app.get('/api/integrations/happy/unmatched-webhooks', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const events = await prisma.happyWebhookEvent.findMany({
+        where: {
+          OR: [
+            { tenantId },
+            { processingStatus: 'UNMATCHED' },
+            { processingStatus: 'UNRESOLVED_TENANT' },
+          ],
+        },
+        orderBy: { receivedAt: 'desc' },
+        take: limit,
+      });
+
+      res.json(events);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao listar webhooks não vinculados.' });
+    }
+  });
+
+  // =========================================================================
+  // CENTRAL DE SIMULAÇÕES HAPPY — ROTAS INSS E CLT
+  // =========================================================================
+
+  // POST /api/integrations/happy/inss/cliente
+  app.post('/api/integrations/happy/inss/cliente', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      // Validação de Controle de Acesso à Central de Simulações
+      const tenantRecord = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { simulationAccessEnabled: true },
+      });
+      if (tenantRecord && tenantRecord.simulationAccessEnabled === false) {
+        return res.status(403).json({
+          error: 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.',
+          code: 'SIMULATION_ACCESS_DISABLED',
+        });
+      }
+
+      const {
+        nome,
+        telefone,
+        cpf,
+        dt_nascimento,
+        escolaridade,
+        tipo_produto,
+        numero_beneficio,
+        representante_legal,
+        rogado,
+        partnerId,
+        simulationId,
+      } = req.body;
+
+      if (!nome || !telefone || !cpf || !numero_beneficio) {
+        return res.status(400).json({ error: 'Nome, telefone, CPF e número do benefício são obrigatórios.' });
+      }
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      const cleanBeneficio = String(numero_beneficio).replace(/\D/g, '');
+
+      if (cleanBeneficio.length !== 10) {
+        return res.status(400).json({ error: 'O número do benefício INSS deve conter exatamente 10 dígitos numéricos.' });
+      }
+
+      const happyRes = await HappySimulationService.criarClienteInss(prisma, tenantId, {
+        nome,
+        telefone,
+        cpf: cleanCpf,
+        dt_nascimento,
+        escolaridade: Number(escolaridade) || 1,
+        tipo_produto: Number(tipo_produto) || 1216171824,
+        numero_beneficio: cleanBeneficio,
+        representante_legal: Boolean(representante_legal),
+        rogado: Boolean(rogado),
+      });
+
+      let simId = simulationId;
+      if (simId) {
+        await prisma.simulationRequest.update({
+          where: { id: simId },
+          data: {
+            simulationType: 'HAPPY_INSS',
+            happyClientId: String(happyRes.id_cliente),
+            happyBeneficioNumero: cleanBeneficio,
+            happyDataNascimento: dt_nascimento,
+            happyClienteNome: nome,
+            happyClienteTelefone: telefone,
+            happyJourneyStatus: 'CLIENTE_CRIADO',
+            partnerId: partnerId || undefined,
+          },
+        });
+      } else {
+        const created = await prisma.simulationRequest.create({
+          data: {
+            tenantId,
+            cpf: cleanCpf,
+            partnerId: partnerId || null,
+            createdById: session.user.id,
+            status: 'SIMULAÇÃO ENVIADA',
+            simulationType: 'HAPPY_INSS',
+            happyClientId: String(happyRes.id_cliente),
+            happyBeneficioNumero: cleanBeneficio,
+            happyDataNascimento: dt_nascimento,
+            happyClienteNome: nome,
+            happyClienteTelefone: telefone,
+            happyJourneyStatus: 'CLIENTE_CRIADO',
+          },
+        });
+        simId = created.id;
+      }
+
+      return res.json({
+        success: true,
+        id_cliente: happyRes.id_cliente,
+        simulationId: simId,
+        raw: happyRes.raw,
+      });
+    } catch (err: any) {
+      console.error('[HAPPY INSS CLIENTE ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao cadastrar cliente INSS na Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/inss/in100
+  app.post('/api/integrations/happy/inss/in100', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      const { cpf, numero_beneficio, tipo_produto, simulationId } = req.body;
+      if (!cpf || !numero_beneficio) {
+        return res.status(400).json({ error: 'CPF e número do benefício são obrigatórios.' });
+      }
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      const cleanBeneficio = String(numero_beneficio).replace(/\D/g, '');
+
+      const in100Res = await HappySimulationService.consultarIn100(prisma, tenantId, {
+        cpf: cleanCpf,
+        numero_beneficio: cleanBeneficio,
+        tipo_produto: Number(tipo_produto) || 1216171824,
+      });
+
+      if (simulationId) {
+        await prisma.simulationRequest.update({
+          where: { id: simulationId },
+          data: {
+            happyJourneyStatus: in100Res.in100_autorizada ? 'IN100_AUTORIZADA' : (in100Res.isProcessing ? 'IN100_PROCESSANDO' : 'AGUARDANDO_AUTORIZACAO_IN100'),
+            happyAuthUrl: in100Res.url_formalizacao || undefined,
+            happyRawData: in100Res,
+          },
+        });
+      }
+
+      return res.json({ success: true, ...in100Res });
+    } catch (err: any) {
+      console.error('[HAPPY INSS IN100 ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao consultar IN100 na Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/inss/simulacao-margem
+  app.post('/api/integrations/happy/inss/simulacao-margem', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      const { cpf, numero_beneficio, valor_parcela, prazo, tipo_produto, simulationId } = req.body;
+      if (!cpf) return res.status(400).json({ error: 'CPF é obrigatório.' });
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      const simRes = await HappySimulationService.simularMargemLivreInss(prisma, tenantId, {
+        cpf: cleanCpf,
+        numero_beneficio,
+        valor_parcela,
+        prazo,
+        tipo_produto: tipo_produto || 1216171824,
+      });
+
+      if (simulationId) {
+        await prisma.simulationRequest.update({
+          where: { id: simulationId },
+          data: {
+            operationType: 'MARGEM_LIVRE',
+            happyRawResult: simRes,
+            happyJourneyStatus: 'SIMULACAO_CONCLUIDA',
+          },
+        });
+      }
+
+      return res.json({ success: true, result: simRes });
+    } catch (err: any) {
+      console.error('[HAPPY INSS SIMULACAO MARGEM ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro na simulação de margem livre INSS.' });
+    }
+  });
+
+  // POST /api/integrations/happy/inss/simulacao-portabilidade
+  app.post('/api/integrations/happy/inss/simulacao-portabilidade', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      const {
+        cpf,
+        saldo_devedor,
+        numero_parcelas,
+        valor_parcelas,
+        valor_parcelas_refin,
+        numero_parcelas_refin,
+        taxa_mensal_refin,
+        cd_beneficio_tipo,
+        id_externo_plano,
+        simulationId,
+      } = req.body;
+
+      if (!cpf || !saldo_devedor) {
+        return res.status(400).json({ error: 'CPF e saldo devedor são obrigatórios.' });
+      }
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      const simRes = await HappySimulationService.simularPortabilidadeRefinInss(prisma, tenantId, {
+        cpf: cleanCpf,
+        saldo_devedor,
+        numero_parcelas,
+        valor_parcelas,
+        valor_parcelas_refin,
+        numero_parcelas_refin,
+        taxa_mensal_refin,
+        cd_beneficio_tipo,
+        id_externo_plano,
+      });
+
+      if (simulationId) {
+        await prisma.simulationRequest.update({
+          where: { id: simulationId },
+          data: {
+            operationType: 'PORTABILIDADE_REFIN',
+            happyRawResult: simRes,
+            happyJourneyStatus: 'SIMULACAO_CONCLUIDA',
+          },
+        });
+      }
+
+      return res.json({ success: true, result: simRes });
+    } catch (err: any) {
+      console.error('[HAPPY INSS SIMULACAO PORTABILIDADE ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro na simulação de portabilidade INSS.' });
+    }
+  });
+
+  // POST /api/integrations/happy/clt/cliente
+  app.post('/api/integrations/happy/clt/cliente', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      // Validação de Controle de Acesso à Central de Simulações
+      const tenantRecord = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { simulationAccessEnabled: true },
+      });
+      if (tenantRecord && tenantRecord.simulationAccessEnabled === false) {
+        return res.status(403).json({
+          error: 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.',
+          code: 'SIMULATION_ACCESS_DISABLED',
+        });
+      }
+
+      const {
+        telefone,
+        nome,
+        cpf,
+        data_autorizacao_dataprev,
+        canal_autorizacao_digital,
+        canal_origem_solicitacao,
+        canal_razao_social,
+        canal_cpf_agente,
+        canal_cnpj,
+        partnerId,
+        simulationId,
+      } = req.body;
+
+      if (!telefone || !nome || !cpf) {
+        return res.status(400).json({ error: 'Nome, telefone e CPF são obrigatórios para simulação CLT.' });
+      }
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      const cltRes = await HappySimulationService.criarClienteClt(
+        prisma,
+        tenantId,
+        {
+          telefone,
+          nome,
+          cpf: cleanCpf,
+          data_autorizacao_dataprev,
+          canal_autorizacao_digital,
+          canal_origem_solicitacao,
+          canal_razao_social,
+          canal_cpf_agente,
+          canal_cnpj,
+        },
+        partnerId
+      );
+
+      let simId = simulationId;
+      if (simId) {
+        await prisma.simulationRequest.update({
+          where: { id: simId },
+          data: {
+            simulationType: 'HAPPY_CLT',
+            operationType: 'CONSIGNADO_PRIVADO_CLT',
+            happyClienteNome: nome,
+            happyClienteTelefone: telefone,
+            happyJourneyStatus: 'CLIENTE_CRIADO',
+            partnerId: partnerId || undefined,
+          },
+        });
+      } else {
+        const created = await prisma.simulationRequest.create({
+          data: {
+            tenantId,
+            cpf: cleanCpf,
+            partnerId: partnerId || null,
+            createdById: session.user.id,
+            status: 'SIMULAÇÃO ENVIADA',
+            simulationType: 'HAPPY_CLT',
+            operationType: 'CONSIGNADO_PRIVADO_CLT',
+            happyClienteNome: nome,
+            happyClienteTelefone: telefone,
+            happyJourneyStatus: 'CLIENTE_CRIADO',
+          },
+        });
+        simId = created.id;
+      }
+
+      return res.json({
+        success: true,
+        message: cltRes.message,
+        simulationId: simId,
+      });
+    } catch (err: any) {
+      console.error('[HAPPY CLT CLIENTE ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao cadastrar cliente CLT na Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/clt/dataprev
+  app.post('/api/integrations/happy/clt/dataprev', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      const { nome, telefone, cpf, simulationId } = req.body;
+      if (!nome || !telefone || !cpf) {
+        return res.status(400).json({ error: 'Nome, telefone e CPF são obrigatórios para consulta Dataprev.' });
+      }
+
+      const cleanCpf = SimulationService.normalizeCpf(cpf);
+      const dataprevRes = await HappySimulationService.consultarDataprevClt(prisma, tenantId, {
+        nome,
+        telefone,
+        cpf: cleanCpf,
+      });
+
+      const isApproved = HappySimulationService.isCltApproved(dataprevRes);
+
+      if (simulationId) {
+        await prisma.simulationRequest.update({
+          where: { id: simulationId },
+          data: {
+            happyClientId: dataprevRes.id_cliente ? String(dataprevRes.id_cliente) : undefined,
+            happySimulationId: dataprevRes.id_simulacao ? String(dataprevRes.id_simulacao) : undefined,
+            happyApplicationKey: dataprevRes.application_key || undefined,
+            happyProposalKey: dataprevRes.proposal_key || undefined,
+            happyAuthUrl: dataprevRes.url_consulta_autorizacao || undefined,
+            happyJourneyStatus: isApproved ? 'DATAPREV_APROVADO' : (dataprevRes.situacao || 'AGUARDANDO_AUTORIZACAO'),
+            happyRawConditions: dataprevRes.valores_credito || undefined,
+            happyRawData: dataprevRes,
+          },
+        });
+      }
+
+      return res.json({
+        success: true,
+        result: dataprevRes,
+        isApproved,
+      });
+    } catch (err: any) {
+      console.error('[HAPPY CLT DATAPREV ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro na consulta Dataprev CLT.' });
+    }
+  });
+
+  // POST /api/integrations/happy/clt/simulacao
+  app.post('/api/integrations/happy/clt/simulacao', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
+
+      const {
+        cliente_id,
+        quantidade_parcelas,
+        valor_solicitado,
+        valor_parcela,
+        taxa,
+        base_juros,
+        chave_seguro,
+        selectedCondition,
+        simulationId,
+      } = req.body;
+
+      if (!cliente_id || !quantidade_parcelas) {
+        return res.status(400).json({ error: 'cliente_id e quantidade_parcelas são obrigatórios para a simulação CLT.' });
+      }
+
+      const simRes = await HappySimulationService.simularContratoClt(prisma, tenantId, {
+        cliente_id,
+        quantidade_parcelas,
+        valor_solicitado,
+        valor_parcela,
+        taxa,
+        base_juros,
+        chave_seguro,
+      });
+
+      if (simulationId) {
+        await prisma.simulationRequest.update({
+          where: { id: simulationId },
+          data: {
+            happySelectedCondition: selectedCondition || undefined,
+            happyRawResult: simRes,
+            happyJourneyStatus: 'SIMULACAO_CONCLUIDA',
+          },
+        });
+      }
+
+      return res.json({ success: true, result: simRes });
+    } catch (err: any) {
+      console.error('[HAPPY CLT SIMULACAO ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao simular contrato CLT na Happy.' });
+    }
+  });
+
+  // POST /api/integrations/happy/webhook (alias para processamento de webhook)
+  app.post('/api/integrations/happy/webhook', async (req, res) => {
+    try {
+      const payload = req.body;
+      logger.info({ requestId: payload?.request_id, eventName: payload?.event_name }, '[HAPPY SIMULATION WEBHOOK] Webhook recebido');
+
+      const result = await HappyBankService.processWebhook(prisma, payload);
+
+      // Atualiza SimulationRequest caso haja correlação por customer_id ou chave_proposta
+      const customerId = payload?.customer_id || payload?.id_cliente;
+      const chaveProposta = payload?.chave_proposta || payload?.proposal_key;
+      const cpf = payload?.cpf ? SimulationService.normalizeCpf(payload.cpf) : null;
+      const eventName = payload?.event_name;
+
+      if (customerId || chaveProposta || cpf) {
+        const sim = await prisma.simulationRequest.findFirst({
+          where: {
+            OR: [
+              ...(customerId ? [{ happyClientId: String(customerId) }] : []),
+              ...(chaveProposta ? [{ happyProposalKey: String(chaveProposta) }] : []),
+              ...(cpf ? [{ cpf }] : []),
+            ],
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (sim && eventName) {
+          await prisma.simulationRequest.update({
+            where: { id: sim.id },
+            data: {
+              happyJourneyStatus: eventName,
+              updatedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      return res.json(result);
+    } catch (err: any) {
+      console.error('[HAPPY WEBHOOK ALIAS ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao processar webhook Happy.' });
+    }
+  });
+
+  // POST /api/webhooks/happy/status - Inbound Webhook from Happy / BYX Capital
+  app.post('/api/webhooks/happy/status', async (req, res) => {
+    try {
+      const payload = req.body;
+      logger.info({ requestId: payload?.request_id, eventName: payload?.event_name }, '[HAPPY WEBHOOK] Webhook recebido da Happy');
+
+      const result = await HappyBankService.processWebhook(prisma, payload);
+
+      if (result.processed && result.proposalId) {
+        // Dispara evento em tempo real para os clientes conectados
+        const prop = await prisma.proposal.findUnique({
+          where: { id: result.proposalId },
+          include: { status: true },
+        });
+
+        if (prop && prop.tenantId) {
+          eventBus.publishToTenant(prop.tenantId, {
+            type: 'proposal_status_changed',
+            entity: 'Proposal',
+            entityId: prop.id,
+            data: {
+              proposalId: prop.id,
+              statusName: prop.status?.name,
+              updatedBy: 'Happy Webhook',
+            },
+          });
+
+          if (sseRegistry) {
+            sseRegistry.broadcastToTenant(prop.tenantId, {
+              type: 'PROPOSAL_UPDATED',
+              entity: 'Proposal',
+              entityId: prop.id,
+              data: {
+                id: prop.id,
+                happySyncStatus: 'SYNCED',
+                happyStatus: prop.happyStatusName,
+                statusName: prop.status?.name,
+              },
+            });
+          }
+        }
+      }
+
+      res.status(200).json(result);
+    } catch (err: any) {
+      logger.error({ err, body: req.body }, '[HAPPY WEBHOOK ERROR] Falha no processamento de webhook da Happy');
+      res.status(err.message?.includes('obrigatório') ? 400 : 500).json({
+        success: false,
+        error: err.message || 'Erro interno ao processar webhook.',
+      });
     }
   });
 

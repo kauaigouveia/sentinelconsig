@@ -391,7 +391,11 @@ export function createCsrfMiddleware(prisma: PrismaClient): express.RequestHandl
 
     const path = req.path || req.originalUrl?.split('?')[0] || '';
 
-    // 2. Server-to-server endpoints authenticated via Bearer token (e.g. Cron)
+    // 2. Server-to-server endpoints (Cron, Webhooks)
+    if (path.startsWith('/api/webhooks/')) {
+      return next();
+    }
+
     if (path === '/api/cron/operational-rules') {
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {

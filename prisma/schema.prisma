@@ -146,6 +146,7 @@ model Tenant {
   storageLimitMb Int              @default(5000) @map("storage_limit_mb")
   maxProposals   Int              @default(10000) @map("max_proposals")
   enabledModules String[]         @default(["PROPOSALS", "SIMULATION", "KANBAN", "CRM", "FINANCIAL", "RADAR", "TV_MONITOR"]) @map("enabled_modules")
+  simulationAccessEnabled Boolean  @default(true) @map("simulation_access_enabled")
 
   // White Label Settings
   whiteLabel WhiteLabelConfig?
@@ -190,6 +191,8 @@ model Tenant {
   apiIncidents      ApiIncident[]
   c6SyncHistories   C6SyncHistory[]
   factaSyncHistories FactaSyncHistory[]
+  happyWebhookEvents HappyWebhookEvent[]
+  happySyncHistories HappySyncHistory[]
 
   @@index([slug])
   @@index([customDomain])
@@ -651,6 +654,23 @@ model Proposal {
   factaRawData        Json?              @map("facta_raw_data")
   factaSyncHistories  FactaSyncHistory[]
 
+  // Happy / BYX Capital Integration Identifiers & Sync Status
+  happyContractId        String?          @map("happy_contract_id")
+  happyStatus            String?          @map("happy_status")
+  happyStatusCode        Int?             @map("happy_status_code")
+  happyStatusName        String?          @map("happy_status_name")
+  happyStatusDescription String?          @map("happy_status_description")
+  happyProductType       String?          @map("happy_product_type")
+  happyPortabilityStatus String?          @map("happy_portability_status")
+  happyDigitizer         String?          @map("happy_digitizer")
+  happyProposalKey       String?          @map("happy_proposal_key")
+  happyCustomerId        String?          @map("happy_customer_id")
+  happyLastSyncAt        DateTime?        @map("happy_last_sync_at")
+  happySyncStatus        String?          @default("PENDING") @map("happy_sync_status") // SYNCED, PENDING, ERROR, UNMATCHED
+  happySyncError         String?          @map("happy_sync_error")
+  happyRawData           Json?            @map("happy_raw_data")
+  happySyncHistories     HappySyncHistory[]
+
   // Concurrency & Soft Delete
   version                   Int                 @default(1)
   deletedAt                 DateTime?           @map("deleted_at")
@@ -678,6 +698,9 @@ model Proposal {
   @@index([tenantId, factaProposalNumber])
   @@index([tenantId, factaAfCode])
   @@index([factaSyncStatus])
+  @@index([tenantId, happyContractId])
+  @@index([tenantId, happyProposalKey])
+  @@index([happySyncStatus])
   @@map("proposals")
 }
 
@@ -1067,14 +1090,33 @@ model SimulationRequest {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   cpf       String
-  partnerId String  @map("partner_id")
-  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  partnerId String?  @map("partner_id")
+  partner   Partner? @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
   createdById String @map("created_by_id")
   createdBy   User   @relation("CreatedSimulationRequests", fields: [createdById], references: [id], onDelete: Cascade)
 
   status          String  @default("SIMULAÇÃO ENVIADA")
   rejectionReason String? @map("rejection_reason")
+
+  simulationType  String  @default("MANUAL") @map("simulation_type") // MANUAL, HAPPY_INSS, HAPPY_CLT
+  operationType   String? @map("operation_type") // MARGEM_LIVRE, PORTABILIDADE_REFIN, CONSIGNADO_PRIVADO_CLT
+
+  // Happy / BYX Capital specific attributes
+  happyClientId         String?   @map("happy_client_id")
+  happySimulationId     String?   @map("happy_simulation_id")
+  happyApplicationKey   String?   @map("happy_application_key")
+  happyProposalKey      String?   @map("happy_proposal_key")
+  happyJourneyStatus    String?   @map("happy_journey_status")
+  happyAuthUrl          String?   @map("happy_auth_url")
+  happyBeneficioNumero  String?   @map("happy_beneficio_numero")
+  happyDataNascimento   String?   @map("happy_data_nascimento")
+  happyClienteNome      String?   @map("happy_cliente_nome")
+  happyClienteTelefone  String?   @map("happy_cliente_telefone")
+  happyRawData          Json?     @map("happy_raw_data")
+  happyRawConditions    Json?     @map("happy_raw_conditions")
+  happySelectedCondition Json?    @map("happy_selected_condition")
+  happyRawResult        Json?     @map("happy_raw_result")
 
   convenioId      String?   @map("convenio_id")
   convenio        Convenio? @relation(fields: [convenioId], references: [id], onDelete: SetNull)
@@ -1096,6 +1138,7 @@ model SimulationRequest {
 
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, simulationType])
   @@index([tenantId, cpf])
   @@index([tenantId, partnerId])
   @@index([tenantId, createdById])
@@ -1290,6 +1333,67 @@ model FactaSyncHistory {
   @@index([factaAfCode])
   @@index([queryDate])
   @@map("facta_sync_histories")
+}
+
+// ==========================================
+// HAPPY / BYX CAPITAL INTEGRATION & AUDIT
+// ==========================================
+
+model HappyWebhookEvent {
+  id                String    @id @default(cuid())
+  tenantId          String?   @map("tenant_id")
+  tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestId         String    @unique @map("request_id")
+  eventName         String    @map("event_name")
+  customerId        String?   @map("customer_id")
+  contractId        String?   @map("contract_id")
+  digitador         String?   @map("digitador")
+  statusCode        Int?      @map("status_code")
+  statusName        String?   @map("status_name")
+  statusDescription String?   @map("status_description")
+  proposalKey       String?   @map("proposal_key")
+  payload           Json
+  receivedAt        DateTime  @default(now()) @map("received_at")
+  processedAt       DateTime? @map("processed_at")
+  processingStatus  String    @default("RECEIVED") @map("processing_status") // PROCESSED, DUPLICATE, UNMATCHED, UNRESOLVED_TENANT, ERROR, UNKNOWN_MAPPING
+  processingError   String?   @map("processing_error")
+  matchedProposalId String?   @map("matched_proposal_id")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([proposalKey])
+  @@index([processingStatus])
+  @@index([receivedAt])
+  @@map("happy_webhook_events")
+}
+
+model HappySyncHistory {
+  id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proposalId      String?   @map("proposal_id")
+  proposal        Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  happyContractId String?   @map("happy_contract_id")
+  operation       String    @map("operation") // 'WEBHOOK' | 'CONTRACT_QUERY' | 'MANUAL_SYNC' | 'RECONCILIATION'
+  status          String    @map("status") // 'SUCCESS' | 'ERROR' | 'UNMATCHED' | 'UNCHANGED'
+  previousStatus  String?   @map("previous_status")
+  newStatus       String?   @map("new_status")
+  requestId       String?   @map("request_id")
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  error           String?   @map("error")
+  rawResponse     Json?     @map("raw_response")
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([proposalId])
+  @@index([happyContractId])
+  @@index([startedAt])
+  @@map("happy_sync_histories")
 }
 
 

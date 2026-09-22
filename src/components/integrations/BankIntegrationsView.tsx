@@ -30,6 +30,7 @@ import {
   FactaWorkerStatusState,
   FactaSyncHistoryItem,
 } from '../../types';
+import { HappyIntegrationTab } from './HappyIntegrationTab';
 
 type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros';
 
@@ -78,11 +79,16 @@ const BANKS_META: BankMeta[] = [
   },
   {
     id: 'happy',
-    name: 'Happy API',
+    name: 'Happy / BYX Capital',
     code: 'HAPPY',
-    tagline: 'Hub de Distribuição e Esteiras Digitais',
-    status: 'coming_soon',
-    products: ['Hub Multibanco', 'Esteiras Digitais Integradas'],
+    tagline: 'API REST & Webhooks em Tempo Real — Acompanhamento de Propostas e Formalização',
+    status: 'active',
+    products: [
+      'Crédito Consignado INSS / Servidores',
+      'Portabilidade de Crédito Consignado',
+      'Refinanciamento de Portabilidade',
+      'Webhooks de Atualização em Tempo Real',
+    ],
   },
   {
     id: 'outros',
@@ -1569,43 +1575,8 @@ export const BankIntegrationsView: React.FC = () => {
         </div>
       )}
 
-      {/* ABA HAPPY API */}
-      {activeTab === 'happy' && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center space-y-4">
-          <div className="h-16 w-16 mx-auto rounded-2xl bg-pink-50 dark:bg-pink-950/40 text-pink-600 flex items-center justify-center font-bold text-2xl">
-            HP
-          </div>
-          <div className="max-w-md mx-auto space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Happy API (Hub de Crédito)
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-800 dark:text-pink-300 border border-pink-300 dark:border-pink-800">
-                Não configurado / Em breve
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Conexão com a plataforma Happy para roteamento inteligente de esteiras digitais e correspondentes.
-            </p>
-          </div>
-
-          <div className="max-w-lg mx-auto p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-left space-y-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-              Especificações Técnicas Futuras
-            </span>
-            <ul className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
-                <span>Webhooks em tempo real para recebimento de atualizações de status.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
-                <span>Consulta unificada para múltiplos parceiros bancários conveniados.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
+      {/* ABA HAPPY / BYX CAPITAL */}
+      {activeTab === 'happy' && <HappyIntegrationTab />}
 
       {/* ABA OUTROS BANCOS / EXPANSÃO */}
       {activeTab === 'outros' && (
