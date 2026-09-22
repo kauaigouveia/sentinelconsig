@@ -1390,18 +1390,6 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
       }
 
-      // Validação de Controle de Acesso à Central de Simulações
-      const tenantRecord = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { simulationAccessEnabled: true },
-      });
-      if (tenantRecord && tenantRecord.simulationAccessEnabled === false) {
-        return res.status(403).json({
-          error: 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.',
-          code: 'SIMULATION_ACCESS_DISABLED',
-        });
-      }
-
       const {
         cpf,
         partnerId,
@@ -1816,9 +1804,9 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
-  // CONTROLE DE ACESSO À CENTRAL DE SIMULAÇÕES
+  // CONTROLE DE ACESSO ÀS SIMULAÇÕES HAPPY
   // -------------------------------------------------------------
-  app.get('/api/settings/simulation-access', async (req, res) => {
+  const getHappySimulationAccessHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) {
@@ -1834,6 +1822,7 @@ async function auditAndEnsureMasterUser() {
         select: {
           id: true,
           name: true,
+          happySimulationAccessEnabled: true,
           simulationAccessEnabled: true,
         },
       });
@@ -1842,18 +1831,23 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Tenant não encontrado.' });
       }
 
+      const isHappyEnabled = tenant.happySimulationAccessEnabled !== false;
+
       return res.json({
         tenantId: tenant.id,
         tenantName: tenant.name,
-        simulationAccessEnabled: tenant.simulationAccessEnabled !== false,
+        happySimulationAccessEnabled: isHappyEnabled,
+        simulationAccessEnabled: isHappyEnabled,
       });
     } catch (err: any) {
-      console.error('[API GET SIMULATION ACCESS ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao consultar status da Central de Simulações.' });
+      console.error('[API GET HAPPY SIMULATION ACCESS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao consultar status das Simulações Happy.' });
     }
-  });
+  };
+  app.get('/api/settings/simulation-access', getHappySimulationAccessHandler);
+  app.get('/api/settings/happy-simulation-access', getHappySimulationAccessHandler);
 
-  app.put('/api/settings/simulation-access', async (req, res) => {
+  const putHappySimulationAccessHandler = async (req: express.Request, res: express.Response) => {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) {
@@ -1869,34 +1863,40 @@ async function auditAndEnsureMasterUser() {
       const isAdminRole = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN'].includes(userRole);
       if (!isAdminRole) {
         return res.status(403).json({
-          error: 'Permissão negada. Apenas administradores podem configurar o acesso à Central de Simulações.',
+          error: 'Permissão negada. Apenas administradores podem configurar o acesso às Simulações Happy.',
         });
       }
 
-      const { simulationAccessEnabled, reason } = req.body;
-      if (typeof simulationAccessEnabled !== 'boolean') {
-        return res.status(400).json({ error: 'O campo simulationAccessEnabled (booleano) é obrigatório.' });
+      const { happySimulationAccessEnabled, simulationAccessEnabled, reason } = req.body;
+      const targetEnabled = typeof happySimulationAccessEnabled === 'boolean'
+        ? happySimulationAccessEnabled
+        : (typeof simulationAccessEnabled === 'boolean' ? simulationAccessEnabled : undefined);
+
+      if (typeof targetEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'O campo happySimulationAccessEnabled (booleano) é obrigatório.' });
       }
 
       const currentTenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { id: true, name: true, simulationAccessEnabled: true },
+        select: { id: true, name: true, happySimulationAccessEnabled: true, simulationAccessEnabled: true },
       });
 
       if (!currentTenant) {
         return res.status(404).json({ error: 'Tenant não encontrado.' });
       }
 
-      const previousStatus = currentTenant.simulationAccessEnabled !== false;
+      const previousStatus = currentTenant.happySimulationAccessEnabled !== false;
 
       const updatedTenant = await prisma.tenant.update({
         where: { id: tenantId },
         data: {
-          simulationAccessEnabled,
+          happySimulationAccessEnabled: targetEnabled,
+          simulationAccessEnabled: targetEnabled,
         },
         select: {
           id: true,
           name: true,
+          happySimulationAccessEnabled: true,
           simulationAccessEnabled: true,
           updatedAt: true,
         },
@@ -1907,15 +1907,15 @@ async function auditAndEnsureMasterUser() {
         tenantId,
         userId: session.user.id,
         userName: session.user.name,
-        action: simulationAccessEnabled ? 'SIMULATION_ACCESS_LIBERADA' : 'SIMULATION_ACCESS_BLOQUEADA',
+        action: targetEnabled ? 'HAPPY_SIMULATION_ACCESS_LIBERADA' : 'HAPPY_SIMULATION_ACCESS_BLOQUEADA',
         entity: 'Tenant',
         entityId: tenantId,
         oldData: {
-          simulationAccessEnabled: previousStatus,
+          happySimulationAccessEnabled: previousStatus,
         },
         newData: {
-          simulationAccessEnabled,
-          reason: reason || (simulationAccessEnabled ? 'Acesso liberado pelo administrador' : 'Acesso bloqueado pelo administrador'),
+          happySimulationAccessEnabled: targetEnabled,
+          reason: reason || (targetEnabled ? 'Simulações Happy liberadas pelo administrador' : 'Simulações Happy bloqueadas pelo administrador'),
           updatedBy: session.user.name,
           updatedByRole: userRole,
         },
@@ -1924,18 +1924,19 @@ async function auditAndEnsureMasterUser() {
 
       // Transmissão via SSE / Pusher em tempo real para os usuários do tenant
       sseRegistry.broadcastToTenant(tenantId, {
-        type: 'SIMULATION_ACCESS_CHANGED',
+        type: 'HAPPY_SIMULATION_ACCESS_CHANGED',
         entity: 'Tenant',
         entityId: tenantId,
         data: {
-          simulationAccessEnabled,
+          happySimulationAccessEnabled: targetEnabled,
+          simulationAccessEnabled: targetEnabled,
           updatedAt: updatedTenant.updatedAt,
         },
         userId: session.user.id,
       });
 
       eventBus.publishToTenant(tenantId, {
-        type: 'SIMULATION_ACCESS_CHANGED',
+        type: 'HAPPY_SIMULATION_ACCESS_CHANGED',
         entity: 'Tenant',
         entityId: tenantId,
       }).catch(() => {});
@@ -1943,16 +1944,19 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         success: true,
         tenantId: updatedTenant.id,
+        happySimulationAccessEnabled: updatedTenant.happySimulationAccessEnabled,
         simulationAccessEnabled: updatedTenant.simulationAccessEnabled,
-        message: simulationAccessEnabled
-          ? 'Central de Simulações LIBERADA com sucesso para esta empresa.'
-          : 'Central de Simulações BLOQUEADA com sucesso para esta empresa.',
+        message: targetEnabled
+          ? 'Simulações Happy LIBERADAS com sucesso para esta empresa.'
+          : 'Simulações Happy BLOQUEADAS com sucesso para esta empresa.',
       });
     } catch (err: any) {
-      console.error('[API PUT SIMULATION ACCESS ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao atualizar configuração da Central de Simulações.' });
+      console.error('[API PUT HAPPY SIMULATION ACCESS ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar configuração das Simulações Happy.' });
     }
-  });
+  };
+  app.put('/api/settings/simulation-access', putHappySimulationAccessHandler);
+  app.put('/api/settings/happy-simulation-access', putHappySimulationAccessHandler);
 
   // -------------------------------------------------------------
   // PROPOSALS API (PostgreSQL / Prisma)
@@ -6032,6 +6036,7 @@ async function auditAndEnsureMasterUser() {
         maxProposals,
         enabledModules,
         simulationAccessEnabled,
+        happySimulationAccessEnabled,
         whiteLabel,
       } = req.body || {};
 
@@ -6127,6 +6132,7 @@ async function auditAndEnsureMasterUser() {
             maxProposals: maxProposals !== undefined ? Number(maxProposals) : undefined,
             enabledModules: Array.isArray(enabledModules) ? enabledModules : undefined,
             simulationAccessEnabled: typeof simulationAccessEnabled === 'boolean' ? simulationAccessEnabled : undefined,
+            happySimulationAccessEnabled: typeof happySimulationAccessEnabled === 'boolean' ? happySimulationAccessEnabled : (typeof simulationAccessEnabled === 'boolean' ? simulationAccessEnabled : undefined),
           },
         });
 
@@ -10449,14 +10455,14 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
 
-      // Validação de Controle de Acesso à Central de Simulações
+      // Validação de Controle de Acesso às Simulações Happy
       const tenantRecord = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { simulationAccessEnabled: true },
+        select: { happySimulationAccessEnabled: true, simulationAccessEnabled: true },
       });
-      if (tenantRecord && tenantRecord.simulationAccessEnabled === false) {
+      if (tenantRecord && (tenantRecord.happySimulationAccessEnabled === false || tenantRecord.simulationAccessEnabled === false)) {
         return res.status(403).json({
-          error: 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.',
+          error: 'As simulações Happy estão bloqueadas para este tenant.',
           code: 'SIMULATION_ACCESS_DISABLED',
         });
       }
@@ -10687,14 +10693,14 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão ou tenant inválido.' });
 
-      // Validação de Controle de Acesso à Central de Simulações
+      // Validação de Controle de Acesso às Simulações Happy
       const tenantRecord = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { simulationAccessEnabled: true },
+        select: { happySimulationAccessEnabled: true, simulationAccessEnabled: true },
       });
-      if (tenantRecord && tenantRecord.simulationAccessEnabled === false) {
+      if (tenantRecord && (tenantRecord.happySimulationAccessEnabled === false || tenantRecord.simulationAccessEnabled === false)) {
         return res.status(403).json({
-          error: 'A Central de Simulações está temporariamente bloqueada para novos cálculos e solicitações.',
+          error: 'As simulações Happy estão bloqueadas para este tenant.',
           code: 'SIMULATION_ACCESS_DISABLED',
         });
       }

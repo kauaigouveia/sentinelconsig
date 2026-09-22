@@ -48,6 +48,7 @@ export interface Tenant {
   modules?: string[];
   enabledModules?: string[];
   simulationAccessEnabled?: boolean;
+  happySimulationAccessEnabled?: boolean;
   whiteLabel?: WhiteLabelConfig;
   adminEmail?: string;
   adminName?: string;

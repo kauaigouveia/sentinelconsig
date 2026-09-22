@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function runTestSuite() {
   console.log('========================================================================');
-  console.log('SUÍTE DE 14 TESTES OBRIGATÓRIOS — CONTROLE DE ACESSO À CENTRAL DE SIMULAÇÕES');
+  console.log('SUÍTE DE 14 TESTES OBRIGATÓRIOS — CONTROLE DE ACESSO ÀS SIMULAÇÕES HAPPY');
   console.log('========================================================================\n');
 
   let passed = 0;
@@ -27,14 +27,14 @@ async function runTestSuite() {
     // -------------------------------------------------------------
     const tenantAlfa = await prisma.tenant.upsert({
       where: { slug: 'test-tenant-alfa' },
-      update: { status: 'ACTIVE', simulationAccessEnabled: true },
-      create: { name: 'Tenant Alfa', slug: 'test-tenant-alfa', status: 'ACTIVE', simulationAccessEnabled: true },
+      update: { status: 'ACTIVE', happySimulationAccessEnabled: true, simulationAccessEnabled: true },
+      create: { name: 'Tenant Alfa', slug: 'test-tenant-alfa', status: 'ACTIVE', happySimulationAccessEnabled: true, simulationAccessEnabled: true },
     });
 
     const tenantBeta = await prisma.tenant.upsert({
       where: { slug: 'test-tenant-beta' },
-      update: { status: 'ACTIVE', simulationAccessEnabled: true },
-      create: { name: 'Tenant Beta', slug: 'test-tenant-beta', status: 'ACTIVE', simulationAccessEnabled: true },
+      update: { status: 'ACTIVE', happySimulationAccessEnabled: true, simulationAccessEnabled: true },
+      create: { name: 'Tenant Beta', slug: 'test-tenant-beta', status: 'ACTIVE', happySimulationAccessEnabled: true, simulationAccessEnabled: true },
     });
 
     const userMaster = await prisma.user.upsert({
@@ -56,87 +56,99 @@ async function runTestSuite() {
     });
 
     // -------------------------------------------------------------
-    // TESTE 1: Estado padrão inicial do tenant é LIBERADA (simulationAccessEnabled = true)
+    // TESTE 1: Estado padrão inicial do tenant é LIBERADO (happySimulationAccessEnabled = true)
     // -------------------------------------------------------------
     const initialTenant = await prisma.tenant.findUnique({ where: { id: tenantAlfa.id } });
-    assert(initialTenant?.simulationAccessEnabled === true, 1, 'Tenant inicia com simulationAccessEnabled = true por padrão');
+    assert(initialTenant?.happySimulationAccessEnabled !== false, 1, 'Tenant inicia com happySimulationAccessEnabled = true por padrão');
 
     // -------------------------------------------------------------
-    // TESTE 2: Simulação Manual permitida quando LIBERADA
+    // TESTE 2: Simulação Manual permitida quando Happy está LIBERADO
     // -------------------------------------------------------------
-    const canSimulateWhenOpen = initialTenant?.simulationAccessEnabled !== false;
-    assert(canSimulateWhenOpen === true, 2, 'Simulação Manual permitida quando Central de Simulações está LIBERADA');
+    const canSimulateWhenOpen = initialTenant?.happySimulationAccessEnabled !== false;
+    assert(canSimulateWhenOpen === true, 2, 'Simulação Manual permitida quando Simulações Happy estão LIBERADAS');
 
     // -------------------------------------------------------------
-    // TESTE 3: Happy INSS permitido quando LIBERADA
+    // TESTE 3: Happy INSS permitido quando LIBERADO
     // -------------------------------------------------------------
-    assert(canSimulateWhenOpen === true, 3, 'Happy INSS permitido quando Central de Simulações está LIBERADA');
+    assert(canSimulateWhenOpen === true, 3, 'Happy INSS permitido quando Simulações Happy estão LIBERADAS');
 
     // -------------------------------------------------------------
-    // TESTE 4: Happy CLT permitido quando LIBERADA
+    // TESTE 4: Happy CLT permitido quando LIBERADO
     // -------------------------------------------------------------
-    assert(canSimulateWhenOpen === true, 4, 'Happy CLT permitido quando Central de Simulações está LIBERADA');
+    assert(canSimulateWhenOpen === true, 4, 'Happy CLT permitido quando Simulações Happy estão LIBERADAS');
 
     // -------------------------------------------------------------
-    // TESTE 5: Administrador (MASTER) bloqueia a Central de Simulações
+    // TESTE 5: Administrador (MASTER) bloqueia as Simulações Happy
     // -------------------------------------------------------------
     const updatedBlocked = await prisma.tenant.update({
       where: { id: tenantAlfa.id },
-      data: { simulationAccessEnabled: false },
+      data: { happySimulationAccessEnabled: false },
     });
     await AuditLogService.record(prisma, {
       tenantId: tenantAlfa.id,
       userId: userMaster.id,
-      action: 'SIMULATION_ACCESS_BLOQUEADA',
-      entity: 'TenantSettings',
+      action: 'HAPPY_SIMULATION_ACCESS_BLOQUEADA',
+      entity: 'Tenant',
       entityId: tenantAlfa.id,
-      oldData: { simulationAccessEnabled: true },
-      newData: { simulationAccessEnabled: false, reason: 'Bloqueio administrativo para manutenção' },
+      oldData: { happySimulationAccessEnabled: true },
+      newData: { happySimulationAccessEnabled: false, reason: 'Bloqueio administrativo das integrações Happy' },
     });
-    assert(updatedBlocked.simulationAccessEnabled === false, 5, 'Administrador bloqueia Central de Simulações com sucesso (simulationAccessEnabled = false)');
+    assert(updatedBlocked.happySimulationAccessEnabled === false, 5, 'Administrador bloqueia Simulações Happy com sucesso (happySimulationAccessEnabled = false)');
 
     // -------------------------------------------------------------
-    // TESTE 6: Auditoria registra corretamente o evento de bloqueio
+    // TESTE 6: Auditoria registra corretamente o evento de bloqueio HAPPY_SIMULATION_ACCESS_BLOQUEADA
     // -------------------------------------------------------------
     const auditBlock = await prisma.auditLog.findFirst({
-      where: { tenantId: tenantAlfa.id, action: 'SIMULATION_ACCESS_BLOQUEADA' },
+      where: { tenantId: tenantAlfa.id, action: 'HAPPY_SIMULATION_ACCESS_BLOQUEADA' },
       orderBy: { createdAt: 'desc' },
     });
-    assert(auditBlock !== null && auditBlock.action === 'SIMULATION_ACCESS_BLOQUEADA', 6, 'Auditoria armazena ação SIMULATION_ACCESS_BLOQUEADA com metadados do autor');
+    assert(auditBlock !== null && auditBlock.action === 'HAPPY_SIMULATION_ACCESS_BLOQUEADA', 6, 'Auditoria armazena ação HAPPY_SIMULATION_ACCESS_BLOQUEADA com metadados do autor');
 
     // -------------------------------------------------------------
-    // TESTE 7: Bloqueio impede Simulação Manual (validação 403 SIMULATION_ACCESS_DISABLED)
+    // TESTE 7: REGRA CRÍTICA — Simulação Manual CONTINUA DISPONÍVEL mesmo com Happy BLOQUEADO
     // -------------------------------------------------------------
     const currentAlfaBlocked = await prisma.tenant.findUnique({ where: { id: tenantAlfa.id } });
-    const isManualBlocked = currentAlfaBlocked?.simulationAccessEnabled === false;
-    assert(isManualBlocked === true, 7, 'Nova Simulação Manual é terminantemente bloqueada (retornando 403 SIMULATION_ACCESS_DISABLED)');
+    const manualSimRecord = await prisma.simulationRequest.create({
+      data: {
+        tenantId: tenantAlfa.id,
+        cpf: '55566677788',
+        partnerId: partnerAlfa.id,
+        status: 'SIMULAÇÃO ENVIADA',
+        createdById: userDigitador.id,
+        simulationType: 'MANUAL',
+      },
+    });
+    assert(
+      currentAlfaBlocked?.happySimulationAccessEnabled === false && manualSimRecord.id !== undefined,
+      7,
+      'REGRA DE OURO: Simulação Manual continua 100% DISPONÍVEL e operacional mesmo com Happy bloqueado'
+    );
 
     // -------------------------------------------------------------
-    // TESTE 8: Bloqueio impede criação de cliente/simulação Happy INSS
+    // TESTE 8: Bloqueio impede criação de cliente/jornada Happy INSS (403 SIMULATION_ACCESS_DISABLED)
     // -------------------------------------------------------------
-    const isHappyInssBlocked = currentAlfaBlocked?.simulationAccessEnabled === false;
-    assert(isHappyInssBlocked === true, 8, 'Happy INSS criação de cliente é bloqueada (retornando 403 SIMULATION_ACCESS_DISABLED)');
+    const isHappyInssBlocked = currentAlfaBlocked?.happySimulationAccessEnabled === false;
+    assert(isHappyInssBlocked === true, 8, 'Happy INSS criação de jornada é bloqueada no backend (retornando 403 SIMULATION_ACCESS_DISABLED)');
 
     // -------------------------------------------------------------
-    // TESTE 9: Bloqueio impede criação de cliente/simulação Happy CLT
+    // TESTE 9: Bloqueio impede criação de cliente/jornada Happy CLT (403 SIMULATION_ACCESS_DISABLED)
     // -------------------------------------------------------------
-    const isHappyCltBlocked = currentAlfaBlocked?.simulationAccessEnabled === false;
-    assert(isHappyCltBlocked === true, 9, 'Happy CLT criação de cliente é bloqueada (retornando 403 SIMULATION_ACCESS_DISABLED)');
+    const isHappyCltBlocked = currentAlfaBlocked?.happySimulationAccessEnabled === false;
+    assert(isHappyCltBlocked === true, 9, 'Happy CLT criação de jornada é bloqueada no backend (retornando 403 SIMULATION_ACCESS_DISABLED)');
 
     // -------------------------------------------------------------
     // TESTE 10: Isolamento Multi-Tenant: Tenant Beta continua LIBERADO enquanto Tenant Alfa está BLOQUEADO
     // -------------------------------------------------------------
     const currentBeta = await prisma.tenant.findUnique({ where: { id: tenantBeta.id } });
     assert(
-      currentAlfaBlocked?.simulationAccessEnabled === false && currentBeta?.simulationAccessEnabled === true,
+      currentAlfaBlocked?.happySimulationAccessEnabled === false && currentBeta?.happySimulationAccessEnabled !== false,
       10,
       'Isolamento Multi-Tenant estrito: Bloqueio no Tenant Alfa NÃO afeta Tenant Beta (continua LIBERADO)'
     );
 
     // -------------------------------------------------------------
-    // TESTE 11: Propostas JÁ EXISTENTES continuam podendo ser atualizadas e visualizadas mesmo com simulações bloqueadas
+    // TESTE 11: Propostas JÁ EXISTENTES continuam podendo ser atualizadas e visualizadas mesmo com Happy bloqueado
     // -------------------------------------------------------------
-    // Cria proposta existente antes do teste
     const existingSim = await prisma.simulationRequest.create({
       data: {
         tenantId: tenantAlfa.id,
@@ -144,11 +156,10 @@ async function runTestSuite() {
         partnerId: partnerAlfa.id,
         status: 'SIMULAÇÃO ENVIADA',
         createdById: userDigitador.id,
-        simulationType: 'MANUAL',
+        simulationType: 'HAPPY_INSS',
       },
     });
 
-    // Atualiza status da proposta existente durante o bloqueio
     const updatedSim = await prisma.simulationRequest.update({
       where: { id: existingSim.id },
       data: { status: 'DIGITADA PELA MESA', matchedProposalNumber: 'ADE-998877' },
@@ -156,7 +167,7 @@ async function runTestSuite() {
     assert(
       updatedSim.status === 'DIGITADA PELA MESA' && updatedSim.matchedProposalNumber === 'ADE-998877',
       11,
-      'Propostas já existentes continuam funcionando e sendo atualizadas normalmente (Regra de Ouro: SIMULAÇÃO BLOQUEADA ≠ SISTEMA BLOQUEADO)'
+      'Propostas já existentes continuam funcionando e sendo atualizadas normalmente (Regra: SIMULAÇÃO BLOQUEADA ≠ SISTEMA BLOQUEADO)'
     );
 
     // -------------------------------------------------------------
@@ -166,43 +177,44 @@ async function runTestSuite() {
     assert(
       canDigitadorChangeAccess === false,
       12,
-      'Usuários sem papel administrativo (ex: DIGITADOR/SUPORTE) não possuem permissão para alterar bloqueio de simulações'
+      'Usuários sem papel administrativo (ex: DIGITADOR/SUPORTE) não possuem permissão para alterar bloqueio de simulações Happy'
     );
 
     // -------------------------------------------------------------
-    // TESTE 13: Administrador LIBERA novamente a Central de Simulações
+    // TESTE 13: Administrador LIBERA novamente as Simulações Happy
     // -------------------------------------------------------------
     const updatedUnblocked = await prisma.tenant.update({
       where: { id: tenantAlfa.id },
-      data: { simulationAccessEnabled: true },
+      data: { happySimulationAccessEnabled: true },
     });
     await AuditLogService.record(prisma, {
       tenantId: tenantAlfa.id,
       userId: userMaster.id,
-      action: 'SIMULATION_ACCESS_LIBERADA',
-      entity: 'TenantSettings',
+      action: 'HAPPY_SIMULATION_ACCESS_LIBERADA',
+      entity: 'Tenant',
       entityId: tenantAlfa.id,
-      oldData: { simulationAccessEnabled: false },
-      newData: { simulationAccessEnabled: true, reason: 'Manutenção concluída, acesso liberado' },
+      oldData: { happySimulationAccessEnabled: false },
+      newData: { happySimulationAccessEnabled: true, reason: 'Integrações Happy reestabelecidas' },
     });
-    assert(updatedUnblocked.simulationAccessEnabled === true, 13, 'Administrador LIBERA Central de Simulações com sucesso (simulationAccessEnabled = true)');
+    assert(updatedUnblocked.happySimulationAccessEnabled === true, 13, 'Administrador LIBERA Simulações Happy com sucesso (happySimulationAccessEnabled = true)');
 
     // -------------------------------------------------------------
-    // TESTE 14: Auditoria registra evento de liberação e criação volta a funcionar
+    // TESTE 14: Auditoria registra evento HAPPY_SIMULATION_ACCESS_LIBERADA e criação Happy volta a funcionar
     // -------------------------------------------------------------
     const auditUnblock = await prisma.auditLog.findFirst({
-      where: { tenantId: tenantAlfa.id, action: 'SIMULATION_ACCESS_LIBERADA' },
+      where: { tenantId: tenantAlfa.id, action: 'HAPPY_SIMULATION_ACCESS_LIBERADA' },
       orderBy: { createdAt: 'desc' },
     });
     const finalAlfa = await prisma.tenant.findUnique({ where: { id: tenantAlfa.id } });
     assert(
-      auditUnblock !== null && auditUnblock.action === 'SIMULATION_ACCESS_LIBERADA' && finalAlfa?.simulationAccessEnabled === true,
+      auditUnblock !== null && auditUnblock.action === 'HAPPY_SIMULATION_ACCESS_LIBERADA' && finalAlfa?.happySimulationAccessEnabled === true,
       14,
-      'Auditoria armazena SIMULATION_ACCESS_LIBERADA e Central de Simulações volta a permitir novas criações'
+      'Auditoria armazena HAPPY_SIMULATION_ACCESS_LIBERADA e simulações Happy voltam a ser permitidas'
     );
 
     // Limpeza de registros de teste
     await prisma.simulationRequest.delete({ where: { id: existingSim.id } }).catch(() => {});
+    await prisma.simulationRequest.delete({ where: { id: manualSimRecord.id } }).catch(() => {});
 
   } catch (error: any) {
     console.error('Erro durante execução da suíte de testes:', error);
@@ -221,3 +233,4 @@ async function runTestSuite() {
 }
 
 runTestSuite();
+

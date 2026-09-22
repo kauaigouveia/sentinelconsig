@@ -198,6 +198,7 @@ export const INITIAL_TENANTS: Tenant[] = [
     storageLimitMb: 5000,
     modules: ['ALL'],
     simulationAccessEnabled: true,
+    happySimulationAccessEnabled: true,
     adminEmail: 'platform@creditgestao.com.br',
     adminName: 'Kauai Gouveia',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -228,6 +229,7 @@ export const INITIAL_TENANTS: Tenant[] = [
     storageLimitMb: 1500,
     modules: ['ALL'],
     simulationAccessEnabled: true,
+    happySimulationAccessEnabled: true,
     adminEmail: 'contato@credmais.com.br',
     adminName: 'Marcos Vinicius',
     createdAt: '2026-02-01T00:00:00.000Z',
@@ -5407,6 +5409,7 @@ export class StorageService {
         plan: tenant.plan,
         status: tenant.status,
         simulationAccessEnabled: tenant.simulationAccessEnabled !== undefined ? tenant.simulationAccessEnabled : true,
+        happySimulationAccessEnabled: tenant.happySimulationAccessEnabled !== undefined ? tenant.happySimulationAccessEnabled : true,
       }),
     }).catch(err => console.warn('[API] Error updating tenant:', err));
 

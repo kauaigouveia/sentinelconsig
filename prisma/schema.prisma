@@ -147,6 +147,7 @@ model Tenant {
   maxProposals   Int              @default(10000) @map("max_proposals")
   enabledModules String[]         @default(["PROPOSALS", "SIMULATION", "KANBAN", "CRM", "FINANCIAL", "RADAR", "TV_MONITOR"]) @map("enabled_modules")
   simulationAccessEnabled Boolean  @default(true) @map("simulation_access_enabled")
+  happySimulationAccessEnabled Boolean @default(true) @map("happy_simulation_access_enabled")
 
   // White Label Settings
   whiteLabel WhiteLabelConfig?
