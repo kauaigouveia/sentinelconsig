@@ -84,6 +84,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   const [adeRows, setAdeRows] = useState<AdeRow[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -334,22 +335,27 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
   // Save All
   const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
     const cleanCpf = normalizeCpf(cpf);
     if (cleanCpf.length !== 11) {
       setErrorMsg('CPF inválido ou incompleto. Deve conter 11 dígitos.');
+      setIsSaving(false);
       return;
     }
 
     if (!fullName.trim()) {
       setErrorMsg('O nome completo do cliente é obrigatório.');
+      setIsSaving(false);
       return;
     }
 
     if (!selectedPartnerId) {
       setErrorMsg('Selecione o parceiro responsável pela produção.');
+      setIsSaving(false);
       return;
     }
 
@@ -359,11 +365,13 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       const row = adeRows[i];
       if (!row.proposalNumber.trim()) {
         setErrorMsg(`Linha ${i + 1}: Informe o número da ADE/Proposta.`);
+        setIsSaving(false);
         return;
       }
       const numUpper = row.proposalNumber.trim().toUpperCase();
       if (seenNumbers.has(numUpper)) {
         setErrorMsg(`Linha ${i + 1}: ADE "${row.proposalNumber}" repetida no mesmo formulário.`);
+        setIsSaving(false);
         return;
       }
       seenNumbers.add(numUpper);
@@ -373,6 +381,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
         const bank = banks.find(b => b.id === row.bankId);
         const promoter = promoters.find(p => p.id === row.promoterId);
         setErrorMsg(`Linha ${i + 1}: A promotora ${promoter?.name} NÃO está habilitada para o banco ${bank?.name}.`);
+        setIsSaving(false);
         return;
       }
 
@@ -383,6 +392,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           const conv = convenios.find(c => c.id === row.convenioId);
           const prod = products.find(p => p.id === row.productId);
           setErrorMsg(`Linha ${i + 1}: O produto "${prod?.name || 'Selecionado'}" não é compatível com o convênio "${conv?.name || 'Selecionado'}".`);
+          setIsSaving(false);
           return;
         }
       }
@@ -396,6 +406,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       });
       if (!ruleCheck.valid) {
         setErrorMsg(`Linha ${i + 1}: ${ruleCheck.errors.join('; ')}`);
+        setIsSaving(false);
         return;
       }
     }
@@ -432,6 +443,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           };
           setLinkingErrorLog(errPayload);
           setErrorMsg(errPayload.message);
+          setIsSaving(false);
           return;
         }
       }
@@ -546,10 +558,12 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
       setSuccessMsg(`${allCreated.length} propostas cadastradas com sucesso para ${client.fullName}!`);
       setTimeout(() => {
+        setIsSaving(false);
         onSuccess(allCreated.length);
         onClose();
       }, 1200);
     } catch (err: any) {
+      setIsSaving(false);
       const errPayload = {
         title: 'Erro ao Persistir Propostas no Banco',
         message: err.message || 'Falha na gravação ou vinculação no banco de dados.',
@@ -586,7 +600,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              disabled={isSaving}
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1027,17 +1042,28 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              disabled={isSaving}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               id="btn-save-all-ades"
               onClick={handleSave}
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+              disabled={isSaving}
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              <span>SALVAR TODAS AS ADEs</span>
+              {isSaving ? (
+                <>
+                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span>SALVANDO...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>SALVAR TODAS AS ADEs</span>
+                </>
+              )}
             </button>
           </div>
         </div>

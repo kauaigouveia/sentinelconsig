@@ -230,9 +230,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       itemType: 'Proposta de Crédito',
       itemName: `ADE ${proposal.proposalNumber}`,
       description: 'Esta ação excluirá permanentemente a proposta e seus históricos, pendências e comentários vinculados.',
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deleteProposal(proposal.id);
+          await StorageService.deleteProposal(proposal.id);
           toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} foi excluída.`);
           refreshData();
         } catch (err: any) {
@@ -249,9 +249,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       itemType: 'Exclusão em Lote',
       itemName: `${selectedIds.length} proposta(s) selecionada(s)`,
       description: `Serão permanentemente excluídas as ${selectedIds.length} propostas selecionadas, bem como todos os vínculos e pendências associadas.`,
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          const result = StorageService.deleteProposals(selectedIds);
+          const result = await StorageService.deleteProposals(selectedIds);
           refreshData();
           toastService.success('Exclusão Concluída', `${result.deletedCount} proposta(s) excluída(s) com sucesso.`);
         } catch (err: any) {

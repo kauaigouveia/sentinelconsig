@@ -455,9 +455,9 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       itemType: 'Proposta de Crédito',
       itemName: `ADE ${proposal.proposalNumber}`,
       description: 'A exclusão removerá o registro e todos os históricos, pendências e comentários vinculados.',
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deleteProposal(proposal.id);
+          await StorageService.deleteProposal(proposal.id);
           toastService.success('Proposta Excluída', `ADE ${proposal.proposalNumber} removida com sucesso.`);
           onProposalUpdated();
           onClose();

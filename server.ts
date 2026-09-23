@@ -3068,7 +3068,7 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/proposals/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {

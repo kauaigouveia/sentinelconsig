@@ -3680,10 +3680,8 @@ export class StorageService {
           targetProposalId = dbProposal.id;
         }
       } catch (err: any) {
-        if (err.message && (err.message.includes('servidor') || err.message.includes('cadastrada') || err.message.includes('inválid'))) {
-          throw err;
-        }
-        console.warn('[PROPOSAL ASYNC POST WARN]', err);
+        console.error('[PROPOSAL ASYNC POST ERROR]', err);
+        throw err;
       }
     }
 
@@ -4207,42 +4205,81 @@ export class StorageService {
     return { updatedCount, errors };
   }
 
-  public static deleteProposal(id: string): void {
+  public static async deleteProposal(id: string): Promise<void> {
+    // 1. Delete from PostgreSQL (Source of Truth)
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch(`/api/proposals/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Falha ao excluir no PostgreSQL (HTTP ${res.status})`);
+        }
+      } catch (err: any) {
+        console.error('[DELETE PROPOSAL POSTGRESQL ERROR]', err);
+        throw err;
+      }
+    }
+
+    // 2. Perform local deletions
     const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
     const target = list.find(p => p.id === id);
-    if (!target) throw new Error('Proposta não encontrada.');
+    if (target) {
+      const updated = list.filter(p => p.id !== id);
+      this.set(STORAGE_KEYS.PROPOSALS, updated);
 
-    const updated = list.filter(p => p.id !== id);
-    this.set(STORAGE_KEYS.PROPOSALS, updated);
+      // Clean relations
+      const relations = this.getProposalRelations().filter(
+        r => r.portabilityProposalId !== id && r.refinProposalId !== id
+      );
+      this.set(STORAGE_KEYS.PROPOSAL_RELATIONS, relations);
 
-    // Clean relations
-    const relations = this.getProposalRelations().filter(
-      r => r.portabilityProposalId !== id && r.refinProposalId !== id
-    );
-    this.set(STORAGE_KEYS.PROPOSAL_RELATIONS, relations);
+      // Clean pendings
+      const pendings = this.getPendings().filter(p => p.proposalId !== id);
+      this.set(STORAGE_KEYS.PENDINGS, pendings);
 
-    // Clean pendings
-    const pendings = this.getPendings().filter(p => p.proposalId !== id);
-    this.set(STORAGE_KEYS.PENDINGS, pendings);
+      // Clean comments
+      const comments = this.get<Comment[]>(STORAGE_KEYS.COMMENTS, []).filter(c => c.proposalId !== id);
+      this.set(STORAGE_KEYS.COMMENTS, comments);
 
-    // Clean comments
-    const comments = this.get<Comment[]>(STORAGE_KEYS.COMMENTS, []).filter(c => c.proposalId !== id);
-    this.set(STORAGE_KEYS.COMMENTS, comments);
+      // Clean histories
+      const histories = this.get<ProposalStatusHistory[]>(STORAGE_KEYS.HISTORY, INITIAL_HISTORY).filter(h => h.proposalId !== id);
+      this.set(STORAGE_KEYS.HISTORY, histories);
 
-    // Clean histories
-    const histories = this.get<ProposalStatusHistory[]>(STORAGE_KEYS.HISTORY, INITIAL_HISTORY).filter(h => h.proposalId !== id);
-    this.set(STORAGE_KEYS.HISTORY, histories);
+      this.addAuditLog({
+        action: 'EXCLUIR_PROPOSTA',
+        entity: 'Proposal',
+        entityId: id,
+        previousData: JSON.stringify({ proposalNumber: target.proposalNumber }),
+      });
+    }
 
-    this.addAuditLog({
-      action: 'EXCLUIR_PROPOSTA',
-      entity: 'Proposal',
-      entityId: id,
-      previousData: JSON.stringify({ proposalNumber: target.proposalNumber }),
-    });
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
-  public static deleteProposals(ids: string[]): { deletedCount: number } {
+  public static async deleteProposals(ids: string[]): Promise<{ deletedCount: number }> {
     if (!ids || ids.length === 0) return { deletedCount: 0 };
+
+    // Delete all from PostgreSQL
+    if (typeof window !== 'undefined') {
+      for (const id of ids) {
+        try {
+          const res = await fetch(`/api/proposals/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            console.warn(`[BULK DELETE WARN] Failed to delete proposal ${id}: ${errData.error}`);
+          }
+        } catch (err) {
+          console.error(`[BULK DELETE ERROR] Proposal ${id}`, err);
+        }
+      }
+    }
+
     const idSet = new Set(ids);
     const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
     const targetProposals = list.filter(p => idSet.has(p.id));
@@ -4277,6 +4314,8 @@ export class StorageService {
         ids,
       }),
     });
+
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
 
     return { deletedCount };
   }
