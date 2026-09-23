@@ -278,11 +278,26 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   );
   const [financialsSuccess, setFinancialsSuccess] = useState(false);
 
-  const handleSaveFinancials = () => {
+  const handleSaveFinancials = async () => {
     const parsedDisbursed = editDisbursedStr.trim() ? parseCurrency(editDisbursedStr) : undefined;
     const parsedBalance = editBalanceStr.trim() ? parseCurrency(editBalanceStr) : undefined;
 
     try {
+      const res = await fetch(`/api/proposals/${proposal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          releasedValue: parsedDisbursed !== undefined ? Number(parsedDisbursed) : undefined,
+          contractValue: parsedBalance !== undefined ? Number(parsedBalance) : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Erro ao atualizar valores no PostgreSQL.');
+      }
+
+      // Fallback local update
       StorageService.updateProposalFinancials(
         proposal.id,
         {
@@ -291,6 +306,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         },
         'MANUAL'
       );
+
+      // Sync with PostgreSQL
+      try {
+        await StorageService.syncWithPostgreSQL();
+      } catch (syncErr) {
+        console.warn('[ProposalDetailModal] Erro ao sincronizar com PostgreSQL pós-valores:', syncErr);
+      }
+
       setFinancialsSuccess(true);
       toastService.success('Valores Atualizados', 'Informações financeiras registradas com sucesso.');
       setTimeout(() => {
@@ -341,6 +364,13 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         );
       } catch (storageErr) {
         console.warn('[ProposalDetailModal] Aviso ao sincronizar StorageService:', storageErr);
+      }
+
+      // Sync with PostgreSQL immediately to get the updated status and any automated related changes
+      try {
+        await StorageService.syncWithPostgreSQL();
+      } catch (syncErr) {
+        console.warn('[ProposalDetailModal] Erro ao sincronizar com PostgreSQL pós-status:', syncErr);
       }
       
       setStatusSuccess(true);

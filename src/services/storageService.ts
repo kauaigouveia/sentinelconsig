@@ -1249,6 +1249,8 @@ export class StorageService {
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
           portabilitySlaStartedAt: p.retentionDeadline || undefined,
+          type: p.type || 'NOVO',
+          relatedPortabilityId: p.relatedPortabilityId || undefined,
         }));
         localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
       }
@@ -1495,17 +1497,28 @@ export class StorageService {
             proposalNumber: p.proposalNumber,
             clientId: p.clientId,
             productId: p.productId || 'prod-novo',
+            convenioId: p.convenioId || undefined,
             bankId: p.bankId || 'bank-c6',
             promoterId: p.promoterId || 'prom-dg',
             partnerId: p.partnerId || 'part-kauai',
             digitizerId: p.createdById || 'u-digitador',
             statusId: p.statusId || 'st-1',
-            currentResponsible: 'CLIENTE',
+            currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
             disbursedValue: p.releasedValue ? Number(p.releasedValue) : 0,
             contractBalance: p.contractValue ? Number(p.contractValue) : 0,
+            notes: p.notes || undefined,
+            c6ProposalNumber: p.c6ProposalNumber || p.proposalNumber,
+            c6OperationNumber: p.c6OperationNumber || undefined,
+            c6SyncStatus: p.c6SyncStatus || 'PENDING',
+            c6RawSituation: p.c6RawSituation || undefined,
+            c6CurrentActivity: p.c6CurrentActivity || undefined,
+            c6ActivityDescription: p.c6ActivityDescription || undefined,
+            c6FormalizationStatus: p.c6FormalizationStatus || undefined,
             createdAt: p.createdAt,
             updatedAt: p.updatedAt,
             portabilitySlaStartedAt: p.retentionDeadline || undefined,
+            type: p.type || 'NOVO',
+            relatedPortabilityId: p.relatedPortabilityId || undefined,
           }));
           localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
         }
@@ -3597,6 +3610,9 @@ export class StorageService {
     const clientPhone = client?.phone;
     const clientEmail = client?.email;
 
+    const product = this.getProducts().find(p => p.id === data.productId);
+    const resolvedType = data.relatedPortabilityId ? 'REFIN_PORTABILIDADE' : (product?.type || 'NOVO');
+
     // Persist to PostgreSQL (Source of Truth)
     if (typeof window !== 'undefined') {
       try {
@@ -3616,7 +3632,8 @@ export class StorageService {
             productId: data.productId,
             convenioId: data.convenioId,
             statusId: statusId,
-            type: 'NOVO',
+            type: resolvedType,
+            relatedPortabilityId: data.relatedPortabilityId || undefined,
             releasedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : 0,
             contractValue: data.contractBalance !== undefined ? Number(data.contractBalance) : 0,
             notes: data.notes,
@@ -3663,6 +3680,8 @@ export class StorageService {
       c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
       c6OperationNumber: data.c6OperationNumber,
       c6SyncStatus: 'PENDING',
+      type: resolvedType,
+      relatedPortabilityId: data.relatedPortabilityId || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3768,6 +3787,9 @@ export class StorageService {
     const statusId = data.statusId || defaultStatus.id;
     const statusObj = this.getStatusById(statusId) || defaultStatus;
 
+    const product = this.getProducts().find(p => p.id === data.productId);
+    const resolvedType = data.relatedPortabilityId ? 'REFIN_PORTABILIDADE' : (product?.type || 'NOVO');
+
     const newProposal: Proposal = {
       id: `prop-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       proposalNumber: cleanNumber,
@@ -3786,6 +3808,8 @@ export class StorageService {
       c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
       c6OperationNumber: data.c6OperationNumber,
       c6SyncStatus: 'PENDING',
+      type: resolvedType,
+      relatedPortabilityId: data.relatedPortabilityId || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3816,7 +3840,8 @@ export class StorageService {
         productId: newProposal.productId,
         convenioId: newProposal.convenioId,
         statusId: statusId,
-        type: 'NOVO',
+        type: resolvedType,
+        relatedPortabilityId: data.relatedPortabilityId || undefined,
         releasedValue: newProposal.disbursedValue || 0,
         contractValue: newProposal.contractBalance || 0,
         notes: newProposal.notes,

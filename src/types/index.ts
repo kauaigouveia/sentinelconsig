@@ -386,6 +386,7 @@ export interface Proposal {
   currentResponsible: Alcada;
   disbursedValue?: number; // Valor liberado para o cliente / troco (R$)
   contractBalance?: number; // Valor do saldo do contrato / saldo devedor / quitação em portabilidade (R$)
+  type?: 'NOVO' | 'REFIN' | 'PORTABILIDADE' | 'REFIN_PORTABILIDADE' | 'CARTAO_RMC' | string;
   relatedPortabilityId?: string;
   pendencies?: Pending[];
   statusHistory?: ProposalStatusHistory[];
