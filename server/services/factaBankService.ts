@@ -829,7 +829,14 @@ export class FactaBankService {
             factaSyncStatus: 'SYNCED',
             factaSyncError: null,
             factaRawData: sanitizedRaw,
-            ...(targetStatusRecord ? { statusId: targetStatusRecord.id } : {}),
+            ...(targetStatusRecord
+              ? {
+                  statusId: targetStatusRecord.id,
+                  retentionDeadline: targetStatusRecord.code === 'AGUARDAR_RETORNO_CIP'
+                    ? (proposal.retentionDeadline ? undefined : new Date())
+                    : null,
+                }
+              : {}),
           },
         });
 

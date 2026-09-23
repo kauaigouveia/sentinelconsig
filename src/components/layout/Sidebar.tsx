@@ -689,14 +689,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
             <div className="min-w-0 flex-1 flex flex-col justify-center">
               <div className="flex items-center gap-1.5 flex-nowrap">
                 <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight truncate">
-                  {SYSTEM_IDENTITY.name}
+                  {SYSTEM_IDENTITY.displayName}
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 dark:bg-blue-400/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shrink-0 leading-none">
                   {effectiveBranding.plan || SYSTEM_IDENTITY.badge}
                 </span>
               </div>
               <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight mt-0.5 truncate">
-                {SYSTEM_IDENTITY.subtitle}
+                {SYSTEM_IDENTITY.shortTagline}
               </span>
             </div>
           </div>

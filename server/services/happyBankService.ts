@@ -406,7 +406,12 @@ export class HappyBankService {
           happySyncStatus: 'SYNCED',
           happyRawData: payload as any,
           ...(internalStatusChanged && targetStatusRecord
-            ? { statusId: targetStatusRecord.id }
+            ? {
+                statusId: targetStatusRecord.id,
+                retentionDeadline: targetStatusRecord.code === 'AGUARDAR_RETORNO_CIP'
+                  ? (proposal.retentionDeadline ? undefined : new Date())
+                  : null,
+              }
             : {}),
         },
       });
@@ -591,7 +596,12 @@ export class HappyBankService {
           happySyncError: null,
           happyRawData: matchedContract as any,
           ...(internalStatusChanged && targetStatusRecord
-            ? { statusId: targetStatusRecord.id }
+            ? {
+                statusId: targetStatusRecord.id,
+                retentionDeadline: targetStatusRecord.code === 'AGUARDAR_RETORNO_CIP'
+                  ? (proposal.retentionDeadline ? undefined : new Date())
+                  : null,
+              }
             : {}),
         },
       });

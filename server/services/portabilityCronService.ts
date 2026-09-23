@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { CentralEventBus } from './eventBus.js';
 
 export interface PortabilityCronResult {
   success: boolean;
@@ -128,67 +129,79 @@ export async function runPortabilityCronServer(
       const businessDays = calculateServerBusinessDays(startDate, now, holidayDates);
 
       if (businessDays >= targetDays) {
-        // Update status using transaction tx
-        await tx.proposal.update({
-          where: { id: proposal.id },
-          data: {
-            statusId: saldoRetornadoStatus.id,
-            updatedAt: now,
-          },
-        });
+        // Generate high-priority notification to support but keep the status in AGUARDAR_RETORNO_CIP
+        const candidateIds = Array.from(new Set([proposal.assignedToId, proposal.createdById].filter(Boolean) as string[]));
 
-        // Add Status History using transaction tx
-        await tx.statusHistory.create({
-          data: {
-            proposalId: proposal.id,
-            tenantId: proposal.tenantId,
-            statusId: saldoRetornadoStatus.id,
-            statusName: saldoRetornadoStatus.name,
-            notes: `Automação Cron CIP: Completou ${businessDays}/${targetDays} dias úteis em AGUARDAR RETORNO CIP. Saldo retornado.`,
-          },
-        });
-
-        // Check idempotency for notification using tx
-        const existingNotif = await tx.notification.findFirst({
-          where: {
-            proposalId: proposal.id,
-            type: 'CIP',
-            title: 'Saldo Retornado Automaticamente',
-          },
-        });
-
-        if (!existingNotif) {
-          await tx.notification.create({
-            data: {
-              tenantId: proposal.tenantId,
+        if (candidateIds.length === 0) {
+          // If no specific users are assigned, create a generic tenant-wide notification
+          const existingNotif = await tx.notification.findFirst({
+            where: {
               proposalId: proposal.id,
-              title: 'Saldo Retornado Automaticamente',
-              message: `Proposta ${proposal.proposalNumber}: Atingiu ${businessDays} dias úteis em CIP. Status alterado para SALDO RETORNADO.`,
+              userId: null,
               type: 'CIP',
-              priority: 'MEDIUM',
+              title: 'Prazo CIP Excedido - Atuação Suporte',
             },
           });
+
+          if (!existingNotif) {
+            await tx.notification.create({
+              data: {
+                tenantId: proposal.tenantId,
+                proposalId: proposal.id,
+                userId: null,
+                title: 'Prazo CIP Excedido - Atuação Suporte',
+                message: `Proposta ${proposal.proposalNumber}: Atingiu o 5º dia útil (${businessDays} dias úteis decorridos) em CIP sem retorno automático de saldo devedor. Suporte acionado para cobrança operacional.`,
+                type: 'CIP',
+                priority: 'HIGH',
+              },
+            });
+          }
+        } else {
+          for (const recipientId of candidateIds) {
+            const existingNotif = await tx.notification.findFirst({
+              where: {
+                proposalId: proposal.id,
+                userId: recipientId,
+                type: 'CIP',
+                title: 'Prazo CIP Excedido - Atuação Suporte',
+              },
+            });
+
+            if (!existingNotif) {
+              await tx.notification.create({
+                data: {
+                  tenantId: proposal.tenantId,
+                  proposalId: proposal.id,
+                  userId: recipientId,
+                  title: 'Prazo CIP Excedido - Atuação Suporte',
+                  message: `Proposta ${proposal.proposalNumber}: Atingiu o 5º dia útil (${businessDays} dias úteis decorridos) em CIP sem retorno automático de saldo devedor. Suporte acionado para cobrança operacional.`,
+                  type: 'CIP',
+                  priority: 'HIGH',
+                },
+              });
+            }
+          }
         }
 
-        // Audit Log using tx
+        // Audit Log using tx to record the 5th day SLA breach event
         await tx.auditLog.create({
           data: {
             tenantId: proposal.tenantId,
-            action: 'AUTOMATION_PORTABILITY_TRANSITION',
+            action: 'AUTOMATION_PORTABILITY_SLA_EXCEEDED',
             entity: 'Proposal',
             entityId: proposal.id,
             userName: 'Sistema Cron CIP',
             newData: JSON.stringify({
               proposalNumber: proposal.proposalNumber,
               businessDays,
-              fromStatus: cipStatus.name,
-              toStatus: saldoRetornadoStatus.name,
+              status: cipStatus.name,
+              message: 'Prazo regulatório de 5 dias úteis CIP atingido sem retorno de saldo. Suporte notificado.',
             }),
           },
         });
 
-        saldoRetornadoCount++;
-        details.push(`Proposta ${proposal.proposalNumber}: Saldo retornado com ${businessDays} dias úteis.`);
+        alertsGenerated++;
+        details.push(`Proposta ${proposal.proposalNumber}: Prazo CIP excedido com ${businessDays} dias úteis. Suporte acionado.`);
       } else if (businessDays === targetDays - 1) {
         // 4th business day warning
         alertsGenerated++;

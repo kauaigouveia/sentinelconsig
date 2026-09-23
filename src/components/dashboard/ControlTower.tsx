@@ -199,14 +199,14 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                Torre de Controle Operacional
+                SENTINEL CONSIG — Torre de Controle Operacional
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 TELEMETRIA ATIVA
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Visão holística da esteira, SLAs, alçadas e gargalos operacionais
+              Inteligência que antecipa. Controle que transforma.
             </p>
           </div>
         </div>

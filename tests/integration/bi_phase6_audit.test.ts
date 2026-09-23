@@ -635,4 +635,261 @@ describe('FASE 6 — AUDITORIA TÉCNICA DO BI OPERACIONAL', () => {
       expect(where.createdAt).toBeDefined();
     });
   });
+
+  // =========================================================================
+  // 14. VALIDAÇÃO ESPECÍFICA DO TICKET MÉDIO (PAGO)
+  // =========================================================================
+  describe('14. Ticket Médio (Pago) Precise Scenarios', () => {
+    const buildMockPrisma = (proposals: any[]) => {
+      return {
+        proposal: {
+          findMany: vi.fn().mockResolvedValue(proposals),
+          count: vi.fn().mockResolvedValue(proposals.length),
+        },
+        pendency: {
+          count: vi.fn().mockResolvedValue(0),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      } as any;
+    };
+
+    it('1. 1 proposta REPROVADA -> Volume Pago = 0, Contratos Pagos = 0, Ticket Médio = 0', async () => {
+      const proposals = [
+        {
+          id: 'p_reprovado',
+          contractValue: 14995.64,
+          releasedValue: 0,
+          standardCategory: StandardStatusCategory.RECUSADO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'REPROVADO', standardCategory: StandardStatusCategory.RECUSADO, name: 'Reprovado' },
+        },
+      ];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(0);
+      expect(overview.paidProduction.value).toBe(0);
+      expect(overview.avgTicketNet).toBe(0);
+    });
+
+    it('2. 1 proposta CANCELADA -> Volume Pago = 0, Contratos Pagos = 0, Ticket Médio = 0', async () => {
+      const proposals = [
+        {
+          id: 'p_cancelado',
+          contractValue: 14995.64,
+          releasedValue: 0,
+          standardCategory: StandardStatusCategory.CANCELADO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'CANCELADO', standardCategory: StandardStatusCategory.CANCELADO, name: 'Cancelado' },
+        },
+      ];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(0);
+      expect(overview.paidProduction.value).toBe(0);
+      expect(overview.avgTicketNet).toBe(0);
+    });
+
+    it('3. 1 proposta PAGA de R$ 10.000 -> Volume Pago = R$ 10.000, Contratos Pagos = 1, Ticket Médio = R$ 10.000', async () => {
+      const proposals = [
+        {
+          id: 'p_pago',
+          contractValue: 12000,
+          releasedValue: 10000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+      ];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(1);
+      expect(overview.paidProduction.value).toBe(10000);
+      expect(overview.avgTicketNet).toBe(10000);
+    });
+
+    it('4. 2 propostas PAGAS: R$ 10.000 + R$ 20.000 -> Volume Pago = R$ 30.000, Contratos Pagos = 2, Ticket Médio = R$ 15.000', async () => {
+      const proposals = [
+        {
+          id: 'p_pago1',
+          contractValue: 12000,
+          releasedValue: 10000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+        {
+          id: 'p_pago2',
+          contractValue: 24000,
+          releasedValue: 20000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-11T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+      ];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(2);
+      expect(overview.paidProduction.value).toBe(30000);
+      expect(overview.avgTicketNet).toBe(15000);
+    });
+
+    it('5. 1 PAGA + 1 REPROVADA: apenas a paga entra no cálculo.', async () => {
+      const proposals = [
+        {
+          id: 'p_pago',
+          contractValue: 12000,
+          releasedValue: 10000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+        {
+          id: 'p_reprovado',
+          contractValue: 14995.64,
+          releasedValue: 0,
+          standardCategory: StandardStatusCategory.RECUSADO,
+          createdAt: new Date('2026-09-12T10:00:00Z'),
+          status: { code: 'REPROVADO', standardCategory: StandardStatusCategory.RECUSADO, name: 'Reprovado' },
+        },
+      ];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(1);
+      expect(overview.paidProduction.value).toBe(10000);
+      expect(overview.avgTicketNet).toBe(10000);
+    });
+
+    it('6. 1 PAGA + 1 CANCELADA: apenas a paga entra no cálculo.', async () => {
+      const proposals = [
+        {
+          id: 'p_pago',
+          contractValue: 12000,
+          releasedValue: 10000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+        {
+          id: 'p_cancelado',
+          contractValue: 14995.64,
+          releasedValue: 0,
+          standardCategory: StandardStatusCategory.CANCELADO,
+          createdAt: new Date('2026-09-12T10:00:00Z'),
+          status: { code: 'CANCELADO', standardCategory: StandardStatusCategory.CANCELADO, name: 'Cancelado' },
+        },
+      ];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(1);
+      expect(overview.paidProduction.value).toBe(10000);
+      expect(overview.avgTicketNet).toBe(10000);
+    });
+
+    it('7. período sem pagamentos -> Ticket Médio = 0', async () => {
+      const proposals: any[] = [];
+      const prisma = buildMockPrisma(proposals);
+      const overview = await BIService.getOverview(prisma, 'tenant_test', {});
+      expect(overview.paidProduction.count).toBe(0);
+      expect(overview.paidProduction.value).toBe(0);
+      expect(overview.avgTicketNet).toBe(0);
+    });
+
+    it('8. validação multi-tenant.', async () => {
+      const proposalsTenantA = [
+        {
+          id: 'p_pago_A',
+          tenantId: 'tenant_A',
+          contractValue: 12000,
+          releasedValue: 10000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago' },
+        },
+      ];
+
+      const proposalsTenantB = [
+        {
+          id: 'p_pago_B',
+          tenantId: 'tenant_B',
+          contractValue: 24000,
+          releasedValue: 20000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago' },
+        },
+      ];
+
+      const prisma = {
+        proposal: {
+          findMany: vi.fn().mockImplementation((args: any) => {
+            if (args.where.tenantId === 'tenant_A') return Promise.resolve(proposalsTenantA);
+            if (args.where.tenantId === 'tenant_B') return Promise.resolve(proposalsTenantB);
+            return Promise.resolve([]);
+          }),
+          count: vi.fn().mockImplementation((args: any) => {
+            if (args.where.tenantId === 'tenant_A') return Promise.resolve(1);
+            if (args.where.tenantId === 'tenant_B') return Promise.resolve(1);
+            return Promise.resolve(0);
+          }),
+        },
+        pendency: {
+          count: vi.fn().mockResolvedValue(0),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      } as any;
+
+      const overviewA = await BIService.getOverview(prisma, 'tenant_A', {});
+      expect(overviewA.paidProduction.value).toBe(10000);
+      expect(overviewA.avgTicketNet).toBe(10000);
+
+      const overviewB = await BIService.getOverview(prisma, 'tenant_B', {});
+      expect(overviewB.paidProduction.value).toBe(20000);
+      expect(overviewB.avgTicketNet).toBe(20000);
+    });
+
+    it('9. validação dos filtros do BI.', async () => {
+      const proposals = [
+        {
+          id: 'p_pago_c6',
+          bankId: 'bank_c6',
+          contractValue: 12000,
+          releasedValue: 10000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-10T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+        {
+          id: 'p_pago_facta',
+          bankId: 'bank_facta',
+          contractValue: 24000,
+          releasedValue: 20000,
+          standardCategory: StandardStatusCategory.PAGO,
+          createdAt: new Date('2026-09-11T10:00:00Z'),
+          status: { code: 'PAGO', standardCategory: StandardStatusCategory.PAGO, name: 'Pago ao Cliente' },
+        },
+      ];
+
+      const mockFindMany = vi.fn().mockImplementation((args: any) => {
+        const filtered = proposals.filter(p => !args.where.bankId || p.bankId === args.where.bankId);
+        return Promise.resolve(filtered);
+      });
+
+      const prisma = {
+        proposal: {
+          findMany: mockFindMany,
+          count: vi.fn().mockResolvedValue(1),
+        },
+        pendency: {
+          count: vi.fn().mockResolvedValue(0),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      } as any;
+
+      const overviewC6 = await BIService.getOverview(prisma, 'tenant_test', { bankId: 'bank_c6' });
+      expect(mockFindMany).toHaveBeenCalled();
+      expect(mockFindMany.mock.calls[0][0].where.bankId).toBe('bank_c6');
+      expect(overviewC6.paidProduction.value).toBe(10000);
+      expect(overviewC6.avgTicketNet).toBe(10000);
+    });
+  });
 });

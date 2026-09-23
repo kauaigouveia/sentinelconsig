@@ -358,7 +358,11 @@ export class BusinessNotificationService {
     let title = 'Fase da Proposta Atualizada';
     let priority: PriorityLevel = 'MEDIUM';
 
-    if (toCategory === 'PENDENTE') {
+    const normalizedStatusName = (toStatusName || '').toUpperCase();
+    if (normalizedStatusName === 'SALDO RETORNADO' || normalizedStatusName === 'SALDO_RETORNADO') {
+      title = 'Saldo Devedor Retornado';
+      priority = 'HIGH';
+    } else if (toCategory === 'PENDENTE') {
       title = 'Pendência Apontada na Proposta';
       priority = 'HIGH';
     } else if (toCategory === 'CANCELADO' || toCategory === 'RECUSADO') {

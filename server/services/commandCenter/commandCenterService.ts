@@ -290,7 +290,7 @@ export class CommandCenterService {
           proposalNumber: { contains: q, mode: 'insensitive' },
         },
         take: 5,
-        select: { id: true, proposalNumber: true, contractValue: true, statusName: true },
+        select: { id: true, proposalNumber: true, contractValue: true, status: { select: { name: true } } },
       }),
       prisma.partner.findMany({
         where: {
@@ -354,7 +354,7 @@ export class CommandCenterService {
         type: 'PROPOSAL',
         id: p.id,
         label: `Proposta #${p.proposalNumber}`,
-        sublabel: `Status: ${p.statusName}`,
+        sublabel: `Status: ${p.status?.name || 'EM_ANDAMENTO'}`,
         link: `/proposals/${p.id}`,
       });
     }

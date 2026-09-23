@@ -342,7 +342,7 @@ export class BIService {
     const conversionRatePercent = totalProposals > 0 ? Math.round((paidCount / totalProposals) * 1000) / 10 : 0;
     const avgTicketNet = paidCount > 0
       ? Math.round((paidValue / paidCount) * 100) / 100
-      : (totalProposals > 0 ? Math.round((totalNetValue / totalProposals) * 100) / 100 : 0);
+      : 0;
 
     const cancelledRatePercent = totalProposals > 0 ? Math.round((cancelledCount / totalProposals) * 1000) / 10 : 0;
     const reprovedRatePercent = totalProposals > 0 ? Math.round((reprovedCount / totalProposals) * 1000) / 10 : 0;
@@ -580,7 +580,7 @@ export class BIService {
       .map(entry => {
         const avgTicket = entry.paidCount > 0
           ? Math.round((entry.paid / entry.paidCount) * 100) / 100
-          : (entry.count > 0 ? Math.round((entry.net / entry.count) * 100) / 100 : 0);
+          : 0;
 
         return {
           date: entry.date,
@@ -600,7 +600,7 @@ export class BIService {
     const conversionRatePercent = totalCount > 0 ? Math.round((totalPaidCount / totalCount) * 1000) / 10 : 0;
     const avgTicket = totalPaidCount > 0
       ? Math.round((totalPaidValue / totalPaidCount) * 100) / 100
-      : (totalCount > 0 ? Math.round((totalNet / totalCount) * 100) / 100 : 0);
+      : 0;
 
     return {
       tenantId,
@@ -953,7 +953,7 @@ export class BIService {
         const approvalRatePercent = entry.count > 0 ? Math.round((entry.approvedCount / entry.count) * 1000) / 10 : 0;
         const avgTicketNet = entry.paidCount > 0
           ? Math.round((entry.paidValue / entry.paidCount) * 100) / 100
-          : (entry.count > 0 ? Math.round((entry.net / entry.count) * 100) / 100 : 0);
+          : 0;
 
         const slaCompliancePercent = entry.totalSlaEvaluated > 0
           ? Math.round((entry.withinSla / entry.totalSlaEvaluated) * 1000) / 10
@@ -1160,7 +1160,7 @@ export class BIService {
         const approvalRatePercent = entry.count > 0 ? Math.round((entry.approvedCount / entry.count) * 1000) / 10 : 0;
         const avgTicketNet = entry.paidCount > 0
           ? Math.round((entry.paidValue / entry.paidCount) * 100) / 100
-          : (entry.count > 0 ? Math.round((entry.net / entry.count) * 100) / 100 : 0);
+          : 0;
 
         return {
           productId: entry.productId,
@@ -1320,7 +1320,7 @@ export class BIService {
         const conversionRatePercent = entry.count > 0 ? Math.round((entry.paidCount / entry.count) * 1000) / 10 : 0;
         const avgTicketNet = entry.paidCount > 0
           ? Math.round((entry.paidValue / entry.paidCount) * 100) / 100
-          : (entry.count > 0 ? Math.round((entry.net / entry.count) * 100) / 100 : 0);
+          : 0;
 
         return {
           convenioId: entry.convenioId,
@@ -1547,7 +1547,7 @@ export class BIService {
         const approvalRatePercent = entry.count > 0 ? Math.round((entry.approvedCount / entry.count) * 1000) / 10 : 0;
         const avgTicketNet = entry.paidCount > 0
           ? Math.round((entry.paidValue / entry.paidCount) * 100) / 100
-          : (entry.count > 0 ? Math.round((entry.net / entry.count) * 100) / 100 : 0);
+          : 0;
 
         const avgDwellHours = entry.count > 0 ? Math.round((entry.totalDwellHours / entry.count) * 10) / 10 : null;
         const openPendenciesCount = pendenciesByPartner.get(entry.partnerId) || 0;

@@ -800,6 +800,9 @@ export class C6BankService {
               ? {
                   statusId: newInternalStatusId,
                   standardCategory: newStandardCategory,
+                  retentionDeadline: targetStatusRecord?.code === 'AGUARDAR_RETORNO_CIP'
+                    ? (proposal.retentionDeadline ? undefined : new Date())
+                    : null,
                   version: { increment: 1 },
                 }
               : {}),

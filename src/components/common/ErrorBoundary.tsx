@@ -51,11 +51,14 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <div className="space-y-2">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
+                SENTINEL CONSIG
+              </span>
               <h1 className="text-xl font-black text-white tracking-tight">
-                Não foi possível carregar o Sentinel Consig.
+                Não foi possível carregar o Sentinel Consig
               </h1>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Ocorreu uma falha inesperada na renderização da interface. O estado de segurança impediu a exibição de uma tela em branco.
+                Veja. Antecipe. Comande.
               </p>
             </div>
 

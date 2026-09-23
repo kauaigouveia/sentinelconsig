@@ -1,3 +1,5 @@
+import { SYSTEM_IDENTITY } from '../lib/branding';
+
 export interface TenantBranding {
   companyName: string;
   tradeName?: string;
@@ -23,8 +25,8 @@ export class BrandingService {
       if (res.ok) {
         const data = await res.json();
         this.cachedBranding = {
-          companyName: data.companyName || 'Sentinel Consig',
-          tradeName: data.tradeName || data.companyName || 'Sentinel Consig',
+          companyName: data.companyName || SYSTEM_IDENTITY.name,
+          tradeName: data.tradeName || data.companyName || SYSTEM_IDENTITY.name,
           logoUrl: data.logoUrl || null,
           faviconUrl: data.faviconUrl || null,
           primaryColor: data.primaryColor || '#2563eb',
@@ -46,18 +48,20 @@ export class BrandingService {
     }
 
     const fallback: TenantBranding = {
-      companyName: 'Sentinel Consig',
-      tradeName: 'Sentinel Consig',
+      companyName: SYSTEM_IDENTITY.name,
+      tradeName: SYSTEM_IDENTITY.name,
       primaryColor: '#2563eb',
-      footerText: '© 2026 Sentinel Consig. Todos os direitos reservados.',
+      footerText: `© 2026 ${SYSTEM_IDENTITY.name}. ${SYSTEM_IDENTITY.tagline}`,
     };
     this.applyBrandingToDocument(fallback);
     return fallback;
   }
 
   public static applyBrandingToDocument(branding: TenantBranding): void {
-    if (branding.companyName) {
-      document.title = `${branding.companyName} | Gestão Consignada`;
+    if (branding.companyName && branding.companyName !== SYSTEM_IDENTITY.name) {
+      document.title = `${branding.companyName} | Sentinel Consig`;
+    } else {
+      document.title = SYSTEM_IDENTITY.title;
     }
 
     if (branding.faviconUrl) {

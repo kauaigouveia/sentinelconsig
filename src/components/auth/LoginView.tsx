@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { useTenantBranding } from '../../hooks/useTenantBranding';
+import { SYSTEM_IDENTITY } from '../../lib/branding';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -222,12 +223,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             )}
             <div>
               <h1 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                <span>{branding.companyName || 'SENTINEL CONSIG'}</span>
+                <span>{branding.companyName || SYSTEM_IDENTITY.displayName}</span>
                 <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30">
                   ENTERPRISE
                 </span>
               </h1>
-              <p className="text-xs text-slate-400 font-medium">Plataforma Financeira & Gestão de Crédito Consignado</p>
+              <p className="text-xs text-slate-300 font-bold tracking-wide">
+                {SYSTEM_IDENTITY.tagline}
+              </p>
             </div>
           </div>
         </div>
@@ -237,10 +240,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           <div className="space-y-3 max-w-lg">
             <span className="text-[11px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
               <ShieldCheck className="h-4 w-4" />
-              <span>Ambiente Corporativo de Alta Confiabilidade</span>
+              <span>{SYSTEM_IDENTITY.shortTagline}</span>
             </span>
             <h2 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
-              Controle absoluto de esteira, alçadas e liquidação bancária.
+              Inteligência que antecipa.<br />Controle que transforma.
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
               Desenvolvido exclusivamente para correspondentes bancários, promotoras e mesas de crédito que exigem máxima velocidade, isolamento de dados e auditoria em tempo real.

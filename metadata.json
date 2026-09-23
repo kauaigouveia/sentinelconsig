@@ -1,6 +1,6 @@
 {
-  "name": "SENTINEL CONSIG",
-  "description": "SENTINEL CONSIG: Sistema operacional de gestão de produção de crédito consignado, portabilidades, esteira kanban, SLA, clientes 360 e auditoria.",
+  "name": "Sentinel Consig",
+  "description": "Sentinel Consig — inteligência operacional, controle e automação para sua operação.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

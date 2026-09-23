@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { SYSTEM_IDENTITY } from '../lib/branding';
 
 export interface TenantBranding {
   status: 'ACTIVE' | 'SUSPENDED' | 'DOMAIN_NOT_CONFIGURED' | 'PLATFORM_DEFAULT';
@@ -22,11 +23,11 @@ export interface TenantBranding {
 const DEFAULT_BRANDING: TenantBranding = {
   status: 'PLATFORM_DEFAULT',
   domainType: 'PLATFORM_DEFAULT',
-  companyName: 'Sentinel Consig',
+  companyName: SYSTEM_IDENTITY.name,
   primaryColor: '#2563eb',
   secondaryColor: '#1e40af',
   accentColor: '#3b82f6',
-  footerText: '© 2026 Sentinel Consig. Plataforma Multitenant de Crédito Consignado.',
+  footerText: `© 2026 ${SYSTEM_IDENTITY.name}. ${SYSTEM_IDENTITY.tagline}`,
   themeMode: 'LIGHT',
 };
 
@@ -37,8 +38,10 @@ export function useTenantBranding() {
 
   const applyBrandingToDOM = useCallback((b: TenantBranding) => {
     // 1. Update Title
-    if (b.companyName) {
-      document.title = `${b.companyName} | Central de Consignados`;
+    if (b.companyName && b.companyName !== SYSTEM_IDENTITY.name) {
+      document.title = `${b.companyName} | Sentinel Consig`;
+    } else {
+      document.title = SYSTEM_IDENTITY.title;
     }
 
     // 2. Update Favicon if provided

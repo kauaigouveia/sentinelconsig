@@ -2425,6 +2425,17 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
+      let initialRetentionDeadline: Date | null = null;
+      if (targetStatusId) {
+        const selectedStatus = await prisma.proposalStatus.findFirst({
+          where: { id: targetStatusId },
+          select: { code: true }
+        });
+        if (selectedStatus?.code === 'AGUARDAR_RETORNO_CIP') {
+          initialRetentionDeadline = new Date();
+        }
+      }
+
       const proposal = await prisma.proposal.create({
         data: {
           tenantId,
@@ -2436,6 +2447,7 @@ async function auditAndEnsureMasterUser() {
           productId: targetProductId,
           convenioId: targetConvenioId,
           statusId: targetStatusId,
+          retentionDeadline: initialRetentionDeadline,
           type: type || 'NOVO',
           releasedValue: releasedValue ? Number(releasedValue) : 0,
           contractValue: contractValue ? Number(contractValue) : 0,
@@ -2513,6 +2525,7 @@ async function auditAndEnsureMasterUser() {
       // 1. Buscar proposta existente com validação de tenant
       const existing = await prisma.proposal.findFirst({
         where: { id, tenantId, deletedAt: null },
+        include: { status: true },
       });
 
       if (!existing) {
@@ -2529,7 +2542,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       // Validação estrita de statusId no PostgreSQL para evitar Foreign Key Violation (P2003)
-      let validatedStatus: { id: string; name: string; standardCategory: string | null } | null = null;
+      let validatedStatus: { id: string; name: string; code: string; standardCategory: string | null } | null = null;
       if (statusId !== undefined && statusId !== null && statusId !== '') {
         // Rejeitar IDs legados "st-*" do LocalStorage com erro explícito 400
         if (typeof statusId === 'string' && statusId.startsWith('st-')) {
@@ -2541,7 +2554,7 @@ async function auditAndEnsureMasterUser() {
 
         validatedStatus = await prisma.proposalStatus.findFirst({
           where: { id: statusId, tenantId, active: true },
-          select: { id: true, name: true, standardCategory: true },
+          select: { id: true, name: true, code: true, standardCategory: true },
         });
 
         if (!validatedStatus) {
@@ -2553,6 +2566,14 @@ async function auditAndEnsureMasterUser() {
       }
 
       const isStatusChanging = statusId !== undefined && statusId !== existing.statusId;
+      let newRetentionDeadline: Date | null | undefined = undefined;
+      if (isStatusChanging) {
+        if (validatedStatus?.code === 'AGUARDAR_RETORNO_CIP') {
+          newRetentionDeadline = existing.retentionDeadline ? undefined : new Date();
+        } else {
+          newRetentionDeadline = null; // Clear if moving out of AGUARDAR_RETORNO_CIP
+        }
+      }
 
       // 3. Executar transação atômica no PostgreSQL
       const result = await prisma.$transaction(async (tx) => {
@@ -2562,6 +2583,7 @@ async function auditAndEnsureMasterUser() {
           data: {
             statusId: statusId !== undefined ? statusId : undefined,
             standardCategory: standardCategory || undefined,
+            retentionDeadline: newRetentionDeadline,
             releasedValue: releasedValue !== undefined ? Number(releasedValue) : undefined,
             contractValue: contractValue !== undefined ? Number(contractValue) : undefined,
             installmentValue: installmentValue !== undefined ? Number(installmentValue) : undefined,

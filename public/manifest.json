@@ -1,0 +1,21 @@
+{
+  "name": "Sentinel Consig",
+  "short_name": "Sentinel",
+  "description": "Veja. Antecipe. Comande.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080d18",
+  "theme_color": "#080d18",
+  "icons": [
+    {
+      "src": "/branding/sentinel-consig-favicon-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/branding/sentinel-consig-favicon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}

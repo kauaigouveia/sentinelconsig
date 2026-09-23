@@ -102,7 +102,7 @@ export class CommandAlertEngine {
       const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes deduplication cooldown
       if (!lastEmitted || now.getTime() - lastEmitted.getTime() > COOLDOWN_MS) {
         this.alertCache.set(alert.dedupKey, now);
-        CentralEventBus.emit('COMMAND_ALERT_CREATED', alert);
+        CentralEventBus.getInstance().emit('COMMAND_ALERT_CREATED', alert);
       }
     }
 

@@ -205,14 +205,14 @@ export const INITIAL_TENANTS: Tenant[] = [
     updatedAt: '2026-01-01T00:00:00.000Z',
     whiteLabel: {
       companyName: 'SENTINEL CONSIG',
-      tradeName: 'Gestão de Produção & Esteira',
+      tradeName: 'Inteligência que antecipa. Controle que transforma.',
       cnpj: '48.912.456/0001-80',
       logoUrl: '',
       primaryColor: '#2563eb',
       accentColor: '#4f46e5',
       supportEmail: 'suporte@creditgestao.com.br',
       supportPhone: '(11) 98765-4321',
-      footerText: 'Sentinel Consig - Plataforma Avançada de Gestão Consignada',
+      footerText: 'Sentinel Consig — Inteligência que antecipa. Controle que transforma.',
     },
   },
   {
@@ -1248,6 +1248,7 @@ export class StorageService {
           c6FormalizationStatus: p.c6FormalizationStatus || undefined,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
+          portabilitySlaStartedAt: p.retentionDeadline || undefined,
         }));
         localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
       }
@@ -1370,7 +1371,7 @@ export class StorageService {
       if (dbWL && typeof dbWL === 'object') {
         const formattedWL = {
           companyName: dbWL.companyName || 'SENTINEL CONSIG',
-          tradeName: dbWL.tradeName || 'Gestão de Produção & Esteira',
+          tradeName: dbWL.tradeName || 'Inteligência que antecipa. Controle que transforma.',
           cnpj: dbWL.cnpj || '',
           logoUrl: dbWL.logoUrl || '',
           primaryColor: dbWL.primaryColor || '#2563eb',
@@ -1504,6 +1505,7 @@ export class StorageService {
             contractBalance: p.contractValue ? Number(p.contractValue) : 0,
             createdAt: p.createdAt,
             updatedAt: p.updatedAt,
+            portabilitySlaStartedAt: p.retentionDeadline || undefined,
           }));
           localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
         }
@@ -4051,14 +4053,19 @@ export class StorageService {
 
     // Specific status timestamps
     if (newStatus.code === 'AGUARDAR_RETORNO_CIP') {
-      proposal.portabilitySlaStartedAt = nowIso;
-    } else if (newStatus.code === 'PAGO') {
-      proposal.paidAt = nowIso;
-      proposal.completedAt = nowIso;
-    } else if (newStatus.code === 'CANCELADO') {
-      proposal.cancelledAt = nowIso;
-    } else if (newStatus.code === 'REPROVADO') {
-      proposal.rejectedAt = nowIso;
+      if (!proposal.portabilitySlaStartedAt) {
+        proposal.portabilitySlaStartedAt = nowIso;
+      }
+    } else {
+      proposal.portabilitySlaStartedAt = undefined;
+      if (newStatus.code === 'PAGO') {
+        proposal.paidAt = nowIso;
+        proposal.completedAt = nowIso;
+      } else if (newStatus.code === 'CANCELADO') {
+        proposal.cancelledAt = nowIso;
+      } else if (newStatus.code === 'REPROVADO') {
+        proposal.rejectedAt = nowIso;
+      }
     }
 
     proposals[idx] = proposal;

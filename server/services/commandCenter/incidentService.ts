@@ -167,25 +167,25 @@ export class IncidentService {
 
     // Audit Log
     if (userContext) {
-      await AuditLogService.log(
-        userContext.userId,
+      await AuditLogService.record(prisma, {
         tenantId,
-        'COMMAND_INCIDENT_CREATE',
-        'Incident',
-        created.id,
-        {
+        userId: userContext.userId,
+        action: 'COMMAND_INCIDENT_CREATE',
+        entity: 'Incident',
+        entityId: created.id,
+        newData: {
           incidentNumber,
           title: data.title,
           severity,
           type,
           source,
         },
-        userContext.reqIp
-      );
+        ipAddress: userContext.reqIp,
+      });
     }
 
     // Emit Central Event
-    CentralEventBus.emit('COMMAND_INCIDENT_CREATED', {
+    CentralEventBus.getInstance().emit('COMMAND_INCIDENT_CREATED', {
       tenantId,
       incidentId: created.id,
       incidentNumber: created.incidentNumber,
@@ -194,13 +194,13 @@ export class IncidentService {
     });
 
     if (severity === IncidentSeverity.CRITICAL) {
-      CentralEventBus.emit('COMMAND_INCIDENT_CRITICAL', {
+      CentralEventBus.getInstance().emit('COMMAND_INCIDENT_CRITICAL', {
         tenantId,
         incidentId: created.id,
         incidentNumber: created.incidentNumber,
         title: created.title,
       });
-      CentralEventBus.emit('INCIDENT_CRITICAL', {
+      CentralEventBus.getInstance().emit('INCIDENT_CRITICAL', {
         tenantId,
         incidentId: created.id,
         incidentNumber: created.incidentNumber,
@@ -358,24 +358,24 @@ export class IncidentService {
 
     // Audit Log
     if (userContext) {
-      await AuditLogService.log(
-        userContext.userId,
+      await AuditLogService.record(prisma, {
         tenantId,
-        'COMMAND_INCIDENT_STATUS_CHANGE',
-        'Incident',
-        incidentId,
-        {
+        userId: userContext.userId,
+        action: 'COMMAND_INCIDENT_STATUS_CHANGE',
+        entity: 'Incident',
+        entityId: incidentId,
+        newData: {
           incidentNumber: incident.incidentNumber,
           oldStatus: incident.status,
           newStatus: targetStatus,
           notes,
         },
-        userContext.reqIp
-      );
+        ipAddress: userContext.reqIp,
+      });
     }
 
     // Emit Events
-    CentralEventBus.emit('COMMAND_INCIDENT_STATUS_CHANGED', {
+    CentralEventBus.getInstance().emit('COMMAND_INCIDENT_STATUS_CHANGED', {
       tenantId,
       incidentId,
       incidentNumber: incident.incidentNumber,
@@ -383,7 +383,7 @@ export class IncidentService {
       newStatus: targetStatus,
     });
 
-    CentralEventBus.emit('INCIDENT_STATUS_CHANGED', {
+    CentralEventBus.getInstance().emit('INCIDENT_STATUS_CHANGED', {
       tenantId,
       incidentId,
       incidentNumber: incident.incidentNumber,
@@ -391,12 +391,12 @@ export class IncidentService {
     });
 
     if (targetStatus === IncidentStatus.RESOLVED) {
-      CentralEventBus.emit('COMMAND_INCIDENT_RESOLVED', {
+      CentralEventBus.getInstance().emit('COMMAND_INCIDENT_RESOLVED', {
         tenantId,
         incidentId,
         incidentNumber: incident.incidentNumber,
       });
-      CentralEventBus.emit('INCIDENT_RESOLVED', {
+      CentralEventBus.getInstance().emit('INCIDENT_RESOLVED', {
         tenantId,
         incidentId,
         incidentNumber: incident.incidentNumber,
@@ -432,27 +432,16 @@ export class IncidentService {
     if (!incident) throw new Error('Incidente não encontrado.');
 
     // Use existing PendencyService
-    const pendency = await PendencyService.createPendency(
-      prisma,
+    const { pendency } = await PendencyService.createPendency(prisma, {
       tenantId,
-      {
-        type: pendencyData.type,
-        title: pendencyData.title,
-        description: pendencyData.description,
-        priority: pendencyData.priority || 'MEDIUM',
-        assignedToId: pendencyData.assignedToId,
-        proposalId: pendencyData.proposalId,
-        partnerId: pendencyData.partnerId || incident.partnerId || undefined,
-        bankId: pendencyData.bankId || incident.bankId || undefined,
-        source: 'INCIDENT',
-        sourceEventId: incident.id,
-        metadata: {
-          incidentId: incident.id,
-          incidentNumber: incident.incidentNumber,
-        },
-      },
-      userContext
-    );
+      type: pendencyData.type,
+      title: pendencyData.title,
+      description: pendencyData.description,
+      priority: pendencyData.priority || 'MEDIUM',
+      proposalId: pendencyData.proposalId,
+      partnerId: pendencyData.partnerId || incident.partnerId || undefined,
+      bankId: pendencyData.bankId || incident.bankId || undefined,
+    });
 
     // Link Incident -> Pendency
     await prisma.incidentPendency.upsert({
@@ -520,7 +509,7 @@ export class IncidentService {
       },
     });
 
-    CentralEventBus.emit('COMMAND_IMPACT_UPDATED', {
+    CentralEventBus.getInstance().emit('COMMAND_IMPACT_UPDATED', {
       tenantId,
       incidentId,
       incidentNumber: incident.incidentNumber,
@@ -560,15 +549,15 @@ export class IncidentService {
     });
 
     if (userContext) {
-      await AuditLogService.log(
-        userContext.userId,
+      await AuditLogService.record(prisma, {
         tenantId,
-        'COMMAND_INCIDENT_COMMENT',
-        'Incident',
-        incidentId,
-        { title, description },
-        userContext.reqIp
-      );
+        userId: userContext.userId,
+        action: 'COMMAND_INCIDENT_COMMENT',
+        entity: 'Incident',
+        entityId: incidentId,
+        newData: { title, description },
+        ipAddress: userContext.reqIp,
+      });
     }
 
     return event;
@@ -795,7 +784,7 @@ export class IncidentService {
                 proposalNumber: true,
                 contractValue: true,
                 releasedValue: true,
-                statusName: true,
+                status: { select: { name: true } },
                 createdAt: true,
               },
             },

@@ -269,6 +269,9 @@ export const SentinelIntelligenceDashboard: React.FC<Props> = ({ onNavigateToVie
               <Brain className="w-6 h-6 text-indigo-400" />
             </div>
             <div>
+              <div className="text-[10px] uppercase font-bold tracking-widest text-indigo-300">
+                SENTINEL CONSIG
+              </div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
                 Sentinel Intelligence
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-medium">
@@ -276,7 +279,7 @@ export const SentinelIntelligenceDashboard: React.FC<Props> = ({ onNavigateToVie
                 </span>
               </h1>
               <p className="text-xs text-slate-300 mt-0.5">
-                Inteligência determinística com correlações cruzadas entre BI, Esteira, SLA, Integrações e CRM
+                Inteligência que antecipa. Controle que transforma.
               </p>
             </div>
           </div>

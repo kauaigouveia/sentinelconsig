@@ -658,8 +658,9 @@ RuleEngineService.registerRule({
     let alertsDispatched = 0;
 
     for (const p of cipProposals) {
-      // Ponto de partida: data de entrada/criação da proposta na CIP
-      const businessDays = RuleEngineService.calculateBusinessDaysElapsed(p.createdAt, ctx.now);
+      // Ponto de partida: data de entrada na CIP (retentionDeadline) ou criação da proposta como fallback
+      const startDate = p.retentionDeadline || p.createdAt;
+      const businessDays = RuleEngineService.calculateBusinessDaysElapsed(startDate, ctx.now);
 
       if (businessDays >= 4) {
         matchedCount++;

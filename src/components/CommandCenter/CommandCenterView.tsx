@@ -415,7 +415,7 @@ export function CommandCenterView() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                SENTINEL COMMAND CENTER
+                SENTINEL CONSIG — COMMAND CENTER
               </h1>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
@@ -423,7 +423,7 @@ export function CommandCenterView() {
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Camada de Orquestração Operacional, Visibilidade 360° e Resposta de Incidentes da Mesa de Crédito
+              Inteligência que antecipa. Controle que transforma.
             </p>
           </div>
         </div>
