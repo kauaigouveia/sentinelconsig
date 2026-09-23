@@ -38,6 +38,10 @@ import { AnnouncementsManagement } from './components/admin/AnnouncementsManagem
 import { OperationsCentral } from './components/operations/OperationsCentral';
 import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
 import { BankIntegrationsView } from './components/integrations/BankIntegrationsView';
+import { CentralAdministracao } from './components/admin/CentralAdministracao';
+import { CentralPendencias } from './components/admin/CentralPendencias';
+import { CentralAutomacoes } from './components/admin/CentralAutomacoes';
+import { HubIntegracoes } from './components/admin/HubIntegracoes';
 import { getRoleLabel } from './lib/roleLabels';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
@@ -595,6 +599,20 @@ export default function App() {
           {currentView === 'admin-comunicados' && (<AnnouncementsManagement />)}
           {currentView === 'admin-import-status' && (
             <StatusImport onNavigate={handleNavigate} />
+          )}
+
+          {/* NOVOS MÓDULOS OPERACIONAIS & CENTRAL DE ADMINISTRAÇÃO */}
+          {(currentView === 'central-administracao' || currentView === 'administracao') && (
+            <CentralAdministracao />
+          )}
+          {(currentView === 'central-pendencias' || currentView === 'pendencias-central') && (
+            <CentralPendencias />
+          )}
+          {(currentView === 'central-automacao' || currentView === 'automacoes') && (
+            <CentralAutomacoes />
+          )}
+          {(currentView === 'hub-integracoes' || currentView === 'integracoes-hub') && (
+            <HubIntegracoes />
           )}
         </main>
 

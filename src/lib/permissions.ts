@@ -17,7 +17,15 @@ export type Permission =
   | 'audit_logs.view'
   | 'whitelabel.view' | 'whitelabel.manage'
   | 'tenants.view' | 'tenants.create' | 'tenants.update' | 'tenants.suspend' | 'tenants.delete'
-  | 'settings.view' | 'settings.manage';
+  | 'settings.view' | 'settings.manage'
+  // NOVOS MÓDULOS OPERACIONAIS (Fases 1-7)
+  | 'simulations.view' | 'simulations.create' | 'simulations.update' | 'simulations.delete'
+  | 'automations.view' | 'automations.create' | 'automations.update' | 'automations.delete' | 'automations.execute'
+  | 'bi.view' | 'bi.export'
+  | 'integrations.view' | 'integrations.manage' | 'integrations.sync'
+  | 'pendencies.view' | 'pendencies.create' | 'pendencies.update' | 'pendencies.delete' | 'pendencies.resolve'
+  | 'intelligence.view' | 'intelligence.execute'
+  | 'admin.view' | 'admin.manage';
 
 export interface PermissionCategory {
   category: string;
@@ -184,6 +192,71 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { id: 'settings.manage', label: 'Gerenciar' },
     ],
   },
+  {
+    category: 'SIMULAÇÕES',
+    label: 'Simulações de Crédito',
+    permissions: [
+      { id: 'simulations.view', label: 'Visualizar Simulações' },
+      { id: 'simulations.create', label: 'Criar Simulação' },
+      { id: 'simulations.update', label: 'Editar Simulação' },
+      { id: 'simulations.delete', label: 'Excluir Simulação' },
+    ],
+  },
+  {
+    category: 'AUTOMAÇÃO',
+    label: 'Central de Automação',
+    permissions: [
+      { id: 'automations.view', label: 'Visualizar Automações' },
+      { id: 'automations.create', label: 'Criar Regra' },
+      { id: 'automations.update', label: 'Editar Regra' },
+      { id: 'automations.delete', label: 'Excluir Regra' },
+      { id: 'automations.execute', label: 'Executar Manualmente' },
+    ],
+  },
+  {
+    category: 'BI',
+    label: 'BI & Relatórios Operacionais',
+    permissions: [
+      { id: 'bi.view', label: 'Visualizar Dashboards' },
+      { id: 'bi.export', label: 'Exportar Dados' },
+    ],
+  },
+  {
+    category: 'INTEGRAÇÕES',
+    label: 'Hub de Integrações Bancárias',
+    permissions: [
+      { id: 'integrations.view', label: 'Visualizar Status de Integrações' },
+      { id: 'integrations.manage', label: 'Gerenciar Credenciais & Conexões' },
+      { id: 'integrations.sync', label: 'Disparar Sincronização' },
+    ],
+  },
+  {
+    category: 'PENDÊNCIAS',
+    label: 'Central de Pendências & SLA',
+    permissions: [
+      { id: 'pendencies.view', label: 'Visualizar Pendências' },
+      { id: 'pendencies.create', label: 'Criar Pendência' },
+      { id: 'pendencies.update', label: 'Atualizar / Comentar' },
+      { id: 'pendencies.delete', label: 'Excluir Pendência' },
+      { id: 'pendencies.resolve', label: 'Resolver / Baixar' },
+    ],
+  },
+  {
+    category: 'SENTINEL_INTELLIGENCE',
+    label: 'Sentinel Intelligence',
+    permissions: [
+      { id: 'intelligence.view', label: 'Visualizar Recomendações' },
+      { id: 'intelligence.execute', label: 'Executar Ações Sugeridas' },
+    ],
+  },
+  {
+    category: 'ADMINISTRAÇÃO',
+    label: 'Central de Administração',
+    permissions: [
+      { id: 'admin.view', label: 'Acessar Central de Administração' },
+      { id: 'admin.manage', label: 'Gerenciar Recursos Globais e do Tenant' },
+    ],
+  },
 ];
 
 export const ALL_PERMISSIONS: Permission[] = PERMISSION_CATEGORIES.flatMap(c => c.permissions.map(p => p.id));
@@ -208,6 +281,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'audit_logs.view',
     'whitelabel.view', 'whitelabel.manage',
     'settings.view', 'settings.manage',
+    'simulations.view', 'simulations.create', 'simulations.update', 'simulations.delete',
+    'automations.view', 'automations.create', 'automations.update', 'automations.delete', 'automations.execute',
+    'bi.view', 'bi.export',
+    'integrations.view', 'integrations.manage', 'integrations.sync',
+    'pendencies.view', 'pendencies.create', 'pendencies.update', 'pendencies.delete', 'pendencies.resolve',
+    'intelligence.view', 'intelligence.execute',
+    'admin.view', 'admin.manage',
   ],
   GESTOR: [
     'dashboard.view',
@@ -225,6 +305,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'notifications.view', 'notifications.manage',
     'audit_logs.view',
     'settings.view',
+    'simulations.view', 'simulations.create',
+    'automations.view',
+    'bi.view', 'bi.export',
+    'integrations.view',
+    'pendencies.view', 'pendencies.create', 'pendencies.update', 'pendencies.resolve',
+    'intelligence.view',
   ],
   GERENTE: [
     'dashboard.view',
@@ -239,6 +325,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'products.view',
     'financial.view',
     'notifications.view',
+    'simulations.view', 'simulations.create',
+    'bi.view',
+    'pendencies.view', 'pendencies.create', 'pendencies.update',
   ],
   SUPORTE: [
     'dashboard.view',
@@ -248,6 +337,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ades.view',
     'tasks.view', 'tasks.create', 'tasks.update',
     'notifications.view',
+    'simulations.view',
+    'pendencies.view', 'pendencies.create', 'pendencies.update', 'pendencies.resolve',
   ],
   DIGITADOR: [
     'dashboard.view',
@@ -256,11 +347,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ades.view', 'ades.create',
     'tasks.view', 'tasks.create',
     'notifications.view',
+    'pendencies.view', 'pendencies.create',
   ],
   SIMULACAO: [
     'dashboard.view',
     'clients.view',
     'proposals.view', 'proposals.create',
+    'simulations.view', 'simulations.create', 'simulations.update',
   ],
 };
 
@@ -282,10 +375,27 @@ export function getEffectivePermissions(
   return getPermissionsForRole(role);
 }
 
+const PERMISSION_ALIASES: Record<string, Permission> = {
+  AUTOMACAO_VIEW: 'automations.view',
+  AUTOMACAO_MANAGE: 'automations.create',
+  SIMULACAO_VIEW: 'simulations.view',
+  SIMULACAO_CREATE: 'simulations.create',
+  INTEGRACOES_VIEW: 'integrations.view',
+  INTEGRACOES_MANAGE: 'integrations.manage',
+  PENDENCIAS_VIEW: 'pendencies.view',
+  PENDENCIAS_MANAGE: 'pendencies.create',
+  PENDENCIA_VIEW: 'pendencies.view',
+  BI_VIEW: 'bi.view',
+  BI_EXPORT: 'bi.export',
+  INTELLIGENCE_VIEW: 'intelligence.view',
+  ADMIN_VIEW: 'admin.view',
+  ADMIN_MANAGE: 'admin.manage',
+};
+
 export function hasPermission(
   role?: Role | null,
   customPermissions?: string[] | null,
-  requiredPermission?: Permission
+  requiredPermission?: Permission | string
 ): boolean {
   if (!requiredPermission) return true;
   if (!role) return false;
@@ -293,6 +403,7 @@ export function hasPermission(
   // PLATFORM_MASTER has unrestricted global authority
   if (role === 'PLATFORM_MASTER') return true;
 
+  const normalized = (PERMISSION_ALIASES[requiredPermission] || requiredPermission) as Permission;
   const effective = getEffectivePermissions(role, customPermissions);
-  return effective.includes(requiredPermission);
+  return effective.includes(normalized) || effective.includes(requiredPermission as Permission);
 }

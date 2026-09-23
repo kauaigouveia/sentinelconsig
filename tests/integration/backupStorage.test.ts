@@ -61,18 +61,23 @@ describe('Integration: BackupStorageService Isolation and Server Startup Resilie
     }
   });
 
-  it('should start up server and load backend without creating storage/backups directory on filesystem', () => {
-    // Delete local storage directory if it exists to test regression/starting from scratch
-    const testStorageDir = path.join(process.cwd(), 'storage-test-temp');
-    const backupsDir = path.join(process.cwd(), 'storage', 'backups');
+  it('should initialize BackupStorageService lazily and create storage path on demand when writing backup', async () => {
+    const testService = new BackupStorageService();
+    expect(testService.getProvider()).toBe('local');
 
-    // If storage directory has been removed, starting/loading server should NOT recreate it
-    // Wait, since we are already imported and running, we can check if it exists or delete it safely
-    // Let's verify that importing BackupStorageService alone doesn't trigger mkdirSync
-    expect(fs.existsSync(backupsDir)).toBe(true); // Vitest run might have it, but loading a new instance with azure provider does not create folder
-    
-    const azureService = new BackupStorageService();
-    // Setting back provider to azure and ensuring no filesystem path creation occurs on instantiation
-    expect(azureService.getProvider()).toBe('local'); // In test mode NODE_ENV != production, so defaults to local
+    const testBackupId = `test-lazy-storage-${Date.now()}`;
+    const testPayload = JSON.stringify({ test: true, timestamp: Date.now() });
+
+    // Writing backup triggers on-demand directory creation if not present
+    const createdPath = await testService.putBackup(testBackupId, testPayload);
+    expect(fs.existsSync(createdPath)).toBe(true);
+
+    // Reading backup verifies content
+    const readContent = await testService.getBackup(createdPath);
+    expect(readContent).toBe(testPayload);
+
+    // Cleanup test file
+    await testService.deleteBackup(createdPath);
+    expect(fs.existsSync(createdPath)).toBe(false);
   });
 });

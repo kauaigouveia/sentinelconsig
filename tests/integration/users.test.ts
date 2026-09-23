@@ -8,8 +8,18 @@ describe('Integration: User and Membership Lifecycle Management', () => {
   let tenantId: string;
   let masterUserId: string;
   let masterToken: string;
+  let runSuffix: string;
+  let masterEmail: string;
+  let newUserEmail: string;
+  let createdUserId: string;
 
   beforeAll(async () => {
+    runSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const tenantSlug = `empresa-usuarios-${runSuffix}`;
+    masterEmail = `master.userapi.${runSuffix}@sentinel.com`;
+    newUserEmail = `digitador.userapi.${runSuffix}@sentinel.com`;
+    masterToken = `master-userapi-token-${runSuffix}`;
+
     await new Promise<void>((resolve) => {
       server = app.listen(0, '127.0.0.1', () => {
         const addr = server.address();
@@ -19,25 +29,9 @@ describe('Integration: User and Membership Lifecycle Management', () => {
       });
     });
 
-    // Clean up any potential stale records first to ensure a clean state
-    await prisma.session.deleteMany({ where: { user: { email: { in: ['master.userapi@sentinel.com', 'digitador.userapi@sentinel.com'] } } } }).catch(() => {});
-    await prisma.userTenantMembership.deleteMany({ where: { user: { email: { in: ['master.userapi@sentinel.com', 'digitador.userapi@sentinel.com'] } } } }).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "audit_logs" DISABLE TRIGGER USER`).catch(() => {});
-    const tExisting = await prisma.tenant.findFirst({ where: { slug: 'empresa-usuarios' } });
-    if (tExisting) {
-      const tId = tExisting.id;
-      await prisma.proposal.deleteMany({ where: { tenantId: tId } }).catch(() => {});
-      await prisma.client.deleteMany({ where: { tenantId: tId } }).catch(() => {});
-      await prisma.auditLog.deleteMany({ where: { tenantId: tId } }).catch(() => {});
-      await prisma.userTenantMembership.deleteMany({ where: { tenantId: tId } }).catch(() => {});
-      await prisma.tenant.delete({ where: { id: tId } }).catch(() => {});
-    }
-    await prisma.user.deleteMany({ where: { email: { in: ['master.userapi@sentinel.com', 'digitador.userapi@sentinel.com'] } } }).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "audit_logs" ENABLE TRIGGER USER`).catch(() => {});
-
-    // Create test tenant
+    // Create unique test tenant
     const t = await prisma.tenant.create({
-      data: { name: 'Empresa Usuarios', slug: 'empresa-usuarios', status: 'ACTIVE' },
+      data: { name: `Empresa Usuarios ${runSuffix}`, slug: tenantSlug, status: 'ACTIVE' },
     });
     tenantId = t.id;
 
@@ -45,7 +39,7 @@ describe('Integration: User and Membership Lifecycle Management', () => {
     const master = await prisma.user.create({
       data: {
         name: 'Master User API',
-        email: 'master.userapi@sentinel.com',
+        email: masterEmail,
         passwordHash: 'dummy',
         role: 'PLATFORM_MASTER',
         active: true,
@@ -54,7 +48,6 @@ describe('Integration: User and Membership Lifecycle Management', () => {
     masterUserId = master.id;
 
     // Setup Master session
-    masterToken = 'master-userapi-session-token';
     await prisma.session.create({
       data: {
         userId: masterUserId,
@@ -67,13 +60,22 @@ describe('Integration: User and Membership Lifecycle Management', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
+    // Isolated Cleanup: only clean up our own test records
     await prisma.$executeRawUnsafe(`ALTER TABLE "audit_logs" DISABLE TRIGGER USER`).catch(() => {});
     await prisma.session.deleteMany({ where: { token: masterToken } }).catch(() => {});
-    await prisma.auditLog.deleteMany({ where: { tenantId } }).catch(() => {});
-    await prisma.userTenantMembership.deleteMany({ where: { tenantId } }).catch(() => {});
-    await prisma.user.deleteMany({ where: { email: { contains: 'userapi' } } }).catch(() => {});
-    await prisma.tenant.delete({ where: { id: tenantId } }).catch(() => {});
+    if (tenantId) {
+      await prisma.auditLog.deleteMany({ where: { tenantId } }).catch(() => {});
+      await prisma.userTenantMembership.deleteMany({ where: { tenantId } }).catch(() => {});
+    }
+    const userIdsToDelete = [masterUserId, createdUserId].filter(Boolean);
+    if (userIdsToDelete.length > 0) {
+      await prisma.session.deleteMany({ where: { userId: { in: userIdsToDelete } } }).catch(() => {});
+      await prisma.userTenantMembership.deleteMany({ where: { userId: { in: userIdsToDelete } } }).catch(() => {});
+      await prisma.user.deleteMany({ where: { id: { in: userIdsToDelete } } }).catch(() => {});
+    }
+    if (tenantId) {
+      await prisma.tenant.delete({ where: { id: tenantId } }).catch(() => {});
+    }
     await prisma.$executeRawUnsafe(`ALTER TABLE "audit_logs" ENABLE TRIGGER USER`).catch(() => {});
 
     await new Promise<void>((resolve) => {
@@ -82,8 +84,6 @@ describe('Integration: User and Membership Lifecycle Management', () => {
   });
 
   it('should successfully create a new user via POST /api/users and auto-provision their UserTenantMembership', async () => {
-    const newUserEmail = 'digitador.userapi@sentinel.com';
-
     const res = await fetch(`${baseUrl}/api/users`, {
       method: 'POST',
       headers: {
@@ -104,6 +104,7 @@ describe('Integration: User and Membership Lifecycle Management', () => {
     const createdUser = await res.json();
     expect(createdUser.id).toBeDefined();
     expect(createdUser.email).toBe(newUserEmail);
+    createdUserId = createdUser.id;
 
     // Verify UserTenantMembership was auto-created in database
     const membership = await prisma.userTenantMembership.findUnique({
@@ -123,7 +124,7 @@ describe('Integration: User and Membership Lifecycle Management', () => {
   it('should successfully update user details via PUT /api/users/:id and sync details to UserTenantMembership', async () => {
     // Find previously created user
     const targetUser = await prisma.user.findFirst({
-      where: { email: 'digitador.userapi@sentinel.com' },
+      where: { email: newUserEmail },
     });
 
     expect(targetUser).not.toBeNull();

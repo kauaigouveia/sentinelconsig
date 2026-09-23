@@ -7,20 +7,21 @@ import crypto from 'crypto';
 describe('Integration: Password Reset Loop Fix', () => {
   let masterToken: string;
   let testUserId: string;
+  let testEmail: string;
 
   beforeAll(async () => {
-    // Setup a user who needs password change
-    const email = 'password.loop.test@sentinelconsig.com.br';
+    // Setup a user who needs password change with unique email
+    testEmail = `password.loop.${Date.now()}_${Math.random().toString(36).substring(2, 6)}@sentinelconsig.com.br`;
     
     // Cleanup first
-    await prisma.session.deleteMany({ where: { user: { email } } }).catch(() => {});
-    await prisma.userTenantMembership.deleteMany({ where: { user: { email } } }).catch(() => {});
-    await prisma.user.deleteMany({ where: { email } }).catch(() => {});
+    await prisma.session.deleteMany({ where: { user: { email: testEmail } } }).catch(() => {});
+    await prisma.userTenantMembership.deleteMany({ where: { user: { email: testEmail } } }).catch(() => {});
+    await prisma.user.deleteMany({ where: { email: testEmail } }).catch(() => {});
     
     const user = await prisma.user.create({
       data: {
         name: 'Password Loop Tester',
-        email,
+        email: testEmail,
         passwordHash: 'dummyhash',
         role: 'DIGITADOR',
         mustChangePassword: true,
@@ -44,16 +45,17 @@ describe('Integration: Password Reset Loop Fix', () => {
   });
 
   afterAll(async () => {
-    const email = 'password.loop.test@sentinelconsig.com.br';
-    await prisma.session.deleteMany({ where: { user: { email } } }).catch(() => {});
-    await prisma.userTenantMembership.deleteMany({ where: { user: { email } } }).catch(() => {});
-    await prisma.user.deleteMany({ where: { email } }).catch(() => {});
+    if (testUserId) {
+      await prisma.session.deleteMany({ where: { userId: testUserId } }).catch(() => {});
+      await prisma.userTenantMembership.deleteMany({ where: { userId: testUserId } }).catch(() => {});
+      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+    }
   });
 
   it('should reject missing or short password', async () => {
     const res1 = await request(app)
       .post('/api/auth/update-password')
-      .set('Cookie', [`cg_session_token=${masterToken}`])
+      .set('Cookie', [`cg_session_id=${masterToken}`])
       .send({ password: 'valid-but-wrong-field' }); // Send wrong field to prove it rejects
 
     expect(res1.status).toBe(400);
@@ -61,7 +63,7 @@ describe('Integration: Password Reset Loop Fix', () => {
 
     const res2 = await request(app)
       .post('/api/auth/update-password')
-      .set('Cookie', [`cg_session_token=${masterToken}`])
+      .set('Cookie', [`cg_session_id=${masterToken}`])
       .send({ newPassword: '123' }); // Too short
 
     expect(res2.status).toBe(400);
@@ -71,7 +73,7 @@ describe('Integration: Password Reset Loop Fix', () => {
   it('should successfully update password and clear mustChangePassword flag', async () => {
     const res = await request(app)
       .post('/api/auth/update-password')
-      .set('Cookie', [`cg_session_token=${masterToken}`])
+      .set('Cookie', [`cg_session_id=${masterToken}`])
       .send({ newPassword: 'SuperSecurePassword123!' });
 
     expect(res.status).toBe(200);

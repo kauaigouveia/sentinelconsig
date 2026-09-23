@@ -194,6 +194,10 @@ model Tenant {
   factaSyncHistories FactaSyncHistory[]
   happyWebhookEvents HappyWebhookEvent[]
   happySyncHistories HappySyncHistory[]
+  pendencies         Pendency[]
+  automations        Automation[]
+  automationExecutions AutomationExecution[]
+  integrationHealthLogs IntegrationHealthLog[]
 
   @@index([slug])
   @@index([customDomain])
@@ -281,6 +285,9 @@ model User {
   createdSimulationRequests          SimulationRequest[] @relation("CreatedSimulationRequests")
   matchedDigitizerSimulationRequests SimulationRequest[] @relation("MatchedDigitizerSimulationRequests")
   memberships                        UserTenantMembership[]
+  createdAutomations                 Automation[]        @relation("CreatedAutomations")
+  assignedPendencies                 Pendency[]          @relation("AssignedPendencies")
+  resolvedPendencies                 Pendency[]          @relation("ResolvedPendencies")
 
   // Security & Lifecycle
   lastLoginAt          DateTime? @map("last_login_at")
@@ -348,6 +355,7 @@ model Partner {
 
   proposals          Proposal[]
   simulationRequests SimulationRequest[]
+  pendencies         Pendency[]
 
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -393,6 +401,7 @@ model Bank {
 
   bankPromoters BankPromoter[]
   proposals     Proposal[]
+  pendencies    Pendency[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -441,6 +450,7 @@ model Product {
   proposals   Proposal[]
   ades        ADE[]
   simulations SimulationRequest[]
+  pendencies  Pendency[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -465,6 +475,7 @@ model Convenio {
   proposals   Proposal[]
   ades        ADE[]
   simulations SimulationRequest[]
+  pendencies  Pendency[]
 
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -681,6 +692,7 @@ model Proposal {
   tasks                     Task[]
   notifications             Notification[]
   matchedSimulationRequests SimulationRequest[] @relation("MatchedSimulationRequests")
+  pendencies                Pendency[]
 
   @@unique([tenantId, proposalNumber])
   @@index([tenantId])
@@ -1396,6 +1408,165 @@ model HappySyncHistory {
   @@index([startedAt])
   @@map("happy_sync_histories")
 }
+
+// ==========================================
+// CENTRAL DE PENDÊNCIAS (MODULO OPERACIONAL)
+// ==========================================
+
+model Pendency {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type        String        // DOCUMENTACAO, ASSINATURA, DIVERGENCIA_DADOS, RETENCAO, FORMALIZACAO, ESTEIRA, OUTROS
+  priority    PriorityLevel @default(MEDIUM) // LOW (BAIXA), MEDIUM (NORMAL), HIGH (ALTA), URGENT (CRITICA)
+  status      String        @default("ABERTA") // ABERTA, EM_ATENDIMENTO, AGUARDANDO, RESOLVIDA, CANCELADA
+  title       String
+  description String?
+
+  proposalId   String?   @map("proposal_id")
+  proposal     Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  simulationId String?   @map("simulation_id")
+
+  partnerId    String?   @map("partner_id")
+  partner      Partner?  @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  assignedToId String?   @map("assigned_to_id")
+  assignedTo   User?     @relation("AssignedPendencies", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  bankId       String?   @map("bank_id")
+  bank         Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
+
+  productId    String?   @map("product_id")
+  product      Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  convenioId   String?   @map("convenio_id")
+  convenio     Convenio? @relation(fields: [convenioId], references: [id], onDelete: SetNull)
+
+  slaDeadline  DateTime? @map("sla_deadline")
+  resolvedAt   DateTime? @map("resolved_at")
+  resolvedById String?   @map("resolved_by_id")
+  resolvedBy   User?     @relation("ResolvedPendencies", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  histories    PendencyHistory[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([priority])
+  @@index([proposalId])
+  @@index([simulationId])
+  @@index([partnerId])
+  @@index([assignedToId])
+  @@index([slaDeadline])
+  @@index([createdAt])
+  @@map("pendencies")
+}
+
+model PendencyHistory {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  pendencyId  String   @map("pendency_id")
+  pendency    Pendency @relation(fields: [pendencyId], references: [id], onDelete: Cascade)
+
+  action         String  // CRIADA, ATRIBUIDA, PRIORIDADE_ALTERADA, STATUS_ALTERADO, COMENTARIO, RESOLVIDA, REABERTA
+  userId         String? @map("user_id")
+  userName       String? @map("user_name")
+  previousStatus String? @map("previous_status")
+  newStatus      String? @map("new_status")
+  notes          String?
+
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([pendencyId])
+  @@index([createdAt])
+  @@map("pendency_histories")
+}
+
+// ==========================================
+// CENTRAL DE AUTOMAÇÕES
+// ==========================================
+
+model Automation {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  event       String   // PROPOSAL_STATUS_CHANGED, PROPOSAL_CREATED, PROPOSAL_APPROVED, PROPOSAL_DENIED, PROPOSAL_PAID, PENDENCY_CREATED, etc.
+  conditions  Json     // Array of { field, operator, value }
+  actions     Json     // Array of { type, params }
+
+  createdById String?  @map("created_by_id")
+  createdBy   User?    @relation("CreatedAutomations", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  executions  AutomationExecution[]
+
+  @@index([tenantId])
+  @@index([event])
+  @@index([active])
+  @@map("automations")
+}
+
+model AutomationExecution {
+  id           String     @id @default(cuid())
+  tenantId     String     @map("tenant_id")
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automationId String     @map("automation_id")
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  event        String
+  status       String     // SUCCESS, FAILED, SKIPPED
+  result       String?
+  error        String?
+  durationMs   Int        @default(0) @map("duration_ms")
+  details      Json?
+
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([automationId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("automation_executions")
+}
+
+// ==========================================
+// HUB DE INTEGRAÇÕES BANCÁRIAS (DIAGNÓSTICO E HEALTH CHECKS)
+// ==========================================
+
+model IntegrationHealthLog {
+  id           String   @id @default(cuid())
+  tenantId     String?  @map("tenant_id")
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  bank         String   // C6, FACTA, BMG, HAPPY
+  endpoint     String
+  httpStatus   Int?     @map("http_status")
+  latencyMs    Int      @default(0) @map("latency_ms")
+  success      Boolean  @default(true)
+  errorCode    String?  @map("error_code")
+  errorMessage String?  @map("error_message")
+  requestId    String?  @map("request_id")
+  rayId        String?  @map("ray_id")
+
+  timestamp    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([bank])
+  @@index([timestamp])
+  @@index([success])
+  @@map("integration_health_logs")
+}
+
 
 
 

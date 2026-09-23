@@ -29,6 +29,8 @@ import {
   Sparkles,
   Activity,
   Zap,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
@@ -523,6 +525,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
               badge: { text: 'Hub', variant: 'live' },
             })}
             {renderNavItem({
+              id: 'central-pendencias',
+              label: 'Central de Pendências',
+              icon: AlertTriangle,
+              color: 'rose',
+              badge: { text: 'SLA', variant: 'alert' },
+            })}
+            {renderNavItem({
+              id: 'central-automacao',
+              label: 'Central de Automação',
+              icon: Bot,
+              color: 'purple',
+              badge: { text: 'Engine', variant: 'live' },
+            })}
+            {renderNavItem({
               id: 'sentinela-ai',
               label: 'Sentinela AI',
               icon: Bot,
@@ -678,6 +694,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
         {isMaster && (
           <div className="space-y-0.5">
             {renderSectionHeader('Administração')}
+
+            {renderNavItem({
+              id: 'central-administracao',
+              label: 'Central de Administração',
+              icon: Shield,
+              color: 'indigo',
+              badge: {
+                text: 'Hub',
+                variant: 'live',
+              },
+            })}
+
+            {renderNavItem({
+              id: 'hub-integracoes',
+              label: 'Hub de Integrações',
+              icon: Zap,
+              color: 'cyan',
+              badge: {
+                text: 'APIs',
+                variant: 'live',
+              },
+            })}
 
             {renderNavItem({
               id: 'admin-usuarios',

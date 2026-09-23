@@ -181,25 +181,28 @@ describe('Integration: Multi-tenant RBAC & Tenant Switching', () => {
   });
 
   it('should block regular user from switching to a company where they do not have active membership', async () => {
+    const invasorSlug = `empresa-invasora-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const unassociatedTenant = await prisma.tenant.create({
-      data: { name: 'Empresa Invasora', slug: 'empresa-invasora', status: 'ACTIVE' },
+      data: { name: 'Empresa Invasora', slug: invasorSlug, status: 'ACTIVE' },
     });
 
     const token = 'regular-session-token-123';
 
-    const switchRes = await fetch(`${baseUrl}/api/auth/switch-tenant`, {
-      method: 'POST',
-      headers: {
-        Cookie: `cg_session_id=${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ tenantId: unassociatedTenant.id }),
-    });
+    try {
+      const switchRes = await fetch(`${baseUrl}/api/auth/switch-tenant`, {
+        method: 'POST',
+        headers: {
+          Cookie: `cg_session_id=${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tenantId: unassociatedTenant.id }),
+      });
 
-    expect(switchRes.status).toBe(403);
-
-    // Clean up
-    await prisma.tenant.delete({ where: { id: unassociatedTenant.id } });
+      expect(switchRes.status).toBe(403);
+    } finally {
+      // Clean up
+      await prisma.tenant.delete({ where: { id: unassociatedTenant.id } }).catch(() => {});
+    }
   });
 
   it('should allow PLATFORM_MASTER to switch globally to any active tenant', async () => {
