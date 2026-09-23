@@ -42,6 +42,8 @@ import { CentralAdministracao } from './components/admin/CentralAdministracao';
 import { CentralPendencias } from './components/admin/CentralPendencias';
 import { CentralAutomacoes } from './components/admin/CentralAutomacoes';
 import { HubIntegracoes } from './components/admin/HubIntegracoes';
+import { SentinelIntelligenceDashboard } from './components/intelligence/SentinelIntelligenceDashboard';
+import { CommandCenterView } from './components/CommandCenter/CommandCenterView';
 import { getRoleLabel } from './lib/roleLabels';
 
 import { NewProductionModal } from './components/production/NewProductionModal';
@@ -524,7 +526,9 @@ export default function App() {
 
           {currentView === 'radar-comercial' && <CommercialRadarView />}
 
-          {currentView === 'sentinela-ai' && <SentinelaAIChat />}
+          {(currentView === 'sentinela-ai' || currentView === 'sentinel-intelligence') && (
+            <SentinelIntelligenceDashboard onNavigateToView={(view) => handleNavigate(view)} />
+          )}
 
           {currentView === 'central-operacoes' && <OperationsCentral />}
 
@@ -613,6 +617,9 @@ export default function App() {
           )}
           {(currentView === 'hub-integracoes' || currentView === 'integracoes-hub') && (
             <HubIntegracoes />
+          )}
+          {(currentView === 'command-center' || currentView === 'command') && (
+            <CommandCenterView />
           )}
         </main>
 

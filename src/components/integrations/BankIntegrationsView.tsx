@@ -157,8 +157,18 @@ async function safeFetchJson<T = any>(
   return { ok: res.ok, status: res.status, data };
 }
 
-export const BankIntegrationsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<BankTab>('c6');
+export interface BankIntegrationsViewProps {
+  initialTab?: BankTab;
+}
+
+export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ initialTab = 'c6' }) => {
+  const [activeTab, setActiveTab] = useState<BankTab>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // --- Estado do C6 Bank ---
   const [c6Config, setC6Config] = useState<C6ConfigState>({

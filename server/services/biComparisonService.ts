@@ -180,6 +180,10 @@ export class BIComparisonService {
           currentOverview.paidProduction.count,
           previousOverview.paidProduction.count
         ),
+        approvedCount: this.calculateDelta(
+          currentOverview.approvedProposals.count,
+          previousOverview.approvedProposals.count
+        ),
         conversionRate: this.calculateDelta(
           currentOverview.conversionRatePercent,
           previousOverview.conversionRatePercent
@@ -191,6 +195,18 @@ export class BIComparisonService {
         cancelledValue: this.calculateDelta(
           currentOverview.cancelledProduction.value,
           previousOverview.cancelledProduction.value
+        ),
+        cancelledCount: this.calculateDelta(
+          currentOverview.cancelledProduction.count,
+          previousOverview.cancelledProduction.count
+        ),
+        reprovedValue: this.calculateDelta(
+          currentOverview.reprovedProduction.value,
+          previousOverview.reprovedProduction.value
+        ),
+        reprovedCount: this.calculateDelta(
+          currentOverview.reprovedProduction.count,
+          previousOverview.reprovedProduction.count
         ),
         backlogCount: this.calculateDelta(
           currentOverview.backlog.count,

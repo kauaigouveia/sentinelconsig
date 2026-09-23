@@ -8,6 +8,7 @@ export type Permission =
   | 'ades.view' | 'ades.create' | 'ades.update' | 'ades.delete'
   | 'tasks.view' | 'tasks.create' | 'tasks.update' | 'tasks.delete'
   | 'partners.view' | 'partners.create' | 'partners.update' | 'partners.delete'
+  | 'partners.crm.view' | 'partners.crm.create' | 'partners.crm.update' | 'partners.crm.interactions' | 'partners.crm.notes' | 'partners.crm.tasks' | 'partners.crm.metrics' | 'partners.crm.admin'
   | 'promoters.view' | 'promoters.create' | 'promoters.update' | 'promoters.delete'
   | 'banks.view' | 'banks.create' | 'banks.update' | 'banks.delete'
   | 'products.view' | 'products.create' | 'products.update' | 'products.delete'
@@ -20,11 +21,12 @@ export type Permission =
   | 'settings.view' | 'settings.manage'
   // NOVOS MÓDULOS OPERACIONAIS (Fases 1-7)
   | 'simulations.view' | 'simulations.create' | 'simulations.update' | 'simulations.delete'
-  | 'automations.view' | 'automations.create' | 'automations.update' | 'automations.delete' | 'automations.execute'
+  | 'automations.view' | 'automations.create' | 'automations.update' | 'automations.toggle' | 'automations.delete' | 'automations.execute' | 'automations.admin'
   | 'bi.view' | 'bi.export'
-  | 'integrations.view' | 'integrations.manage' | 'integrations.sync'
-  | 'pendencies.view' | 'pendencies.create' | 'pendencies.update' | 'pendencies.delete' | 'pendencies.resolve'
-  | 'intelligence.view' | 'intelligence.execute'
+  | 'integrations.view' | 'integrations.manage' | 'integrations.sync' | 'integrations.health' | 'integrations.logs' | 'integrations.diagnose' | 'integrations.admin'
+  | 'pendencies.view' | 'pendencies.create' | 'pendencies.assign' | 'pendencies.update' | 'pendencies.resolve' | 'pendencies.cancel' | 'pendencies.reopen' | 'pendencies.admin' | 'pendencies.delete'
+  | 'intelligence.view' | 'intelligence.investigate' | 'intelligence.manage' | 'intelligence.resolve' | 'intelligence.dismiss' | 'intelligence.configure' | 'intelligence.execute_action' | 'intelligence.execute'
+  | 'command.view' | 'command.create_incident' | 'command.investigate' | 'command.assign' | 'command.update' | 'command.resolve' | 'command.close' | 'command.comment' | 'command.manage_sla' | 'command.execute_action'
   | 'admin.view' | 'admin.manage';
 
 export interface PermissionCategory {
@@ -91,12 +93,20 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
   },
   {
     category: 'PARCEIROS',
-    label: 'Parceiros & Corretores',
+    label: 'Parceiros & CRM Operacional',
     permissions: [
-      { id: 'partners.view', label: 'Visualizar' },
-      { id: 'partners.create', label: 'Criar' },
-      { id: 'partners.update', label: 'Editar' },
-      { id: 'partners.delete', label: 'Excluir' },
+      { id: 'partners.view', label: 'Visualizar Parceiros' },
+      { id: 'partners.create', label: 'Criar Parceiro' },
+      { id: 'partners.update', label: 'Editar Parceiro' },
+      { id: 'partners.delete', label: 'Excluir Parceiro' },
+      { id: 'partners.crm.view', label: 'Visualizar CRM de Parceiros' },
+      { id: 'partners.crm.create', label: 'Cadastrar no CRM' },
+      { id: 'partners.crm.update', label: 'Atualizar no CRM' },
+      { id: 'partners.crm.interactions', label: 'Registrar Interações no CRM' },
+      { id: 'partners.crm.notes', label: 'Gerenciar Notas Internas do Parceiro' },
+      { id: 'partners.crm.tasks', label: 'Gerenciar Follow-ups e Tarefas do Parceiro' },
+      { id: 'partners.crm.metrics', label: 'Visualizar Métricas de Produção do Parceiro' },
+      { id: 'partners.crm.admin', label: 'Administração Geral do CRM de Parceiros' },
     ],
   },
   {
@@ -209,8 +219,10 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { id: 'automations.view', label: 'Visualizar Automações' },
       { id: 'automations.create', label: 'Criar Regra' },
       { id: 'automations.update', label: 'Editar Regra' },
+      { id: 'automations.toggle', label: 'Ativar / Pausar Regra' },
       { id: 'automations.delete', label: 'Excluir Regra' },
-      { id: 'automations.execute', label: 'Executar Manualmente' },
+      { id: 'automations.execute', label: 'Executar / Testar' },
+      { id: 'automations.admin', label: 'Administrar Automações' },
     ],
   },
   {
@@ -228,6 +240,10 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { id: 'integrations.view', label: 'Visualizar Status de Integrações' },
       { id: 'integrations.manage', label: 'Gerenciar Credenciais & Conexões' },
       { id: 'integrations.sync', label: 'Disparar Sincronização' },
+      { id: 'integrations.health', label: 'Executar Health Checks & Pings' },
+      { id: 'integrations.logs', label: 'Consultar Logs de Requisição & Auditoria' },
+      { id: 'integrations.diagnose', label: 'Executar Diagnóstico Avançado' },
+      { id: 'integrations.admin', label: 'Administração Geral do Hub de Integrações' },
     ],
   },
   {
@@ -236,17 +252,43 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     permissions: [
       { id: 'pendencies.view', label: 'Visualizar Pendências' },
       { id: 'pendencies.create', label: 'Criar Pendência' },
+      { id: 'pendencies.assign', label: 'Atribuir / Assumir' },
       { id: 'pendencies.update', label: 'Atualizar / Comentar' },
-      { id: 'pendencies.delete', label: 'Excluir Pendência' },
       { id: 'pendencies.resolve', label: 'Resolver / Baixar' },
+      { id: 'pendencies.cancel', label: 'Cancelar Pendência' },
+      { id: 'pendencies.reopen', label: 'Reabrir Pendência' },
+      { id: 'pendencies.admin', label: 'Administração Geral de Pendências & SLA' },
+      { id: 'pendencies.delete', label: 'Excluir Pendência' },
     ],
   },
   {
     category: 'SENTINEL_INTELLIGENCE',
     label: 'Sentinel Intelligence',
     permissions: [
-      { id: 'intelligence.view', label: 'Visualizar Recomendações' },
-      { id: 'intelligence.execute', label: 'Executar Ações Sugeridas' },
+      { id: 'intelligence.view', label: 'Visualizar Painel & Insights' },
+      { id: 'intelligence.investigate', label: 'Investigar Evidências' },
+      { id: 'intelligence.manage', label: 'Gerenciar Ciclo de Vida' },
+      { id: 'intelligence.resolve', label: 'Resolver Insights' },
+      { id: 'intelligence.dismiss', label: 'Descartar Insights' },
+      { id: 'intelligence.configure', label: 'Configurar Regras de IA' },
+      { id: 'intelligence.execute_action', label: 'Executar Ações Operacionais' },
+      { id: 'intelligence.execute', label: 'Executar Análise Sob Demanda' },
+    ],
+  },
+  {
+    category: 'COMMAND_CENTER',
+    label: 'Sentinel Command Center',
+    permissions: [
+      { id: 'command.view', label: 'Visualizar Command Center' },
+      { id: 'command.create_incident', label: 'Criar Incidente' },
+      { id: 'command.investigate', label: 'Investigar Incidentes' },
+      { id: 'command.assign', label: 'Atribuir Responsável' },
+      { id: 'command.update', label: 'Atualizar Incidente' },
+      { id: 'command.resolve', label: 'Resolver Incidente' },
+      { id: 'command.close', label: 'Encerrar Incidente' },
+      { id: 'command.comment', label: 'Adicionar Comentários / Timeline' },
+      { id: 'command.manage_sla', label: 'Gerenciar Matriz de SLA' },
+      { id: 'command.execute_action', label: 'Executar Ações de Orquestração' },
     ],
   },
   {
@@ -272,6 +314,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ades.view', 'ades.create', 'ades.update', 'ades.delete',
     'tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete',
     'partners.view', 'partners.create', 'partners.update', 'partners.delete',
+    'partners.crm.view', 'partners.crm.create', 'partners.crm.update', 'partners.crm.interactions', 'partners.crm.notes', 'partners.crm.tasks', 'partners.crm.metrics', 'partners.crm.admin',
     'promoters.view', 'promoters.create', 'promoters.update', 'promoters.delete',
     'banks.view', 'banks.create', 'banks.update', 'banks.delete',
     'products.view', 'products.create', 'products.update', 'products.delete',
@@ -282,11 +325,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'whitelabel.view', 'whitelabel.manage',
     'settings.view', 'settings.manage',
     'simulations.view', 'simulations.create', 'simulations.update', 'simulations.delete',
-    'automations.view', 'automations.create', 'automations.update', 'automations.delete', 'automations.execute',
+    'automations.view', 'automations.create', 'automations.update', 'automations.toggle', 'automations.delete', 'automations.execute', 'automations.admin',
     'bi.view', 'bi.export',
-    'integrations.view', 'integrations.manage', 'integrations.sync',
-    'pendencies.view', 'pendencies.create', 'pendencies.update', 'pendencies.delete', 'pendencies.resolve',
-    'intelligence.view', 'intelligence.execute',
+    'integrations.view', 'integrations.manage', 'integrations.sync', 'integrations.health', 'integrations.logs', 'integrations.diagnose', 'integrations.admin',
+    'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve', 'pendencies.cancel', 'pendencies.reopen', 'pendencies.admin', 'pendencies.delete',
+    'intelligence.view', 'intelligence.investigate', 'intelligence.manage', 'intelligence.resolve', 'intelligence.dismiss', 'intelligence.configure', 'intelligence.execute_action', 'intelligence.execute',
+    'command.view', 'command.create_incident', 'command.investigate', 'command.assign', 'command.update', 'command.resolve', 'command.close', 'command.comment', 'command.manage_sla', 'command.execute_action',
     'admin.view', 'admin.manage',
   ],
   GESTOR: [
@@ -296,7 +340,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'statuses.view', 'statuses.manage',
     'ades.view', 'ades.create', 'ades.update', 'ades.delete',
     'tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete',
-    'partners.view', 'partners.create',
+    'partners.view', 'partners.create', 'partners.update',
+    'partners.crm.view', 'partners.crm.create', 'partners.crm.update', 'partners.crm.interactions', 'partners.crm.notes', 'partners.crm.tasks', 'partners.crm.metrics',
     'promoters.view',
     'banks.view',
     'products.view',
@@ -306,11 +351,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'audit_logs.view',
     'settings.view',
     'simulations.view', 'simulations.create',
-    'automations.view',
+    'automations.view', 'automations.create', 'automations.update', 'automations.toggle', 'automations.execute',
     'bi.view', 'bi.export',
-    'integrations.view',
-    'pendencies.view', 'pendencies.create', 'pendencies.update', 'pendencies.resolve',
-    'intelligence.view',
+    'integrations.view', 'integrations.health', 'integrations.logs', 'integrations.diagnose',
+    'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve', 'pendencies.cancel', 'pendencies.reopen',
+    'intelligence.view', 'intelligence.investigate', 'intelligence.resolve', 'intelligence.dismiss', 'intelligence.execute_action', 'intelligence.execute',
+    'command.view', 'command.create_incident', 'command.investigate', 'command.assign', 'command.update', 'command.resolve', 'command.comment', 'command.execute_action',
   ],
   GERENTE: [
     'dashboard.view',
@@ -320,6 +366,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ades.view', 'ades.create', 'ades.update',
     'tasks.view', 'tasks.create', 'tasks.update',
     'partners.view',
+    'partners.crm.view', 'partners.crm.interactions', 'partners.crm.notes', 'partners.crm.tasks', 'partners.crm.metrics',
     'promoters.view',
     'banks.view',
     'products.view',
@@ -327,18 +374,20 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'notifications.view',
     'simulations.view', 'simulations.create',
     'bi.view',
-    'pendencies.view', 'pendencies.create', 'pendencies.update',
+    'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve',
+    'intelligence.view', 'intelligence.investigate',
+    'command.view', 'command.investigate', 'command.comment',
   ],
   SUPORTE: [
     'dashboard.view',
     'clients.view',
     'proposals.view', 'proposals.update',
-    'statuses.view',
-    'ades.view',
+    'statuses.view', 'ades.view',
     'tasks.view', 'tasks.create', 'tasks.update',
     'notifications.view',
     'simulations.view',
-    'pendencies.view', 'pendencies.create', 'pendencies.update', 'pendencies.resolve',
+    'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve',
+    'command.view', 'command.investigate', 'command.comment',
   ],
   DIGITADOR: [
     'dashboard.view',

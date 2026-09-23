@@ -9,10 +9,10 @@ import {
   Briefcase,
   Radio,
   ChevronDown,
+  Bookmark,
 } from 'lucide-react';
 import { BIFilterState, BIPeriodPreset } from '../../types/bi';
 import { StorageService } from '../../services/storageService';
-import { RealtimeService } from '../../services/realtimeService';
 
 interface BIFilterBarProps {
   filters: BIFilterState;
@@ -29,6 +29,7 @@ const PERIOD_LABELS: Record<BIPeriodPreset, string> = {
   ULTIMOS_30_DIAS: '30 Dias',
   MES_ATUAL: 'Mês Atual',
   MES_ANTERIOR: 'Mês Anterior',
+  ANO_ATUAL: 'Ano Atual',
   PERSONALIZADO: 'Personalizado',
 };
 
@@ -43,7 +44,6 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
   const banks = StorageService.getBanks();
   const partners = StorageService.getPartners();
   const products = StorageService.getProducts();
-  const realtimeProvider = RealtimeService.getInstance().getProviderName();
 
   const handlePeriodClick = (preset: BIPeriodPreset) => {
     if (preset === 'PERSONALIZADO') {
@@ -68,6 +68,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
       bankId: undefined,
       partnerId: undefined,
       productId: undefined,
+      convenioId: undefined,
       statusId: undefined,
       standardCategory: undefined,
     });
@@ -79,6 +80,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
     filters.bankId ||
     filters.partnerId ||
     filters.productId ||
+    filters.convenioId ||
     filters.statusId ||
     filters.startDate ||
     filters.endDate
@@ -90,7 +92,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         {/* Presets Segmented Control */}
         <div className="flex items-center flex-wrap gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
-          {(['HOJE', 'ONTEM', 'ULTIMOS_7_DIAS', 'ULTIMOS_30_DIAS', 'MES_ATUAL', 'MES_ANTERIOR', 'PERSONALIZADO'] as BIPeriodPreset[]).map((preset) => {
+          {(['HOJE', 'ONTEM', 'ULTIMOS_7_DIAS', 'ULTIMOS_30_DIAS', 'MES_ATUAL', 'MES_ANTERIOR', 'ANO_ATUAL', 'PERSONALIZADO'] as BIPeriodPreset[]).map((preset) => {
             const isActive = filters.period === preset;
             return (
               <button
@@ -115,10 +117,10 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
           {/* Realtime Sync Badge */}
           <div
             className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-            title="Dados sincronizados automaticamente em tempo real"
+            title="Dados sincronizados automaticamente com a base oficial"
           >
             <Radio className="w-3 h-3 text-emerald-600 dark:text-emerald-400 animate-pulse" />
-            <span>Atualização Automática</span>
+            <span>Atualização em Tempo Real</span>
           </div>
 
           {/* Toggle Advanced Filters */}
@@ -133,7 +135,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>Filtros</span>
+            <span>Filtros Detalhados</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
           </button>
 
@@ -244,7 +246,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                 <option value="">Todos os Parceiros</option>
                 {partners.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.fullName}
+                    {p.fullName || p.name}
                   </option>
                 ))}
               </select>
@@ -279,7 +281,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
       {/* Footer info: Last Updated */}
       {lastUpdated && (
         <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between select-none">
-          <span>Fonte: Base Oficial de Dados</span>
+          <span>Base Oficial • Isolamento Multi-Tenant</span>
           <span>Última atualização: {lastUpdated.toLocaleTimeString('pt-BR')}</span>
         </div>
       )}

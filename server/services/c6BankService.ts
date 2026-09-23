@@ -352,6 +352,7 @@ export class C6BankService {
 
     if (!overrideCredentials) {
       this.inFlightTokenPromises.set(tenantId, fetchPromise);
+      fetchPromise.catch(() => {});
       fetchPromise.finally(() => {
         this.inFlightTokenPromises.delete(tenantId);
       });

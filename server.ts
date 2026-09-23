@@ -39,6 +39,8 @@ import { TenantHealthService } from './server/services/tenantHealthService.js';
 import { ApiMonitoringService } from './server/services/apiMonitoringService.js';
 import { BusinessNotificationService } from './server/services/businessNotificationService.js';
 import { AuditLogService, computeDelta, maskCPF } from './server/services/auditLogService.js';
+import { PendencyService, PendencyStatus } from './server/services/pendencyService.js';
+import { AutomationEngine, AVAILABLE_TRIGGERS, AVAILABLE_ACTIONS, AUTOMATION_TEMPLATES, FORBIDDEN_ACTION_TYPES } from './server/services/automationEngine.js';
 import { SimulationService } from './server/services/simulationService.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
@@ -49,6 +51,14 @@ import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
 import { HappySimulationService } from './server/services/happySimulationService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
+import { IntegrationHubService } from './server/services/integrationHubService.js';
+import { PartnerCrmService } from './server/services/partnerCrmService.js';
+import { IntelligenceService } from './server/services/intelligence/intelligenceService.js';
+import { IncidentService } from './server/services/commandCenter/incidentService.js';
+import { CommandCenterService } from './server/services/commandCenter/commandCenterService.js';
+import { IncidentSlaService } from './server/services/commandCenter/incidentSlaService.js';
+import { ImpactAnalysisService } from './server/services/commandCenter/impactAnalysisService.js';
+import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
 let isShuttingDown = false;
 let serverInstance: any = null;
@@ -3219,8 +3229,38 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      const isCrmMode = req.query.crm === 'true' || req.query.mode === 'crm' || req.query.page !== undefined || req.query.search !== undefined || req.query.operationalStatus !== undefined;
+
+      if (isCrmMode) {
+        if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'partners.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+          return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para acessar o CRM de parceiros.' });
+        }
+
+        const result = await PartnerCrmService.listPartners(prisma, tenantId, {
+          search: req.query.search as string,
+          status: req.query.status as string,
+          promoterId: req.query.promoterId as string,
+          operationalStatus: req.query.operationalStatus as string,
+          page: req.query.page ? Number(req.query.page) : 1,
+          limit: req.query.limit ? Number(req.query.limit) : 20,
+        });
+        return res.json(result);
+      }
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'proposals.create') && !hasPermission(userRole, userCustomPerms, 'simulations.create') && !hasPermission(userRole, userCustomPerms, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para consultar parceiros.' });
+      }
+
       const partners = await prisma.partner.findMany({
         where: { tenantId, deletedAt: null },
+        include: {
+          promoter: { select: { id: true, name: true, code: true } },
+          assignedUser: { select: { id: true, name: true, email: true } },
+        },
         orderBy: { name: 'asc' },
       });
 
@@ -3232,9 +3272,18 @@ async function auditAndEnsureMasterUser() {
         return {
           id: p.id,
           fullName,
+          name: fullName,
           login,
+          code,
           promoterId: p.promoterId || '',
+          promoter: p.promoter,
+          email: p.email,
+          phone: p.phone,
+          document: p.document,
+          assignedUserId: p.assignedUserId,
+          assignedUser: p.assignedUser,
           active: p.status === 'ATIVO',
+          status: p.status,
           createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
           updatedAt: p.updatedAt ? p.updatedAt.toISOString() : new Date().toISOString(),
         };
@@ -3244,6 +3293,444 @@ async function auditAndEnsureMasterUser() {
     } catch (err) {
       console.error('[API PARTNERS GET ERROR]', err);
       return res.status(500).json({ error: 'Erro ao buscar parceiros.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // PARTNER CRM EXTENDED ENDPOINTS
+  // -------------------------------------------------------------
+  app.get('/api/partners/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para visualizar parceiro.' });
+      }
+
+      const details = await PartnerCrmService.getPartnerDetails(prisma, tenantId, req.params.id);
+      if (!details) {
+        return res.status(404).json({ error: 'Parceiro não encontrado.' });
+      }
+      return res.json(details);
+    } catch (err: any) {
+      console.error('[API PARTNER DETAILS ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao obter detalhes do parceiro.' });
+    }
+  });
+
+  app.get('/api/partners/:id/metrics', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.metrics') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para visualizar métricas de parceiros.' });
+      }
+
+      const period = (req.query.period as string) || '30d';
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+
+      const metrics = await PartnerCrmService.getPartnerMetrics(
+        prisma,
+        tenantId,
+        req.params.id,
+        period,
+        startDate,
+        endDate
+      );
+      return res.json(metrics);
+    } catch (err: any) {
+      console.error('[API PARTNER METRICS ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao calcular métricas do parceiro.' });
+    }
+  });
+
+  app.get('/api/partners/:id/timeline', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para visualizar timeline de parceiros.' });
+      }
+
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const timeline = await PartnerCrmService.getPartnerTimeline(prisma, tenantId, req.params.id, limit);
+      return res.json(timeline);
+    } catch (err: any) {
+      console.error('[API PARTNER TIMELINE ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao carregar timeline do parceiro.' });
+    }
+  });
+
+  app.get('/api/partners/:id/interactions', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.interactions') && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para visualizar interações.' });
+      }
+
+      const interactions = await prisma.partnerInteraction.findMany({
+        where: { tenantId, partnerId: req.params.id },
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { date: 'desc' },
+      });
+      return res.json(interactions);
+    } catch (err: any) {
+      console.error('[API PARTNER INTERACTIONS GET ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao listar interações.' });
+    }
+  });
+
+  app.post('/api/partners/:id/interactions', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.interactions') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para registrar interações no CRM.' });
+      }
+
+      const { type, subject, description, result, nextAction, date } = req.body;
+      if (!subject || !subject.trim()) {
+        return res.status(400).json({ error: 'O assunto da interação é obrigatório.' });
+      }
+
+      const created = await PartnerCrmService.createInteraction(
+        prisma,
+        tenantId,
+        session.user.id,
+        session.user.name,
+        {
+          partnerId: req.params.id,
+          type,
+          subject,
+          description,
+          result,
+          nextAction,
+          date,
+        },
+        req
+      );
+      return res.status(201).json(created);
+    } catch (err: any) {
+      console.error('[API PARTNER INTERACTIONS POST ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao registrar interação.' });
+    }
+  });
+
+  app.get('/api/partners/:id/notes', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.notes') && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para visualizar notas do parceiro.' });
+      }
+
+      const notes = await prisma.partnerNote.findMany({
+        where: { tenantId, partnerId: req.params.id },
+        include: { author: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      return res.json(notes);
+    } catch (err: any) {
+      console.error('[API PARTNER NOTES GET ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao listar notas.' });
+    }
+  });
+
+  app.post('/api/partners/:id/notes', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.notes') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para registrar notas internas.' });
+      }
+
+      const { content } = req.body;
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'O conteúdo da nota é obrigatório.' });
+      }
+
+      const created = await PartnerCrmService.createNote(
+        prisma,
+        tenantId,
+        session.user.id,
+        session.user.name,
+        {
+          partnerId: req.params.id,
+          content,
+        },
+        req
+      );
+      return res.status(201).json(created);
+    } catch (err: any) {
+      console.error('[API PARTNER NOTES POST ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao adicionar nota.' });
+    }
+  });
+
+  app.get('/api/partners/:id/tasks', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.tasks') && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para visualizar tarefas do parceiro.' });
+      }
+
+      const tasks = await prisma.partnerTask.findMany({
+        where: { tenantId, partnerId: req.params.id },
+        include: {
+          assignedTo: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true } },
+          completedBy: { select: { id: true, name: true } },
+        },
+        orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
+      });
+      return res.json(tasks);
+    } catch (err: any) {
+      console.error('[API PARTNER TASKS GET ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao listar tarefas do parceiro.' });
+    }
+  });
+
+  app.post('/api/partners/:id/tasks', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.tasks') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para criar tarefas do parceiro.' });
+      }
+
+      const { title, description, assignedToId, priority, dueDate } = req.body;
+      if (!title || !title.trim()) {
+        return res.status(400).json({ error: 'O título da tarefa é obrigatório.' });
+      }
+
+      const created = await PartnerCrmService.createTask(
+        prisma,
+        tenantId,
+        session.user.id,
+        session.user.name,
+        {
+          partnerId: req.params.id,
+          title,
+          description,
+          assignedToId,
+          priority,
+          dueDate,
+        },
+        req
+      );
+      return res.status(201).json(created);
+    } catch (err: any) {
+      console.error('[API PARTNER TASKS POST ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao criar tarefa do parceiro.' });
+    }
+  });
+
+  const handleUpdatePartnerTask = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.tasks') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para atualizar tarefas do parceiro.' });
+      }
+
+      const taskId = req.params.taskId;
+      const updated = await PartnerCrmService.updateTask(
+        prisma,
+        tenantId,
+        session.user.id,
+        session.user.name,
+        taskId,
+        req.body,
+        req
+      );
+      return res.json(updated);
+    } catch (err: any) {
+      console.error('[API PARTNER TASK PATCH ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao atualizar tarefa.' });
+    }
+  };
+
+  const handleDeletePartnerTask = async (req: express.Request, res: express.Response) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.tasks') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para remover tarefa do parceiro.' });
+      }
+
+      const taskId = req.params.taskId;
+      const result = await PartnerCrmService.deleteTask(
+        prisma,
+        tenantId,
+        session.user.id,
+        session.user.name,
+        taskId,
+        req
+      );
+      return res.json(result);
+    } catch (err: any) {
+      console.error('[API PARTNER TASK DELETE ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao remover tarefa.' });
+    }
+  };
+
+  app.patch('/api/partners/tasks/:taskId', handleUpdatePartnerTask);
+  app.patch('/api/partners/:id/tasks/:taskId', handleUpdatePartnerTask);
+  app.delete('/api/partners/tasks/:taskId', handleDeletePartnerTask);
+  app.delete('/api/partners/:id/tasks/:taskId', handleDeletePartnerTask);
+
+  app.get('/api/partners/:id/proposals', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'proposals.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para listar propostas do parceiro.' });
+      }
+
+      const result = await PartnerCrmService.getPartnerProposals(prisma, tenantId, req.params.id, {
+        status: req.query.status as string,
+        bank: req.query.bank as string,
+        product: req.query.product as string,
+        page: req.query.page ? Number(req.query.page) : 1,
+        limit: req.query.limit ? Number(req.query.limit) : 20,
+      });
+      return res.json(result);
+    } catch (err: any) {
+      console.error('[API PARTNER PROPOSALS ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao listar propostas do parceiro.' });
+    }
+  });
+
+  app.get('/api/partners/:id/simulations', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'simulations.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para listar simulações do parceiro.' });
+      }
+
+      const simulations = await PartnerCrmService.getPartnerSimulations(prisma, tenantId, req.params.id);
+      return res.json(simulations);
+    } catch (err: any) {
+      console.error('[API PARTNER SIMULATIONS ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao listar simulações do parceiro.' });
+    }
+  });
+
+  app.get('/api/partners/:id/pendencies', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.crm.view') && !hasPermission(userRole, userCustomPerms, 'pendencies.view') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para listar pendências do parceiro.' });
+      }
+
+      const pendencies = await PartnerCrmService.getPartnerPendencies(prisma, tenantId, req.params.id);
+      return res.json(pendencies);
+    } catch (err: any) {
+      console.error('[API PARTNER PENDENCIES ERROR]', err);
+      return res.status(500).json({ error: err.message || 'Erro ao listar pendências do parceiro.' });
     }
   });
 
@@ -3930,6 +4417,14 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.create') && !hasPermission(userRole, userCustomPerms, 'partners.crm.create') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para criar parceiro.' });
+      }
+
       const { id, fullName, name, login, code, promoterId, active, status, email, phone, document } = req.body;
 
       const partnerName = (fullName || name || '').trim().toUpperCase();
@@ -3981,6 +4476,7 @@ async function auditAndEnsureMasterUser() {
             email: email || null,
             phone: phone || null,
             document: document || null,
+            assignedUserId: req.body.assignedUserId || null,
             deletedAt: null,
           },
         });
@@ -3996,33 +4492,51 @@ async function auditAndEnsureMasterUser() {
             email: email || null,
             phone: phone || null,
             document: document || null,
+            assignedUserId: req.body.assignedUserId || null,
           },
         });
       }
 
-      try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: session.user.id || 'system',
-            userName: session.user.name || 'System',
-            action: 'CREATE_PARTNER',
-            entity: 'Partner',
-            entityId: created.id,
-            newData: JSON.stringify({ details: `Criado parceiro ${created.name} (${created.code})` }),
-          }
-        });
-      } catch (auditErr) {}
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PARTNER_CREATED',
+        entity: 'Partner',
+        entityId: created.id,
+        newData: created,
+        req,
+      });
+
+      await centralEventBus.publish({
+        tenantId,
+        eventType: 'PARTNER_CREATED',
+        entityId: created.id,
+        entity: 'Partner',
+        userId: session.user.id,
+        userName: session.user.name,
+        data: {
+          id: created.id,
+          name: created.name,
+          code: created.code,
+          promoterId: created.promoterId,
+          status: created.status,
+        },
+      });
 
       const codeStr = created.code || '';
       const loginStr = codeStr || created.name;
 
       return res.json({
         id: created.id,
+        name: created.name,
         fullName: created.name,
         login: loginStr,
+        code: codeStr,
         promoterId: created.promoterId || '',
+        assignedUserId: created.assignedUserId || null,
         active: created.status === 'ATIVO',
+        status: created.status,
         createdAt: created.createdAt ? created.createdAt.toISOString() : new Date().toISOString(),
         updatedAt: created.updatedAt ? created.updatedAt.toISOString() : new Date().toISOString(),
       });
@@ -4040,12 +4554,27 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.update') && !hasPermission(userRole, userCustomPerms, 'partners.crm.update') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para editar parceiro.' });
+      }
+
       const { id } = req.params;
-      const { fullName, name, login, code, promoterId, active, status, email, phone, document } = req.body;
+      const { fullName, name, login, code, promoterId, active, status, email, phone, document, assignedUserId } = req.body;
 
       const partnerName = name || fullName;
       const partnerLogin = code || login;
       const partnerStatus = active !== undefined ? (active ? 'ATIVO' : 'INATIVO') : status;
+
+      const existing = await prisma.partner.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing) {
+        return res.status(404).json({ error: 'Parceiro não encontrado.' });
+      }
 
       if (promoterId) {
         const validPromoter = await prisma.promoter.findFirst({
@@ -4066,25 +4595,43 @@ async function auditAndEnsureMasterUser() {
           ...(email !== undefined ? { email: email || null } : {}),
           ...(phone !== undefined ? { phone: phone || null } : {}),
           ...(document !== undefined ? { document: document || null } : {}),
+          ...(assignedUserId !== undefined ? { assignedUserId: assignedUserId || null } : {}),
         },
       });
 
-      try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: session.user.id || 'system',
-            userName: session.user.name || 'System',
-            action: 'UPDATE_PARTNER',
-            entity: 'Partner',
-            entityId: id,
-            newData: JSON.stringify({ details: `Atualizado parceiro ID ${id}` }),
-          }
-        });
-      } catch (auditErr) {}
+      const updated = await prisma.partner.findFirst({
+        where: { id, tenantId },
+      });
 
-      return res.json({ success: true });
-    } catch (err) {
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PARTNER_UPDATED',
+        entity: 'Partner',
+        entityId: id,
+        previousData: existing,
+        newData: updated,
+        req,
+      });
+
+      await centralEventBus.publish({
+        tenantId,
+        eventType: 'PARTNER_UPDATED',
+        entityId: id,
+        entity: 'Partner',
+        userId: session.user.id,
+        userName: session.user.name,
+        data: {
+          id,
+          name: updated?.name,
+          code: updated?.code,
+          status: updated?.status,
+        },
+      });
+
+      return res.json({ success: true, partner: updated });
+    } catch (err: any) {
       console.error('[API PARTNERS UPDATE ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar parceiro.' });
     }
@@ -4101,26 +4648,53 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'partners.delete') && !hasPermission(userRole, userCustomPerms, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Acesso negado: permissão insuficiente para remover parceiro.' });
+      }
+
       const { id } = req.params;
+
+      const existing = await prisma.partner.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Parceiro não encontrado.' });
+      }
 
       await prisma.partner.updateMany({
         where: { id, tenantId },
         data: { deletedAt: new Date() },
       });
 
-      try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: session.user.id || 'system',
-            userName: session.user.name || 'System',
-            action: 'DELETE_PARTNER',
-            entity: 'Partner',
-            entityId: id,
-            newData: JSON.stringify({ details: `Removido parceiro ID ${id}` }),
-          }
-        });
-      } catch (auditErr) {}
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PARTNER_DELETED',
+        entity: 'Partner',
+        entityId: id,
+        previousData: existing,
+        req,
+      });
+
+      await centralEventBus.publish({
+        tenantId,
+        eventType: 'PARTNER_DELETED',
+        entityId: id,
+        entity: 'Partner',
+        userId: session.user.id,
+        userName: session.user.name,
+        data: {
+          id,
+          name: existing.name,
+          code: existing.code,
+        },
+      });
 
       return res.json({ success: true });
     } catch (err) {
@@ -8742,6 +9316,12 @@ async function auditAndEnsureMasterUser() {
     if (query.productId && typeof query.productId === 'string' && query.productId.trim()) {
       filters.productId = query.productId.trim();
     }
+    if (query.convenioId && typeof query.convenioId === 'string' && query.convenioId.trim()) {
+      filters.convenioId = query.convenioId.trim();
+    }
+    if (query.source && typeof query.source === 'string' && query.source.trim()) {
+      filters.source = query.source.trim();
+    }
     if (query.proposalType && typeof query.proposalType === 'string' && query.proposalType.trim()) {
       filters.proposalType = query.proposalType.trim();
     }
@@ -8895,6 +9475,236 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  // 6.1 GET /api/bi/conversion - Operational Conversion Funnel
+  app.get('/api/bi/conversion', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar o funil de conversão.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar o funil de conversão.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const conversion = await BIService.getConversionFunnel(prisma, tenantId, filters);
+      return res.json(conversion);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API CONVERSION ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar funil de conversão do BI.' });
+    }
+  });
+
+  // 6.2 GET /api/bi/products - Product Performance & Metrics
+  app.get('/api/bi/products', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar análise de produtos.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar análise de produtos.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const products = await BIService.getProducts(prisma, tenantId, filters);
+      return res.json(products);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API PRODUCTS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de produtos do BI.' });
+    }
+  });
+
+  // 6.3 GET /api/bi/convenios - Agreement / Convenio Performance
+  app.get('/api/bi/convenios', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar análise de convênios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar análise de convênios.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const convenios = await BIService.getConvenios(prisma, tenantId, filters);
+      return res.json(convenios);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API CONVENIOS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de convênios do BI.' });
+    }
+  });
+
+  // 6.4 GET /api/bi/operators - Operator / Digitizer Internal Performance
+  app.get('/api/bi/operators', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar análise de operadores.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar análise de operadores.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const operators = await BIService.getOperators(prisma, tenantId, filters);
+      return res.json(operators);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API OPERATORS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de operadores do BI.' });
+    }
+  });
+
+  // 6.5 GET /api/bi/pendencies - Pendencies & SLA Operational Analytics
+  app.get('/api/bi/pendencies', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar análise de pendências.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar análise de pendências.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const pendencies = await BIService.getPendencies(prisma, tenantId, filters);
+      return res.json(pendencies);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API PENDENCIES ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar análise de pendências do BI.' });
+    }
+  });
+
+  // 6.6 GET /api/bi/bottlenecks - Operational Bottlenecks & Status Distribution
+  app.get('/api/bi/bottlenecks', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar gargalos operacionais.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar gargalos operacionais.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const bottlenecks = await BIService.getBottlenecks(prisma, tenantId, filters);
+      return res.json(bottlenecks);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API BOTTLENECKS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar gargalos operacionais do BI.' });
+    }
+  });
+
+  // 6.7 GET /api/bi/cancellations - Cancellations Breakdown
+  app.get('/api/bi/cancellations', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar cancelamentos.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar cancelamentos.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const cancellations = await BIService.getCancellations(prisma, tenantId, filters);
+      return res.json(cancellations);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API CANCELLATIONS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar cancelamentos do BI.' });
+    }
+  });
+
+  // 6.8 GET /api/bi/refusals - Refusals / Recusas Breakdown
+  app.get('/api/bi/refusals', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar recusas bancárias.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar recusas bancárias.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const refusals = await BIService.getRefusals(prisma, tenantId, filters);
+      return res.json(refusals);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API REFUSALS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar recusas do BI.' });
+    }
+  });
+
+  // 6.9 GET /api/bi/integrations - Bank Integration Health & Telemetry
+  app.get('/api/bi/integrations', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar saúde das integrações.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar saúde das integrações.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const integrations = await BIService.getIntegrations(prisma, tenantId, filters);
+      return res.json(integrations);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API INTEGRATIONS ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar telemetria de integrações do BI.' });
+    }
+  });
+
+  // 6.10 GET /api/bi/operational-health - Consolidated Real Operational Health
+  app.get('/api/bi/operational-health', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação necessária para consultar saúde operacional.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'dashboard.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar saúde operacional.' });
+      }
+
+      const tenantId = session.effectiveTenantId;
+      const filters = parseBIFilters(req.query);
+
+      const health = await BIService.getOperationalHealth(prisma, tenantId, filters);
+      return res.json(health);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[BI API OPERATIONAL HEALTH ERROR]');
+      return res.status(500).json({ error: 'Erro ao processar saúde operacional do BI.' });
+    }
+  });
+
   // 7. POST /api/bi/export - Server-Side CSV Export with Multi-Tenant & RBAC Isolation
   app.post('/api/bi/export', async (req, res) => {
     try {
@@ -8954,6 +9764,14 @@ async function auditAndEnsureMasterUser() {
       });
 
       const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const maskCpf = (cpf?: string | null) => {
+        if (!cpf) return '';
+        const clean = cpf.replace(/\D/g, '');
+        if (clean.length === 11) {
+          return `${clean.slice(0, 3)}.***.***-${clean.slice(9, 11)}`;
+        }
+        return '***.***.***-**';
+      };
 
       const headers = [
         'N_PROPOSTA',
@@ -8975,7 +9793,7 @@ async function auditAndEnsureMasterUser() {
       for (const p of proposals) {
         const row = [
           escapeCsv(p.proposalNumber),
-          escapeCsv(p.client?.cpf || ''),
+          escapeCsv(maskCpf(p.client?.cpf)),
           escapeCsv(p.client?.fullName || ''),
           escapeCsv(p.bank?.name || ''),
           escapeCsv(p.partner?.name || ''),
@@ -9052,6 +9870,878 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       logger.error({ error: err?.message || String(err) }, '[BI API HEALTH SCORE ERROR]');
       return res.status(500).json({ error: 'Erro ao processar o Health Score operacional e executivo.' });
+    }
+  });
+
+  // =============================================================
+  // FASE 7: SENTINEL INTELLIGENCE REST API ENDPOINTS
+  // =============================================================
+
+  // 1. GET /api/intelligence/overview - Resumo executivo da inteligência operacional
+  app.get('/api/intelligence/overview', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar o Sentinel Intelligence.' });
+      }
+
+      const overview = await IntelligenceService.getOverview(prisma, session.effectiveTenantId);
+      return res.json(overview);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE OVERVIEW ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar visão geral do Sentinel Intelligence.' });
+    }
+  });
+
+  // 2. GET /api/intelligence/insights - Listagem filtrada de insights operacionais
+  app.get('/api/intelligence/insights', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar insights.' });
+      }
+
+      const filters = {
+        status: req.query.status as any,
+        severity: req.query.severity as any,
+        category: req.query.category as string,
+        type: req.query.type as any,
+        search: req.query.search as string,
+        entityType: req.query.entityType as string,
+        entityId: req.query.entityId as string,
+      };
+
+      const result = await IntelligenceService.listInsights(prisma, session.effectiveTenantId, filters);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE INSIGHTS ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar insights operacionais.' });
+    }
+  });
+
+  // 3. GET /api/intelligence/insights/:id - Detalhes do insight com evidências
+  app.get('/api/intelligence/insights/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar detalhes do insight.' });
+      }
+
+      const insight = await IntelligenceService.getInsightById(prisma, session.effectiveTenantId, req.params.id);
+      if (!insight) {
+        return res.status(404).json({ error: 'Insight não encontrado.' });
+      }
+
+      return res.json(insight);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE INSIGHT DETAIL ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar detalhes do insight.' });
+    }
+  });
+
+  // 4. POST /api/intelligence/insights/:id/acknowledge - Reconhecer insight
+  app.post('/api/intelligence/insights/:id/acknowledge', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.manage') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para reconhecer o insight.' });
+      }
+
+      const updated = await IntelligenceService.acknowledgeInsight(
+        prisma,
+        session.effectiveTenantId,
+        req.params.id,
+        session.user.id
+      );
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Insight não encontrado para o tenant atual.' });
+      }
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'INTELLIGENCE_INSIGHT_ACKNOWLEDGED',
+        entity: 'IntelligenceInsight',
+        entityId: req.params.id,
+        newData: { status: 'ACKNOWLEDGED' },
+        req,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE ACKNOWLEDGE ERROR]');
+      return res.status(500).json({ error: 'Erro ao reconhecer insight.' });
+    }
+  });
+
+  // 5. POST /api/intelligence/insights/:id/investigate - Marcar em investigação
+  app.post('/api/intelligence/insights/:id/investigate', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.investigate') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para investigar o insight.' });
+      }
+
+      const updated = await IntelligenceService.investigateInsight(
+        prisma,
+        session.effectiveTenantId,
+        req.params.id,
+        session.user.id
+      );
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Insight não encontrado para o tenant atual.' });
+      }
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'INTELLIGENCE_INSIGHT_INVESTIGATING',
+        entity: 'IntelligenceInsight',
+        entityId: req.params.id,
+        newData: { status: 'INVESTIGATING' },
+        req,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE INVESTIGATE ERROR]');
+      return res.status(500).json({ error: 'Erro ao colocar insight em investigação.' });
+    }
+  });
+
+  // 6. POST /api/intelligence/insights/:id/resolve - Resolver insight
+  app.post('/api/intelligence/insights/:id/resolve', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.resolve') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.manage')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para resolver o insight.' });
+      }
+
+      const updated = await IntelligenceService.resolveInsight(
+        prisma,
+        session.effectiveTenantId,
+        req.params.id,
+        session.user.id
+      );
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Insight não encontrado para o tenant atual.' });
+      }
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'INTELLIGENCE_INSIGHT_RESOLVED',
+        entity: 'IntelligenceInsight',
+        entityId: req.params.id,
+        newData: { status: 'RESOLVED' },
+        req,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE RESOLVE ERROR]');
+      return res.status(500).json({ error: 'Erro ao resolver insight.' });
+    }
+  });
+
+  // 7. POST /api/intelligence/insights/:id/dismiss - Descartar insight
+  app.post('/api/intelligence/insights/:id/dismiss', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.dismiss') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.manage')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para descartar o insight.' });
+      }
+
+      const updated = await IntelligenceService.dismissInsight(
+        prisma,
+        session.effectiveTenantId,
+        req.params.id,
+        session.user.id
+      );
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Insight não encontrado para o tenant atual.' });
+      }
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'INTELLIGENCE_INSIGHT_DISMISSED',
+        entity: 'IntelligenceInsight',
+        entityId: req.params.id,
+        newData: { status: 'DISMISSED' },
+        req,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE DISMISS ERROR]');
+      return res.status(500).json({ error: 'Erro ao descartar insight.' });
+    }
+  });
+
+  // 8. POST /api/intelligence/insights/:id/create-pendency - Criar pendência operacional vinculada
+  app.post('/api/intelligence/insights/:id/create-pendency', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.create') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.execute_action')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para criar pendência a partir do insight.' });
+      }
+
+      const pendency = await IntelligenceService.createPendencyFromInsight(
+        prisma,
+        session.effectiveTenantId,
+        req.params.id,
+        session.user.id,
+        req.body || {}
+      );
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PENDENCY_CREATED_FROM_INTELLIGENCE',
+        entity: 'Pendency',
+        entityId: pendency.id,
+        newData: { insightId: req.params.id, pendencyId: pendency.id },
+        req,
+      });
+
+      return res.status(201).json(pendency);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE CREATE PENDENCY ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao gerar pendência a partir do insight.' });
+    }
+  });
+
+  // 9. GET /api/intelligence/insights/:id/evidence - Evidências estruturadas
+  app.get('/api/intelligence/insights/:id/evidence', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar evidências.' });
+      }
+
+      const insight = await IntelligenceService.getInsightById(prisma, session.effectiveTenantId, req.params.id);
+      if (!insight) {
+        return res.status(404).json({ error: 'Insight não encontrado.' });
+      }
+
+      return res.json({ evidence: insight.evidence, count: insight.evidence.length });
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE EVIDENCE ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar evidências.' });
+    }
+  });
+
+  // 10. GET /api/intelligence/insights/:id/timeline - Histórico temporal do insight
+  app.get('/api/intelligence/insights/:id/timeline', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar a linha do tempo.' });
+      }
+
+      const timeline = await IntelligenceService.getInsightTimeline(prisma, session.effectiveTenantId, req.params.id);
+      return res.json({ timeline });
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE TIMELINE ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar linha do tempo do insight.' });
+    }
+  });
+
+  // 11. GET /api/intelligence/rules - Catálogo e configurações das regras de inteligência
+  app.get('/api/intelligence/rules', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar regras de inteligência.' });
+      }
+
+      const rules = await IntelligenceService.getRules(prisma, session.effectiveTenantId);
+      return res.json({ rules });
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE RULES ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar regras de inteligência.' });
+    }
+  });
+
+  // 12. PATCH /api/intelligence/rules/:id - Atualizar configuração de regra de inteligência
+  app.patch('/api/intelligence/rules/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.configure')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para configurar regras de inteligência.' });
+      }
+
+      const updated = await IntelligenceService.updateRule(
+        prisma,
+        session.effectiveTenantId,
+        req.params.id,
+        req.body || {}
+      );
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'INTELLIGENCE_RULE_CONFIGURED',
+        entity: 'IntelligenceRuleConfig',
+        entityId: req.params.id,
+        newData: updated,
+        req,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE RULE UPDATE ERROR]');
+      return res.status(500).json({ error: 'Erro ao atualizar regra de inteligência.' });
+    }
+  });
+
+  // 13. POST /api/intelligence/run - Executar análise analítica de regras sob demanda
+  app.post('/api/intelligence/run', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.execute') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.manage')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para executar análise de inteligência sob demanda.' });
+      }
+
+      const filters = parseBIFilters(req.body || req.query);
+      const result = await IntelligenceService.runAnalysis(
+        prisma,
+        session.effectiveTenantId,
+        session.user.id,
+        filters
+      );
+
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE RUN ERROR]');
+      return res.status(500).json({ error: 'Erro ao executar varredura do Sentinel Intelligence.' });
+    }
+  });
+
+  // 14. GET /api/intelligence/metrics - Métricas e KPIs de eficácia da inteligência
+  app.get('/api/intelligence/metrics', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'intelligence.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar métricas de inteligência.' });
+      }
+
+      const metrics = await IntelligenceService.getMetrics(prisma, session.effectiveTenantId);
+      return res.json(metrics);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[API INTELLIGENCE METRICS ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar métricas do Sentinel Intelligence.' });
+    }
+  });
+
+  // =============================================================
+  // FASE 8: SENTINEL COMMAND CENTER API ENDPOINTS
+  // =============================================================
+
+  // 1. GET /api/command-center/overview - Overview KPIs, Executive Summary & Attention Items
+  app.get('/api/command-center/overview', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar Command Center.' });
+      }
+
+      const overview = await CommandCenterService.getOverview(prisma, session.effectiveTenantId);
+      return res.json(overview);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER OVERVIEW ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar visão geral do Command Center.' });
+    }
+  });
+
+  // 2. GET /api/command-center/incidents - List incidents with filters & pagination
+  app.get('/api/command-center/incidents', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar incidentes.' });
+      }
+
+      const {
+        severity,
+        status,
+        type,
+        source,
+        assignedToId,
+        bankId,
+        partnerId,
+        integrationSlug,
+        startDate,
+        endDate,
+        search,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+      } = req.query;
+
+      const filterOptions: any = {
+        severity: severity ? String(severity).split(',') : undefined,
+        status: status ? String(status).split(',') : undefined,
+        type: type ? String(type).split(',') : undefined,
+        source: source ? String(source).split(',') : undefined,
+        assignedToId: assignedToId ? String(assignedToId) : undefined,
+        bankId: bankId ? String(bankId) : undefined,
+        partnerId: partnerId ? String(partnerId) : undefined,
+        integrationSlug: integrationSlug ? String(integrationSlug) : undefined,
+        startDate: startDate ? String(startDate) : undefined,
+        endDate: endDate ? String(endDate) : undefined,
+        search: search ? String(search) : undefined,
+        page: page ? parseInt(String(page), 10) : 1,
+        limit: limit ? parseInt(String(limit), 10) : 20,
+        sortBy: sortBy ? String(sortBy) : undefined,
+        sortOrder: sortOrder ? String(sortOrder) : undefined,
+      };
+
+      const result = await IncidentService.getIncidents(prisma, session.effectiveTenantId, filterOptions);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER LIST INCIDENTS ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar incidentes operacionais.' });
+    }
+  });
+
+  // 3. POST /api/command-center/incidents - Create incident manually
+  app.post('/api/command-center/incidents', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.create_incident')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para criar incidentes.' });
+      }
+
+      const { title, description, type, severity, source, bankId, productId, convenioId, partnerId, integrationSlug, assignedToId, tags } = req.body;
+
+      if (!title || typeof title !== 'string' || !title.trim()) {
+        return res.status(400).json({ error: 'Título do incidente é obrigatório.' });
+      }
+
+      const incident = await IncidentService.createIncident(
+        prisma,
+        session.effectiveTenantId,
+        {
+          title: title.trim(),
+          description,
+          type,
+          severity,
+          source: source || 'MANUAL',
+          bankId,
+          productId,
+          convenioId,
+          partnerId,
+          integrationSlug,
+          assignedToId,
+          tags,
+        },
+        {
+          userId: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+          role: session.user.role,
+          reqIp: req.ip,
+        }
+      );
+
+      return res.status(201).json(incident);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER CREATE INCIDENT ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao criar incidente.' });
+    }
+  });
+
+  // 4. POST /api/command-center/incidents/from-insight - Create incident from Intelligence insight
+  app.post('/api/command-center/incidents/from-insight', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.create_incident')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para converter insight em incidente.' });
+      }
+
+      const { insightId } = req.body;
+      if (!insightId) {
+        return res.status(400).json({ error: 'insightId é obrigatório.' });
+      }
+
+      const incident = await IncidentService.createFromInsight(
+        prisma,
+        session.effectiveTenantId,
+        insightId,
+        {
+          userId: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+          role: session.user.role,
+          reqIp: req.ip,
+        }
+      );
+
+      return res.status(201).json(incident);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER CREATE FROM INSIGHT ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao converter insight em incidente.' });
+    }
+  });
+
+  // 5. GET /api/command-center/incidents/:id - Incident 360° detail view
+  app.get('/api/command-center/incidents/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar incidente.' });
+      }
+
+      const { id } = req.params;
+      const incident = await IncidentService.getIncidentById(prisma, session.effectiveTenantId, id);
+
+      if (!incident) {
+        return res.status(404).json({ error: 'Incidente não encontrado.' });
+      }
+
+      return res.json(incident);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER GET INCIDENT ERROR]');
+      return res.status(500).json({ error: 'Erro ao buscar detalhes do incidente.' });
+    }
+  });
+
+  // 6. PATCH /api/command-center/incidents/:id/status - Transition incident status
+  app.patch('/api/command-center/incidents/:id/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.update')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para atualizar status do incidente.' });
+      }
+
+      const { id } = req.params;
+      const { status, notes } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: 'Status é obrigatório.' });
+      }
+
+      const updated = await IncidentService.updateStatus(
+        prisma,
+        session.effectiveTenantId,
+        id,
+        status,
+        notes,
+        {
+          userId: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+          role: session.user.role,
+          reqIp: req.ip,
+        }
+      );
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER UPDATE STATUS ERROR]');
+      return res.status(400).json({ error: err?.message || 'Erro ao atualizar status do incidente.' });
+    }
+  });
+
+  // 7. POST /api/command-center/incidents/:id/pendency - Create pendency linked to incident
+  app.post('/api/command-center/incidents/:id/pendency', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.execute_action')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para gerar pendências a partir do incidente.' });
+      }
+
+      const { id } = req.params;
+      const { type, title, description, priority, assignedToId, proposalId, partnerId, bankId } = req.body;
+
+      if (!title) return res.status(400).json({ error: 'Título da pendência é obrigatório.' });
+
+      const pendency = await IncidentService.createPendencyFromIncident(
+        prisma,
+        session.effectiveTenantId,
+        id,
+        {
+          type: type || 'INCIDENTE',
+          title,
+          description,
+          priority,
+          assignedToId,
+          proposalId,
+          partnerId,
+          bankId,
+        },
+        {
+          userId: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+          role: session.user.role,
+          reqIp: req.ip,
+        }
+      );
+
+      return res.status(201).json(pendency);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER CREATE PENDENCY ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao gerar pendência para o incidente.' });
+    }
+  });
+
+  // 8. POST /api/command-center/incidents/:id/comments - Add timeline comment
+  app.post('/api/command-center/incidents/:id/comments', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.comment')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para comentar no incidente.' });
+      }
+
+      const { id } = req.params;
+      const { title, description } = req.body;
+
+      if (!title && !description) {
+        return res.status(400).json({ error: 'Conteúdo do comentário é obrigatório.' });
+      }
+
+      const comment = await IncidentService.addTimelineComment(
+        prisma,
+        session.effectiveTenantId,
+        id,
+        title || 'Anotação Operacional',
+        description,
+        {
+          userId: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+          role: session.user.role,
+          reqIp: req.ip,
+        }
+      );
+
+      return res.status(201).json(comment);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER ADD COMMENT ERROR]');
+      return res.status(500).json({ error: 'Erro ao adicionar comentário ao incidente.' });
+    }
+  });
+
+  // 9. POST /api/command-center/incidents/:id/recalculate-impact - Recalculate impact
+  app.post('/api/command-center/incidents/:id/recalculate-impact', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      const { id } = req.params;
+      const updated = await IncidentService.recalculateImpact(prisma, session.effectiveTenantId, id);
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER RECALCULATE IMPACT ERROR]');
+      return res.status(500).json({ error: 'Erro ao recalcular impacto do incidente.' });
+    }
+  });
+
+  // 10. GET /api/command-center/sla-configs - Get tenant SLA configs
+  app.get('/api/command-center/sla-configs', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      const configs = await IncidentSlaService.getTenantSlaConfigs(prisma, session.effectiveTenantId);
+      return res.json(configs);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER SLA CONFIGS GET ERROR]');
+      return res.status(500).json({ error: 'Erro ao buscar matriz de SLA.' });
+    }
+  });
+
+  // 11. PUT /api/command-center/sla-configs - Update tenant SLA config for severity
+  app.put('/api/command-center/sla-configs', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'command.manage_sla')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para alterar matriz de SLA.' });
+      }
+
+      const { severity, acknowledgeMinutes, resolveMinutes } = req.body;
+      if (!severity || typeof acknowledgeMinutes !== 'number' || typeof resolveMinutes !== 'number') {
+        return res.status(400).json({ error: 'severity, acknowledgeMinutes e resolveMinutes são obrigatórios.' });
+      }
+
+      const updated = await IncidentSlaService.updateTenantSlaConfig(
+        prisma,
+        session.effectiveTenantId,
+        severity,
+        acknowledgeMinutes,
+        resolveMinutes
+      );
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER SLA CONFIGS UPDATE ERROR]');
+      return res.status(500).json({ error: 'Erro ao atualizar configuração de SLA.' });
+    }
+  });
+
+  // 12. GET /api/command-center/timeline - Unified operational timeline
+  app.get('/api/command-center/timeline', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 50;
+      const timeline = await CommandCenterService.getOperationalTimeline(prisma, session.effectiveTenantId, limit);
+      return res.json(timeline);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER TIMELINE ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar linha do tempo operacional.' });
+    }
+  });
+
+  // 13. GET /api/command-center/search - Unified operational search
+  app.get('/api/command-center/search', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      const query = req.query.q ? String(req.query.q) : '';
+      const results = await CommandCenterService.globalSearch(prisma, session.effectiveTenantId, query);
+      return res.json(results);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER SEARCH ERROR]');
+      return res.status(500).json({ error: 'Erro ao executar busca operacional.' });
+    }
+  });
+
+  // 14. GET /api/command-center/alerts - Evaluated alerts
+  app.get('/api/command-center/alerts', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Autenticação e Tenant válidos são obrigatórios.' });
+      }
+
+      const alerts = await CommandAlertEngine.evaluateAlerts(prisma, session.effectiveTenantId);
+      return res.json(alerts);
+    } catch (err: any) {
+      logger.error({ error: err?.message || String(err) }, '[COMMAND CENTER ALERTS ERROR]');
+      return res.status(500).json({ error: 'Erro ao avaliar alertas do Command Center.' });
     }
   });
 
@@ -11456,11 +13146,16 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  // 3. CENTRAL DE AUTOMAÇÕES API
+  // 3. CENTRAL DE AUTOMAÇÕES & WORKFLOWS API (FASE 3)
   app.get('/api/automations', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.view')) {
+        return res.status(403).json({ error: 'Permissão negada para visualizar automações.' });
+      }
 
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
@@ -11471,6 +13166,11 @@ async function auditAndEnsureMasterUser() {
         include: {
           createdBy: { select: { id: true, name: true, email: true } },
           _count: { select: { executions: true } },
+          executions: {
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: { id: true, status: true, durationMs: true, createdAt: true, error: true },
+          },
         },
       });
 
@@ -11481,10 +13181,203 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  app.get('/api/automations/templates', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+      return res.json(AUTOMATION_TEMPLATES);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/automations/templates ERROR]');
+      return res.status(500).json({ error: 'Erro ao buscar modelos de automação.' });
+    }
+  });
+
+  app.get('/api/automations/catalog', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      return res.json({
+        triggers: AVAILABLE_TRIGGERS,
+        actions: AVAILABLE_ACTIONS,
+        operators: [
+          { id: 'EQUALS', label: 'é igual a', compatibleWith: ['string', 'number', 'boolean', 'date'] },
+          { id: 'NOT_EQUALS', label: 'é diferente de', compatibleWith: ['string', 'number', 'boolean', 'date'] },
+          { id: 'CONTAINS', label: 'contém', compatibleWith: ['string'] },
+          { id: 'NOT_CONTAINS', label: 'não contém', compatibleWith: ['string'] },
+          { id: 'GREATER_THAN', label: 'maior que', compatibleWith: ['number', 'date'] },
+          { id: 'LESS_THAN', label: 'menor que', compatibleWith: ['number', 'date'] },
+          { id: 'GREATER_OR_EQUAL', label: 'maior ou igual', compatibleWith: ['number', 'date'] },
+          { id: 'LESS_OR_EQUAL', label: 'menor ou igual', compatibleWith: ['number', 'date'] },
+          { id: 'BETWEEN', label: 'está entre', compatibleWith: ['number'] },
+          { id: 'IS_EMPTY', label: 'está vazio', compatibleWith: ['string', 'number', 'boolean', 'date'] },
+          { id: 'IS_NOT_EMPTY', label: 'não está vazio', compatibleWith: ['string', 'number', 'boolean', 'date'] },
+        ],
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/automations/catalog ERROR]');
+      return res.status(500).json({ error: 'Erro ao buscar catálogo de automações.' });
+    }
+  });
+
+  app.get('/api/automations/metrics', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.view')) {
+        return res.status(403).json({ error: 'Permissão negada.' });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const [totalRules, activeRules, todayExecutions, allExecutions, pendenciesCreated] = await Promise.all([
+        prisma.automation.count({ where: { tenantId: effectiveTenantId } }),
+        prisma.automation.count({ where: { tenantId: effectiveTenantId, active: true } }),
+        prisma.automationExecution.count({
+          where: { tenantId: effectiveTenantId, createdAt: { gte: todayStart } },
+        }),
+        prisma.automationExecution.findMany({
+          where: { tenantId: effectiveTenantId },
+          select: { status: true, durationMs: true },
+          take: 1000,
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.pendency.count({
+          where: { tenantId: effectiveTenantId, source: 'AUTOMACAO' },
+        }),
+      ]);
+
+      const successCount = allExecutions.filter((e) => e.status === 'SUCCESS').length;
+      const failedCount = allExecutions.filter((e) => e.status === 'FAILED').length;
+      const totalExecs = allExecutions.length;
+      const successRate = totalExecs > 0 ? Math.round((successCount / totalExecs) * 100) : 100;
+      const avgDurationMs =
+        totalExecs > 0
+          ? Math.round(allExecutions.reduce((acc, curr) => acc + (curr.durationMs || 0), 0) / totalExecs)
+          : 0;
+
+      return res.json({
+        totalRules,
+        activeRules,
+        todayExecutions,
+        successCount,
+        failedCount,
+        successRate,
+        avgDurationMs,
+        pendenciesCreated,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/automations/metrics ERROR]');
+      return res.status(500).json({ error: 'Erro ao calcular métricas de automação.' });
+    }
+  });
+
+  app.get('/api/automations/executions', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.view')) {
+        return res.status(403).json({ error: 'Permissão negada.' });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      const { automationId, status, event, page = '1', limit = '50' } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+      const limitNum = Math.min(100, Math.max(10, parseInt(limit as string, 10) || 50));
+      const skip = (pageNum - 1) * limitNum;
+
+      const where: any = { tenantId: effectiveTenantId };
+      if (automationId) where.automationId = String(automationId);
+      if (status) where.status = String(status);
+      if (event) where.event = String(event);
+
+      const [total, executions] = await Promise.all([
+        prisma.automationExecution.count({ where }),
+        prisma.automationExecution.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limitNum,
+          include: {
+            automation: {
+              select: { id: true, name: true, event: true },
+            },
+          },
+        }),
+      ]);
+
+      return res.json({
+        data: executions,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/automations/executions ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar histórico de execuções.' });
+    }
+  });
+
+  app.get('/api/automations/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.view')) {
+        return res.status(403).json({ error: 'Permissão negada.' });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const { id } = req.params;
+
+      const automation = await prisma.automation.findFirst({
+        where: { id, tenantId: effectiveTenantId || undefined },
+        include: {
+          createdBy: { select: { id: true, name: true, email: true } },
+          executions: {
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+          },
+        },
+      });
+
+      if (!automation) return res.status(404).json({ error: 'Automação não encontrada.' });
+
+      const humanPreview = AutomationEngine.generateHumanPreview(automation);
+
+      return res.json({
+        ...automation,
+        humanPreview,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/automations/:id ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar detalhes da automação.' });
+    }
+  });
+
   app.post('/api/automations', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.create')) {
+        return res.status(403).json({ error: 'Permissão negada para criar automações.' });
+      }
 
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
@@ -11494,14 +13387,24 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'Nome e evento da automação são obrigatórios.' });
       }
 
+      // Validação de segurança das ações
+      const actionList = Array.isArray(actions) ? actions : [];
+      for (const act of actionList) {
+        if (FORBIDDEN_ACTION_TYPES.includes(act?.type)) {
+          return res.status(400).json({
+            error: `Ação não permitida: '${act?.type}' viola as políticas de segurança da plataforma.`,
+          });
+        }
+      }
+
       const created = await prisma.automation.create({
         data: {
           tenantId: effectiveTenantId,
           name: String(name).trim(),
           description: description ? String(description).trim() : null,
           event: String(event).trim(),
-          conditions: conditions || [],
-          actions: actions || [],
+          conditions: conditions || { matchType: 'ALL', rules: [] },
+          actions: actionList,
           active: active !== undefined ? Boolean(active) : true,
           createdById: session.user.id,
         },
@@ -11530,6 +13433,11 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.update')) {
+        return res.status(403).json({ error: 'Permissão negada para atualizar automações.' });
+      }
+
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       const { id } = req.params;
 
@@ -11539,6 +13447,18 @@ async function auditAndEnsureMasterUser() {
       if (!existing) return res.status(404).json({ error: 'Automação não encontrada.' });
 
       const { name, description, event, conditions, actions, active } = req.body || {};
+
+      // Validação de segurança das ações
+      if (actions && Array.isArray(actions)) {
+        for (const act of actions) {
+          if (FORBIDDEN_ACTION_TYPES.includes(act?.type)) {
+            return res.status(400).json({
+              error: `Ação não permitida: '${act?.type}' viola as políticas de segurança da plataforma.`,
+            });
+          }
+        }
+      }
+
       const updated = await prisma.automation.update({
         where: { id },
         data: {
@@ -11575,6 +13495,16 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      const canToggle =
+        isPlatformMaster ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.toggle') ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.update');
+
+      if (!canToggle) {
+        return res.status(403).json({ error: 'Permissão negada para alterar status da automação.' });
+      }
+
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       const { id } = req.params;
 
@@ -11606,10 +13536,127 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  app.post('/api/automations/:id/duplicate', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.create')) {
+        return res.status(403).json({ error: 'Permissão negada para duplicar automação.' });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const { id } = req.params;
+
+      const existing = await prisma.automation.findFirst({
+        where: { id, tenantId: effectiveTenantId || undefined },
+      });
+      if (!existing) return res.status(404).json({ error: 'Automação de origem não encontrada.' });
+
+      // Duplicação segura: gera novo registro sempre PAUSADO por segurança
+      const duplicated = await prisma.automation.create({
+        data: {
+          tenantId: effectiveTenantId,
+          name: `[Cópia] ${existing.name}`,
+          description: existing.description,
+          event: existing.event,
+          conditions: existing.conditions as any,
+          actions: existing.actions as any,
+          active: false, // OBRIGATÓRIO: Cópia nasce pausada por segurança
+          createdById: session.user.id,
+        },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'AUTOMATION_DUPLICATED',
+        entity: 'AUTOMATION',
+        entityId: duplicated.id,
+        oldData: { originalId: existing.id, name: existing.name },
+        newData: duplicated,
+        req,
+      });
+
+      return res.status(201).json(duplicated);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/automations/:id/duplicate ERROR]');
+      return res.status(500).json({ error: 'Erro ao duplicar automação.' });
+    }
+  });
+
+  app.post('/api/automations/test', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.execute')) {
+        return res.status(403).json({ error: 'Permissão negada para testar automações.' });
+      }
+
+      const { automation, mockEvent } = req.body || {};
+      if (!automation || !mockEvent) {
+        return res.status(400).json({ error: 'Configuração da automação e evento simulado são obrigatórios.' });
+      }
+
+      const testResult = AutomationEngine.testAutomation(automation, mockEvent);
+      return res.json(testResult);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/automations/test ERROR]');
+      return res.status(500).json({ error: 'Erro ao testar automação.' });
+    }
+  });
+
+  app.post('/api/automations/:id/test', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.execute')) {
+        return res.status(403).json({ error: 'Permissão negada para testar automações.' });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const { id } = req.params;
+
+      const existing = await prisma.automation.findFirst({
+        where: { id, tenantId: effectiveTenantId || undefined },
+      });
+      if (!existing) return res.status(404).json({ error: 'Automação não encontrada.' });
+
+      const { mockEvent } = req.body || {};
+      const simulatedEvent = mockEvent || { event: existing.event, data: {} };
+
+      const testResult = AutomationEngine.testAutomation(
+        {
+          name: existing.name,
+          event: existing.event,
+          conditions: existing.conditions,
+          actions: existing.actions,
+        },
+        simulatedEvent
+      );
+
+      return res.json(testResult);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/automations/:id/test ERROR]');
+      return res.status(500).json({ error: 'Erro ao testar automação existente.' });
+    }
+  });
+
   app.delete('/api/automations/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions, 'automations.delete')) {
+        return res.status(403).json({ error: 'Permissão negada para excluir automações.' });
+      }
 
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       const { id } = req.params;
@@ -11639,7 +13686,78 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  // 4. CENTRAL DE PENDÊNCIAS API
+  // 4. CENTRAL DE PENDÊNCIAS & SLA API (FASE 2)
+  app.get('/api/pendencies/metrics', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.view.' });
+      }
+
+      const summary = await PendencyService.getSummary(prisma, effectiveTenantId);
+      return res.json(summary);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/pendencies/metrics ERROR]');
+      return res.status(500).json({ error: 'Erro ao calcular métricas de pendências.' });
+    }
+  });
+
+  app.get('/api/pendencies/sla-config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.view.' });
+      }
+
+      const matrix = await PendencyService.getTenantSlaMatrix(prisma, effectiveTenantId);
+      return res.json({ matrix });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/pendencies/sla-config ERROR]');
+      return res.status(500).json({ error: 'Erro ao obter configurações de SLA.' });
+    }
+  });
+
+  app.put('/api/pendencies/sla-config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      const isAuthorized =
+        session.user.role === 'PLATFORM_MASTER' ||
+        session.user.role === 'TENANT_ADMIN' ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.admin') ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'admin.manage');
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Acesso negado. Requer privilégio administrativo para configurar SLA.' });
+      }
+
+      const { matrix } = req.body || {};
+      if (!matrix || typeof matrix !== 'object') {
+        return res.status(400).json({ error: 'Matriz de SLA inválida.' });
+      }
+
+      const updated = await PendencyService.updateTenantSlaMatrix(prisma, effectiveTenantId, matrix);
+      return res.json({ success: true, matrix: updated });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[PUT /api/pendencies/sla-config ERROR]');
+      return res.status(500).json({ error: 'Erro ao atualizar configurações de SLA.' });
+    }
+  });
+
   app.get('/api/pendencies', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -11648,7 +13766,22 @@ async function auditAndEnsureMasterUser() {
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
 
-      const { status, priority, type, proposalId, assignedToId, page = '1', limit = '50' } = req.query as Record<string, string>;
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.view.' });
+      }
+
+      const {
+        status,
+        priority,
+        type,
+        proposalId,
+        simulationId,
+        assignedToId,
+        slaStatus,
+        search,
+        page = '1',
+        limit = '50',
+      } = req.query as Record<string, string>;
 
       const where: Prisma.PendencyWhereInput = {
         tenantId: effectiveTenantId,
@@ -11666,15 +13799,29 @@ async function auditAndEnsureMasterUser() {
       if (proposalId) {
         where.proposalId = proposalId;
       }
+      if (simulationId) {
+        where.simulationId = simulationId;
+      }
       if (assignedToId) {
         where.assignedToId = assignedToId;
+      }
+
+      if (search && search.trim()) {
+        const term = search.trim();
+        where.OR = [
+          { title: { contains: term, mode: 'insensitive' } },
+          { description: { contains: term, mode: 'insensitive' } },
+          { proposal: { proposalNumber: { contains: term, mode: 'insensitive' } } },
+          { proposal: { client: { fullName: { contains: term, mode: 'insensitive' } } } },
+          { proposal: { client: { cpf: { contains: term } } } },
+        ];
       }
 
       const pageNum = Math.max(1, parseInt(page, 10) || 1);
       const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
       const skip = (pageNum - 1) * limitNum;
 
-      const [total, pendencies] = await Promise.all([
+      const [totalRaw, pendencies] = await Promise.all([
         prisma.pendency.count({ where }),
         prisma.pendency.findMany({
           where,
@@ -11687,12 +13834,14 @@ async function auditAndEnsureMasterUser() {
                 id: true,
                 proposalNumber: true,
                 contractValue: true,
+                standardCategory: true,
                 client: { select: { id: true, fullName: true, cpf: true } },
-                status: { select: { id: true, name: true, color: true } },
+                status: { select: { id: true, name: true, color: true, finalStatus: true, standardCategory: true } },
               },
             },
             partner: { select: { id: true, name: true, code: true } },
             assignedTo: { select: { id: true, name: true, email: true } },
+            resolvedBy: { select: { id: true, name: true, email: true } },
             bank: { select: { id: true, name: true, code: true } },
             product: { select: { id: true, name: true } },
             convenio: { select: { id: true, name: true } },
@@ -11704,16 +13853,83 @@ async function auditAndEnsureMasterUser() {
         }),
       ]);
 
+      // Enriquecer itens com métricas operacionais e SLA calculados
+      const enrichedItems = pendencies.map((p) => {
+        const slaMetrics = PendencyService.calculateSlaMetrics(p);
+        return {
+          ...p,
+          slaMetrics,
+        };
+      });
+
+      // Filtrar por slaStatus se solicitado
+      const finalItems = slaStatus && slaStatus !== 'ALL'
+        ? enrichedItems.filter((i) => i.slaMetrics.slaStatus === slaStatus)
+        : enrichedItems;
+
       return res.json({
-        total,
+        total: totalRaw,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
-        items: pendencies,
+        totalPages: Math.ceil(totalRaw / limitNum),
+        items: finalItems,
       });
     } catch (err: any) {
       logger.error({ error: err?.message }, '[GET /api/pendencies ERROR]');
       return res.status(500).json({ error: 'Erro ao listar pendências.' });
+    }
+  });
+
+  app.get('/api/pendencies/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.view.' });
+      }
+
+      const { id } = req.params;
+      const pendency = await prisma.pendency.findFirst({
+        where: { id, tenantId: effectiveTenantId },
+        include: {
+          proposal: {
+            select: {
+              id: true,
+              proposalNumber: true,
+              contractValue: true,
+              standardCategory: true,
+              client: { select: { id: true, fullName: true, cpf: true, phone: true, email: true } },
+              status: { select: { id: true, name: true, color: true, finalStatus: true, standardCategory: true } },
+            },
+          },
+          partner: { select: { id: true, name: true, code: true } },
+          assignedTo: { select: { id: true, name: true, email: true } },
+          resolvedBy: { select: { id: true, name: true, email: true } },
+          bank: { select: { id: true, name: true, code: true } },
+          product: { select: { id: true, name: true } },
+          convenio: { select: { id: true, name: true } },
+          histories: {
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      if (!pendency) {
+        return res.status(404).json({ error: 'Pendência não encontrada.' });
+      }
+
+      const slaMetrics = PendencyService.calculateSlaMetrics(pendency);
+      return res.json({
+        ...pendency,
+        slaMetrics,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/pendencies/:id ERROR]');
+      return res.status(500).json({ error: 'Erro ao buscar detalhes da pendência.' });
     }
   });
 
@@ -11725,10 +13941,14 @@ async function auditAndEnsureMasterUser() {
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
       if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
 
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.create')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.create.' });
+      }
+
       const {
         title,
         description,
-        type = 'ESTEIRA',
+        type = 'DOCUMENTACAO',
         priority = 'MEDIUM',
         proposalId,
         simulationId,
@@ -11737,203 +13957,549 @@ async function auditAndEnsureMasterUser() {
         bankId,
         productId,
         convenioId,
-        slaHours = 24,
+        slaHours,
+        source = 'MANUAL',
+        sourceEventId,
+        metadata,
       } = req.body || {};
 
       if (!title || String(title).trim() === '') {
         return res.status(400).json({ error: 'Título da pendência é obrigatório.' });
       }
 
-      const slaDeadline = new Date(Date.now() + (parseInt(slaHours, 10) || 24) * 3600 * 1000);
-
-      const created = await prisma.pendency.create({
-        data: {
-          tenantId: effectiveTenantId,
-          title: String(title).trim(),
-          description: description ? String(description).trim() : null,
-          type: String(type).trim().toUpperCase(),
-          priority: priority as PriorityLevel,
-          status: 'ABERTA',
-          proposalId: proposalId || null,
-          simulationId: simulationId || null,
-          partnerId: partnerId || null,
-          assignedToId: assignedToId || null,
-          bankId: bankId || null,
-          productId: productId || null,
-          convenioId: convenioId || null,
-          slaDeadline,
-          histories: {
-            create: {
-              tenantId: effectiveTenantId,
-              action: 'CRIADA',
-              userId: session.user.id,
-              userName: session.user.name,
-              newStatus: 'ABERTA',
-              notes: 'Pendência aberta no sistema.',
-            },
-          },
-        },
-        include: {
-          proposal: true,
-          assignedTo: true,
-          histories: true,
-        },
-      });
-
-      // Publicar no Central EventBus
-      await centralEventBus.publish({
+      const { pendency, isDuplicate } = await PendencyService.createPendency(prisma, {
         tenantId: effectiveTenantId,
-        eventType: 'PENDENCY_CREATED',
-        entityId: created.id,
-        entity: 'Pendency',
+        title: String(title).trim(),
+        description: description ? String(description).trim() : null,
+        type: String(type).trim().toUpperCase(),
+        priority: priority as PriorityLevel,
+        proposalId: proposalId || null,
+        simulationId: simulationId || null,
+        partnerId: partnerId || null,
+        assignedToId: assignedToId || null,
+        bankId: bankId || null,
+        productId: productId || null,
+        convenioId: convenioId || null,
+        slaHours: slaHours ? parseInt(slaHours, 10) : undefined,
+        source,
+        sourceEventId,
+        metadata,
         userId: session.user.id,
         userName: session.user.name,
-        data: { id: created.id, title: created.title, priority: created.priority, status: created.status },
-        audit: true,
-      }, prisma);
+      });
 
-      return res.status(201).json(created);
+      const slaMetrics = PendencyService.calculateSlaMetrics(pendency);
+      return res.status(isDuplicate ? 200 : 201).json({
+        ...pendency,
+        slaMetrics,
+        isDuplicate,
+      });
     } catch (err: any) {
       logger.error({ error: err?.message }, '[POST /api/pendencies ERROR]');
-      return res.status(500).json({ error: 'Erro ao criar pendência.' });
+      return res.status(500).json({ error: err?.message || 'Erro ao criar pendência.' });
     }
   });
 
+  app.post('/api/pendencies/:id/assign', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.assign')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.assign.' });
+      }
+
+      const { id } = req.params;
+      const { assignedToId, notes } = req.body || {};
+
+      // Se nenhum assignedToId fornecido, operador assume a si mesmo
+      const targetUserId = assignedToId || session.user.id;
+
+      const updated = await PendencyService.assignPendency(prisma, {
+        id,
+        tenantId: effectiveTenantId,
+        assignedToId: targetUserId,
+        userId: session.user.id,
+        userName: session.user.name,
+        notes,
+      });
+
+      const slaMetrics = PendencyService.calculateSlaMetrics(updated);
+      return res.json({
+        ...updated,
+        slaMetrics,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/pendencies/:id/assign ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao atribuir pendência.' });
+    }
+  });
+
+  app.post('/api/pendencies/:id/resolve', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.resolve')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.resolve.' });
+      }
+
+      const { id } = req.params;
+      const { notes, resolution } = req.body || {};
+      const resolveNotes = notes || resolution;
+
+      if (!resolveNotes || String(resolveNotes).trim().length < 3) {
+        return res.status(400).json({ error: 'Parecer detalhado de resolução é obrigatório.' });
+      }
+
+      const updated = await PendencyService.updateStatus(prisma, {
+        id,
+        tenantId: effectiveTenantId,
+        newStatus: 'RESOLVIDA',
+        userId: session.user.id,
+        userName: session.user.name,
+        notes: String(resolveNotes).trim(),
+      });
+
+      const slaMetrics = PendencyService.calculateSlaMetrics(updated);
+      return res.json({
+        ...updated,
+        slaMetrics,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/pendencies/:id/resolve ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao resolver pendência.' });
+    }
+  });
+
+  app.post('/api/pendencies/:id/cancel', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.cancel')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.cancel.' });
+      }
+
+      const { id } = req.params;
+      const { notes, reason } = req.body || {};
+      const cancelReason = notes || reason || 'Cancelada pelo operador.';
+
+      const updated = await PendencyService.updateStatus(prisma, {
+        id,
+        tenantId: effectiveTenantId,
+        newStatus: 'CANCELADA',
+        userId: session.user.id,
+        userName: session.user.name,
+        notes: String(cancelReason).trim(),
+      });
+
+      const slaMetrics = PendencyService.calculateSlaMetrics(updated);
+      return res.json({
+        ...updated,
+        slaMetrics,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/pendencies/:id/cancel ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao cancelar pendência.' });
+    }
+  });
+
+  app.post('/api/pendencies/:id/reopen', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.reopen')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.reopen.' });
+      }
+
+      const { id } = req.params;
+      const { notes } = req.body || {};
+
+      const updated = await PendencyService.updateStatus(prisma, {
+        id,
+        tenantId: effectiveTenantId,
+        newStatus: 'ABERTA',
+        userId: session.user.id,
+        userName: session.user.name,
+        notes: notes ? String(notes).trim() : 'Pendência reaberta para reavaliação.',
+      });
+
+      const slaMetrics = PendencyService.calculateSlaMetrics(updated);
+      return res.json({
+        ...updated,
+        slaMetrics,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/pendencies/:id/reopen ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao reabrir pendência.' });
+    }
+  });
+
+  app.post('/api/pendencies/:id/comments', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.update.' });
+      }
+
+      const { id } = req.params;
+      const { notes } = req.body || {};
+
+      if (!notes || String(notes).trim() === '') {
+        return res.status(400).json({ error: 'Comentário não pode estar vazio.' });
+      }
+
+      const history = await PendencyService.addComment(prisma, {
+        id,
+        tenantId: effectiveTenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        notes: String(notes).trim(),
+      });
+
+      return res.status(201).json(history);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/pendencies/:id/comments ERROR]');
+      return res.status(500).json({ error: err?.message || 'Erro ao adicionar comentário.' });
+    }
+  });
+
+  // Retrocompatibilidade para POST /api/pendencies/:id/status
   app.post('/api/pendencies/:id/status', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
+
       const { id } = req.params;
       const { status, notes, assignedToId } = req.body || {};
 
       if (!status) return res.status(400).json({ error: 'Novo status é obrigatório.' });
 
-      const existing = await prisma.pendency.findFirst({
-        where: { id, tenantId: effectiveTenantId || undefined },
-      });
-      if (!existing) return res.status(404).json({ error: 'Pendência não encontrada.' });
+      // Validar permissão específica dependendo do status
+      const targetStatus = String(status).toUpperCase() as PendencyStatus;
+      let requiredPerm: Permission = 'pendencies.update';
+      if (targetStatus === 'RESOLVIDA') requiredPerm = 'pendencies.resolve';
+      else if (targetStatus === 'CANCELADA') requiredPerm = 'pendencies.cancel';
 
-      const isResolved = status === 'RESOLVIDA';
-      const updated = await prisma.pendency.update({
-        where: { id },
-        data: {
-          status,
-          ...(assignedToId ? { assignedToId } : {}),
-          ...(isResolved ? { resolvedAt: new Date(), resolvedById: session.user.id } : {}),
-          histories: {
-            create: {
-              tenantId: effectiveTenantId || existing.tenantId,
-              action: isResolved ? 'RESOLVIDA' : 'STATUS_ALTERADO',
-              userId: session.user.id,
-              userName: session.user.name,
-              previousStatus: existing.status,
-              newStatus: status,
-              notes: notes ? String(notes).trim() : null,
-            },
-          },
-        },
-        include: { histories: { take: 5, orderBy: { createdAt: 'desc' } } },
-      });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, requiredPerm)) {
+        return res.status(403).json({ error: `Acesso negado. Requer permissão ${requiredPerm}.` });
+      }
 
-      // Publicar no Central EventBus
-      await centralEventBus.publish({
-        tenantId: effectiveTenantId || existing.tenantId,
-        eventType: isResolved ? 'PENDENCY_RESOLVED' : 'PENDENCY_ASSIGNED',
-        entityId: updated.id,
-        entity: 'Pendency',
+      const updated = await PendencyService.updateStatus(prisma, {
+        id,
+        tenantId: effectiveTenantId,
+        newStatus: targetStatus,
         userId: session.user.id,
         userName: session.user.name,
-        data: { id: updated.id, previousStatus: existing.status, newStatus: status },
-        audit: true,
-      }, prisma);
+        notes: notes ? String(notes).trim() : undefined,
+        assignedToId,
+      });
 
-      return res.json(updated);
+      const slaMetrics = PendencyService.calculateSlaMetrics(updated);
+      return res.json({
+        ...updated,
+        slaMetrics,
+      });
     } catch (err: any) {
       logger.error({ error: err?.message }, '[POST /api/pendencies/:id/status ERROR]');
-      return res.status(500).json({ error: 'Erro ao alterar status da pendência.' });
+      return res.status(500).json({ error: err?.message || 'Erro ao alterar status da pendência.' });
     }
   });
 
-  // 5. HUB DE INTEGRAÇÕES BANCÁRIAS HEALTH API
-  app.get('/api/integrations/health', async (req, res) => {
+  app.delete('/api/pendencies/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'Tenant context não encontrado.' });
 
-      const [c6Recent, factaRecent, happyRecent] = await Promise.all([
-        prisma.c6SyncHistory.findFirst({
-          where: effectiveTenantId ? { tenantId: effectiveTenantId } : {},
-          orderBy: { queryDate: 'desc' },
-        }),
-        prisma.factaSyncHistory.findFirst({
-          where: effectiveTenantId ? { tenantId: effectiveTenantId } : {},
-          orderBy: { queryDate: 'desc' },
-        }),
-        prisma.happySyncHistory.findFirst({
-          where: effectiveTenantId ? { tenantId: effectiveTenantId } : {},
-          orderBy: { startedAt: 'desc' },
-        }),
-      ]);
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'pendencies.delete')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão pendencies.delete.' });
+      }
 
-      const integrations = [
-        {
-          id: 'c6',
-          name: 'Banco C6 Consignado',
-          code: '626',
-          category: 'BANK',
-          protocol: 'OAuth Direct / Rest API',
-          status: 'OPERATIONAL',
-          lastSyncAt: c6Recent?.queryDate || null,
-          lastStatus: c6Recent?.success ? 'SUCCESS' : (c6Recent ? 'ERROR' : 'IDLE'),
-          errorDetails: c6Recent?.technicalError || null,
-        },
-        {
-          id: 'facta',
-          name: 'Facta Financeira',
-          code: '935',
-          category: 'BANK',
-          protocol: 'Basic Auth / Bearer Token',
-          status: 'OPERATIONAL',
-          lastSyncAt: factaRecent?.queryDate || null,
-          lastStatus: factaRecent?.success ? 'SUCCESS' : (factaRecent ? 'ERROR' : 'IDLE'),
-          errorDetails: factaRecent?.technicalError || null,
-        },
-        {
-          id: 'happy',
-          name: 'Happy / BYX Capital',
-          code: 'HAPPY',
-          category: 'FINTECH',
-          protocol: 'Webhooks & HMAC SHA256',
-          status: 'OPERATIONAL',
-          lastSyncAt: happyRecent?.startedAt || null,
-          lastStatus: happyRecent?.status || 'IDLE',
-          errorDetails: happyRecent?.error || null,
-        },
-        {
-          id: 'bmg',
-          name: 'Banco BMG',
-          code: '318',
-          category: 'BANK',
-          protocol: 'mTLS / API Gateway',
-          status: 'MAINTENANCE',
-          lastSyncAt: null,
-          lastStatus: 'IDLE',
-          errorDetails: 'Aguardando credenciais de produção no tenant.',
-        },
-      ];
+      const { id } = req.params;
+      const existing = await prisma.pendency.findFirst({
+        where: { id, tenantId: effectiveTenantId },
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Pendência não encontrada.' });
+      }
+
+      await prisma.pendency.delete({ where: { id } });
+
+      return res.json({ success: true, message: 'Pendência excluída com sucesso.' });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[DELETE /api/pendencies/:id ERROR]');
+      return res.status(500).json({ error: 'Erro ao excluir pendência.' });
+    }
+  });
+
+  // =============================================================
+  // FASE 4: HUB DE INTEGRAÇÕES BANCÁRIAS (C6, FACTA, BMG, HAPPY)
+  // =============================================================
+
+  // 1. GET /api/integrations/health (Catálogo unificado e status operacional)
+  app.get('/api/integrations/health', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'integrations.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.view'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const catalogResult = await IntegrationHubService.getCatalog(prisma, effectiveTenantId);
 
       return res.json({
         timestamp: new Date().toISOString(),
-        overallStatus: 'OPERATIONAL',
-        integrations,
+        overallStatus: catalogResult.summary.offline > 0 ? 'DEGRADED' : catalogResult.summary.attention > 0 ? 'ATTENTION' : 'OPERATIONAL',
+        ...catalogResult,
       });
     } catch (err: any) {
       logger.error({ error: err?.message }, '[GET /api/integrations/health ERROR]');
-      return res.status(500).json({ error: 'Erro ao verificar integridade das integrações.' });
+      return res.status(500).json({ error: 'Erro ao carregar catálogo do Hub de Integrações.' });
+    }
+  });
+
+  // 2. POST /api/integrations/:slug/health (Disparo de Health Check real e seguro)
+  app.post('/api/integrations/:slug/health', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      const canHealth = isPlatformMaster ||
+        hasPermission(userRole, userCustomPerms, 'integrations.health') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.manage') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.admin');
+
+      if (!canHealth) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.health'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'TenantId não definido na sessão.' });
+
+      const slug = req.params.slug as any;
+      if (!['c6', 'facta', 'bmg', 'happy'].includes(slug)) {
+        return res.status(400).json({ error: `Integração '${slug}' não suportada no catálogo.` });
+      }
+
+      const result = await IntegrationHubService.executeHealthCheck(prisma, effectiveTenantId, slug, session.user.id);
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message, slug: req.params.slug }, '[POST /api/integrations/:slug/health ERROR]');
+      return res.status(500).json({ error: 'Erro ao executar health check da integração.' });
+    }
+  });
+
+  // 3. POST /api/integrations/:slug/diagnose (Diagnóstico Avançado com Ray ID e DNS)
+  app.post('/api/integrations/:slug/diagnose', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      const canDiagnose = isPlatformMaster ||
+        hasPermission(userRole, userCustomPerms, 'integrations.diagnose') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.manage') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.admin');
+
+      if (!canDiagnose) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.diagnose'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'TenantId não definido na sessão.' });
+
+      const slug = req.params.slug as any;
+      if (!['c6', 'facta', 'bmg', 'happy'].includes(slug)) {
+        return res.status(400).json({ error: `Integração '${slug}' não suportada.` });
+      }
+
+      const diagnostic = await IntegrationHubService.runDiagnostics(prisma, effectiveTenantId, slug);
+      return res.json(diagnostic);
+    } catch (err: any) {
+      logger.error({ error: err?.message, slug: req.params.slug }, '[POST /api/integrations/:slug/diagnose ERROR]');
+      return res.status(500).json({ error: 'Erro ao executar diagnóstico da integração.' });
+    }
+  });
+
+  // 4. GET /api/integrations/:slug/stats (Métricas estatísticas de saúde: P95, disponibilidade, erros)
+  app.get('/api/integrations/:slug/stats', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'integrations.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.view'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const slug = req.params.slug as any;
+      const period = (req.query.period as any) || '24h';
+
+      const stats = await IntegrationHubService.getHealthStats(prisma, effectiveTenantId, slug, period);
+      return res.json(stats);
+    } catch (err: any) {
+      logger.error({ error: err?.message, slug: req.params.slug }, '[GET /api/integrations/:slug/stats ERROR]');
+      return res.status(500).json({ error: 'Erro ao calcular estatísticas de saúde da integração.' });
+    }
+  });
+
+  // 5. GET /api/integrations/logs (Logs de requisição paginados com filtros server-side)
+  app.get('/api/integrations/logs', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      const canLogs = isPlatformMaster ||
+        hasPermission(userRole, userCustomPerms, 'integrations.logs') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.view') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.admin');
+
+      if (!canLogs) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.logs'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const bank = req.query.bank as string | undefined;
+      const success = req.query.success === 'true' ? true : req.query.success === 'false' ? false : undefined;
+      const httpStatus = req.query.httpStatus ? parseInt(req.query.httpStatus as string, 10) : undefined;
+      const search = req.query.search as string | undefined;
+      const period = req.query.period as any;
+
+      const result = await IntegrationHubService.getPaginatedLogs(prisma, effectiveTenantId, {
+        page,
+        limit,
+        bank,
+        success,
+        httpStatus,
+        search,
+        period,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/integrations/logs ERROR]');
+      return res.status(500).json({ error: 'Erro ao consultar logs de integrações.' });
+    }
+  });
+
+  // 6. GET /api/integrations/incidents (Incidentes de integração com timeline cronológica)
+  app.get('/api/integrations/incidents', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'integrations.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.view'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const bank = req.query.bank as string | undefined;
+      const status = req.query.status as any;
+
+      const incidents = await IntegrationHubService.listIncidents(prisma, effectiveTenantId, { bank, status });
+      return res.json({ incidents });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/integrations/incidents ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar incidentes de integração.' });
+    }
+  });
+
+  // 7. POST /api/integrations/:slug/sync (Disparo manual seguro de sincronização)
+  app.post('/api/integrations/:slug/sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+      const isPlatformMaster = userRole === 'PLATFORM_MASTER';
+
+      const canSync = isPlatformMaster ||
+        hasPermission(userRole, userCustomPerms, 'integrations.sync') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.manage') ||
+        hasPermission(userRole, userCustomPerms, 'integrations.admin');
+
+      if (!canSync) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'integrations.sync'." });
+      }
+
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({ error: 'TenantId não definido na sessão.' });
+
+      const slug = req.params.slug as any;
+
+      if (slug === 'c6') {
+        const config = await C6BankService.getTenantConfig(prisma, effectiveTenantId);
+        const result = await C6SyncWorker.processTenantProposals(prisma, effectiveTenantId, config.syncIntervalMinutes);
+        return res.json({ success: true, message: 'Sincronização C6 executada com sucesso.', result });
+      } else if (slug === 'facta') {
+        const config = await FactaBankService.getTenantConfig(prisma, effectiveTenantId);
+        const result = await FactaSyncWorker.processTenantProposals(prisma, effectiveTenantId, config.syncIntervalMinutes);
+        return res.json({ success: true, message: 'Sincronização FACTA executada com sucesso.', result });
+      } else if (slug === 'happy') {
+        const result = await HappyBankService.consultarContratos(prisma, effectiveTenantId, {});
+        return res.json({ success: true, message: 'Sincronização Happy / BYX executada com sucesso.', result });
+      } else if (slug === 'bmg') {
+        return res.json({ success: true, message: 'Integração BMG operando em modo Cartão Benefício sob demanda.' });
+      }
+
+      return res.status(400).json({ error: `Integração '${slug}' não suporta sincronização em lote.` });
+    } catch (err: any) {
+      logger.error({ error: err?.message, slug: req.params.slug }, '[POST /api/integrations/:slug/sync ERROR]');
+      return res.status(500).json({ error: 'Erro ao executar sincronização da integração.' });
     }
   });
 
@@ -12196,6 +14762,8 @@ async function startServer() {
     await auditAndEnsureMasterUser();
     C6SyncWorker.start(prisma);
     FactaSyncWorker.start(prisma);
+    PendencyService.initEventBusSubscriptions(prisma);
+    AutomationEngine.initEventBusSubscriptions(prisma);
   });
 }
 

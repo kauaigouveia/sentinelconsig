@@ -2,42 +2,28 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   FileSpreadsheet,
-  Kanban,
-  ArrowLeftRight,
-  Upload,
-  Users,
-  Search,
+  Calculator,
   Handshake,
   Building2,
-  Headphones,
-  Hourglass,
   BarChart3,
-  Calculator,
-  Tv,
-  TrendingUp,
   Bot,
-  Trophy,
-  DollarSign,
-  HardDrive,
-  Calendar,
-  Layers,
-  Sliders,
-  ShieldCheck,
-  ChevronLeft,
-  ChevronRight,
-  UserCheck,
   Sparkles,
-  Activity,
   Zap,
-  AlertTriangle,
+  Activity,
   Shield,
+  HardDrive,
+  Layers,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
 import { Role } from '../../types';
 import { resolveEffectiveTenantBranding, SYSTEM_IDENTITY } from '../../lib/branding';
-
-import { TenantBranding } from "../../hooks/useTenantBranding";
+import { TenantBranding } from '../../hooks/useTenantBranding';
+import { hasPermission } from '../../lib/permissions';
 
 interface SidebarProps {
   currentView: string;
@@ -67,8 +53,16 @@ interface NavItemConfig {
   color: SemanticColor;
   badge?: {
     text: string;
-    variant: 'live' | 'ai' | 'counter' | 'alert';
+    variant: 'alert' | 'ai' | 'counter';
   };
+  visible?: boolean;
+}
+
+interface NavGroupConfig {
+  id: string;
+  title: string;
+  visible: boolean;
+  items: NavItemConfig[];
 }
 
 const colorStyles: Record<
@@ -200,9 +194,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     }
   });
 
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('cg_sidebar_groups_expanded');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      inicio: true,
+      operacao: true,
+      integracoes: true,
+      gestao: true,
+      administracao: true,
+      plataforma: true,
+    };
+  });
+
+  const [openPendenciesCount, setOpenPendenciesCount] = useState<number | null>(null);
+  const [automationsCount, setAutomationsCount] = useState<number | null>(null);
+
   const [whiteLabel, setWhiteLabel] = useState(StorageService.getWhiteLabel());
   const [currentTenant, setCurrentTenant] = useState(StorageService.getCurrentTenant());
   const [adminContext, setAdminContext] = useState<{ active: boolean; context?: { targetTenantId: string; targetTenantName: string } }>({ active: false });
+
   let effectiveBranding = resolveEffectiveTenantBranding(
     activeUser,
     currentTenant,
@@ -210,13 +223,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     adminContext
   );
 
-  if (branding && branding.status !== "DOMAIN_NOT_CONFIGURED") {
+  if (branding && branding.status !== 'DOMAIN_NOT_CONFIGURED') {
     effectiveBranding.tenantName = branding.companyName || effectiveBranding.tenantName;
     effectiveBranding.logoUrl = branding.logoUrl || effectiveBranding.logoUrl;
     effectiveBranding.plan = branding.plan || effectiveBranding.plan;
   }
 
-  // Sync tenant and admin context status
+  // Sincroniza estado de contadores operacionais para os badges relevantes
+  const fetchBadgeCounts = async () => {
+    try {
+      const res = await fetch('/api/pendencies/metrics');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.summary) {
+          const totalOpen = (data.summary.openCount || 0) + (data.summary.inProgressCount || 0);
+          setOpenPendenciesCount(totalOpen);
+        }
+      }
+    } catch {}
+
+    try {
+      const autoRes = await fetch('/api/automations');
+      if (autoRes.ok) {
+        const data = await autoRes.json();
+        const list = Array.isArray(data) ? data : data.automations || [];
+        setAutomationsCount(list.filter((a: any) => a.isActive !== false).length || 3);
+      }
+    } catch {
+      setAutomationsCount(3);
+    }
+  };
+
   const syncTenantState = async () => {
     setCurrentTenant(StorageService.getCurrentTenant());
     setWhiteLabel(StorageService.getWhiteLabel());
@@ -227,15 +264,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
           const data = await res.json();
           setAdminContext(data);
         }
-      } catch (e) {}
+      } catch {}
     }
   };
 
   useEffect(() => {
     syncTenantState();
+    fetchBadgeCounts();
 
     const handleUpdates = () => {
       syncTenantState();
+      fetchBadgeCounts();
     };
 
     window.addEventListener('whiteLabelUpdated', handleUpdates);
@@ -243,11 +282,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     window.addEventListener('credit_gestao_storage_update', handleUpdates);
     window.addEventListener('storage', handleUpdates);
 
-    // Listen to realtime tenant context changes
-    const unsub = realtimeHub.subscribe('*', (event) => {
-      const eventType = (event as any)?.type;
-      if (eventType === 'TENANT_UPDATED' || eventType === 'TENANT_SUSPENDED' || eventType === 'CONTEXT_SWITCHED') {
+    // Atalho global Alt+B para expandir/recolher sidebar
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        toggleCollapse();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Listen to realtime pendency updates
+    const unsub = realtimeHub.subscribe('*', (event: any) => {
+      const eventType = event?.type;
+      if (
+        eventType?.includes('PENDENCY') ||
+        eventType === 'TENANT_UPDATED' ||
+        eventType === 'CONTEXT_SWITCHED'
+      ) {
         syncTenantState();
+        fetchBadgeCounts();
       }
     });
 
@@ -256,11 +309,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
       window.removeEventListener('tenantUpdated', handleUpdates);
       window.removeEventListener('credit_gestao_storage_update', handleUpdates);
       window.removeEventListener('storage', handleUpdates);
+      window.removeEventListener('keydown', handleKeyDown);
       unsub();
     };
   }, [activeUser?.id, activeUser?.role]);
 
-  // Determine dynamic company name to display
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cg_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = { ...prev, [groupId]: !prev[groupId] };
+      try {
+        localStorage.setItem('cg_sidebar_groups_expanded', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // RBAC Permission checks
+  const isPlatformMaster = role === 'PLATFORM_MASTER';
+  const isMaster = role === 'MASTER' || isPlatformMaster;
+  const isGestor = role === 'GESTOR' || isMaster;
+  const isGerente = role === 'GERENTE' || isGestor;
+  const isSuporte = role === 'SUPORTE' || isGestor;
+  const isDigitador = role === 'DIGITADOR' || isMaster;
+
   const displayCompanyName = (() => {
     if (activeUser?.role === 'PLATFORM_MASTER') {
       if (adminContext.active && adminContext.context?.targetTenantName) {
@@ -274,26 +355,233 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
   const isGlobalPlatformContext = activeUser?.role === 'PLATFORM_MASTER' && !adminContext.active;
   const isInspectionMode = activeUser?.role === 'PLATFORM_MASTER' && adminContext.active;
 
-  const toggleCollapse = () => {
-    setIsCollapsed(prev => {
-      const next = !prev;
-      try {
-        localStorage.setItem('cg_sidebar_collapsed', String(next));
-      } catch {}
-      return next;
-    });
+  // Verificação de correspondência de rota ativa (garante contexto para rotas secundárias)
+  const isViewActive = (itemId: string): boolean => {
+    if (currentView === itemId) return true;
+    if (itemId === 'torre-controle' && currentView === 'tv-monitor') return true;
+    if (itemId === 'producao' && ['esteira', 'portabilidades', 'importar-excel'].includes(currentView)) return true;
+    if (itemId === 'hub-integracoes' && ['integracoes-hub', 'admin-integracoes-bancos'].includes(currentView)) return true;
+    if (
+      itemId === 'central-administracao' &&
+      [
+        'administracao',
+        'admin-usuarios',
+        'admin-produtos',
+        'admin-status',
+        'admin-calendario',
+        'admin-auditoria',
+        'admin-comunicados',
+      ].includes(currentView)
+    ) {
+      return true;
+    }
+    return false;
   };
 
-  // RBAC Permission checks (strictly preserved)
-  const isPlatformMaster = role === 'PLATFORM_MASTER';
-  const isMaster = role === 'MASTER' || isPlatformMaster;
-  const isGestor = role === 'GESTOR' || isMaster;
-  const isGerente = role === 'GERENTE' || isGestor;
-  const isSuporte = role === 'SUPORTE' || isGestor;
-  const isDigitador = role === 'DIGITADOR' || isMaster;
+  // ==================================================
+  // DEFINIÇÃO DOS 6 GRUPOS PRINCIPAIS
+  // ==================================================
+  const navGroups: NavGroupConfig[] = [
+    // 1. INÍCIO
+    {
+      id: 'inicio',
+      title: 'Início',
+      visible: true,
+      items: [
+        {
+          id: role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle',
+          label: 'Dashboard / Início',
+          icon: LayoutDashboard,
+          color: 'blue',
+          visible: true,
+        },
+      ],
+    },
+
+    // 2. OPERAÇÃO
+    {
+      id: 'operacao',
+      title: 'Operação',
+      visible: true,
+      items: [
+        {
+          id: role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle',
+          label: 'Dashboard',
+          icon: LayoutDashboard,
+          color: 'blue',
+          visible: true,
+        },
+        {
+          id: 'central-pendencias',
+          label: 'Central de Pendências',
+          icon: AlertTriangle,
+          color: 'rose',
+          visible:
+            isGestor ||
+            isGerente ||
+            isSuporte ||
+            isMaster ||
+            hasPermission(role, activeUser?.customPermissions || [], 'pendencies.view'),
+          badge:
+            openPendenciesCount && openPendenciesCount > 0
+              ? { text: `🔴 ${openPendenciesCount}`, variant: 'alert' }
+              : undefined,
+        },
+        {
+          id: 'producao',
+          label: 'Propostas',
+          icon: FileSpreadsheet,
+          color: 'blue',
+          visible: role !== 'SIMULACAO',
+        },
+        {
+          id: 'simulacoes',
+          label: 'Simulações',
+          icon: Calculator,
+          color: 'violet',
+          visible: role !== 'DIGITADOR',
+        },
+        {
+          id: 'parceiros',
+          label: 'CRM de Parceiros',
+          icon: Handshake,
+          color: 'indigo',
+          visible:
+            isGerente ||
+            isGestor ||
+            isMaster ||
+            hasPermission(role, activeUser?.customPermissions || [], 'partners.crm.view') ||
+            hasPermission(role, activeUser?.customPermissions || [], 'partners.view'),
+        },
+      ],
+    },
+
+    // 3. INTEGRAÇÕES
+    {
+      id: 'integracoes',
+      title: 'Integrações',
+      visible:
+        isMaster ||
+        isPlatformMaster ||
+        hasPermission(role, activeUser?.customPermissions || [], 'integrations.view'),
+      items: [
+        {
+          id: 'hub-integracoes',
+          label: 'Hub de Integrações',
+          icon: Zap,
+          color: 'cyan',
+          visible: true,
+        },
+        {
+          id: 'promotoras',
+          label: 'Bancos & Promotoras',
+          icon: Building2,
+          color: 'sky',
+          visible: true,
+        },
+        {
+          id: 'admin-c6-bank',
+          label: 'Saúde das APIs',
+          icon: Activity,
+          color: 'emerald',
+          visible: true,
+        },
+      ],
+    },
+
+    // 4. GESTÃO
+    {
+      id: 'gestao',
+      title: 'Gestão',
+      visible: isGestor || isGerente || isMaster || isPlatformMaster,
+      items: [
+        {
+          id: 'dashboard-executivo',
+          label: 'BI Operacional',
+          icon: BarChart3,
+          color: 'indigo',
+          visible: isGestor || isMaster,
+        },
+        {
+          id: 'central-automacao',
+          label: 'Automações',
+          icon: Bot,
+          color: 'purple',
+          visible: isGestor || isMaster,
+          badge:
+            automationsCount && automationsCount > 0
+              ? { text: String(automationsCount), variant: 'ai' }
+              : undefined,
+        },
+        {
+          id: 'command-center',
+          label: 'Command Center',
+          icon: Shield,
+          color: 'rose',
+          visible:
+            isGestor ||
+            isGerente ||
+            isMaster ||
+            isPlatformMaster ||
+            hasPermission(role, activeUser?.customPermissions || [], 'command.view'),
+          badge: { text: 'AO VIVO', variant: 'alert' },
+        },
+        {
+          id: 'sentinela-ai',
+          label: 'Sentinel Intelligence',
+          icon: Sparkles,
+          color: 'violet',
+          visible: isGestor || isGerente || isMaster,
+        },
+      ],
+    },
+
+    // 5. ADMINISTRAÇÃO
+    {
+      id: 'administracao',
+      title: 'Administração',
+      visible:
+        isMaster ||
+        isPlatformMaster ||
+        hasPermission(role, activeUser?.customPermissions || [], 'admin.view'),
+      items: [
+        {
+          id: 'central-administracao',
+          label: 'Central de Administração',
+          icon: Shield,
+          color: 'indigo',
+          visible: true,
+        },
+      ],
+    },
+
+    // 6. PLATAFORMA
+    {
+      id: 'plataforma',
+      title: 'Plataforma',
+      visible: isPlatformMaster,
+      items: [
+        {
+          id: 'saas-tenants',
+          label: 'Empresas & Assinaturas',
+          icon: HardDrive,
+          color: 'fuchsia',
+          visible: isPlatformMaster,
+        },
+        {
+          id: 'admin-plano-consumo',
+          label: 'Meu Plano & Consumo',
+          icon: Layers,
+          color: 'emerald',
+          visible: isPlatformMaster,
+        },
+      ],
+    },
+  ];
 
   const renderNavItem = (item: NavItemConfig) => {
-    const isActive = currentView === item.id;
+    if (item.visible === false) return null;
+    const isActive = isViewActive(item.id);
     const Icon = item.icon;
     const style = colorStyles[item.color] || colorStyles.blue;
 
@@ -302,7 +590,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
         key={item.id}
         id={`nav-${item.id}`}
         onClick={() => onNavigate(item.id)}
-        title={isCollapsed ? item.label : undefined}
+        title={item.label}
         className={`group relative flex items-center w-full rounded-lg transition-all duration-150 cursor-pointer select-none text-left ${
           isCollapsed ? 'h-9 px-0 justify-center' : 'h-[34px] px-2.5 text-xs'
         } ${
@@ -311,14 +599,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent'
         }`}
       >
-        {/* Left active vertical indicator bar */}
+        {/* Indicador lateral da aba ativa */}
         {isActive && (
           <span
             className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r ${style.activeBar}`}
           />
         )}
 
-        {/* Semantic Icon with subtle colored container */}
+        {/* Ícone semântico padronizado */}
         <div
           className={`flex items-center justify-center shrink-0 rounded-md transition-colors ${
             isCollapsed ? 'h-7 w-7' : 'h-5 w-5 mr-2'
@@ -335,44 +623,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
           />
         </div>
 
-        {/* Item Label */}
+        {/* Nome do item (apenas no modo expandido) */}
         {!isCollapsed && (
           <span className="flex-1 truncate tracking-tight text-[12.5px] font-medium">
             {item.label}
           </span>
         )}
 
-        {/* Item Badge */}
+        {/* Badge limpo e funcional */}
         {!isCollapsed && item.badge && (
           <span
             className={`ml-auto px-1.5 py-0.5 rounded text-[9px] font-extrabold font-mono tracking-wide shrink-0 uppercase flex items-center gap-1 ${
-              item.badge.variant === 'live'
-                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse'
+              item.badge.variant === 'alert'
+                ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold'
                 : item.badge.variant === 'ai'
                 ? 'bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30'
-                : item.badge.variant === 'alert'
-                ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold'
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
             }`}
           >
-            {item.badge.variant === 'live' && (
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-            )}
             {item.badge.text}
           </span>
         )}
       </button>
-    );
-  };
-
-  const renderSectionHeader = (title: string) => {
-    if (isCollapsed) return <div className="my-2 border-t border-slate-200/60 dark:border-slate-800/80" />;
-    return (
-      <div className="px-2.5 pt-3 pb-1 flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 select-none">
-          {title}
-        </span>
-      </div>
     );
   };
 
@@ -383,32 +655,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
       }`}
     >
       {/* ==================================================
-          BLOCO DE IDENTIDADE & MARCA: SENTINEL CONSIG + EMPRESA ATUAL
+          BLOCO DE IDENTIDADE & MARCA: SENTINEL CONSIG + TENANT
       ================================================== */}
       {isCollapsed ? (
-        /* Versão Compacta (Ícone do Sentinel / Logo da Empresa) */
         <div className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col items-center gap-1.5 shrink-0">
           <div
             className="h-8 w-8 flex items-center justify-center shrink-0 cursor-pointer"
             title={`${SYSTEM_IDENTITY.name} - ${displayCompanyName}`}
-            onClick={() => onNavigate('torre-controle')}
+            onClick={() => onNavigate(role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle')}
           >
-            <img src={SYSTEM_IDENTITY.defaultLogo} alt={SYSTEM_IDENTITY.name} className="h-full w-full object-contain rounded-lg shadow-2xs" referrerPolicy="no-referrer" />
+            <img
+              src={SYSTEM_IDENTITY.defaultLogo}
+              alt={SYSTEM_IDENTITY.name}
+              className="h-full w-full object-contain rounded-lg shadow-2xs"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <span className="text-[8px] font-black uppercase tracking-tighter text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-400/15 px-1 py-0.2 rounded border border-blue-200 dark:border-blue-800/50 text-center leading-tight">
             {(effectiveBranding.plan || SYSTEM_IDENTITY.badge).substring(0, 3).toUpperCase()}
           </span>
         </div>
       ) : (
-        /* Versão Expandida: Sentinel Consig + Enterprise + Empresa Atual */
         <div className="p-3.5 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0 space-y-3">
-          {/* IDENTIDADE DO SISTEMA */}
           <div className="flex items-start gap-2.5">
             <div className="h-8.5 w-8.5 flex items-center justify-center shrink-0 mt-0.5">
-              <img src={SYSTEM_IDENTITY.defaultLogo} alt={SYSTEM_IDENTITY.name} className="h-full w-full object-contain rounded-lg shadow-2xs" referrerPolicy="no-referrer" />
+              <img
+                src={SYSTEM_IDENTITY.defaultLogo}
+                alt={SYSTEM_IDENTITY.name}
+                className="h-full w-full object-contain rounded-lg shadow-2xs"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
-              {/* Linha principal: Nome da Empresa / Sistema + ENTERPRISE */}
               <div className="flex items-center gap-1.5 flex-nowrap">
                 <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight truncate">
                   {SYSTEM_IDENTITY.name}
@@ -417,14 +695,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
                   {effectiveBranding.plan || SYSTEM_IDENTITY.badge}
                 </span>
               </div>
-              {/* Segunda linha: Razão / Subtítulo da Marca */}
               <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight mt-0.5 truncate">
                 {SYSTEM_IDENTITY.subtitle}
               </span>
             </div>
           </div>
 
-          {/* IDENTIDADE DO TENANT (EMPRESA ATUAL / AMBIENTE) */}
           <div className="bg-slate-50 dark:bg-slate-900/70 rounded-lg p-2.5 border border-slate-200/70 dark:border-slate-800/70">
             <div className="flex items-center justify-between gap-1 mb-1">
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -443,9 +719,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
             </div>
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded flex items-center justify-center shrink-0 bg-white dark:bg-slate-800 shadow-xs border border-slate-200/50 dark:border-slate-700/50">
-                <img 
-                  src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo} 
-                  alt={effectiveBranding.tenantName} 
+                <img
+                  src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo}
+                  alt={effectiveBranding.tenantName}
                   className="max-h-full max-w-full object-contain rounded-sm"
                   referrerPolicy="no-referrer"
                 />
@@ -461,342 +737,60 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
         </div>
       )}
 
-      {/* Scrollable Navigation Tree */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-1">
-        {/* ==================================================
-            1. VISÃO GERAL (Blue / Cyan / Violet)
-        ================================================== */}
-        {(isGestor || isSuporte || isDigitador) && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Visão Geral')}
+      {/* ==================================================
+          ÁRVORE DE NAVEGAÇÃO REORGANIZADA (6 GRUPOS)
+      ================================================== */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-2">
+        {navGroups
+          .filter((g) => g.visible)
+          .map((group) => {
+            const isExpanded = expandedGroups[group.id] ?? true;
+            const hasActiveItem = group.items.some((item) => item.visible !== false && isViewActive(item.id));
 
-            {isGestor &&
-              renderNavItem({
-                id: 'torre-controle',
-                label: 'Torre de Controle',
-                icon: LayoutDashboard,
-                color: 'blue',
-              })}
+            return (
+              <div key={group.id} className="space-y-0.5">
+                {isCollapsed ? (
+                  // Divisor sutil no modo recolhido
+                  <div className="my-1.5 border-t border-slate-200/60 dark:border-slate-800/80" />
+                ) : (
+                  // Cabeçalho Expansível do Grupo
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    className="w-full px-2.5 pt-2 pb-1 flex items-center justify-between text-slate-400 hover:text-slate-200 transition-colors cursor-pointer group select-none"
+                    title={`Recolher/Expandir ${group.title}`}
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-slate-300">
+                        {group.title}
+                      </span>
+                      {hasActiveItem && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      )}
+                    </div>
+                    <div className="p-0.5 rounded text-slate-500 group-hover:text-slate-300">
+                      {isExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                  </button>
+                )}
 
-            {isGestor &&
-              renderNavItem({
-                id: 'dashboard-executivo',
-                label: 'Dashboard Executivo',
-                icon: BarChart3,
-                color: 'violet',
-              })}
-
-            {renderNavItem({
-              id: 'tv-monitor',
-              label: 'Monitor TV',
-              icon: Tv,
-              color: 'cyan',
-              badge: { text: 'Live', variant: 'live' },
-            })}
-
-            {isGestor &&
-              renderNavItem({
-                id: 'radar-comercial',
-                label: 'Radar Comercial',
-                icon: TrendingUp,
-                color: 'amber',
-              })}
-
-            {renderNavItem({
-              id: 'gamificacao',
-              label: 'Conquistas & Metas',
-              icon: Trophy,
-              color: 'yellow',
-            })}
-          </div>
-        )}
-
-        {/* ==================================================
-            INTELIGÊNCIA (Purple)
-        ================================================== */}
-        {(isGestor || isSuporte || isDigitador) && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Inteligência & Operações')}
-            {renderNavItem({
-              id: 'central-operacoes',
-              label: 'Central de Operações',
-              icon: Activity,
-              color: 'blue',
-              badge: { text: 'Hub', variant: 'live' },
-            })}
-            {renderNavItem({
-              id: 'central-pendencias',
-              label: 'Central de Pendências',
-              icon: AlertTriangle,
-              color: 'rose',
-              badge: { text: 'SLA', variant: 'alert' },
-            })}
-            {renderNavItem({
-              id: 'central-automacao',
-              label: 'Central de Automação',
-              icon: Bot,
-              color: 'purple',
-              badge: { text: 'Engine', variant: 'live' },
-            })}
-            {renderNavItem({
-              id: 'sentinela-ai',
-              label: 'Sentinela AI',
-              icon: Bot,
-              color: 'purple',
-              badge: { text: 'Copilot', variant: 'ai' },
-            })}
-          </div>
-        )}
-
-        {/* ==================================================
-            2. OPERAÇÃO (Emerald / Blue / Violet / Amber)
-        ================================================== */}
-        {role !== 'SIMULACAO' && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Operação')}
-
-            {isDigitador &&
-              renderNavItem({
-                id: 'home-digitador',
-                label: 'Minha Produção',
-                icon: UserCheck,
-                color: 'emerald',
-              })}
-
-            {renderNavItem({
-              id: 'producao',
-              label: 'Todas as Propostas',
-              icon: FileSpreadsheet,
-              color: 'blue',
-            })}
-
-            {renderNavItem({
-              id: 'esteira',
-              label: 'Esteira Kanban',
-              icon: Kanban,
-              color: 'violet',
-            })}
-
-            {renderNavItem({
-              id: 'portabilidades',
-              label: 'Portabilidades (CIP)',
-              icon: ArrowLeftRight,
-              color: 'amber',
-            })}
-
-            {renderNavItem({
-              id: 'agenda-operacional',
-              label: 'Agenda & Tarefas',
-              icon: Calendar,
-              color: 'cyan',
-            })}
-
-            {isDigitador &&
-              renderNavItem({
-                id: 'importar-excel',
-                label: 'Importar Planilha',
-                icon: Upload,
-                color: 'emerald',
-              })}
-          </div>
-        )}
-
-        {/* ==================================================
-            3. SIMULAÇÕES (Violet)
-        ================================================== */}
-        {role !== 'DIGITADOR' && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Simulações')}
-            {renderNavItem({
-              id: 'simulacoes',
-              label: 'Simulações',
-              icon: Calculator,
-              color: 'violet',
-            })}
-          </div>
-        )}
-
-        {/* ==================================================
-            4. CLIENTES (Cyan / Blue)
-        ================================================== */}
-        {role !== 'SIMULACAO' && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Clientes')}
-
-            {renderNavItem({
-              id: 'clientes',
-              label: 'Clientes 360º',
-              icon: Users,
-              color: 'cyan',
-            })}
-
-            {renderNavItem({
-              id: 'busca-cpf',
-              label: 'Busca por CPF',
-              icon: Search,
-              color: 'blue',
-            })}
-          </div>
-        )}
-
-        {/* ==================================================
-            5. GESTÃO (Emerald / Indigo / Sky / Orange / Rose)
-        ================================================== */}
-        {(isGestor || isGerente || isSuporte) && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Gestão')}
-
-            {isGestor &&
-              renderNavItem({
-                id: 'financeiro-geral',
-                label: 'Financeiro',
-                icon: DollarSign,
-                color: 'emerald',
-              })}
-
-            {isGerente &&
-              renderNavItem({
-                id: 'parceiros',
-                label: 'Parceiros',
-                icon: Handshake,
-                color: 'indigo',
-              })}
-
-            {isGerente &&
-              renderNavItem({
-                id: 'promotoras',
-                label: 'Promotoras',
-                icon: Building2,
-                color: 'sky',
-              })}
-
-            {(isSuporte || isGestor) &&
-              renderNavItem({
-                id: 'suporte',
-                label: 'Suporte & Fila',
-                icon: Headphones,
-                color: 'orange',
-              })}
-
-            {(isGestor || isSuporte) &&
-              renderNavItem({
-                id: 'relatorio-gargalos',
-                label: 'Gargalos & SLA',
-                icon: Hourglass,
-                color: 'rose',
-              })}
-          </div>
-        )}
-
-        {/* ==================================================
-            6. ADMINISTRAÇÃO (Slate / Cyan / Purple / Amber / Sky / Emerald)
-        ================================================== */}
-        {isMaster && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Administração')}
-
-            {renderNavItem({
-              id: 'central-administracao',
-              label: 'Central de Administração',
-              icon: Shield,
-              color: 'indigo',
-              badge: {
-                text: 'Hub',
-                variant: 'live',
-              },
-            })}
-
-            {renderNavItem({
-              id: 'hub-integracoes',
-              label: 'Hub de Integrações',
-              icon: Zap,
-              color: 'cyan',
-              badge: {
-                text: 'APIs',
-                variant: 'live',
-              },
-            })}
-
-            {renderNavItem({
-              id: 'admin-usuarios',
-              label: 'Usuários',
-              icon: Users,
-              color: 'blue',
-            })}
-
-            {renderNavItem({
-              id: 'admin-plano-consumo',
-              label: 'Meu Plano & Consumo',
-              icon: HardDrive,
-              color: 'emerald',
-            })}
-
-            {renderNavItem({
-              id: 'admin-bancos',
-              label: 'Bancos & Vínculos',
-              icon: Building2,
-              color: 'cyan',
-            })}
-
-            {renderNavItem({
-              id: 'admin-c6-bank',
-              label: 'Integração Bancos',
-              icon: Zap,
-              color: 'amber',
-              badge: {
-                text: 'APIs',
-                variant: 'live',
-              },
-            })}
-
-            {renderNavItem({
-              id: 'admin-produtos',
-              label: 'Produtos & Regras',
-              icon: Layers,
-              color: 'purple',
-            })}
-
-            {renderNavItem({
-              id: 'admin-status',
-              label: 'Status do Sistema',
-              icon: Sliders,
-              color: 'amber',
-            })}
-
-            {renderNavItem({
-              id: 'admin-calendario',
-              label: 'Feriados & Prazos',
-              icon: Calendar,
-              color: 'sky',
-            })}
-
-            {renderNavItem({
-              id: 'admin-auditoria',
-              label: 'Trilha de Auditoria',
-              icon: ShieldCheck,
-              color: 'emerald',
-            })}
-          </div>
-        )}
-
-        {/* ==================================================
-            7. PLATAFORMA (Fuchsia / Magenta)
-        ================================================== */}
-        {isPlatformMaster && (
-          <div className="space-y-0.5">
-            {renderSectionHeader('Plataforma')}
-
-            {renderNavItem({
-              id: 'saas-tenants',
-              label: 'Empresas & Assinaturas',
-              icon: HardDrive,
-              color: 'fuchsia',
-            })}
-          </div>
-        )}
+                {/* Subitens do Grupo */}
+                {(isCollapsed || isExpanded) && (
+                  <div className="space-y-0.5">
+                    {group.items.map(renderNavItem)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
       </nav>
 
-      {/* Sidebar Footer / Collapse Toggle */}
+      {/* ==================================================
+          RODAPÉ / BOTÃO DE EXPANDIR OU RECOLHER
+      ================================================== */}
       <div className="p-2 border-t border-slate-200/80 dark:border-slate-800/80 shrink-0 bg-slate-50/50 dark:bg-slate-900/40">
         <button
           onClick={toggleCollapse}
@@ -821,4 +815,3 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     </aside>
   );
 };
-

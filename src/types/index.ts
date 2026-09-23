@@ -95,6 +95,7 @@ export interface BankPromoter {
 
 export interface Partner {
   id: string;
+  name?: string;
   fullName: string;
   login: string; // Identifier/Login/Code, e.g., AL155, JOCYANE@155, KAUAI@16740, 00123
   code?: string;

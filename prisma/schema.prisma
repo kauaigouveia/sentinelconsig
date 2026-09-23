@@ -158,6 +158,9 @@ model Tenant {
   // Core Relations
   users              User[]
   partners           Partner[]
+  partnerInteractions PartnerInteraction[]
+  partnerNotes       PartnerNote[]
+  partnerTasks       PartnerTask[]
   promoters          Promoter[]
   banks              Bank[]
   bankPromoters      BankPromoter[]
@@ -198,6 +201,16 @@ model Tenant {
   automations        Automation[]
   automationExecutions AutomationExecution[]
   integrationHealthLogs IntegrationHealthLog[]
+  intelligenceInsights IntelligenceInsight[]
+  intelligenceRuleConfigs IntelligenceRuleConfig[]
+  incidents          Incident[]
+  incidentTimelineEvents IncidentTimelineEvent[]
+  incidentSlaConfigs IncidentSlaConfig[]
+  incidentInsights   IncidentInsight[]
+  incidentPendencies IncidentPendency[]
+  incidentProposals  IncidentProposal[]
+  incidentPartners   IncidentPartner[]
+  incidentIntegrations IncidentIntegration[]
 
   @@index([slug])
   @@index([customDomain])
@@ -288,6 +301,19 @@ model User {
   createdAutomations                 Automation[]        @relation("CreatedAutomations")
   assignedPendencies                 Pendency[]          @relation("AssignedPendencies")
   resolvedPendencies                 Pendency[]          @relation("ResolvedPendencies")
+  assignedPartners                   Partner[]           @relation("AssignedPartners")
+  partnerInteractions                PartnerInteraction[]
+  partnerNotes                       PartnerNote[]
+  assignedPartnerTasks               PartnerTask[]       @relation("AssignedPartnerTasks")
+  createdPartnerTasks                PartnerTask[]       @relation("CreatedPartnerTasks")
+  completedPartnerTasks              PartnerTask[]       @relation("CompletedPartnerTasks")
+  resolvedInsights                   IntelligenceInsight[] @relation("ResolvedInsights")
+  acknowledgedInsights               IntelligenceInsight[] @relation("AcknowledgedInsights")
+  createdIncidents                   Incident[]            @relation("CreatedIncidents")
+  assignedIncidents                  Incident[]            @relation("AssignedIncidents")
+  acknowledgedIncidents              Incident[]            @relation("IncidentAcknowledgedBy")
+  resolvedIncidents                  Incident[]            @relation("IncidentResolvedBy")
+  closedIncidents                    Incident[]            @relation("IncidentClosedBy")
 
   // Security & Lifecycle
   lastLoginAt          DateTime? @map("last_login_at")
@@ -353,9 +379,17 @@ model Partner {
   phone      String?
   document   String?
 
+  assignedUserId String? @map("assigned_user_id")
+  assignedUser   User?   @relation("AssignedPartners", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
   proposals          Proposal[]
   simulationRequests SimulationRequest[]
   pendencies         Pendency[]
+  interactions       PartnerInteraction[]
+  notes              PartnerNote[]
+  tasks              PartnerTask[]
+  incidents          Incident[]
+  incidentPartners   IncidentPartner[]
 
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -365,7 +399,95 @@ model Partner {
   @@index([tenantId])
   @@index([code])
   @@index([name])
+  @@index([assignedUserId])
   @@map("partners")
+}
+
+model PartnerInteraction {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        String   @default("LIGAÇÃO") // LIGAÇÃO, WHATSAPP, E-MAIL, REUNIÃO, VISITA, OUTRO
+  date        DateTime @default(now())
+  subject     String
+  description String?
+  result      String?
+  nextAction  String?  @map("next_action")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([userId])
+  @@index([date])
+  @@map("partner_interactions")
+}
+
+model PartnerNote {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  authorId String @map("author_id")
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  content String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("partner_notes")
+}
+
+model PartnerTask {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+
+  assignedToId String? @map("assigned_to_id")
+  assignedTo   User?   @relation("AssignedPartnerTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdById String @map("created_by_id")
+  createdBy   User   @relation("CreatedPartnerTasks", fields: [createdById], references: [id], onDelete: Cascade)
+
+  completedById String? @map("completed_by_id")
+  completedBy   User?   @relation("CompletedPartnerTasks", fields: [completedById], references: [id], onDelete: SetNull)
+
+  priority    PriorityLevel @default(MEDIUM)
+  status      String        @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, CONCLUIDA, CANCELADA
+  dueDate     DateTime?     @map("due_date")
+  completedAt DateTime?     @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("partner_tasks")
 }
 
 model Promoter {
@@ -402,6 +524,7 @@ model Bank {
   bankPromoters BankPromoter[]
   proposals     Proposal[]
   pendencies    Pendency[]
+  incidents     Incident[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -451,6 +574,7 @@ model Product {
   ades        ADE[]
   simulations SimulationRequest[]
   pendencies  Pendency[]
+  incidents   Incident[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -476,6 +600,7 @@ model Convenio {
   ades        ADE[]
   simulations SimulationRequest[]
   pendencies  Pendency[]
+  incidents   Incident[]
 
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -693,6 +818,7 @@ model Proposal {
   notifications             Notification[]
   matchedSimulationRequests SimulationRequest[] @relation("MatchedSimulationRequests")
   pendencies                Pendency[]
+  incidentProposals         IncidentProposal[]
 
   @@unique([tenantId, proposalNumber])
   @@index([tenantId])
@@ -1204,10 +1330,14 @@ enum IncidentSeverity {
 }
 
 enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
   INVESTIGATING
   IDENTIFIED
+  MITIGATING
   MONITORING
   RESOLVED
+  CLOSED
 }
 
 model MonitoredService {
@@ -1424,6 +1554,11 @@ model Pendency {
   title       String
   description String?
 
+  source        String    @default("MANUAL") @map("source") // MANUAL, EVENTO, AUTOMACAO, INTEGRACAO, SISTEMA
+  sourceEventId String?   @map("source_event_id")
+  resolution    String?   @map("resolution")
+  metadata      Json?     @map("metadata")
+
   proposalId   String?   @map("proposal_id")
   proposal     Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
   simulationId String?   @map("simulation_id")
@@ -1433,6 +1568,7 @@ model Pendency {
 
   assignedToId String?   @map("assigned_to_id")
   assignedTo   User?     @relation("AssignedPendencies", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedAt   DateTime? @map("assigned_at")
 
   bankId       String?   @map("bank_id")
   bank         Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
@@ -1451,7 +1587,8 @@ model Pendency {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  histories    PendencyHistory[]
+  histories          PendencyHistory[]
+  incidentPendencies IncidentPendency[]
 
   @@index([tenantId])
   @@index([status])
@@ -1461,6 +1598,7 @@ model Pendency {
   @@index([partnerId])
   @@index([assignedToId])
   @@index([slaDeadline])
+  @@index([sourceEventId])
   @@index([createdAt])
   @@map("pendencies")
 }
@@ -1566,6 +1704,371 @@ model IntegrationHealthLog {
   @@index([success])
   @@map("integration_health_logs")
 }
+
+// ==========================================
+// SENTINEL INTELLIGENCE (FASE 7)
+// ==========================================
+
+enum IntelligenceInsightType {
+  ANOMALY
+  TREND
+  CORRELATION
+  BOTTLENECK
+  INTEGRATION
+  SLA
+  CONVERSION
+  PRODUCTION
+  CANCELLATION
+  REFUSAL
+  PARTNER
+  BANK
+  PRODUCT
+  CONVENIO
+  OPERATOR
+}
+
+enum IntelligenceSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IntelligenceStatus {
+  NEW
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+model IntelligenceInsight {
+  id               String                  @id @default(cuid())
+  tenantId         String                  @map("tenant_id")
+  tenant           Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type             IntelligenceInsightType
+  category         String                  // PRODUCTION, CONVERSION, INTEGRATION, SLA, PARTNER, BOTTLENECK, CANCELLATION, REFUSAL, etc.
+  severity         IntelligenceSeverity    @default(MEDIUM)
+  title            String
+  summary          String                  @db.Text
+  explanation      String?                 @db.Text
+  status           IntelligenceStatus      @default(NEW)
+  confidence       Float                   @default(0.8) // 0.0 to 1.0 (evidential strength indicator)
+  detectedAt       DateTime                @default(now()) @map("detected_at")
+
+  periodStart      DateTime                @map("period_start")
+  periodEnd        DateTime                @map("period_end")
+  comparisonStart  DateTime?               @map("comparison_start")
+  comparisonEnd    DateTime?               @map("comparison_end")
+
+  entityType       String?                 @map("entity_type") // BANK, PARTNER, PRODUCT, CONVENIO, INTEGRATION, OPERATOR, STATUS
+  entityId         String?                 @map("entity_id")
+  entityName       String?                 @map("entity_name")
+
+  metadata         Json?
+  evidence         Json                    // Array of structured evidence objects
+  suggestedActions Json                    // Array of suggested action descriptors
+  dedupKey         String                  @map("dedup_key") // Deterministic deduplication hash
+
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  
+  resolvedAt       DateTime?               @map("resolved_at")
+  resolvedById     String?                 @map("resolved_by_id")
+  resolvedBy       User?                   @relation("ResolvedInsights", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  acknowledgedAt   DateTime?               @map("acknowledged_at")
+  acknowledgedById String?                 @map("acknowledged_by_id")
+  acknowledgedBy   User?                   @relation("AcknowledgedInsights", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  incidentInsights IncidentInsight[]
+
+  @@index([tenantId])
+  @@index([dedupKey])
+  @@index([status])
+  @@index([severity])
+  @@index([category])
+  @@index([type])
+  @@index([detectedAt])
+  @@index([entityType, entityId])
+  @@map("intelligence_insights")
+}
+
+model IntelligenceRuleConfig {
+  id          String               @id @default(cuid())
+  tenantId    String               @map("tenant_id")
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  ruleId      String               @map("rule_id")
+  name        String
+  category    String
+  description String?
+  enabled     Boolean              @default(true)
+  severity    IntelligenceSeverity @default(MEDIUM)
+  threshold   Float?
+  config      Json?
+
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@unique([tenantId, ruleId])
+  @@index([tenantId])
+  @@index([ruleId])
+  @@index([enabled])
+  @@map("intelligence_rule_configs")
+}
+
+// ==========================================
+// FASE 8: SENTINEL COMMAND CENTER
+// ==========================================
+
+enum IncidentType {
+  INTEGRATION
+  PRODUCTION
+  CONVERSION
+  SLA
+  PARTNER
+  PROPOSAL
+  SIMULATION
+  SYSTEM
+  SECURITY
+  OPERATIONAL
+  INTELLIGENCE
+}
+
+enum IncidentSource {
+  INTELLIGENCE
+  INTEGRATION
+  BI
+  PENDENCY
+  AUTOMATION
+  SYSTEM
+  MANUAL
+}
+
+model Incident {
+  id                     String            @id @default(cuid())
+  tenantId               String            @map("tenant_id")
+  tenant                 Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  incidentNumber         String            @map("incident_number") // e.g. INC-2026-0001
+  title                  String
+  description            String?           @db.Text
+  type                   IncidentType      @default(OPERATIONAL)
+  severity               IncidentSeverity  @default(MEDIUM)
+  status                 IncidentStatus    @default(OPEN)
+  source                 IncidentSource    @default(MANUAL)
+
+  dedupKey               String?           @map("dedup_key") // Deterministic deduplication hash
+
+  // Impact Dimensions
+  bankId                 String?           @map("bank_id")
+  bank                   Bank?             @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  productId              String?           @map("product_id")
+  product                Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  convenioId             String?           @map("convenio_id")
+  convenio               Convenio?         @relation(fields: [convenioId], references: [id], onDelete: SetNull)
+  partnerId              String?           @map("partner_id")
+  partner                Partner?          @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  integrationSlug        String?           @map("integration_slug") // c6, facta, bmg, happy
+
+  // Financial and Operational Impact (Calculated snapshot)
+  impactProposalsCount   Int               @default(0) @map("impact_proposals_count")
+  impactProposalsVolume  Decimal           @default(0) @map("impact_proposals_volume") @db.Decimal(14, 2)
+  impactSimulationsCount Int               @default(0) @map("impact_simulations_count")
+  impactPartnersCount    Int               @default(0) @map("impact_partners_count")
+  impactSummary          String?           @db.Text @map("impact_summary")
+
+  // SLA & Timeline Tracking
+  slaMinutesTarget       Int               @default(240) @map("sla_minutes_target")
+  slaAcknowledgeTarget   Int               @default(30) @map("sla_acknowledge_target")
+  slaDeadline            DateTime?         @map("sla_deadline")
+
+  acknowledgedAt         DateTime?         @map("acknowledged_at")
+  acknowledgedById       String?           @map("acknowledged_by_id")
+  acknowledgedBy         User?             @relation("IncidentAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  investigatingAt        DateTime?         @map("investigating_at")
+  mitigatingAt           DateTime?         @map("mitigating_at")
+  monitoringAt           DateTime?         @map("monitoring_at")
+
+  resolvedAt             DateTime?         @map("resolved_at")
+  resolvedById           String?           @map("resolved_by_id")
+  resolvedBy             User?             @relation("IncidentResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolutionNotes        String?           @db.Text @map("resolution_notes")
+
+  closedAt               DateTime?         @map("closed_at")
+  closedById             String?           @map("closed_by_id")
+  closedBy               User?             @relation("IncidentClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  closureNotes           String?           @db.Text @map("closure_notes")
+
+  assignedToId           String?           @map("assigned_to_id")
+  assignedTo             User?             @relation("AssignedIncidents", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedAt             DateTime?         @map("assigned_at")
+
+  createdById            String?           @map("created_by_id")
+  createdBy              User?             @relation("CreatedIncidents", fields: [createdById], references: [id], onDelete: SetNull)
+
+  metadata               Json?
+  tags                   String[]          @default([])
+
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  timelineEvents         IncidentTimelineEvent[]
+  incidentInsights       IncidentInsight[]
+  incidentPendencies     IncidentPendency[]
+  incidentProposals      IncidentProposal[]
+  incidentPartners       IncidentPartner[]
+  incidentIntegrations   IncidentIntegration[]
+
+  @@unique([tenantId, incidentNumber])
+  @@index([tenantId])
+  @@index([status])
+  @@index([severity])
+  @@index([type])
+  @@index([source])
+  @@index([assignedToId])
+  @@index([dedupKey])
+  @@index([createdAt])
+  @@map("incidents")
+}
+
+model IncidentInsight {
+  id         String              @id @default(cuid())
+  tenantId   String              @map("tenant_id")
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  incidentId String              @map("incident_id")
+  incident   Incident            @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  insightId  String              @map("insight_id")
+  insight    IntelligenceInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  createdAt  DateTime            @default(now()) @map("created_at")
+
+  @@unique([incidentId, insightId])
+  @@index([tenantId])
+  @@index([incidentId])
+  @@index([insightId])
+  @@map("incident_insights")
+}
+
+model IncidentPendency {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  pendencyId String   @map("pendency_id")
+  pendency   Pendency @relation(fields: [pendencyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([incidentId, pendencyId])
+  @@index([tenantId])
+  @@index([incidentId])
+  @@index([pendencyId])
+  @@map("incident_pendencies")
+}
+
+model IncidentProposal {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  incidentId   String   @map("incident_id")
+  incident     Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  proposalId   String   @map("proposal_id")
+  proposal     Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  relationType String   @default("AFFECTED") @map("relation_type") // AFFECTED, SUSPECT, ROOT_CAUSE
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([incidentId, proposalId])
+  @@index([tenantId])
+  @@index([incidentId])
+  @@index([proposalId])
+  @@map("incident_proposals")
+}
+
+model IncidentPartner {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  partnerId  String   @map("partner_id")
+  partner    Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([incidentId, partnerId])
+  @@index([tenantId])
+  @@index([incidentId])
+  @@index([partnerId])
+  @@map("incident_partners")
+}
+
+model IncidentIntegration {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  slug       String   // c6, facta, bmg, happy
+  bankName   String   @map("bank_name")
+  status     String   @default("DEGRADED")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([incidentId, slug])
+  @@index([tenantId])
+  @@index([incidentId])
+  @@index([slug])
+  @@map("incident_integrations")
+}
+
+model IncidentTimelineEvent {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  incidentId  String   @map("incident_id")
+  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  type        String   // STATUS_CHANGE, SEVERITY_CHANGE, ASSIGNMENT, COMMENT, PENDENCY_CREATED, INSIGHT_LINKED, INTEGRATION_RECOVERY, AUTOMATION_TRIGGERED, IMPACT_RECALCULATED, SYSTEM_ALERT
+  title       String
+  description String?  @db.Text
+  userId      String?  @map("user_id")
+  userName    String?  @map("user_name")
+  oldValue    String?  @map("old_value")
+  newValue    String?  @map("new_value")
+  metadata    Json?
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([incidentId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("incident_timeline_events")
+}
+
+model IncidentSlaConfig {
+  id                 String            @id @default(cuid())
+  tenantId           String            @map("tenant_id")
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  severity           IncidentSeverity
+  type               IncidentType?
+  acknowledgeMinutes Int               @default(30) @map("acknowledge_minutes")
+  resolveMinutes     Int               @default(240) @map("resolve_minutes")
+  escalateMinutes    Int               @default(180) @map("escalate_minutes")
+
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  @@unique([tenantId, severity, type])
+  @@index([tenantId])
+  @@map("incident_sla_configs")
+}
+
+
 
 
 

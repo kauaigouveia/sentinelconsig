@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   TrendingUp,
   RefreshCw,
+  Calendar,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { UserManagement } from './UserManagement';
@@ -28,6 +29,9 @@ import { ProductManagement } from './ProductManagement';
 import { ConvenioManagement } from './ConvenioManagement';
 import { BankPromoterManagement } from './BankPromoterManagement';
 import { OperationalRulesManagement } from './OperationalRulesManagement';
+import { StatusManagement } from './StatusManagement';
+import { HolidayManagement } from './HolidayManagement';
+import { PlatformMasterCentral } from '../saas/PlatformMasterCentral';
 import { CentralPendencias } from './CentralPendencias';
 import { CentralAutomacoes } from './CentralAutomacoes';
 import { HubIntegracoes } from './HubIntegracoes';
@@ -45,10 +49,12 @@ export type AdminTab =
   | 'convenios'
   | 'banks'
   | 'rules'
+  | 'status'
+  | 'calendario'
+  | 'audit'
   | 'pendencies'
   | 'automations'
   | 'integrations'
-  | 'audit'
   | 'whitelabel'
   | 'announcements'
   | 'domains';
@@ -92,10 +98,12 @@ export const CentralAdministracao: React.FC = () => {
     { id: 'convenios', label: 'Convênios', icon: FileText, badge: overviewData?.conveniosCount },
     { id: 'banks', label: 'Bancos & Promotoras', icon: Landmark, badge: overviewData?.banksCount },
     { id: 'rules', label: 'Regras Operacionais', icon: Sliders, badge: overviewData?.rulesCount },
+    { id: 'status', label: 'Status do Sistema', icon: Sliders, badge: null },
+    { id: 'calendario', label: 'Feriados & Prazos', icon: Calendar, badge: null },
+    { id: 'audit', label: 'Trilha de Auditoria', icon: History, badge: overviewData?.auditIntegrityStatus === 'VALID' ? 'SHA-256 OK' : null },
     { id: 'pendencies', label: 'Central de Pendências', icon: AlertTriangle, badge: overviewData?.openPendenciesCount, alert: Boolean(overviewData?.openPendenciesCount) },
     { id: 'automations', label: 'Central de Automação', icon: Bot, badge: overviewData?.activeAutomationsCount },
     { id: 'integrations', label: 'Hub de Integrações', icon: Zap, badge: '4 Conexões' },
-    { id: 'audit', label: 'Auditoria & Integridade', icon: History, badge: overviewData?.auditIntegrityStatus === 'VALID' ? 'SHA-256 OK' : null },
     { id: 'whitelabel', label: 'White Label & Marca', icon: Settings, badge: null },
     { id: 'announcements', label: 'Comunicados', icon: Sparkles, badge: null },
     ...(isPlatformMaster ? [{ id: 'domains', label: 'Domínios Customizados', icon: Shield, badge: null }] : []),
@@ -330,12 +338,15 @@ export const CentralAdministracao: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'tenants' && <PlatformMasterCentral />}
           {activeTab === 'users' && <UserManagement />}
           {activeTab === 'roles' && <PerfisPermissoesView />}
           {activeTab === 'products' && <ProductManagement />}
           {activeTab === 'convenios' && <ConvenioManagement />}
           {activeTab === 'banks' && <BankPromoterManagement />}
           {activeTab === 'rules' && <OperationalRulesManagement />}
+          {activeTab === 'status' && <StatusManagement />}
+          {activeTab === 'calendario' && <HolidayManagement />}
           {activeTab === 'pendencies' && <CentralPendencias />}
           {activeTab === 'automations' && <CentralAutomacoes />}
           {activeTab === 'integrations' && <HubIntegracoes />}
