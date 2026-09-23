@@ -1343,15 +1343,36 @@ export class StorageService {
         const formattedProducts = dbProducts.map((pr: any) => ({
           id: pr.id,
           name: pr.name,
+          code: pr.code || '',
           description: pr.description || '',
           type: pr.type || 'NOVO',
-          allowsMultipleAde: true,
-          requiresPortabilityRelation: pr.type === 'PORTABILIDADE' && (pr.name.includes('REFIN') || pr.name.includes('PORT')),
+          scope: pr.scope || 'GLOBAL',
+          tenantId: pr.tenantId || null,
+          allowsMultipleAde: pr.allowsMultipleAde !== undefined ? pr.allowsMultipleAde : true,
+          requiresPortabilityRelation: pr.requiresPortabilityRelation !== undefined ? pr.requiresPortabilityRelation : (pr.type === 'REFIN_PORTABILIDADE' || pr.name.includes('REFIN')),
           active: pr.active,
+          convenioIds: pr.convenioIds || [],
           createdAt: pr.createdAt,
           updatedAt: pr.updatedAt,
         }));
         localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(formattedProducts));
+      }
+
+      // 7.1 Fetch Convenios
+      const dbConvenios = await safeFetch('/api/convenios');
+      if (Array.isArray(dbConvenios)) {
+        const formattedConvenios = dbConvenios.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code || '',
+          description: c.description || '',
+          scope: c.scope || 'GLOBAL',
+          active: c.active !== undefined ? Boolean(c.active) : true,
+          tenantId: c.tenantId || null,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt,
+        }));
+        localStorage.setItem(STORAGE_KEYS.CONVENIOS, JSON.stringify(formattedConvenios));
       }
 
       // 8. Fetch BankPromoters (Matrix)
@@ -3480,10 +3501,12 @@ export class StorageService {
     const relations = this.getProposalRelations();
     const pendings = this.getPendings();
     return list.map(p => {
-      const rel = relations.find(r => r.refinProposalId === p.id);
+      const relRefin = relations.find(r => r.refinProposalId === p.id);
+      const relPort = relations.find(r => r.portabilityProposalId === p.id);
+      const resolvedRelId = p.relatedPortabilityId || relRefin?.portabilityProposalId || relPort?.refinProposalId;
       return {
         ...p,
-        relatedPortabilityId: rel?.portabilityProposalId,
+        relatedPortabilityId: resolvedRelId,
         pendencies: pendings.filter(pen => pen.proposalId === p.id),
       };
     });
@@ -3492,10 +3515,12 @@ export class StorageService {
   public static getProposalById(id: string): Proposal | undefined {
     const p = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS).find(prop => prop.id === id);
     if (!p) return undefined;
-    const rel = this.getProposalRelations().find(r => r.refinProposalId === id);
+    const relRefin = this.getProposalRelations().find(r => r.refinProposalId === id);
+    const relPort = this.getProposalRelations().find(r => r.portabilityProposalId === id);
+    const resolvedRelId = p.relatedPortabilityId || relRefin?.portabilityProposalId || relPort?.refinProposalId;
     return {
       ...p,
-      relatedPortabilityId: rel?.portabilityProposalId,
+      relatedPortabilityId: resolvedRelId,
       pendencies: this.getPendings(p.id),
       statusHistory: this.getStatusHistory(p.id),
       comments: this.getComments(p.id),

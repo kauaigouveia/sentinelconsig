@@ -37,6 +37,29 @@ interface NewProductionModalProps {
   onSuccess: (count: number) => void;
 }
 
+const isPortProduct = (p?: any) => {
+  if (!p) return false;
+  const nameUpper = p.name?.toUpperCase() || '';
+  const codeUpper = p.code?.toUpperCase() || '';
+  return p.type === 'PORTABILIDADE' || nameUpper === 'PORTABILIDADE' || nameUpper.includes('PORTABILIDADE') || codeUpper === 'PORTABILIDADE';
+};
+
+const isRefinPortProduct = (p?: any) => {
+  if (!p) return false;
+  const nameUpper = p.name?.toUpperCase() || '';
+  const codeUpper = p.code?.toUpperCase() || '';
+  return (
+    p.requiresPortabilityRelation === true ||
+    p.type === 'REFIN_PORTABILIDADE' ||
+    nameUpper === 'REFIN DA PORTABILIDADE' ||
+    nameUpper === 'PORTAB/REFIN' ||
+    nameUpper.includes('PORTAB/REFIN') ||
+    nameUpper.includes('REFIN DA PORTABILIDADE') ||
+    codeUpper === 'PORTAB_REFIN' ||
+    codeUpper === 'REFIN_PORTABILIDADE'
+  );
+};
+
 export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   isOpen,
   onClose,
@@ -224,7 +247,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
     let defaultLinkIndex: number | undefined = undefined;
     const existingPortIndex = adeRows.findIndex(r => {
       const prod = products.find(p => p.id === r.productId);
-      return prod?.name === 'PORTABILIDADE' || prod?.type === 'PORTABILIDADE';
+      return isPortProduct(prod);
     });
     if (existingPortIndex !== -1) {
       defaultLinkIndex = existingPortIndex;
@@ -278,15 +301,25 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       // If product changed to REFIN DA PORTABILIDADE, auto-select link to preceding PORTABILIDADE row
       if (field === 'productId') {
         const selectedProd = products.find(p => p.id === value);
-        if (
-          selectedProd?.name === 'REFIN DA PORTABILIDADE' ||
-          selectedProd?.requiresPortabilityRelation ||
-          selectedProd?.name?.toUpperCase().includes('REFIN')
-        ) {
+        const nameUpper = selectedProd?.name?.toUpperCase() || '';
+        const codeUpper = selectedProd?.code?.toUpperCase() || '';
+        const isRefinPort =
+          selectedProd?.requiresPortabilityRelation === true ||
+          selectedProd?.type === 'REFIN_PORTABILIDADE' ||
+          nameUpper === 'REFIN DA PORTABILIDADE' ||
+          nameUpper === 'PORTAB/REFIN' ||
+          nameUpper.includes('PORTAB/REFIN') ||
+          nameUpper.includes('REFIN DA PORTABILIDADE') ||
+          codeUpper === 'PORTAB_REFIN' ||
+          codeUpper === 'REFIN_PORTABILIDADE';
+
+        if (isRefinPort) {
           const portIndex = updated.findIndex((r, idx) => {
             if (idx === index) return false;
             const pObj = products.find(p => p.id === r.productId);
-            return pObj?.name === 'PORTABILIDADE' || pObj?.type === 'PORTABILIDADE';
+            const otherNameUpper = pObj?.name?.toUpperCase() || '';
+            const otherCodeUpper = pObj?.code?.toUpperCase() || '';
+            return pObj?.type === 'PORTABILIDADE' || otherNameUpper === 'PORTABILIDADE' || otherNameUpper.includes('PORTABILIDADE') || otherCodeUpper === 'PORTABILIDADE';
           });
           if (portIndex !== -1) {
             row.linkWithPortabilityIndex = portIndex;
@@ -371,16 +404,13 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
     for (let i = 0; i < adeRows.length; i++) {
       const row = adeRows[i];
       const prod = products.find(p => p.id === row.productId);
-      const isRefinPort =
-        prod?.name === 'REFIN DA PORTABILIDADE' ||
-        prod?.requiresPortabilityRelation ||
-        prod?.name?.toUpperCase().includes('REFIN');
+      const isRefinPort = isRefinPortProduct(prod);
 
       if (isRefinPort) {
         const hasBatchPort = adeRows.some((r, idx) => {
           if (idx === i) return false;
           const p = products.find(pr => pr.id === r.productId);
-          return p?.name === 'PORTABILIDADE' || p?.type === 'PORTABILIDADE';
+          return isPortProduct(p);
         });
 
         let hasDbPort = false;
@@ -389,7 +419,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           const clientProps = StorageService.getProposalsByClientId(existingClient.id);
           hasDbPort = clientProps.some(p => {
             const pr = products.find(prodObj => prodObj.id === p.productId);
-            return pr?.name === 'PORTABILIDADE' || pr?.type === 'PORTABILIDADE';
+            return isPortProduct(pr);
           });
         }
 
@@ -422,7 +452,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       const createdProposalMap = new Map<number, any>();
       const portRowIndex = adeRows.findIndex(r => {
         const prod = products.find(p => p.id === r.productId);
-        return prod?.name === 'PORTABILIDADE' || prod?.type === 'PORTABILIDADE';
+        return isPortProduct(prod);
       });
 
       // First pass: Create PORTABILIDADE proposals first
@@ -430,7 +460,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       for (let i = 0; i < adeRows.length; i++) {
         const row = adeRows[i];
         const prod = products.find(p => p.id === row.productId);
-        const isPort = prod?.name === 'PORTABILIDADE' || prod?.type === 'PORTABILIDADE';
+        const isPort = isPortProduct(prod);
 
         if (isPort) {
           const prop = await StorageService.createProposalAsync({
@@ -462,7 +492,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       for (let i = 0; i < adeRows.length; i++) {
         const row = adeRows[i];
         const prod = products.find(p => p.id === row.productId);
-        const isPort = prod?.name === 'PORTABILIDADE' || prod?.type === 'PORTABILIDADE';
+        const isPort = isPortProduct(prod);
 
         if (!isPort) {
           let relatedPortabilityId: string | undefined = undefined;
@@ -476,7 +506,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             const clientProps = StorageService.getProposalsByClientId(client.id);
             const existingPort = clientProps.find(p => {
               const pObj = products.find(pr => pr.id === p.productId);
-              return pObj?.name === 'PORTABILIDADE' || pObj?.type === 'PORTABILIDADE';
+              return isPortProduct(pObj);
             });
             if (existingPort) {
               relatedPortabilityId = existingPort.id;
@@ -765,11 +795,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                   {adeRows.map((row, idx) => {
                     const allowedPromoters = StorageService.getPromotersForBank(row.bankId);
                     const selectedProd = products.find(p => p.id === row.productId);
-                    const isRefinPort = selectedProd?.name === 'REFIN DA PORTABILIDADE';
-                    const isPort =
-                      selectedProd?.name === 'PORTABILIDADE' ||
-                      selectedProd?.type === 'PORTABILIDADE' ||
-                      selectedProd?.name?.toUpperCase().includes('PORT');
+                    const isRefinPort = isRefinPortProduct(selectedProd);
+                    const isPort = isPortProduct(selectedProd);
 
                     const availableProducts = row.convenioId
                       ? StorageService.getProductsForConvenio(row.convenioId).filter(p => p.active)
@@ -916,7 +943,30 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                                 })}
                               </select>
                             </div>
-                          ) : (
+                          ) : isPort ? (() => {
+                            const portRowIndex = adeRows.findIndex(r => {
+                              const prod = products.find(p => p.id === r.productId);
+                              return isPortProduct(prod);
+                            });
+                            const linkingRowIdx = adeRows.findIndex((other, oIdx) => {
+                              const otherProd = products.find(p => p.id === other.productId);
+                              return isRefinPortProduct(otherProd) && (
+                                other.linkWithPortabilityIndex === idx ||
+                                (other.linkWithPortabilityIndex === undefined && idx === portRowIndex)
+                              );
+                            });
+                            if (linkingRowIdx !== -1) {
+                              const linkingRow = adeRows[linkingRowIdx];
+                              const linkingProd = products.find(p => p.id === linkingRow.productId);
+                              return (
+                                <div className="flex items-center gap-1.5 text-[10px] text-purple-700 dark:text-purple-300 font-semibold bg-purple-50 dark:bg-purple-950/40 px-2 py-1 rounded border border-purple-200 dark:border-purple-900/60 w-fit">
+                                  <Link2 className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                                  <span>Será vinculado ao salvar ({linkingProd?.name || 'PORTAB/REFIN'})</span>
+                                </div>
+                              );
+                            }
+                            return <span className="text-slate-400 dark:text-slate-600 text-[10px] block text-center">-</span>;
+                          })() : (
                             <span className="text-slate-400 dark:text-slate-600 text-[10px] block text-center">-</span>
                           )}
                         </td>
