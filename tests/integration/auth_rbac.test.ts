@@ -232,4 +232,67 @@ describe('Integration: Multi-tenant RBAC & Tenant Switching', () => {
     expect(switchData.role).toBe('PLATFORM_MASTER');
     expect(switchData.tenantId).toBe(tenant2Id);
   });
+
+  it('should allow PLATFORM_MASTER with CANCELLED default tenant to pass session validation while rejecting regular user', async () => {
+    // 1. Mark Tenant 1 (Alfa) as CANCELLED
+    await prisma.tenant.update({
+      where: { id: tenant1Id },
+      data: { status: 'CANCELLED' },
+    });
+
+    try {
+      // 2. Try validating regular user session (should fail-closed with 403 because tenant is CANCELLED)
+      const regToken = 'regular-session-token-123';
+      // Re-create regular user session if it was deleted or expired
+      await prisma.session.deleteMany({ where: { token: regToken } }).catch(() => {});
+      await prisma.session.create({
+        data: {
+          userId: regularUserId,
+          token: regToken,
+          expiresAt: new Date(Date.now() + 1000 * 3600),
+          effectiveTenantId: tenant1Id,
+          activeRole: 'DIGITADOR',
+          activePermissions: { set: ['proposals.view'] },
+        },
+      });
+
+      const regRes = await fetch(`${baseUrl}/api/auth/session`, {
+        headers: { Cookie: `cg_session_id=${regToken}` },
+      });
+      expect(regRes.status).toBe(403);
+
+      // 3. Try validating PLATFORM_MASTER session (should succeed with 200 because PLATFORM_MASTER bypasses the default tenant status check)
+      const masterToken = 'master-session-token-999';
+      await prisma.session.deleteMany({ where: { token: masterToken } }).catch(() => {});
+      await prisma.session.create({
+        data: {
+          userId: masterUserId,
+          token: masterToken,
+          expiresAt: new Date(Date.now() + 1000 * 3600),
+          effectiveTenantId: tenant1Id,
+          activeRole: 'PLATFORM_MASTER',
+        },
+      });
+
+      // Update master user's direct tenantId in the database to Tenant 1 (which is CANCELLED)
+      await prisma.user.update({
+        where: { id: masterUserId },
+        data: { tenantId: tenant1Id },
+      });
+
+      const masterRes = await fetch(`${baseUrl}/api/auth/session`, {
+        headers: { Cookie: `cg_session_id=${masterToken}` },
+      });
+      expect(masterRes.status).toBe(200);
+      const masterData = await masterRes.json();
+      expect(masterData.authenticated).toBe(true);
+      expect(masterData.user.email).toBe('master.integration@sentinel.com');
+    } finally {
+      // Restore Tenant 1 status to ACTIVE for subsequent tests or cleanup
+      await prisma.tenant.update({
+        where: { id: tenant1Id },
+        data: { status: 'ACTIVE' },
+      });
+    }
+  });
 });

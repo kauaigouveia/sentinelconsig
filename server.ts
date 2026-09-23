@@ -911,7 +911,7 @@ async function auditAndEnsureMasterUser() {
 
       if (
         !session.user.active ||
-        (session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
+        (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
       ) {
         await AdminContextManager.clearContext(session.id, prisma);
         await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
