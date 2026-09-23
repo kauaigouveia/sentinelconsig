@@ -58,6 +58,125 @@ export { app };
 // Trust first proxy for Cloud Run/Vercel/Nginx reverse proxy IP extraction
 app.set('trust proxy', 1);
 
+// Catálogo Padrão de Produtos Globais (13 Produtos Globais do Sentinel Consig)
+export const DEFAULT_GLOBAL_PRODUCTS: Array<{
+  name: string;
+  code: string;
+  type: ProposalType;
+  description: string;
+  requiresPortabilityRelation: boolean;
+  allowsMultipleAde: boolean;
+}> = [
+  { name: 'AGREG. DE MARGEM', code: 'AGREG_MARGEM', type: 'NOVO', description: 'Agregação de margem consignável', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'CARTAO', code: 'CARTAO', type: 'CARTAO_RMC', description: 'Cartão de crédito consignado', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'CARTÃO COM SAQUE', code: 'CARTAO_COM_SAQUE', type: 'CARTAO_RMC', description: 'Cartão consignado com saque autorizado', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'CARTÃO SEM SAQUE', code: 'CARTAO_SEM_SAQUE', type: 'CARTAO_RMC', description: 'Cartão consignado sem operação de saque', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'COMPRA', code: 'COMPRA', type: 'PORTABILIDADE', description: 'Compra de dívida / portabilidade com troco', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'CONTA SIMPLES', code: 'CONTA_SIMPLES', type: 'NOVO', description: 'Operação de crédito em conta simples', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'NOVO', code: 'NOVO', type: 'NOVO', description: 'Contrato novo de empréstimo consignado', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'PORTAB/REFIN', code: 'PORTAB_REFIN', type: 'REFIN_PORTABILIDADE', description: 'Portabilidade associada a refinanciamento', requiresPortabilityRelation: true, allowsMultipleAde: true },
+  { name: 'PORTABILIDADE', code: 'PORTABILIDADE', type: 'PORTABILIDADE', description: 'Portabilidade de crédito consignado', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'REFIN.RECORRENTE', code: 'REFIN_RECORRENTE', type: 'REFIN', description: 'Refinanciamento recorrente de contrato', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'REFINANCIAMENTO', code: 'REFINANCIAMENTO', type: 'REFIN', description: 'Refinanciamento de contrato ativo', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'SAQUE COMPL.', code: 'SAQUE_COMPL', type: 'SAQUE_COMPLEMENTAR', description: 'Saque complementar de limite consignado', requiresPortabilityRelation: false, allowsMultipleAde: true },
+  { name: 'SEGUROS', code: 'SEGUROS', type: 'NOVO', description: 'Proteção financeira e seguro prestamista', requiresPortabilityRelation: false, allowsMultipleAde: true },
+];
+
+export async function ensureDefaultGlobalProducts(prismaClient: PrismaClient) {
+  try {
+    for (const item of DEFAULT_GLOBAL_PRODUCTS) {
+      const existing = await prismaClient.product.findFirst({
+        where: {
+          OR: [
+            { name: { equals: item.name, mode: 'insensitive' }, scope: 'GLOBAL' },
+            { code: item.code, scope: 'GLOBAL' },
+          ],
+        },
+      });
+
+      if (!existing) {
+        await prismaClient.product.create({
+          data: {
+            name: item.name,
+            code: item.code,
+            type: item.type,
+            description: item.description,
+            scope: 'GLOBAL',
+            tenantId: null,
+            active: true,
+            allowsMultipleAde: item.allowsMultipleAde,
+            requiresPortabilityRelation: item.requiresPortabilityRelation,
+            convenioIds: [],
+          },
+        });
+        logger.info({ name: item.name }, '[BOOTSTRAP] Produto global padrão cadastrado no PostgreSQL');
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, '[BOOTSTRAP] Aviso ao garantir produtos globais padrão');
+  }
+}
+
+// Catálogo Padrão de Convênios Globais (21 Convênios Globais do Sentinel Consig)
+export const DEFAULT_GLOBAL_CONVENIOS: Array<{
+  name: string;
+  code: string;
+  description: string;
+}> = [
+  { name: 'AUTARQUIAS', code: 'AUTARQUIAS', description: 'Servidores e pensionistas de autarquias públicas' },
+  { name: 'BOLETO', code: 'BOLETO', description: 'Crédito com liquidação via boleto bancário' },
+  { name: 'CARTAO', code: 'CARTAO', description: 'Operações vinculadas a cartão consignado' },
+  { name: 'CONSÓRCIO', code: 'CONSORCIO', description: 'Consórcio e cartas de crédito contempladas' },
+  { name: 'CONTA SIMPLES', code: 'CONTA_SIMPLES', description: 'Convênio de crédito em conta simples' },
+  { name: 'CRÉDITO PESSOAL', code: 'CREDITO_PESSOAL', description: 'Crédito pessoal sem consignação em folha' },
+  { name: 'DÉBITO EM CONTA', code: 'DEBITO_CONTA', description: 'Crédito consignado com débito em conta corrente' },
+  { name: 'ESPECIAL', code: 'ESPECIAL', description: 'Convênios especiais e regimes diferenciados' },
+  { name: 'ESTADUAL', code: 'ESTADUAL', description: 'Servidores públicos estaduais' },
+  { name: 'FEDERAL', code: 'FEDERAL', description: 'Servidores públicos do poder executivo federal' },
+  { name: 'FGTS', code: 'FGTS', description: 'Antecipação do Saque Aniversário FGTS' },
+  { name: 'FIT ENERGIA', code: 'FIT_ENERGIA', description: 'Crédito associado a concessionárias de energia' },
+  { name: 'IMOBILIÁRIO', code: 'IMOBILIARIO', description: 'Crédito com garantia imobiliária / Home Equity' },
+  { name: 'INSS', code: 'INSS', description: 'Beneficiários e Pensionistas do INSS' },
+  { name: 'MILITAR', code: 'MILITAR', description: 'Forças Armadas e pensionistas militares' },
+  { name: 'MUNICIPAL', code: 'MUNICIPAL', description: 'Servidores públicos municipais e prefeituras' },
+  { name: 'PRIVADO', code: 'PRIVADO', description: 'Funcionários de empresas privadas com convênio CLT' },
+  { name: 'PUBLICO', code: 'PUBLICO', description: 'Servidores públicos em geral' },
+  { name: 'SAQUE FACIL', code: 'SAQUE_FACIL', description: 'Operação de saque fácil e antecipação de limites' },
+  { name: 'SEGURO', code: 'SEGURO', description: 'Convênio para contratação de seguros e assistências' },
+  { name: 'SIAPE', code: 'SIAPE', description: 'Servidores Públicos Federais - Sistema SIAPE' },
+];
+
+export async function ensureDefaultGlobalConvenios(prismaClient: PrismaClient) {
+  try {
+    for (const item of DEFAULT_GLOBAL_CONVENIOS) {
+      const existing = await prismaClient.convenio.findFirst({
+        where: {
+          OR: [
+            { name: { equals: item.name, mode: 'insensitive' }, scope: 'GLOBAL' },
+            { code: item.code, scope: 'GLOBAL' },
+          ],
+        },
+      });
+
+      if (!existing) {
+        await prismaClient.convenio.create({
+          data: {
+            name: item.name,
+            code: item.code,
+            description: item.description,
+            scope: 'GLOBAL',
+            tenantId: null,
+            active: true,
+          },
+        });
+        logger.info({ name: item.name }, '[BOOTSTRAP] Convênio global padrão cadastrado no PostgreSQL');
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, '[BOOTSTRAP] Aviso ao garantir convênios globais padrão');
+  }
+}
+
 async function auditAndEnsureMasterUser() {
   try {
     const masterEmail = (process.env.INITIAL_MASTER_EMAIL || 'kauaigouveia@gmail.com').trim().toLowerCase();
@@ -110,6 +229,12 @@ async function auditAndEnsureMasterUser() {
 
     // Ensure status defaults exist for all tenants
     await ensureDefaultStatusesForAllTenants(prisma);
+
+    // Ensure default global products exist in database
+    await ensureDefaultGlobalProducts(prisma);
+
+    // Ensure default global convenios exist in database
+    await ensureDefaultGlobalConvenios(prisma);
 
     // 2. Usuário Master inicial idempotente
     const user = await prisma.user.findFirst({
@@ -4209,8 +4334,41 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
-  // PRODUCTS (POST, PUT, DELETE)
+  // PRODUCTS (GET, POST, PUT, DELETE)
   // -------------------------------------------------------------
+  app.get('/api/products', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const includeInactive = req.query.includeInactive === 'true';
+
+      const whereCondition: any = {
+        OR: [
+          { scope: 'GLOBAL' },
+          ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
+        ],
+        ...(includeInactive ? {} : { active: true }),
+      };
+
+      const products = await prisma.product.findMany({
+        where: whereCondition,
+        include: { tenant: { select: { id: true, name: true } } },
+        orderBy: [{ scope: 'asc' }, { name: 'asc' }],
+      });
+
+      return res.json(
+        products.map(p => ({
+          ...p,
+          tenantName: p.tenant?.name,
+        }))
+      );
+    } catch (err) {
+      console.error('[API PRODUCTS GET ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao listar produtos.' });
+    }
+  });
+
   app.post('/api/products', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -4379,8 +4537,41 @@ async function auditAndEnsureMasterUser() {
   });
 
   // -------------------------------------------------------------
-  // CONVÊNIOS (POST, PUT, DELETE)
+  // CONVÊNIOS (GET, POST, PUT, DELETE)
   // -------------------------------------------------------------
+  app.get('/api/convenios', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      const includeInactive = req.query.includeInactive === 'true';
+
+      const whereCondition: any = {
+        OR: [
+          { scope: 'GLOBAL' },
+          ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
+        ],
+        ...(includeInactive ? {} : { active: true }),
+      };
+
+      const convenios = await prisma.convenio.findMany({
+        where: whereCondition,
+        include: { tenant: { select: { id: true, name: true } } },
+        orderBy: [{ scope: 'asc' }, { name: 'asc' }],
+      });
+
+      return res.json(
+        convenios.map(c => ({
+          ...c,
+          tenantName: c.tenant?.name,
+        }))
+      );
+    } catch (err) {
+      console.error('[API CONVENIOS GET ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao listar convênios.' });
+    }
+  });
+
   app.post('/api/convenios', async (req, res) => {
     try {
       const session = await getAuthSession(req);

@@ -409,23 +409,46 @@ const INITIAL_PARTNERS: Partner[] = [
   },
 ];
 
-// Initial Convenios
+// Initial Convenios (21 Convênios Globais do Sentinel Consig)
 const INITIAL_CONVENIOS: Convenio[] = [
+  { id: 'conv-autarquias', name: 'AUTARQUIAS', code: 'AUTARQUIAS', description: 'Servidores e pensionistas de autarquias públicas', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-boleto', name: 'BOLETO', code: 'BOLETO', description: 'Crédito com liquidação via boleto bancário', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-cartao', name: 'CARTAO', code: 'CARTAO', description: 'Operações vinculadas a cartão consignado', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-consorcio', name: 'CONSÓRCIO', code: 'CONSORCIO', description: 'Consórcio e cartas de crédito contempladas', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-conta-simples', name: 'CONTA SIMPLES', code: 'CONTA_SIMPLES', description: 'Convênio de crédito em conta simples', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-credito-pessoal', name: 'CRÉDITO PESSOAL', code: 'CREDITO_PESSOAL', description: 'Crédito pessoal sem consignação em folha', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-debito-conta', name: 'DÉBITO EM CONTA', code: 'DEBITO_CONTA', description: 'Crédito consignado com débito em conta corrente', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-especial', name: 'ESPECIAL', code: 'ESPECIAL', description: 'Convênios especiais e regimes diferenciados', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-estadual', name: 'ESTADUAL', code: 'ESTADUAL', description: 'Servidores públicos estaduais', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-federal', name: 'FEDERAL', code: 'FEDERAL', description: 'Servidores públicos do poder executivo federal', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-fgts', name: 'FGTS', code: 'FGTS', description: 'Antecipação do Saque Aniversário FGTS', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-fit-energia', name: 'FIT ENERGIA', code: 'FIT_ENERGIA', description: 'Crédito associado a concessionárias de energia', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-imobiliario', name: 'IMOBILIÁRIO', code: 'IMOBILIARIO', description: 'Crédito com garantia imobiliária / Home Equity', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   { id: 'conv-inss', name: 'INSS', code: 'INSS', description: 'Beneficiários e Pensionistas do INSS', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'conv-siape', name: 'SIAPE / FEDERAL', code: 'SIAPE', description: 'Servidores Públicos Federais (Poder Executivo)', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'conv-govsp', name: 'GOV-SP', code: 'GOVSP', description: 'Governo do Estado de São Paulo', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'conv-ffaa', name: 'FORÇAS ARMADAS', code: 'FFAA', description: 'Exército, Marinha e Aeronáutica', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'conv-fgts', name: 'SAQUE ANIVERSÁRIO FGTS', code: 'FGTS', description: 'Antecipação de Saque Aniversário FGTS', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-militar', name: 'MILITAR', code: 'MILITAR', description: 'Forças Armadas e pensionistas militares', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-municipal', name: 'MUNICIPAL', code: 'MUNICIPAL', description: 'Servidores públicos municipais e prefeituras', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-privado', name: 'PRIVADO', code: 'PRIVADO', description: 'Funcionários de empresas privadas com convênio CLT', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-publico', name: 'PUBLICO', code: 'PUBLICO', description: 'Servidores públicos em geral', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-saque-facil', name: 'SAQUE FACIL', code: 'SAQUE_FACIL', description: 'Operação de saque fácil e antecipação de limites', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-seguro', name: 'SEGURO', code: 'SEGURO', description: 'Convênio para contratação de seguros e assistências', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'conv-siape', name: 'SIAPE', code: 'SIAPE', description: 'Servidores Públicos Federais - Sistema SIAPE', scope: 'GLOBAL', active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
 ];
 
-// Initial Products
+// Initial Products (13 Produtos Globais do Sentinel Consig)
 const INITIAL_PRODUCTS: Product[] = [
+  { id: 'prod-agreg-margem', name: 'AGREG. DE MARGEM', code: 'AGREG_MARGEM', description: 'Agregação de margem consignável', type: 'NOVO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-cartao', name: 'CARTAO', code: 'CARTAO', description: 'Cartão de crédito consignado', type: 'CARTAO_RMC', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-cartao-com-saque', name: 'CARTÃO COM SAQUE', code: 'CARTAO_COM_SAQUE', description: 'Cartão consignado com saque autorizado', type: 'CARTAO_RMC', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-cartao-sem-saque', name: 'CARTÃO SEM SAQUE', code: 'CARTAO_SEM_SAQUE', description: 'Cartão consignado sem operação de saque', type: 'CARTAO_RMC', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-compra', name: 'COMPRA', code: 'COMPRA', description: 'Compra de dívida / portabilidade com troco', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-conta-simples', name: 'CONTA SIMPLES', code: 'CONTA_SIMPLES', description: 'Operação de crédito em conta simples', type: 'NOVO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
   { id: 'prod-novo', name: 'NOVO', code: 'NOVO', description: 'Contrato novo consignado', type: 'NOVO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-refin', name: 'REFIN', code: 'REFIN', description: 'Refinanciamento de contrato ativo', type: 'REFIN', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-cartao', name: 'CARTÃO RMC', code: 'CARTAO_RMC', description: 'Cartão de crédito consignado RMC', type: 'CARTAO_RMC', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-saque', name: 'SAQUE COMPLEMENTAR', code: 'SAQUE', description: 'Saque complementar de limite', type: 'SAQUE_COMPLEMENTAR', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: ['conv-inss', 'conv-siape'], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-port', name: 'PORTABILIDADE', code: 'PORT', description: 'Portabilidade de contrato', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-  { id: 'prod-refin-port', name: 'REFIN DA PORTABILIDADE', code: 'REFIN_PORT', description: 'Refinanciamento atrelado a portabilidade', type: 'REFIN_PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: true, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-portab-refin', name: 'PORTAB/REFIN', code: 'PORTAB_REFIN', description: 'Portabilidade associada a refinanciamento', type: 'REFIN_PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: true, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-portabilidade', name: 'PORTABILIDADE', code: 'PORTABILIDADE', description: 'Portabilidade de crédito consignado', type: 'PORTABILIDADE', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-refin-recorrente', name: 'REFIN.RECORRENTE', code: 'REFIN_RECORRENTE', description: 'Refinanciamento recorrente de contrato', type: 'REFIN', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-refinanciamento', name: 'REFINANCIAMENTO', code: 'REFINANCIAMENTO', description: 'Refinanciamento de contrato ativo', type: 'REFIN', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-saque-compl', name: 'SAQUE COMPL.', code: 'SAQUE_COMPL', description: 'Saque complementar de limite consignado', type: 'SAQUE_COMPLEMENTAR', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+  { id: 'prod-seguros', name: 'SEGUROS', code: 'SEGUROS', description: 'Proteção financeira e seguro prestamista', type: 'NOVO', scope: 'GLOBAL', allowsMultipleAde: true, requiresPortabilityRelation: false, convenioIds: [], active: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
 ];
 
 // Initial Operational Rules
@@ -2529,7 +2552,20 @@ export class StorageService {
 
   // Products
   public static getProducts(includeInactive = false): Product[] {
-    const list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    let list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    
+    // Ensure all 13 INITIAL_PRODUCTS (global catalog) are present
+    let hasChanges = false;
+    for (const initProd of INITIAL_PRODUCTS) {
+      if (!list.some(p => p.id === initProd.id || (p.scope === 'GLOBAL' && p.name.toUpperCase() === initProd.name.toUpperCase()))) {
+        list.push(initProd);
+        hasChanges = true;
+      }
+    }
+    if (hasChanges) {
+      this.set(STORAGE_KEYS.PRODUCTS, list);
+    }
+
     const activeUser = this.getActiveUser();
     const currentTenantId = this.getCurrentTenantId();
     const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
@@ -2691,7 +2727,20 @@ export class StorageService {
   // CONVÊNIOS
   // -------------------------------------------------------------
   public static getConvenios(includeInactive = false): Convenio[] {
-    const list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
+    let list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
+
+    // Ensure all 21 INITIAL_CONVENIOS (global catalog) are present
+    let hasChanges = false;
+    for (const initConv of INITIAL_CONVENIOS) {
+      if (!list.some(c => c.id === initConv.id || (c.scope === 'GLOBAL' && c.name.toUpperCase() === initConv.name.toUpperCase()))) {
+        list.push(initConv);
+        hasChanges = true;
+      }
+    }
+    if (hasChanges) {
+      this.set(STORAGE_KEYS.CONVENIOS, list);
+    }
+
     const activeUser = this.getActiveUser();
     const currentTenantId = this.getCurrentTenantId();
     const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
