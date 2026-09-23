@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
@@ -432,6 +433,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
           label: 'Propostas',
           icon: FileSpreadsheet,
           color: 'blue',
+          visible: role !== 'SIMULACAO',
+        },
+        {
+          id: 'portabilidades',
+          label: 'Portabilidade (CIP)',
+          icon: ArrowLeftRight,
+          color: 'indigo',
           visible: role !== 'SIMULACAO',
         },
         {

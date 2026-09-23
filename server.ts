@@ -2525,7 +2525,7 @@ async function auditAndEnsureMasterUser() {
       // 1. Buscar proposta existente com validação de tenant
       const existing = await prisma.proposal.findFirst({
         where: { id, tenantId, deletedAt: null },
-        include: { status: true },
+        include: { status: true, product: true },
       });
 
       if (!existing) {
@@ -2624,12 +2624,78 @@ async function auditAndEnsureMasterUser() {
           targetCategory = finalCategory;
         }
 
+        // Automatic Status Transition: PORTABILIDADE -> REFIN DA PORTABILIDADE
+        let relatedUpdated = null;
+        let relatedHistory = null;
+        let targetRefinStatus = null;
+
+        if (isStatusChanging && validatedStatus?.code === 'AGUARDAR_RETORNO_CIP') {
+          const isPortability = existing.type === 'PORTABILIDADE' || existing.product?.type === 'PORTABILIDADE' || String(existing.product?.name).toUpperCase().includes('PORTABILIDADE');
+          if (isPortability) {
+            // Find related REFIN_PORTABILIDADE proposal
+            const relatedRefin = await tx.proposal.findFirst({
+              where: {
+                tenantId,
+                deletedAt: null,
+                OR: [
+                  { relatedPortabilityId: id },
+                  {
+                    clientId: existing.clientId,
+                    type: 'REFIN_PORTABILIDADE',
+                    status: {
+                      NOT: {
+                        standardCategory: { in: ['PAGO', 'CANCELADO', 'RECUSADO'] }
+                      }
+                    }
+                  }
+                ]
+              },
+              include: { status: true }
+            });
+
+            if (relatedRefin) {
+              // Find status code 'AGUARDAR_PORTABILIDADE'
+              targetRefinStatus = await tx.proposalStatus.findFirst({
+                where: { tenantId, code: 'AGUARDAR_PORTABILIDADE', active: true }
+              }) || await tx.proposalStatus.findFirst({
+                where: { code: 'AGUARDAR_PORTABILIDADE', active: true }
+              });
+
+              if (targetRefinStatus && relatedRefin.statusId !== targetRefinStatus.id) {
+                relatedUpdated = await tx.proposal.update({
+                  where: { id: relatedRefin.id },
+                  data: {
+                    statusId: targetRefinStatus.id,
+                    standardCategory: targetRefinStatus.standardCategory || undefined,
+                    version: { increment: 1 },
+                    updatedAt: new Date(),
+                  }
+                });
+
+                relatedHistory = await tx.statusHistory.create({
+                  data: {
+                    tenantId,
+                    proposalId: relatedRefin.id,
+                    statusId: targetRefinStatus.id,
+                    statusName: targetRefinStatus.name,
+                    userId: session.user.id,
+                    notes: `Transição Automática: Portabilidade principal (ADE ${existing.proposalNumber}) mudou para AGUARDAR RETORNO CIP`,
+                  }
+                });
+              }
+            }
+          }
+        }
+
         return {
           updated,
           isStatusChanging,
           statusHistoryRecord,
           targetStatusName,
           targetCategory,
+          relatedUpdated,
+          relatedHistory,
+          targetRefinStatus,
         };
       });
 
@@ -2640,6 +2706,62 @@ async function auditAndEnsureMasterUser() {
         entityId: result.updated.id,
         userId: session.user.id,
       });
+
+      if (result.relatedUpdated && result.targetRefinStatus) {
+        sseRegistry.broadcastToTenant(tenantId, {
+          type: 'PROPOSAL_UPDATED',
+          entity: 'Proposal',
+          entityId: result.relatedUpdated.id,
+          userId: session.user.id,
+        });
+
+        sseRegistry.broadcastToTenant(tenantId, {
+          type: 'STATUS_CHANGED',
+          entity: 'Proposal',
+          entityId: result.relatedUpdated.id,
+          userId: session.user.id,
+        });
+
+        try {
+          await centralEventBus.publish({
+            tenantId,
+            eventType: 'PROPOSAL_STATUS_CHANGED',
+            entityId: result.relatedUpdated.id,
+            entity: 'Proposal',
+            userId: session.user.id,
+            userName: session.user.name,
+            data: {
+              proposalId: result.relatedUpdated.id,
+              previousStatusId: result.relatedUpdated.statusId,
+              newStatusId: result.targetRefinStatus.id,
+              newStatusName: result.targetRefinStatus.name,
+            }
+          }, prisma);
+        } catch (busErr) {
+          logger.warn({ error: busErr }, '[API PROPOSALS] Falha ao publicar evento no centralEventBus para o refin relacionado');
+        }
+      }
+
+      if (result.isStatusChanging) {
+        try {
+          await centralEventBus.publish({
+            tenantId,
+            eventType: 'PROPOSAL_STATUS_CHANGED',
+            entityId: result.updated.id,
+            entity: 'Proposal',
+            userId: session.user.id,
+            userName: session.user.name,
+            data: {
+              proposalId: result.updated.id,
+              previousStatusId: existing.statusId,
+              newStatusId: result.updated.statusId,
+              newStatusName: result.targetStatusName,
+            }
+          }, prisma);
+        } catch (busErr) {
+          logger.warn({ error: busErr }, '[API PROPOSALS] Falha ao publicar evento no centralEventBus para a proposta principal');
+        }
+      }
 
       // Audit log recording (Differentiating status change vs general proposal update)
       if (result.isStatusChanging) {
@@ -2661,6 +2783,27 @@ async function auditAndEnsureMasterUser() {
           },
           req,
         });
+
+        if (result.relatedUpdated && result.targetRefinStatus) {
+          await AuditLogService.record(prisma, {
+            tenantId,
+            userId: session.user.id,
+            userName: session.user.name,
+            action: 'PROPOSAL_STATUS_CHANGED',
+            entity: 'Proposal',
+            entityId: result.relatedUpdated.id,
+            oldData: {
+              statusId: result.relatedUpdated.statusId,
+              standardCategory: null,
+            },
+            newData: {
+              statusId: result.targetRefinStatus.id,
+              statusName: result.targetRefinStatus.name,
+              standardCategory: result.targetRefinStatus.standardCategory,
+            },
+            req,
+          });
+        }
       } else {
         const delta = computeDelta(existing, result.updated);
         await AuditLogService.record(prisma, {
@@ -5072,12 +5215,36 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: errMsg.message });
       }
 
+      const trimmedName = name.trim();
+      const generatedCode = code && String(code).trim() ? String(code).trim() : `prod-${trimmedName.replace(/\s+/g, '-').toLowerCase()}`;
+
+      // Check for uniqueness under the target scope (GLOBAL or tenant-specific)
+      const existingProduct = await prisma.product.findFirst({
+        where: {
+          OR: [
+            ...(finalTenantId ? [
+              { tenantId: finalTenantId, name: { equals: trimmedName, mode: 'insensitive' as const } },
+              { tenantId: finalTenantId, code: { equals: generatedCode, mode: 'insensitive' as const } }
+            ] : [
+              { scope: 'GLOBAL', name: { equals: trimmedName, mode: 'insensitive' as const } },
+              { scope: 'GLOBAL', code: { equals: generatedCode, mode: 'insensitive' as const } }
+            ])
+          ]
+        }
+      });
+
+      if (existingProduct) {
+        return res.status(400).json({
+          error: `Conflito de produto: Já existe um produto com o nome "${trimmedName}" ou código "${generatedCode}" cadastrado para este escopo.`
+        });
+      }
+
       const product = await prisma.product.create({
         data: {
           id: id || undefined,
           tenantId: finalTenantId,
-          name: name.trim(),
-          code: code ? code.trim() : null,
+          name: trimmedName,
+          code: generatedCode,
           description: description ? description.trim() : null,
           scope: targetScope,
           type: validatedType,
@@ -8919,12 +9086,14 @@ async function auditAndEnsureMasterUser() {
 
           const code = row.code ? String(row.code).trim() : `prod-${trimmedName.replace(/\s+/g, '-').toLowerCase()}`;
 
-          // Respect multi-tenant isolation: check existing product for this tenant
+          // Respect multi-tenant isolation: check existing product for this tenant by both name and code (case-insensitive)
           const existingProduct = await prisma.product.findFirst({
             where: {
               OR: [
-                { tenantId, name: { equals: trimmedName, mode: 'insensitive' } },
-                { scope: 'GLOBAL', name: { equals: trimmedName, mode: 'insensitive' } },
+                { tenantId, name: { equals: trimmedName, mode: 'insensitive' as const } },
+                { tenantId, code: { equals: code, mode: 'insensitive' as const } },
+                { scope: 'GLOBAL', name: { equals: trimmedName, mode: 'insensitive' as const } },
+                { scope: 'GLOBAL', code: { equals: code, mode: 'insensitive' as const } },
               ]
             }
           });
@@ -8934,6 +9103,8 @@ async function auditAndEnsureMasterUser() {
               await prisma.product.update({
                 where: { id: existingProduct.id },
                 data: {
+                  name: trimmedName,
+                  code: code,
                   type: validatedType,
                   requiresPortabilityRelation: isPortabilityRequired,
                 }

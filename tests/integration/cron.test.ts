@@ -116,13 +116,13 @@ describe('Integration: Portability Cron Service & Advisory Locking', () => {
 
     expect(result.success).toBe(true);
     expect(result.checkedCount).toBe(2);
-    expect(result.saldoRetornadoCount).toBe(1);
+    expect(result.saldoRetornadoCount).toBe(0);
 
-    // Verify PROP-CRON-OLD shifted status to SALDO_RETORNADO
+    // Verify PROP-CRON-OLD status was PRESERVED as cipStatusId
     const updatedOld = await prisma.proposal.findUnique({
       where: { id: oldProposal.id },
     });
-    expect(updatedOld?.statusId).toBe(saldoRetornadoStatusId);
+    expect(updatedOld?.statusId).toBe(cipStatusId);
 
     // Verify PROP-CRON-NEW did NOT shift status
     const updatedNew = await prisma.proposal.findUnique({
@@ -130,24 +130,17 @@ describe('Integration: Portability Cron Service & Advisory Locking', () => {
     });
     expect(updatedNew?.statusId).toBe(cipStatusId);
 
-    // Verify history record was created for old proposal
-    const history = await prisma.statusHistory.findFirst({
-      where: { proposalId: oldProposal.id },
-    });
-    expect(history).not.toBeNull();
-    expect(history?.statusId).toBe(saldoRetornadoStatusId);
-    expect(history?.notes).toContain('Automação Cron CIP');
-
     // Verify notification was generated for old proposal
     const notification = await prisma.notification.findFirst({
       where: { proposalId: oldProposal.id },
     });
     expect(notification).not.toBeNull();
     expect(notification?.type).toBe('CIP');
+    expect(notification?.title).toContain('Prazo CIP Excedido');
 
-    // Verify AuditLog entry was written
+    // Verify AuditLog entry was written for SLA exceeded event
     const audit = await prisma.auditLog.findFirst({
-      where: { entityId: oldProposal.id, action: 'AUTOMATION_PORTABILITY_TRANSITION' },
+      where: { entityId: oldProposal.id, action: 'AUTOMATION_PORTABILITY_SLA_EXCEEDED' },
     });
     expect(audit).not.toBeNull();
   }, 30000);

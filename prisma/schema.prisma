@@ -750,6 +750,7 @@ model Proposal {
   cipNumber         String?   @map("cip_number")
   cipStatus         String?   @map("cip_status")
   retentionDeadline DateTime? @map("retention_deadline")
+  relatedPortabilityId String?  @map("related_portability_id")
 
   // Ownership & Dates
   createdById  String? @map("created_by_id")
