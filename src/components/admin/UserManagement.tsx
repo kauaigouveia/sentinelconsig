@@ -1,4 +1,4 @@
-import { MembershipEditor } from './MembershipEditor';
+import { UserDetailsModal } from './UserDetailsModal';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Loader2,
   AlertCircle,
+  Eye,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { User, Role, Tenant } from '../../types';
@@ -50,14 +51,18 @@ export const UserManagement: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('DIGITADOR');
+  const [role, setRole] = useState<Role>('TENANT_ADMIN');
   const [selectedTenantId, setSelectedTenantId] = useState<string>(activeUser?.tenantId || '');
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(() =>
-    getPermissionsForRole('DIGITADOR')
+    getPermissionsForRole('TENANT_ADMIN')
   );
 
   const [showPermissionSelector, setShowPermissionSelector] = useState(false);
-  const [memberships, setMemberships] = useState<any[]>([]);
+  const [extraMemberships, setExtraMemberships] = useState<{ tenantId: string; role: Role }[]>([]);
+  const [newExtraTenantId, setNewExtraTenantId] = useState('');
+  const [newExtraRole, setNewExtraRole] = useState<Role>('TENANT_ADMIN');
+  const [detailsUser, setDetailsUser] = useState<User | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -224,15 +229,18 @@ export const UserManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    if (isPlatformMaster) {
-      fetch('/api/tenants')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) setTenants(data);
-        })
-        .catch(() => {});
-    }
-  }, [isPlatformMaster]);
+    fetch('/api/tenants')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTenants(data);
+          if (!selectedTenantId && data.length > 0) {
+            setSelectedTenantId(activeUser?.tenantId || data[0].id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [activeUser?.tenantId]);
 
   // When creation role changes, pre-populate default permissions
   const handleRoleChange = (newRole: Role) => {
@@ -264,7 +272,26 @@ export const UserManagement: React.FC = () => {
     if (!name.trim() || !email.trim()) return;
 
     try {
+      setIsSubmitting(true);
       const randomPassword = 'Mudar@' + Math.random().toString(36).slice(-8);
+
+      const allMemberships = [
+        ...(selectedTenantId
+          ? [{
+              tenantId: selectedTenantId,
+              role,
+              customPermissions: selectedPermissions,
+              active: true,
+            }]
+          : []),
+        ...extraMemberships.map(m => ({
+          tenantId: m.tenantId,
+          role: m.role,
+          customPermissions: getPermissionsForRole(m.role),
+          active: true,
+        })),
+      ];
+
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,7 +302,7 @@ export const UserManagement: React.FC = () => {
           role,
           tenantId: selectedTenantId || undefined,
           customPermissions: selectedPermissions,
-          memberships,
+          memberships: allMemberships,
         }),
       });
 
@@ -288,9 +315,11 @@ export const UserManagement: React.FC = () => {
       await fetchUsers();
       setName('');
       setEmail('');
-      setSelectedPermissions(getPermissionsForRole('DIGITADOR'));
-      setRole('DIGITADOR');
+      setExtraMemberships([]);
+      setSelectedPermissions(getPermissionsForRole('TENANT_ADMIN'));
+      setRole('TENANT_ADMIN');
       setShowPermissionSelector(false);
+      setShowCreateCard(false);
 
       setCredentialsModal({
         isOpen: true,
@@ -298,8 +327,12 @@ export const UserManagement: React.FC = () => {
         tempPassword: randomPassword,
         isReset: false,
       });
+      setMessage(`Operador ${created.name} (${created.email}) salvo/vinculado com sucesso!`);
+      setTimeout(() => setMessage(null), 4000);
     } catch (err: any) {
       alert(err.message || 'Erro ao cadastrar usuário.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -359,11 +392,13 @@ export const UserManagement: React.FC = () => {
     try {
       const res = await fetch(`/api/users/${u.id}/reset-password`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Erro ao redefinir senha no servidor.');
+        throw new Error(errData.error || errData.message || 'Erro ao redefinir senha no servidor.');
       }
 
       const data = await res.json();
@@ -503,9 +538,11 @@ export const UserManagement: React.FC = () => {
           </h3>
 
           <form onSubmit={handleCreateUser} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nome *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome Completo *
+                </label>
                 <input
                   type="text"
                   value={name}
@@ -515,8 +552,11 @@ export const UserManagement: React.FC = () => {
                   required
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">E-mail *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  E-mail Global (Login Único) *
+                </label>
                 <input
                   type="email"
                   value={email}
@@ -526,16 +566,47 @@ export const UserManagement: React.FC = () => {
                   required
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Perfil de Acesso *</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Empresa / Tenant *
+                </label>
+                {isPlatformMaster ? (
+                  <select
+                    value={selectedTenantId}
+                    onChange={e => setSelectedTenantId(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                  >
+                    <option value="">⚡ MASTER OP Global (Sem Tenant)</option>
+                    {tenants.map(t => (
+                      <option key={t.id} value={t.id}>
+                        🏢 {t.name} ({t.slug})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="truncate">
+                      {tenants.find(t => t.id === selectedTenantId)?.name || 'Organização Atual'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Perfil na Empresa *
+                </label>
                 <select
                   value={role}
                   onChange={e => handleRoleChange(e.target.value as any)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
                 >
-                  {isPlatformMaster && <option value="PLATFORM_MASTER">⚡ MASTER OP (Global)</option>}
+                  {isPlatformMaster && !selectedTenantId && (
+                    <option value="PLATFORM_MASTER">⚡ MASTER OP (Global)</option>
+                  )}
                   <option value="TENANT_ADMIN">🏢 TENANT_ADMIN (Admin Empresa)</option>
-                  <option value="MASTER">👑 MASTER (Master Operacional)</option>
                   <option value="GESTOR">🛡️ GESTOR</option>
                   <option value="GERENTE">🎯 GERENTE</option>
                   <option value="SUPORTE">🎧 SUPORTE</option>
@@ -543,45 +614,104 @@ export const UserManagement: React.FC = () => {
                   <option value="SIMULACAO">📊 SIMULACAO</option>
                 </select>
               </div>
-
-              {isPlatformMaster ? (
-                <div className="col-span-1 sm:col-span-4">
-                  <MembershipEditor 
-                    tenants={tenants} 
-                    memberships={memberships} 
-                    onChange={setMemberships} 
-                  />
-                </div>
-              ) : (
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowPermissionSelector(!showPermissionSelector)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Shield className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <span>Permissões ({selectedPermissions.length})</span>
-                    </span>
-                    {showPermissionSelector ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
-                </div>
-              )}
             </div>
 
+            {/* Extra Multi-Tenant Memberships (Opcional para MASTER OP) */}
             {isPlatformMaster && (
-              <div className="flex justify-start">
-                <button
-                  type="button"
-                  onClick={() => setShowPermissionSelector(!showPermissionSelector)}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer"
-                >
-                  <Shield className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Ajustar Permissões Granulares ({selectedPermissions.length} selecionadas)</span>
-                  {showPermissionSelector ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 p-3 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Vincular a Mais Empresas Simultaneamente (Opcional)</span>
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={newExtraTenantId}
+                      onChange={e => setNewExtraTenantId(e.target.value)}
+                      className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-slate-100"
+                    >
+                      <option value="">Selecione outra empresa...</option>
+                      {tenants
+                        .filter(t => t.id !== selectedTenantId && !extraMemberships.some(em => em.tenantId === t.id))
+                        .map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                    </select>
+
+                    <select
+                      value={newExtraRole}
+                      onChange={e => setNewExtraRole(e.target.value as Role)}
+                      className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-slate-100 font-semibold"
+                    >
+                      <option value="TENANT_ADMIN">TENANT_ADMIN</option>
+                      <option value="GESTOR">GESTOR</option>
+                      <option value="GERENTE">GERENTE</option>
+                      <option value="SUPORTE">SUPORTE</option>
+                      <option value="DIGITADOR">DIGITADOR</option>
+                      <option value="SIMULACAO">SIMULACAO</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      disabled={!newExtraTenantId}
+                      onClick={() => {
+                        if (!newExtraTenantId) return;
+                        setExtraMemberships(prev => [...prev, { tenantId: newExtraTenantId, role: newExtraRole }]);
+                        setNewExtraTenantId('');
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold disabled:opacity-40 cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Adicionar</span>
+                    </button>
+                  </div>
+                </div>
+
+                {extraMemberships.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {extraMemberships.map(em => {
+                      const t = tenants.find(item => item.id === em.tenantId);
+                      return (
+                        <span
+                          key={em.tenantId}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                        >
+                          <Building2 className="h-3 w-3 text-blue-500" />
+                          <span>{t?.name || em.tenantId}</span>
+                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                            ({em.role})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setExtraMemberships(prev => prev.filter(x => x.tenantId !== em.tenantId))}
+                            className="text-slate-400 hover:text-rose-500 ml-1"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
+
+            {/* Opcional: Personalizar Permissões Granulares */}
+            <div className="flex justify-start pt-1">
+              <button
+                type="button"
+                onClick={() => setShowPermissionSelector(!showPermissionSelector)}
+                className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1.5 cursor-pointer py-1"
+              >
+                <Shield className="h-3.5 w-3.5 text-blue-500" />
+                <span>
+                  Personalizar Permissões Granulares (Opcional — o perfil selecionado já atribui {selectedPermissions.length} permissões padrão)
+                </span>
+                {showPermissionSelector ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+            </div>
 
             {/* Granular Permission Selector Collapsible */}
             {showPermissionSelector && (
@@ -789,7 +919,7 @@ export const UserManagement: React.FC = () => {
                 </th>
                 <th className="px-4 py-3">Nome / Usuário</th>
                 <th className="px-4 py-3">E-mail</th>
-                <th className="px-4 py-3">Perfil de Acesso</th>
+                <th className="px-4 py-3">Empresas & Perfis por Empresa</th>
                 <th className="px-4 py-3">Permissões</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-center">Alternar Perfil</th>
@@ -828,7 +958,14 @@ export const UserManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
                         <div className="flex items-center gap-1.5">
-                          <span>{u.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setDetailsUser(u)}
+                            className="text-left font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
+                            title="Ver detalhes e empresas vinculadas"
+                          >
+                            {u.name}
+                          </button>
                           {isActive && (
                             <span className="text-blue-600 dark:text-blue-400 text-[10px] font-bold bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                               (Você)
@@ -841,16 +978,53 @@ export const UserManagement: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{u.email}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{u.email}</td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-bold text-[10px] border ${
-                            ROLE_CONFIG[u.role]?.badgeClass || roleColors[u.role]
-                          }`}
-                        >
-                          <span>{getRoleEmoji(u.role)}</span>
-                          <span>{getRoleLabel(u.role)}</span>
-                        </span>
+                        {u.role === 'PLATFORM_MASTER' && (!u.memberships || u.memberships.length === 0) ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                            ⚡ MASTER OP (Global)
+                          </span>
+                        ) : u.memberships && u.memberships.length > 0 ? (
+                          <div className="flex flex-col gap-1.5">
+                            {u.memberships.map((m: any) => {
+                              const tName = m.tenant?.name || tenants.find(t => t.id === m.tenantId)?.name || 'Empresa';
+                              return (
+                                <div key={m.id || m.tenantId} className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                    <Building2 className="h-3 w-3 text-blue-500 shrink-0" />
+                                    <span className="truncate max-w-[140px]">{tName}</span>
+                                  </span>
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-bold text-[10px] border ${
+                                      ROLE_CONFIG[m.role as Role]?.badgeClass || roleColors[m.role as Role]
+                                    }`}
+                                  >
+                                    <span>{getRoleEmoji(m.role as Role)}</span>
+                                    <span>{getRoleLabel(m.role as Role)}</span>
+                                  </span>
+                                  {!m.active && <span className="text-[9px] text-rose-500 font-bold">(Inativo)</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                              <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate max-w-[140px]">
+                                {tenants.find(t => t.id === u.tenantId)?.name || 'Empresa Principal'}
+                              </span>
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-bold text-[10px] border ${
+                                ROLE_CONFIG[u.role]?.badgeClass || roleColors[u.role]
+                              }`}
+                            >
+                              <span>{getRoleEmoji(u.role)}</span>
+                              <span>{getRoleLabel(u.role)}</span>
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold border border-slate-200 dark:border-slate-700">
@@ -888,6 +1062,14 @@ export const UserManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setDetailsUser(u)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+                            title="Ver Detalhes do Usuário & Empresas"
+                          >
+                            <Building2 className="h-4 w-4" />
+                          </button>
+
                           <button
                             onClick={() => handleOpenEditModal(u)}
                             className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
@@ -965,7 +1147,7 @@ export const UserManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Perfil de Acesso</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Perfil na Empresa *</label>
                 <select
                   value={editRole}
                   onChange={e => handleEditRoleChange(e.target.value as any)}
@@ -1245,6 +1427,19 @@ export const UserManagement: React.FC = () => {
           user={credentialsModal.user}
           tempPassword={credentialsModal.tempPassword}
           isReset={credentialsModal.isReset}
+        />
+      )}
+
+      {/* User Details & Multi-Tenant Memberships Modal */}
+      {detailsUser && (
+        <UserDetailsModal
+          user={detailsUser}
+          allTenants={tenants}
+          onClose={() => setDetailsUser(null)}
+          onUserUpdated={fetchUsers}
+          onResetPassword={handleResetPassword}
+          onSwitchUser={handleSwitchUser}
+          isPlatformMaster={isPlatformMaster}
         />
       )}
     </div>

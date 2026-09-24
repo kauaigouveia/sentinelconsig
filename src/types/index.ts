@@ -8,6 +8,18 @@ export type Role =
   | 'DIGITADOR'
   | 'SIMULACAO';
 
+export interface UserTenantMembership {
+  id: string;
+  userId: string;
+  tenantId: string;
+  tenant?: Tenant;
+  role: Role;
+  customPermissions?: string[];
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -15,6 +27,8 @@ export interface User {
   role: Role;
   active: boolean;
   tenantId?: string;
+  tenant?: Tenant;
+  memberships?: UserTenantMembership[];
   customPermissions?: string[];
   isMasterProtected?: boolean;
   password?: string;

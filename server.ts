@@ -596,11 +596,25 @@ async function auditAndEnsureMasterUser() {
       }
 
       // Query PostgreSQL via Prisma
-      let dbUser = null;
+      let dbUser: any = null;
       try {
+        const emailCandidates = [cleanEmail];
+        if (cleanEmail === 'thiago@grupoevolve.com' || cleanEmail === 'thiago@grupovevolve.com') {
+          emailCandidates.push('thiago@grupoevolve.com', 'thiago@grupovevolve.com');
+        }
+
         dbUser = await prisma.user.findFirst({
-          where: { email: { equals: cleanEmail, mode: 'insensitive' } },
-          include: { tenant: true },
+          where: {
+            email: { in: Array.from(new Set(emailCandidates)), mode: 'insensitive' },
+            deletedAt: null,
+          },
+          include: {
+            tenant: true,
+            memberships: {
+              where: { active: true },
+              include: { tenant: true },
+            },
+          },
         });
       } catch (err) {
         console.warn('[AUTH] Falha ao consultar usuário no banco de dados:', err);
@@ -636,18 +650,32 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ message: 'Credenciais inválidas ou acesso desativado.' });
       }
 
-      // Domain-level tenant check:
-      // If domain resolved to a specific tenant (subdomain or custom domain) and user is NOT PLATFORM_MASTER
+      // Multi-tenant & Domain-level authorization check:
+      let effectiveTenantId: string | null = null;
+      let effectiveMembershipId: string | null = null;
+      let effectiveRole = dbUser.role;
+      let effectivePermissions = dbUser.customPermissions || [];
+      let targetTenant: any = null;
+
       if (
         domainResolution.tenant &&
         (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
       ) {
-        if (dbUser.role !== 'PLATFORM_MASTER' && dbUser.tenantId !== domainResolution.tenant.id) {
+        const domainTenantId = domainResolution.tenant.id;
+        targetTenant = domainResolution.tenant;
+
+        const isPlatformMaster = dbUser.role === 'PLATFORM_MASTER';
+        const isPrimaryMatch = dbUser.tenantId === domainTenantId;
+        const matchingMembership = dbUser.memberships?.find(
+          (m: any) => m.tenantId === domainTenantId && m.active
+        );
+
+        if (!isPlatformMaster && !isPrimaryMatch && !matchingMembership) {
           console.warn(
-            `[AUTH REJECTED] Usuário '${cleanEmail}' (Tenant: ${dbUser.tenantId}) tentou autenticar no domínio do Tenant '${domainResolution.tenant.name}' (${domainResolution.tenant.id})`
+            `[AUTH REJECTED] Usuário '${cleanEmail}' não pertence à organização '${domainResolution.tenant.name}' (${domainTenantId})`
           );
           await AuditLogService.record(prisma, {
-            tenantId: domainResolution.tenant.id,
+            tenantId: domainTenantId,
             userId: dbUser.id,
             userName: dbUser.name,
             action: 'LOGIN_FAILED',
@@ -660,15 +688,45 @@ async function auditAndEnsureMasterUser() {
             message: 'Este usuário não pertence a esta organização.',
           });
         }
+
+        effectiveTenantId = domainTenantId;
+        if (matchingMembership) {
+          effectiveMembershipId = matchingMembership.id;
+          effectiveRole = isPlatformMaster ? 'PLATFORM_MASTER' : matchingMembership.role;
+          effectivePermissions = matchingMembership.customPermissions && matchingMembership.customPermissions.length > 0
+            ? matchingMembership.customPermissions
+            : (dbUser.customPermissions || []);
+        } else if (isPlatformMaster) {
+          effectiveRole = 'PLATFORM_MASTER';
+        }
+      } else {
+        // Platform Default / Root domain
+        const primaryTenantId = dbUser.tenantId;
+        const firstMembership = dbUser.memberships?.[0];
+
+        effectiveTenantId = primaryTenantId || firstMembership?.tenantId || null;
+        if (firstMembership && (!primaryTenantId || firstMembership.tenantId === primaryTenantId)) {
+          effectiveMembershipId = firstMembership.id;
+          if (dbUser.role !== 'PLATFORM_MASTER') {
+            effectiveRole = firstMembership.role;
+            effectivePermissions = firstMembership.customPermissions && firstMembership.customPermissions.length > 0
+              ? firstMembership.customPermissions
+              : (dbUser.customPermissions || []);
+          }
+        }
+
+        if (effectiveTenantId) {
+          targetTenant = await prisma.tenant.findUnique({ where: { id: effectiveTenantId } });
+        }
       }
 
       // Tenant status check (Instant suspension blocker)
-      if (dbUser.role !== 'PLATFORM_MASTER' && dbUser.tenant && dbUser.tenant.status !== 'ACTIVE') {
-        const reason = dbUser.tenant.status === 'SUSPENDED' 
+      if (dbUser.role !== 'PLATFORM_MASTER' && targetTenant && targetTenant.status !== 'ACTIVE') {
+        const reason = targetTenant.status === 'SUSPENDED' 
           ? 'Organização/Tenant suspenso' 
           : 'Organização/Tenant inativo ou cancelado';
         await AuditLogService.record(prisma, {
-          tenantId: dbUser.tenantId,
+          tenantId: targetTenant.id,
           userId: dbUser.id,
           userName: dbUser.name,
           action: 'LOGIN_FAILED',
@@ -677,14 +735,14 @@ async function auditAndEnsureMasterUser() {
           oldData: { email: cleanEmail, reason },
           req,
         });
-        return res.status(403).json({ message: dbUser.tenant.status === 'SUSPENDED' ? 'Tenant suspenso.' : 'Tenant inativo ou cancelado.' });
+        return res.status(403).json({ message: targetTenant.status === 'SUSPENDED' ? 'Tenant suspenso.' : 'Tenant inativo ou cancelado.' });
       }
 
       // P0-A: Cryptographic password validation using Argon2id (No includes, no partial matches)
       const { valid: isPasswordValid, needsRehash } = await verifyPassword(cleanPassword, dbUser.passwordHash);
       if (!isPasswordValid) {
         await AuditLogService.record(prisma, {
-          tenantId: dbUser.tenantId,
+          tenantId: effectiveTenantId || dbUser.tenantId,
           userId: dbUser.id,
           userName: dbUser.name,
           action: 'LOGIN_FAILED',
@@ -715,17 +773,17 @@ async function auditAndEnsureMasterUser() {
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
-        role: dbUser.role,
+        role: effectiveRole,
         active: dbUser.active,
-        tenantId: dbUser.tenantId || undefined,
-        customPermissions: dbUser.customPermissions || [],
+        tenantId: effectiveTenantId || dbUser.tenantId || undefined,
+        customPermissions: effectivePermissions,
         isMasterProtected: dbUser.isMasterProtected || false,
         mustChangePassword: dbUser.mustChangePassword,
         createdAt: dbUser.createdAt.toISOString(),
         updatedAt: dbUser.updatedAt.toISOString(),
       };
 
-      // Create Server Session in PostgreSQL
+      // Create Server Session in PostgreSQL with effective multi-tenant context
       const sessionToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -737,6 +795,10 @@ async function auditAndEnsureMasterUser() {
             ipAddress: req.ip || '127.0.0.1',
             userAgent: (req.headers['user-agent'] as string) || 'Unknown',
             expiresAt,
+            effectiveTenantId: effectiveTenantId || undefined,
+            effectiveMembershipId: effectiveMembershipId || undefined,
+            activeRole: effectiveRole,
+            activePermissions: effectivePermissions,
           },
         });
       } catch (sessErr) {
@@ -755,15 +817,15 @@ async function auditAndEnsureMasterUser() {
 
       // Audit log LOGIN_SUCCESS (Safe, no passwords or tokens)
       await AuditLogService.record(prisma, {
-        tenantId: dbUser.tenantId || null,
+        tenantId: effectiveTenantId || dbUser.tenantId || null,
         userId: dbUser.id,
         userName: dbUser.name,
         action: 'LOGIN_SUCCESS',
         entity: 'AUTH',
         entityId: dbUser.id,
         newData: {
-          role: dbUser.role,
-          tenantId: dbUser.tenantId,
+          role: effectiveRole,
+          tenantId: effectiveTenantId || dbUser.tenantId,
         },
         req,
       });
@@ -773,6 +835,7 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         success: true,
         user: safeUser,
+        effectiveTenantId,
       });
     } catch (error) {
       console.error('[AUTH ERROR]', error);
@@ -874,6 +937,144 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  // Helper middleware/function for tenant context & session auth with instant suspension protection
+  const getAuthSession = async (req: express.Request) => {
+    const token = extractSessionToken(req);
+    if (!token) return null;
+
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: {
+        user: {
+          include: {
+            tenant: true,
+            memberships: {
+              where: { active: true },
+              include: { tenant: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!session || session.expiresAt < new Date()) return null;
+
+    // Instant suspension/inactivation protection: if user is not active or deleted, kill session
+    if (!session.user.active || session.user.deletedAt) {
+      await AdminContextManager.clearContext(session.id, prisma);
+      await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+      return null;
+    }
+
+    // Hostname / Domain tenant boundary validation:
+    const reqHost = TenantResolver.extractHost(req);
+    const domainResolution = await TenantResolver.resolveByHost(prisma, reqHost);
+    if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
+      return null;
+    }
+
+    let effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+
+    if (
+      domainResolution.tenant &&
+      (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
+    ) {
+      const domainTenantId = domainResolution.tenant.id;
+      const isMaster = session.user.role === 'PLATFORM_MASTER';
+      const isPrimaryMatch = session.user.tenantId === domainTenantId;
+      const isSessionMatch = session.effectiveTenantId === domainTenantId;
+      const hasMembership = session.user.memberships?.some(
+        (m: any) => m.tenantId === domainTenantId && m.active
+      );
+
+      if (!isMaster && !isPrimaryMatch && !isSessionMatch && !hasMembership) {
+        // Cross-tenant access forbidden
+        return null;
+      }
+      effectiveTenantId = domainTenantId;
+    }
+
+    // Tenant status check for non-PLATFORM_MASTER: if effective tenant is suspended or cancelled, deny access
+    if (session.user.role !== 'PLATFORM_MASTER' && effectiveTenantId) {
+      const activeTenant = await prisma.tenant.findUnique({ where: { id: effectiveTenantId } });
+      if (!activeTenant || activeTenant.deletedAt || activeTenant.status !== 'ACTIVE') {
+        await AdminContextManager.clearContext(session.id, prisma);
+        return null;
+      }
+    }
+
+    // Multi-tenant role and permissions resolution
+    const activeMembership = session.user.memberships?.find(
+      (m: any) => m.tenantId === effectiveTenantId && m.active
+    );
+    const activeRole = session.user.role === 'PLATFORM_MASTER'
+      ? 'PLATFORM_MASTER'
+      : (session.activeRole || activeMembership?.role || session.user.role);
+    const activePermissions = session.activePermissions && session.activePermissions.length > 0
+      ? session.activePermissions
+      : (activeMembership?.customPermissions || session.user.customPermissions || []);
+
+    // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
+    let adminContext: any = null;
+
+    if (session.user.role === 'PLATFORM_MASTER') {
+      // 1. Primary: PostgreSQL persistent session columns
+      if (session.adminTargetTenantId && session.adminContextExpiresAt) {
+        if (new Date(session.adminContextExpiresAt) > new Date()) {
+          const targetTenant = await prisma.tenant.findUnique({
+            where: { id: session.adminTargetTenantId },
+          });
+
+          if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
+            adminContext = {
+              targetTenantId: targetTenant.id,
+              targetTenantName: session.adminTargetTenantName || targetTenant.name,
+              switchedAt: session.adminSwitchedAt || session.createdAt,
+              expiresAt: session.adminContextExpiresAt,
+            };
+            effectiveTenantId = targetTenant.id;
+            AdminContextManager.warmCache(session.id, adminContext);
+          } else {
+            // Target tenant deleted or cancelled: clear invalid persistent context
+            await AdminContextManager.clearContext(session.id, prisma);
+          }
+        } else {
+          // Expired context: clear persistent state
+          await AdminContextManager.clearContext(session.id, prisma);
+        }
+      } else {
+        // 2. Fallback: in-memory cache
+        adminContext = AdminContextManager.getContext(session.id);
+        if (adminContext) {
+          effectiveTenantId = adminContext.targetTenantId;
+          await prisma.session.update({
+            where: { id: session.id },
+            data: {
+              adminTargetTenantId: adminContext.targetTenantId,
+              adminTargetTenantName: adminContext.targetTenantName,
+              adminSwitchedAt: adminContext.switchedAt,
+              adminContextExpiresAt: adminContext.expiresAt,
+            },
+          }).catch(() => {});
+        }
+      }
+    }
+
+    return {
+      ...session,
+      user: {
+        ...session.user,
+        role: activeRole,
+        customPermissions: activePermissions,
+        tenantId: effectiveTenantId || session.user.tenantId,
+      },
+      effectiveTenantId,
+      activeRole,
+      activePermissions,
+      adminContext,
+    };
+  };
+
   // 3. GET /api/auth/session
 
   app.get('/api/auth/session', async (req, res) => {
@@ -889,17 +1090,30 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
-      const token = extractSessionToken(req);
-      if (!token) {
-        return res.status(401).json({ authenticated: false, message: 'Nenhuma sessão ativa.' });
-      }
+      const session = await getAuthSession(req);
+      if (!session) {
+        // Check if session exists but tenant is inactive or cancelled
+        const token = extractSessionToken(req);
+        if (token) {
+          const rawSession = await prisma.session.findUnique({
+            where: { token },
+            include: { user: true },
+          });
+          if (rawSession && rawSession.user.role !== 'PLATFORM_MASTER') {
+            const effId = rawSession.effectiveTenantId || rawSession.user.tenantId;
+            if (effId) {
+              const t = await prisma.tenant.findUnique({ where: { id: effId } });
+              if (t && (t.status !== 'ACTIVE' || t.deletedAt)) {
+                return res.status(403).json({
+                  authenticated: false,
+                  status: 'TENANT_INACTIVE',
+                  message: 'Acesso negado: a empresa associada está suspensa ou inativa.',
+                });
+              }
+            }
+          }
+        }
 
-      const session = await prisma.session.findUnique({
-        where: { token },
-        include: { user: { include: { tenant: true } } },
-      });
-
-      if (!session || session.expiresAt < new Date()) {
         res.clearCookie('cg_session_id', {
           httpOnly: true,
           secure: isRequestHttps(req),
@@ -909,83 +1123,14 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ authenticated: false, message: 'Sessão expirada ou inválida.' });
       }
 
-      if (
-        !session.user.active ||
-        (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && (session.user.tenant.status === 'SUSPENDED' || session.user.tenant.status === 'CANCELLED'))
-      ) {
-        await AdminContextManager.clearContext(session.id, prisma);
-        await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
-        res.clearCookie('cg_session_id', {
-          httpOnly: true,
-          secure: isRequestHttps(req),
-          sameSite: 'lax',
-          path: '/',
-        });
-        return res.status(403).json({ authenticated: false, message: 'Tenant suspenso ou usuário desativado.' });
-      }
-
-      // Check active AdminContext for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
-      let adminContext: any = null;
-      let effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
-
-      if (session.user.role === 'PLATFORM_MASTER') {
-        // 1. Primary: PostgreSQL persistent session columns
-        if (session.adminTargetTenantId && session.adminContextExpiresAt) {
-          if (new Date(session.adminContextExpiresAt) > new Date()) {
-            const targetTenant = await prisma.tenant.findUnique({
-              where: { id: session.adminTargetTenantId },
-            });
-            if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
-              adminContext = {
-                targetTenantId: targetTenant.id,
-                targetTenantName: session.adminTargetTenantName || targetTenant.name,
-                switchedAt: session.adminSwitchedAt || session.createdAt,
-                expiresAt: session.adminContextExpiresAt,
-              };
-              effectiveTenantId = targetTenant.id;
-              AdminContextManager.warmCache(session.id, adminContext);
-            } else {
-              // Tenant deleted or cancelled: clear invalid persistent context
-              await AdminContextManager.clearContext(session.id, prisma);
-            }
-          } else {
-            // Expired context: clear persistent state
-            await AdminContextManager.clearContext(session.id, prisma);
-          }
-        } else {
-          // 2. Fallback: in-memory cache
-          adminContext = AdminContextManager.getContext(session.id);
-          if (adminContext) {
-            effectiveTenantId = adminContext.targetTenantId;
-            await prisma.session.update({
-              where: { id: session.id },
-              data: {
-                adminTargetTenantId: adminContext.targetTenantId,
-                adminTargetTenantName: adminContext.targetTenantName,
-                adminSwitchedAt: adminContext.switchedAt,
-                adminContextExpiresAt: adminContext.expiresAt,
-              },
-            }).catch(() => {});
-          }
-        }
-      }
-
-      const activeRole = session.user.role === 'PLATFORM_MASTER'
-        ? 'PLATFORM_MASTER'
-        : (session.activeRole || session.user.role);
-
-      const activePermissions = session.activePermissions && session.activePermissions.length > 0
-        ? session.activePermissions
-        : (session.user.customPermissions || []);
-
       const safeUser = {
         id: session.user.id,
         name: session.user.name,
         email: session.user.email,
-        role: activeRole,
+        role: session.user.role,
         active: session.user.active,
-        tenantId: session.user.tenantId || undefined,
-        customPermissions: activePermissions,
+        tenantId: session.effectiveTenantId || session.user.tenantId || undefined,
+        customPermissions: session.user.customPermissions || [],
         isMasterProtected: session.user.isMasterProtected || false,
         mustChangePassword: session.user.mustChangePassword,
         createdAt: session.user.createdAt.toISOString(),
@@ -995,13 +1140,13 @@ async function auditAndEnsureMasterUser() {
       return res.json({
         authenticated: true,
         user: safeUser,
-        effectiveTenantId,
-        adminContext: adminContext
+        effectiveTenantId: session.effectiveTenantId,
+        adminContext: session.adminContext
           ? {
-              targetTenantId: adminContext.targetTenantId,
-              targetTenantName: adminContext.targetTenantName,
-              switchedAt: adminContext.switchedAt,
-              expiresAt: adminContext.expiresAt,
+              targetTenantId: session.adminContext.targetTenantId,
+              targetTenantName: session.adminContext.targetTenantName,
+              switchedAt: session.adminContext.switchedAt,
+              expiresAt: session.adminContext.expiresAt,
             }
           : null,
       });
@@ -1130,99 +1275,6 @@ async function auditAndEnsureMasterUser() {
       return res.status(500).json({ message: 'Erro ao alterar a senha.' });
     }
   });
-
-  // Helper middleware/function for tenant context & session auth with instant suspension protection
-  const getAuthSession = async (req: express.Request) => {
-    const token = extractSessionToken(req);
-    if (!token) return null;
-
-    const session = await prisma.session.findUnique({
-      where: { token },
-      include: { user: { include: { tenant: true } } },
-    });
-
-    if (!session || session.expiresAt < new Date()) return null;
-
-    // Instant suspension/inactivation protection: if user is not active or non-master tenant is not ACTIVE, kill session
-    if (
-      !session.user.active ||
-      (session.user.role !== 'PLATFORM_MASTER' && session.user.tenant && session.user.tenant.status !== 'ACTIVE')
-    ) {
-      await AdminContextManager.clearContext(session.id, prisma);
-      await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
-      return null;
-    }
-
-    // Hostname / Domain tenant boundary validation:
-    // If request arrives via an unconfigured domain, deny access immediately
-    const reqHost = TenantResolver.extractHost(req);
-    const domainResolution = await TenantResolver.resolveByHost(prisma, reqHost);
-    if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
-      return null;
-    }
-    if (
-      domainResolution.tenant &&
-      (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
-    ) {
-      if (session.user.role !== 'PLATFORM_MASTER' && session.user.tenantId !== domainResolution.tenant.id) {
-        // Cross-tenant access forbidden: user from Tenant A accessing domain of Tenant B
-        return null;
-      }
-    }
-
-    // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
-    let effectiveTenantId = session.user.tenantId;
-    let adminContext: any = null;
-
-    if (session.user.role === 'PLATFORM_MASTER') {
-      // 1. Primary: PostgreSQL persistent session columns
-      if (session.adminTargetTenantId && session.adminContextExpiresAt) {
-        if (new Date(session.adminContextExpiresAt) > new Date()) {
-          const targetTenant = await prisma.tenant.findUnique({
-            where: { id: session.adminTargetTenantId },
-          });
-
-          if (targetTenant && !targetTenant.deletedAt && targetTenant.status !== 'CANCELLED') {
-            adminContext = {
-              targetTenantId: targetTenant.id,
-              targetTenantName: session.adminTargetTenantName || targetTenant.name,
-              switchedAt: session.adminSwitchedAt || session.createdAt,
-              expiresAt: session.adminContextExpiresAt,
-            };
-            effectiveTenantId = targetTenant.id;
-            AdminContextManager.warmCache(session.id, adminContext);
-          } else {
-            // Target tenant deleted or cancelled: clear invalid persistent context
-            await AdminContextManager.clearContext(session.id, prisma);
-          }
-        } else {
-          // Expired context: clear persistent state
-          await AdminContextManager.clearContext(session.id, prisma);
-        }
-      } else {
-        // 2. Fallback: in-memory cache
-        adminContext = AdminContextManager.getContext(session.id);
-        if (adminContext) {
-          effectiveTenantId = adminContext.targetTenantId;
-          await prisma.session.update({
-            where: { id: session.id },
-            data: {
-              adminTargetTenantId: adminContext.targetTenantId,
-              adminTargetTenantName: adminContext.targetTenantName,
-              adminSwitchedAt: adminContext.switchedAt,
-              adminContextExpiresAt: adminContext.expiresAt,
-            },
-          }).catch(() => {});
-        }
-      }
-    }
-
-    return {
-      ...session,
-      effectiveTenantId,
-      adminContext,
-    };
-  };
 
   // -------------------------------------------------------------
   // PUSHER REALTIME AUTHENTICATION ENDPOINT
@@ -1399,7 +1451,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar cliente.' });
       }
 
-      const userRole = session.user.role;
+      const userRole = session.user.role as Role;
       const userCustomPerms = session.user.customPermissions || [];
       const isPlatformMaster = userRole === 'PLATFORM_MASTER';
 
@@ -6222,18 +6274,29 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const whereCondition = isPlatformMaster && !session.adminContext
         ? { deletedAt: null }
-        : { tenantId: tenantId || undefined, deletedAt: null };
+        : {
+            deletedAt: null,
+            ...(tenantId
+              ? {
+                  OR: [
+                    { tenantId: tenantId },
+                    { memberships: { some: { tenantId: tenantId } } },
+                  ],
+                }
+              : {}),
+          };
 
       const users = await prisma.user.findMany({
         where: whereCondition,
         orderBy: { name: 'asc' },
         include: {
+          tenant: true,
           memberships: {
             include: {
-              tenant: true
-            }
-          }
-        }
+              tenant: true,
+            },
+          },
+        },
       });
 
       const cleanUsers = users.map(u => {
@@ -6262,32 +6325,118 @@ async function auditAndEnsureMasterUser() {
       }
 
       const { id, name, email, password, role, customPermissions, tenantId, phone, memberships } = req.body;
-      if (!name || !email || !password) {
-        return res.status(400).json({ error: 'Nome, E-mail e Senha são obrigatórios.' });
+      if (!name || !email) {
+        return res.status(400).json({ error: 'Nome e E-mail são obrigatórios.' });
       }
 
       if (role === 'PLATFORM_MASTER' && !isPlatformMaster) {
         return res.status(403).json({ error: 'Apenas um PLATFORM_MASTER pode atribuir o perfil PLATFORM_MASTER.' });
       }
 
-      const targetTenantId = isPlatformMaster && !session.adminContext && tenantId ? tenantId : (session.effectiveTenantId || session.user.tenantId);
+      const targetTenantId = (isPlatformMaster && tenantId)
+        ? tenantId
+        : (session.effectiveTenantId || session.user.tenantId);
 
-      const existing = await prisma.user.findUnique({
-        where: { email: String(email).trim().toLowerCase() },
+      const cleanEmail = String(email).trim().toLowerCase();
+      const existing = await prisma.user.findFirst({
+        where: { email: { equals: cleanEmail, mode: 'insensitive' }, deletedAt: null },
+        include: { memberships: { include: { tenant: true } } },
       });
-      if (existing) {
-        return res.status(400).json({ error: 'E-mail já está em uso.' });
-      }
 
       const cleanPermissions = Array.isArray(customPermissions) ? customPermissions : [];
 
+      if (existing) {
+        if (!targetTenantId) {
+          return res.status(400).json({ error: 'E-mail já está em uso por outro operador global.' });
+        }
+
+        // Multi-tenant: 1 USER = 1 IDENTIDADE GLOBAL = 1 LOGIN
+        // If user already belongs to targetTenantId, update role and reactivate if inactive
+        const existingMembership = existing.memberships?.find((m: any) => m.tenantId === targetTenantId);
+        if (existingMembership) {
+          await prisma.userTenantMembership.update({
+            where: { id: existingMembership.id },
+            data: {
+              role: role || existingMembership.role,
+              customPermissions: cleanPermissions.length > 0 ? cleanPermissions : existingMembership.customPermissions,
+              active: true,
+            },
+          });
+        } else {
+          // Add membership to existing global identity
+          await prisma.userTenantMembership.create({
+            data: {
+              userId: existing.id,
+              tenantId: targetTenantId,
+              role: role || 'DIGITADOR',
+              customPermissions: cleanPermissions,
+              active: true,
+            },
+          });
+        }
+
+        // Process any secondary memberships
+        if (Array.isArray(memberships) && memberships.length > 0) {
+          for (const m of memberships) {
+            if (m.tenantId) {
+              await prisma.userTenantMembership.upsert({
+                where: {
+                  userId_tenantId: {
+                    userId: existing.id,
+                    tenantId: m.tenantId,
+                  },
+                },
+                update: {
+                  role: m.role || 'DIGITADOR',
+                  customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : [],
+                  active: m.active !== undefined ? Boolean(m.active) : true,
+                },
+                create: {
+                  userId: existing.id,
+                  tenantId: m.tenantId,
+                  role: m.role || 'DIGITADOR',
+                  customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : [],
+                  active: m.active !== undefined ? Boolean(m.active) : true,
+                },
+              });
+            }
+          }
+        }
+
+        await AuditLogService.record(prisma, {
+          tenantId: targetTenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'USER_MEMBERSHIP_LINKED',
+          entity: 'UserTenantMembership',
+          entityId: existing.id,
+          newData: { userId: existing.id, tenantId: targetTenantId, role: role || 'DIGITADOR' },
+          req,
+        });
+
+        const fullExisting = await prisma.user.findUnique({
+          where: { id: existing.id },
+          include: {
+            tenant: true,
+            memberships: {
+              include: { tenant: true },
+            },
+          },
+        });
+
+        const { passwordHash: _, ...safeExisting } = fullExisting!;
+        return res.json(safeExisting);
+      }
+
+      // New User Creation
+      const initialPassword = password || ('Mudar@' + Math.random().toString(36).slice(-8));
       const user = await prisma.user.create({
         data: {
           id: id || undefined,
           tenantId: targetTenantId || null,
           name: String(name).trim(),
-          email: String(email).trim().toLowerCase(),
-          passwordHash: await hashPassword(String(password).trim()),
+          email: cleanEmail,
+          passwordHash: await hashPassword(String(initialPassword).trim()),
           mustChangePassword: true,
           role: role || 'DIGITADOR',
           customPermissions: cleanPermissions,
@@ -6346,7 +6495,47 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
-      const { passwordHash, ...safeCreatedUser } = user;
+      // If additional memberships provided:
+      if (Array.isArray(memberships) && memberships.length > 0) {
+        for (const m of memberships) {
+          if (m.tenantId && m.tenantId !== user.tenantId) {
+            await prisma.userTenantMembership.upsert({
+              where: {
+                userId_tenantId: {
+                  userId: user.id,
+                  tenantId: m.tenantId,
+                },
+              },
+              update: {
+                role: m.role || user.role,
+                customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : user.customPermissions,
+                active: m.active !== undefined ? Boolean(m.active) : true,
+              },
+              create: {
+                userId: user.id,
+                tenantId: m.tenantId,
+                role: m.role || user.role,
+                customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : user.customPermissions,
+                active: m.active !== undefined ? Boolean(m.active) : true,
+              },
+            }).catch((err) => {
+              console.error('[ADDITIONAL_MEMBERSHIP_CREATE ERROR]', err);
+            });
+          }
+        }
+      }
+
+      const fullCreatedUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          tenant: true,
+          memberships: {
+            include: { tenant: true },
+          },
+        },
+      });
+
+      const { passwordHash, ...safeCreatedUser } = fullCreatedUser!;
       return res.json(safeCreatedUser);
     } catch (err) {
       console.error('[POST /api/users ERROR]', err);
@@ -6384,7 +6573,8 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Usuário não encontrado.' });
       }
 
-      if (!isPlatformMaster && targetUser.tenantId !== session.user.tenantId) {
+      const effectiveTenant = session.effectiveTenantId || session.user.tenantId;
+      if (!isPlatformMaster && targetUser.tenantId !== effectiveTenant && targetUser.tenantId !== session.user.tenantId) {
         return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
       }
 
@@ -6499,11 +6689,276 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
-      const { passwordHash, ...safeUser } = updatedUser;
+      // Sync memberships if provided
+      if (Array.isArray(memberships)) {
+        for (const m of memberships) {
+          if (m.tenantId) {
+            await prisma.userTenantMembership.upsert({
+              where: {
+                userId_tenantId: {
+                  userId: id,
+                  tenantId: m.tenantId,
+                },
+              },
+              update: {
+                role: m.role || 'DIGITADOR',
+                customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : undefined,
+                active: m.active !== undefined ? Boolean(m.active) : true,
+              },
+              create: {
+                userId: id,
+                tenantId: m.tenantId,
+                role: m.role || 'DIGITADOR',
+                customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : [],
+                active: m.active !== undefined ? Boolean(m.active) : true,
+              },
+            }).catch(e => console.error('[MEMBERSHIP_UPSERT ERROR]', e));
+          }
+        }
+      }
+
+      const fullUpdatedUser = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          tenant: true,
+          memberships: {
+            include: { tenant: true },
+          },
+        },
+      });
+
+      const { passwordHash, ...safeUser } = (fullUpdatedUser || updatedUser) as any;
       return res.json({ success: true, user: safeUser });
     } catch (err) {
       console.error('[PUT /api/users/:id ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar usuário.' });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // USER TENANT MEMBERSHIPS API
+  // -------------------------------------------------------------
+  app.get('/api/users/:id/memberships', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const { id } = req.params;
+      const memberships = await prisma.userTenantMembership.findMany({
+        where: { userId: id },
+        include: { tenant: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return res.json(memberships);
+    } catch (err) {
+      console.error('[GET /api/users/:id/memberships ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao listar vínculos de empresa.' });
+    }
+  });
+
+  app.post('/api/users/:id/memberships', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.update') && !hasPermission(userRole, userCustomPerms, 'users.create')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
+      }
+
+      const { id } = req.params;
+      const { tenantId, role, customPermissions, active } = req.body;
+
+      if (!tenantId) {
+        return res.status(400).json({ error: 'TenantId é obrigatório.' });
+      }
+
+      const membership = await prisma.userTenantMembership.upsert({
+        where: {
+          userId_tenantId: {
+            userId: id,
+            tenantId,
+          },
+        },
+        update: {
+          role: role || 'DIGITADOR',
+          customPermissions: Array.isArray(customPermissions) ? customPermissions : undefined,
+          active: active !== undefined ? Boolean(active) : true,
+        },
+        create: {
+          userId: id,
+          tenantId,
+          role: role || 'DIGITADOR',
+          customPermissions: Array.isArray(customPermissions) ? customPermissions : [],
+          active: active !== undefined ? Boolean(active) : true,
+        },
+        include: { tenant: true },
+      });
+
+      return res.json({ success: true, membership });
+    } catch (err) {
+      console.error('[POST /api/users/:id/memberships ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao vincular empresa ao usuário.' });
+    }
+  });
+
+  app.put('/api/users/:id/memberships/:membershipId', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.update')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
+      }
+
+      const { membershipId } = req.params;
+      const { role, active, customPermissions } = req.body;
+
+      const updated = await prisma.userTenantMembership.update({
+        where: { id: membershipId },
+        data: {
+          role: role || undefined,
+          active: active !== undefined ? Boolean(active) : undefined,
+          customPermissions: Array.isArray(customPermissions) ? customPermissions : undefined,
+        },
+        include: { tenant: true },
+      });
+
+      return res.json({ success: true, membership: updated });
+    } catch (err) {
+      console.error('[PUT /api/users/:id/memberships/:membershipId ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar vínculo de empresa.' });
+    }
+  });
+
+  app.delete('/api/users/:id/memberships/:membershipId', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.update')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
+      }
+
+      const { membershipId } = req.params;
+      await prisma.userTenantMembership.delete({
+        where: { id: membershipId },
+      });
+
+      return res.json({ success: true, message: 'Vínculo removido com sucesso.' });
+    } catch (err) {
+      console.error('[DELETE /api/users/:id/memberships/:membershipId ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao remover vínculo de empresa.' });
+    }
+  });
+
+  app.post('/api/users/:id/reset-password', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const userRole = session.user.role as Role;
+      const userCustomPerms = session.user.customPermissions || [];
+
+      // RBAC check: Must have explicit users.reset_password permission or PLATFORM_MASTER
+      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'users.reset_password')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.reset_password'." });
+      }
+
+      const { id } = req.params;
+      const targetUser = await prisma.user.findFirst({
+        where: { id },
+        include: {
+          memberships: {
+            where: { active: true },
+          },
+        },
+      });
+
+      if (!targetUser || targetUser.deletedAt) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+      }
+
+      // Security: Non-master cannot reset password of a PLATFORM_MASTER
+      if (targetUser.role === 'PLATFORM_MASTER' && !isPlatformMaster) {
+        return res.status(403).json({ error: 'Acesso negado. Apenas um MASTER OP pode resetar a senha de outro MASTER OP.' });
+      }
+
+      // Multi-tenant check: Operator can only reset users in their effective tenant
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!isPlatformMaster) {
+        if (!effectiveTenantId) {
+          return res.status(403).json({ error: 'Contexto de empresa não identificado para a operação.' });
+        }
+
+        const hasTenantRelationship =
+          targetUser.tenantId === effectiveTenantId ||
+          targetUser.memberships.some((m) => m.tenantId === effectiveTenantId && m.active !== false);
+
+        if (!hasTenantRelationship) {
+          return res.status(403).json({ error: 'Acesso negado. O usuário não pertence à sua empresa.' });
+        }
+      }
+
+      // Generate a strong temporary password meeting system policy
+      const randomSuffix = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, 'x').slice(0, 8);
+      const tempPassword = `Mudar@${randomSuffix}`;
+      const passwordHash = await hashPassword(tempPassword);
+
+      // Persist new credentials and mark mustChangePassword
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          passwordHash,
+          mustChangePassword: true,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+        },
+      });
+
+      // Revoke all existing sessions for this user so old sessions cannot be used
+      await prisma.session.deleteMany({
+        where: { userId: id },
+      }).catch(() => {});
+
+      // Audit log without exposing password or hash
+      await AuditLogService.record(prisma, {
+        tenantId: effectiveTenantId || targetUser.tenantId || session.user.tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'PASSWORD_RESET_ADMIN',
+        entity: 'User',
+        entityId: id,
+        newData: {
+          targetUserEmail: targetUser.email,
+          targetUserName: targetUser.name,
+          resetBy: session.user.email,
+        },
+        req,
+      });
+
+      const { passwordHash: _, ...safeUser } = updated;
+      return res.json({
+        success: true,
+        tempPassword,
+        user: safeUser,
+      });
+    } catch (err) {
+      console.error('[POST /api/users/:id/reset-password ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao redefinir senha do usuário.' });
     }
   });
 
@@ -6673,7 +7128,24 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
       if (session.user.role !== 'PLATFORM_MASTER') {
-        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+        const currentTenantId = session.effectiveTenantId || session.user.tenantId;
+        if (!currentTenantId) {
+          return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.' });
+        }
+        const userTenant = await prisma.tenant.findUnique({
+          where: { id: currentTenantId, deletedAt: null },
+          include: {
+            whiteLabel: true,
+            _count: {
+              select: {
+                users: { where: { deletedAt: null } },
+                proposals: { where: { deletedAt: null } },
+                clients: { where: { deletedAt: null } },
+              },
+            },
+          },
+        });
+        return res.json(userTenant ? [userTenant] : []);
       }
 
       const pageParam = req.query.page ? parseInt(req.query.page as string, 10) : null;
