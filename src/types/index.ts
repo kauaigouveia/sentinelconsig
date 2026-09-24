@@ -375,17 +375,41 @@ export interface Proposal {
   id: string;
   proposalNumber: string; // ADE / Identifier (can be number, text, or UUID)
   clientId: string;
+  clientCpf?: string;
+  clientName?: string;
+  client?: { id: string; cpf: string; fullName: string; phone?: string; email?: string };
   productId: string;
+  productCode?: string;
+  productName?: string;
+  product?: any;
   convenioId?: string;
+  convenioCode?: string;
   convenioName?: string;
+  convenio?: any;
   bankId: string;
+  bankCode?: string;
+  bankName?: string;
+  bank?: any;
   promoterId: string;
+  promoterCode?: string;
+  promoterName?: string;
+  promoter?: any;
   partnerId: string;
+  partnerCode?: string;
+  partnerName?: string;
+  partner?: any;
   digitizerId: string;
   statusId: string;
+  statusCode?: string;
+  statusName?: string;
+  status?: any;
   currentResponsible: Alcada;
   disbursedValue?: number; // Valor liberado para o cliente / troco (R$)
   contractBalance?: number; // Valor do saldo do contrato / saldo devedor / quitação em portabilidade (R$)
+  installmentValue?: number; // Valor da parcela (R$)
+  installmentsCount?: number; // Prazo / Quantidade de parcelas
+  debtBalance?: number; // Saldo devedor quitação
+  commissionRate?: number; // Porcentagem de comissão (%)
   type?: 'NOVO' | 'REFIN' | 'PORTABILIDADE' | 'REFIN_PORTABILIDADE' | 'CARTAO_RMC' | string;
   relatedPortabilityId?: string;
   pendencies?: Pending[];
@@ -395,6 +419,7 @@ export interface Proposal {
   createdAt: string;
   updatedAt: string;
   portabilitySlaStartedAt?: string; // Timestamp when entered AGUARDAR_RETORNO_CIP
+  retentionDeadline?: string | null;
   completedAt?: string;
   paidAt?: string;
   cancelledAt?: string;

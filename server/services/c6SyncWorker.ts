@@ -123,7 +123,6 @@ export class C6SyncWorker {
           OR: [
             { bank: { code: '336' } },
             { bank: { name: { contains: 'C6', mode: 'insensitive' } } },
-            { c6ProposalNumber: { not: null } },
           ],
           AND: [
             {
@@ -221,7 +220,6 @@ export class C6SyncWorker {
         OR: [
           { bank: { code: '336' } },
           { bank: { name: { contains: 'C6', mode: 'insensitive' } } },
-          { c6ProposalNumber: { not: null } },
         ],
         AND: [
           {

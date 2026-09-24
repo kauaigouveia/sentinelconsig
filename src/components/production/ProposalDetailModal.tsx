@@ -86,26 +86,32 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     (proposal as any).client?.cpf ||
     '';
 
-  const product = StorageService.getProducts().find(p => p.id === proposal.productId);
-  const bank = StorageService.getBanks().find(b => b.id === proposal.bankId);
-  const promoter = StorageService.getPromoters().find(p => p.id === proposal.promoterId);
-  const partner = StorageService.getPartners().find(p => p.id === proposal.partnerId);
+  const product = StorageService.getProducts().find(p => p.id === proposal.productId || p.code === (proposal as any).productCode) || (proposal as any).product;
+  const bank =
+    StorageService.getBanks().find(
+      b =>
+        b.id === proposal.bankId ||
+        b.code === proposal.bankId ||
+        b.code === (proposal as any).bankCode ||
+        (proposal as any).bank?.id === b.id ||
+        (proposal as any).bank?.code === b.code ||
+        b.id === `bank-${proposal.bankId?.toLowerCase()}`
+    ) || (proposal as any).bank;
+  const promoter = StorageService.getPromoters().find(p => p.id === proposal.promoterId) || (proposal as any).promoter;
+  const partner = StorageService.getPartners().find(p => p.id === proposal.partnerId) || (proposal as any).partner;
   const digitizer = StorageService.getUsers().find(u => u.id === proposal.digitizerId);
 
-  const isC6Bank =
-    bank?.code === '336' ||
-    (bank?.name && bank.name.toUpperCase().includes('C6')) ||
-    Boolean(proposal.c6ProposalNumber);
+  const bankCode = (bank?.code || '').toUpperCase();
+  const bankName = (bank?.name || '').toUpperCase();
 
-  const isFactaBank =
-    bank?.code === '149' ||
-    (bank?.name && bank.name.toUpperCase().includes('FACTA')) ||
-    Boolean(proposal.factaAfCode || proposal.factaProposalNumber);
+  const isC6Bank = bankCode === '336' || bankName.includes('C6');
+
+  const isFactaBank = bankCode === '149' || bankName.includes('FACTA');
 
   const isHappyBank =
-    bank?.code === 'HAPPY' ||
-    (bank?.name && (bank.name.toUpperCase().includes('HAPPY') || bank.name.toUpperCase().includes('BYX'))) ||
-    Boolean(proposal.happyContractId);
+    bankCode === 'HAPPY' ||
+    bankName.includes('HAPPY') ||
+    bankName.includes('BYX');
 
   // Status reais sincronizados do PostgreSQL
   const [dbStatuses, setDbStatuses] = useState<any[]>([]);
@@ -792,7 +798,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
               <div className="flex items-center gap-1 text-slate-300 text-[11px]">
                 <span className="text-slate-400">Nº C6:</span>
                 <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
-                  {proposal.c6ProposalNumber || proposal.proposalNumber || 'Não vinculado'}
+                  {proposal.c6ProposalNumber || 'Não vinculado'}
                 </span>
               </div>
               {proposal.c6RawSituation && (

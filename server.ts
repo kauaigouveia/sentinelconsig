@@ -2177,6 +2177,205 @@ async function auditAndEnsureMasterUser() {
   app.put('/api/settings/happy-simulation-access', putHappySimulationAccessHandler);
 
   // -------------------------------------------------------------
+  // ENTITY RESOLUTION HELPERS (PostgreSQL Catalogs)
+  // -------------------------------------------------------------
+  async function resolveBankHelper(tenantId: string, bankIdOrCode?: string, bankName?: string) {
+    if (!bankIdOrCode && !bankName) return null;
+    const rawId = String(bankIdOrCode || '').trim();
+    const rawName = String(bankName || '').trim();
+    const cleanId = rawId.replace(/^bank-/, '').toUpperCase();
+
+    let found = rawId ? await prisma.bank.findFirst({ where: { id: rawId } }) : null;
+    if (found) return found;
+
+    found = await prisma.bank.findFirst({
+      where: {
+        OR: [
+          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
+          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
+        ]
+      }
+    });
+    if (found) return found;
+
+    const nameToUse = rawName || cleanId || rawId;
+    if (nameToUse) {
+      try {
+        const codeToUse = cleanId.match(/^\d+$/) ? cleanId : (nameToUse.includes('DAYCOVAL') ? '149' : (nameToUse.includes('C6') ? '336' : '000'));
+        found = await prisma.bank.create({
+          data: {
+            tenantId,
+            name: nameToUse.toUpperCase(),
+            code: codeToUse,
+            status: 'ATIVO'
+          }
+        });
+        return found;
+      } catch (err) {
+        console.warn('[resolveBankHelper] create failed:', err);
+      }
+    }
+    return null;
+  }
+
+  async function resolveProductHelper(tenantId: string, productIdOrCode?: string, productName?: string) {
+    if (!productIdOrCode && !productName) return null;
+    const rawId = String(productIdOrCode || '').trim();
+    const rawName = String(productName || '').trim();
+    const cleanId = rawId.replace(/^prod-/, '').toUpperCase();
+
+    let found = rawId ? await prisma.product.findFirst({ where: { id: rawId } }) : null;
+    if (found) return found;
+
+    found = await prisma.product.findFirst({
+      where: {
+        OR: [
+          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
+          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
+        ]
+      }
+    });
+    if (found) return found;
+
+    const nameToUse = rawName || cleanId || rawId;
+    if (nameToUse) {
+      try {
+        const codeToUse = cleanId || 'NOVO';
+        found = await prisma.product.create({
+          data: {
+            tenantId,
+            name: nameToUse.toUpperCase(),
+            code: codeToUse,
+            type: (nameToUse.includes('PORTABILIDADE') ? (nameToUse.includes('REFIN') ? 'REFIN_PORTABILIDADE' : 'PORTABILIDADE') : 'NOVO') as any,
+            active: true,
+            scope: 'GLOBAL'
+          }
+        });
+        return found;
+      } catch (err) {
+        console.warn('[resolveProductHelper] create failed:', err);
+      }
+    }
+    return null;
+  }
+
+  async function resolveConvenioHelper(tenantId: string, convenioIdOrCode?: string, convenioName?: string) {
+    if (!convenioIdOrCode && !convenioName) return null;
+    const rawId = String(convenioIdOrCode || '').trim();
+    const rawName = String(convenioName || '').trim();
+    const cleanId = rawId.replace(/^conv-/, '').toUpperCase();
+
+    let found = rawId ? await prisma.convenio.findFirst({ where: { id: rawId } }) : null;
+    if (found) return found;
+
+    found = await prisma.convenio.findFirst({
+      where: {
+        OR: [
+          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
+          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
+        ]
+      }
+    });
+    if (found) return found;
+
+    const nameToUse = rawName || cleanId || rawId;
+    if (nameToUse) {
+      try {
+        found = await prisma.convenio.create({
+          data: {
+            tenantId,
+            name: nameToUse.toUpperCase(),
+            code: cleanId || 'INSS',
+            active: true,
+            scope: 'GLOBAL'
+          }
+        });
+        return found;
+      } catch (err) {
+        console.warn('[resolveConvenioHelper] create failed:', err);
+      }
+    }
+    return null;
+  }
+
+  async function resolvePartnerHelper(tenantId: string, partnerIdOrCode?: string, partnerName?: string) {
+    if (!partnerIdOrCode && !partnerName) return null;
+    const rawId = String(partnerIdOrCode || '').trim();
+    const rawName = String(partnerName || '').trim();
+    const cleanId = rawId.replace(/^part-/, '').toUpperCase();
+
+    let found = rawId ? await prisma.partner.findFirst({ where: { id: rawId } }) : null;
+    if (found) return found;
+
+    found = await prisma.partner.findFirst({
+      where: {
+        tenantId,
+        OR: [
+          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
+          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
+        ]
+      }
+    });
+    if (found) return found;
+
+    const nameToUse = rawName || cleanId || rawId;
+    if (nameToUse) {
+      try {
+        found = await prisma.partner.create({
+          data: {
+            tenantId,
+            name: nameToUse.toUpperCase(),
+            code: cleanId || 'PARCEIRO',
+            status: 'ATIVO'
+          }
+        });
+        return found;
+      } catch (err) {
+        console.warn('[resolvePartnerHelper] create failed:', err);
+      }
+    }
+    return null;
+  }
+
+  async function resolvePromoterHelper(tenantId: string, promoterIdOrCode?: string, promoterName?: string) {
+    if (!promoterIdOrCode && !promoterName) return null;
+    const rawId = String(promoterIdOrCode || '').trim();
+    const rawName = String(promoterName || '').trim();
+    const cleanId = rawId.replace(/^prom-/, '').toUpperCase();
+
+    let found = rawId ? await prisma.promoter.findFirst({ where: { id: rawId } }) : null;
+    if (found) return found;
+
+    found = await prisma.promoter.findFirst({
+      where: {
+        OR: [
+          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
+          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
+        ]
+      }
+    });
+    if (found) return found;
+
+    const nameToUse = rawName || cleanId || rawId;
+    if (nameToUse) {
+      try {
+        found = await prisma.promoter.create({
+          data: {
+            tenantId,
+            name: nameToUse.toUpperCase(),
+            code: cleanId || 'PROM',
+            status: 'ATIVO'
+          }
+        });
+        return found;
+      } catch (err) {
+        console.warn('[resolvePromoterHelper] create failed:', err);
+      }
+    }
+    return null;
+  }
+
+  // -------------------------------------------------------------
   // PROPOSALS API (PostgreSQL / Prisma)
   // -------------------------------------------------------------
   app.get('/api/proposals', async (req, res) => {
@@ -2225,6 +2424,7 @@ async function auditAndEnsureMasterUser() {
         contractValue,
         installmentValue,
         installmentsCount,
+        debtBalance,
         notes,
         c6ProposalNumber,
         c6OperationNumber,
@@ -2263,128 +2463,51 @@ async function auditAndEnsureMasterUser() {
       targetClientId = client.id;
 
       // 2. Resolve Partner
-      let targetPartnerId = partnerId || null;
-      if (targetPartnerId) {
-        let validPartner = await prisma.partner.findFirst({
-          where: { id: targetPartnerId, tenantId }
-        });
-        if (!validPartner) {
-          validPartner = await prisma.partner.findFirst({
-            where: {
-              tenantId,
-              OR: [
-                { code: targetPartnerId },
-                { name: { equals: targetPartnerId, mode: 'insensitive' } }
-              ]
-            }
-          });
-        }
-        targetPartnerId = validPartner ? validPartner.id : null;
-      }
+      const resolvedPartner = await resolvePartnerHelper(tenantId, partnerId, req.body.partnerName);
+      const targetPartnerId = resolvedPartner ? resolvedPartner.id : null;
 
       // 3. Resolve Bank
-      let targetBankId = bankId || null;
-      if (targetBankId) {
-        let validBank = await prisma.bank.findFirst({
-          where: { id: targetBankId }
-        });
-        if (!validBank) {
-          validBank = await prisma.bank.findFirst({
-            where: {
-              OR: [
-                { code: targetBankId },
-                { name: { equals: targetBankId, mode: 'insensitive' } }
-              ]
-            }
-          });
-        }
-        targetBankId = validBank ? validBank.id : null;
-      }
+      const selectedBank = await resolveBankHelper(tenantId, bankId, req.body.bankName);
+      const targetBankId = selectedBank ? selectedBank.id : null;
 
       // 4. Resolve Promoter
-      let targetPromoterId = promoterId || null;
-      if (targetPromoterId) {
-        let validPromoter = await prisma.promoter.findFirst({
-          where: { id: targetPromoterId }
-        });
-        if (!validPromoter) {
-          validPromoter = await prisma.promoter.findFirst({
-            where: {
-              name: { equals: targetPromoterId, mode: 'insensitive' }
-            }
-          });
-        }
-        targetPromoterId = validPromoter ? validPromoter.id : null;
-      }
+      const resolvedPromoter = await resolvePromoterHelper(tenantId, promoterId, req.body.promoterName);
+      const targetPromoterId = resolvedPromoter ? resolvedPromoter.id : null;
 
       // 5. Resolve Product
-      let targetProductId = productId || null;
-      if (targetProductId) {
-        let validProduct = await prisma.product.findFirst({
-          where: {
-            id: targetProductId,
-            active: true,
-            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
-          },
-        });
-        if (!validProduct) {
-          validProduct = await prisma.product.findFirst({
-            where: {
-              active: true,
-              OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
-              AND: [
-                {
-                  OR: [
-                    { code: targetProductId },
-                    { name: { equals: targetProductId, mode: 'insensitive' } }
-                  ]
-                }
-              ]
-            }
-          });
-        }
-        targetProductId = validProduct ? validProduct.id : null;
-      }
+      const resolvedProduct = await resolveProductHelper(tenantId, productId, req.body.productName);
+      const targetProductId = resolvedProduct ? resolvedProduct.id : null;
 
       // 6. Resolve Convenio
-      let targetConvenioId = convenioId || null;
-      if (targetConvenioId) {
-        let validConvenio = await prisma.convenio.findFirst({
-          where: {
-            id: targetConvenioId,
-            active: true,
-            OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
-          },
-        });
-        if (!validConvenio) {
-          validConvenio = await prisma.convenio.findFirst({
-            where: {
-              active: true,
-              OR: [{ scope: 'GLOBAL' }, { tenantId, scope: 'EXCLUSIVE' }],
-              AND: [
-                {
-                  OR: [
-                    { code: targetConvenioId },
-                    { name: { equals: targetConvenioId, mode: 'insensitive' } }
-                  ]
-                }
-              ]
-            }
-          });
-        }
-        targetConvenioId = validConvenio ? validConvenio.id : null;
-      }
+      const resolvedConvenio = await resolveConvenioHelper(tenantId, convenioId, req.body.convenioName);
+      const targetConvenioId = resolvedConvenio ? resolvedConvenio.id : null;
 
-      // 7. Resolve Status
+      // 7. Resolve Status with legacy mapping
       let targetStatusId = statusId || null;
+      const LEGACY_STATUS_MAP: Record<string, string> = {
+        'st-1': 'AGUARDAR_FORMALIZACAO',
+        'st-2': 'AGUARDA_LIBERACAO_CORBAN',
+        'st-3': 'AGUARDAR_RETORNO_CIP',
+        'st-4': 'AGUARDAR_PORTABILIDADE',
+        'st-5': 'SALDO_RETORNADO',
+        'st-6': 'PENDENTE_ENVIO_DOCUMENTACAO',
+        'st-7': 'PENDENTE_ANEXO_DOCUMENTACAO',
+        'st-8': 'INTEGRADO',
+        'st-9': 'PAGO',
+        'st-10': 'CANCELADO',
+        'st-11': 'REPROVADO',
+      };
+
       if (targetStatusId) {
+        const searchCode = LEGACY_STATUS_MAP[targetStatusId] || targetStatusId;
         let validStatus = await prisma.proposalStatus.findFirst({
           where: {
             tenantId,
             OR: [
               { id: targetStatusId },
               { code: targetStatusId },
-              { name: { equals: targetStatusId, mode: 'insensitive' } }
+              { code: searchCode },
+              { name: { contains: targetStatusId, mode: 'insensitive' } }
             ]
           }
         });
@@ -2394,7 +2517,8 @@ async function auditAndEnsureMasterUser() {
               OR: [
                 { id: targetStatusId },
                 { code: targetStatusId },
-                { name: { equals: targetStatusId, mode: 'insensitive' } }
+                { code: searchCode },
+                { name: { contains: targetStatusId, mode: 'insensitive' } }
               ]
             }
           });
@@ -2437,6 +2561,10 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
+      // Determine if bank is C6 Bank before setting default c6ProposalNumber
+      const isC6Bank = selectedBank?.code === '336' || Boolean(selectedBank?.name && selectedBank.name.toUpperCase().includes('C6'));
+      const finalC6Number = c6ProposalNumber ? c6ProposalNumber : (isC6Bank ? cleanPropNumber : null);
+
       const proposal = await prisma.proposal.create({
         data: {
           tenantId,
@@ -2453,12 +2581,13 @@ async function auditAndEnsureMasterUser() {
           relatedPortabilityId: relatedPortabilityId || null,
           releasedValue: releasedValue ? Number(releasedValue) : 0,
           contractValue: contractValue ? Number(contractValue) : 0,
+          debtBalance: debtBalance !== undefined && debtBalance !== null ? Number(debtBalance) : null,
           installmentValue: installmentValue ? Number(installmentValue) : 0,
           installmentsCount: installmentsCount ? Number(installmentsCount) : 84,
           createdById: session?.user?.id || null,
-          c6ProposalNumber: c6ProposalNumber || cleanPropNumber,
+          c6ProposalNumber: finalC6Number,
           c6OperationNumber: c6OperationNumber || null,
-          c6SyncStatus: 'PENDING',
+          c6SyncStatus: isC6Bank ? 'PENDING' : null,
         },
         include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
       });
@@ -2519,10 +2648,16 @@ async function auditAndEnsureMasterUser() {
         promoterId,
         partnerId,
         productId,
+        convenioId,
         type,
         relatedPortabilityId,
         standardCategory,
         notes,
+        c6ProposalNumber,
+        c6OperationNumber,
+        factaProposalNumber,
+        factaAfCode,
+        happyContractId,
       } = req.body;
 
       // 1. Buscar proposta existente com validação de tenant
@@ -2546,19 +2681,51 @@ async function auditAndEnsureMasterUser() {
 
       // Validação estrita de statusId no PostgreSQL para evitar Foreign Key Violation (P2003)
       let validatedStatus: { id: string; name: string; code: string; standardCategory: string | null } | null = null;
+      let finalStatusId: string | undefined = undefined;
+
       if (statusId !== undefined && statusId !== null && statusId !== '') {
-        // Rejeitar IDs legados "st-*" do LocalStorage com erro explícito 400
-        if (typeof statusId === 'string' && statusId.startsWith('st-')) {
-          return res.status(400).json({
-            error: 'ID de status legado inválido. O sistema requer identificador oficial do banco de dados (PostgreSQL).',
-            details: { statusId, expectedFormat: 'CUID de proposal_statuses' },
-          });
-        }
+        const LEGACY_STATUS_MAP: Record<string, string> = {
+          'st-1': 'AGUARDAR_FORMALIZACAO',
+          'st-2': 'AGUARDA_LIBERACAO_CORBAN',
+          'st-3': 'AGUARDAR_RETORNO_CIP',
+          'st-4': 'AGUARDAR_PORTABILIDADE',
+          'st-5': 'SALDO_RETORNADO',
+          'st-6': 'PENDENTE_ENVIO_DOCUMENTACAO',
+          'st-7': 'PENDENTE_ANEXO_DOCUMENTACAO',
+          'st-8': 'INTEGRADO',
+          'st-9': 'PAGO',
+          'st-10': 'CANCELADO',
+          'st-11': 'REPROVADO',
+        };
+
+        const targetCode = LEGACY_STATUS_MAP[statusId];
 
         validatedStatus = await prisma.proposalStatus.findFirst({
-          where: { id: statusId, tenantId, active: true },
+          where: {
+            tenantId,
+            active: true,
+            OR: [
+              { id: statusId },
+              { code: statusId },
+              ...(targetCode ? [{ code: targetCode }] : []),
+            ]
+          },
           select: { id: true, name: true, code: true, standardCategory: true },
         });
+
+        if (!validatedStatus) {
+          validatedStatus = await prisma.proposalStatus.findFirst({
+            where: {
+              active: true,
+              OR: [
+                { id: statusId },
+                { code: statusId },
+                ...(targetCode ? [{ code: targetCode }] : []),
+              ]
+            },
+            select: { id: true, name: true, code: true, standardCategory: true },
+          });
+        }
 
         if (!validatedStatus) {
           return res.status(400).json({
@@ -2566,6 +2733,8 @@ async function auditAndEnsureMasterUser() {
             details: { statusId, tenantId },
           });
         }
+
+        finalStatusId = validatedStatus.id;
       }
 
       const isStatusChanging = statusId !== undefined && statusId !== existing.statusId;
@@ -2578,13 +2747,44 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
+      // Resolve relational catalog entities if provided
+      let resolvedBankId: string | undefined = undefined;
+      if (bankId !== undefined && bankId !== null && bankId !== '') {
+        const resolvedBank = await resolveBankHelper(tenantId, bankId, req.body.bankName);
+        if (resolvedBank) resolvedBankId = resolvedBank.id;
+      }
+
+      let resolvedPromoterId: string | undefined = undefined;
+      if (promoterId !== undefined && promoterId !== null && promoterId !== '') {
+        const resolvedPromoter = await resolvePromoterHelper(tenantId, promoterId, req.body.promoterName);
+        if (resolvedPromoter) resolvedPromoterId = resolvedPromoter.id;
+      }
+
+      let resolvedPartnerId: string | undefined = undefined;
+      if (partnerId !== undefined && partnerId !== null && partnerId !== '') {
+        const resolvedPartner = await resolvePartnerHelper(tenantId, partnerId, req.body.partnerName);
+        if (resolvedPartner) resolvedPartnerId = resolvedPartner.id;
+      }
+
+      let resolvedProductId: string | undefined = undefined;
+      if (productId !== undefined && productId !== null && productId !== '') {
+        const resolvedProduct = await resolveProductHelper(tenantId, productId, req.body.productName);
+        if (resolvedProduct) resolvedProductId = resolvedProduct.id;
+      }
+
+      let resolvedConvenioId: string | undefined = undefined;
+      if (convenioId !== undefined && convenioId !== null && convenioId !== '') {
+        const resolvedConvenio = await resolveConvenioHelper(tenantId, convenioId, req.body.convenioName);
+        if (resolvedConvenio) resolvedConvenioId = resolvedConvenio.id;
+      }
+
       // 3. Executar transação atômica no PostgreSQL
       const result = await prisma.$transaction(async (tx) => {
         // Atualizar proposta incrementando a versão
         const updated = await tx.proposal.update({
           where: { id },
           data: {
-            statusId: statusId !== undefined ? statusId : undefined,
+            statusId: finalStatusId !== undefined ? finalStatusId : undefined,
             standardCategory: standardCategory || undefined,
             retentionDeadline: newRetentionDeadline,
             releasedValue: releasedValue !== undefined ? Number(releasedValue) : undefined,
@@ -2593,15 +2793,21 @@ async function auditAndEnsureMasterUser() {
             installmentsCount: installmentsCount !== undefined ? Number(installmentsCount) : undefined,
             debtBalance: debtBalance !== undefined ? (debtBalance ? Number(debtBalance) : null) : undefined,
             commissionRate: commissionRate !== undefined ? (commissionRate ? Number(commissionRate) : null) : undefined,
-            bankId: bankId !== undefined ? bankId : undefined,
-            promoterId: promoterId !== undefined ? promoterId : undefined,
-            partnerId: partnerId !== undefined ? partnerId : undefined,
-            productId: productId !== undefined ? productId : undefined,
+            bankId: resolvedBankId !== undefined ? resolvedBankId : undefined,
+            promoterId: resolvedPromoterId !== undefined ? resolvedPromoterId : undefined,
+            partnerId: resolvedPartnerId !== undefined ? resolvedPartnerId : undefined,
+            productId: resolvedProductId !== undefined ? resolvedProductId : undefined,
+            convenioId: resolvedConvenioId !== undefined ? resolvedConvenioId : undefined,
             type: type || undefined,
             relatedPortabilityId: relatedPortabilityId !== undefined ? relatedPortabilityId : undefined,
+            c6ProposalNumber: c6ProposalNumber !== undefined ? c6ProposalNumber : undefined,
+            c6OperationNumber: c6OperationNumber !== undefined ? c6OperationNumber : undefined,
+            factaProposalNumber: factaProposalNumber !== undefined ? factaProposalNumber : undefined,
+            factaAfCode: factaAfCode !== undefined ? factaAfCode : undefined,
+            happyContractId: happyContractId !== undefined ? happyContractId : undefined,
             version: { increment: 1 },
           },
-          include: { client: true, bank: true, promoter: true, partner: true, product: true },
+          include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
         });
 
         // Gravar StatusHistory se o status mudou

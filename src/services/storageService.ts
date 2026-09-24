@@ -564,109 +564,9 @@ const fourBusinessDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).to
 const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
 const oneDayAgo = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString();
 
-// Initial Proposals matching prompt sections 21 & 25
-const INITIAL_PROPOSALS: Proposal[] = [
-  {
-    id: 'prop-833085808',
-    proposalNumber: '833085808',
-    clientId: 'cli-maria-jose',
-    productId: 'prod-port',
-    bankId: 'bank-c6',
-    promoterId: 'prom-dg',
-    partnerId: 'part-kauai',
-    digitizerId: 'u-digitador',
-    statusId: 'st-3', // AGUARDAR RETORNO CIP (alçada BANCO)
-    currentResponsible: 'BANCO',
-    contractBalance: 14850.00,
-    disbursedValue: 0,
-    portabilitySlaStartedAt: fourBusinessDaysAgo,
-    notes: 'Portabilidade C6 Bank - DG via parceiro KAUAI@16740',
-    createdAt: fourBusinessDaysAgo,
-    updatedAt: fourBusinessDaysAgo,
-  },
-  {
-    id: 'prop-833085811',
-    proposalNumber: '833085811',
-    clientId: 'cli-maria-jose',
-    productId: 'prod-refin-port',
-    bankId: 'bank-c6',
-    promoterId: 'prom-dg',
-    partnerId: 'part-kauai',
-    digitizerId: 'u-digitador',
-    statusId: 'st-4', // AGUARDAR PORTABILIDADE (relacionada com 833085808!)
-    currentResponsible: 'SISTEMA',
-    disbursedValue: 4320.50,
-    notes: 'Refin da Portabilidade vinculado à ADE 833085808',
-    createdAt: fourBusinessDaysAgo,
-    updatedAt: fourBusinessDaysAgo,
-  },
-  {
-    id: 'prop-1db778ec',
-    proposalNumber: '1db778ec-e383-496c-b074-d1b79d9b98b6',
-    clientId: 'cli-maria-jose',
-    productId: 'prod-port',
-    bankId: 'bank-icred',
-    promoterId: 'prom-dg',
-    partnerId: 'part-kauai',
-    digitizerId: 'u-digitador',
-    statusId: 'st-1', // AGUARDAR FORMALIZAÇÃO
-    currentResponsible: 'CLIENTE',
-    contractBalance: 8750.00,
-    disbursedValue: 0,
-    notes: 'Portabilidade ICRED - DG',
-    createdAt: twoDaysAgo,
-    updatedAt: twoDaysAgo,
-  },
-  {
-    id: 'prop-835c3392',
-    proposalNumber: '835c3392-a1b2-48f4-a991-c91837db11e0',
-    clientId: 'cli-maria-jose',
-    productId: 'prod-refin-port',
-    bankId: 'bank-icred',
-    promoterId: 'prom-dg',
-    partnerId: 'part-kauai',
-    digitizerId: 'u-digitador',
-    statusId: 'st-1', // AGUARDAR FORMALIZAÇÃO
-    currentResponsible: 'CLIENTE',
-    disbursedValue: 2150.00,
-    notes: 'Refin vinculado a 1db778ec...',
-    createdAt: twoDaysAgo,
-    updatedAt: twoDaysAgo,
-  },
-  {
-    id: 'prop-1902975450',
-    proposalNumber: '1902975450',
-    clientId: 'cli-joao-pedro',
-    productId: 'prod-novo',
-    bankId: 'bank-brb',
-    promoterId: 'prom-dg',
-    partnerId: 'part-franco',
-    digitizerId: 'u-digitador',
-    statusId: 'st-7', // PENDENTE ANEXO DOCUMENTAÇÃO
-    currentResponsible: 'NOSSA EQUIPE',
-    disbursedValue: 12500.00,
-    notes: 'Aguardando comprovante de residência atualizado',
-    createdAt: twoDaysAgo,
-    updatedAt: oneDayAgo,
-  },
-  {
-    id: 'prop-991823741',
-    proposalNumber: '991823741',
-    clientId: 'cli-antonia-souza',
-    productId: 'prod-cartao',
-    bankId: 'bank-daycoval',
-    promoterId: 'prom-dg',
-    partnerId: 'part-fox',
-    digitizerId: 'u-digitador',
-    statusId: 'st-9', // PAGO
-    currentResponsible: 'SISTEMA',
-    disbursedValue: 8000.00,
-    paidAt: oneDayAgo,
-    notes: 'Cartão consignado emitido e pago',
-    createdAt: fourBusinessDaysAgo,
-    updatedAt: oneDayAgo,
-  },
-];
+// Initial Proposals (empty to ensure PostgreSQL is source of truth)
+// Initial Proposals (empty to ensure PostgreSQL is source of truth)
+const INITIAL_PROPOSALS: Proposal[] = [];
 
 // Initial Proposal Relations (Portabilidade -> Refin)
 const INITIAL_PROPOSAL_RELATIONS: ProposalRelation[] = [
@@ -1187,14 +1087,127 @@ export class StorageService {
     this.setupRealTimeListeners();
   }
 
+  public static mapDbProposalToFrontend(p: any): Proposal {
+    return {
+      id: p.id,
+      proposalNumber: p.proposalNumber,
+      clientId: p.clientId,
+      clientCpf: p.client?.cpf || p.clientCpf || undefined,
+      clientName: p.client?.fullName || p.clientName || undefined,
+      client: p.client ? {
+        id: p.client.id,
+        cpf: p.client.cpf,
+        fullName: p.client.fullName,
+        phone: p.client.phone || '',
+        email: p.client.email || ''
+      } : undefined,
+
+      productId: p.productId || p.product?.id || '',
+      productCode: p.product?.code || undefined,
+      productName: p.product?.name || undefined,
+      product: p.product ? {
+        id: p.product.id,
+        name: p.product.name,
+        code: p.product.code,
+        type: p.product.type
+      } : undefined,
+
+      convenioId: p.convenioId || p.convenio?.id || undefined,
+      convenioCode: p.convenio?.code || undefined,
+      convenioName: p.convenio?.name || undefined,
+      convenio: p.convenio ? {
+        id: p.convenio.id,
+        name: p.convenio.name,
+        code: p.convenio.code
+      } : undefined,
+
+      bankId: p.bankId || p.bank?.id || '',
+      bankCode: p.bank?.code || undefined,
+      bankName: p.bank?.name || undefined,
+      bank: p.bank ? {
+        id: p.bank.id,
+        name: p.bank.name,
+        code: p.bank.code,
+        color: p.bank.color
+      } : undefined,
+
+      promoterId: p.promoterId || p.promoter?.id || '',
+      promoterCode: p.promoter?.code || undefined,
+      promoterName: p.promoter?.name || undefined,
+      promoter: p.promoter ? {
+        id: p.promoter.id,
+        name: p.promoter.name,
+        code: p.promoter.code
+      } : undefined,
+
+      partnerId: p.partnerId || p.partner?.id || '',
+      partnerCode: p.partner?.code || undefined,
+      partnerName: p.partner?.name || p.partner?.fullName || undefined,
+      partner: p.partner ? {
+        id: p.partner.id,
+        name: p.partner.name || p.partner.fullName,
+        code: p.partner.code
+      } : undefined,
+
+      digitizerId: p.createdById || 'u-digitador',
+      statusId: p.statusId || p.status?.id || '',
+      statusCode: p.status?.code || undefined,
+      statusName: p.status?.name || undefined,
+      status: p.status ? {
+        id: p.status.id,
+        name: p.status.name,
+        code: p.status.code,
+        responsibleGroup: p.status.responsibleGroup,
+        standardCategory: p.status.standardCategory
+      } : undefined,
+
+      currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
+
+      disbursedValue: p.releasedValue !== undefined && p.releasedValue !== null ? Number(p.releasedValue) : 0,
+      contractBalance: p.contractValue !== undefined && p.contractValue !== null ? Number(p.contractValue) : (p.debtBalance ? Number(p.debtBalance) : 0),
+      installmentValue: p.installmentValue !== undefined && p.installmentValue !== null ? Number(p.installmentValue) : 0,
+      installmentsCount: p.installmentsCount !== undefined && p.installmentsCount !== null ? Number(p.installmentsCount) : 84,
+      debtBalance: p.debtBalance !== undefined && p.debtBalance !== null ? Number(p.debtBalance) : undefined,
+      commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? Number(p.commissionRate) : undefined,
+
+      notes: p.notes || undefined,
+      type: p.type || 'NOVO',
+      relatedPortabilityId: p.relatedPortabilityId || undefined,
+      portabilitySlaStartedAt: p.retentionDeadline || undefined,
+      retentionDeadline: p.retentionDeadline || undefined,
+
+      c6ProposalNumber: p.c6ProposalNumber || undefined,
+      c6OperationNumber: p.c6OperationNumber || undefined,
+      c6SyncStatus: p.c6SyncStatus || 'PENDING',
+      c6RawSituation: p.c6RawSituation || undefined,
+      c6CurrentActivity: p.c6CurrentActivity || undefined,
+      c6ActivityDescription: p.c6ActivityDescription || undefined,
+      c6FormalizationStatus: p.c6FormalizationStatus || undefined,
+
+      factaProposalNumber: p.factaProposalNumber || undefined,
+      factaAfCode: p.factaAfCode || undefined,
+      factaContractNumber: p.factaContractNumber || undefined,
+      factaRawStatus: p.factaRawStatus || undefined,
+      factaCrivoStatus: p.factaCrivoStatus || undefined,
+      factaSyncStatus: p.factaSyncStatus || undefined,
+
+      happyContractId: p.happyContractId || undefined,
+      happyStatus: p.happyStatus || undefined,
+      happyStatusCode: p.happyStatusCode || undefined,
+      happyStatusName: p.happyStatusName || undefined,
+      happyStatusDescription: p.happyStatusDescription || undefined,
+
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    };
+  }
+
   public static async syncWithPostgreSQL(): Promise<void> {
     try {
-      // If executing in Node.js / non-browser without origin, skip relative HTTP fetches
       if (typeof window === 'undefined' || typeof window.location === 'undefined') {
         return;
       }
 
-      // Helper function to fetch and log errors safely
       const safeFetch = async (url: string) => {
         try {
           const res = await fetch(url, { credentials: 'include' });
@@ -1224,34 +1237,7 @@ export class StorageService {
       // 2. Fetch Proposals
       const dbProposals = await safeFetch('/api/proposals');
       if (Array.isArray(dbProposals)) {
-        const formattedProps = dbProposals.map((p: any) => ({
-          id: p.id,
-          proposalNumber: p.proposalNumber,
-          clientId: p.clientId,
-          productId: p.productId || 'prod-novo',
-          convenioId: p.convenioId || undefined,
-          bankId: p.bankId || 'bank-c6',
-          promoterId: p.promoterId || 'prom-dg',
-          partnerId: p.partnerId || 'part-kauai',
-          digitizerId: p.createdById || 'u-digitador',
-          statusId: p.statusId || 'st-1',
-          currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
-          disbursedValue: p.releasedValue ? Number(p.releasedValue) : 0,
-          contractBalance: p.contractValue ? Number(p.contractValue) : 0,
-          notes: p.notes || undefined,
-          c6ProposalNumber: p.c6ProposalNumber || p.proposalNumber,
-          c6OperationNumber: p.c6OperationNumber || undefined,
-          c6SyncStatus: p.c6SyncStatus || 'PENDING',
-          c6RawSituation: p.c6RawSituation || undefined,
-          c6CurrentActivity: p.c6CurrentActivity || undefined,
-          c6ActivityDescription: p.c6ActivityDescription || undefined,
-          c6FormalizationStatus: p.c6FormalizationStatus || undefined,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-          portabilitySlaStartedAt: p.retentionDeadline || undefined,
-          type: p.type || 'NOVO',
-          relatedPortabilityId: p.relatedPortabilityId || undefined,
-        }));
+        const formattedProps = dbProposals.map((p: any) => this.mapDbProposalToFrontend(p));
         localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
       }
 
@@ -1513,34 +1499,7 @@ export class StorageService {
       if (entity === 'Proposal') {
         const dbProposals = await safeFetch('/api/proposals');
         if (Array.isArray(dbProposals)) {
-          const formattedProps = dbProposals.map((p: any) => ({
-            id: p.id,
-            proposalNumber: p.proposalNumber,
-            clientId: p.clientId,
-            productId: p.productId || 'prod-novo',
-            convenioId: p.convenioId || undefined,
-            bankId: p.bankId || 'bank-c6',
-            promoterId: p.promoterId || 'prom-dg',
-            partnerId: p.partnerId || 'part-kauai',
-            digitizerId: p.createdById || 'u-digitador',
-            statusId: p.statusId || 'st-1',
-            currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
-            disbursedValue: p.releasedValue ? Number(p.releasedValue) : 0,
-            contractBalance: p.contractValue ? Number(p.contractValue) : 0,
-            notes: p.notes || undefined,
-            c6ProposalNumber: p.c6ProposalNumber || p.proposalNumber,
-            c6OperationNumber: p.c6OperationNumber || undefined,
-            c6SyncStatus: p.c6SyncStatus || 'PENDING',
-            c6RawSituation: p.c6RawSituation || undefined,
-            c6CurrentActivity: p.c6CurrentActivity || undefined,
-            c6ActivityDescription: p.c6ActivityDescription || undefined,
-            c6FormalizationStatus: p.c6FormalizationStatus || undefined,
-            createdAt: p.createdAt,
-            updatedAt: p.updatedAt,
-            portabilitySlaStartedAt: p.retentionDeadline || undefined,
-            type: p.type || 'NOVO',
-            relatedPortabilityId: p.relatedPortabilityId || undefined,
-          }));
+          const formattedProps = dbProposals.map((p: any) => this.mapDbProposalToFrontend(p));
           localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
         }
       } else if (entity === 'Client') {
@@ -3497,7 +3456,7 @@ export class StorageService {
 
   // Proposals
   public static getProposals(): Proposal[] {
-    const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
+    const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, []);
     const relations = this.getProposalRelations();
     const pendings = this.getPendings();
     return list.map(p => {
@@ -3513,7 +3472,7 @@ export class StorageService {
   }
 
   public static getProposalById(id: string): Proposal | undefined {
-    const p = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS).find(prop => prop.id === id);
+    const p = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, []).find(prop => prop.id === id);
     if (!p) return undefined;
     const relRefin = this.getProposalRelations().find(r => r.refinProposalId === id);
     const relPort = this.getProposalRelations().find(r => r.portabilityProposalId === id);
@@ -3638,6 +3597,10 @@ export class StorageService {
     const product = this.getProducts().find(p => p.id === data.productId);
     const resolvedType = data.relatedPortabilityId ? 'REFIN_PORTABILIDADE' : (product?.type || 'NOVO');
 
+    const selectedBank = this.getBanks().find(b => b.id === data.bankId || b.code === data.bankId);
+    const isC6Bank = selectedBank?.code === '336' || Boolean(selectedBank?.name && selectedBank.name.toUpperCase().includes('C6'));
+    const finalC6Number = data.c6ProposalNumber || (isC6Bank ? cleanNumber : undefined);
+
     // Persist to PostgreSQL (Source of Truth)
     if (typeof window !== 'undefined') {
       try {
@@ -3661,8 +3624,9 @@ export class StorageService {
             relatedPortabilityId: data.relatedPortabilityId || undefined,
             releasedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : 0,
             contractValue: data.contractBalance !== undefined ? Number(data.contractBalance) : 0,
+            debtBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
             notes: data.notes,
-            c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
+            c6ProposalNumber: finalC6Number,
             c6OperationNumber: data.c6OperationNumber,
           }),
         });
@@ -3699,10 +3663,11 @@ export class StorageService {
       currentResponsible: statusObj.responsibleGroup,
       disbursedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : undefined,
       contractBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
+      debtBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
       notes: data.notes,
-      c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
+      c6ProposalNumber: finalC6Number,
       c6OperationNumber: data.c6OperationNumber,
-      c6SyncStatus: 'PENDING',
+      c6SyncStatus: isC6Bank ? 'PENDING' : undefined,
       type: resolvedType,
       relatedPortabilityId: data.relatedPortabilityId || undefined,
       createdAt: new Date().toISOString(),
@@ -3813,6 +3778,10 @@ export class StorageService {
     const product = this.getProducts().find(p => p.id === data.productId);
     const resolvedType = data.relatedPortabilityId ? 'REFIN_PORTABILIDADE' : (product?.type || 'NOVO');
 
+    const selectedBankSync = this.getBanks().find(b => b.id === data.bankId || b.code === data.bankId);
+    const isC6BankSync = selectedBankSync?.code === '336' || Boolean(selectedBankSync?.name && selectedBankSync.name.toUpperCase().includes('C6'));
+    const finalC6NumberSync = data.c6ProposalNumber || (isC6BankSync ? cleanNumber : undefined);
+
     const newProposal: Proposal = {
       id: `prop-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       proposalNumber: cleanNumber,
@@ -3827,10 +3796,11 @@ export class StorageService {
       currentResponsible: statusObj.responsibleGroup,
       disbursedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : undefined,
       contractBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
+      debtBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
       notes: data.notes,
-      c6ProposalNumber: data.c6ProposalNumber || cleanNumber,
+      c6ProposalNumber: finalC6NumberSync,
       c6OperationNumber: data.c6OperationNumber,
-      c6SyncStatus: 'PENDING',
+      c6SyncStatus: isC6BankSync ? 'PENDING' : undefined,
       type: resolvedType,
       relatedPortabilityId: data.relatedPortabilityId || undefined,
       createdAt: new Date().toISOString(),
@@ -3871,7 +3841,26 @@ export class StorageService {
         c6ProposalNumber: newProposal.c6ProposalNumber,
         c6OperationNumber: newProposal.c6OperationNumber,
       }),
-    }).catch(err => console.warn('[PROPOSAL POST FAIL]', err));
+    })
+      .then(res => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(dbProp => {
+        if (dbProp && dbProp.id) {
+          const currentList = StorageService.getProposals();
+          const mapped = StorageService.mapDbProposalToFrontend(dbProp);
+          const idx = currentList.findIndex(p => p.id === newProposal.id || p.proposalNumber === newProposal.proposalNumber);
+          if (idx !== -1) {
+            currentList[idx] = mapped;
+          } else {
+            currentList.push(mapped);
+          }
+          StorageService.set(STORAGE_KEYS.PROPOSALS, currentList);
+          window.dispatchEvent(new Event('credit_gestao_storage_update'));
+        }
+      })
+      .catch(err => console.warn('[PROPOSAL POST FAIL]', err));
 
     // If related to a portability proposal, create the ProposalRelation
     if (data.relatedPortabilityId) {
@@ -3971,6 +3960,42 @@ export class StorageService {
     });
 
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
+
+    // Sync changes to PostgreSQL (Source of Truth)
+    if (typeof window !== 'undefined') {
+      fetch(`/api/proposals/${proposalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          statusId: updates.statusId,
+          bankId: updates.bankId,
+          bankName: updates.bankName || updates.bank?.name,
+          productId: updates.productId,
+          productName: updates.productName || updates.product?.name,
+          convenioId: updates.convenioId,
+          convenioName: updates.convenioName || updates.convenio?.name,
+          partnerId: updates.partnerId,
+          partnerName: updates.partnerName || updates.partner?.name,
+          promoterId: updates.promoterId,
+          promoterName: updates.promoterName || updates.promoter?.name,
+          releasedValue: updates.disbursedValue,
+          contractValue: updates.contractBalance,
+          installmentValue: updates.installmentValue,
+          installmentsCount: updates.installmentsCount,
+          debtBalance: updates.debtBalance,
+          commissionRate: updates.commissionRate,
+          type: updates.type,
+          relatedPortabilityId: updates.relatedPortabilityId,
+          c6ProposalNumber: updates.c6ProposalNumber,
+          c6OperationNumber: updates.c6OperationNumber,
+          factaProposalNumber: updates.factaProposalNumber,
+          factaAfCode: updates.factaAfCode,
+          happyContractId: updates.happyContractId,
+          notes: changeReason || updates.notes,
+        }),
+      }).catch(err => console.error('[UPDATE PROPOSAL POSTGRESQL ERROR]', err));
+    }
+
     return updated;
   }
 
@@ -4058,6 +4083,20 @@ export class StorageService {
     });
 
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
+
+    // Sync financial changes to PostgreSQL (Source of Truth)
+    if (typeof window !== 'undefined') {
+      fetch(`/api/proposals/${proposalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          releasedValue: financials.disbursedValue,
+          contractValue: financials.contractBalance,
+          notes: reason,
+        }),
+      }).catch(err => console.error('[UPDATE FINANCIALS POSTGRESQL ERROR]', err));
+    }
+
     return { updated: true, details: reason, proposal: updatedProposal };
   }
 
@@ -4169,6 +4208,19 @@ export class StorageService {
           }
         }
       }
+    }
+
+    // Sync status change to PostgreSQL (Source of Truth)
+    if (typeof window !== 'undefined') {
+      fetch(`/api/proposals/${proposalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          statusId: newStatus.id,
+          statusName: newStatus.name,
+          notes: observation,
+        }),
+      }).catch(err => console.error('[UPDATE STATUS POSTGRESQL ERROR]', err));
     }
 
     return proposal;

@@ -37,7 +37,7 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkProposalNum, setLinkProposalNum] = useState(
-    proposal.c6ProposalNumber || proposal.proposalNumber || ''
+    proposal.c6ProposalNumber || ''
   );
   const [linkOpNum, setLinkOpNum] = useState(proposal.c6OperationNumber || '');
   const [isLinking, setIsLinking] = useState(false);
@@ -319,7 +319,7 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
             Nº Proposta C6
           </span>
           <span className="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 truncate block">
-            {proposal.c6ProposalNumber || proposal.proposalNumber || 'Não informado'}
+            {proposal.c6ProposalNumber || 'Não informado'}
           </span>
         </div>
 

@@ -595,8 +595,7 @@ export class C6BankService {
       // Validar banco C6 (código 336 ou nome C6)
       const isC6Bank =
         proposal.bank?.code === '336' ||
-        (proposal.bank?.name && proposal.bank.name.toUpperCase().includes('C6')) ||
-        Boolean(proposal.c6ProposalNumber);
+        (proposal.bank?.name && proposal.bank.name.toUpperCase().includes('C6'));
 
       if (!isC6Bank) {
         throw new Error('Esta proposta não pertence ao C6 Bank.');
