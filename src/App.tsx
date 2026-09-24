@@ -6,6 +6,7 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { ExecutiveBIDashboard } from './components/bi/ExecutiveBIDashboard';
 import { OperationalBIDashboard } from './components/bi/OperationalBIDashboard';
+import { ControlTower } from './components/dashboard/ControlTower';
 import { StatusBottleneckReport } from './components/dashboard/StatusBottleneckReport';
 import { DigitizerHome } from './components/dashboard/DigitizerHome';
 import { ProductionList } from './components/production/ProductionList';
@@ -541,7 +542,7 @@ function AppMainContent() {
           ) : (
             <>
               {effectiveView === 'torre-controle' && (
-                <OperationalBIDashboard
+                <ControlTower
                   onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
                 />
               )}

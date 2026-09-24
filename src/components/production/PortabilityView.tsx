@@ -106,7 +106,8 @@ export const PortabilityView: React.FC = () => {
     <div className="space-y-4">
       {/* Action Bar */}
       <ActionBar
-        title="Gestão de Portabilidades (CIP)"
+        title="Portabilidade (CIP)"
+        subtitle="Acompanhamento do SLA de 5 dias úteis, retenções e saldos retornados"
         count={classified.length}
         financialTotal={formatCurrency(totalSaldoPortabilidade)}
         rightActions={
