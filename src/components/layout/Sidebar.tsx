@@ -21,15 +21,17 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
-import { Role } from '../../types';
+import { Role, User } from '../../types';
 import { resolveEffectiveTenantBranding, SYSTEM_IDENTITY } from '../../lib/branding';
 import { TenantBranding } from '../../hooks/useTenantBranding';
 import { hasPermission } from '../../lib/permissions';
 
 interface SidebarProps {
   currentView: string;
-  onNavigate: (view: string) => void;
+  currentPath?: string;
+  onNavigate: (viewOrPath: string) => void;
   branding?: TenantBranding;
+  activeUser?: User | null;
 }
 
 type SemanticColor =
@@ -49,6 +51,7 @@ type SemanticColor =
 
 interface NavItemConfig {
   id: string;
+  to: string;
   label: string;
   icon: React.ElementType;
   color: SemanticColor;
@@ -183,9 +186,17 @@ const colorStyles: Record<
   },
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, branding }) => {
-  const activeUser = StorageService.getActiveUser();
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentView,
+  currentPath,
+  onNavigate,
+  branding,
+  activeUser: propActiveUser,
+}) => {
+  const [userFromStorage, setUserFromStorage] = useState<User>(() => StorageService.getActiveUser());
+  const activeUser = propActiveUser || userFromStorage;
   const role: Role = activeUser?.role || 'DIGITADOR';
+  const userCustomPerms = activeUser?.customPermissions || [];
 
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
@@ -276,6 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     const handleUpdates = () => {
       syncTenantState();
       fetchBadgeCounts();
+      setUserFromStorage(StorageService.getActiveUser());
     };
 
     window.addEventListener('whiteLabelUpdated', handleUpdates);
@@ -298,10 +310,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
       if (
         eventType?.includes('PENDENCY') ||
         eventType === 'TENANT_UPDATED' ||
-        eventType === 'CONTEXT_SWITCHED'
+        eventType === 'CONTEXT_SWITCHED' ||
+        eventType === 'USER_UPDATED'
       ) {
         syncTenantState();
         fetchBadgeCounts();
+        setUserFromStorage(StorageService.getActiveUser());
       }
     });
 
@@ -313,7 +327,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
       window.removeEventListener('keydown', handleKeyDown);
       unsub();
     };
-  }, [activeUser?.id, activeUser?.role]);
+  }, [propActiveUser, activeUser?.id, activeUser?.role, JSON.stringify(userCustomPerms)]);
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
@@ -356,12 +370,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
   const isGlobalPlatformContext = activeUser?.role === 'PLATFORM_MASTER' && !adminContext.active;
   const isInspectionMode = activeUser?.role === 'PLATFORM_MASTER' && adminContext.active;
 
-  // Verificação de correspondência de rota ativa (garante contexto para rotas secundárias)
-  const isViewActive = (itemId: string): boolean => {
+  // Verificação de correspondência de rota ativa (garante contexto para rotas e sub-rotas)
+  const isViewActive = (itemOrId: NavItemConfig | string): boolean => {
+    const item = typeof itemOrId === 'string'
+      ? navGroups.flatMap(g => g.items).find(i => i.id === itemOrId)
+      : itemOrId;
+
+    const itemId = typeof itemOrId === 'string' ? itemOrId : itemOrId.id;
+    const itemTo = item?.to;
+
+    if (currentPath && itemTo) {
+      if (currentPath === itemTo) return true;
+      if (itemTo === '/dashboard' && (currentPath === '/' || currentPath === '/dashboard')) return true;
+      if (itemTo !== '/' && itemTo !== '/dashboard' && currentPath.startsWith(itemTo + '/')) return true;
+    }
+
     if (currentView === itemId) return true;
-    if (itemId === 'torre-controle' && currentView === 'tv-monitor') return true;
-    if (itemId === 'producao' && ['esteira', 'portabilidades', 'importar-excel'].includes(currentView)) return true;
-    if (itemId === 'hub-integracoes' && ['integracoes-hub', 'admin-integracoes-bancos'].includes(currentView)) return true;
+    if (itemId === 'torre-controle' && (currentView === 'tv-monitor' || currentView === 'dashboard')) return true;
+    if (itemId === 'producao' && ['esteira', 'portabilidades', 'importar-excel', 'propostas'].includes(currentView)) return true;
+    if (itemId === 'hub-integracoes' && ['integracoes-hub', 'admin-integracoes-bancos', 'integracoes'].includes(currentView)) return true;
+    if (itemId === 'dashboard-executivo' && ['bi'].includes(currentView)) return true;
+    if (itemId === 'central-automacao' && ['automacoes'].includes(currentView)) return true;
+    if (itemId === 'command-center' && ['command'].includes(currentView)) return true;
+    if (itemId === 'sentinela-ai' && ['intelligence', 'sentinel-intelligence'].includes(currentView)) return true;
+    if (itemId === 'central-pendencias' && ['pendencias', 'pendencias-central'].includes(currentView)) return true;
     if (
       itemId === 'central-administracao' &&
       [
@@ -380,21 +412,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
   };
 
   // ==================================================
-  // DEFINIÇÃO DOS 6 GRUPOS PRINCIPAIS
+  // DEFINIÇÃO DOS 6 GRUPOS PRINCIPAIS BASEADOS EM RBAC
   // ==================================================
   const navGroups: NavGroupConfig[] = [
     // 1. INÍCIO
     {
       id: 'inicio',
       title: 'Início',
-      visible: true,
+      visible: hasPermission(role, userCustomPerms, 'dashboard.view'),
       items: [
         {
           id: role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle',
+          to: '/dashboard',
           label: 'Dashboard / Início',
           icon: LayoutDashboard,
           color: 'blue',
-          visible: true,
+          visible: hasPermission(role, userCustomPerms, 'dashboard.view'),
         },
       ],
     },
@@ -407,22 +440,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
       items: [
         {
           id: role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle',
+          to: '/dashboard',
           label: 'Dashboard',
           icon: LayoutDashboard,
           color: 'blue',
-          visible: true,
+          visible: hasPermission(role, userCustomPerms, 'dashboard.view'),
         },
         {
           id: 'central-pendencias',
+          to: '/central-pendencias',
           label: 'Central de Pendências',
           icon: AlertTriangle,
           color: 'rose',
-          visible:
-            isGestor ||
-            isGerente ||
-            isSuporte ||
-            isMaster ||
-            hasPermission(role, activeUser?.customPermissions || [], 'pendencies.view'),
+          visible: hasPermission(role, userCustomPerms, 'pendencies.view'),
           badge:
             openPendenciesCount && openPendenciesCount > 0
               ? { text: `🔴 ${openPendenciesCount}`, variant: 'alert' }
@@ -430,36 +460,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
         },
         {
           id: 'producao',
+          to: '/propostas',
           label: 'Propostas',
           icon: FileSpreadsheet,
           color: 'blue',
-          visible: role !== 'SIMULACAO',
+          visible: hasPermission(role, userCustomPerms, 'proposals.view'),
         },
         {
           id: 'portabilidades',
+          to: '/portabilidade',
           label: 'Portabilidade (CIP)',
           icon: ArrowLeftRight,
           color: 'indigo',
-          visible: role !== 'SIMULACAO',
+          visible: hasPermission(role, userCustomPerms, 'proposals.view'),
         },
         {
           id: 'simulacoes',
+          to: '/simulacoes',
           label: 'Simulações',
           icon: Calculator,
           color: 'violet',
-          visible: role !== 'DIGITADOR',
+          visible: hasPermission(role, userCustomPerms, 'simulations.view'),
         },
         {
           id: 'parceiros',
+          to: '/crm-parceiros',
           label: 'CRM de Parceiros',
           icon: Handshake,
           color: 'indigo',
           visible:
-            isGerente ||
-            isGestor ||
-            isMaster ||
-            hasPermission(role, activeUser?.customPermissions || [], 'partners.crm.view') ||
-            hasPermission(role, activeUser?.customPermissions || [], 'partners.view'),
+            hasPermission(role, userCustomPerms, 'partners.crm.view') ||
+            hasPermission(role, userCustomPerms, 'partners.view'),
         },
       ],
     },
@@ -468,31 +499,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     {
       id: 'integracoes',
       title: 'Integrações',
-      visible:
-        isMaster ||
-        isPlatformMaster ||
-        hasPermission(role, activeUser?.customPermissions || [], 'integrations.view'),
+      visible: true,
       items: [
         {
           id: 'hub-integracoes',
+          to: '/integracoes',
           label: 'Hub de Integrações',
           icon: Zap,
           color: 'cyan',
-          visible: true,
+          visible: hasPermission(role, userCustomPerms, 'integrations.view'),
         },
         {
           id: 'promotoras',
+          to: '/bancos-promotoras',
           label: 'Bancos & Promotoras',
           icon: Building2,
           color: 'sky',
-          visible: true,
+          visible:
+            hasPermission(role, userCustomPerms, 'promoters.view') ||
+            hasPermission(role, userCustomPerms, 'banks.view') ||
+            hasPermission(role, userCustomPerms, 'integrations.view'),
         },
         {
           id: 'admin-c6-bank',
+          to: '/saude-apis',
           label: 'Saúde das APIs',
           icon: Activity,
           color: 'emerald',
-          visible: true,
+          visible:
+            hasPermission(role, userCustomPerms, 'integrations.health') ||
+            hasPermission(role, userCustomPerms, 'integrations.view'),
         },
       ],
     },
@@ -501,21 +537,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     {
       id: 'gestao',
       title: 'Gestão',
-      visible: isGestor || isGerente || isMaster || isPlatformMaster,
+      visible: true,
       items: [
         {
           id: 'dashboard-executivo',
+          to: '/bi',
           label: 'BI Operacional',
           icon: BarChart3,
           color: 'indigo',
-          visible: isGestor || isMaster,
+          visible: hasPermission(role, userCustomPerms, 'bi.view'),
         },
         {
           id: 'central-automacao',
+          to: '/automacoes',
           label: 'Automações',
           icon: Bot,
           color: 'purple',
-          visible: isGestor || isMaster,
+          visible: hasPermission(role, userCustomPerms, 'automations.view'),
           badge:
             automationsCount && automationsCount > 0
               ? { text: String(automationsCount), variant: 'ai' }
@@ -523,23 +561,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
         },
         {
           id: 'command-center',
+          to: '/command-center',
           label: 'Command Center',
           icon: Shield,
           color: 'rose',
-          visible:
-            isGestor ||
-            isGerente ||
-            isMaster ||
-            isPlatformMaster ||
-            hasPermission(role, activeUser?.customPermissions || [], 'command.view'),
+          visible: hasPermission(role, userCustomPerms, 'command.view'),
           badge: { text: 'AO VIVO', variant: 'alert' },
         },
         {
           id: 'sentinela-ai',
+          to: '/intelligence',
           label: 'Sentinel Intelligence',
           icon: Sparkles,
           color: 'violet',
-          visible: isGestor || isGerente || isMaster,
+          visible: hasPermission(role, userCustomPerms, 'intelligence.view'),
         },
       ],
     },
@@ -548,17 +583,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     {
       id: 'administracao',
       title: 'Administração',
-      visible:
-        isMaster ||
-        isPlatformMaster ||
-        hasPermission(role, activeUser?.customPermissions || [], 'admin.view'),
+      visible: true,
       items: [
         {
           id: 'central-administracao',
+          to: '/central-administracao',
           label: 'Central de Administração',
           icon: Shield,
           color: 'indigo',
-          visible: true,
+          visible: hasPermission(role, userCustomPerms, 'admin.view'),
         },
       ],
     },
@@ -567,21 +600,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
     {
       id: 'plataforma',
       title: 'Plataforma',
-      visible: isPlatformMaster,
+      visible: isPlatformMaster || hasPermission(role, userCustomPerms, 'tenants.view'),
       items: [
         {
           id: 'saas-tenants',
+          to: '/empresas-assinaturas',
           label: 'Empresas & Assinaturas',
           icon: HardDrive,
           color: 'fuchsia',
-          visible: isPlatformMaster,
+          visible: isPlatformMaster || hasPermission(role, userCustomPerms, 'tenants.view'),
         },
         {
           id: 'admin-plano-consumo',
+          to: '/meu-plano',
           label: 'Meu Plano & Consumo',
           icon: Layers,
           color: 'emerald',
-          visible: isPlatformMaster,
+          visible: isPlatformMaster || hasPermission(role, userCustomPerms, 'tenants.view'),
         },
       ],
     },
@@ -589,17 +624,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
 
   const renderNavItem = (item: NavItemConfig) => {
     if (item.visible === false) return null;
-    const isActive = isViewActive(item.id);
+    const isActive = isViewActive(item);
     const Icon = item.icon;
     const style = colorStyles[item.color] || colorStyles.blue;
 
+    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+      // Allow browser default for new tab / special clicks
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.shiftKey
+      ) {
+        return;
+      }
+      e.preventDefault();
+      onNavigate(item.to);
+    };
+
     return (
-      <button
+      <a
         key={item.id}
         id={`nav-${item.id}`}
-        onClick={() => onNavigate(item.id)}
+        href={item.to}
+        onClick={handleClick}
         title={item.label}
-        className={`group relative flex items-center w-full rounded-lg transition-all duration-150 cursor-pointer select-none text-left ${
+        className={`group relative flex items-center w-full rounded-lg transition-all duration-150 cursor-pointer select-none text-left no-underline ${
           isCollapsed ? 'h-9 px-0 justify-center' : 'h-[34px] px-2.5 text-xs'
         } ${
           isActive
@@ -652,7 +704,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, brand
             {item.badge.text}
           </span>
         )}
-      </button>
+      </a>
     );
   };
 

@@ -1007,12 +1007,19 @@ async function auditAndEnsureMasterUser() {
     const activeMembership = session.user.memberships?.find(
       (m: any) => m.tenantId === effectiveTenantId && m.active
     );
-    const activeRole = session.user.role === 'PLATFORM_MASTER'
+    const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+    const activeRole = isPlatformMaster
       ? 'PLATFORM_MASTER'
-      : (session.activeRole || activeMembership?.role || session.user.role);
-    const activePermissions = session.activePermissions && session.activePermissions.length > 0
-      ? session.activePermissions
-      : (activeMembership?.customPermissions || session.user.customPermissions || []);
+      : (activeMembership?.role || session.activeRole || session.user.role);
+
+    // Multi-tenant active permissions resolution (prioritizing tenant membership custom permissions)
+    const activePermissions = isPlatformMaster
+      ? (activeMembership?.customPermissions?.length ? activeMembership.customPermissions : session.user.customPermissions || [])
+      : (activeMembership?.customPermissions && activeMembership.customPermissions.length > 0
+          ? activeMembership.customPermissions
+          : (session.activePermissions && session.activePermissions.length > 0
+              ? session.activePermissions
+              : (session.user.customPermissions || [])));
 
     // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
     let adminContext: any = null;
@@ -1071,6 +1078,7 @@ async function auditAndEnsureMasterUser() {
       effectiveTenantId,
       activeRole,
       activePermissions,
+      activeMembership,
       adminContext,
     };
   };
@@ -1127,20 +1135,31 @@ async function auditAndEnsureMasterUser() {
         id: session.user.id,
         name: session.user.name,
         email: session.user.email,
-        role: session.user.role,
+        role: session.activeRole || session.user.role,
         active: session.user.active,
         tenantId: session.effectiveTenantId || session.user.tenantId || undefined,
-        customPermissions: session.user.customPermissions || [],
+        customPermissions: session.activePermissions || session.user.customPermissions || [],
         isMasterProtected: session.user.isMasterProtected || false,
         mustChangePassword: session.user.mustChangePassword,
         createdAt: session.user.createdAt.toISOString(),
         updatedAt: session.user.updatedAt.toISOString(),
       };
 
+      const safeMembership = (session as any).activeMembership ? {
+        id: (session as any).activeMembership.id,
+        tenantId: (session as any).activeMembership.tenantId,
+        role: (session as any).activeMembership.role,
+        customPermissions: (session as any).activeMembership.customPermissions,
+        active: (session as any).activeMembership.active,
+      } : null;
+
       return res.json({
         authenticated: true,
         user: safeUser,
         effectiveTenantId: session.effectiveTenantId,
+        membership: safeMembership,
+        activeRole: session.activeRole || session.user.role,
+        activePermissions: session.activePermissions || session.user.customPermissions || [],
         adminContext: session.adminContext
           ? {
               targetTenantId: session.adminContext.targetTenantId,
@@ -6715,6 +6734,17 @@ async function auditAndEnsureMasterUser() {
             }).catch(e => console.error('[MEMBERSHIP_UPSERT ERROR]', e));
           }
         }
+      }
+
+      // Update any active sessions for this user so their in-memory/session state reflects changes immediately
+      if (Array.isArray(customPermissions) || role !== undefined) {
+        await prisma.session.updateMany({
+          where: { userId: id },
+          data: {
+            activePermissions: Array.isArray(customPermissions) ? customPermissions : undefined,
+            activeRole: role || undefined,
+          },
+        }).catch(() => {});
       }
 
       const fullUpdatedUser = await prisma.user.findUnique({

@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
-import { ControlTower } from './components/dashboard/ControlTower';
-import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard';
 import { ExecutiveBIDashboard } from './components/bi/ExecutiveBIDashboard';
 import { OperationalBIDashboard } from './components/bi/OperationalBIDashboard';
 import { StatusBottleneckReport } from './components/dashboard/StatusBottleneckReport';
@@ -27,7 +25,6 @@ import { SimulationView } from './components/simulation/SimulationView';
 
 import { TVOperationsMonitor } from './components/monitor/TVOperationsMonitor';
 import { CommercialRadarView } from './components/bi/CommercialRadarView';
-import { SentinelaAIChat } from './components/bi/SentinelaAIChat';
 import { useTenantBranding } from './hooks/useTenantBranding';
 import { OperationalAgendaView } from './components/agenda/OperationalAgendaView';
 import { GamificationCenter } from './components/gamification/GamificationCenter';
@@ -61,22 +58,39 @@ import { LoginView } from './components/auth/LoginView';
 import { TenantSelectionView } from './components/auth/TenantSelectionView';
 import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { ResponsibleAlçada, User } from './types';
-import { Maximize2, Minimize2, Plus, Search, Keyboard, Database, Sparkles } from 'lucide-react';
+import { Maximize2, Minimize2, Plus, Search, Keyboard } from 'lucide-react';
 import { Breadcrumbs } from './components/ui/Breadcrumbs';
 import { ToastContainer } from './components/ui/ToastContainer';
 
-export default function App() {
+import { RouterProvider, useRouter } from './router';
+import { canAccessRoute } from './router/routes';
+import { AccessDeniedView } from './components/common/AccessDeniedView';
+import { NotFoundView } from './components/common/NotFoundView';
+
+function AppMainContent() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
   const [activeUser, setActiveUser] = useState<User | null>(null);
   const [adminContext, setAdminContext] = useState<{ targetTenantId: string; targetTenantName: string } | null>(null);
   const { branding } = useTenantBranding();
 
+  // Router context for URL-driven navigation and deep linking
+  const {
+    pathname,
+    search,
+    params,
+    activeRoute,
+    currentView: routerViewId,
+    is404,
+    navigate,
+    redirectTarget,
+    setRedirectTarget,
+  } = useRouter();
+
   // Validate server-side session as the ultimate authority via HttpOnly cookies
   const verifyServerSession = useCallback(async () => {
     setIsVerifyingSession(true);
     try {
-      // Clean up any legacy token artifacts from web storage
       try {
         localStorage.removeItem('cg_session_token');
         sessionStorage.removeItem('cg_session_token');
@@ -90,7 +104,6 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         if (data && data.authenticated && data.user) {
-          // Update active user with valid server session data
           StorageService.setActiveUser(data.user);
           setActiveUser(data.user);
           setAdminContext(data.adminContext || null);
@@ -106,7 +119,6 @@ export default function App() {
         }
       }
 
-      // If server responds with non-ok or unauthenticated (FAIL-CLOSED)
       console.warn('[AUTH FAIL-CLOSED] Sessão server-side inexistente ou inválida. Forçando logout.');
       StorageService.clearBusinessCache();
       localStorage.setItem('cg_is_authenticated', 'false');
@@ -114,7 +126,6 @@ export default function App() {
       setActiveUser(null);
       setAdminContext(null);
     } catch (err) {
-      // FAIL-CLOSED: Network or server error must NOT allow access
       console.warn('[AUTH FAIL-CLOSED] Erro de conexão/servidor ao validar sessão:', err);
       localStorage.setItem('cg_is_authenticated', 'false');
       setIsAuthenticated(false);
@@ -131,7 +142,6 @@ export default function App() {
 
   // Listen for storage / login state updates and initialize/sync data
   useEffect(() => {
-    // Initial load on startup
     StorageService.initialize();
 
     const handleStorageUpdate = () => {
@@ -149,14 +159,12 @@ export default function App() {
     };
     window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
 
-    // If authenticated on mount, establish SSE connection immediately
     if (StorageService.isAuthenticated()) {
       const user = StorageService.getActiveUser();
       if (user) realtimeHub.setUserContext(user.id);
       realtimeHub.connect(StorageService.getCurrentTenantId());
     }
 
-    // Subscribe to incoming realtime events to perform targeted entity synchronization
     const unsubscribeRealtime = realtimeHub.subscribe('*', (event) => {
       if (event?.type === 'TENANT_SUSPENDED') {
         console.warn('[REALTIME] Tenant suspenso via Pusher. Revalidando sessão server-side...');
@@ -168,7 +176,6 @@ export default function App() {
           console.warn('[REALTIME] Erro no sync targeted:', err);
         });
       } else {
-        // Fallback: sync all if event entity is not specified
         StorageService.syncWithPostgreSQL().catch((err) => {
           console.warn('[REALTIME] Erro no sync global fallback:', err);
         });
@@ -181,19 +188,21 @@ export default function App() {
       realtimeHub.disconnect();
       StorageService.unsubscribeRealTimeListeners();
     };
-  }, []);
+  }, [verifyServerSession]);
 
-  // Initial view based on user role (safe fallback)
-  const defaultView =
-    activeUser?.role === 'DIGITADOR'
-      ? 'home-digitador'
-    : activeUser?.role === 'SUPORTE'
-    ? 'suporte'
-    : activeUser?.role === 'SIMULACAO'
-    ? 'simulacoes'
-    : 'torre-controle';
+  // Compute effective view:
+  // If at root or dashboard, respect role default (e.g. DIGITADOR -> home-digitador)
+  // Otherwise use route's viewId
+  const effectiveView = useMemo(() => {
+    if (pathname === '/' || pathname === '/dashboard') {
+      if (activeUser?.role === 'DIGITADOR') return 'home-digitador';
+      if (activeUser?.role === 'SUPORTE') return 'suporte';
+      if (activeUser?.role === 'SIMULACAO') return 'simulacoes';
+      return 'torre-controle';
+    }
+    return routerViewId;
+  }, [pathname, routerViewId, activeUser?.role]);
 
-  const [currentView, setCurrentView] = useState<string>(defaultView);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const [productionFilter, setProductionFilter] = useState<{
     statusId?: string;
@@ -219,19 +228,25 @@ export default function App() {
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [detailProposalId, setDetailProposalId] = useState<string | null>(null);
 
+  // Deep linking support for /propostas/:id
+  useEffect(() => {
+    if (params.id && effectiveView === 'producao') {
+      if (detailProposalId !== params.id) {
+        setDetailProposalId(params.id);
+      }
+    }
+  }, [params.id, effectiveView, detailProposalId]);
+
   // Run scheduled backup check and first-time tour check on startup
   useEffect(() => {
     BackupService.checkAndExecuteScheduledBackup();
-    
-    // Check if user has already seen the interactive tour
+
     try {
       const tourSeen = localStorage.getItem('cg_tour_completed');
       if (!tourSeen) {
         setIsTourOpen(true);
       }
-    } catch {
-      // safe fallback
-    }
+    } catch {}
   }, []);
 
   // Global Keyboard Shortcuts Listener
@@ -244,21 +259,18 @@ export default function App() {
         target.tagName === 'SELECT' ||
         target.isContentEditable;
 
-      // Global Command Palette (Ctrl+K or Cmd+K)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setIsUniversalSearchOpen(prev => !prev);
         return;
       }
 
-      // Global New Production (Ctrl+N or Cmd+N)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N') && !e.shiftKey) {
         e.preventDefault();
         setIsNewProductionOpen(true);
         return;
       }
 
-      // Global Quick Search (Ctrl+F or Cmd+F)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         const searchInput = document.getElementById('global-search-input');
@@ -270,14 +282,12 @@ export default function App() {
         return;
       }
 
-      // Global Backup Manager (Ctrl+Shift+B)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'B' || e.key === 'b')) {
         e.preventDefault();
         setIsBackupModalOpen(true);
         return;
       }
 
-      // Toggle Focus Mode (Alt+F or Ctrl+B)
       if (
         (e.altKey && (e.key === 'f' || e.key === 'F')) ||
         ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B') && !e.shiftKey)
@@ -287,14 +297,12 @@ export default function App() {
         return;
       }
 
-      // Shortcuts Cheatsheet (Shift + ?)
       if (e.key === '?' && !isInput) {
         e.preventDefault();
         setIsShortcutsOpen(true);
         return;
       }
 
-      // Escape key handling
       if (e.key === 'Escape') {
         if (isUniversalSearchOpen) setIsUniversalSearchOpen(false);
         else if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
@@ -305,7 +313,12 @@ export default function App() {
         else if (isExportOpen) setIsExportOpen(false);
         else if (isTestRunnerOpen) setIsTestRunnerOpen(false);
         else if (isNotificationsOpen) setIsNotificationsOpen(false);
-        else if (detailProposalId) setDetailProposalId(null);
+        else if (detailProposalId) {
+          setDetailProposalId(null);
+          if (params.id) {
+            navigate('/propostas', { replace: true });
+          }
+        }
         else if (isFocusMode) setIsFocusMode(false);
       }
     };
@@ -324,81 +337,50 @@ export default function App() {
     isNotificationsOpen,
     detailProposalId,
     isFocusMode,
+    navigate,
+    params.id,
   ]);
 
-  const handleNavigate = (view: string, params?: any) => {
-    if (view === 'nova-producao') {
+  // Main navigation handler: translates view or path to canonical URL navigation
+  const handleNavigate = (viewOrPath: string, navParams?: any) => {
+    if (viewOrPath === 'nova-producao') {
       setIsNewProductionOpen(true);
       return;
     }
-    if (view === 'importar-excel' || view === 'importacao') {
+    if (viewOrPath === 'importar-excel' || viewOrPath === 'importacao') {
       setIsImportExcelOpen(true);
       return;
     }
-    if (view === 'exportar-propostas' || view === 'exportacao') {
+    if (viewOrPath === 'exportar-propostas' || viewOrPath === 'exportacao') {
       setIsExportOpen(true);
       return;
     }
-    if (view === 'admin-backup') {
+    if (viewOrPath === 'admin-backup') {
       setIsBackupModalOpen(true);
       return;
     }
 
-    if (view === 'clients_360' || view === 'clientes') {
-      if (params?.cpf) {
-        setGlobalSearchTerm(params.cpf);
+    if (viewOrPath === 'clients_360' || viewOrPath === 'clientes') {
+      if (navParams?.cpf) {
+        setGlobalSearchTerm(navParams.cpf);
       }
-      setCurrentView('clientes');
+      navigate('/clientes');
       return;
     }
 
-    if (view === 'tv_monitor' || view === 'tv-monitor') {
-      setCurrentView('tv-monitor');
+    if (viewOrPath === 'proposals' && navParams?.proposalId) {
+      setDetailProposalId(navParams.proposalId);
+      navigate(`/propostas/${navParams.proposalId}`);
       return;
     }
 
-    if (view === 'commercial_radar' || view === 'radar-comercial') {
-      setCurrentView('radar-comercial');
-      return;
-    }
-
-    if (view === 'sentinela_ai' || view === 'sentinela-ai') {
-      setCurrentView('sentinela-ai');
-      return;
-    }
-
-    if (view === 'agenda' || view === 'agenda-operacional') {
-      setCurrentView('agenda-operacional');
-      return;
-    }
-
-    if (view === 'gamification' || view === 'gamificacao') {
-      setCurrentView('gamificacao');
-      return;
-    }
-
-    if (view === 'finance' || view === 'financeiro-geral') {
-      setCurrentView('financeiro-geral');
-      return;
-    }
-
-    if (view === 'saas_tenants' || view === 'saas-tenants') {
-      setCurrentView('saas-tenants');
-      return;
-    }
-
-    if (view === 'proposals' && params?.proposalId) {
-      setDetailProposalId(params.proposalId);
-      return;
-    }
-
-    setCurrentView(view);
+    navigate(viewOrPath);
   };
 
   const handleGlobalSearch = (term: string) => {
     setGlobalSearchTerm(term);
     if (term.trim()) {
-      setCurrentView('clientes');
+      navigate('/clientes');
     }
   };
 
@@ -409,8 +391,17 @@ export default function App() {
     promoterId?: string;
   }) => {
     setProductionFilter(filter);
-    setCurrentView('producao');
+    navigate('/propostas');
   };
+
+  // Preserve requested destination if unauthenticated
+  useEffect(() => {
+    if (!isAuthenticated && !isVerifyingSession && pathname !== '/login') {
+      if (!redirectTarget) {
+        setRedirectTarget(`${pathname}${search}`);
+      }
+    }
+  }, [isAuthenticated, isVerifyingSession, pathname, search, redirectTarget, setRedirectTarget]);
 
   if (isVerifyingSession) {
     return (
@@ -424,18 +415,39 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <LoginView onLoginSuccess={() => verifyServerSession()} />;
+    return (
+      <LoginView
+        onLoginSuccess={async () => {
+          await verifyServerSession();
+          if (redirectTarget && redirectTarget !== '/login') {
+            const target = redirectTarget;
+            setRedirectTarget(null);
+            navigate(target, { replace: true });
+          }
+        }}
+      />
+    );
   }
 
   if (activeUser?.requireTenantSelection) {
     return <TenantSelectionView user={activeUser} onSuccess={() => window.location.reload()} />;
   }
 
+  // RBAC route access verification
+  const hasRouteAccess = activeRoute
+    ? canAccessRoute(activeRoute, activeUser?.role, activeUser?.customPermissions || [])
+    : true;
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased transition-colors">
       {/* Sidebar (Hidden in Focus Mode) */}
       {!isFocusMode && (
-        <Sidebar currentView={currentView} onNavigate={handleNavigate} branding={branding} />
+        <Sidebar
+          currentView={effectiveView}
+          currentPath={pathname}
+          onNavigate={handleNavigate}
+          branding={branding}
+        />
       )}
 
       {/* Main Content Area */}
@@ -470,7 +482,7 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsNewProductionOpen(true)}
-                className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-xs"
+                className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Nova Produção</span>
@@ -506,125 +518,144 @@ export default function App() {
         )}
 
         {/* Breadcrumb Navigation Bar */}
-        {!isFocusMode && currentView !== 'tv-monitor' && (
+        {!isFocusMode && effectiveView !== 'tv-monitor' && (
           <div className="px-4 py-1.5 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
-            <Breadcrumbs currentView={currentView} onNavigate={handleNavigate} />
+            <Breadcrumbs currentView={effectiveView} onNavigate={handleNavigate} />
           </div>
         )}
 
         {/* Dynamic Page Views */}
         <main className={`flex-1 overflow-y-auto p-3.5 md:p-4 min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
-          {currentView === 'torre-controle' && (
-            <OperationalBIDashboard
-              onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
+          {is404 ? (
+            <NotFoundView
+              pathname={pathname}
+              onNavigateHome={() => navigate('/dashboard')}
             />
-          )}
-
-          {currentView === 'tv-monitor' && <TVOperationsMonitor />}
-
-          {currentView === 'dashboard-executivo' && <ExecutiveBIDashboard />}
-
-          {currentView === 'radar-comercial' && <CommercialRadarView />}
-
-          {(currentView === 'sentinela-ai' || currentView === 'sentinel-intelligence') && (
-            <SentinelIntelligenceDashboard onNavigateToView={(view) => handleNavigate(view)} />
-          )}
-
-          {currentView === 'central-operacoes' && <OperationsCentral />}
-
-          {currentView === 'gamificacao' && <GamificationCenter />}
-
-          {currentView === 'agenda-operacional' && <OperationalAgendaView />}
-
-          {currentView === 'financeiro-geral' && <GeneralFinanceView />}
-
-          {currentView === 'saas-tenants' && <PlatformMasterCentral />}
-
-          {currentView === 'relatorio-gargalos' && <StatusBottleneckReport />}
-
-          {currentView === 'home-digitador' && (
-            <DigitizerHome
-              onOpenNewProduction={() => setIsNewProductionOpen(true)}
-              onOpenImportExcel={() => setIsImportExcelOpen(true)}
-              onOpenExport={() => setIsExportOpen(true)}
+          ) : !hasRouteAccess && activeRoute ? (
+            <AccessDeniedView
+              requiredPermission={activeRoute.requiredPermission}
+              userRole={activeUser?.role}
+              tenantName={branding?.companyName || StorageService.getCurrentTenant().name}
+              onNavigateHome={() => navigate('/dashboard')}
             />
-          )}
+          ) : (
+            <>
+              {effectiveView === 'torre-controle' && (
+                <OperationalBIDashboard
+                  onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
+                />
+              )}
 
-          {currentView === 'simulacoes' && activeUser?.role !== 'DIGITADOR' && (
-            <SimulationView
-              onOpenProposalDetail={propId => setDetailProposalId(propId)}
-            />
-          )}
+              {effectiveView === 'tv-monitor' && <TVOperationsMonitor />}
 
-          {currentView === 'producao' && (
-            <ProductionList
-              onOpenNewProduction={() => setIsNewProductionOpen(true)}
-              onOpenImportExcel={() => setIsImportExcelOpen(true)}
-              onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
-              isFocusMode={isFocusMode}
-              initialFilter={productionFilter}
-            />
-          )}
+              {effectiveView === 'dashboard-executivo' && <ExecutiveBIDashboard />}
 
-          {currentView === 'esteira' && <KanbanBoard />}
+              {effectiveView === 'radar-comercial' && <CommercialRadarView />}
 
-          {currentView === 'portabilidades' && <PortabilityView />}
+              {(effectiveView === 'sentinela-ai' || effectiveView === 'sentinel-intelligence') && (
+                <SentinelIntelligenceDashboard onNavigateToView={(view) => handleNavigate(view)} />
+              )}
 
-          {(currentView === 'clientes' || currentView === 'busca-cpf' || currentView === 'pesquisa-cpf') && (
-            <Client360View initialSearchCpf={globalSearchTerm} />
-          )}
+              {effectiveView === 'central-operacoes' && <OperationsCentral />}
 
-          {currentView === 'parceiros' && <PartnerManagement />}
+              {effectiveView === 'gamificacao' && <GamificationCenter />}
 
-          {(currentView === 'promotoras' || currentView === 'admin-bancos') && (
-            <BankPromoterManagement />
-          )}
+              {effectiveView === 'agenda-operacional' && <OperationalAgendaView />}
 
-          {(currentView === 'suporte' ||
-            currentView === 'pendencias' ||
-            currentView === 'sla') && <SupportCenter />}
+              {effectiveView === 'financeiro-geral' && <GeneralFinanceView />}
 
-          {currentView === 'admin-usuarios' && <UserManagement />}
+              {effectiveView === 'saas-tenants' && <PlatformMasterCentral />}
 
-          {currentView === 'admin-plano-consumo' && <TenantSaaSCapacityView />}
+              {effectiveView === 'relatorio-gargalos' && <StatusBottleneckReport />}
 
-          {currentView === 'admin-produtos' && <ProductManagement />}
+              {effectiveView === 'home-digitador' && (
+                <DigitizerHome
+                  onOpenNewProduction={() => setIsNewProductionOpen(true)}
+                  onOpenImportExcel={() => setIsImportExcelOpen(true)}
+                  onOpenExport={() => setIsExportOpen(true)}
+                />
+              )}
 
-          {currentView === 'admin-status' && <StatusManagement />}
+              {effectiveView === 'simulacoes' && activeUser?.role !== 'DIGITADOR' && (
+                <SimulationView
+                  onOpenProposalDetail={propId => {
+                    setDetailProposalId(propId);
+                    navigate(`/propostas/${propId}`);
+                  }}
+                />
+              )}
 
-          {currentView === 'admin-calendario' && <HolidayManagement />}
+              {effectiveView === 'producao' && (
+                <ProductionList
+                  onOpenNewProduction={() => setIsNewProductionOpen(true)}
+                  onOpenImportExcel={() => setIsImportExcelOpen(true)}
+                  onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
+                  isFocusMode={isFocusMode}
+                  initialFilter={productionFilter}
+                />
+              )}
 
-          {currentView === 'admin-auditoria' && <AuditLogView />}
+              {effectiveView === 'esteira' && <KanbanBoard />}
 
-          {(currentView === 'admin-c6-bank' || currentView === 'admin-integracoes-bancos') && (
-            <BankIntegrationsView />
-          )}
+              {effectiveView === 'portabilidades' && <PortabilityView />}
 
-          {currentView === 'admin-comunicados' && (<AnnouncementsManagement />)}
-          {currentView === 'admin-import-status' && (
-            <StatusImport onNavigate={handleNavigate} />
-          )}
+              {(effectiveView === 'clientes' || effectiveView === 'busca-cpf' || effectiveView === 'pesquisa-cpf') && (
+                <Client360View initialSearchCpf={globalSearchTerm} />
+              )}
 
-          {/* NOVOS MÓDULOS OPERACIONAIS & CENTRAL DE ADMINISTRAÇÃO */}
-          {(currentView === 'central-administracao' || currentView === 'administracao') && (
-            <CentralAdministracao />
-          )}
-          {(currentView === 'central-pendencias' || currentView === 'pendencias-central') && (
-            <CentralPendencias />
-          )}
-          {(currentView === 'central-automacao' || currentView === 'automacoes') && (
-            <CentralAutomacoes />
-          )}
-          {(currentView === 'hub-integracoes' || currentView === 'integracoes-hub') && (
-            <HubIntegracoes />
-          )}
-          {(currentView === 'command-center' || currentView === 'command') && (
-            <CommandCenterView />
+              {effectiveView === 'parceiros' && <PartnerManagement />}
+
+              {(effectiveView === 'promotoras' || effectiveView === 'admin-bancos') && (
+                <BankPromoterManagement />
+              )}
+
+              {(effectiveView === 'suporte' ||
+                effectiveView === 'pendencias' ||
+                effectiveView === 'sla') && <SupportCenter />}
+
+              {effectiveView === 'admin-usuarios' && <UserManagement />}
+
+              {effectiveView === 'admin-plano-consumo' && <TenantSaaSCapacityView />}
+
+              {effectiveView === 'admin-produtos' && <ProductManagement />}
+
+              {effectiveView === 'admin-status' && <StatusManagement />}
+
+              {effectiveView === 'admin-calendario' && <HolidayManagement />}
+
+              {effectiveView === 'admin-auditoria' && <AuditLogView />}
+
+              {(effectiveView === 'admin-c6-bank' || effectiveView === 'admin-integracoes-bancos') && (
+                <BankIntegrationsView />
+              )}
+
+              {effectiveView === 'admin-comunicados' && (<AnnouncementsManagement />)}
+              {effectiveView === 'admin-import-status' && (
+                <StatusImport onNavigate={handleNavigate} />
+              )}
+
+              {/* NOVOS MÓDULOS OPERACIONAIS & CENTRAL DE ADMINISTRAÇÃO */}
+              {(effectiveView === 'central-administracao' || effectiveView === 'administracao') && (
+                <CentralAdministracao />
+              )}
+              {(effectiveView === 'central-pendencias' || effectiveView === 'pendencias-central') && (
+                <CentralPendencias />
+              )}
+              {(effectiveView === 'central-automacao' || effectiveView === 'automacoes') && (
+                <CentralAutomacoes />
+              )}
+              {(effectiveView === 'hub-integracoes' || effectiveView === 'integracoes-hub') && (
+                <HubIntegracoes />
+              )}
+              {(effectiveView === 'command-center' || effectiveView === 'command') && (
+                <CommandCenterView />
+              )}
+            </>
           )}
         </main>
 
         {/* Bottom Operational Status Bar */}
-        {!isFocusMode && currentView !== 'tv-monitor' && (
+        {!isFocusMode && effectiveView !== 'tv-monitor' && (
           <footer className="h-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none shrink-0">
             <div className="flex items-center gap-2.5">
               <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
@@ -648,6 +679,7 @@ export default function App() {
                 </strong>
               </span>
             </div>
+
             <div className="flex items-center gap-3 font-medium text-[10px]">
               <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-semibold">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -665,7 +697,7 @@ export default function App() {
           onClose={() => setIsNewProductionOpen(false)}
           onSuccess={() => {
             setIsNewProductionOpen(false);
-            setCurrentView('producao');
+            navigate('/propostas');
           }}
         />
       )}
@@ -676,7 +708,7 @@ export default function App() {
           onClose={() => setIsImportExcelOpen(false)}
           onImportSuccess={() => {
             setIsImportExcelOpen(false);
-            setCurrentView('producao');
+            navigate('/propostas');
           }}
         />
       )}
@@ -699,13 +731,21 @@ export default function App() {
       <NotificationsDrawer
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
-        onSelectProposal={id => setDetailProposalId(id)}
+        onSelectProposal={id => {
+          setDetailProposalId(id);
+          navigate(`/propostas/${id}`);
+        }}
       />
 
       {detailProposalId && (
         <ProposalDetailModal
           proposalId={detailProposalId}
-          onClose={() => setDetailProposalId(null)}
+          onClose={() => {
+            setDetailProposalId(null);
+            if (params.id) {
+              navigate('/propostas', { replace: true });
+            }
+          }}
           onProposalUpdated={() => {}}
         />
       )}
@@ -727,7 +767,10 @@ export default function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
-        onSelectProposal={id => setDetailProposalId(id)}
+        onSelectProposal={id => {
+          setDetailProposalId(id);
+          navigate(`/propostas/${id}`);
+        }}
       />
 
       {/* Keyboard Shortcuts Cheatsheet (?) */}
@@ -772,5 +815,13 @@ export default function App() {
       {/* Global Toast Feedback Container */}
       <ToastContainer />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <RouterProvider>
+      <AppMainContent />
+    </RouterProvider>
   );
 }
