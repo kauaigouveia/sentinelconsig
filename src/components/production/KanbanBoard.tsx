@@ -306,7 +306,7 @@ export const KanbanBoard: React.FC = () => {
                       )}
                     </div>
                     <div className="mt-1.5">
-                      <AuthorityBadge authority={status.responsible} />
+                      <AuthorityBadge authority={status.responsibleGroup || status.responsible} />
                     </div>
                   </div>
                   <span className="h-5.5 min-w-5.5 px-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black text-[11px] flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">

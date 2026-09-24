@@ -33,6 +33,7 @@ describe('Official Proposal Status Loading & Auto-Seeding Tests', () => {
       proposalStatus: {
         count: vi.fn().mockResolvedValue(11),
         createMany: vi.fn(),
+        updateMany: vi.fn(),
       },
     };
 

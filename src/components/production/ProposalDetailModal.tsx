@@ -544,7 +544,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                   </button>
                 </div>
                 <StatusBadge status={currentStatus} />
-                <AuthorityBadge responsible={currentStatus?.responsible} />
+                <AuthorityBadge responsible={proposal?.currentResponsible || currentStatus?.responsibleGroup || currentStatus?.responsible} />
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                 <span>Cliente:</span>

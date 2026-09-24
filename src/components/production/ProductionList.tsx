@@ -1074,7 +1074,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
                       {/* Alçada */}
                       <td className={cellPadding}>
-                        <AuthorityBadge responsible={status?.responsible} />
+                        <AuthorityBadge responsible={p.currentResponsible || status?.responsibleGroup || status?.responsible} />
                       </td>
 
                       {/* Status */}

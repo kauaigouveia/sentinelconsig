@@ -15163,6 +15163,7 @@ async function startServer() {
   serverInstance = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Sentinel Consig server running on http://localhost:${PORT}`);
     await auditAndEnsureMasterUser();
+    await ensureDefaultStatusesForAllTenants(prisma);
     C6SyncWorker.start(prisma);
     FactaSyncWorker.start(prisma);
     PendencyService.initEventBusSubscriptions(prisma);

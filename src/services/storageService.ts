@@ -498,7 +498,7 @@ const INITIAL_STATUSES: ProposalStatus[] = [
   { id: 'st-1', name: 'AGUARDAR FORMALIZAÇÃO', code: 'AGUARDAR_FORMALIZACAO', order: 1, responsibleGroup: 'CLIENTE', responsible: 'CLIENTE', active: true, slaHours: 24, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#64748b' },
   { id: 'st-2', name: 'AGUARDA LIBERAÇÃO CORBAN', code: 'AGUARDA_LIBERACAO_CORBAN', order: 2, responsibleGroup: 'NOSSA EQUIPE', responsible: 'NOSSA EQUIPE', active: true, slaHours: 12, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#eab308' },
   { id: 'st-3', name: 'AGUARDAR RETORNO CIP', code: 'AGUARDAR_RETORNO_CIP', order: 3, responsibleGroup: 'BANCO', responsible: 'BANCO', active: true, slaHours: 120, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#3b82f6' },
-  { id: 'st-4', name: 'AGUARDAR PORTABILIDADE', code: 'AGUARDAR_PORTABILIDADE', order: 4, responsibleGroup: 'SISTEMA', responsible: 'SISTEMA', active: true, slaHours: 120, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#8b5cf6' },
+  { id: 'st-4', name: 'AGUARDAR PORTABILIDADE', code: 'AGUARDAR_PORTABILIDADE', order: 4, responsibleGroup: 'CLIENTE', responsible: 'CLIENTE', active: true, slaHours: 120, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#8b5cf6' },
   { id: 'st-5', name: 'SALDO RETORNADO', code: 'SALDO_RETORNADO', order: 5, responsibleGroup: 'SISTEMA', responsible: 'SISTEMA', active: true, slaHours: 24, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#10b981' },
   { id: 'st-6', name: 'PENDENTE ENVIO DE DOCUMENTAÇÃO', code: 'PENDENTE_ENVIO_DOCUMENTACAO', order: 6, responsibleGroup: 'PARCEIRO', responsible: 'PARCEIRO', active: true, slaHours: 48, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#ef4444' },
   { id: 'st-7', name: 'PENDENTE ANEXO DOCUMENTAÇÃO', code: 'PENDENTE_ANEXO_DOCUMENTACAO', order: 7, responsibleGroup: 'NOSSA EQUIPE', responsible: 'NOSSA EQUIPE', active: true, slaHours: 24, finalStatus: false, manualChangeAllowed: true, automaticChangeAllowed: true, color: '#f97316' },
@@ -1158,7 +1158,10 @@ export class StorageService {
         name: p.status.name,
         code: p.status.code,
         responsibleGroup: p.status.responsibleGroup,
-        standardCategory: p.status.standardCategory
+        responsible: p.status.responsibleGroup,
+        standardCategory: p.status.standardCategory,
+        slaHours: p.status.slaHours,
+        color: p.status.color,
       } : undefined,
 
       currentResponsible: p.status?.responsibleGroup || 'CLIENTE',

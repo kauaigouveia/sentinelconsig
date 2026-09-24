@@ -423,7 +423,13 @@ export const StatusManagement: React.FC = () => {
                     <td className="px-3 py-3 text-center">
                       <div className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-[11px]">
                         <Clock className="h-3 w-3 text-slate-400" />
-                        <span>{s.slaHours ? `${s.slaHours}h` : 'Sem SLA'}</span>
+                        <span>
+                          {s.code === 'AGUARDAR_RETORNO_CIP'
+                            ? '5 dias úteis'
+                            : s.code === 'AGUARDAR_PORTABILIDADE'
+                            ? 'N/A'
+                            : s.slaHours ? `${s.slaHours}h` : 'Sem SLA'}
+                        </span>
                       </div>
                     </td>
 

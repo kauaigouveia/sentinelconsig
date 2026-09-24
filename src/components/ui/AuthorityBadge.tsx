@@ -16,7 +16,7 @@ export const AuthorityBadge: React.FC<AuthorityBadgeProps> = ({
   size = 'sm',
   className = '',
 }) => {
-  const alçada = directAlcada || authority || responsible || 'NOSSA_EQUIPE';
+  const alçada = (directAlcada || authority || responsible || '').toUpperCase().trim();
   const getStyleAndLabel = () => {
     switch (alçada) {
       case 'BANCO':
@@ -43,6 +43,7 @@ export const AuthorityBadge: React.FC<AuthorityBadgeProps> = ({
           border: 'border-emerald-200 dark:border-emerald-800/80',
           indicator: 'bg-emerald-500',
         };
+      case 'NOSSA EQUIPE':
       case 'NOSSA_EQUIPE':
         return {
           label: 'Alçada Interna',
@@ -51,7 +52,16 @@ export const AuthorityBadge: React.FC<AuthorityBadgeProps> = ({
           border: 'border-purple-200 dark:border-purple-800/80',
           indicator: 'bg-purple-500',
         };
+      case 'SISTEMA':
+        return {
+          label: 'Sistema',
+          bg: 'bg-slate-100 dark:bg-slate-800/60',
+          text: 'text-slate-700 dark:text-slate-300 font-medium',
+          border: 'border-slate-200 dark:border-slate-700',
+          indicator: 'bg-slate-400',
+        };
       case 'ORGAO_PAGADOR':
+      case 'ORGAO PAGADOR':
         return {
           label: 'Órgão Pagador',
           bg: 'bg-indigo-50 dark:bg-indigo-950/40',
@@ -61,7 +71,7 @@ export const AuthorityBadge: React.FC<AuthorityBadgeProps> = ({
         };
       default:
         return {
-          label: alçada || 'Sistema',
+          label: alçada || 'Cliente',
           bg: 'bg-slate-100 dark:bg-slate-800/60',
           text: 'text-slate-700 dark:text-slate-300 font-medium',
           border: 'border-slate-200 dark:border-slate-700',
