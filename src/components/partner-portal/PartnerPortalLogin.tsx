@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Lock, Mail, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { SYSTEM_IDENTITY } from '../../lib/branding';
+import { useTenantBranding } from '../../hooks/useTenantBranding';
 
 interface PartnerPortalLoginProps {
   onLoginSuccess: () => void;
@@ -10,13 +11,34 @@ interface PartnerPortalLoginProps {
 
 export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
   onLoginSuccess,
-  tenantName = 'Sentinel Consig',
-  logoUrl,
+  tenantName: propTenantName,
+  logoUrl: propLogoUrl,
 }) => {
+  const { branding } = useTenantBranding();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Prioridade de identidade do tenant:
+  // 1. propTenantName se fornecido e não for o fallback genérico
+  // 2. branding.companyName resolvido via TenantResolver pelo hostname
+  // 3. Fallback neutro
+  const resolvedCompanyName =
+    branding && branding.companyName && branding.companyName !== 'Sentinel Consig'
+      ? branding.companyName
+      : null;
+
+  const effectiveTenantName =
+    propTenantName && propTenantName !== 'Sentinel Consig'
+      ? propTenantName
+      : (resolvedCompanyName || propTenantName || 'Organização');
+
+  const effectiveLogoUrl =
+    propLogoUrl ||
+    branding?.logoUrl ||
+    null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +60,7 @@ export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Credenciais inválidas ou acesso desativado.');
+        throw new Error(data.error || 'Credenciais inválidas ou acesso desativado nesta organização.');
       }
 
       onLoginSuccess();
@@ -59,24 +81,30 @@ export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
         {/* Card */}
         <div className="rounded-2xl border border-slate-800/80 bg-slate-900/90 backdrop-blur-xl p-8 shadow-2xl space-y-6">
           {/* Brand Header */}
-          <div className="flex flex-col items-center text-center space-y-2">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 p-0.5 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="flex flex-col items-center text-center space-y-2.5">
+            <div className="h-16 w-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-700/60 p-1.5 flex items-center justify-center shadow-xl shadow-blue-500/10 overflow-hidden">
               <img
-                src={logoUrl || SYSTEM_IDENTITY.defaultLogo}
-                alt={tenantName}
-                className="h-full w-full object-contain rounded-[10px]"
+                src={effectiveLogoUrl || SYSTEM_IDENTITY.defaultLogo}
+                alt={effectiveTenantName}
+                className="h-full w-full object-contain rounded-xl"
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xl font-black text-white tracking-tight">Portal do Parceiro</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                PRO
-              </span>
+
+            <div className="space-y-1">
+              <h1 className="text-xl font-black text-white tracking-tight uppercase">
+                {effectiveTenantName}
+              </h1>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-sm font-bold text-blue-400">Portal do Parceiro</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                  EXTERNO
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium">
+                Acompanhamento de propostas e atendimento
+              </p>
             </div>
-            <p className="text-xs text-slate-400 font-medium">
-              {tenantName} — Acompanhamento exclusivo de propostas e atendimento
-            </p>
           </div>
 
           {/* Error Message */}
@@ -136,13 +164,18 @@ export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
           </form>
 
           {/* Footer Security Badges */}
-          <div className="pt-2 border-t border-slate-800/60 flex items-center justify-center gap-4 text-[11px] text-slate-500 font-semibold">
-            <span className="flex items-center gap-1">
-              <Shield className="h-3.5 w-3.5 text-emerald-400" /> Acesso Criptografado
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-blue-400" /> Isolamento Auditado
+          <div className="pt-2 border-t border-slate-800/60 flex flex-col items-center gap-2 text-[11px] text-slate-500 font-semibold">
+            <div className="flex items-center justify-center gap-4">
+              <span className="flex items-center gap-1">
+                <Shield className="h-3.5 w-3.5 text-emerald-400" /> Acesso Criptografado
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5 text-blue-400" /> Isolamento Auditado
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-600 font-medium">
+              Plataforma {SYSTEM_IDENTITY.name}
             </span>
           </div>
         </div>

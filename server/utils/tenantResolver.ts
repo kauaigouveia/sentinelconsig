@@ -70,7 +70,7 @@ export class TenantResolver {
   public static extractHost(req: express.Request): string {
     // Hardening: Para evitar o risco de spoofing por Host Header de fontes não confiáveis,
     // preferimos o header 'host' padrão, a menos que TRUST_PROXY esteja explicitamente definido como 'true'.
-    const useForwarded = process.env.TRUST_PROXY === 'true';
+    const useForwarded = process.env.TRUST_PROXY === 'true' || Boolean(req.app?.get('trust proxy'));
     const forwardedHost = req.headers['x-forwarded-host'];
     
     let host = '';
@@ -87,7 +87,7 @@ export class TenantResolver {
     }
 
     // 3. Normalização básica
-    host = host.trim().toLowerCase();
+    host = host.split(',')[0].trim().toLowerCase();
     host = host.split(':')[0]; // Remove porta
     return host;
   }

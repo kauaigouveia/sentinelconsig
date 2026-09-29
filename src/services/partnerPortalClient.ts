@@ -22,6 +22,10 @@ export interface TenantInfo {
   name: string;
   slug: string;
   customDomain?: string | null;
+  whiteLabel?: {
+    companyName?: string;
+    logoUrl?: string | null;
+  } | null;
 }
 
 export interface PartnerPortalSessionResponse {

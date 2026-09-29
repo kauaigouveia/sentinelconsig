@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SYSTEM_IDENTITY } from '../../lib/branding';
 import { useTheme } from '../../context/ThemeContext';
+import { useTenantBranding } from '../../hooks/useTenantBranding';
 import {
   PartnerPortalAccessInfo,
   PartnerInfo,
@@ -35,6 +36,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
   initialTab = 'dashboard',
   proposalIdParam,
 }) => {
+  const { branding } = useTenantBranding();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [access, setAccess] = useState<PartnerPortalAccessInfo | null>(null);
   const [partner, setPartner] = useState<PartnerInfo | null>(null);
@@ -93,8 +95,24 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
   }
 
   if (!isAuthenticated || !partner || !access || !tenant) {
-    return <PartnerPortalLogin onLoginSuccess={verifySession} tenantName={tenant?.name} />;
+    return (
+      <PartnerPortalLogin
+        onLoginSuccess={verifySession}
+        tenantName={tenant?.name || (branding.companyName !== 'Sentinel Consig' ? branding.companyName : undefined)}
+        logoUrl={tenant?.whiteLabel?.logoUrl || branding.logoUrl}
+      />
+    );
   }
+
+  const effectiveTenantName =
+    tenant.name ||
+    (branding.companyName !== 'Sentinel Consig' ? branding.companyName : '') ||
+    'Organização';
+
+  const effectiveTenantLogo =
+    tenant.whiteLabel?.logoUrl ||
+    branding.logoUrl ||
+    SYSTEM_IDENTITY.defaultLogo;
 
   return (
     <div className="min-h-screen w-screen flex flex-col bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased transition-colors select-none">
@@ -102,25 +120,25 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
       <header className="h-14 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-4 md:px-6 flex items-center justify-between gap-4 shrink-0 z-30 transition-colors">
         {/* Brand & Portal Name */}
         <div className="flex items-center gap-3">
-          <div className="h-8.5 w-8.5 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 p-0.5 flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="h-9 w-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
             <img
-              src={SYSTEM_IDENTITY.defaultLogo}
-              alt="Sentinel Consig"
-              className="h-full w-full object-contain rounded-md"
+              src={effectiveTenantLogo}
+              alt={effectiveTenantName}
+              className="h-full w-full object-contain rounded-lg"
               referrerPolicy="no-referrer"
             />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-nowrap">
-              <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
-                {tenant.name}
+              <span className="text-xs font-black tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                {effectiveTenantName}
               </span>
-              <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+              <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shrink-0">
                 PARCEIRO
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold truncate">
-              {partner.name} • Cód: {partner.code}
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold truncate">
+              Portal do Parceiro • {partner.name} (Cód: {partner.code})
             </p>
           </div>
         </div>

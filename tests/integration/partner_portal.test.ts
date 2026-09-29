@@ -756,4 +756,133 @@ describe('Integration & Adversarial: Partner Portal & Support Central', () => {
       expect(res.body.commissionOperator).toBeUndefined();
     });
   });
+
+  describe('9. Respeito Rigoroso ao Tenant da URL e Isolamento por Host / Subdomínio (GRUPO EVOLVE)', () => {
+    let evolveTenantId: string;
+    let evolvePartnerId: string;
+    let evolveAccessId: string;
+    const evolvePartnerEmail = `partner.evolve.${Date.now()}@sentineltest.com`;
+    const evolvePassword = 'EvolveSecure@123';
+    let evolveSessionToken: string;
+
+    beforeAll(async () => {
+      // Busca ou cria o tenant GRUPO EVOLVE com slug grupoevolve
+      let evolveTenant = await prisma.tenant.findUnique({
+        where: { slug: 'grupoevolve' },
+        include: { whiteLabel: true },
+      });
+
+      if (!evolveTenant) {
+        evolveTenant = await prisma.tenant.create({
+          data: {
+            name: 'GRUPO EVOLVE',
+            tradeName: 'EVOLVE PROMOTORA',
+            slug: 'grupoevolve',
+            status: 'ACTIVE',
+            whiteLabel: {
+              create: {
+                companyName: 'GRUPO EVOLVE',
+                logoUrl: 'https://i.ibb.co/hFDZ5wDc/Chat-GPT-Image-17-de-set-de-2026-23-21-36.png',
+              },
+            },
+          },
+          include: { whiteLabel: true },
+        });
+      }
+      evolveTenantId = evolveTenant.id;
+
+      // Cria parceiro do GRUPO EVOLVE
+      const evolvePartner = await prisma.partner.create({
+        data: {
+          tenantId: evolveTenantId,
+          name: 'Parceiro Exclusivo Evolve',
+          code: `EVO-${Date.now().toString().slice(-4)}`,
+          status: 'ATIVO',
+          email: evolvePartnerEmail,
+        },
+      });
+      evolvePartnerId = evolvePartner.id;
+
+      // Cria acesso ao portal para o parceiro Evolve
+      const passwordHash = await hashPassword(evolvePassword);
+      const access = await prisma.partnerPortalAccess.create({
+        data: {
+          tenantId: evolveTenantId,
+          partnerId: evolvePartnerId,
+          name: 'Operador Evolve',
+          email: evolvePartnerEmail,
+          passwordHash,
+          active: true,
+          mustChangePassword: false,
+        },
+      });
+      evolveAccessId = access.id;
+    });
+
+    afterAll(async () => {
+      await prisma.partnerPortalSession.deleteMany({ where: { partnerId: evolvePartnerId } }).catch(() => {});
+      await prisma.partnerPortalAccess.deleteMany({ where: { id: evolveAccessId } }).catch(() => {});
+      await prisma.partner.deleteMany({ where: { id: evolvePartnerId } }).catch(() => {});
+    });
+
+    it('deve resolver public branding com companyName "GRUPO EVOLVE" ao acessar pelo host grupoevolve.sentinelconsig.com.br', async () => {
+      const res = await request(app)
+        .get('/api/public/tenant-branding')
+        .set('Host', 'grupoevolve.sentinelconsig.com.br');
+
+      expect(res.status).toBe(200);
+      expect(res.body.companyName).toBe('GRUPO EVOLVE');
+      expect(res.body.status).toBe('CONFIGURED');
+      expect(res.body.domainType).toBe('PLATFORM_SUBDOMAIN');
+    });
+
+    it('ADVERSARIAL: deve rejeitar login no subdomínio grupoevolve com credenciais de parceiro pertencente a outro tenant', async () => {
+      // partnerAEmail pertence ao tenantAId, não ao grupoevolve
+      const res = await request(app)
+        .post('/api/partner-portal/auth/login')
+        .set('Host', 'grupoevolve.sentinelconsig.com.br')
+        .send({ email: partnerAEmail, password: 'NovaSenhaSegura@2026' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatch(/inválidas|não cadastrado/i);
+    });
+
+    it('deve autenticar com sucesso parceiro do GRUPO EVOLVE quando acessado pelo host grupoevolve.sentinelconsig.com.br', async () => {
+      const res = await request(app)
+        .post('/api/partner-portal/auth/login')
+        .set('Host', 'grupoevolve.sentinelconsig.com.br')
+        .send({ email: evolvePartnerEmail, password: evolvePassword });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.tenant.name).toBe('GRUPO EVOLVE');
+      expect(res.body.tenant.id).toBe(evolveTenantId);
+      expect(res.body.partner.id).toBe(evolvePartnerId);
+      evolveSessionToken = res.body.token;
+    });
+
+    it('ADVERSARIAL: se uma sessão válida de outro tenant for apresentada ao host grupoevolve, o backend DEVE rejeitar (401)', async () => {
+      // partnerBToken pertence a tenantBId, não a grupoevolve
+      const res = await request(app)
+        .get('/api/partner-portal/auth/session')
+        .set('Host', 'grupoevolve.sentinelconsig.com.br')
+        .set('Cookie', [`cg_partner_session_id=${partnerBToken}`]);
+
+      expect(res.status).toBe(401);
+      expect(res.body.authenticated).toBe(false);
+    });
+
+    it('deve validar e retornar contexto do GRUPO EVOLVE quando a sessão correta é apresentada ao host do GRUPO EVOLVE', async () => {
+      const res = await request(app)
+        .get('/api/partner-portal/auth/session')
+        .set('Host', 'grupoevolve.sentinelconsig.com.br')
+        .set('Cookie', [`cg_partner_session_id=${evolveSessionToken}`]);
+
+      expect(res.status).toBe(200);
+      expect(res.body.authenticated).toBe(true);
+      expect(res.body.tenant.name).toBe('GRUPO EVOLVE');
+      expect(res.body.tenant.id).toBe(evolveTenantId);
+      expect(res.body.partner.id).toBe(evolvePartnerId);
+    });
+  });
 });

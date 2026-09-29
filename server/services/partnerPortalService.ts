@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { Request } from 'express';
 import { verifyPassword, hashPassword } from './passwordService.js';
 import { AuditLogService } from './auditLogService.js';
+import { TenantResolver } from '../utils/tenantResolver.js';
 
 export interface PartnerPortalSessionContext {
   session: {
@@ -30,6 +31,10 @@ export interface PartnerPortalSessionContext {
     name: string;
     slug: string;
     customDomain: string | null;
+    whiteLabel?: {
+      companyName?: string;
+      logoUrl?: string | null;
+    } | null;
   };
 }
 
@@ -71,7 +76,9 @@ export class PartnerPortalService {
             },
           },
           tenant: {
-            select: { id: true, name: true, slug: true, customDomain: true, status: true, deletedAt: true },
+            include: {
+              whiteLabel: true,
+            },
           },
         },
       });
@@ -99,6 +106,22 @@ export class PartnerPortalService {
         return null;
       }
 
+      // 5. TROCA DE TENANT / ISOLAMENTO DE HOST:
+      // Se a requisição veio por um subdomínio ou domínio customizado de um tenant específico,
+      // a sessão DEVE pertencer a esse mesmo tenant!
+      // Se o usuário acessar outro tenant no mesmo navegador, a sessão atual é rejeitada,
+      // exigindo nova autenticação no tenant correto sem vazar propostas ou mensagens.
+      const host = TenantResolver.extractHost(req);
+      const domainResolution = await TenantResolver.resolveByHost(prisma, host);
+      if (
+        domainResolution.tenant &&
+        (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')
+      ) {
+        if (session.tenantId !== domainResolution.tenant.id) {
+          return null;
+        }
+      }
+
       return {
         session: {
           id: session.id,
@@ -122,9 +145,15 @@ export class PartnerPortalService {
         },
         tenant: {
           id: session.tenant.id,
-          name: session.tenant.name,
+          name: session.tenant.whiteLabel?.companyName || session.tenant.name,
           slug: session.tenant.slug,
           customDomain: session.tenant.customDomain,
+          whiteLabel: session.tenant.whiteLabel
+            ? {
+                companyName: session.tenant.whiteLabel.companyName,
+                logoUrl: session.tenant.whiteLabel.logoUrl,
+              }
+            : null,
         },
       };
     } catch (err) {
@@ -142,6 +171,26 @@ export class PartnerPortalService {
     req: Request,
     prisma: PrismaClient
   ) {
+    // 1. Resolve o contexto de tenant a partir do host da requisição (ex: grupoevolve.sentinelconsig.com.br)
+    const host = TenantResolver.extractHost(req);
+    const domainResolution = await TenantResolver.resolveByHost(prisma, host);
+
+    if (domainResolution.type === 'DOMAIN_NOT_CONFIGURED') {
+      return {
+        success: false,
+        statusCode: 403,
+        message: 'Este domínio não está associado a nenhuma organização ativa do Sentinel Consig.',
+      };
+    }
+
+    if (domainResolution.branding?.status === 'SUSPENDED') {
+      return {
+        success: false,
+        statusCode: 403,
+        message: 'Acesso temporariamente suspenso para esta organização. Contate o suporte.',
+      };
+    }
+
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanPassword = String(password || '').trim();
 
@@ -149,10 +198,19 @@ export class PartnerPortalService {
       return { success: false, statusCode: 400, message: 'E-mail e senha são obrigatórios.' };
     }
 
+    // Se o domínio for específico de um tenant (CUSTOM_DOMAIN ou PLATFORM_SUBDOMAIN), busca estritamente nesse tenantId
+    const targetTenantId = domainResolution.tenant?.id;
+
+    const accessWhere: any = {
+      email: { equals: cleanEmail, mode: 'insensitive' },
+    };
+
+    if (targetTenantId) {
+      accessWhere.tenantId = targetTenantId;
+    }
+
     const access = await prisma.partnerPortalAccess.findFirst({
-      where: {
-        email: { equals: cleanEmail, mode: 'insensitive' },
-      },
+      where: accessWhere,
       include: {
         partner: {
           include: {
@@ -160,13 +218,19 @@ export class PartnerPortalService {
           },
         },
         tenant: {
-          select: { id: true, name: true, slug: true, customDomain: true, status: true, deletedAt: true },
+          include: {
+            whiteLabel: true,
+          },
         },
       },
     });
 
     if (!access) {
-      return { success: false, statusCode: 401, message: 'Credenciais inválidas ou acesso não cadastrado.' };
+      return { success: false, statusCode: 401, message: 'Credenciais inválidas ou acesso não cadastrado nesta empresa.' };
+    }
+
+    if (targetTenantId && access.tenantId !== targetTenantId) {
+      return { success: false, statusCode: 401, message: 'Credenciais inválidas ou acesso não cadastrado nesta empresa.' };
     }
 
     if (!access.active) {
@@ -247,9 +311,15 @@ export class PartnerPortalService {
       },
       tenant: {
         id: access.tenant.id,
-        name: access.tenant.name,
+        name: access.tenant.whiteLabel?.companyName || access.tenant.name,
         slug: access.tenant.slug,
         customDomain: access.tenant.customDomain,
+        whiteLabel: access.tenant.whiteLabel
+          ? {
+              companyName: access.tenant.whiteLabel.companyName,
+              logoUrl: access.tenant.whiteLabel.logoUrl,
+            }
+          : null,
       },
     };
   }
