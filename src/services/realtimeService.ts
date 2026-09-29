@@ -39,7 +39,10 @@ export interface RealtimeEvent<T = any> {
     | 'IMPORT_PROGRESS'
     | 'IMPORT_COMPLETED'
     | 'IMPORT_FAILED'
-    | 'IMPORT_CANCELLED';
+    | 'IMPORT_CANCELLED'
+    | 'SUPPORT_MESSAGE_RECEIVED'
+    | 'SUPPORT_CONVERSATION_CREATED'
+    | (string & {});
   entity?: string;
   entityId?: string;
   tenantId?: string;

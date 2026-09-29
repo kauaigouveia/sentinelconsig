@@ -37,12 +37,9 @@ export function useTenantBranding() {
   const [error, setError] = useState<string | null>(null);
 
   const applyBrandingToDOM = useCallback((b: TenantBranding) => {
-    // 1. Update Title
-    if (b.companyName && b.companyName !== SYSTEM_IDENTITY.name) {
-      document.title = `${b.companyName} | Sentinel Consig`;
-    } else {
-      document.title = SYSTEM_IDENTITY.title;
-    }
+    // 1. Update Title (Fixed format: ${tenantName} | Sentinel Consig)
+    const tenantName = b.companyName || SYSTEM_IDENTITY.name;
+    document.title = `${tenantName} | Sentinel Consig`;
 
     // 2. Update Favicon if provided
     if (b.faviconUrl) {

@@ -58,11 +58,8 @@ export class BrandingService {
   }
 
   public static applyBrandingToDocument(branding: TenantBranding): void {
-    if (branding.companyName && branding.companyName !== SYSTEM_IDENTITY.name) {
-      document.title = `${branding.companyName} | Sentinel Consig`;
-    } else {
-      document.title = SYSTEM_IDENTITY.title;
-    }
+    const tenantName = branding.companyName || SYSTEM_IDENTITY.name;
+    document.title = `${tenantName} | Sentinel Consig`;
 
     if (branding.faviconUrl) {
       let iconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement;

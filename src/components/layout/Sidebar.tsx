@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ArrowLeftRight,
+  Headphones,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
@@ -491,6 +492,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           visible:
             hasPermission(role, userCustomPerms, 'partners.crm.view') ||
             hasPermission(role, userCustomPerms, 'partners.view'),
+        },
+        {
+          id: 'central-atendimento',
+          to: '/central-atendimento',
+          label: 'Central de Atendimento',
+          icon: Headphones,
+          color: 'sky',
+          visible: hasPermission(role, userCustomPerms, 'support.view'),
         },
       ],
     },

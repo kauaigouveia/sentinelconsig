@@ -133,20 +133,6 @@ export const RouterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return '404';
   }, [activeRoute]);
 
-  // Synchronize document.title
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      const baseTitle = 'Sentinel Consig';
-      if (activeRoute?.title) {
-        document.title = `${activeRoute.title} — ${baseTitle}`;
-      } else if (is404) {
-        document.title = `Página Não Encontrada — ${baseTitle}`;
-      } else {
-        document.title = baseTitle;
-      }
-    }
-  }, [activeRoute, is404]);
-
   const searchParams = useMemo(() => {
     return new URLSearchParams(locationState.search);
   }, [locationState.search]);

@@ -58,6 +58,8 @@ import { IncidentService } from './server/services/commandCenter/incidentService
 import { CommandCenterService } from './server/services/commandCenter/commandCenterService.js';
 import { IncidentSlaService } from './server/services/commandCenter/incidentSlaService.js';
 import { ImpactAnalysisService } from './server/services/commandCenter/impactAnalysisService.js';
+import { PartnerPortalService } from './server/services/partnerPortalService.js';
+import { SupportService } from './server/services/supportService.js';
 import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
 let isShuttingDown = false;
@@ -15606,6 +15608,709 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       logger.error({ error: err?.message }, '[POST /api/admin/backups/:id/restore ERROR]');
       return res.status(500).json({ error: 'Erro ao restaurar backup.' });
+    }
+  });
+
+  // =============================================================
+  // PORTAL DO PARCEIRO — AUTENTICAÇÃO & SESSÃO PRÓPRIA
+  // =============================================================
+
+  const partnerPortalRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    statusCode: 429,
+    message: { error: 'Muitas tentativas de login no Portal do Parceiro. Aguarde 15 minutos.' },
+  });
+
+  // 1. POST /api/partner-portal/auth/login
+  app.post('/api/partner-portal/auth/login', partnerPortalRateLimiter, async (req, res) => {
+    try {
+      const { email, password } = req.body || {};
+      const result = await PartnerPortalService.login(email, password, req, prisma);
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({ error: result.message });
+      }
+
+      // Seta Cookie HttpOnly específico do Portal do Parceiro
+      res.cookie('cg_partner_session_id', result.token, {
+        httpOnly: true,
+        secure: isRequestHttps(req),
+        sameSite: 'lax',
+        expires: result.expiresAt,
+        path: '/',
+      });
+
+      return res.json({
+        success: true,
+        token: result.token,
+        access: result.access,
+        partner: result.partner,
+        tenant: result.tenant,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partner-portal/auth/login ERROR]');
+      return res.status(500).json({ error: 'Erro ao realizar login no Portal do Parceiro.' });
+    }
+  });
+
+  // 2. POST /api/partner-portal/auth/logout
+  app.post('/api/partner-portal/auth/logout', async (req, res) => {
+    try {
+      const token = PartnerPortalService.extractPortalToken(req);
+      if (token) {
+        await PartnerPortalService.logout(token, prisma);
+      }
+      res.clearCookie('cg_partner_session_id', { path: '/' });
+      return res.json({ success: true, message: 'Logout realizado com sucesso.' });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partner-portal/auth/logout ERROR]');
+      return res.status(500).json({ error: 'Erro ao realizar logout.' });
+    }
+  });
+
+  // 3. GET /api/partner-portal/auth/session
+  app.get('/api/partner-portal/auth/session', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ authenticated: false, error: 'Sessão do portal inexistente ou expirada.' });
+      }
+
+      return res.json({
+        authenticated: true,
+        access: sessionContext.access,
+        partner: sessionContext.partner,
+        tenant: sessionContext.tenant,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/auth/session ERROR]');
+      return res.status(500).json({ error: 'Erro ao validar sessão do portal.' });
+    }
+  });
+
+  // 4. POST /api/partner-portal/auth/change-password
+  app.post('/api/partner-portal/auth/change-password', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Não autorizado. Faça login novamente.' });
+      }
+
+      const { newPassword } = req.body || {};
+      const result = await PartnerPortalService.changePassword(sessionContext.access.id, newPassword, prisma);
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({ error: result.message });
+      }
+
+      return res.json({ success: true, message: result.message });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partner-portal/auth/change-password ERROR]');
+      return res.status(500).json({ error: 'Erro ao alterar senha.' });
+    }
+  });
+
+  // =============================================================
+  // PORTAL DO PARCEIRO — DASHBOARD, PROPOSTAS & ISOLAMENTO ESTRITO
+  // =============================================================
+
+  // 5. GET /api/partner-portal/dashboard
+  app.get('/api/partner-portal/dashboard', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const data = await PartnerPortalService.getDashboard(
+        sessionContext.partner.id,
+        sessionContext.tenant.id,
+        prisma
+      );
+
+      return res.json({
+        partner: sessionContext.partner,
+        tenant: sessionContext.tenant,
+        ...data,
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/dashboard ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar painel do parceiro.' });
+    }
+  });
+
+  // 6. GET /api/partner-portal/proposals
+  app.get('/api/partner-portal/proposals', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const { search, statusId, standardCategory, startDate, endDate, page, limit } = req.query;
+
+      const result = await PartnerPortalService.getProposals(
+        sessionContext.partner.id,
+        sessionContext.tenant.id,
+        {
+          search: search ? String(search) : undefined,
+          statusId: statusId ? String(statusId) : undefined,
+          standardCategory: standardCategory ? String(standardCategory) : undefined,
+          startDate: startDate ? String(startDate) : undefined,
+          endDate: endDate ? String(endDate) : undefined,
+          page: page ? Number(page) : 1,
+          limit: limit ? Number(limit) : 20,
+        },
+        prisma
+      );
+
+      return res.json(result);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/proposals ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar propostas do parceiro.' });
+    }
+  });
+
+  // 7. GET /api/partner-portal/proposals/:id
+  app.get('/api/partner-portal/proposals/:id', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const proposal = await PartnerPortalService.getProposalDetail(
+        req.params.id,
+        sessionContext.partner.id,
+        sessionContext.tenant.id,
+        prisma
+      );
+
+      if (!proposal) {
+        // Bloqueio rigoroso: se proposta não pertencer ao parceiro ou não existir, 404 sem vazamento
+        return res.status(404).json({ error: 'Proposta não encontrada ou não vinculada ao seu cadastro.' });
+      }
+
+      return res.json(proposal);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/proposals/:id ERROR]');
+      return res.status(500).json({ error: 'Erro ao consultar detalhes da proposta.' });
+    }
+  });
+
+  // =============================================================
+  // PORTAL DO PARCEIRO — ATENDIMENTO & CHAT
+  // =============================================================
+
+  // 8. GET /api/partner-portal/support/conversations
+  app.get('/api/partner-portal/support/conversations', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const list = await SupportService.listPartnerConversations(
+        sessionContext.partner.id,
+        sessionContext.tenant.id,
+        prisma
+      );
+
+      return res.json(list);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/support/conversations ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar conversas de atendimento.' });
+    }
+  });
+
+  // 9. POST /api/partner-portal/support/conversations
+  app.post('/api/partner-portal/support/conversations', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const { proposalId, subject, channel } = req.body || {};
+      const conversation = await SupportService.getOrCreateConversation(
+        sessionContext.partner.id,
+        sessionContext.tenant.id,
+        { proposalId, subject, channel },
+        prisma,
+        centralEventBus
+      );
+
+      return res.status(201).json(conversation);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partner-portal/support/conversations ERROR]');
+      return res.status(400).json({ error: err?.message || 'Erro ao iniciar conversa de atendimento.' });
+    }
+  });
+
+  // 10. GET /api/partner-portal/support/conversations/:id/messages
+  app.get('/api/partner-portal/support/conversations/:id/messages', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const data = await SupportService.getMessages(
+        req.params.id,
+        {
+          partnerId: sessionContext.partner.id,
+          tenantId: sessionContext.tenant.id,
+          isPartner: true,
+        },
+        prisma
+      );
+
+      if (!data) {
+        return res.status(404).json({ error: 'Conversa não encontrada.' });
+      }
+
+      return res.json(data);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/support/conversations/:id/messages ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar mensagens.' });
+    }
+  });
+
+  // 11. POST /api/partner-portal/support/conversations/:id/messages
+  app.post('/api/partner-portal/support/conversations/:id/messages', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ error: 'Autenticação necessária.' });
+      }
+
+      const { message } = req.body || {};
+      const created = await SupportService.sendPartnerMessage(
+        req.params.id,
+        sessionContext.partner.id,
+        sessionContext.tenant.id,
+        sessionContext.access.id,
+        sessionContext.access.name,
+        message,
+        prisma,
+        centralEventBus
+      );
+
+      return res.status(201).json(created);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partner-portal/support/conversations/:id/messages ERROR]');
+      return res.status(400).json({ error: err?.message || 'Erro ao enviar mensagem.' });
+    }
+  });
+
+  // 12. GET /api/partner-portal/support/unread-count
+  app.get('/api/partner-portal/support/unread-count', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) {
+        return res.status(401).json({ count: 0 });
+      }
+
+      const count = await prisma.supportMessage.count({
+        where: {
+          conversation: {
+            partnerId: sessionContext.partner.id,
+            tenantId: sessionContext.tenant.id,
+          },
+          senderType: { not: 'PARTNER' },
+          readAt: null,
+        },
+      });
+
+      return res.json({ count });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partner-portal/support/unread-count ERROR]');
+      return res.status(500).json({ count: 0 });
+    }
+  });
+
+  // =============================================================
+  // CENTRAL DE ATENDIMENTO ADMINISTRATIVA (PAINEL INTERNO)
+  // =============================================================
+
+  // 13. GET /api/support/conversations
+  app.get('/api/support/conversations', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para visualizar a Central de Atendimento.' });
+      }
+
+      const { status, partnerId, assignedUserId, channel, search } = req.query;
+
+      const list = await SupportService.listAdminConversations(
+        session.effectiveTenantId,
+        {
+          status: status ? String(status) : undefined,
+          partnerId: partnerId ? String(partnerId) : undefined,
+          assignedUserId: assignedUserId ? String(assignedUserId) : undefined,
+          channel: channel ? String(channel) : undefined,
+          search: search ? String(search) : undefined,
+        },
+        prisma
+      );
+
+      return res.json(list);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/support/conversations ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar conversas de suporte.' });
+    }
+  });
+
+  // 14. GET /api/support/conversations/:id
+  app.get('/api/support/conversations/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente.' });
+      }
+
+      const data = await SupportService.getMessages(
+        req.params.id,
+        {
+          tenantId: session.effectiveTenantId,
+          isPartner: false,
+        },
+        prisma
+      );
+
+      if (!data) {
+        return res.status(404).json({ error: 'Conversa não encontrada.' });
+      }
+
+      return res.json(data);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/support/conversations/:id ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar conversa de suporte.' });
+    }
+  });
+
+  // 15. POST /api/support/conversations/:id/messages
+  app.post('/api/support/conversations/:id/messages', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId || !session.user) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.reply')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para responder atendimentos.' });
+      }
+
+      const { message } = req.body || {};
+      const created = await SupportService.sendStaffMessage(
+        req.params.id,
+        session.effectiveTenantId,
+        session.user.id,
+        session.user.name,
+        message,
+        prisma,
+        centralEventBus
+      );
+
+      return res.status(201).json(created);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/support/conversations/:id/messages ERROR]');
+      return res.status(400).json({ error: err?.message || 'Erro ao enviar resposta.' });
+    }
+  });
+
+  // 16. PATCH /api/support/conversations/:id/status
+  app.patch('/api/support/conversations/:id/status', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.manage')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para gerenciar atendimentos.' });
+      }
+
+      const { status, assignedUserId } = req.body || {};
+      const updated = await SupportService.updateConversation(
+        req.params.id,
+        session.effectiveTenantId,
+        { status, assignedUserId },
+        prisma,
+        centralEventBus
+      );
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[PATCH /api/support/conversations/:id/status ERROR]');
+      return res.status(400).json({ error: err?.message || 'Erro ao atualizar status do atendimento.' });
+    }
+  });
+
+  // 17. GET /api/support/metrics
+  app.get('/api/support/metrics', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.view')) {
+        return res.status(403).json({ error: 'Permissão insuficiente.' });
+      }
+
+      const metrics = await SupportService.getMetrics(session.effectiveTenantId, prisma);
+      return res.json(metrics);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/support/metrics ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar métricas de atendimento.' });
+    }
+  });
+
+  // =============================================================
+  // GESTÃO DE ACESSO DO PARCEIRO (ADMIN CRM)
+  // =============================================================
+
+  // 18. GET /api/partners/:id/portal-access
+  app.get('/api/partners/:id/portal-access', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      const partner = await prisma.partner.findFirst({
+        where: { id: req.params.id, tenantId: session.effectiveTenantId, deletedAt: null },
+      });
+
+      if (!partner) {
+        return res.status(404).json({ error: 'Parceiro não encontrado.' });
+      }
+
+      const accesses = await prisma.partnerPortalAccess.findMany({
+        where: { partnerId: partner.id, tenantId: session.effectiveTenantId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          active: true,
+          lastLoginAt: true,
+          mustChangePassword: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return res.json(accesses);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/partners/:id/portal-access ERROR]');
+      return res.status(500).json({ error: 'Erro ao listar acessos do portal.' });
+    }
+  });
+
+  // 19. POST /api/partners/:id/portal-access
+  app.post('/api/partners/:id/portal-access', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (
+        !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.update') &&
+        !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.crm.admin')
+      ) {
+        return res.status(403).json({ error: 'Permissão insuficiente para criar acesso ao portal.' });
+      }
+
+      const partner = await prisma.partner.findFirst({
+        where: { id: req.params.id, tenantId: session.effectiveTenantId, deletedAt: null },
+      });
+
+      if (!partner) {
+        return res.status(404).json({ error: 'Parceiro não encontrado.' });
+      }
+
+      const { name, email, password } = req.body || {};
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      const cleanName = String(name || '').trim();
+      const rawPassword = password ? String(password).trim() : 'Mudar@123';
+
+      if (!cleanEmail || !cleanName) {
+        return res.status(400).json({ error: 'Nome e e-mail são obrigatórios.' });
+      }
+
+      // Valida unicidade no tenant
+      const existing = await prisma.partnerPortalAccess.findFirst({
+        where: { email: cleanEmail, tenantId: session.effectiveTenantId },
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Já existe um acesso cadastrado com este e-mail nesta empresa.' });
+      }
+
+      const passwordHash = await hashPassword(rawPassword);
+
+      const created = await prisma.partnerPortalAccess.create({
+        data: {
+          tenantId: session.effectiveTenantId,
+          partnerId: partner.id,
+          name: cleanName,
+          email: cleanEmail,
+          passwordHash,
+          active: true,
+          mustChangePassword: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          active: true,
+          mustChangePassword: true,
+          createdAt: true,
+        },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user?.id || null,
+        userName: session.user?.name || 'Operador',
+        action: 'PARTNER_PORTAL_ACCESS_CREATED',
+        entity: 'PARTNER_PORTAL_ACCESS',
+        entityId: created.id,
+        newData: { partnerId: partner.id, name: cleanName, email: cleanEmail },
+        req,
+      });
+
+      return res.status(201).json(created);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partners/:id/portal-access ERROR]');
+      return res.status(500).json({ error: 'Erro ao criar acesso ao portal.' });
+    }
+  });
+
+  // 20. PATCH /api/partners/:id/portal-access/:accessId
+  app.patch('/api/partners/:id/portal-access/:accessId', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      const { name, active, resetPassword } = req.body || {};
+
+      const access = await prisma.partnerPortalAccess.findFirst({
+        where: { id: req.params.accessId, partnerId: req.params.id, tenantId: session.effectiveTenantId },
+      });
+
+      if (!access) {
+        return res.status(404).json({ error: 'Acesso do parceiro não encontrado.' });
+      }
+
+      const updateData: any = {};
+      if (name) updateData.name = String(name).trim();
+      if (active !== undefined) updateData.active = Boolean(active);
+      if (resetPassword) {
+        updateData.passwordHash = await hashPassword(String(resetPassword).trim());
+        updateData.mustChangePassword = true;
+      }
+
+      const updated = await prisma.partnerPortalAccess.update({
+        where: { id: access.id },
+        data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          active: true,
+          mustChangePassword: true,
+          updatedAt: true,
+        },
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[PATCH /api/partners/:id/portal-access/:accessId ERROR]');
+      return res.status(500).json({ error: 'Erro ao atualizar acesso.' });
+    }
+  });
+
+  // =============================================================
+  // WEBHOOK OFICIAL DO WHATSAPP (IDEMPOTÊNCIA & ASSINATURA SEGURA)
+  // =============================================================
+
+  // 21. GET /api/webhooks/whatsapp (Verificação de Assinatura do Webhook Meta / Provedor Oficial)
+  app.get('/api/webhooks/whatsapp', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN || 'sentinel_wa_secret_token';
+
+    if (mode === 'subscribe' && token === expectedToken) {
+      logger.info('[WHATSAPP WEBHOOK] Webhook verificado com sucesso');
+      return res.status(200).send(challenge);
+    }
+
+    return res.status(403).json({ error: 'Verificação de webhook inválida.' });
+  });
+
+  // 22. POST /api/webhooks/whatsapp (Recepção Segura & Idempotente)
+  app.post('/api/webhooks/whatsapp', async (req, res) => {
+    try {
+      const { tenantId, externalMessageId, senderPhone, senderName, message } = req.body || {};
+
+      if (!externalMessageId || !message || !senderPhone) {
+        return res.status(400).json({ error: 'Payload incompleto para webhook.' });
+      }
+
+      // Resolve tenant (via payload ou primeiro tenant ativo)
+      let resolvedTenantId = tenantId;
+      if (!resolvedTenantId) {
+        const defaultTenant = await prisma.tenant.findFirst({ where: { status: 'ACTIVE', deletedAt: null } });
+        resolvedTenantId = defaultTenant?.id;
+      }
+
+      if (!resolvedTenantId) {
+        return res.status(400).json({ error: 'Tenant não localizado.' });
+      }
+
+      const result = await SupportService.processWhatsAppWebhook(
+        resolvedTenantId,
+        {
+          externalMessageId: String(externalMessageId),
+          senderPhone: String(senderPhone),
+          senderName: senderName ? String(senderName) : undefined,
+          message: String(message),
+        },
+        prisma,
+        centralEventBus
+      );
+
+      // Log sanitizado sem expor segredos
+      logger.info({
+        action: 'WHATSAPP_WEBHOOK_PROCESSED',
+        tenantId: resolvedTenantId,
+        externalMessageId,
+        status: result.status,
+      }, '[WHATSAPP WEBHOOK]');
+
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/webhooks/whatsapp ERROR]');
+      return res.status(500).json({ error: 'Erro no processamento do webhook.' });
     }
   });
 

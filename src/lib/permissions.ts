@@ -27,6 +27,7 @@ export type Permission =
   | 'pendencies.view' | 'pendencies.create' | 'pendencies.assign' | 'pendencies.update' | 'pendencies.resolve' | 'pendencies.cancel' | 'pendencies.reopen' | 'pendencies.admin' | 'pendencies.delete'
   | 'intelligence.view' | 'intelligence.investigate' | 'intelligence.manage' | 'intelligence.resolve' | 'intelligence.dismiss' | 'intelligence.configure' | 'intelligence.execute_action' | 'intelligence.execute'
   | 'command.view' | 'command.create_incident' | 'command.investigate' | 'command.assign' | 'command.update' | 'command.resolve' | 'command.close' | 'command.comment' | 'command.manage_sla' | 'command.execute_action'
+  | 'support.view' | 'support.reply' | 'support.manage'
   | 'admin.view' | 'admin.manage';
 
 export interface PermissionCategory {
@@ -299,6 +300,15 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { id: 'admin.manage', label: 'Gerenciar Recursos Globais e do Tenant' },
     ],
   },
+  {
+    category: 'ATENDIMENTO',
+    label: 'Central de Atendimento & Suporte ao Parceiro',
+    permissions: [
+      { id: 'support.view', label: 'Visualizar Central de Atendimento' },
+      { id: 'support.reply', label: 'Responder Mensagens de Parceiros' },
+      { id: 'support.manage', label: 'Gerenciar, Atribuir e Finalizar Atendimentos' },
+    ],
+  },
 ];
 
 export const ALL_PERMISSIONS: Permission[] = PERMISSION_CATEGORIES.flatMap(c => c.permissions.map(p => p.id));
@@ -331,6 +341,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve', 'pendencies.cancel', 'pendencies.reopen', 'pendencies.admin', 'pendencies.delete',
     'intelligence.view', 'intelligence.investigate', 'intelligence.manage', 'intelligence.resolve', 'intelligence.dismiss', 'intelligence.configure', 'intelligence.execute_action', 'intelligence.execute',
     'command.view', 'command.create_incident', 'command.investigate', 'command.assign', 'command.update', 'command.resolve', 'command.close', 'command.comment', 'command.manage_sla', 'command.execute_action',
+    'support.view', 'support.reply', 'support.manage',
     'admin.view', 'admin.manage',
   ],
   GESTOR: [
@@ -357,6 +368,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve', 'pendencies.cancel', 'pendencies.reopen',
     'intelligence.view', 'intelligence.investigate', 'intelligence.resolve', 'intelligence.dismiss', 'intelligence.execute_action', 'intelligence.execute',
     'command.view', 'command.create_incident', 'command.investigate', 'command.assign', 'command.update', 'command.resolve', 'command.comment', 'command.execute_action',
+    'support.view', 'support.reply', 'support.manage',
   ],
   GERENTE: [
     'dashboard.view',
@@ -377,6 +389,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve',
     'intelligence.view', 'intelligence.investigate',
     'command.view', 'command.investigate', 'command.comment',
+    'support.view', 'support.reply',
   ],
   SUPORTE: [
     'dashboard.view',
@@ -388,6 +401,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'simulations.view',
     'pendencies.view', 'pendencies.create', 'pendencies.assign', 'pendencies.update', 'pendencies.resolve',
     'command.view', 'command.investigate', 'command.comment',
+    'support.view', 'support.reply', 'support.manage',
   ],
   DIGITADOR: [
     'dashboard.view',

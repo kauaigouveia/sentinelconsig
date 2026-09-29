@@ -14,6 +14,8 @@ import { KanbanBoard } from './components/production/KanbanBoard';
 import { PortabilityView } from './components/production/PortabilityView';
 import { Client360View } from './components/clients/Client360View';
 import { SupportCenter } from './components/support/SupportCenter';
+import { CentralAtendimentoView } from './components/support/CentralAtendimentoView';
+import { PartnerPortalLayout } from './components/partner-portal/PartnerPortalLayout';
 import { PartnerManagement } from './components/admin/PartnerManagement';
 import { BankPromoterManagement } from './components/admin/BankPromoterManagement';
 import { ProductManagement } from './components/admin/ProductManagement';
@@ -190,6 +192,18 @@ function AppMainContent() {
       StorageService.unsubscribeRealTimeListeners();
     };
   }, [verifyServerSession]);
+
+  // Synchronize document.title by effective tenant (Fixed across all routes: ${tenantName} | Sentinel Consig)
+  useEffect(() => {
+    const effectiveTenantName =
+      (activeUser?.role === 'PLATFORM_MASTER' && adminContext?.targetTenantName)
+        ? adminContext.targetTenantName
+        : branding?.companyName || StorageService.getCurrentTenant()?.name || 'Sentinel Consig';
+
+    if (typeof document !== 'undefined') {
+      document.title = `${effectiveTenantName} | Sentinel Consig`;
+    }
+  }, [activeUser, adminContext, branding]);
 
   // Compute effective view:
   // If at root or dashboard, respect role default (e.g. DIGITADOR -> home-digitador)
@@ -403,6 +417,16 @@ function AppMainContent() {
       }
     }
   }, [isAuthenticated, isVerifyingSession, pathname, search, redirectTarget, setRedirectTarget]);
+
+  // 0. Se a rota for do Portal do Parceiro (/parceiro/*), renderiza o layout isolado
+  if (pathname.startsWith('/parceiro')) {
+    let initialTab: 'dashboard' | 'propostas' | 'atendimento' | 'perfil' = 'dashboard';
+    if (pathname.startsWith('/parceiro/propostas')) initialTab = 'propostas';
+    else if (pathname.startsWith('/parceiro/atendimento') || pathname.startsWith('/parceiro/suporte') || pathname.startsWith('/parceiro/chat')) initialTab = 'atendimento';
+    else if (pathname.startsWith('/parceiro/perfil') || pathname.startsWith('/parceiro/cadastro')) initialTab = 'perfil';
+
+    return <PartnerPortalLayout initialTab={initialTab} />;
+  }
 
   if (isVerifyingSession) {
     return (
@@ -650,6 +674,9 @@ function AppMainContent() {
               )}
               {(effectiveView === 'command-center' || effectiveView === 'command') && (
                 <CommandCenterView />
+              )}
+              {(effectiveView === 'central-atendimento' || effectiveView === 'suporte-central' || effectiveView === 'atendimento-parceiros') && (
+                <CentralAtendimentoView />
               )}
             </>
           )}

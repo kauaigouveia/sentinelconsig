@@ -10,7 +10,7 @@ export interface RouteConfig {
   path: string;
   viewId: string;
   title: string;
-  category: 'Início' | 'Operação' | 'Integrações' | 'Gestão' | 'Administração' | 'Plataforma' | 'Sistema';
+  category: 'Início' | 'Operação' | 'Integrações' | 'Gestão' | 'Administração' | 'Plataforma' | 'Sistema' | 'Portal do Parceiro';
   requiredPermission?: Permission | Permission[];
   aliases?: string[];
   isDynamic?: boolean;
@@ -493,6 +493,88 @@ export const APP_ROUTES: RouteConfig[] = [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
       { label: 'Importação de Status' },
+    ],
+  },
+
+  // 8. ATENDIMENTO ADMINISTRATIVO
+  {
+    path: '/central-atendimento',
+    viewId: 'central-atendimento',
+    title: 'Central de Atendimento',
+    category: 'Operação',
+    requiredPermission: 'support.view',
+    aliases: ['/suporte-central', '/atendimento-parceiros'],
+    getBreadcrumbs: () => [
+      { label: 'Início', path: '/' },
+      { label: 'Operação' },
+      { label: 'Central de Atendimento', path: '/central-atendimento' },
+    ],
+  },
+
+  // 9. PORTAL DO PARCEIRO (ÁREA EXTERNA ISOLADA)
+  {
+    path: '/parceiro',
+    viewId: 'portal-parceiro',
+    title: 'Portal do Parceiro',
+    category: 'Portal do Parceiro',
+    aliases: ['/parceiro/dashboard'],
+    getBreadcrumbs: () => [
+      { label: 'Portal do Parceiro', path: '/parceiro' },
+      { label: 'Dashboard' },
+    ],
+  },
+  {
+    path: '/parceiro/propostas',
+    viewId: 'portal-parceiro-propostas',
+    title: 'Minhas Propostas',
+    category: 'Portal do Parceiro',
+    getBreadcrumbs: () => [
+      { label: 'Portal do Parceiro', path: '/parceiro' },
+      { label: 'Propostas' },
+    ],
+  },
+  {
+    path: '/parceiro/propostas/:id',
+    viewId: 'portal-parceiro-propostas',
+    title: 'Detalhes da Proposta',
+    category: 'Portal do Parceiro',
+    isDynamic: true,
+    getBreadcrumbs: (params) => [
+      { label: 'Portal do Parceiro', path: '/parceiro' },
+      { label: 'Propostas', path: '/parceiro/propostas' },
+      { label: `#${params.id || 'Detalhes'}` },
+    ],
+  },
+  {
+    path: '/parceiro/atendimento',
+    viewId: 'portal-parceiro-atendimento',
+    title: 'Atendimento & Suporte',
+    category: 'Portal do Parceiro',
+    aliases: ['/parceiro/suporte', '/parceiro/chat'],
+    getBreadcrumbs: () => [
+      { label: 'Portal do Parceiro', path: '/parceiro' },
+      { label: 'Atendimento' },
+    ],
+  },
+  {
+    path: '/parceiro/perfil',
+    viewId: 'portal-parceiro-perfil',
+    title: 'Meu Cadastro & Senha',
+    category: 'Portal do Parceiro',
+    aliases: ['/parceiro/cadastro', '/parceiro/seguranca'],
+    getBreadcrumbs: () => [
+      { label: 'Portal do Parceiro', path: '/parceiro' },
+      { label: 'Meu Cadastro' },
+    ],
+  },
+  {
+    path: '/parceiro/login',
+    viewId: 'portal-parceiro-login',
+    title: 'Login do Parceiro',
+    category: 'Portal do Parceiro',
+    getBreadcrumbs: () => [
+      { label: 'Portal do Parceiro', path: '/parceiro' },
+      { label: 'Login' },
     ],
   },
 ];
