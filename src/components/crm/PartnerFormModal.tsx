@@ -6,7 +6,7 @@ interface PartnerFormModalProps {
   onClose: () => void;
   onSaved: () => void;
   partner?: any | null;
-  promoters: Array<{ id: string; name: string }>;
+  promoters?: Array<{ id: string; name: string; status?: string; active?: boolean }>;
   users?: Array<{ id: string; name: string }>;
 }
 
@@ -15,7 +15,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
   onClose,
   onSaved,
   partner,
-  promoters,
+  promoters: initialPromoters = [],
   users = [],
 }) => {
   const [name, setName] = useState('');
@@ -29,11 +29,52 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Promoters state backed by PostgreSQL API
+  const [promotersList, setPromotersList] = useState<Array<{ id: string; name: string; status?: string; active?: boolean }>>(
+    initialPromoters
+  );
+  const [loadingPromoters, setLoadingPromoters] = useState(false);
+  const [promotersError, setPromotersError] = useState<string | null>(null);
+
+  const fetchPromoters = async () => {
+    setLoadingPromoters(true);
+    setPromotersError(null);
+    try {
+      const res = await fetch('/api/promoters');
+      if (!res.ok) {
+        throw new Error(`Erro ao buscar promotoras (HTTP ${res.status})`);
+      }
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setPromotersList(data);
+      }
+    } catch (err: any) {
+      console.error('[PartnerFormModal] Error loading promoters:', err);
+      setPromotersError(err.message || 'Erro ao carregar promotoras');
+    } finally {
+      setLoadingPromoters(false);
+    }
+  };
+
+  // Sync initialPromoters if provided
+  useEffect(() => {
+    if (initialPromoters && initialPromoters.length > 0) {
+      setPromotersList(initialPromoters);
+    }
+  }, [initialPromoters]);
+
+  // Fetch fresh promoters when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchPromoters();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (partner) {
       setName(partner.name || partner.fullName || '');
       setCode(partner.code || partner.login || '');
-      setPromoterId(partner.promoterId || '');
+      setPromoterId(partner.promoterId || partner.promoter?.id || '');
       setAssignedUserId(partner.assignedUserId || '');
       setStatus(partner.status === 'INATIVO' || partner.active === false ? 'INATIVO' : 'ATIVO');
       setEmail(partner.email || '');
@@ -42,7 +83,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
     } else {
       setName('');
       setCode('');
-      setPromoterId(promoters[0]?.id || '');
+      setPromoterId('');
       setAssignedUserId('');
       setStatus('ATIVO');
       setEmail('');
@@ -50,7 +91,25 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
       setDocument('');
     }
     setErrorMsg(null);
-  }, [partner, isOpen, promoters]);
+  }, [partner, isOpen]);
+
+  // Synthesize current partner's promoter if not present in list (e.g. inactive)
+  const displayPromoters = React.useMemo(() => {
+    const list = [...promotersList];
+    if (partner && (partner.promoterId || partner.promoter)) {
+      const pId = partner.promoterId || partner.promoter.id;
+      const found = list.some(p => p.id === pId);
+      if (!found && pId) {
+        list.push({
+          id: pId,
+          name: partner.promoter?.name || partner.promoterName || 'Promotora Vinculada',
+          status: 'INATIVO',
+          active: false,
+        });
+      }
+    }
+    return list;
+  }, [promotersList, partner]);
 
   if (!isOpen) return null;
 
@@ -177,21 +236,60 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
             {/* Promotora Vinculada */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                Promotora Vinculada
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Promotora Vinculada
+                </label>
+                {loadingPromoters && (
+                  <span className="text-[11px] text-blue-500 font-medium flex items-center gap-1">
+                    <span className="inline-block w-2.5 h-2.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    Carregando promotoras...
+                  </span>
+                )}
+              </div>
               <select
                 value={promoterId}
                 onChange={e => setPromoterId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                disabled={loadingPromoters}
+                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-60"
               >
-                <option value="">Sem Promotora Vinculada</option>
-                {promoters.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                {loadingPromoters ? (
+                  <option value="">Carregando promotoras...</option>
+                ) : promotersError ? (
+                  <option value="">Erro ao carregar promotoras</option>
+                ) : displayPromoters.length === 0 ? (
+                  <>
+                    <option value="">Sem Promotora Vinculada</option>
+                    <option value="" disabled>Nenhuma promotora disponível</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="">Sem Promotora Vinculada</option>
+                    {displayPromoters.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.status === 'INATIVO' || p.active === false ? '(Inativa)' : ''}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
+              {promotersError && (
+                <div className="flex items-center justify-between mt-1 text-[11px] text-rose-500">
+                  <span>Erro ao carregar promotoras</span>
+                  <button
+                    type="button"
+                    onClick={fetchPromoters}
+                    className="text-blue-500 hover:underline font-semibold cursor-pointer"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+              {!loadingPromoters && !promotersError && displayPromoters.length === 0 && (
+                <span className="text-[11px] text-amber-500 mt-1 block">
+                  Nenhuma promotora disponível
+                </span>
+              )}
             </div>
 
             {/* Responsável Interno (Assigned User) */}

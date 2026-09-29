@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2,
   Plus,
@@ -11,6 +11,7 @@ import {
   Building,
   ShieldCheck,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { Bank, Promoter } from '../../types';
@@ -21,60 +22,158 @@ import { MetricCard } from '../ui/MetricCard';
 export const BankPromoterManagement: React.FC = () => {
   const [banks, setBanks] = useState<Bank[]>(() => StorageService.getBanks());
   const [promoters, setPromoters] = useState<Promoter[]>(() => StorageService.getPromoters());
-  const [bankPromoters, setBankPromoters] = useState(() => StorageService.getBankPromoters());
+  const [bankPromoters, setBankPromoters] = useState<any[]>(() => StorageService.getBankPromoters());
   const [newBankName, setNewBankName] = useState('');
   const [newBankCode, setNewBankCode] = useState('');
   const [newPromoterName, setNewPromoterName] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const [message, setMessage] = useState<string | null>(null);
 
-  const refresh = () => {
-    setBanks(StorageService.getBanks());
-    setPromoters(StorageService.getPromoters());
-    setBankPromoters(StorageService.getBankPromoters());
-  };
+  const refresh = useCallback(async () => {
+    try {
+      const [banksRes, promRes, bpRes] = await Promise.all([
+        fetch('/api/banks'),
+        fetch('/api/promoters'),
+        fetch('/api/bank-promoters'),
+      ]);
 
-  const handleCreateBank = (e: React.FormEvent) => {
+      if (banksRes.ok) {
+        const banksData = await banksRes.json();
+        if (Array.isArray(banksData)) {
+          setBanks(banksData);
+        }
+      } else {
+        setBanks(StorageService.getBanks());
+      }
+
+      if (promRes.ok) {
+        const promData = await promRes.json();
+        if (Array.isArray(promData)) {
+          setPromoters(promData);
+        }
+      } else {
+        setPromoters(StorageService.getPromoters());
+      }
+
+      if (bpRes.ok) {
+        const bpData = await bpRes.json();
+        if (Array.isArray(bpData)) {
+          setBankPromoters(bpData);
+        }
+      } else {
+        setBankPromoters(StorageService.getBankPromoters());
+      }
+    } catch (err) {
+      console.warn('[BankPromoterManagement] Erro ao sincronizar com backend, usando cache:', err);
+      setBanks(StorageService.getBanks());
+      setPromoters(StorageService.getPromoters());
+      setBankPromoters(StorageService.getBankPromoters());
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleCreateBank = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBankName.trim()) return;
 
     try {
-      StorageService.createBank({
+      const payload = {
         name: newBankName.trim().toUpperCase(),
         code: newBankCode.trim() || undefined,
+      };
+
+      const res = await fetch('/api/banks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao cadastrar banco no servidor.');
+      }
+
+      try {
+        StorageService.createBank(payload);
+      } catch {
+        // Ignora duplicidade em cache local
+      }
+
       setNewBankName('');
       setNewBankCode('');
       setMessage('Banco cadastrado com sucesso!');
-      refresh();
+      await refresh();
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Erro ao cadastrar banco.');
     }
   };
 
-  const handleCreatePromoter = (e: React.FormEvent) => {
+  const handleCreatePromoter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPromoterName.trim()) return;
 
     try {
-      StorageService.createPromoter({
-        name: newPromoterName.trim().toUpperCase(),
+      const cleanName = newPromoterName.trim().toUpperCase();
+      const res = await fetch('/api/promoters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: cleanName }),
       });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao cadastrar promotora no servidor.');
+      }
+
+      try {
+        StorageService.createPromoter({ name: cleanName });
+      } catch {
+        // Ignora duplicidade em cache local
+      }
+
       setNewPromoterName('');
       setMessage('Promotora cadastrada com sucesso!');
-      refresh();
+      await refresh();
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Erro ao cadastrar promotora.');
     }
   };
 
-  const handleToggleBankPromoter = (bankId: string, promoterId: string, current: boolean) => {
-    StorageService.toggleBankPromoter(bankId, promoterId, !current);
-    setMessage('Vínculo Banco × Promotora atualizado!');
-    refresh();
-    setTimeout(() => setMessage(null), 2500);
+  const handleToggleBankPromoter = async (bankId: string, promoterId: string, current: boolean) => {
+    try {
+      const res = await fetch('/api/bank-promoters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankId,
+          promoterId,
+          status: current ? 'INATIVO' : 'ATIVO',
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao atualizar matriz Banco × Promotora.');
+      }
+
+      try {
+        StorageService.toggleBankPromoter(bankId, promoterId, !current);
+      } catch {
+        // Ignora
+      }
+
+      setMessage('Vínculo Banco × Promotora atualizado!');
+      await refresh();
+      setTimeout(() => setMessage(null), 2500);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao atualizar vínculo Banco × Promotora.');
+    }
   };
 
   const [deleteModalConfig, setDeleteModalConfig] = useState<{
@@ -96,11 +195,22 @@ export const BankPromoterManagement: React.FC = () => {
       itemType: 'Instituição Bancária',
       itemName: bank.name + (bank.code ? ` (Cód: ${bank.code})` : ''),
       description: 'O banco e todos os seus vínculos com promotoras cadastradas serão permanentemente removidos.',
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deleteBank(bank.id);
+          const res = await fetch(`/api/banks/${bank.id}`, { method: 'DELETE' });
+          if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.error || 'Erro ao excluir banco.');
+          }
+
+          try {
+            StorageService.deleteBank(bank.id);
+          } catch {
+            // Ignora
+          }
+
           setMessage(`Banco ${bank.name} excluído com sucesso.`);
-          refresh();
+          await refresh();
           setTimeout(() => setMessage(null), 3000);
         } catch (err: any) {
           alert(err.message || 'Erro ao excluir banco.');
@@ -115,11 +225,22 @@ export const BankPromoterManagement: React.FC = () => {
       itemType: 'Promotora / Corban',
       itemName: promoter.name,
       description: 'A promotora e seus vínculos ativos serão desvinculados permanentemente.',
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deletePromoter(promoter.id);
+          const res = await fetch(`/api/promoters/${promoter.id}`, { method: 'DELETE' });
+          if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.error || 'Erro ao excluir promotora.');
+          }
+
+          try {
+            StorageService.deletePromoter(promoter.id);
+          } catch {
+            // Ignora
+          }
+
           setMessage(`Promotora ${promoter.name} excluída com sucesso.`);
-          refresh();
+          await refresh();
           setTimeout(() => setMessage(null), 3000);
         } catch (err: any) {
           alert(err.message || 'Erro ao excluir promotora.');

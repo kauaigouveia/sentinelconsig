@@ -40,7 +40,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   onClose,
   onImportCompleted,
 }) => {
-  const promoters = StorageService.getPromoters();
+  const [promoters, setPromoters] = useState<Promoter[]>(() => StorageService.getPromoters());
   const [existingPartners, setExistingPartners] = useState<Partner[]>([]);
   const [loadingPartners, setLoadingPartners] = useState(false);
   const [partnersLoadFailed, setPartnersLoadFailed] = useState(false);
@@ -56,6 +56,16 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    fetch('/api/promoters')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setPromoters(data);
+          setDefaultPromoterId(prev => (prev && data.some(p => p.id === prev) ? prev : data[0].id));
+        }
+      })
+      .catch(err => console.warn('[PartnerImportModal] Erro ao carregar promotoras:', err));
 
     const fetchExistingPartners = async () => {
       setLoadingPartners(true);

@@ -51,6 +51,12 @@ import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
 import { HappySimulationService } from './server/services/happySimulationService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
+import {
+  ensureDefaultPromotersForTenant,
+  ensureDefaultPromotersForAllTenants,
+  ensureDefaultBanksForTenant,
+  ensureDefaultBankPromotersForTenant,
+} from './server/services/promoterService.js';
 import { IntegrationHubService } from './server/services/integrationHubService.js';
 import { PartnerCrmService } from './server/services/partnerCrmService.js';
 import { IntelligenceService } from './server/services/intelligence/intelligenceService.js';
@@ -243,6 +249,21 @@ async function auditAndEnsureMasterUser() {
 
     // Ensure status defaults exist for all tenants
     await ensureDefaultStatusesForAllTenants(prisma);
+
+    // Ensure default promoters, banks, and matrix exist for all tenants in PostgreSQL
+    try {
+      await ensureDefaultPromotersForAllTenants(prisma);
+      const allBootTenants = await prisma.tenant.findMany({
+        where: { deletedAt: null },
+        select: { id: true },
+      });
+      for (const t of allBootTenants) {
+        await ensureDefaultBanksForTenant(prisma, t.id);
+        await ensureDefaultBankPromotersForTenant(prisma, t.id);
+      }
+    } catch (promBootErr) {
+      console.warn('[RBAC BOOTSTRAP] Falha ao inicializar promotoras/bancos:', promBootErr);
+    }
 
     // Ensure default global products exist in database
     await ensureDefaultGlobalProducts(prisma);
@@ -3645,9 +3666,7 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-      const banks = await prisma.bank.findMany({
-        where: { tenantId },
-      });
+      const banks = await ensureDefaultBanksForTenant(prisma, tenantId);
       return res.json(banks);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao buscar bancos.' });
@@ -3660,10 +3679,22 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-      const promoters = await prisma.promoter.findMany({
-        where: { tenantId },
-      });
-      return res.json(promoters);
+      let promoters = await ensureDefaultPromotersForTenant(prisma, tenantId);
+      if (req.query.active === 'true' || req.query.status === 'ATIVO') {
+        promoters = promoters.filter(p => p.status === 'ATIVO');
+      }
+      return res.json(
+        promoters.map(p => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          status: p.status,
+          active: p.status === 'ATIVO',
+          tenantId: p.tenantId,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        }))
+      );
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao buscar promotoras.' });
     }
@@ -5025,8 +5056,14 @@ async function auditAndEnsureMasterUser() {
       }
 
       if (promoterId) {
+        // Se a promotora já estava vinculada a este parceiro, permite mantê-la mesmo que esteja inativa
+        const isSamePromoter = existing.promoterId === promoterId;
         const validPromoter = await prisma.promoter.findFirst({
-          where: { id: promoterId, tenantId, status: 'ATIVO' },
+          where: {
+            id: promoterId,
+            tenantId,
+            ...(isSamePromoter ? {} : { status: 'ATIVO' }),
+          },
         });
         if (!validPromoter) {
           return res.status(400).json({ error: 'A promotora vinculada é inválida ou pertence a outro tenant.' });
@@ -5049,6 +5086,10 @@ async function auditAndEnsureMasterUser() {
 
       const updated = await prisma.partner.findFirst({
         where: { id, tenantId },
+        include: {
+          promoter: { select: { id: true, name: true, code: true } },
+          assignedUser: { select: { id: true, name: true, email: true } },
+        },
       });
 
       await AuditLogService.record(prisma, {
@@ -5240,40 +5281,45 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/promoters', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id, name, code, status } = req.body;
-      if (!name || !code) return res.status(400).json({ error: 'Nome e Código são obrigatórios.' });
+      if (!name) return res.status(400).json({ error: 'Nome da promotora é obrigatório.' });
+      const cleanName = name.trim().toUpperCase();
+      const promoterCode = code ? code.trim().toUpperCase() : cleanName.replace(/\s+/g, '_');
       const promoter = await prisma.promoter.create({
         data: {
           id: id || undefined,
           tenantId,
-          name,
-          code,
+          name: cleanName,
+          code: promoterCode,
           status: status || 'ATIVO',
         },
       });
       return res.json(promoter);
-    } catch (err) {
-      return res.status(500).json({ error: 'Erro ao criar promotora.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err?.message || 'Erro ao criar promotora.' });
     }
   });
 
   app.put('/api/promoters/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
       const { name, code, status } = req.body;
-      const promoter = await prisma.promoter.updateMany({
+      await prisma.promoter.updateMany({
         where: { id, tenantId },
         data: {
-          name,
-          code,
-          status: status !== undefined ? status : undefined,
+          ...(name ? { name: name.trim().toUpperCase() } : {}),
+          ...(code ? { code: code.trim().toUpperCase() } : {}),
+          ...(status !== undefined ? { status } : {}),
         },
       });
+      const promoter = await prisma.promoter.findFirst({ where: { id, tenantId } });
       return res.json({ success: true, promoter });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao atualizar promotora.' });
@@ -5283,8 +5329,9 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/promoters/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
       await prisma.promoter.deleteMany({
         where: { id, tenantId },
@@ -5301,16 +5348,17 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/banks', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id, name, code, color, status } = req.body;
       if (!name || !code) return res.status(400).json({ error: 'Nome e Código são obrigatórios.' });
       const bank = await prisma.bank.create({
         data: {
           id: id || undefined,
           tenantId,
-          name,
-          code,
+          name: name.trim().toUpperCase(),
+          code: code.trim().toUpperCase(),
           color: color || '#1e3a8a',
           status: status || 'ATIVO',
         },
@@ -5324,19 +5372,21 @@ async function auditAndEnsureMasterUser() {
   app.put('/api/banks/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
       const { name, code, color, status } = req.body;
-      const bank = await prisma.bank.updateMany({
+      await prisma.bank.updateMany({
         where: { id, tenantId },
         data: {
-          name,
-          code,
-          color: color !== undefined ? color : undefined,
-          status: status !== undefined ? status : undefined,
+          ...(name ? { name: name.trim().toUpperCase() } : {}),
+          ...(code ? { code: code.trim().toUpperCase() } : {}),
+          ...(color !== undefined ? { color } : {}),
+          ...(status !== undefined ? { status } : {}),
         },
       });
+      const bank = await prisma.bank.findFirst({ where: { id, tenantId } });
       return res.json({ success: true, bank });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao atualizar banco.' });
@@ -5346,8 +5396,9 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/banks/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
       await prisma.bank.deleteMany({
         where: { id, tenantId },
@@ -5364,12 +5415,10 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/bank-promoters', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
-      const links = await prisma.bankPromoter.findMany({
-        where: { tenantId },
-        include: { bank: true, promoter: true },
-      });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const links = await ensureDefaultBankPromotersForTenant(prisma, tenantId);
       return res.json(links);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao buscar conexões de bancos e promotoras.' });
@@ -5379,8 +5428,9 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/bank-promoters', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { bankId, promoterId, login, status } = req.body;
       if (!bankId || !promoterId) {
         return res.status(400).json({ error: 'BankId e PromoterId são obrigatórios.' });
@@ -5426,8 +5476,9 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/bank-promoters/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
       await prisma.bankPromoter.deleteMany({
         where: { id, tenantId },
