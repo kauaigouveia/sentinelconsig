@@ -298,6 +298,7 @@ export class PartnerPortalService {
         id: access.id,
         name: access.name,
         email: access.email,
+        active: access.active,
         mustChangePassword: access.mustChangePassword,
       },
       partner: {

@@ -62,7 +62,9 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [resettingPortal, setResettingPortal] = useState(false);
   const [togglingPortal, setTogglingPortal] = useState(false);
+  const [confirmGeneratePortalModal, setConfirmGeneratePortalModal] = useState(false);
   const [portalCredentialsModal, setPortalCredentialsModal] = useState<{
+    title?: string;
     partnerName: string;
     email: string;
     temporaryPassword: string;
@@ -266,6 +268,15 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
     }
   };
 
+  const handleOpenGeneratePortalConfirm = () => {
+    if (!partnerId || !partner) return;
+    if (!partner.email) {
+      alert('É necessário cadastrar um e-mail para este parceiro antes de gerar o acesso.');
+      return;
+    }
+    setConfirmGeneratePortalModal(true);
+  };
+
   const handleCreatePortalAccess = async () => {
     if (!partnerId || !partner) return;
     const emailToUse = partner.email;
@@ -273,6 +284,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
       alert('É necessário cadastrar um e-mail para este parceiro antes de gerar o acesso.');
       return;
     }
+    setConfirmGeneratePortalModal(false);
     setResettingPortal(true);
     try {
       const res = await fetch(`/api/partners/${partnerId}/portal-access`, {
@@ -287,15 +299,19 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
       if (!res.ok) {
         throw new Error(data.error || 'Falha ao gerar acesso ao portal.');
       }
-      if (data.portalAccess) {
-        const portalUrl = data.portalAccess.portalUrl || (typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : '');
-        setPortalCredentialsModal({
-          partnerName: partner.name,
-          email: data.portalAccess.email,
-          temporaryPassword: data.portalAccess.temporaryPassword,
-          portalUrl,
-        });
-      }
+      const portalAccessData = data.portalAccess || data;
+      const portalUrl =
+        portalAccessData.portalUrl ||
+        (typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro');
+
+      setPortalCredentialsModal({
+        title: 'ACESSO AO PORTAL GERADO',
+        partnerName: partner.name,
+        email: portalAccessData.email || emailToUse,
+        temporaryPassword: portalAccessData.temporaryPassword || data.temporaryPassword,
+        portalUrl,
+      });
+
       loadPortalAccesses();
       loadPartnerDetails();
       if (onPartnerUpdated) onPartnerUpdated();
@@ -942,12 +958,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       ) : partner?.email ? (
                         <button
                           type="button"
-                          onClick={handleCreatePortalAccess}
+                          onClick={handleOpenGeneratePortalConfirm}
                           disabled={resettingPortal}
                           className="w-full py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-emerald-200 dark:border-emerald-800 disabled:opacity-50"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          {resettingPortal ? 'Gerando...' : 'Gerar Acesso ao Portal'}
+                          {resettingPortal ? 'Gerando...' : 'Gerar Acesso'}
                         </button>
                       ) : (
                         <span className="text-[11px] text-amber-600 dark:text-amber-400">
@@ -1269,12 +1285,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       <div className="pt-2 flex justify-end">
                         <button
                           type="button"
-                          onClick={handleCreatePortalAccess}
+                          onClick={handleOpenGeneratePortalConfirm}
                           disabled={resettingPortal}
                           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                           <Plus className="w-4 h-4" />
-                          {resettingPortal ? 'Gerando Acesso...' : 'Gerar Acesso ao Portal Agora'}
+                          {resettingPortal ? 'Gerando...' : 'Gerar Acesso'}
                         </button>
                       </div>
                     )}
@@ -2066,6 +2082,73 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           )}
         </div>
 
+        {/* Modal de Confirmação de Geração de Acesso ao Portal */}
+        {confirmGeneratePortalModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Gerar acesso ao Portal do Parceiro?
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Confirme as informações antes de gerar a credencial inicial.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                    E-mail:
+                  </span>
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm select-all">
+                    {partner?.email || 'Nenhum e-mail informado'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                    Portal:
+                  </span>
+                  <span className="font-mono text-blue-600 dark:text-blue-400 break-all select-all">
+                    {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setConfirmGeneratePortalModal(false)}
+                  disabled={resettingPortal}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreatePortalAccess}
+                  disabled={resettingPortal}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {resettingPortal ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    'Confirmar'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Modal de Credenciais do Portal do Parceiro */}
         {portalCredentialsModal && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
@@ -2075,7 +2158,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Acesso ao Portal do Parceiro
+                  {portalCredentialsModal.title || 'ACESSO AO PORTAL GERADO'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {portalCredentialsModal.partnerName}

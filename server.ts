@@ -16318,11 +16318,100 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'Nome do parceiro é obrigatório.' });
       }
 
-      // Valida unicidade no tenant
-      const existing = await prisma.partnerPortalAccess.findFirst({
+      // Valida se já existe PartnerPortalAccess para este parceiro
+      const existingForPartner = await prisma.partnerPortalAccess.findFirst({
+        where: { partnerId: partner.id, tenantId: session.effectiveTenantId },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (existingForPartner) {
+        if (existingForPartner.active) {
+          return res.status(400).json({
+            error: 'Este parceiro já possui um acesso ativo ao portal.',
+            alreadyActive: true,
+            accessId: existingForPartner.id,
+          });
+        }
+
+        // Se existir acesso desativado: permitir reativação/redefinição com nova senha temporária
+        const temporaryPassword = password ? String(password).trim() : PartnerPortalService.generateSecureTemporaryPassword();
+        const passwordHash = await hashPassword(temporaryPassword);
+
+        await prisma.$transaction(async (tx) => {
+          await tx.partnerPortalAccess.update({
+            where: { id: existingForPartner.id },
+            data: {
+              active: true,
+              mustChangePassword: true,
+              passwordHash,
+              email: cleanEmail,
+              name: cleanName,
+            },
+          });
+          await tx.partnerPortalSession.deleteMany({
+            where: { partnerPortalAccessId: existingForPartner.id },
+          });
+        });
+
+        if (partner.email !== cleanEmail) {
+          await prisma.partner.update({
+            where: { id: partner.id },
+            data: { email: cleanEmail },
+          });
+        }
+
+        await AuditLogService.record(prisma, {
+          tenantId: session.effectiveTenantId,
+          userId: session.user?.id || null,
+          userName: session.user?.name || 'Operador',
+          action: 'PARTNER_PORTAL_ACCESS_REACTIVATED',
+          entity: 'PARTNER_PORTAL_ACCESS',
+          entityId: existingForPartner.id,
+          newData: {
+            tenantId: session.effectiveTenantId,
+            partnerId: partner.id,
+            name: cleanName,
+            email: cleanEmail,
+            accessId: existingForPartner.id,
+          },
+          req,
+        });
+
+        const tenantRecord = await prisma.tenant.findUnique({
+          where: { id: session.effectiveTenantId },
+          select: { id: true, slug: true, customDomain: true, name: true },
+        });
+
+        const portalUrl = PartnerPortalService.buildPortalUrl(req, {
+          slug: tenantRecord?.slug || 'grupoevolve',
+          customDomain: tenantRecord?.customDomain,
+        });
+
+        return res.status(200).json({
+          created: true,
+          reactivated: true,
+          id: existingForPartner.id,
+          name: cleanName,
+          email: cleanEmail,
+          active: true,
+          mustChangePassword: true,
+          temporaryPassword,
+          portalUrl,
+          portalAccess: {
+            created: true,
+            status: 'ACTIVE',
+            email: cleanEmail,
+            temporaryPassword,
+            portalUrl,
+          },
+        });
+      }
+
+      // Valida unicidade no tenant (para outros parceiros)
+      const existingByEmail = await prisma.partnerPortalAccess.findFirst({
         where: { email: cleanEmail, tenantId: session.effectiveTenantId },
       });
-      if (existing) {
+      if (existingByEmail) {
         return res.status(400).json({ error: 'Já existe um acesso cadastrado com este e-mail nesta empresa.' });
       }
 
@@ -16350,8 +16439,8 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
-      // Atualiza email no parceiro se estava vazio
-      if (!partner.email) {
+      // Atualiza email no parceiro se estava vazio ou diferente
+      if (partner.email !== cleanEmail) {
         await prisma.partner.update({
           where: { id: partner.id },
           data: { email: cleanEmail },
@@ -16387,8 +16476,12 @@ async function auditAndEnsureMasterUser() {
 
       return res.status(201).json({
         ...created,
+        created: true,
+        temporaryPassword,
+        portalUrl,
         portalAccess: {
           created: true,
+          status: 'ACTIVE',
           email: cleanEmail,
           temporaryPassword,
           portalUrl,

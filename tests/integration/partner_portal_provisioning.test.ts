@@ -429,4 +429,291 @@ describe('Partner Portal Auto-Provisioning & Security Gate Suite', () => {
     expect(newLogin.status).toBe(403);
     expect(newLogin.body.error).toContain('desativado');
   });
+
+  // =========================================================================
+  // GERAÇÃO MANUAL DE ACESSO PARA PARCEIROS EXISTENTES COM STATUS PENDENTE
+  // =========================================================================
+  describe('Geração Manual de Acesso ao Portal para Parceiros Existentes (PENDENTE)', () => {
+    let pendingPartnerId: string;
+    let pendingPartnerNoEmailId: string;
+    const pendingPartnerEmail = `kauai.existente.${testTimestamp}@teste.com.br`;
+    let generatedTemporaryPassword = '';
+    let operatorTokenA2 = '';
+
+    beforeAll(async () => {
+      // 1. Partner pré-existente no Tenant A com e-mail, mas sem PartnerPortalAccess (PENDENTE)
+      const p1 = await prisma.partner.create({
+        data: {
+          tenantId: tenantAId,
+          name: 'KAUAI COMERCIAL EXISTENTE',
+          code: `KAUAI-PENDENTE-${testTimestamp}`,
+          email: pendingPartnerEmail,
+          phone: '11977776666',
+          status: 'ATIVO',
+        },
+      });
+      pendingPartnerId = p1.id;
+
+      // 2. Partner pré-existente no Tenant A sem e-mail e sem PartnerPortalAccess
+      const p2 = await prisma.partner.create({
+        data: {
+          tenantId: tenantAId,
+          name: 'PARTNER SEM EMAIL EXISTENTE',
+          code: `SEM-EMAIL-${testTimestamp}`,
+          email: null,
+          status: 'ATIVO',
+        },
+      });
+      pendingPartnerNoEmailId = p2.id;
+
+      // 3. Outro operador/sessão no Tenant A (simulando outro dispositivo / navegador)
+      const op2 = await prisma.user.create({
+        data: {
+          tenantId: tenantAId,
+          name: 'Operador Secundario Tenant A',
+          email: `operador2.${testTimestamp}@evolve.com`,
+          passwordHash: await hashPassword('SecurePass123!'),
+          role: 'GESTOR',
+          active: true,
+        },
+      });
+      operatorTokenA2 = crypto.randomBytes(32).toString('hex');
+      await prisma.session.create({
+        data: {
+          userId: op2.id,
+          token: operatorTokenA2,
+          ipAddress: '127.0.0.1',
+          userAgent: 'vitest-device-2',
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+          effectiveTenantId: tenantAId,
+          activeRole: 'GESTOR',
+          activePermissions: ['partners.view', 'partners.update', 'partners.crm.admin'],
+        },
+      });
+    });
+
+    // 1. Partner pendente + e-mail válido → gerar acesso
+    it('1. Deve gerar acesso ao portal com sucesso para partner pendente com e-mail válido', async () => {
+      // Verifica que está pendente (sem acessos) antes da operação
+      const beforeCheck = await request(app)
+        .get(`/api/partners/${pendingPartnerId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`]);
+      expect(beforeCheck.status).toBe(200);
+      expect(beforeCheck.body).toEqual([]);
+
+      // Operação: POST /api/partners/:id/portal-access
+      const res = await request(app)
+        .post(`/api/partners/${pendingPartnerId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`])
+        .send({
+          name: 'KAUAI COMERCIAL EXISTENTE',
+          email: pendingPartnerEmail,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.created).toBe(true);
+      expect(res.body.email).toBe(pendingPartnerEmail);
+      expect(res.body.temporaryPassword).toBeDefined();
+      expect(typeof res.body.temporaryPassword).toBe('string');
+      expect(res.body.temporaryPassword.length).toBeGreaterThanOrEqual(12);
+      expect(res.body.portalUrl).toBeDefined();
+      expect(res.body.portalAccess).toBeDefined();
+      expect(res.body.portalAccess.created).toBe(true);
+      expect(res.body.portalAccess.status).toBe('ACTIVE');
+
+      generatedTemporaryPassword = res.body.temporaryPassword;
+    });
+
+    // 2. Partner pendente sem e-mail → rejeitar geração
+    it('2. Deve rejeitar geração de acesso para partner pendente que não possui e-mail cadastrado (HTTP 400)', async () => {
+      const res = await request(app)
+        .post(`/api/partners/${pendingPartnerNoEmailId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`])
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('E-mail do parceiro é obrigatório');
+    });
+
+    // 3. Partner já com acesso → não criar duplicado
+    it('3. Não deve permitir criar acesso duplicado para partner que já possui acesso ativo (HTTP 400)', async () => {
+      const res = await request(app)
+        .post(`/api/partners/${pendingPartnerId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`])
+        .send({
+          email: pendingPartnerEmail,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('já possui um acesso ativo');
+
+      const count = await prisma.partnerPortalAccess.count({
+        where: { partnerId: pendingPartnerId, tenantId: tenantAId },
+      });
+      expect(count).toBe(1);
+    });
+
+    // 4. Gerar acesso novamente → somente ação explícita de reset
+    it('4. Nova senha para parceiro já provisionado deve ocorrer exclusivamente via endpoint explícito de reset', async () => {
+      const resetRes = await request(app)
+        .post(`/api/partners/${pendingPartnerId}/portal-access/reset`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`]);
+
+      expect(resetRes.status).toBe(200);
+      expect(resetRes.body.success).toBe(true);
+      expect(resetRes.body.portalAccess.temporaryPassword).toBeDefined();
+      expect(resetRes.body.portalAccess.temporaryPassword).not.toBe(generatedTemporaryPassword);
+
+      generatedTemporaryPassword = resetRes.body.portalAccess.temporaryPassword;
+    });
+
+    // 5. Tenant A tentando gerar acesso para Partner B → bloqueado (404/403)
+    it('5. Tenant A não pode gerar acesso para Partner pertencente ao Tenant B (Isolamento)', async () => {
+      const resCrossTenant = await request(app)
+        .post(`/api/partners/${createdPartnerBId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`])
+        .send({
+          email: 'invasao@exemplo.com',
+        });
+
+      expect(resCrossTenant.status).toBe(404);
+      expect(resCrossTenant.body.error).toContain('não encontrado');
+    });
+
+    // 6. Senha temporária não persistida em texto
+    it('6. Senha temporária gerada não deve ser persistida em texto puro no banco de dados', async () => {
+      const access = await prisma.partnerPortalAccess.findFirst({
+        where: { partnerId: pendingPartnerId, tenantId: tenantAId },
+      });
+
+      expect(access).not.toBeNull();
+      expect(access!.passwordHash).toMatch(/^\$argon2id\$/);
+      expect(access!.passwordHash).not.toContain(generatedTemporaryPassword);
+      expect((access as any).password).toBeUndefined();
+      expect((access as any).temporaryPassword).toBeUndefined();
+    });
+
+    // 7. PasswordHash não exposto
+    it('7. PasswordHash e senha temporária nunca devem ser expostos nas consultas da API', async () => {
+      // 7.1 GET /api/partners/:id/portal-access
+      const resGetAccess = await request(app)
+        .get(`/api/partners/${pendingPartnerId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`]);
+
+      expect(resGetAccess.status).toBe(200);
+      const strAccess = JSON.stringify(resGetAccess.body);
+      expect(strAccess).not.toContain('passwordHash');
+      expect(strAccess).not.toContain('argon2id');
+      expect(strAccess).not.toContain(generatedTemporaryPassword);
+
+      // 7.2 GET /api/partners
+      const resGetPartners = await request(app)
+        .get('/api/partners')
+        .set('Cookie', [`cg_session_id=${adminTokenA}`]);
+
+      expect(resGetPartners.status).toBe(200);
+      const strPartners = JSON.stringify(resGetPartners.body);
+      expect(strPartners).not.toContain('passwordHash');
+      expect(strPartners).not.toContain(generatedTemporaryPassword);
+    });
+
+    // 8. Auditoria sem senha
+    it('8. Eventos de auditoria devem ser registrados sem gravar senhas ou hashes de autenticação', async () => {
+      const logs = await prisma.auditLog.findMany({
+        where: {
+          tenantId: tenantAId,
+          entity: 'PARTNER_PORTAL_ACCESS',
+        },
+      });
+
+      expect(logs.length).toBeGreaterThan(0);
+      for (const log of logs) {
+        const serialized = JSON.stringify(log);
+        expect(serialized).not.toContain('passwordHash');
+        expect(serialized).not.toContain(generatedTemporaryPassword);
+      }
+    });
+
+    // 9. Status muda PENDENTE → ATIVO
+    it('9. Status do parceiro deve refletir ATIVO na consulta após o provisionamento manual', async () => {
+      const res = await request(app)
+        .get(`/api/partners/${pendingPartnerId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${adminTokenA}`]);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(1);
+      expect(res.body[0].active).toBe(true);
+      expect(res.body[0].email).toBe(pendingPartnerEmail);
+      expect(res.body[0].lastLoginAt).toBeNull();
+      expect(res.body[0].mustChangePassword).toBe(true);
+    });
+
+    // 10. F5 mantém ATIVO
+    it('10. Múltiplas requisições subsequentes (simulando F5/refresh) mantêm o status ATIVO de forma persistente', async () => {
+      for (let i = 0; i < 3; i++) {
+        const res = await request(app)
+          .get(`/api/partners/${pendingPartnerId}/portal-access`)
+          .set('Cookie', [`cg_session_id=${adminTokenA}`]);
+
+        expect(res.status).toBe(200);
+        expect(res.body[0].active).toBe(true);
+        expect(res.body[0].email).toBe(pendingPartnerEmail);
+      }
+    });
+
+    // 11. Outro dispositivo enxerga ATIVO
+    it('11. Outro operador/sessão (outro dispositivo) enxerga o acesso do parceiro como ATIVO imediatamente', async () => {
+      const resOp2 = await request(app)
+        .get(`/api/partners/${pendingPartnerId}/portal-access`)
+        .set('Cookie', [`cg_session_id=${operatorTokenA2}`]);
+
+      expect(resOp2.status).toBe(200);
+      expect(resOp2.body.length).toBe(1);
+      expect(resOp2.body[0].active).toBe(true);
+      expect(resOp2.body[0].email).toBe(pendingPartnerEmail);
+    });
+
+    // 12. Login do parceiro funciona com a senha temporária
+    it('12. Login do parceiro no portal (/parceiro) deve funcionar utilizando a senha temporária gerada', async () => {
+      const hostA = `evolve-a-${testTimestamp}.sentinelconsig.com.br`;
+
+      const loginRes = await request(app)
+        .post('/api/partner-portal/auth/login')
+        .set('Host', hostA)
+        .send({
+          email: pendingPartnerEmail,
+          password: generatedTemporaryPassword,
+        });
+
+      expect(loginRes.status).toBe(200);
+      expect(loginRes.body.success).toBe(true);
+      expect(loginRes.body.token).toBeDefined();
+      expect(loginRes.body.access.email).toBe(pendingPartnerEmail);
+      expect(loginRes.body.access.active).toBe(true);
+    });
+
+    // 13. Primeiro login exige troca da senha
+    it('13. Primeiro login do parceiro deve exigir obrigatoriamente a troca da senha (mustChangePassword: true)', async () => {
+      const hostA = `evolve-a-${testTimestamp}.sentinelconsig.com.br`;
+
+      const loginRes = await request(app)
+        .post('/api/partner-portal/auth/login')
+        .set('Host', hostA)
+        .send({
+          email: pendingPartnerEmail,
+          password: generatedTemporaryPassword,
+        });
+
+      expect(loginRes.status).toBe(200);
+      expect(loginRes.body.access.mustChangePassword).toBe(true);
+
+      // Valida flag no banco de dados
+      const dbAccess = await prisma.partnerPortalAccess.findFirst({
+        where: { partnerId: pendingPartnerId, tenantId: tenantAId },
+      });
+      expect(dbAccess?.mustChangePassword).toBe(true);
+      expect(dbAccess?.lastLoginAt).not.toBeNull(); // Registrou o primeiro login
+    });
+  });
 });
