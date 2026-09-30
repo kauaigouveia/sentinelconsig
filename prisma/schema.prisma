@@ -211,6 +211,10 @@ model Tenant {
   incidentProposals  IncidentProposal[]
   incidentPartners   IncidentPartner[]
   incidentIntegrations IncidentIntegration[]
+  partnerPortalAccesses PartnerPortalAccess[]
+  partnerPortalSessions PartnerPortalSession[]
+  supportConversations SupportConversation[]
+  supportMessages      SupportMessage[]
 
   @@index([slug])
   @@index([customDomain])
@@ -314,6 +318,8 @@ model User {
   acknowledgedIncidents              Incident[]            @relation("IncidentAcknowledgedBy")
   resolvedIncidents                  Incident[]            @relation("IncidentResolvedBy")
   closedIncidents                    Incident[]            @relation("IncidentClosedBy")
+  assignedSupportConversations       SupportConversation[] @relation("AssignedSupportConversations")
+  supportMessages                    SupportMessage[]
 
   // Security & Lifecycle
   lastLoginAt          DateTime? @map("last_login_at")
@@ -390,6 +396,9 @@ model Partner {
   tasks              PartnerTask[]
   incidents          Incident[]
   incidentPartners   IncidentPartner[]
+  portalAccesses     PartnerPortalAccess[]
+  portalSessions     PartnerPortalSession[]
+  supportConversations SupportConversation[]
 
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -488,6 +497,121 @@ model PartnerTask {
   @@index([status])
   @@index([dueDate])
   @@map("partner_tasks")
+}
+
+model PartnerPortalAccess {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  name         String
+  email        String
+  passwordHash String @map("password_hash")
+
+  active             Boolean   @default(true)
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  lastLoginAt        DateTime? @map("last_login_at")
+
+  sessions PartnerPortalSession[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([email])
+  @@map("partner_portal_accesses")
+}
+
+model PartnerPortalSession {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  partnerPortalAccessId String              @map("partner_portal_access_id")
+  partnerPortalAccess   PartnerPortalAccess @relation(fields: [partnerPortalAccessId], references: [id], onDelete: Cascade)
+
+  token     String   @unique
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  expiresAt DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([partnerPortalAccessId])
+  @@index([token])
+  @@map("partner_portal_sessions")
+}
+
+model SupportConversation {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id")
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  proposalId String?   @map("proposal_id")
+  proposal   Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  subject  String
+  channel  String @default("PORTAL") // PORTAL, WHATSAPP
+  status   String @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+
+  assignedUserId String? @map("assigned_user_id")
+  assignedUser   User?   @relation("AssignedSupportConversations", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  lastMessageAt DateTime @default(now()) @map("last_message_at")
+
+  messages SupportMessage[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([proposalId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  conversationId String              @map("conversation_id")
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderType String  @map("sender_type") // PARTNER, SUPPORT, SYSTEM
+  senderId   String? @map("sender_id")
+  senderUser User?   @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  senderName String? @map("sender_name")
+
+  message           String
+  channel           String    @default("PORTAL") // PORTAL, WHATSAPP
+  externalMessageId String?   @map("external_message_id")
+  readAt            DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([conversationId])
+  @@index([senderType])
+  @@index([channel])
+  @@index([createdAt])
+  @@map("support_messages")
 }
 
 model Promoter {
@@ -820,6 +944,7 @@ model Proposal {
   matchedSimulationRequests SimulationRequest[] @relation("MatchedSimulationRequests")
   pendencies                Pendency[]
   incidentProposals         IncidentProposal[]
+  supportConversations      SupportConversation[]
 
   @@unique([tenantId, proposalNumber])
   @@index([tenantId])
