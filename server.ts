@@ -4939,42 +4939,116 @@ async function auditAndEnsureMasterUser() {
 
       const isPartnerActive = active !== undefined ? Boolean(active) : (status === 'ATIVO');
 
-      let created;
-      if (existing) {
-        if (existing.deletedAt === null) {
-          return res.status(400).json({ error: 'Este login ou nome de parceiro já está cadastrado.' });
+      // Normalização do e-mail do parceiro
+      const cleanEmail = email && typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
+      const isValidEmail = Boolean(cleanEmail && cleanEmail.includes('@') && cleanEmail.includes('.'));
+
+      // Provisionamento de Partner + PartnerPortalAccess atômico via transaction
+      let generatedTemporaryPassword: string | null = null;
+      let portalAccessInfo: {
+        created: boolean;
+        status: 'ACTIVE' | 'PENDING';
+        email: string | null;
+        temporaryPassword?: string;
+        message?: string;
+      } | null = null;
+
+      const txResult = await prisma.$transaction(async (tx) => {
+        let partnerRecord;
+        if (existing) {
+          if (existing.deletedAt === null) {
+            throw new Error('Este login ou nome de parceiro já está cadastrado.');
+          }
+          partnerRecord = await tx.partner.update({
+            where: { id: existing.id },
+            data: {
+              name: partnerName,
+              code: partnerLogin,
+              promoterId: promoterId || null,
+              status: isPartnerActive ? 'ATIVO' : 'INATIVO',
+              email: cleanEmail,
+              phone: phone || null,
+              document: document || null,
+              assignedUserId: req.body.assignedUserId || null,
+              deletedAt: null,
+            },
+          });
+        } else {
+          partnerRecord = await tx.partner.create({
+            data: {
+              id: id || undefined,
+              tenantId,
+              name: partnerName,
+              code: partnerLogin,
+              promoterId: promoterId || null,
+              status: isPartnerActive ? 'ATIVO' : 'INATIVO',
+              email: cleanEmail,
+              phone: phone || null,
+              document: document || null,
+              assignedUserId: req.body.assignedUserId || null,
+            },
+          });
         }
-        // Reactivate soft-deleted partner
-        created = await prisma.partner.update({
-          where: { id: existing.id },
-          data: {
-            name: partnerName,
-            code: partnerLogin,
-            promoterId: promoterId || null,
-            status: isPartnerActive ? 'ATIVO' : 'INATIVO',
-            email: email || null,
-            phone: phone || null,
-            document: document || null,
-            assignedUserId: req.body.assignedUserId || null,
-            deletedAt: null,
-          },
-        });
-      } else {
-        created = await prisma.partner.create({
-          data: {
-            id: id || undefined,
-            tenantId,
-            name: partnerName,
-            code: partnerLogin,
-            promoterId: promoterId || null,
-            status: isPartnerActive ? 'ATIVO' : 'INATIVO',
-            email: email || null,
-            phone: phone || null,
-            document: document || null,
-            assignedUserId: req.body.assignedUserId || null,
-          },
-        });
-      }
+
+        // Checar se já existe acesso ao portal para este parceiro ou e-mail no tenant
+        let createdAccess = null;
+        if (cleanEmail && isValidEmail) {
+          const existingAccess = await tx.partnerPortalAccess.findFirst({
+            where: {
+              tenantId,
+              OR: [
+                { partnerId: partnerRecord.id },
+                { email: cleanEmail },
+              ],
+            },
+          });
+
+          if (!existingAccess) {
+            generatedTemporaryPassword = PartnerPortalService.generateSecureTemporaryPassword();
+            const passwordHash = await hashPassword(generatedTemporaryPassword);
+
+            createdAccess = await tx.partnerPortalAccess.create({
+              data: {
+                tenantId,
+                partnerId: partnerRecord.id,
+                name: partnerName,
+                email: cleanEmail,
+                passwordHash,
+                active: true,
+                mustChangePassword: true,
+                lastLoginAt: null,
+              },
+            });
+
+            portalAccessInfo = {
+              created: true,
+              status: 'ACTIVE',
+              email: cleanEmail,
+              temporaryPassword: generatedTemporaryPassword,
+            };
+          } else {
+            portalAccessInfo = {
+              created: false,
+              status: existingAccess.active ? 'ACTIVE' : 'PENDING',
+              email: existingAccess.email,
+              message: 'Acesso ao portal já existente para este parceiro.',
+            };
+          }
+        } else {
+          portalAccessInfo = {
+            created: false,
+            status: 'PENDING',
+            email: null,
+            message: 'Parceiro criado, mas o acesso ao portal não foi gerado porque não há e-mail cadastrado.',
+          };
+        }
+
+        return { partner: partnerRecord, access: createdAccess, portalAccessInfo };
+      });
+
+      const created = txResult.partner;
+      const createdAccess = txResult.access;
+      portalAccessInfo = txResult.portalAccessInfo;
 
       await AuditLogService.record(prisma, {
         tenantId,
@@ -4986,6 +5060,24 @@ async function auditAndEnsureMasterUser() {
         newData: created,
         req,
       });
+
+      if (createdAccess) {
+        await AuditLogService.record(prisma, {
+          tenantId,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'PARTNER_PORTAL_ACCESS_CREATED',
+          entity: 'PARTNER_PORTAL_ACCESS',
+          entityId: createdAccess.id,
+          newData: {
+            tenantId,
+            partnerId: created.id,
+            email: createdAccess.email,
+            accessId: createdAccess.id,
+          },
+          req,
+        });
+      }
 
       await centralEventBus.publish({
         tenantId,
@@ -5003,6 +5095,16 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
+      const tenantRecord = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { id: true, slug: true, customDomain: true, name: true },
+      });
+
+      const portalUrl = PartnerPortalService.buildPortalUrl(req, {
+        slug: tenantRecord?.slug || 'grupoevolve',
+        customDomain: tenantRecord?.customDomain,
+      });
+
       const codeStr = created.code || '';
       const loginStr = codeStr || created.name;
 
@@ -5016,10 +5118,20 @@ async function auditAndEnsureMasterUser() {
         assignedUserId: created.assignedUserId || null,
         active: created.status === 'ATIVO',
         status: created.status,
+        email: created.email,
+        phone: created.phone,
+        document: created.document,
+        portalAccess: {
+          ...portalAccessInfo,
+          portalUrl,
+        },
         createdAt: created.createdAt ? created.createdAt.toISOString() : new Date().toISOString(),
         updatedAt: created.updatedAt ? created.updatedAt.toISOString() : new Date().toISOString(),
       });
     } catch (err: any) {
+      if (err.message === 'Este login ou nome de parceiro já está cadastrado.') {
+        return res.status(400).json({ error: err.message });
+      }
       console.error('[API PARTNERS POST ERROR]', err);
       return res.status(500).json({ error: err.message || 'Erro ao criar parceiro.' });
     }
@@ -16172,7 +16284,7 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  // 19. POST /api/partners/:id/portal-access
+  // 19. POST /api/partners/:id/portal-access (Provisionar ou gerar acesso ao portal)
   app.post('/api/partners/:id/portal-access', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -16196,12 +16308,14 @@ async function auditAndEnsureMasterUser() {
       }
 
       const { name, email, password } = req.body || {};
-      const cleanEmail = String(email || '').trim().toLowerCase();
-      const cleanName = String(name || '').trim();
-      const rawPassword = password ? String(password).trim() : 'Mudar@123';
+      const cleanEmail = String(email || partner.email || '').trim().toLowerCase();
+      const cleanName = String(name || partner.name || '').trim();
 
-      if (!cleanEmail || !cleanName) {
-        return res.status(400).json({ error: 'Nome e e-mail são obrigatórios.' });
+      if (!cleanEmail) {
+        return res.status(400).json({ error: 'E-mail do parceiro é obrigatório para gerar acesso ao portal.' });
+      }
+      if (!cleanName) {
+        return res.status(400).json({ error: 'Nome do parceiro é obrigatório.' });
       }
 
       // Valida unicidade no tenant
@@ -16212,7 +16326,9 @@ async function auditAndEnsureMasterUser() {
         return res.status(400).json({ error: 'Já existe um acesso cadastrado com este e-mail nesta empresa.' });
       }
 
-      const passwordHash = await hashPassword(rawPassword);
+      // Se não veio senha, gerar senha temporária segura
+      const temporaryPassword = password ? String(password).trim() : PartnerPortalService.generateSecureTemporaryPassword();
+      const passwordHash = await hashPassword(temporaryPassword);
 
       const created = await prisma.partnerPortalAccess.create({
         data: {
@@ -16234,6 +16350,14 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
+      // Atualiza email no parceiro se estava vazio
+      if (!partner.email) {
+        await prisma.partner.update({
+          where: { id: partner.id },
+          data: { email: cleanEmail },
+        });
+      }
+
       await AuditLogService.record(prisma, {
         tenantId: session.effectiveTenantId,
         userId: session.user?.id || null,
@@ -16241,14 +16365,132 @@ async function auditAndEnsureMasterUser() {
         action: 'PARTNER_PORTAL_ACCESS_CREATED',
         entity: 'PARTNER_PORTAL_ACCESS',
         entityId: created.id,
-        newData: { partnerId: partner.id, name: cleanName, email: cleanEmail },
+        newData: {
+          tenantId: session.effectiveTenantId,
+          partnerId: partner.id,
+          name: cleanName,
+          email: cleanEmail,
+          accessId: created.id,
+        },
         req,
       });
 
-      return res.status(201).json(created);
+      const tenantRecord = await prisma.tenant.findUnique({
+        where: { id: session.effectiveTenantId },
+        select: { id: true, slug: true, customDomain: true, name: true },
+      });
+
+      const portalUrl = PartnerPortalService.buildPortalUrl(req, {
+        slug: tenantRecord?.slug || 'grupoevolve',
+        customDomain: tenantRecord?.customDomain,
+      });
+
+      return res.status(201).json({
+        ...created,
+        portalAccess: {
+          created: true,
+          email: cleanEmail,
+          temporaryPassword,
+          portalUrl,
+        },
+      });
     } catch (err: any) {
       logger.error({ error: err?.message }, '[POST /api/partners/:id/portal-access ERROR]');
       return res.status(500).json({ error: 'Erro ao criar acesso ao portal.' });
+    }
+  });
+
+  // 19.1 POST /api/partners/:id/portal-access/reset (Redefinir acesso / gerar nova senha temporária)
+  app.post('/api/partners/:id/portal-access/reset', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session || !session.effectiveTenantId) {
+        return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (
+        !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.update') &&
+        !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.crm.admin')
+      ) {
+        return res.status(403).json({ error: 'Permissão insuficiente para redefinir acesso ao portal.' });
+      }
+
+      const partner = await prisma.partner.findFirst({
+        where: { id: req.params.id, tenantId: session.effectiveTenantId, deletedAt: null },
+      });
+
+      if (!partner) {
+        return res.status(404).json({ error: 'Parceiro não encontrado.' });
+      }
+
+      const access = await prisma.partnerPortalAccess.findFirst({
+        where: { partnerId: partner.id, tenantId: session.effectiveTenantId },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (!access) {
+        return res.status(404).json({ error: 'Acesso ao portal não encontrado para este parceiro.' });
+      }
+
+      const temporaryPassword = PartnerPortalService.generateSecureTemporaryPassword();
+      const passwordHash = await hashPassword(temporaryPassword);
+
+      // Atualiza hash, define mustChangePassword e invalida sessões anteriores
+      await prisma.$transaction(async (tx) => {
+        await tx.partnerPortalAccess.update({
+          where: { id: access.id },
+          data: {
+            passwordHash,
+            mustChangePassword: true,
+            active: true,
+          },
+        });
+
+        // Invalida sessões ativas do parceiro
+        await tx.partnerPortalSession.deleteMany({
+          where: { partnerPortalAccessId: access.id },
+        });
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user?.id || null,
+        userName: session.user?.name || 'Operador',
+        action: 'PARTNER_PORTAL_ACCESS_RESET',
+        entity: 'PARTNER_PORTAL_ACCESS',
+        entityId: access.id,
+        newData: {
+          tenantId: session.effectiveTenantId,
+          partnerId: partner.id,
+          accessId: access.id,
+          email: access.email,
+        },
+        req,
+      });
+
+      const tenantRecord = await prisma.tenant.findUnique({
+        where: { id: session.effectiveTenantId },
+        select: { id: true, slug: true, customDomain: true, name: true },
+      });
+
+      const portalUrl = PartnerPortalService.buildPortalUrl(req, {
+        slug: tenantRecord?.slug || 'grupoevolve',
+        customDomain: tenantRecord?.customDomain,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Acesso ao portal redefinido com sucesso.',
+        portalAccess: {
+          reset: true,
+          email: access.email,
+          temporaryPassword,
+          portalUrl,
+        },
+      });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partners/:id/portal-access/reset ERROR]');
+      return res.status(500).json({ error: 'Erro ao redefinir acesso ao portal.' });
     }
   });
 
@@ -16258,6 +16500,13 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session || !session.effectiveTenantId) {
         return res.status(401).json({ error: 'Não autorizado.' });
+      }
+
+      if (
+        !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.update') &&
+        !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.crm.admin')
+      ) {
+        return res.status(403).json({ error: 'Permissão insuficiente para alterar acesso ao portal.' });
       }
 
       const { name, active, resetPassword } = req.body || {};
@@ -16273,25 +16522,70 @@ async function auditAndEnsureMasterUser() {
       const updateData: any = {};
       if (name) updateData.name = String(name).trim();
       if (active !== undefined) updateData.active = Boolean(active);
+      let newTemporaryPassword: string | null = null;
       if (resetPassword) {
-        updateData.passwordHash = await hashPassword(String(resetPassword).trim());
+        newTemporaryPassword = typeof resetPassword === 'string' && resetPassword.trim() ? resetPassword.trim() : PartnerPortalService.generateSecureTemporaryPassword();
+        updateData.passwordHash = await hashPassword(newTemporaryPassword);
         updateData.mustChangePassword = true;
       }
 
-      const updated = await prisma.partnerPortalAccess.update({
-        where: { id: access.id },
-        data: updateData,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          active: true,
-          mustChangePassword: true,
-          updatedAt: true,
-        },
+      const updated = await prisma.$transaction(async (tx) => {
+        const u = await tx.partnerPortalAccess.update({
+          where: { id: access.id },
+          data: updateData,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            active: true,
+            mustChangePassword: true,
+            updatedAt: true,
+          },
+        });
+
+        // Se desativou ou resetou senha, invalidar sessões
+        if (active === false || resetPassword) {
+          await tx.partnerPortalSession.deleteMany({
+            where: { partnerPortalAccessId: access.id },
+          });
+        }
+        return u;
       });
 
-      return res.json(updated);
+      // Audit Log de acordo com a ação
+      let auditAction = 'PARTNER_PORTAL_ACCESS_UPDATED';
+      if (active === false) auditAction = 'PARTNER_PORTAL_ACCESS_DISABLED';
+      else if (active === true && access.active === false) auditAction = 'PARTNER_PORTAL_ACCESS_ENABLED';
+      else if (resetPassword) auditAction = 'PARTNER_PORTAL_ACCESS_RESET';
+
+      await AuditLogService.record(prisma, {
+        tenantId: session.effectiveTenantId,
+        userId: session.user?.id || null,
+        userName: session.user?.name || 'Operador',
+        action: auditAction,
+        entity: 'PARTNER_PORTAL_ACCESS',
+        entityId: access.id,
+        newData: {
+          tenantId: session.effectiveTenantId,
+          partnerId: req.params.id,
+          accessId: access.id,
+          active: updated.active,
+          name: updated.name,
+          email: updated.email,
+        },
+        req,
+      });
+
+      const responsePayload: any = { ...updated };
+      if (newTemporaryPassword) {
+        responsePayload.portalAccess = {
+          reset: true,
+          email: updated.email,
+          temporaryPassword: newTemporaryPassword,
+        };
+      }
+
+      return res.json(responsePayload);
     } catch (err: any) {
       logger.error({ error: err?.message }, '[PATCH /api/partners/:id/portal-access/:accessId ERROR]');
       return res.status(500).json({ error: 'Erro ao atualizar acesso.' });

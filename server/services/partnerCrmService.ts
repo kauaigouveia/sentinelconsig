@@ -107,6 +107,20 @@ export class PartnerCrmService {
         include: {
           promoter: { select: { id: true, name: true, code: true } },
           assignedUser: { select: { id: true, name: true, email: true } },
+          portalAccesses: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              active: true,
+              lastLoginAt: true,
+              mustChangePassword: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
           _count: {
             select: {
               proposals: true,
@@ -204,6 +218,8 @@ export class PartnerCrmService {
         openPendenciesCount
       );
 
+      const portalAccess = p.portalAccesses && p.portalAccesses.length > 0 ? p.portalAccesses[0] : null;
+
       return {
         id: p.id,
         name: p.name,
@@ -216,6 +232,7 @@ export class PartnerCrmService {
         promoter: p.promoter,
         assignedUserId: p.assignedUserId,
         assignedUser: p.assignedUser,
+        portalAccess,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         lastActivityAt: maxDate,
@@ -258,6 +275,19 @@ export class PartnerCrmService {
       include: {
         promoter: true,
         assignedUser: { select: { id: true, name: true, email: true, role: true } },
+        portalAccesses: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            active: true,
+            lastLoginAt: true,
+            mustChangePassword: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
         _count: {
           select: {
             proposals: true,

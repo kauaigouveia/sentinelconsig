@@ -755,4 +755,53 @@ export class PartnerPortalService {
     if (cleaned.length !== 11) return '***.***.***-**';
     return `***.***.${cleaned.substring(6, 9)}-**`;
   }
+
+  /**
+   * Gera uma senha temporária aleatória, criptograficamente segura e suficientemente longa
+   * Pelo menos 16 caracteres com maiúsculas, minúsculas, números e símbolos
+   */
+  public static generateSecureTemporaryPassword(): string {
+    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowercase = 'abcdefghjkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#$%&*';
+    const allChars = uppercase + lowercase + numbers + symbols;
+
+    let pwd = '';
+    pwd += uppercase[crypto.randomInt(0, uppercase.length)];
+    pwd += lowercase[crypto.randomInt(0, lowercase.length)];
+    pwd += numbers[crypto.randomInt(0, numbers.length)];
+    pwd += symbols[crypto.randomInt(0, symbols.length)];
+
+    for (let i = 4; i < 16; i++) {
+      pwd += allChars[crypto.randomInt(0, allChars.length)];
+    }
+
+    // Shuffle dos caracteres
+    const arr = pwd.split('');
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = crypto.randomInt(0, i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.join('');
+  }
+
+  /**
+   * Constrói o link do portal a partir do host da requisição ou dados do tenant
+   */
+  public static buildPortalUrl(req: Request, tenant: { slug: string; customDomain?: string | null }): string {
+    const rawHost = TenantResolver.extractHost(req);
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
+    const protocol = isHttps ? 'https' : 'http';
+
+    if (rawHost && !rawHost.includes('localhost') && !rawHost.includes('127.0.0.1')) {
+      return `${protocol}://${rawHost}/parceiro`;
+    }
+
+    if (tenant.customDomain) {
+      return `https://${tenant.customDomain}/parceiro`;
+    }
+
+    return `https://${tenant.slug}.sentinelconsig.com.br/parceiro`;
+  }
 }

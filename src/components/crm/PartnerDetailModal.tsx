@@ -28,6 +28,9 @@ import {
   ExternalLink,
   ChevronRight,
   Filter,
+  Key,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { MetricCard } from '../ui/MetricCard';
 
@@ -47,12 +50,25 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
   users = [],
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'timeline' | 'interactions' | 'notes' | 'tasks' | 'production' | 'proposals' | 'simulations' | 'pendencies'
+    'overview' | 'portal' | 'timeline' | 'interactions' | 'notes' | 'tasks' | 'production' | 'proposals' | 'simulations' | 'pendencies'
   >('overview');
 
   const [partner, setPartner] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Portal Access State
+  const [portalAccesses, setPortalAccesses] = useState<any[]>([]);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+  const [resettingPortal, setResettingPortal] = useState(false);
+  const [togglingPortal, setTogglingPortal] = useState(false);
+  const [portalCredentialsModal, setPortalCredentialsModal] = useState<{
+    partnerName: string;
+    email: string;
+    temporaryPassword: string;
+    portalUrl: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<'login' | 'password' | 'all' | null>(null);
 
   // Tab Data States
   const [timeline, setTimeline] = useState<any[]>([]);
@@ -201,9 +217,136 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
     } catch (err) {}
   };
 
+  const loadPortalAccesses = async () => {
+    if (!partnerId) return;
+    setLoadingPortal(true);
+    try {
+      const res = await fetch(`/api/partners/${partnerId}/portal-access`);
+      if (res.ok) {
+        const data = await res.json();
+        setPortalAccesses(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Error loading portal access:', err);
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
+
+  const handleResetPortalAccess = async () => {
+    if (!partnerId) return;
+    if (!window.confirm('Deseja gerar uma nova senha temporária para o acesso deste parceiro? Todas as sessões anteriores serão desconectadas.')) {
+      return;
+    }
+    setResettingPortal(true);
+    try {
+      const res = await fetch(`/api/partners/${partnerId}/portal-access/reset`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao redefinir acesso ao portal.');
+      }
+      if (data.portalAccess) {
+        const portalUrl = data.portalAccess.portalUrl || (typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : '');
+        setPortalCredentialsModal({
+          partnerName: partner?.name || 'Parceiro',
+          email: data.portalAccess.email,
+          temporaryPassword: data.portalAccess.temporaryPassword,
+          portalUrl,
+        });
+      }
+      loadPortalAccesses();
+      loadPartnerDetails();
+      if (onPartnerUpdated) onPartnerUpdated();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao redefinir acesso.');
+    } finally {
+      setResettingPortal(false);
+    }
+  };
+
+  const handleCreatePortalAccess = async () => {
+    if (!partnerId || !partner) return;
+    const emailToUse = partner.email;
+    if (!emailToUse) {
+      alert('É necessário cadastrar um e-mail para este parceiro antes de gerar o acesso.');
+      return;
+    }
+    setResettingPortal(true);
+    try {
+      const res = await fetch(`/api/partners/${partnerId}/portal-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: partner.name,
+          email: emailToUse,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao gerar acesso ao portal.');
+      }
+      if (data.portalAccess) {
+        const portalUrl = data.portalAccess.portalUrl || (typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : '');
+        setPortalCredentialsModal({
+          partnerName: partner.name,
+          email: data.portalAccess.email,
+          temporaryPassword: data.portalAccess.temporaryPassword,
+          portalUrl,
+        });
+      }
+      loadPortalAccesses();
+      loadPartnerDetails();
+      if (onPartnerUpdated) onPartnerUpdated();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao gerar acesso.');
+    } finally {
+      setResettingPortal(false);
+    }
+  };
+
+  const handleTogglePortalAccess = async (accessId: string, currentActive: boolean) => {
+    if (!partnerId) return;
+    const newActive = !currentActive;
+    if (!window.confirm(`Deseja ${newActive ? 'ativar' : 'desativar'} o acesso deste parceiro ao portal?`)) {
+      return;
+    }
+    setTogglingPortal(true);
+    try {
+      const res = await fetch(`/api/partners/${partnerId}/portal-access/${accessId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: newActive }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erro ao alterar status do acesso.');
+      }
+      loadPortalAccesses();
+      loadPartnerDetails();
+      if (onPartnerUpdated) onPartnerUpdated();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao alterar acesso.');
+    } finally {
+      setTogglingPortal(false);
+    }
+  };
+
+  const handleCopyCredentials = async (text: string, field: 'login' | 'password' | 'all') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2500);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
+
   useEffect(() => {
     if (isOpen && partnerId) {
       loadPartnerDetails();
+      loadPortalAccesses();
       loadTimeline();
       loadInteractions();
       loadNotes();
@@ -460,6 +603,23 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('portal')}
+            className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'portal'
+                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            Portal do Parceiro
+            {portalAccesses.length > 0 && portalAccesses[0].active ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('timeline')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'timeline'
@@ -696,6 +856,107 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Portal do Parceiro Section in Overview */}
+                  <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3.5 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <Key className="w-4 h-4 text-blue-600" />
+                        Portal do Parceiro
+                      </h4>
+                      {portalAccesses.length > 0 ? (
+                        portalAccesses[0].active ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            🟢 Acesso ativo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            🔴 Acesso desativado
+                          </span>
+                        )
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          🟡 Acesso pendente
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div>
+                        <span className="text-slate-400 block font-medium text-[10px] uppercase">Link do Portal</span>
+                        <a
+                          href={typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-0.5 break-all"
+                        >
+                          {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 block font-medium text-[10px] uppercase">Login do Parceiro</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200 select-all">
+                          {portalAccesses.length > 0 ? portalAccesses[0].email : partner?.email || 'Nenhum e-mail cadastrado'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 block font-medium text-[10px] uppercase">Último Acesso</span>
+                        <span className="text-slate-700 dark:text-slate-300">
+                          {portalAccesses.length > 0 && portalAccesses[0].lastLoginAt
+                            ? new Date(portalAccesses[0].lastLoginAt).toLocaleString('pt-BR')
+                            : 'Nenhum acesso registrado'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex flex-col gap-2">
+                      {portalAccesses.length > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleResetPortalAccess}
+                            disabled={resettingPortal}
+                            className="flex-1 py-2 px-3 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-blue-200 dark:border-blue-900/50 disabled:opacity-50"
+                          >
+                            <Key className="w-3.5 h-3.5" />
+                            {resettingPortal ? 'Gerando...' : 'Redefinir Acesso'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePortalAccess(portalAccesses[0].id, portalAccesses[0].active)}
+                            disabled={togglingPortal}
+                            className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border disabled:opacity-50 ${
+                              portalAccesses[0].active
+                                ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50'
+                            }`}
+                          >
+                            {portalAccesses[0].active ? 'Desativar' : 'Ativar'}
+                          </button>
+                        </div>
+                      ) : partner?.email ? (
+                        <button
+                          type="button"
+                          onClick={handleCreatePortalAccess}
+                          disabled={resettingPortal}
+                          className="w-full py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-emerald-200 dark:border-emerald-800 disabled:opacity-50"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          {resettingPortal ? 'Gerando...' : 'Gerar Acesso ao Portal'}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                          Cadastre um e-mail no parceiro para habilitar o acesso ao portal.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Quick Action Shortcuts */}
                   <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl space-y-2">
                     <span className="text-xs font-bold text-blue-900 dark:text-blue-300 block">
@@ -829,6 +1090,196 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB: PORTAL DO PARCEIRO                                        */}
+          {/* ============================================================== */}
+          {activeTab === 'portal' && (
+            <div className="space-y-6 max-w-4xl mx-auto">
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700/60 pb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
+                      <Key className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                        Portal do Parceiro Comercial
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Acesso exclusivo para acompanhamento de esteira de propostas e suporte em tempo real
+                      </p>
+                    </div>
+                  </div>
+
+                  {portalAccesses.length > 0 ? (
+                    portalAccesses[0].active ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        🟢 Acesso Ativo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                        🔴 Acesso Desativado
+                      </span>
+                    )
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      🟡 Acesso Pendente
+                    </span>
+                  )}
+                </div>
+
+                {/* Portal Link Box */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Endereço do Portal do Parceiro
+                    </span>
+                    <a
+                      href={typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono font-medium text-blue-600 dark:text-blue-400 text-sm hover:underline flex items-center gap-1.5 mt-0.5"
+                    >
+                      {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleCopyCredentials(
+                        typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro',
+                        'login'
+                      )
+                    }
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 hover:bg-slate-100 transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copiar link
+                  </button>
+                </div>
+
+                {/* Access Details */}
+                {loadingPortal ? (
+                  <div className="p-8 text-center text-slate-400">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-600" />
+                    Carregando credenciais do parceiro...
+                  </div>
+                ) : portalAccesses.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          E-mail de Login
+                        </span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm select-all">
+                          {portalAccesses[0].email}
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          Nome do Contato
+                        </span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+                          {portalAccesses[0].name}
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          Último Acesso Registrado
+                        </span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300 text-sm">
+                          {portalAccesses[0].lastLoginAt
+                            ? new Date(portalAccesses[0].lastLoginAt).toLocaleString('pt-BR')
+                            : 'Nenhum acesso registrado até o momento'}
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          Troca de Senha Obrigatória
+                        </span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300 text-sm flex items-center gap-1.5">
+                          {portalAccesses[0].mustChangePassword ? (
+                            <span className="text-amber-600 font-bold">Sim (no próximo acesso)</span>
+                          ) : (
+                            <span className="text-emerald-600 font-semibold">Não (senha já definida)</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions Bar */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePortalAccess(portalAccesses[0].id, portalAccesses[0].active)}
+                          disabled={togglingPortal}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors border disabled:opacity-50 w-full sm:w-auto ${
+                            portalAccesses[0].active
+                              ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
+                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50'
+                          }`}
+                        >
+                          {portalAccesses[0].active ? 'Desativar Acesso do Portal' : 'Ativar Acesso do Portal'}
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleResetPortalAccess}
+                        disabled={resettingPortal}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <Key className="w-4 h-4" />
+                        {resettingPortal ? 'Gerando Senha...' : 'Gerar Nova Senha Temporária'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-6 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl space-y-3 text-center sm:text-left">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <div className="p-3 bg-amber-500/10 text-amber-600 rounded-xl">
+                        <AlertCircle className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                          Acesso ao Portal Pendente
+                        </h4>
+                        <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                          {partner?.email
+                            ? `O parceiro possui o e-mail (${partner.email}) cadastrado, mas ainda não teve o acesso provisionado.`
+                            : 'O parceiro não possui e-mail de contato cadastrado. Cadastre o e-mail para gerar o acesso.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {partner?.email && (
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleCreatePortalAccess}
+                          disabled={resettingPortal}
+                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <Plus className="w-4 h-4" />
+                          {resettingPortal ? 'Gerando Acesso...' : 'Gerar Acesso ao Portal Agora'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1614,6 +2065,142 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Modal de Credenciais do Portal do Parceiro */}
+        {portalCredentialsModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden p-6 space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20 shadow-xs">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Acesso ao Portal do Parceiro
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {portalCredentialsModal.partnerName}
+                </p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xs">
+                <div className="space-y-3 text-xs">
+                  {/* Portal Link */}
+                  <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      Portal
+                    </span>
+                    <a
+                      href={portalCredentialsModal.portalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline break-all flex items-center gap-1 mt-0.5"
+                    >
+                      {portalCredentialsModal.portalUrl}
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                    </a>
+                  </div>
+
+                  {/* Login */}
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                        Login
+                      </span>
+                      <span className="font-mono font-medium text-slate-800 dark:text-slate-100 break-all select-all">
+                        {portalCredentialsModal.email}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(portalCredentialsModal.email, 'login')}
+                      className="px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
+                    >
+                      {copiedField === 'login' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="text-emerald-600 dark:text-emerald-400">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar login</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Senha Temporária */}
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                        Senha Temporária
+                      </span>
+                      <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm select-all">
+                        {portalCredentialsModal.temporaryPassword}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(portalCredentialsModal.temporaryPassword, 'password')}
+                      className="px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
+                    >
+                      {copiedField === 'password' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="text-emerald-600 dark:text-emerald-400">Copiada!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar senha</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <p>
+                    <strong>Por segurança, a senha temporária será exibida somente agora.</strong> O parceiro deverá definir uma nova senha no primeiro acesso.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopyCredentials(
+                      `ACESSO AO PORTAL DO PARCEIRO\n\nLink:\n${portalCredentialsModal.portalUrl}\n\nLogin:\n${portalCredentialsModal.email}\n\nSenha temporária:\n${portalCredentialsModal.temporaryPassword}\n\nApós entrar, o sistema solicitará a troca da senha.`,
+                      'all'
+                    )
+                  }
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-slate-200 dark:border-slate-700"
+                >
+                  {copiedField === 'all' ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400">Credenciais copiadas!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copiar credenciais</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPortalCredentialsModal(null)}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ import {
   Upload,
   UserCheck,
   ShieldAlert,
+  Key,
 } from 'lucide-react';
 import { MetricCard } from '../ui/MetricCard';
 import { PartnerDetailModal } from './PartnerDetailModal';
@@ -431,8 +432,50 @@ export const PartnerCrmHub: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Portal Access Status */}
+                <div className="mt-3 p-2 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Key className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span className="text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">
+                      Portal:
+                    </span>
+                    {p.portalAccess ? (
+                      p.portalAccess.active ? (
+                        <span className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                          Acesso ativo
+                        </span>
+                      ) : (
+                        <span className="font-medium text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                          Acesso desativado
+                        </span>
+                      )
+                    ) : p.email ? (
+                      <span className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                        Acesso pendente
+                      </span>
+                    ) : (
+                      <span className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                        Acesso pendente
+                      </span>
+                    )}
+                  </div>
+
+                  {(p.portalAccess?.email || p.email) && (
+                    <span
+                      className="font-mono text-[10px] text-slate-400 truncate max-w-[130px] ml-1"
+                      title={p.portalAccess?.email || p.email}
+                    >
+                      Login: {p.portalAccess?.email || p.email}
+                    </span>
+                  )}
+                </div>
+
                 {/* Assigned internal operator & last activity */}
-                <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400">
                   <span>Op: <strong>{p.assignedUser?.name || 'Geral'}</strong></span>
                   {p.lastActivityAt && (
                     <span>Última ativ: {new Date(p.lastActivityAt).toLocaleDateString('pt-BR')}</span>
