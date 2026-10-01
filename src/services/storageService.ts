@@ -41,23 +41,6 @@ import {
 import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay } from '../lib/utils';
 import { isValidRole } from '../lib/roleUtils';
 import { toastService } from '../components/ui/toastService';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, doc, setDoc, deleteDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
-
-function cleanObjectForFirestore<T>(obj: T): T {
-  if (obj === undefined) return null as any;
-  if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(cleanObjectForFirestore) as any;
-  const cleaned: any = {};
-  for (const key of Object.keys(obj as any)) {
-    const val = (obj as any)[key];
-    if (val !== undefined) {
-      cleaned[key] = cleanObjectForFirestore(val);
-    }
-  }
-  return cleaned;
-}
-
 export function computeSha256(ascii: string): string {
   function rightRotate(value: number, amount: number) {
     return (value >>> amount) | (value << (32 - amount));
@@ -975,12 +958,6 @@ const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [
 ];
 
 export class StorageService {
-  private static KEY_TO_COLLECTION: Record<string, string> = {
-    'cg_documents': 'documents',
-  };
-
-  private static activeListeners: (() => void)[] = [];
-
   public static clearBusinessCache(): void {
     const businessKeys = [
       'cg_users',
@@ -1081,10 +1058,6 @@ export class StorageService {
     this.syncWithPostgreSQL().catch(err => {
       console.warn("Failed to initialize state from PostgreSQL:", err);
     });
-    this.loadFromFirestore().catch(err => {
-      console.error("Failed to initialize state from Firestore:", err);
-    });
-    this.setupRealTimeListeners();
   }
 
   public static mapDbProposalToFrontend(p: any): Proposal {
@@ -1623,123 +1596,6 @@ export class StorageService {
     }
   }
 
-  public static async loadFromFirestore(): Promise<void> {
-    const collectionsToLoad = Object.entries(this.KEY_TO_COLLECTION);
-    let hasData = false;
-
-    for (const [key, colName] of collectionsToLoad) {
-      try {
-        const querySnapshot = await getDocs(collection(db, colName));
-        
-        if (!querySnapshot.empty) {
-          const items: any[] = [];
-          querySnapshot.forEach((docSnap) => {
-            const docData = docSnap.data();
-            if (docData) {
-              items.push(docData);
-            }
-          });
-          
-          if (items.length > 0) {
-            hasData = true;
-
-            // Merge with local items by id to ensure no unsynced local data is lost
-            const rawStored = localStorage.getItem(key);
-            let localItems: any[] = [];
-            if (rawStored) {
-              try {
-                const parsed = JSON.parse(rawStored);
-                if (Array.isArray(parsed)) {
-                  localItems = parsed;
-                }
-              } catch {}
-            }
-
-            const remoteIds = new Set(items.map(it => it.id));
-            const uniqueLocal = localItems.filter(it => it && it.id && !remoteIds.has(it.id));
-            const merged = [...items, ...uniqueLocal];
-
-            localStorage.setItem(key, JSON.stringify(merged));
-          }
-        } else {
-          // If Firestore is empty for this specific collection, seed local data so it gets uploaded
-          const localData = this.get<any[]>(key, []);
-          if (localData.length > 0) {
-            console.log(`Firestore has no records for ${colName}. Seeding local data...`);
-            for (const item of localData) {
-              if (item && item.id) {
-                await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(item));
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error(`Failed to load collection ${colName} from Firestore:`, err);
-      }
-    }
-
-    if (hasData) {
-      window.dispatchEvent(new Event('credit_gestao_storage_update'));
-    }
-  }
-
-  public static setupRealTimeListeners(onUpdate?: () => void): () => void {
-    this.unsubscribeRealTimeListeners();
-
-    const collectionsToListen = Object.entries(this.KEY_TO_COLLECTION);
-
-    const unsubscribes = collectionsToListen.map(([key, colName]) => {
-      return onSnapshot(collection(db, colName), (snapshot) => {
-        if (!snapshot.empty) {
-          const items: any[] = [];
-          snapshot.forEach((docSnap) => {
-            const docData = docSnap.data();
-            if (docData) {
-              items.push(docData);
-            }
-          });
-
-          localStorage.setItem(key, JSON.stringify(items));
-          window.dispatchEvent(new Event('credit_gestao_storage_update'));
-          if (onUpdate) onUpdate();
-        }
-      }, (error) => {
-        console.warn(`Real-time listener error on ${colName}:`, error);
-      });
-    });
-
-    this.activeListeners = unsubscribes;
-
-    return () => {
-      this.unsubscribeRealTimeListeners();
-    };
-  }
-
-  public static unsubscribeRealTimeListeners(): void {
-    if (this.activeListeners && this.activeListeners.length > 0) {
-      this.activeListeners.forEach(unsub => unsub());
-      this.activeListeners = [];
-    }
-  }
-
-  public static async seedFirestoreFromLocal(): Promise<void> {
-    for (const [key, colName] of Object.entries(this.KEY_TO_COLLECTION)) {
-      try {
-        const localData = this.get<any[]>(key, []);
-        if (localData.length > 0) {
-          console.log(`Seeding ${colName} with ${localData.length} records...`);
-          for (const item of localData) {
-            if (item && item.id) {
-              await setDoc(doc(db, colName, item.id), cleanObjectForFirestore(item));
-            }
-          }
-        }
-      } catch (err) {
-        console.error(`Failed to seed collection ${colName} to Firestore:`, err);
-      }
-    }
-  }
-
   public static resetToInitial(): void {
     this.set(STORAGE_KEYS.USERS, INITIAL_USERS);
     this.set(STORAGE_KEYS.ACTIVE_USER, INITIAL_USERS[0]); // Master as active
@@ -1817,7 +1673,6 @@ export class StorageService {
       console.warn('[SYNC] Erro ao sincronizar dados pós-login:', err);
     });
 
-    this.setupRealTimeListeners();
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
@@ -1831,7 +1686,6 @@ export class StorageService {
         previousData: JSON.stringify({ email: active?.email, name: active?.name, role: active?.role }),
       });
     } catch {}
-    this.unsubscribeRealTimeListeners();
     this.clearBusinessCache();
     fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
@@ -6109,10 +5963,9 @@ export class StorageService {
   }
 
   public static createBackupSnapshot(label?: string): any {
-    const allData: Record<string, any> = {};
-    for (const [key, colName] of Object.entries(this.KEY_TO_COLLECTION)) {
-      allData[colName] = this.get<any[]>(key, []);
-    }
+    const allData: Record<string, any> = {
+      documents: this.get<DocumentItem[]>(STORAGE_KEYS.DOCUMENTS, []),
+    };
 
     const payload = JSON.stringify(allData);
     const sizeBytes = new Blob([payload]).size;
@@ -6165,10 +6018,8 @@ export class StorageService {
       console.warn('Aviso ao criar snapshot pré-restauração:', e);
     }
 
-    for (const [key, colName] of Object.entries(this.KEY_TO_COLLECTION)) {
-      if (target.data[colName]) {
-        this.set(key, target.data[colName]);
-      }
+    if (Array.isArray(target.data.documents)) {
+      this.set(STORAGE_KEYS.DOCUMENTS, target.data.documents);
     }
 
     this.addAuditLog({

@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-evolvegesto-623c4c60-e82c-48b8-80fc-ee95b7256ed3",
+      "rules": "firestore.rules"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BIService } from '../../server/services/biService.js';
 import { BIComparisonService } from '../../server/services/biComparisonService.js';
 import { CentralEventBus } from '../../server/services/eventBus.js';
@@ -8,6 +8,10 @@ import { StandardStatusCategory, ProposalType } from '@prisma/client';
 describe('FASE 6 — AUDITORIA TÉCNICA DO BI OPERACIONAL', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // =========================================================================
@@ -559,6 +563,10 @@ describe('FASE 6 — AUDITORIA TÉCNICA DO BI OPERACIONAL', () => {
   // =========================================================================
   describe('12. Full Period Comparison Service', () => {
     it('deve comparar período atual com período anterior calculando deltas para todos os KPIs', async () => {
+      // Keep MES_ATUAL deterministic; fixtures below represent September 2026.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-15T12:00:00.000Z'));
+
       const currentProposals = [
         {
           id: 'cp1',
@@ -604,6 +612,7 @@ describe('FASE 6 — AUDITORIA TÉCNICA DO BI OPERACIONAL', () => {
       expect(comp.metrics.grossProduction.current).toBe(10000);
       expect(comp.metrics.grossProduction.deltaPercent).toBe(100);
       expect(comp.metrics.grossProduction.trend).toBe('CRESCIMENTO');
+      vi.useRealTimers();
     });
   });
 

@@ -31,8 +31,6 @@ import { User, Role } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { getRoleEmoji } from '../../lib/roleUtils';
 import { getRoleLabel } from '../../lib/roleLabels';
-import { db } from '../../firebase';
-import { doc, getDocFromServer } from 'firebase/firestore';
 
 interface HeaderProps {
   onOpenNotifications: () => void;
@@ -104,10 +102,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Firebase status
-  const [fbStatus, setFbStatus] = useState<'online' | 'error' | 'checking' | 'offline'>('checking');
-  const [fbLatency, setFbLatency] = useState<number | null>(null);
-  const [fbError, setFbError] = useState<string | null>(null);
+  // PostgreSQL API status
+  const [databaseStatus, setDatabaseStatus] = useState<'online' | 'error' | 'checking' | 'offline'>('checking');
+  const [databaseLatency, setDatabaseLatency] = useState<number | null>(null);
 
   // Realtime Pusher/SSE status
   const [realtimeStatus, setRealtimeStatus] = useState<ConnectionStatus>(() => realtimeHub.getStatus());
@@ -125,53 +122,37 @@ export const Header: React.FC<HeaderProps> = ({
     return () => unsub();
   }, []);
 
-  const checkFirebase = async (forceCheckingState = true) => {
+  const checkDatabase = async (forceCheckingState = true) => {
     if (!navigator.onLine) {
-      setFbStatus('offline');
-      setFbLatency(null);
-      setFbError('Navegador está offline');
+      setDatabaseStatus('offline');
+      setDatabaseLatency(null);
       return;
     }
 
-    if (forceCheckingState) setFbStatus('checking');
+    if (forceCheckingState) setDatabaseStatus('checking');
 
     const start = performance.now();
     try {
-      const testDocRef = doc(db, 'statuses', 'st-1');
-      await getDocFromServer(testDocRef);
-      const latency = Math.round(performance.now() - start);
-      setFbStatus('online');
-      setFbLatency(latency);
-      setFbError(null);
-    } catch (err: any) {
-      const latency = Math.round(performance.now() - start);
-      if (
-        err?.message?.includes('offline') ||
-        err?.message?.includes('failed-precondition') ||
-        err?.message?.includes('network')
-      ) {
-        setFbStatus('error');
-        setFbLatency(null);
-        setFbError(err.message || 'Erro de rede ou timeout');
-      } else {
-        setFbStatus('online');
-        setFbLatency(latency);
-        setFbError(null);
-      }
+      const response = await fetch('/api/health', { credentials: 'include' });
+      if (!response.ok) throw new Error(`Health check returned ${response.status}`);
+      setDatabaseLatency(Math.round(performance.now() - start));
+      setDatabaseStatus('online');
+    } catch {
+      setDatabaseStatus('error');
+      setDatabaseLatency(null);
     }
   };
 
   useEffect(() => {
-    checkFirebase(true);
-    const handleOnline = () => checkFirebase(true);
+    checkDatabase(true);
+    const handleOnline = () => checkDatabase(true);
     const handleOffline = () => {
-      setFbStatus('offline');
-      setFbLatency(null);
-      setFbError('Navegador offline');
+      setDatabaseStatus('offline');
+      setDatabaseLatency(null);
     };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    const interval = setInterval(() => checkFirebase(false), 45000);
+    const interval = setInterval(() => checkDatabase(false), 45000);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -439,15 +420,15 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">
                     <Wifi className="h-3.5 w-3.5 text-amber-500" />
-                    <span className="text-slate-700 dark:text-slate-300">Armazenamento em Nuvem</span>
+                    <span className="text-slate-700 dark:text-slate-300">API e banco de dados</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                      DISPONÍVEL
+                    <span className={`text-[10px] font-bold font-mono ${databaseStatus === 'online' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {databaseStatus === 'online' ? 'DISPONÍVEL' : databaseStatus === 'checking' ? 'VERIFICANDO' : 'INDISPONÍVEL'}
                     </span>
-                    {fbLatency !== null && (
+                    {databaseLatency !== null && (
                       <span className="text-[10px] text-slate-400 font-mono">
-                        ({fbLatency}ms)
+                        ({databaseLatency}ms)
                       </span>
                     )}
                   </div>
@@ -455,10 +436,10 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               <button
-                onClick={() => checkFirebase(true)}
+                onClick={() => checkDatabase(true)}
                 className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs py-1.5 font-bold transition-colors cursor-pointer"
               >
-                <RefreshCw className={`h-3 w-3 ${fbStatus === 'checking' ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-3 w-3 ${databaseStatus === 'checking' ? 'animate-spin' : ''}`} />
                 <span>Verificar Latência</span>
               </button>
             </div>

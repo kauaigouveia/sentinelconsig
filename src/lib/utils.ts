@@ -179,6 +179,13 @@ export function addBusinessDays(
   holidays: Holiday[] = []
 ): Date {
   const current = new Date(startDate);
+  if (isNaN(current.getTime())) {
+    throw new Error('Data inicial inválida para cálculo de dias úteis.');
+  }
+  if (!Number.isFinite(daysToAdd) || daysToAdd < 0) {
+    throw new Error('A quantidade de dias úteis deve ser um número finito não negativo.');
+  }
+
   let added = 0;
   while (added < daysToAdd) {
     current.setDate(current.getDate() + 1);

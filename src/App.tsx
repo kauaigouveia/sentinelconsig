@@ -189,7 +189,6 @@ function AppMainContent() {
       window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
       unsubscribeRealtime();
       realtimeHub.disconnect();
-      StorageService.unsubscribeRealTimeListeners();
     };
   }, [verifyServerSession]);
 

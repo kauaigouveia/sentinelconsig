@@ -614,7 +614,7 @@ export class TestRunnerService {
     // ETAPA 2: TESTES DE AUDITORIA E INFRAESTRUTURA
     // ==========================================
 
-    // ETAPA 2 - TEST 1: Persistência & Fonte da Verdade Firestore
+    // ETAPA 2 - TEST 1: Persistência da camada de armazenamento da aplicação
     try {
       const testEmail = `test.audit.${Date.now()}@sentinel.com.br`;
       const createdUser = StorageService.createUser({
@@ -629,7 +629,7 @@ export class TestRunnerService {
 
       results.push({
         id: 'stage2-persistence',
-        name: 'Etapa 2 - Persistência: Criação de Usuário e Fonte Firestore',
+        name: 'Etapa 2 - Persistência: Criação de Usuário',
         category: 'ETAPA 2 - INFRAESTRUTURA',
         passed: pass,
         expected: `Usuário persistido com ID ${createdUser.id} sem sobrescrita`,
@@ -639,7 +639,7 @@ export class TestRunnerService {
     } catch (e: any) {
       results.push({
         id: 'stage2-persistence',
-        name: 'Etapa 2 - Persistência: Criação de Usuário e Fonte Firestore',
+        name: 'Etapa 2 - Persistência: Criação de Usuário',
         category: 'ETAPA 2 - INFRAESTRUTURA',
         passed: false,
         expected: 'Persistência segura sem perda de dados',

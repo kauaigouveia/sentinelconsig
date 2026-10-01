@@ -86,10 +86,18 @@ export class TenantResolver {
       host = queryHost;
     }
 
-    // 3. Normalização básica
+    // 3. Normalização básica. Use URL parsing to preserve bracketed IPv6 and
+    // remove only a valid port suffix instead of truncating at the first colon.
     host = host.split(',')[0].trim().toLowerCase();
-    host = host.split(':')[0]; // Remove porta
-    return host;
+    if (!host) return '';
+
+    if (host.startsWith('[')) {
+      const ipv6Match = host.match(/^\[([0-9a-f:.]+)\](?::\d{1,5})?$/i);
+      return ipv6Match ? ipv6Match[1] : '';
+    }
+
+    const hostnamePortMatch = host.match(/^([^:]+)(?::\d{1,5})?$/);
+    return hostnamePortMatch ? hostnamePortMatch[1].replace(/\.$/, '') : '';
   }
 
   private static isValidHostname(host: string): boolean {
@@ -101,9 +109,14 @@ export class TenantResolver {
     if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return false;
     if (host.includes(':')) return false; // IPs IPv6 ou portas residuais
 
-    // Apenas caracteres FQDN válidos (letras, números, hífens, pontos)
-    const hostRegex = /^[a-z0-9-]+(\.[a-z0-9-]+)*$/;
-    if (!hostRegex.test(host)) return false;
+    // Validate every DNS label: labels cannot be empty, start/end with a
+    // hyphen, or exceed the DNS limit of 63 characters.
+    const labels = host.split('.');
+    if (labels.some((label) =>
+      label.length === 0 ||
+      label.length > 63 ||
+      !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label)
+    )) return false;
 
     // Reservados do sistema ou da plataforma diretamente
     const reserved = [
@@ -131,8 +144,7 @@ export class TenantResolver {
       'test',
       'www',
     ];
-    const parts = host.split('.');
-    if (parts.length > 0 && reserved.includes(parts[0])) {
+    if (labels.length > 0 && reserved.includes(labels[0])) {
       // Se for subdomínio direto da plataforma (ex: admin.sentinelconsig.com.br), rejeitar de custom resolution
       if (host.endsWith('sentinelconsig.com.br')) {
         return false;
@@ -236,7 +248,7 @@ export class TenantResolver {
     prisma: PrismaClient,
     host: string
   ): Promise<DomainResolutionResult> {
-    const cleanHost = host.trim().toLowerCase().split(':')[0];
+    const cleanHost = host.trim().toLowerCase().replace(/\.$/, '');
 
     // Checa cache em memória
     const cached = this.brandingCache.get(cleanHost);
