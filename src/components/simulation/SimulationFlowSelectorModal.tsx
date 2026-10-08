@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Sparkles,
   Zap,
+  Landmark,
 } from 'lucide-react';
 import { SimulationType } from '../../types';
 
@@ -17,6 +18,7 @@ interface SimulationFlowSelectorModalProps {
   onClose: () => void;
   onSelectFlow: (flow: SimulationType) => void;
   happySimulationAccessEnabled?: boolean;
+  finantoEnabled?: boolean;
 }
 
 export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalProps> = ({
@@ -24,12 +26,13 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
   onClose,
   onSelectFlow,
   happySimulationAccessEnabled = true,
+  finantoEnabled = false,
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
-      <div className={`relative w-full ${happySimulationAccessEnabled ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 transition-all`}>
+      <div className={`relative w-full ${happySimulationAccessEnabled || finantoEnabled ? 'max-w-5xl' : 'max-w-md'} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 transition-all`}>
         <div className="flex items-start justify-between pb-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
@@ -54,7 +57,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
           </button>
         </div>
 
-        <div className={`mt-6 grid gap-4 ${happySimulationAccessEnabled ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
+        <div className={`mt-6 grid gap-4 ${happySimulationAccessEnabled || finantoEnabled ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4' : 'grid-cols-1'}`}>
           {/* CARD 1: SIMULAÇÃO MANUAL */}
           <button
             type="button"
@@ -118,6 +121,27 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
                 <span>Iniciar INSS</span>
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </div>
+            </button>
+          )}
+
+          {finantoEnabled && (
+            <button
+              type="button"
+              id="btn-flow-finanto-inss"
+              onClick={() => onSelectFlow('FINANTO_INSS')}
+              className="group relative flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left shadow-xs transition-all duration-200 hover:border-violet-500 hover:bg-violet-50/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-violet-500 dark:hover:bg-violet-950/20"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"><Landmark className="h-5 w-5" /></div>
+                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:bg-violet-900/60 dark:text-violet-300">FINANTO</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-violet-600 dark:text-slate-100 dark:group-hover:text-violet-400">INSS · Contrato novo</h4>
+                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Consulte as tabelas, calcule condições e encaminhe a simulação para a FINANTO.</p>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-violet-600 dark:border-slate-700/60 dark:text-violet-400"><span>Iniciar INSS FINANTO</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
             </button>
           )}
 

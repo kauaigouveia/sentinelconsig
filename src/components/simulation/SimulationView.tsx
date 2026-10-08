@@ -42,6 +42,7 @@ import { SimulationImportModal } from './SimulationImportModal';
 import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { HappyCltSimulationModal } from './HappyCltSimulationModal';
+import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
 import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
 
@@ -84,6 +85,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isHappyInssModalOpen, setIsHappyInssModalOpen] = useState(false);
   const [isHappyCltModalOpen, setIsHappyCltModalOpen] = useState(false);
+  const [isFinantoInssModalOpen, setIsFinantoInssModalOpen] = useState(false);
+  const [finantoEnabled, setFinantoEnabled] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [newCpf, setNewCpf] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
@@ -430,6 +433,13 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       setIsCreatingSimulation(false);
     }
   };
+
+  useEffect(() => {
+    fetch('/api/integrations/finanto/config', { credentials: 'same-origin' })
+      .then(response => response.ok ? response.json() : null)
+      .then(config => setFinantoEnabled(Boolean(config?.isConfigured && config?.enabled)))
+      .catch(() => setFinantoEnabled(false));
+  }, []);
 
   const handleSubmitSimulation = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1233,6 +1243,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <option value="MANUAL">Manual</option>
                   <option value="HAPPY_INSS">Happy INSS</option>
                   <option value="HAPPY_CLT">Happy CLT</option>
+                  <option value="FINANTO_INSS">FINANTO INSS</option>
                 </select>
               </div>
 
@@ -1479,7 +1490,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
                           {/* Tipo / Fluxo */}
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {sim.simulationType === 'HAPPY_INSS' ? (
+                            {sim.simulationType === 'FINANTO_INSS' ? (
+                              <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">FINANTO INSS</span>
+                            ) : sim.simulationType === 'HAPPY_INSS' ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 HAPPY INSS
                               </span>
@@ -2519,7 +2532,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <div>
                   <span className="text-slate-400 block text-[10px]">TIPO / FLUXO</span>
                   <span className="font-bold text-xs">
-                    {detailTarget.simulationType === 'HAPPY_INSS' ? (
+                    {detailTarget.simulationType === 'FINANTO_INSS' ? (
+                      <span className="text-violet-600 dark:text-violet-400">FINANTO INSS · Contrato novo</span>
+                    ) : detailTarget.simulationType === 'HAPPY_INSS' ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Happy INSS</span>
                     ) : detailTarget.simulationType === 'HAPPY_CLT' ? (
                       <span className="text-indigo-600 dark:text-indigo-400">Happy CLT</span>
@@ -2582,6 +2597,20 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                         <span className="font-mono text-[10px] truncate block" title={detailTarget.happySimulationId}>{detailTarget.happySimulationId}</span>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {detailTarget.simulationType === 'FINANTO_INSS' && (
+                <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-800/60 dark:bg-violet-950/30">
+                  <h5 className="flex items-center gap-1.5 text-[11px] font-bold text-violet-900 dark:text-violet-200"><Building2 className="h-3.5 w-3.5" />Dados FINANTO / JoinBank</h5>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div><span className="block text-[10px] text-slate-500">ID DA SIMULAÇÃO</span><span className="block truncate font-mono" title={detailTarget.finantoSimulationId}>{detailTarget.finantoSimulationId || '—'}</span></div>
+                    <div><span className="block text-[10px] text-slate-500">ETAPA NO FINANTO</span><span className="font-semibold text-violet-700 dark:text-violet-300">{detailTarget.finantoJourneyStatus || '—'}</span></div>
+                    {detailTarget.finantoSelectedCondition && <>
+                      <div><span className="block text-[10px] text-slate-500">CRÉDITO</span><span className="font-semibold">R$ {Number(detailTarget.finantoSelectedCondition.loanValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
+                      <div><span className="block text-[10px] text-slate-500">PARCELA · PRAZO</span><span className="font-semibold">R$ {Number(detailTarget.finantoSelectedCondition.installmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · {detailTarget.finantoSelectedCondition.term} meses</span></div>
+                    </>}
                   </div>
                 </div>
               )}
@@ -2684,11 +2713,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onImportCompleted={() => loadData()}
       />
 
-      {/* Modal Seletor de Fluxo de Simulação (Manual vs Happy INSS vs Happy CLT) */}
+      {/* Modal Seletor de Fluxo de Simulação */}
       <SimulationFlowSelectorModal
         isOpen={isFlowSelectorOpen}
         onClose={() => setIsFlowSelectorOpen(false)}
         happySimulationAccessEnabled={happySimulationAccessEnabled}
+        finantoEnabled={finantoEnabled}
         onSelectFlow={(flow) => {
           setIsFlowSelectorOpen(false);
           if (flow === 'MANUAL') {
@@ -2697,6 +2727,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             setIsHappyInssModalOpen(true);
           } else if (flow === 'HAPPY_CLT') {
             setIsHappyCltModalOpen(true);
+          } else if (flow === 'FINANTO_INSS') {
+            setIsFinantoInssModalOpen(true);
           }
         }}
       />
@@ -2719,6 +2751,13 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onSuccess={async () => {
           await loadData();
         }}
+      />
+
+      <FinantoInssSimulationModal
+        isOpen={isFinantoInssModalOpen}
+        onClose={() => setIsFinantoInssModalOpen(false)}
+        partners={partners}
+        onSuccess={async () => { await loadData(); }}
       />
     </div>
   );

@@ -868,9 +868,9 @@ export interface ExecutiveWidgetConfig {
   minimized?: boolean;
 }
 
-export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT';
+export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT' | 'FINANTO_INSS';
 
-export type SimulationOperationType = 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN' | 'CONSIGNADO_PRIVADO_CLT';
+export type SimulationOperationType = 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN' | 'CONSIGNADO_PRIVADO_CLT' | 'FINANTO_NOVO';
 
 export type SimulationStatus =
   | 'SIMULAÇÃO ENVIADA'
@@ -901,7 +901,11 @@ export interface SimulationRequest {
   happyRawData?: any;
   happyRawConditions?: any;
   happySelectedCondition?: any;
-  happyRawResult?: any;
+    happyRawResult?: any;
+    finantoSimulationId?: string;
+    finantoJourneyStatus?: string;
+    finantoRawData?: any;
+    finantoSelectedCondition?: any;
   convenioId?: string;
   convenioName?: string;
   productId?: string;

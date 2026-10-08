@@ -1409,7 +1409,7 @@ model SimulationRequest {
   rejectionReason String? @map("rejection_reason")
 
   simulationType  String  @default("MANUAL") @map("simulation_type") // MANUAL, HAPPY_INSS, HAPPY_CLT
-  operationType   String? @map("operation_type") // MARGEM_LIVRE, PORTABILIDADE_REFIN, CONSIGNADO_PRIVADO_CLT
+  operationType   String? @map("operation_type") // MARGEM_LIVRE, PORTABILIDADE_REFIN, CONSIGNADO_PRIVADO_CLT, FINANTO_NOVO
 
   // Happy / BYX Capital specific attributes
   happyClientId         String?   @map("happy_client_id")
@@ -1426,6 +1426,12 @@ model SimulationRequest {
   happyRawConditions    Json?     @map("happy_raw_conditions")
   happySelectedCondition Json?    @map("happy_selected_condition")
   happyRawResult        Json?     @map("happy_raw_result")
+
+  // FINANTO / JoinBank INSS attributes
+  finantoSimulationId       String? @map("finanto_simulation_id")
+  finantoJourneyStatus      String? @map("finanto_journey_status")
+  finantoRawData            Json?   @map("finanto_raw_data")
+  finantoSelectedCondition  Json?   @map("finanto_selected_condition")
 
   convenioId      String?   @map("convenio_id")
   convenio        Convenio? @relation(fields: [convenioId], references: [id], onDelete: SetNull)
