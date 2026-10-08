@@ -974,8 +974,24 @@ model Proposal {
   happyLastSyncAt        DateTime?        @map("happy_last_sync_at")
   happySyncStatus        String?          @default("PENDING") @map("happy_sync_status") // SYNCED, PENDING, ERROR, UNMATCHED
   happySyncError         String?          @map("happy_sync_error")
-  happyRawData           Json?            @map("happy_raw_data")
-  happySyncHistories     HappySyncHistory[]
+    happyRawData           Json?            @map("happy_raw_data")
+    happySyncHistories     HappySyncHistory[]
+
+    // FINANTO / JoinBank proposal tracking
+    finantoSimulationId String?   @map("finanto_simulation_id")
+    finantoStatus       String?   @map("finanto_status")
+    finantoLastSyncAt   DateTime? @map("finanto_last_sync_at")
+    finantoSyncError    String?   @map("finanto_sync_error")
+    finantoRawData      Json?     @map("finanto_raw_data")
+
+    // Nossa Fintech operation tracking
+    nossaFintechDebtKey       String?   @map("nossa_fintech_debt_key")
+    nossaFintechProduct       String?   @map("nossa_fintech_product")
+    nossaFintechStatus        String?   @map("nossa_fintech_status")
+    nossaFintechStatusDescription String? @map("nossa_fintech_status_description")
+    nossaFintechLastSyncAt    DateTime? @map("nossa_fintech_last_sync_at")
+    nossaFintechSyncError     String?   @map("nossa_fintech_sync_error")
+    nossaFintechRawData       Json?     @map("nossa_fintech_raw_data")
 
   // Concurrency & Soft Delete
   version                   Int                 @default(1)
@@ -1008,8 +1024,10 @@ model Proposal {
   @@index([tenantId, factaAfCode])
   @@index([factaSyncStatus])
   @@index([tenantId, happyContractId])
-  @@index([tenantId, happyProposalKey])
-  @@index([happySyncStatus])
+    @@index([tenantId, happyProposalKey])
+    @@index([happySyncStatus])
+    @@index([tenantId, finantoSimulationId])
+    @@index([tenantId, nossaFintechDebtKey])
   @@map("proposals")
 }
 

@@ -16,9 +16,10 @@ import { SimulationType } from '../../types';
 interface SimulationFlowSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectFlow: (flow: SimulationType | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN') => void;
+  onSelectFlow: (flow: SimulationType | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN') => void;
   happySimulationAccessEnabled?: boolean;
   finantoEnabled?: boolean;
+  nossaFintechEnabled?: boolean;
 }
 
 export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalProps> = ({
@@ -27,12 +28,13 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
   onSelectFlow,
   happySimulationAccessEnabled = true,
   finantoEnabled = false,
+  nossaFintechEnabled = false,
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
-      <div className={`relative w-full ${happySimulationAccessEnabled || finantoEnabled ? 'max-w-5xl' : 'max-w-md'} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 transition-all`}>
+      <div className={`relative w-full ${happySimulationAccessEnabled || finantoEnabled || nossaFintechEnabled ? 'max-w-5xl' : 'max-w-md'} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 transition-all`}>
         <div className="flex items-start justify-between pb-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
@@ -57,7 +59,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
           </button>
         </div>
 
-        <div className={`mt-6 grid gap-4 ${happySimulationAccessEnabled || finantoEnabled ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4' : 'grid-cols-1'}`}>
+        <div className={`mt-6 grid gap-4 ${happySimulationAccessEnabled || finantoEnabled || nossaFintechEnabled ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4' : 'grid-cols-1'}`}>
           {/* CARD 1: SIMULAÇÃO MANUAL */}
           <button
             type="button"
@@ -150,6 +152,10 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
               <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-violet-600 dark:border-slate-700/60 dark:text-violet-400"><span>Iniciar simulação</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
             </button>
           )))}
+
+          {nossaFintechEnabled && <button type="button" id="btn-flow-nossa-fintech-port-refin" onClick={() => onSelectFlow('NOSSA_FINTECH_PORTABILIDADE_REFIN')} className="group relative flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left shadow-xs transition-all hover:border-indigo-500 hover:bg-indigo-50/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
+            <div className="space-y-3"><div className="flex items-center justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"><Landmark className="h-5 w-5" /></div><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">Nossa Fintech</span></div><div><h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">INSS · Portabilidade + Refin</h4><p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Informe os dados do contrato e compare o troco estimado nas tabelas elegíveis da Nossa Fintech.</p></div></div><div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-indigo-600 dark:border-slate-700/60 dark:text-indigo-400"><span>Simular Port/Refin</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
+          </button>}
 
           {/* CARD 3: HAPPY CLT (Oculto se Happy estiver bloqueado) */}
           {happySimulationAccessEnabled && (

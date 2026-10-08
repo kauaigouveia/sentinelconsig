@@ -34,6 +34,7 @@ import { toastService } from '../ui/toastService';
 import { C6ProposalCard } from './C6ProposalCard';
 import { FactaProposalCard } from './FactaProposalCard';
 import { HappyProposalCard } from './HappyProposalCard';
+import { ProviderProposalSyncCard } from './ProviderProposalSyncCard';
 import { hasPermission } from '../../lib/permissions';
 
 interface ProposalDetailModalProps {
@@ -273,7 +274,7 @@ const ProposalDetailModalContent: React.FC<
     }
   }, [proposalId]);
 
-  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK' | 'FACTA' | 'HAPPY'>('HISTORICO');
+  const [activeTab, setActiveTab] = useState<'HISTORICO' | 'PENDENCIAS' | 'COMENTARIOS' | 'CLIENTE' | 'C6_BANK' | 'FACTA' | 'HAPPY' | 'INTEGRACOES'>('HISTORICO');
 
   // Status update form
   const [selectedStatusId, setSelectedStatusId] = useState(proposal.statusId);
@@ -1044,6 +1045,18 @@ const ProposalDetailModalContent: React.FC<
             <span>Cliente 360 ({otherClientProposals.length} outras)</span>
           </button>
 
+          <button
+            onClick={() => setActiveTab('INTEGRACOES')}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'INTEGRACOES'
+                ? 'border-violet-600 text-violet-600 dark:text-violet-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            <span>APIs FINANTO / Nossa Fintech</span>
+          </button>
+
           {isC6Bank && (
             <button
               onClick={() => setActiveTab('C6_BANK')}
@@ -1518,6 +1531,17 @@ const ProposalDetailModalContent: React.FC<
                 }}
               />
             </div>
+          )}
+
+          {activeTab === 'INTEGRACOES' && (
+            <ProviderProposalSyncCard
+              proposal={proposal}
+              onProposalUpdated={(updated) => {
+                setLiveProposal(updated);
+                StorageService.updateProposal(updated.id, updated, 'Sincronização FINANTO / Nossa Fintech', false);
+                onProposalUpdated();
+              }}
+            />
           )}
         </div>
 

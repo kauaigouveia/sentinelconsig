@@ -485,7 +485,23 @@ export interface Proposal {
   happyLastSyncAt?: string;
   happySyncStatus?: 'SYNCED' | 'PENDING' | 'ERROR' | 'UNMATCHED';
   happySyncError?: string;
-  happyRawData?: any;
+    happyRawData?: any;
+
+    // FINANTO / JoinBank synchronization
+    finantoSimulationId?: string;
+    finantoStatus?: string;
+    finantoLastSyncAt?: string;
+    finantoSyncError?: string;
+    finantoRawData?: any;
+
+    // Nossa Fintech synchronization
+    nossaFintechDebtKey?: string;
+    nossaFintechProduct?: 'PORT_REFIN' | 'INSS' | 'FGTS' | 'CLT';
+    nossaFintechStatus?: string;
+    nossaFintechStatusDescription?: string;
+    nossaFintechLastSyncAt?: string;
+    nossaFintechSyncError?: string;
+    nossaFintechRawData?: any;
 }
 
 export interface C6SyncHistoryItem {

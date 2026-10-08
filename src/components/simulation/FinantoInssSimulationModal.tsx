@@ -36,6 +36,8 @@ const readFile = (file: File): Promise<FileUpload> => new Promise((resolve, reje
 const OPERATION_LABELS: Record<Props['operationCode'], string> = {
   '1': 'INSS Novo', '2': 'INSS Portabilidade', '3': 'INSS Refinanciamento', '4': 'INSS Portabilidade + Refinanciamento',
 };
+// A enumeração oficial da API é: 1 Novo, 2 Refinanciamento, 3 Portabilidade, 4 Portabilidade + Refinanciamento.
+const API_OPERATION_CODES: Record<Props['operationCode'], number> = { '1': 1, '2': 3, '3': 2, '4': 4 };
 
 export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationCode, onClose, partners, onSuccess }) => {
   const [rules, setRules] = useState<ApiItem[]>([]);
@@ -87,9 +89,6 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   const [originInstallmentsRemaining, setOriginInstallmentsRemaining] = useState('');
   const [originInstallmentValue, setOriginInstallmentValue] = useState('');
   const [originDueBalanceValue, setOriginDueBalanceValue] = useState('');
-  const [refinanceableContracts, setRefinanceableContracts] = useState<ApiItem[]>([]);
-  const [selectedOriginContractKey, setSelectedOriginContractKey] = useState('');
-  const [loadingContracts, setLoadingContracts] = useState(false);
   const [refinanceTerm, setRefinanceTerm] = useState('84');
   const [refinanceRate, setRefinanceRate] = useState('');
   const [refinanceInstallmentValue, setRefinanceInstallmentValue] = useState('0');
@@ -97,14 +96,15 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   const [back, setBack] = useState<File | null>(null);
 
   const availablePartners = useMemo(() => partners.filter(partner => partner.active), [partners]);
-  const selectedRule = useMemo(() => rules.find(rule => rule.id === ruleId), [rules, ruleId]);
+  const availableRates = useMemo(() => [...new Set(rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.rate)).filter((value: number) => Number.isFinite(value) && value > 0)))].sort((a, b) => b - a), [rules]);
+  const availableTerms = useMemo(() => [...new Set(rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.term || item.maxTerm)).filter((value: number) => Number.isInteger(value) && value > 0)))].sort((a, b) => b - a), [rules]);
 
   const loadRules = async () => {
-    setLoadingRules(true); setRules([]); setRuleId(''); setCalculation(null); setQuotes([]); setError('');
+    setLoadingRules(true); setRules([]); setRuleId(''); setRate(''); setTerm(''); setCalculation(null); setQuotes([]); setError('');
     try {
       const productsResponse = await fetch('/api/integrations/finanto/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-products/search/basic', body: { type: { code: { eq: 20 } }, operation: { code: { eq: Number(operationCode) } } } }),
+        body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-products/search/basic', body: { type: { code: { eq: 20 } }, operation: { code: { eq: API_OPERATION_CODES[operationCode] } } } }),
       });
       const productsData = await productsResponse.json();
       if (!productsResponse.ok || readMessages(productsData)) throw new Error(productsData.error || readMessages(productsData) || 'Não foi possível consultar produtos INSS na FINANTO.');
@@ -115,7 +115,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
       for (let offset = 0; offset < 2000; offset += 20) {
         const response = await fetch('/api/integrations/finanto/request', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-product-rules/search/basic', body: { offset, limit: 20, operation: { code: { eq: Number(operationCode) } } } }),
+          body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-product-rules/search/basic', body: { offset, limit: 20, operation: { code: { eq: API_OPERATION_CODES[operationCode] } } } }),
         });
         const data = await response.json();
         if (!response.ok || readMessages(data)) throw new Error(data.error || readMessages(data) || 'Não foi possível consultar as tabelas FINANTO.');
@@ -125,31 +125,29 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
       }
       setRules(allRules);
       setRuleId(allRules[0]?.id ? String(allRules[0].id) : '');
+      const defaultItem = allRules[0]?.items?.find((item: any) => item.default) || allRules[0]?.items?.[0];
+      setRate(defaultItem?.rate != null ? String(defaultItem.rate) : '');
+      setTerm(defaultItem?.term != null ? String(defaultItem.term) : defaultItem?.maxTerm != null ? String(defaultItem.maxTerm) : '');
+      setRefinanceRate(defaultItem?.rate != null ? String(defaultItem.rate) : '');
+      setRefinanceTerm(defaultItem?.term != null ? String(defaultItem.term) : defaultItem?.maxTerm != null ? String(defaultItem.maxTerm) : '');
       if (!allRules.length) setError('Não há tabelas INSS disponíveis para esta modalidade.');
     } catch (err: any) { setError(err.message || 'Falha ao carregar tabelas.'); }
     finally { setLoadingRules(false); }
-  };
-
-  const findRefinanceableContracts = async () => {
-    setError(''); setRefinanceableContracts([]); setSelectedOriginContractKey('');
-    if (!isValidCpf(normalizeCpf(cpf)) || !benefit.trim() || !ruleId) return setError('Para buscar contratos elegíveis, informe CPF, número do benefício e selecione uma tabela INSS.');
-    setLoadingContracts(true);
-    try {
-      const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-inss-simulations/refinanceable-contracts', body: { identity: normalizeCpf(cpf), benefit: benefit.replace(/\D/g, ''), ruleId } }) });
-      const data = await response.json();
-      if (!response.ok || readMessages(data)) throw new Error(data.error || readMessages(data) || 'Falha ao consultar contratos elegíveis.');
-      const contracts = readItems(data);
-      setRefinanceableContracts(contracts);
-      if (contracts[0]?.key) setSelectedOriginContractKey(String(contracts[0].key));
-      if (!contracts.length) setError('A FINANTO não retornou contratos elegíveis para esse benefício e tabela.');
-    } catch (err: any) { setError(err.message || 'Falha ao consultar contratos elegíveis.'); }
-    finally { setLoadingContracts(false); }
   };
 
   useEffect(() => { if (isOpen) void loadRules(); }, [isOpen, operationCode]);
   if (!isOpen) return null;
 
   const parseAmount = (value: string) => Number(value.replace(',', '.'));
+  const originDataReady = Number.isInteger(Number(originLenderCode)) && Number(originLenderCode) > 0 && Boolean(originContractNumber.trim()) && Number.isInteger(Number(originTerm)) && Number(originTerm) > 0 && Number.isInteger(Number(originInstallmentsRemaining)) && Number(originInstallmentsRemaining) > 0 && parseAmount(originInstallmentValue) > 0 && parseAmount(originDueBalanceValue) > 0;
+  const refinancingDataReady = Number.isInteger(Number(refinanceTerm)) && Number(refinanceTerm) > 0 && parseAmount(refinanceRate) > 0 && parseAmount(refinanceInstallmentValue) >= 0;
+  const refinanceIdentityReady = isValidCpf(normalizeCpf(cpf)) && Boolean(benefit.replace(/\D/g, ''));
+  const manualAmountsReady = parseAmount(loanValue) > 0 && parseAmount(installmentValue) > 0;
+  const operationDataReady = operationCode === '1' ? manualAmountsReady
+    : operationCode === '2' ? originDataReady
+      : operationCode === '3' ? refinanceIdentityReady
+        : originDataReady && refinancingDataReady;
+  const canCalculate = rules.length > 0 && Number(rate) > 0 && Number.isInteger(Number(term)) && Number(term) > 0 && operationDataReady;
   const handleCalculate = async () => {
     setError(''); setCalculation(null); setQuotes([]);
     if (!rules.length) return setError('Não há tabelas INSS disponíveis para comparar.');
@@ -162,7 +160,11 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
     if (refinancing && (!Number.isInteger(refinancing.term) || refinancing.rate <= 0 || refinancing.installmentValue < 0)) return setError('Informe prazo e taxa válidos para o refinanciamento adicional.');
     const enteredLoan = parseAmount(loanValue);
     const enteredInstallment = parseAmount(installmentValue);
-    if (!(Number.isFinite(enteredLoan) && (operationCode === '3' ? enteredLoan >= 0 : enteredLoan > 0)) || !(Number.isFinite(enteredInstallment) && (operationCode === '3' ? enteredInstallment >= 0 : enteredInstallment > 0))) return setError(operationCode === '3' ? 'Informe valores válidos para refinanciamento; use 0 na parcela para cálculo automático.' : 'Informe valores válidos para crédito e parcela.');
+    if (operationCode === '1' && !(Number.isFinite(enteredLoan) && enteredLoan > 0 && Number.isFinite(enteredInstallment) && enteredInstallment > 0)) return setError('Informe valores válidos para crédito e parcela.');
+    if (operationCode === '2' && !originDataReady) return setError('Preencha todos os dados do contrato atual para calcular a portabilidade.');
+    if (operationCode === '3' && !refinanceIdentityReady) return setError('Informe um CPF válido e o número do benefício para buscar contratos de refinanciamento.');
+    if (operationCode === '4' && (!originDataReady || !refinancingDataReady)) return setError('Preencha os dados do contrato atual e do refinanciamento adicional antes de calcular.');
+    if (!Number(rate) || !Number.isInteger(Number(term))) return setError('Selecione uma taxa e um prazo válidos nas opções disponíveis.');
     setLoading(true);
     try {
       const results: InssQuote[] = new Array(rules.length);
@@ -181,17 +183,18 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
               if (!eligibleResponse.ok || readMessages(eligibleData)) throw new Error(eligibleData.error || readMessages(eligibleData) || 'Falha ao consultar contratos elegíveis.');
               const eligible = readItems(eligibleData);
               if (!eligible.length) throw new Error('Sem contrato elegível');
-              const selected = rule.id === ruleId ? eligible.find((item: any) => String(item.key) === selectedOriginContractKey) || eligible[0] : eligible[0];
+              const selected = eligible[0];
               originContracts = [{ lenderCode: selected.lenderCode, contractNumber: selected.contractNumber, dueBalanceValue: Number(selected.dueBalanceValue), installmentValue: Number(selected.installmentValue), installmentsRemaining: Number(selected.installmentsRemaining) }];
               results[index] = { rule, originContracts, originContract: selected };
             }
-            const quoteRate = Number(defaultItem.rate || rate);
-            const quoteTerm = Number(defaultItem.term || defaultItem.maxTerm || term);
+            const quoteRate = Number(rate || defaultItem.rate);
+            const quoteTerm = Number(term || defaultItem.term || defaultItem.maxTerm);
             if (!(quoteRate > 0 && Number.isInteger(quoteTerm) && quoteTerm > 0)) throw new Error('A tabela não possui taxa ou prazo padrão.');
             const payload = {
               ruleId: rule.id, hasInsurance,
-              installmentValue: operationCode === '3' ? (parseAmount(installmentValue) || 0) : parseAmount(installmentValue),
-              ...(operationCode !== '3' ? { loanValue: parseAmount(loanValue) } : {}), rate: quoteRate, term: quoteTerm,
+              installmentValue: operationCode === '1' ? enteredInstallment : operationCode === '3' ? 0 : originContract?.installmentValue || 0,
+              ...(operationCode === '1' ? { loanValue: enteredLoan } : operationCode === '2' || operationCode === '4' ? { loanValue: originContract?.dueBalanceValue } : {}),
+              rate: quoteRate, term: quoteTerm,
               referenceCode: rule.referenceCode || null,
               ...(originContract ? { originContract } : {}),
               ...(originContracts ? { originContracts } : {}),
@@ -221,9 +224,6 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
     if (quote.calculation.installmentValue != null) setInstallmentValue(String(quote.calculation.installmentValue));
     if (quote.calculation.rate != null) setRate(String(quote.calculation.rate));
     if (quote.calculation.term != null) setTerm(String(quote.calculation.term));
-    if (quote.originContract) {
-      setRefinanceableContracts([quote.originContract]); setSelectedOriginContractKey(String(quote.originContract.key || ''));
-    }
   };
 
   const handleCreate = async (event: React.FormEvent) => {
@@ -242,7 +242,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
       const [frontFile, backFile] = await Promise.all([readFile(front), readFile(back)]);
       const response = await fetch('/api/integrations/finanto/inss/simulations', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ partnerId, operationCode, ruleId, hasInsurance, loanValue: Number(calculation.loanValue ?? parseAmount(loanValue)), installmentValue: Number(calculation.installmentValue ?? parseAmount(installmentValue)), rate: Number(calculation.rate ?? parseAmount(rate)), term: Number(calculation.term ?? term), ...(operationCode === '2' || operationCode === '4' ? { originContract: { lenderCode: Number(originLenderCode), contractNumber: originContractNumber.trim(), term: Number(originTerm), installmentsRemaining: Number(originInstallmentsRemaining), installmentValue: parseAmount(originInstallmentValue), dueBalanceValue: parseAmount(originDueBalanceValue) } } : {}), ...(operationCode === '3' && selectedOriginForRefin ? { originContracts: [selectedOriginForRefin] } : {}), ...(operationCode === '4' ? { refinancing: { term: Number(refinanceTerm), rate: parseAmount(refinanceRate), installmentValue: parseAmount(refinanceInstallmentValue) } } : {}),
+        body: JSON.stringify({ partnerId, operationCode: API_OPERATION_CODES[operationCode], ruleId, hasInsurance, loanValue: Number(calculation.loanValue ?? parseAmount(loanValue)), installmentValue: Number(calculation.installmentValue ?? parseAmount(installmentValue)), rate: Number(calculation.rate ?? parseAmount(rate)), term: Number(calculation.term ?? term), ...(operationCode === '2' || operationCode === '4' ? { originContract: { lenderCode: Number(originLenderCode), contractNumber: originContractNumber.trim(), term: Number(originTerm), installmentsRemaining: Number(originInstallmentsRemaining), installmentValue: parseAmount(originInstallmentValue), dueBalanceValue: parseAmount(originDueBalanceValue) } } : {}), ...(operationCode === '3' && selectedOriginForRefin ? { originContracts: [selectedOriginForRefin] } : {}), ...(operationCode === '4' ? { refinancing: { term: Number(refinanceTerm), rate: parseAmount(refinanceRate), installmentValue: parseAmount(refinanceInstallmentValue) } } : {}),
           borrower: { name: name.trim(), identity: cleanCpf, benefit: benefit.replace(/\D/g, ''), benefitState: benefitState.toUpperCase(), benefitStartDate, benefitType: Number(benefitType), birthDate, income: parseAmount(income), phone: phone.replace(/\D/g, ''), email: email.trim(), address: { street: street.trim(), number: number.trim(), complement: complement.trim() || null, district: district.trim(), city: city.trim(), state: state.toUpperCase(), zipCode: zipCode.replace(/\D/g, '') }, document: { type: { code: documentType, name: documentType === 'RG' ? 'Registro Geral' : documentType }, number: documentNumber.trim(), issuingDate, issuingEntity: issuingEntity.trim(), issuingState: issuingState.toUpperCase() } },
           creditBankAccount: { bank: bank.trim(), branch: branch.trim(), number: accountNumber.trim(), digit: accountDigit.trim() }, files: { front: frontFile, back: backFile } }),
       });
@@ -266,6 +266,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   };
 
   const field = (title: string, value: string, change: (value: string) => void, type = 'text', required = true, maxLength?: number, step?: string) => <label className={labelClass}>{title}<input className={inputClass} type={type} required={required} value={value} maxLength={maxLength} step={type === 'number' ? step || 'any' : undefined} onChange={e => change(e.target.value)} /></label>;
+  const selectField = (title: string, value: string, change: (value: string) => void, options: number[], placeholder: string) => <label className={labelClass}>{title}<select className={inputClass} required value={value} onChange={e => change(e.target.value)}><option value="">{placeholder}</option>{options.map(option => <option key={option} value={String(option)}>{option.toLocaleString('pt-BR')}</option>)}</select></label>;
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
     <section className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
@@ -276,12 +277,13 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
           {!authTerm && <button type="button" onClick={getAuthTerm} disabled={loadingTerm} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{loadingTerm ? 'Consultando termo...' : 'Consultar termo de autorização'}</button>}
           {authTerm && <pre className="max-h-72 overflow-auto rounded-lg bg-slate-950 p-4 text-xs text-emerald-200">{JSON.stringify(authTerm, null, 2)}</pre>}
           <button type="button" onClick={onClose} className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-700">Concluir</button></div> : <form onSubmit={handleCreate} className="space-y-6">
-          <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Produto e condição</h3><div className="grid gap-3 md:grid-cols-2"><label className={labelClass}>Tabela para conferência<select className={inputClass} value={ruleId} onChange={e => { setRuleId(e.target.value); setCalculation(null); const rule = rules.find(item => item.id === e.target.value); const item = rule?.items?.find((value: any) => value.default) || rule?.items?.[0]; if (item) { setTerm(String(item.term || item.maxTerm || '84')); setRate(String(item.rate || '')); } }}><option value="">{loadingRules ? 'Carregando tabelas INSS...' : 'Selecione depois de comparar'}</option>{rules.map(rule => <option key={rule.id} value={rule.id}>{rule.name || rule.code} · {rule.product?.name || rule.operation?.name || 'FINANTO'}</option>)}</select></label><div className="self-end text-xs text-slate-500">A comparação consulta todas as tabelas INSS retornadas para esta modalidade.</div></div>
+          <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Produto e condição</h3><p className="text-xs text-slate-500">{loadingRules ? 'Carregando tabelas INSS...' : `${rules.length} tabelas INSS disponíveis. A simulação compara as tabelas compatíveis com a taxa e o prazo selecionados.`}</p>
           {(operationCode === '2' || operationCode === '4') && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-3 text-sm font-bold">Dados do contrato atual para portabilidade</h4><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('Código do banco de origem', originLenderCode, setOriginLenderCode, 'number')}{field('Número do contrato', originContractNumber, setOriginContractNumber)}{field('Prazo original (meses)', originTerm, setOriginTerm, 'number')}{field('Parcelas restantes', originInstallmentsRemaining, setOriginInstallmentsRemaining, 'number')}{field('Valor da parcela atual (R$)', originInstallmentValue, setOriginInstallmentValue, 'number')}{field('Saldo devedor (R$)', originDueBalanceValue, setOriginDueBalanceValue, 'number')}</div></div>}
-          {operationCode === '3' && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-2 text-sm font-bold">Contrato atual para refinanciamento</h4><p className="mb-3 text-xs text-slate-500">Informe CPF e benefício na seção abaixo, selecione a tabela e consulte os contratos que a FINANTO autoriza refinanciar.</p><div className="mb-3 flex flex-wrap items-end gap-3"><label className={`${labelClass} min-w-48 flex-1`}>CPF do beneficiário<input className={inputClass} value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label><label className={`${labelClass} min-w-48 flex-1`}>Número do benefício<input className={inputClass} value={benefit} onChange={e => setBenefit(e.target.value)} /></label><button type="button" onClick={findRefinanceableContracts} disabled={loadingContracts || !ruleId} className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 disabled:opacity-50">{loadingContracts ? 'Buscando contratos...' : 'Buscar contratos elegíveis'}</button></div>{refinanceableContracts.length > 0 && <label className={labelClass}>Contrato elegível<select className={inputClass} value={selectedOriginContractKey} onChange={e => { setSelectedOriginContractKey(e.target.value); setCalculation(null); }}><option value="">Selecione um contrato</option>{refinanceableContracts.map(contract => <option key={String(contract.key)} value={String(contract.key)}>{contract.lenderName || contract.lender?.name || `Banco ${contract.lenderCode}`} · contrato {contract.contractNumber} · saldo R$ {Number(contract.dueBalanceValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</option>)}</select></label>}</div>}
-          {operationCode === '4' && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-3 text-sm font-bold">Parâmetros do refinanciamento adicional</h4><div className="grid gap-3 sm:grid-cols-3">{field('Prazo do refinanciamento (meses)', refinanceTerm, setRefinanceTerm, 'number')}{field('Taxa mensal do refinanciamento (%)', refinanceRate, setRefinanceRate, 'number')}{field('Parcela adicional (R$; 0 para cálculo automático)', refinanceInstallmentValue, setRefinanceInstallmentValue, 'number')}</div><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('CPF do beneficiário', cpf, value => setCpf(formatCpf(value)))}{field('Número do benefício', benefit, setBenefit)}</div></div>}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{field('Valor do crédito (R$)', loanValue, value => { setLoanValue(value); setCalculation(null); }, 'number')}{field('Valor da parcela (R$)', installmentValue, value => { setInstallmentValue(value); setCalculation(null); }, 'number')}{field('Taxa mensal (%)', rate, value => { setRate(value); setCalculation(null); }, 'number')}{field('Prazo (meses)', term, value => { setTerm(value); setCalculation(null); }, 'number')}<label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-slate-200 p-3 dark:border-slate-700`}><input type="checkbox" checked={hasInsurance} onChange={e => { setHasInsurance(e.target.checked); setCalculation(null); }} />Incluir seguro</label></div>
-          <button type="button" onClick={handleCalculate} disabled={loading || loadingRules || !rules.length} className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300">{loading ? 'Comparando tabelas...' : `Comparar ${rules.length} tabelas INSS`}</button>{quotes.length > 0 && <div className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><h4 className="text-sm font-bold">Ofertas retornadas pela FINANTO</h4>{quotes.map(quote => <button type="button" key={String(quote.rule.id)} disabled={!quote.calculation} onClick={() => selectQuote(quote)} className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm ${String(ruleId) === String(quote.rule.id) && calculation ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-slate-200 dark:border-slate-700'} disabled:cursor-not-allowed disabled:opacity-60`}><span><strong>{quote.rule.lender?.name || quote.rule.lenderName || quote.rule.product?.name || quote.rule.name || `Tabela ${quote.rule.code || quote.rule.id}`}</strong>{quote.error && <span className="block text-xs text-rose-600">{quote.error}</span>}</span>{quote.calculation ? <span className="whitespace-nowrap text-right">{quote.calculation.loanValue != null ? `R$ ${Number(quote.calculation.loanValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Oferta válida'}{quote.calculation.installmentValue != null ? <span className="block text-xs">Parcela R$ {Number(quote.calculation.installmentValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span> : null}</span> : <span className="text-xs text-slate-500">Indisponível</span>}</button>)}</div>}{calculation && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Oferta selecionada: {calculation.loanValue != null ? `crédito R$ ${Number(calculation.loanValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'cálculo validado'}{calculation.installmentValue != null ? ` · parcela R$ ${Number(calculation.installmentValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}{calculation.rate != null ? ` · taxa ${calculation.rate}%` : ''}{calculation.term != null ? ` · ${calculation.term} meses` : ''}</div>}</section>
+          {operationCode === '3' && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-2 text-sm font-bold">Dados para localizar o contrato de refinanciamento</h4><p className="mb-3 text-xs text-slate-500">Ao calcular, a FINANTO consulta os contratos elegíveis em cada tabela disponível.</p><div className="grid gap-3 sm:grid-cols-2">{field('CPF do beneficiário', cpf, value => setCpf(formatCpf(value)))}{field('Número do benefício', benefit, setBenefit)}</div></div>}
+          {operationCode === '4' && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-3 text-sm font-bold">Parâmetros do refinanciamento adicional</h4><div className="grid gap-3 sm:grid-cols-3">{selectField('Prazo do refinanciamento (meses)', refinanceTerm, setRefinanceTerm, availableTerms, 'Selecione o prazo')}{selectField('Taxa mensal do refinanciamento (%)', refinanceRate, setRefinanceRate, availableRates, 'Selecione a taxa')}{field('Parcela adicional (R$; 0 para cálculo automático)', refinanceInstallmentValue, setRefinanceInstallmentValue, 'number')}</div><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('CPF do beneficiário', cpf, value => setCpf(formatCpf(value)))}{field('Número do benefício', benefit, setBenefit)}</div></div>}
+          {operationCode === '1' && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('Valor do crédito (R$)', loanValue, value => { setLoanValue(value); setCalculation(null); setQuotes([]); }, 'number')}{field('Valor da parcela (R$)', installmentValue, value => { setInstallmentValue(value); setCalculation(null); setQuotes([]); }, 'number')}<label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-slate-200 p-3 dark:border-slate-700`}><input type="checkbox" checked={hasInsurance} onChange={e => { setHasInsurance(e.target.checked); setCalculation(null); setQuotes([]); }} />Incluir seguro</label></div>}
+          <div className="grid gap-3 sm:grid-cols-2">{selectField('Taxa mensal (%)', rate, value => { setRate(value); setCalculation(null); setQuotes([]); }, availableRates, 'Selecione a taxa')}{selectField('Prazo (meses)', term, value => { setTerm(value); setCalculation(null); setQuotes([]); }, availableTerms, 'Selecione o prazo')}</div>
+          {!canCalculate && <p className="text-xs text-slate-500">Preencha os campos desta modalidade e selecione taxa e prazo para habilitar o cálculo.</p>}<button type="button" onClick={handleCalculate} disabled={loading || loadingRules || !canCalculate} className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300">{loading ? 'Calculando opções...' : `Calcular em ${rules.length} tabelas INSS`}</button>{quotes.length > 0 && <div className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><h4 className="text-sm font-bold">Ofertas retornadas pela FINANTO</h4>{quotes.map(quote => <button type="button" key={String(quote.rule.id)} disabled={!quote.calculation} onClick={() => selectQuote(quote)} className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm ${String(ruleId) === String(quote.rule.id) && calculation ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-slate-200 dark:border-slate-700'} disabled:cursor-not-allowed disabled:opacity-60`}><span><strong>{quote.rule.lender?.name || quote.rule.lenderName || quote.rule.product?.name || quote.rule.name || `Tabela ${quote.rule.code || quote.rule.id}`}</strong>{quote.originContract && <span className="block text-xs text-slate-500">Contrato {quote.originContract.contractNumber} · saldo R$ {Number(quote.originContract.dueBalanceValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}{quote.error && <span className="block text-xs text-rose-600">{quote.error}</span>}</span>{quote.calculation ? <span className="whitespace-nowrap text-right">{quote.calculation.loanValue != null ? `R$ ${Number(quote.calculation.loanValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Oferta válida'}{quote.calculation.installmentValue != null ? <span className="block text-xs">Parcela R$ {Number(quote.calculation.installmentValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span> : null}</span> : <span className="text-xs text-slate-500">Indisponível</span>}</button>)}</div>}{calculation && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Oferta selecionada: {calculation.loanValue != null ? `crédito R$ ${Number(calculation.loanValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'cálculo validado'}{calculation.installmentValue != null ? ` · parcela R$ ${Number(calculation.installmentValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}{calculation.rate != null ? ` · taxa ${calculation.rate}%` : ''}{calculation.term != null ? ` · ${calculation.term} meses` : ''}</div>}</section>
 
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">2. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('Nome completo', name, setName)}<label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}{field('Nascimento', birthDate, setBirthDate, 'date')}{field('Início do benefício', benefitStartDate, setBenefitStartDate, 'date')}{field('Código do tipo do benefício', benefitType, setBenefitType, 'number', true, undefined, '1')}{field('UF do benefício', benefitState, setBenefitState, 'text', true, 2)}{field('Renda mensal (R$)', income, setIncome, 'number')}{field('Telefone com DDD', phone, setPhone)}{field('E-mail', email, setEmail, 'email')}</div></section>
 

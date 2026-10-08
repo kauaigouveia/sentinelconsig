@@ -109,6 +109,7 @@ import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
 import { HappySimulationService } from './server/services/happySimulationService.js';
 import { FinantoService } from './server/services/finantoService.js';
+import { NossaFintechService } from './server/services/nossaFintechService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
 import {
   ensureDefaultPromotersForTenant,
@@ -14398,9 +14399,9 @@ async function auditAndEnsureMasterUser() {
       if (!finantoConfig.isConfigured || !finantoConfig.enabled) {
         return res.status(409).json({ error: 'Configure e ative a integração FINANTO no Hub de Integrações antes de criar simulações.' });
       }
-      const { borrower, partnerId, ruleId, loanValue, installmentValue, rate, term, hasInsurance, creditBankAccount, files, operationCode, originContract, originContracts, refinancing } = req.body || {};
+      const { borrower, partnerId, ruleId, loanValue, installmentValue, rate, term, hasInsurance, creditBankAccount, files, operationCode, originContract, originContracts, refinancing, proposalId } = req.body || {};
       const operation = String(operationCode || '1');
-      const operationTypes: Record<string, string> = { '1': 'FINANTO_NOVO', '2': 'FINANTO_PORTABILIDADE', '3': 'FINANTO_REFIN', '4': 'FINANTO_PORTABILIDADE_REFIN' };
+      const operationTypes: Record<string, string> = { '1': 'FINANTO_NOVO', '2': 'FINANTO_REFIN', '3': 'FINANTO_PORTABILIDADE', '4': 'FINANTO_PORTABILIDADE_REFIN' };
       if (!operationTypes[operation]) return res.status(400).json({ error: 'Modalidade INSS inválida.' });
       if (!borrower || typeof borrower !== 'object' || typeof borrower.identity !== 'string' || !isValidCpf(borrower.identity.replace(/\D/g, ''))) {
         return res.status(400).json({ error: 'Informe os dados do beneficiário com um CPF válido.' });
@@ -14419,16 +14420,16 @@ async function auditAndEnsureMasterUser() {
           ['bank', 'branch', 'number', 'digit'].some(field => !String(creditBankAccount[field] || '').trim())) {
         return res.status(400).json({ error: 'Complete os dados da conta, endereço, documento e parceiro.' });
       }
-      const creditValuesValid = operation === '3'
+      const creditValuesValid = operation === '2'
         ? Number.isFinite(Number(loanValue)) && Number(loanValue) >= 0 && Number.isFinite(Number(installmentValue)) && Number(installmentValue) >= 0 && Number(rate) > 0 && Number(term) > 0
         : [loanValue, installmentValue, rate, term].every(value => Number.isFinite(Number(value)) && Number(value) > 0);
       if (!creditValuesValid || !Number.isInteger(Number(term)) || !Number.isInteger(Number(borrower.benefitType)) || typeof hasInsurance !== 'boolean') {
         return res.status(400).json({ error: 'Condição de crédito inválida.' });
       }
-      if ((operation === '2' || operation === '4') && (!originContract || !Number.isInteger(Number(originContract.lenderCode)) || !String(originContract.contractNumber || '').trim() || !Number.isInteger(Number(originContract.term)) || !Number.isInteger(Number(originContract.installmentsRemaining)) || Number(originContract.installmentValue) <= 0 || Number(originContract.dueBalanceValue) <= 0)) {
+      if ((operation === '3' || operation === '4') && (!originContract || !Number.isInteger(Number(originContract.lenderCode)) || !String(originContract.contractNumber || '').trim() || !Number.isInteger(Number(originContract.term)) || !Number.isInteger(Number(originContract.installmentsRemaining)) || Number(originContract.installmentValue) <= 0 || Number(originContract.dueBalanceValue) <= 0)) {
         return res.status(400).json({ error: 'Preencha os dados válidos do contrato para portabilidade.' });
       }
-      if (operation === '3' && (!Array.isArray(originContracts) || !originContracts.length || originContracts.some((contract: any) => !contract?.key || !contract?.contractNumber || !Number.isFinite(Number(contract.dueBalanceValue))))) {
+      if (operation === '2' && (!Array.isArray(originContracts) || !originContracts.length || originContracts.some((contract: any) => !contract?.key || !contract?.contractNumber || !Number.isFinite(Number(contract.dueBalanceValue))))) {
         return res.status(400).json({ error: 'Consulte e selecione um contrato elegível para refinanciamento antes de enviar.' });
       }
       if (operation === '4' && (!refinancing || !Number.isInteger(Number(refinancing.term)) || Number(refinancing.rate) <= 0 || Number(refinancing.installmentValue) < 0)) {
@@ -14437,6 +14438,11 @@ async function auditAndEnsureMasterUser() {
       if (!files?.front || !files?.back) return res.status(400).json({ error: 'Anexe frente e verso do documento.' });
       const partner = await prisma.partner.findFirst({ where: { id: partnerId, tenantId, deletedAt: null, status: 'ATIVO' }, select: { id: true } });
       if (!partner) return res.status(400).json({ error: 'Parceiro não encontrado, inativo ou fora desta empresa.' });
+      let linkedProposal: { id: string; proposalNumber: string } | null = null;
+      if (proposalId) {
+        linkedProposal = await prisma.proposal.findFirst({ where: { id: String(proposalId), tenantId, deletedAt: null, client: { cpf: borrower.identity.replace(/\D/g, '') } }, select: { id: true, proposalNumber: true } });
+        if (!linkedProposal) return res.status(400).json({ error: 'A proposta informada não pertence a este cliente/empresa.' });
+      }
 
       // Never allow a product rule from FGTS or another product family into the INSS journey.
       const productsResult = await FinantoService.request(prisma, tenantId, 'POST', '/v3/loan-products/search/basic', {
@@ -14470,7 +14476,7 @@ async function auditAndEnsureMasterUser() {
           income: Number(borrower.income),
           benefitType: Number(borrower.benefitType),
         },
-        items: [{ ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term), ...(operation === '2' || operation === '4' ? { originContract } : {}), ...(operation === '3' ? { originContracts } : {}), ...(operation === '4' ? { refinancing } : {}) }],
+        items: [{ ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term), ...(operation === '3' || operation === '4' ? { originContract } : {}), ...(operation === '2' ? { originContracts } : {}), ...(operation === '4' ? { refinancing } : {}) }],
         creditBankAccount,
         step: { code: 0, name: null },
         files: [{ id: uploadedFront.id, type: 'doc_front' }, { id: uploadedBack.id, type: 'doc_back' }],
@@ -14492,9 +14498,20 @@ async function auditAndEnsureMasterUser() {
           finantoJourneyStatus: typeof providerData?.status?.name === 'string' ? providerData.status.name : 'SIMULAÇÃO CRIADA',
           finantoRawData: { id: String(externalId), code: providerData?.code ?? null, status: providerData?.status?.name ?? null },
           finantoSelectedCondition: selectedCondition,
+          ...(linkedProposal ? { matchedProposalId: linkedProposal.id, matchedProposalNumber: linkedProposal.proposalNumber, matchedAt: new Date() } : {}),
         },
         include: { partner: true, createdBy: { select: { id: true, name: true, email: true, role: true } } },
       });
+      if (linkedProposal) {
+        await prisma.proposal.update({ where: { id: linkedProposal.id }, data: {
+          finantoSimulationId: String(externalId), finantoStatus: simulation.finantoJourneyStatus,
+          finantoLastSyncAt: new Date(), finantoSyncError: null,
+          finantoRawData: (providerData || {}) as Prisma.InputJsonValue,
+          releasedValue: Number(loanValue), installmentValue: Number(installmentValue), installmentsCount: Number(term),
+          type: operation === '2' ? ProposalType.REFIN : operation === '3' ? ProposalType.PORTABILIDADE : operation === '4' ? ProposalType.REFIN_PORTABILIDADE : ProposalType.NOVO,
+          version: { increment: 1 },
+        } });
+      }
       sseRegistry.broadcastToTenant(tenantId, { type: 'SIMULATION_CREATED', entity: 'SimulationRequest', entityId: simulation.id, userId: session.user.id });
       await AuditLogService.record(prisma, {
         tenantId, userId: session.user.id, userName: session.user.name,
@@ -14509,6 +14526,75 @@ async function auditAndEnsureMasterUser() {
         ...(externalSimulationId ? { externalSimulationId, warning: 'A FINANTO criou a simulação, mas o Sentinel não conseguiu registrar a referência local. Informe este ID ao suporte.' } : {}),
       });
     }
+  });
+
+  app.post('/api/proposals/:id/finanto-link', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update') && !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) return res.status(403).json({ error: 'Sem permissão para vincular FINANTO.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const proposal = await prisma.proposal.findFirst({ where: { id: req.params.id, tenantId, deletedAt: null }, include: { client: true } });
+      if (!proposal) return res.status(404).json({ error: 'Proposta não encontrada.' });
+      const suppliedId = String(req.body?.simulationId || '').trim();
+      if (!suppliedId) return res.status(400).json({ error: 'Informe o ID local ou externo da simulação FINANTO.' });
+      const simulation = await prisma.simulationRequest.findFirst({ where: {
+        tenantId, simulationType: 'FINANTO_INSS', deletedAt: null,
+        OR: [{ id: suppliedId }, { finantoSimulationId: suppliedId }],
+      } });
+      if (!simulation || simulation.cpf.replace(/\D/g, '') !== proposal.client.cpf.replace(/\D/g, '')) return res.status(404).json({ error: 'Simulação FINANTO não encontrada para o CPF desta proposta.' });
+      const condition = simulation.finantoSelectedCondition as any;
+      const linked = await prisma.$transaction(async tx => {
+        const updatedProposal = await tx.proposal.update({ where: { id: proposal.id }, data: {
+          finantoSimulationId: simulation.finantoSimulationId, finantoStatus: simulation.finantoJourneyStatus,
+          finantoLastSyncAt: new Date(), finantoSyncError: null,
+          finantoRawData: (simulation.finantoRawData || {}) as Prisma.InputJsonValue,
+          ...(condition?.loanValue != null ? { releasedValue: Number(condition.loanValue) } : {}),
+          ...(condition?.installmentValue != null ? { installmentValue: Number(condition.installmentValue) } : {}),
+          ...(condition?.term != null ? { installmentsCount: Number(condition.term) } : {}),
+          ...(condition?.operationCode === '2' ? { type: ProposalType.REFIN } : condition?.operationCode === '3' ? { type: ProposalType.PORTABILIDADE } : condition?.operationCode === '4' ? { type: ProposalType.REFIN_PORTABILIDADE } : condition?.operationCode === '1' ? { type: ProposalType.NOVO } : {}),
+          version: { increment: 1 },
+        } });
+        await tx.simulationRequest.update({ where: { id: simulation.id }, data: { matchedProposalId: proposal.id, matchedProposalNumber: proposal.proposalNumber, matchedAt: new Date() } });
+        return updatedProposal;
+      });
+      await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'VINCULAR_FINANTO_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { finantoSimulationId: simulation.finantoSimulationId }, req });
+      return res.json({ success: true, proposal: linked });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Falha ao vincular simulação FINANTO.' }); }
+  });
+
+  app.post('/api/proposals/:id/finanto-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view') && !hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update') && !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) return res.status(403).json({ error: 'Sem permissão para sincronizar FINANTO.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const proposal = await prisma.proposal.findFirst({ where: { id: req.params.id, tenantId, deletedAt: null } });
+      if (!proposal?.finantoSimulationId) return res.status(409).json({ error: 'Vincule uma simulação FINANTO antes de sincronizar.' });
+      const provider = await FinantoService.request(prisma, tenantId, 'GET', `/v3/loans/simulation/${encodeURIComponent(proposal.finantoSimulationId)}`);
+      const payload = provider.data as any;
+      const messages = Array.isArray(payload?.messages) ? payload.messages.map((item: any) => item?.text).filter(Boolean).join(' ') : '';
+      if (!provider.success || messages) {
+        await prisma.proposal.update({ where: { id: proposal.id }, data: { finantoSyncError: messages || `HTTP ${provider.status}` } });
+        return res.status(502).json({ error: messages || 'A FINANTO não retornou os detalhes da simulação.', providerStatus: provider.status });
+      }
+      const item = payload?.items?.[0] || payload?.loan?.items?.[0] || payload?.simulation?.items?.[0] || payload?.loan || payload?.simulation || payload;
+      const status = payload?.status?.name || payload?.statusName || payload?.situation || payload?.status || proposal.finantoStatus;
+      const amount = (...values: unknown[]) => { for (const value of values) { const number = Number(value); if (value != null && value !== '' && Number.isFinite(number) && number >= 0) return number; } return undefined; };
+      const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: {
+        finantoStatus: typeof status === 'object' ? status.name || status.description || JSON.stringify(status) : String(status),
+        finantoLastSyncAt: new Date(), finantoSyncError: null, finantoRawData: payload as Prisma.InputJsonValue,
+        releasedValue: amount(item?.loanValue, item?.releasedValue, item?.finalDisbursedAmount) ?? undefined,
+        installmentValue: amount(item?.installmentValue, item?.installment_value) ?? undefined,
+        installmentsCount: amount(item?.term, item?.numberOfInstallments) ?? undefined,
+        version: { increment: 1 },
+      }, include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true } });
+      if (sseRegistry) sseRegistry.broadcastToTenant(tenantId, { type: 'PROPOSAL_UPDATED', entity: 'Proposal', entityId: proposal.id, data: { id: proposal.id, finantoStatus: updated.finantoStatus, finantoLastSyncAt: updated.finantoLastSyncAt } });
+      await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'SINCRONIZAR_FINANTO_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { finantoStatus: updated.finantoStatus, finantoLastSyncAt: updated.finantoLastSyncAt }, req });
+      return res.json({ success: true, proposal: updated });
+    } catch (err: any) { return res.status(502).json({ error: err.message || 'Falha ao sincronizar FINANTO.' }); }
   });
 
   app.post('/api/integrations/finanto/inss/simulations/:id/auth-term', async (req, res) => {
@@ -14577,6 +14663,162 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       res.status(502).json({ error: err.message || 'Falha na chamada FINANTO.' });
     }
+  });
+
+  // Nossa Fintech API: credentials are encrypted per tenant and requests remain server-side.
+  app.get('/api/integrations/nossa-fintech/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      return res.json(await NossaFintechService.getConfig(prisma, tenantId));
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao carregar configuração Nossa Fintech.' }); }
+  });
+
+  app.post('/api/integrations/nossa-fintech/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const canManage = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(session.user.role) ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage');
+      if (!canManage) return res.status(403).json({ error: 'Sem permissão para configurar integrações.' });
+      const { cpf, promoterId, password, enabled } = req.body || {};
+      if (cpf !== undefined && typeof cpf !== 'string' || promoterId !== undefined && typeof promoterId !== 'string' || password !== undefined && typeof password !== 'string' || enabled !== undefined && typeof enabled !== 'boolean') {
+        return res.status(400).json({ error: 'Credenciais ou estado da integração em formato inválido.' });
+      }
+      if (cpf && cpf.replace(/\D/g, '').length !== 11) return res.status(400).json({ error: 'O CPF de acesso deve conter 11 dígitos.' });
+      if (promoterId && promoterId.trim().length > 80 || password && password.length > 500) return res.status(400).json({ error: 'Credenciais fora do tamanho permitido.' });
+      const config = await NossaFintechService.saveConfig(prisma, tenantId, { cpf, promoterId, password, enabled });
+      return res.json({ success: true, config });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao salvar configuração Nossa Fintech.' }); }
+  });
+
+  app.post('/api/integrations/nossa-fintech/test-connection', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.diagnose') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) return res.status(403).json({ error: 'Sem permissão para testar integrações.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      return res.json(await NossaFintechService.testConnection(prisma, tenantId));
+    } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao autenticar na Nossa Fintech.' }); }
+  });
+
+  app.post('/api/integrations/nossa-fintech/request', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const method = String(req.body?.method || 'GET').toUpperCase();
+      const canManage = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(session.user.role) ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage');
+      if (method !== 'GET' && !canManage) return res.status(403).json({ error: 'Operações de escrita exigem permissão de gerenciamento de integração.' });
+      if (method === 'GET' && !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado.' });
+      if (typeof req.body?.endpoint !== 'string' || req.body.endpoint.length > 2000) return res.status(400).json({ error: 'Endpoint inválido.' });
+      const result = await NossaFintechService.request(prisma, tenantId, method, req.body.endpoint, req.body.body);
+      return res.status(result.success ? 200 : 502).json(result);
+    } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha na chamada Nossa Fintech.' }); }
+  });
+
+  app.post('/api/integrations/nossa-fintech/port-refin/simulate-all', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.create.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, legalRepresentative = false } = req.body || {};
+      if (![lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments].every(value => Number.isFinite(Number(value)) && Number(value) > 0) ||
+          !Number.isInteger(Number(openedInstallmentNumber)) || !Number.isInteger(Number(numberOfInstallments)) || typeof legalRepresentative !== 'boolean') {
+        return res.status(400).json({ error: 'Informe saldo devedor, valor da parcela, parcelas em aberto, prazo de refinanciamento e representante legal válidos.' });
+      }
+      const result = await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, {
+        lastDueBalance: Number(lastDueBalance), installmentFaceValue: Number(installmentFaceValue),
+        openedInstallmentNumber: Number(openedInstallmentNumber), numberOfInstallments: Number(numberOfInstallments), legalRepresentative,
+      });
+      return res.status(result.success ? 200 : 502).json(result);
+    } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao simular Portabilidade/Refinanciamento.' }); }
+  });
+
+  // Link a provider operation to an existing Sentinel proposal and refresh its provider fields on demand.
+  app.post('/api/proposals/:id/nossa-fintech-link', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) return res.status(403).json({ error: 'Sem permissão para vincular uma operação Nossa Fintech.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const debtKey = String(req.body?.debtKey || '').trim();
+      const product = String(req.body?.product || 'PORT_REFIN').toUpperCase();
+      if (!debtKey || debtKey.length > 200 || !['PORT_REFIN', 'INSS', 'FGTS', 'CLT'].includes(product)) return res.status(400).json({ error: 'Informe o debt_key e o produto Nossa Fintech.' });
+      const proposal = await prisma.proposal.findFirst({ where: { id: req.params.id, tenantId, deletedAt: null } });
+      if (!proposal) return res.status(404).json({ error: 'Proposta não encontrada.' });
+      const linked = await prisma.proposal.update({ where: { id: proposal.id }, data: {
+        nossaFintechDebtKey: debtKey, nossaFintechProduct: product, nossaFintechSyncError: null,
+      } });
+      await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'VINCULAR_NOSSA_FINTECH_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { product, debtKey }, req });
+      return res.json({ success: true, proposal: linked });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Falha ao vincular operação Nossa Fintech.' }); }
+  });
+
+  app.post('/api/proposals/:id/nossa-fintech-sync', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) return res.status(403).json({ error: 'Sem permissão para sincronizar operações Nossa Fintech.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const proposal = await prisma.proposal.findFirst({ where: { id: req.params.id, tenantId, deletedAt: null } });
+      if (!proposal?.nossaFintechDebtKey) return res.status(409).json({ error: 'Vincule o debt_key da operação antes de sincronizar.' });
+      const routeByProduct: Record<string, string> = {
+        PORT_REFIN: '/inss/v1/operation/', INSS: '/inss/v1/operation/',
+        FGTS: '/nossa/v1/proposal/', CLT: '/clt-loan/v1/get-operation-details/',
+      };
+      const route = routeByProduct[proposal.nossaFintechProduct || 'PORT_REFIN'];
+      const result = await NossaFintechService.request(prisma, tenantId, 'GET', `${route}${encodeURIComponent(proposal.nossaFintechDebtKey)}`);
+      if (!result.success) {
+        await prisma.proposal.update({ where: { id: proposal.id }, data: { nossaFintechSyncError: `HTTP ${result.status}` } });
+        return res.status(502).json({ error: 'A Nossa Fintech não retornou os detalhes da operação.', providerStatus: result.status, details: result.data });
+      }
+      const payload = result.data as any;
+      const operation = payload?.operation || payload?.proposal || payload?.data?.operation || payload?.data || payload;
+      const rawStatus = operation?.dsc_situacao_emprestimo ?? operation?.status_name ?? operation?.status?.name ?? operation?.status ?? operation?.situation ?? null;
+      const statusText = typeof rawStatus === 'object' ? (rawStatus?.name ?? rawStatus?.description ?? JSON.stringify(rawStatus)) : rawStatus;
+      const normalizedStatus = String(statusText || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      let standardCategory: StandardStatusCategory | undefined;
+      if (/cancel|reprov|rejeit|negad|expirad|recusad|perdido|erro/.test(normalizedStatus)) standardCategory = /cancel/.test(normalizedStatus) ? StandardStatusCategory.CANCELADO : StandardStatusCategory.RECUSADO;
+      else if (/desembols|pago|quitad|averbad|concluid|integrado|efetivad/.test(normalizedStatus)) standardCategory = StandardStatusCategory.PAGO;
+      else if (/aguard|penden|analise|process|waiting|signature|em.andamento/.test(normalizedStatus)) standardCategory = StandardStatusCategory.ANDAMENTO;
+      const numeric = (...values: unknown[]) => { for (const value of values) { const n = Number(value); if (value !== null && value !== undefined && value !== '' && Number.isFinite(n) && n >= 0) return n; } return undefined; };
+      const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: {
+        nossaFintechStatus: statusText == null ? proposal.nossaFintechStatus : String(statusText),
+        nossaFintechStatusDescription: operation?.status_description ?? operation?.dsc_situacao_emprestimo ?? undefined,
+        nossaFintechLastSyncAt: new Date(), nossaFintechSyncError: null,
+        nossaFintechRawData: payload as Prisma.InputJsonValue,
+        standardCategory,
+        releasedValue: numeric(operation?.val_liquido, operation?.final_disbursed_amount, operation?.disbursement_options?.final_disbursement_amount) ?? undefined,
+        contractValue: numeric(operation?.val_emissao, operation?.issue_amount) ?? undefined,
+        installmentValue: numeric(operation?.first_installment_value, operation?.installment_face_value, operation?.val_parcela) ?? undefined,
+        installmentsCount: numeric(operation?.qtd_parcela, operation?.number_of_installments) ?? undefined,
+        debtBalance: numeric(operation?.last_due_balance, operation?.saldo_devedor) ?? undefined,
+        version: { increment: 1 },
+      }, include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true } });
+      eventBus.publishToTenant(tenantId, { type: 'proposal_status_changed', entity: 'Proposal', entityId: proposal.id, data: { proposalId: proposal.id, statusName: updated.nossaFintechStatus || 'Nossa Fintech sincronizada', updatedBy: 'Nossa Fintech' } });
+      if (sseRegistry) sseRegistry.broadcastToTenant(tenantId, { type: 'PROPOSAL_UPDATED', entity: 'Proposal', entityId: proposal.id, data: { id: proposal.id, nossaFintechStatus: updated.nossaFintechStatus, nossaFintechLastSyncAt: updated.nossaFintechLastSyncAt } });
+      await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'SINCRONIZAR_NOSSA_FINTECH_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { status: updated.nossaFintechStatus, lastSyncAt: updated.nossaFintechLastSyncAt }, req });
+      return res.json({ success: true, proposal: updated });
+    } catch (err: any) { return res.status(502).json({ error: err.message || 'Falha ao sincronizar operação Nossa Fintech.' }); }
   });
 
   // GET /api/integrations/c6/config - Secure tenant configuration

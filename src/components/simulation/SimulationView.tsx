@@ -43,6 +43,7 @@ import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { HappyCltSimulationModal } from './HappyCltSimulationModal';
 import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
+import { NossaFintechPortRefinSimulationModal } from './NossaFintechPortRefinSimulationModal';
 import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
 
@@ -88,6 +89,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const [isFinantoInssModalOpen, setIsFinantoInssModalOpen] = useState(false);
   const [finantoOperationCode, setFinantoOperationCode] = useState<'1' | '2' | '3' | '4'>('1');
   const [finantoEnabled, setFinantoEnabled] = useState(false);
+  const [nossaFintechEnabled, setNossaFintechEnabled] = useState(false);
+  const [isNossaFintechPortRefinOpen, setIsNossaFintechPortRefinOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [newCpf, setNewCpf] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
@@ -440,6 +443,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       .then(response => response.ok ? response.json() : null)
       .then(config => setFinantoEnabled(Boolean(config?.isConfigured && config?.enabled)))
       .catch(() => setFinantoEnabled(false));
+    fetch('/api/integrations/nossa-fintech/config', { credentials: 'same-origin' })
+      .then(response => response.ok ? response.json() : null)
+      .then(config => setNossaFintechEnabled(Boolean(config?.isConfigured && config?.enabled)))
+      .catch(() => setNossaFintechEnabled(false));
   }, []);
 
   const handleSubmitSimulation = (e: React.FormEvent) => {
@@ -2720,6 +2727,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onClose={() => setIsFlowSelectorOpen(false)}
         happySimulationAccessEnabled={happySimulationAccessEnabled}
         finantoEnabled={finantoEnabled}
+        nossaFintechEnabled={nossaFintechEnabled}
         onSelectFlow={(flow) => {
           setIsFlowSelectorOpen(false);
           if (flow === 'MANUAL') {
@@ -2731,6 +2739,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           } else if (flow === 'FINANTO_INSS' || flow === 'FINANTO_INSS_PORTABILIDADE' || flow === 'FINANTO_INSS_REFIN' || flow === 'FINANTO_INSS_PORTABILIDADE_REFIN') {
             setFinantoOperationCode(flow === 'FINANTO_INSS' ? '1' : flow === 'FINANTO_INSS_PORTABILIDADE' ? '2' : flow === 'FINANTO_INSS_REFIN' ? '3' : '4');
             setIsFinantoInssModalOpen(true);
+          } else if (flow === 'NOSSA_FINTECH_PORTABILIDADE_REFIN') {
+            setIsNossaFintechPortRefinOpen(true);
           }
         }}
       />
@@ -2761,6 +2771,11 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onClose={() => setIsFinantoInssModalOpen(false)}
         partners={partners}
         onSuccess={async () => { await loadData(); }}
+      />
+
+      <NossaFintechPortRefinSimulationModal
+        isOpen={isNossaFintechPortRefinOpen}
+        onClose={() => setIsNossaFintechPortRefinOpen(false)}
       />
     </div>
   );
