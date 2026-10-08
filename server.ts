@@ -14398,7 +14398,10 @@ async function auditAndEnsureMasterUser() {
       if (!finantoConfig.isConfigured || !finantoConfig.enabled) {
         return res.status(409).json({ error: 'Configure e ative a integração FINANTO no Hub de Integrações antes de criar simulações.' });
       }
-      const { borrower, partnerId, ruleId, loanValue, installmentValue, rate, term, hasInsurance, creditBankAccount, files } = req.body || {};
+      const { borrower, partnerId, ruleId, loanValue, installmentValue, rate, term, hasInsurance, creditBankAccount, files, operationCode, originContract, originContracts, refinancing } = req.body || {};
+      const operation = String(operationCode || '1');
+      const operationTypes: Record<string, string> = { '1': 'FINANTO_NOVO', '2': 'FINANTO_PORTABILIDADE', '3': 'FINANTO_REFIN', '4': 'FINANTO_PORTABILIDADE_REFIN' };
+      if (!operationTypes[operation]) return res.status(400).json({ error: 'Modalidade INSS inválida.' });
       if (!borrower || typeof borrower !== 'object' || typeof borrower.identity !== 'string' || !isValidCpf(borrower.identity.replace(/\D/g, ''))) {
         return res.status(400).json({ error: 'Informe os dados do beneficiário com um CPF válido.' });
       }
@@ -14416,12 +14419,45 @@ async function auditAndEnsureMasterUser() {
           ['bank', 'branch', 'number', 'digit'].some(field => !String(creditBankAccount[field] || '').trim())) {
         return res.status(400).json({ error: 'Complete os dados da conta, endereço, documento e parceiro.' });
       }
-      if (![loanValue, installmentValue, rate, term].every(value => Number.isFinite(Number(value)) && Number(value) > 0) || !Number.isInteger(Number(term)) || !Number.isInteger(Number(borrower.benefitType)) || typeof hasInsurance !== 'boolean') {
+      const creditValuesValid = operation === '3'
+        ? Number.isFinite(Number(loanValue)) && Number(loanValue) >= 0 && Number.isFinite(Number(installmentValue)) && Number(installmentValue) >= 0 && Number(rate) > 0 && Number(term) > 0
+        : [loanValue, installmentValue, rate, term].every(value => Number.isFinite(Number(value)) && Number(value) > 0);
+      if (!creditValuesValid || !Number.isInteger(Number(term)) || !Number.isInteger(Number(borrower.benefitType)) || typeof hasInsurance !== 'boolean') {
         return res.status(400).json({ error: 'Condição de crédito inválida.' });
+      }
+      if ((operation === '2' || operation === '4') && (!originContract || !Number.isInteger(Number(originContract.lenderCode)) || !String(originContract.contractNumber || '').trim() || !Number.isInteger(Number(originContract.term)) || !Number.isInteger(Number(originContract.installmentsRemaining)) || Number(originContract.installmentValue) <= 0 || Number(originContract.dueBalanceValue) <= 0)) {
+        return res.status(400).json({ error: 'Preencha os dados válidos do contrato para portabilidade.' });
+      }
+      if (operation === '3' && (!Array.isArray(originContracts) || !originContracts.length || originContracts.some((contract: any) => !contract?.key || !contract?.contractNumber || !Number.isFinite(Number(contract.dueBalanceValue))))) {
+        return res.status(400).json({ error: 'Consulte e selecione um contrato elegível para refinanciamento antes de enviar.' });
+      }
+      if (operation === '4' && (!refinancing || !Number.isInteger(Number(refinancing.term)) || Number(refinancing.rate) <= 0 || Number(refinancing.installmentValue) < 0)) {
+        return res.status(400).json({ error: 'Informe prazo e taxa válidos para a parte de refinanciamento.' });
       }
       if (!files?.front || !files?.back) return res.status(400).json({ error: 'Anexe frente e verso do documento.' });
       const partner = await prisma.partner.findFirst({ where: { id: partnerId, tenantId, deletedAt: null, status: 'ATIVO' }, select: { id: true } });
       if (!partner) return res.status(400).json({ error: 'Parceiro não encontrado, inativo ou fora desta empresa.' });
+
+      // Never allow a product rule from FGTS or another product family into the INSS journey.
+      const productsResult = await FinantoService.request(prisma, tenantId, 'POST', '/v3/loan-products/search/basic', {
+        type: { code: { eq: 20 } }, operation: { code: { eq: Number(operation) } },
+      });
+      const productsData = productsResult.data as any;
+      const inssProductIds = (Array.isArray(productsData?.items) ? productsData.items : productsData?.data?.items || [])
+        .filter((product: any) => Number(product?.type?.code ?? product?.typeCode) === 20)
+        .map((product: any) => String(product.id));
+      let validRule = false;
+      for (let offset = 0; offset < 2000 && !validRule; offset += 20) {
+        const ruleResult = await FinantoService.request(prisma, tenantId, 'POST', '/v3/loan-product-rules/search/basic', {
+          offset, limit: 20, operation: { code: { eq: Number(operation) } },
+        });
+        if (!ruleResult.success) break;
+        const ruleData = ruleResult.data as any;
+        const ruleItems = Array.isArray(ruleData?.items) ? ruleData.items : ruleData?.data?.items || [];
+        validRule = ruleItems.some((rule: any) => String(rule.id) === String(ruleId) && inssProductIds.includes(String(rule.product?.id)));
+        if (ruleItems.length < 20) break;
+      }
+      if (!validRule) return res.status(400).json({ error: 'A tabela selecionada não pertence a um produto INSS desta modalidade.' });
 
       const uploadedFront = await FinantoService.uploadTemporaryFile(prisma, tenantId, files.front);
       const uploadedBack = await FinantoService.uploadTemporaryFile(prisma, tenantId, files.back);
@@ -14434,7 +14470,7 @@ async function auditAndEnsureMasterUser() {
           income: Number(borrower.income),
           benefitType: Number(borrower.benefitType),
         },
-        items: [{ ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term) }],
+        items: [{ ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term), ...(operation === '2' || operation === '4' ? { originContract } : {}), ...(operation === '3' ? { originContracts } : {}), ...(operation === '4' ? { refinancing } : {}) }],
         creditBankAccount,
         step: { code: 0, name: null },
         files: [{ id: uploadedFront.id, type: 'doc_front' }, { id: uploadedBack.id, type: 'doc_back' }],
@@ -14447,11 +14483,11 @@ async function auditAndEnsureMasterUser() {
       }
       externalSimulationId = String(externalId);
 
-      const selectedCondition = { ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term) };
+      const selectedCondition = { operationCode: operation, ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term), ...(originContract ? { originContract } : {}), ...(originContracts ? { originContracts: originContracts.map((contract: any) => ({ contractNumber: contract.contractNumber })) } : {}), ...(refinancing ? { refinancing } : {}) };
       const simulation = await prisma.simulationRequest.create({
         data: {
           tenantId, cpf: borrower.identity.replace(/\D/g, ''), partnerId, createdById: session.user.id,
-          status: 'SIMULAÇÃO ENVIADA', simulationType: 'FINANTO_INSS', operationType: 'FINANTO_NOVO',
+          status: 'SIMULAÇÃO ENVIADA', simulationType: 'FINANTO_INSS', operationType: operationTypes[operation],
           finantoSimulationId: String(externalId),
           finantoJourneyStatus: typeof providerData?.status?.name === 'string' ? providerData.status.name : 'SIMULAÇÃO CRIADA',
           finantoRawData: { id: String(externalId), code: providerData?.code ?? null, status: providerData?.status?.name ?? null },

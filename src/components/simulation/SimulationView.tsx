@@ -86,6 +86,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const [isHappyInssModalOpen, setIsHappyInssModalOpen] = useState(false);
   const [isHappyCltModalOpen, setIsHappyCltModalOpen] = useState(false);
   const [isFinantoInssModalOpen, setIsFinantoInssModalOpen] = useState(false);
+  const [finantoOperationCode, setFinantoOperationCode] = useState<'1' | '2' | '3' | '4'>('1');
   const [finantoEnabled, setFinantoEnabled] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [newCpf, setNewCpf] = useState('');
@@ -2727,7 +2728,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             setIsHappyInssModalOpen(true);
           } else if (flow === 'HAPPY_CLT') {
             setIsHappyCltModalOpen(true);
-          } else if (flow === 'FINANTO_INSS') {
+          } else if (flow === 'FINANTO_INSS' || flow === 'FINANTO_INSS_PORTABILIDADE' || flow === 'FINANTO_INSS_REFIN' || flow === 'FINANTO_INSS_PORTABILIDADE_REFIN') {
+            setFinantoOperationCode(flow === 'FINANTO_INSS' ? '1' : flow === 'FINANTO_INSS_PORTABILIDADE' ? '2' : flow === 'FINANTO_INSS_REFIN' ? '3' : '4');
             setIsFinantoInssModalOpen(true);
           }
         }}
@@ -2755,6 +2757,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       <FinantoInssSimulationModal
         isOpen={isFinantoInssModalOpen}
+        operationCode={finantoOperationCode}
         onClose={() => setIsFinantoInssModalOpen(false)}
         partners={partners}
         onSuccess={async () => { await loadData(); }}

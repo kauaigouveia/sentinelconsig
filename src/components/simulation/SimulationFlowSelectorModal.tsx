@@ -16,7 +16,7 @@ import { SimulationType } from '../../types';
 interface SimulationFlowSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectFlow: (flow: SimulationType) => void;
+  onSelectFlow: (flow: SimulationType | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN') => void;
   happySimulationAccessEnabled?: boolean;
   finantoEnabled?: boolean;
 }
@@ -124,11 +124,17 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
             </button>
           )}
 
-          {finantoEnabled && (
+          {finantoEnabled && ([
+            { flow: 'FINANTO_INSS' as const, title: 'INSS Novo', description: 'Simule um novo contrato INSS nas tabelas disponíveis da FINANTO.' },
+            { flow: 'FINANTO_INSS_PORTABILIDADE' as const, title: 'INSS Portabilidade', description: 'Informe saldo devedor, parcela atual e parcelas restantes do contrato.' },
+            { flow: 'FINANTO_INSS_REFIN' as const, title: 'INSS Refinanciamento', description: 'Consulte contratos elegíveis para refinanciamento na FINANTO.' },
+            { flow: 'FINANTO_INSS_PORTABILIDADE_REFIN' as const, title: 'INSS Portabilidade + Refinanciamento', description: 'Transfira o contrato e consulte condição com valor adicional.' },
+          ].map(({ flow, title, description }) => (
             <button
               type="button"
-              id="btn-flow-finanto-inss"
-              onClick={() => onSelectFlow('FINANTO_INSS')}
+              id={`btn-flow-${flow.toLowerCase()}`}
+              key={flow}
+              onClick={() => onSelectFlow(flow)}
               className="group relative flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left shadow-xs transition-all duration-200 hover:border-violet-500 hover:bg-violet-50/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-violet-500 dark:hover:bg-violet-950/20"
             >
               <div className="space-y-3">
@@ -137,13 +143,13 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
                   <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:bg-violet-900/60 dark:text-violet-300">FINANTO</span>
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-violet-600 dark:text-slate-100 dark:group-hover:text-violet-400">INSS · Contrato novo</h4>
-                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Consulte as tabelas, calcule condições e encaminhe a simulação para a FINANTO.</p>
+                  <h4 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-violet-600 dark:text-slate-100 dark:group-hover:text-violet-400">{title}</h4>
+                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
                 </div>
               </div>
-              <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-violet-600 dark:border-slate-700/60 dark:text-violet-400"><span>Iniciar INSS FINANTO</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
+              <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-violet-600 dark:border-slate-700/60 dark:text-violet-400"><span>Iniciar simulação</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
             </button>
-          )}
+          )))}
 
           {/* CARD 3: HAPPY CLT (Oculto se Happy estiver bloqueado) */}
           {happySimulationAccessEnabled && (
