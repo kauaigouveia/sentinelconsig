@@ -4,73 +4,79 @@ import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
-import { ExecutiveBIDashboard } from './components/bi/ExecutiveBIDashboard';
-import { OperationalBIDashboard } from './components/bi/OperationalBIDashboard';
-import { ControlTower } from './components/dashboard/ControlTower';
-import { StatusBottleneckReport } from './components/dashboard/StatusBottleneckReport';
-import { DigitizerHome } from './components/dashboard/DigitizerHome';
-import { ProductionList } from './components/production/ProductionList';
-import { KanbanBoard } from './components/production/KanbanBoard';
-import { PortabilityView } from './components/production/PortabilityView';
-import { Client360View } from './components/clients/Client360View';
-import { SupportCenter } from './components/support/SupportCenter';
-import { CentralAtendimentoView } from './components/support/CentralAtendimentoView';
-import { PartnerPortalLayout } from './components/partner-portal/PartnerPortalLayout';
-import { PartnerManagement } from './components/admin/PartnerManagement';
-import { BankPromoterManagement } from './components/admin/BankPromoterManagement';
-import { ProductManagement } from './components/admin/ProductManagement';
-import { StatusManagement } from './components/admin/StatusManagement';
-import { HolidayManagement } from './components/admin/HolidayManagement';
-import { AuditLogView } from './components/admin/AuditLogView';
-import { UserManagement } from './components/admin/UserManagement';
-import { StatusImport } from './components/admin/StatusImport';
-import { SimulationView } from './components/simulation/SimulationView';
-
-import { TVOperationsMonitor } from './components/monitor/TVOperationsMonitor';
-import { CommercialRadarView } from './components/bi/CommercialRadarView';
 import { useTenantBranding } from './hooks/useTenantBranding';
-import { OperationalAgendaView } from './components/agenda/OperationalAgendaView';
-import { GamificationCenter } from './components/gamification/GamificationCenter';
-import { GeneralFinanceView } from './components/finance/GeneralFinanceView';
-import { PlatformMasterCentral } from './components/saas/PlatformMasterCentral';
-import { TenantSaaSCapacityView } from './components/admin/TenantSaaSCapacityView';
-import { AnnouncementsManagement } from './components/admin/AnnouncementsManagement';
-import { OperationsCentral } from './components/operations/OperationsCentral';
-import { UniversalCommandPalette } from './components/search/UniversalCommandPalette';
-import { BankIntegrationsView } from './components/integrations/BankIntegrationsView';
-import { CentralAdministracao } from './components/admin/CentralAdministracao';
-import { CentralPendencias } from './components/admin/CentralPendencias';
-import { CentralAutomacoes } from './components/admin/CentralAutomacoes';
-import { HubIntegracoes } from './components/admin/HubIntegracoes';
-import { SentinelIntelligenceDashboard } from './components/intelligence/SentinelIntelligenceDashboard';
-import { CommandCenterView } from './components/CommandCenter/CommandCenterView';
 import { getRoleLabel } from './lib/roleLabels';
 
-import { NewProductionModal } from './components/production/NewProductionModal';
-import { ExcelImportModal } from './components/production/ExcelImportModal';
-import { ExcelExportModal } from './components/production/ExcelExportModal';
-import { TestRunnerModal } from './components/admin/TestRunnerModal';
-import { NotificationsDrawer } from './components/layout/NotificationsDrawer';
-import { ProposalDetailModal } from './components/production/ProposalDetailModal';
-import { CommandPaletteModal } from './components/common/CommandPaletteModal';
-import { KeyboardShortcutsModal } from './components/common/KeyboardShortcutsModal';
-import { BackupManagementModal } from './components/admin/BackupManagementModal';
-import { WhiteLabelModal } from './components/admin/WhiteLabelModal';
-import { InteractiveTourModal } from './components/common/InteractiveTourModal';
-import { LoginView } from './components/auth/LoginView';
-import { TenantSelectionView } from './components/auth/TenantSelectionView';
-import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { ResponsibleAlçada, User } from './types';
 import { Maximize2, Minimize2, Plus, Search, Keyboard } from 'lucide-react';
 import { Breadcrumbs } from './components/ui/Breadcrumbs';
 import { ToastContainer } from './components/ui/ToastContainer';
+import { toastService } from './components/ui/toastService';
+import { hasPermission } from './lib/permissions';
 
 import { RouterProvider, useRouter } from './router';
 import { canAccessRoute } from './router/routes';
 import { AccessDeniedView } from './components/common/AccessDeniedView';
 import { NotFoundView } from './components/common/NotFoundView';
 
+const lazyNamed = (loader: () => Promise<any>, exportName: string) =>
+  React.lazy(() => loader().then(module => ({ default: module[exportName] as React.ComponentType<any> })));
+
+const ExecutiveBIDashboard = lazyNamed(() => import('./components/bi/ExecutiveBIDashboard'), 'ExecutiveBIDashboard');
+const ControlTower = lazyNamed(() => import('./components/dashboard/ControlTower'), 'ControlTower');
+const StatusBottleneckReport = lazyNamed(() => import('./components/dashboard/StatusBottleneckReport'), 'StatusBottleneckReport');
+const DigitizerHome = lazyNamed(() => import('./components/dashboard/DigitizerHome'), 'DigitizerHome');
+const ProductionList = lazyNamed(() => import('./components/production/ProductionList'), 'ProductionList');
+const KanbanBoard = lazyNamed(() => import('./components/production/KanbanBoard'), 'KanbanBoard');
+const PortabilityView = lazyNamed(() => import('./components/production/PortabilityView'), 'PortabilityView');
+const Client360View = lazyNamed(() => import('./components/clients/Client360View'), 'Client360View');
+const SupportCenter = lazyNamed(() => import('./components/support/SupportCenter'), 'SupportCenter');
+const CentralAtendimentoView = lazyNamed(() => import('./components/support/CentralAtendimentoView'), 'CentralAtendimentoView');
+const PartnerPortalLayout = lazyNamed(() => import('./components/partner-portal/PartnerPortalLayout'), 'PartnerPortalLayout');
+const PartnerManagement = lazyNamed(() => import('./components/admin/PartnerManagement'), 'PartnerManagement');
+const BankPromoterManagement = lazyNamed(() => import('./components/admin/BankPromoterManagement'), 'BankPromoterManagement');
+const ProductManagement = lazyNamed(() => import('./components/admin/ProductManagement'), 'ProductManagement');
+const StatusManagement = lazyNamed(() => import('./components/admin/StatusManagement'), 'StatusManagement');
+const HolidayManagement = lazyNamed(() => import('./components/admin/HolidayManagement'), 'HolidayManagement');
+const AuditLogView = lazyNamed(() => import('./components/admin/AuditLogView'), 'AuditLogView');
+const UserManagement = lazyNamed(() => import('./components/admin/UserManagement'), 'UserManagement');
+const StatusImport = lazyNamed(() => import('./components/admin/StatusImport'), 'StatusImport');
+const SimulationView = lazyNamed(() => import('./components/simulation/SimulationView'), 'SimulationView');
+const TVOperationsMonitor = lazyNamed(() => import('./components/monitor/TVOperationsMonitor'), 'TVOperationsMonitor');
+const CommercialRadarView = lazyNamed(() => import('./components/bi/CommercialRadarView'), 'CommercialRadarView');
+const OperationalAgendaView = lazyNamed(() => import('./components/agenda/OperationalAgendaView'), 'OperationalAgendaView');
+const MyTaskQueueView = lazyNamed(() => import('./components/agenda/MyTaskQueueView'), 'MyTaskQueueView');
+const GamificationCenter = lazyNamed(() => import('./components/gamification/GamificationCenter'), 'GamificationCenter');
+const GeneralFinanceView = lazyNamed(() => import('./components/finance/GeneralFinanceView'), 'GeneralFinanceView');
+const PlatformMasterCentral = lazyNamed(() => import('./components/saas/PlatformMasterCentral'), 'PlatformMasterCentral');
+const TenantSaaSCapacityView = lazyNamed(() => import('./components/admin/TenantSaaSCapacityView'), 'TenantSaaSCapacityView');
+const AnnouncementsManagement = lazyNamed(() => import('./components/admin/AnnouncementsManagement'), 'AnnouncementsManagement');
+const OperationsCentral = lazyNamed(() => import('./components/operations/OperationsCentral'), 'OperationsCentral');
+const UniversalCommandPalette = lazyNamed(() => import('./components/search/UniversalCommandPalette'), 'UniversalCommandPalette');
+const BankIntegrationsView = lazyNamed(() => import('./components/integrations/BankIntegrationsView'), 'BankIntegrationsView');
+const CentralAdministracao = lazyNamed(() => import('./components/admin/CentralAdministracao'), 'CentralAdministracao');
+const CentralPendencias = lazyNamed(() => import('./components/admin/CentralPendencias'), 'CentralPendencias');
+const CentralAutomacoes = lazyNamed(() => import('./components/admin/CentralAutomacoes'), 'CentralAutomacoes');
+const HubIntegracoes = lazyNamed(() => import('./components/admin/HubIntegracoes'), 'HubIntegracoes');
+const SentinelIntelligenceDashboard = lazyNamed(() => import('./components/intelligence/SentinelIntelligenceDashboard'), 'SentinelIntelligenceDashboard');
+const CommandCenterView = lazyNamed(() => import('./components/CommandCenter/CommandCenterView'), 'CommandCenterView');
+const NewProductionModal = lazyNamed(() => import('./components/production/NewProductionModal'), 'NewProductionModal');
+const ExcelImportModal = lazyNamed(() => import('./components/production/ExcelImportModal'), 'ExcelImportModal');
+const ExcelExportModal = lazyNamed(() => import('./components/production/ExcelExportModal'), 'ExcelExportModal');
+const TestRunnerModal = lazyNamed(() => import('./components/admin/TestRunnerModal'), 'TestRunnerModal');
+const ProposalDetailModal = lazyNamed(() => import('./components/production/ProposalDetailModal'), 'ProposalDetailModal');
+const NotificationsDrawer = lazyNamed(() => import('./components/layout/NotificationsDrawer'), 'NotificationsDrawer');
+const CommandPaletteModal = lazyNamed(() => import('./components/common/CommandPaletteModal'), 'CommandPaletteModal');
+const KeyboardShortcutsModal = lazyNamed(() => import('./components/common/KeyboardShortcutsModal'), 'KeyboardShortcutsModal');
+const BackupManagementModal = lazyNamed(() => import('./components/admin/BackupManagementModal'), 'BackupManagementModal');
+const WhiteLabelModal = lazyNamed(() => import('./components/admin/WhiteLabelModal'), 'WhiteLabelModal');
+const InteractiveTourModal = lazyNamed(() => import('./components/common/InteractiveTourModal'), 'InteractiveTourModal');
+const LoginView = lazyNamed(() => import('./components/auth/LoginView'), 'LoginView');
+const TenantSelectionView = lazyNamed(() => import('./components/auth/TenantSelectionView'), 'TenantSelectionView');
+const ForcePasswordChangeModal = lazyNamed(() => import('./components/auth/ForcePasswordChangeModal'), 'ForcePasswordChangeModal');
+
 function AppMainContent() {
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
   const [activeUser, setActiveUser] = useState<User | null>(null);
@@ -118,6 +124,9 @@ function AppMainContent() {
           localStorage.setItem('cg_is_authenticated', 'true');
           setIsAuthenticated(true);
           StorageService.fetchAndSyncStatuses().catch(() => {});
+          StorageService.fetchAndSyncOperationalCalendar().catch(err => {
+            console.warn('[CALENDAR SYNC] Não foi possível sincronizar o calendário operacional:', err);
+          });
           return;
         }
       }
@@ -174,6 +183,12 @@ function AppMainContent() {
         verifyServerSession();
         return;
       }
+      if (event?.type === 'TENANT_SETTINGS_UPDATED' && event?.entityId === 'operational-calendar') {
+        StorageService.fetchAndSyncOperationalCalendar().catch(err => {
+          console.warn('[REALTIME] Erro ao sincronizar calendário operacional:', err);
+        });
+        return;
+      }
       if (event && event.entity) {
         StorageService.syncSpecificEntity(event.entity, event.entityId).catch((err) => {
           console.warn('[REALTIME] Erro no sync targeted:', err);
@@ -223,10 +238,28 @@ function AppMainContent() {
     alçada?: ResponsibleAlçada;
     bankId?: string;
     promoterId?: string;
-  }>({});
+    productId?: string;
+    digitizerId?: string;
+  } | null>(null);
 
   // Focus mode state (maximizes table and hide chrome)
   const [isFocusMode, setIsFocusMode] = useState(false);
+
+  useEffect(() => {
+    if (!isMobileNavigationOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileNavigationOpen(false);
+    };
+    const handleDesktopViewport = () => {
+      if (window.matchMedia('(min-width: 768px)').matches) setIsMobileNavigationOpen(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('resize', handleDesktopViewport);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('resize', handleDesktopViewport);
+    };
+  }, [isMobileNavigationOpen]);
 
   // Modals state
   const [isNewProductionOpen, setIsNewProductionOpen] = useState(false);
@@ -241,6 +274,38 @@ function AppMainContent() {
   const [isWhiteLabelModalOpen, setIsWhiteLabelModalOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [detailProposalId, setDetailProposalId] = useState<string | null>(null);
+
+  const canCreateProposals = hasPermission(
+    activeUser?.role,
+    activeUser?.customPermissions,
+    'proposals.create'
+  );
+  const canViewProposals = hasPermission(
+    activeUser?.role,
+    activeUser?.customPermissions,
+    'proposals.view'
+  );
+  const openNewProduction = useCallback(() => {
+    if (!canCreateProposals) {
+      toastService.error('Seu perfil não tem permissão para criar propostas.');
+      return;
+    }
+    setIsNewProductionOpen(true);
+  }, [canCreateProposals]);
+  const openProposalImport = useCallback(() => {
+    if (!canCreateProposals) {
+      toastService.error('Seu perfil não tem permissão para importar propostas.');
+      return;
+    }
+    setIsImportExcelOpen(true);
+  }, [canCreateProposals]);
+  const openProposalExport = useCallback(() => {
+    if (!canViewProposals) {
+      toastService.error('Seu perfil não tem permissão para consultar propostas.');
+      return;
+    }
+    setIsExportOpen(true);
+  }, [canViewProposals]);
 
   // Deep linking support for /propostas/:id
   useEffect(() => {
@@ -281,7 +346,20 @@ function AppMainContent() {
 
       if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N') && !e.shiftKey) {
         e.preventDefault();
-        setIsNewProductionOpen(true);
+        openNewProduction();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        setProductionFilter(null);
+        navigate('/propostas');
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        navigate('/esteira');
         return;
       }
 
@@ -353,20 +431,21 @@ function AppMainContent() {
     isFocusMode,
     navigate,
     params.id,
+    openNewProduction,
   ]);
 
   // Main navigation handler: translates view or path to canonical URL navigation
   const handleNavigate = (viewOrPath: string, navParams?: any) => {
     if (viewOrPath === 'nova-producao') {
-      setIsNewProductionOpen(true);
+      openNewProduction();
       return;
     }
     if (viewOrPath === 'importar-excel' || viewOrPath === 'importacao') {
-      setIsImportExcelOpen(true);
+      openProposalImport();
       return;
     }
     if (viewOrPath === 'exportar-propostas' || viewOrPath === 'exportacao') {
-      setIsExportOpen(true);
+      openProposalExport();
       return;
     }
     if (viewOrPath === 'admin-backup') {
@@ -380,6 +459,10 @@ function AppMainContent() {
       }
       navigate('/clientes');
       return;
+    }
+
+    if (viewOrPath === '/propostas' || viewOrPath === '/producao' || viewOrPath === 'producao') {
+      setProductionFilter(null);
     }
 
     if (viewOrPath === 'proposals' && navParams?.proposalId) {
@@ -403,6 +486,8 @@ function AppMainContent() {
     alçada?: ResponsibleAlçada;
     bankId?: string;
     promoterId?: string;
+    productId?: string;
+    digitizerId?: string;
   }) => {
     setProductionFilter(filter);
     navigate('/propostas');
@@ -418,13 +503,17 @@ function AppMainContent() {
   }, [isAuthenticated, isVerifyingSession, pathname, search, redirectTarget, setRedirectTarget]);
 
   // 0. Se a rota for do Portal do Parceiro (/parceiro/*), renderiza o layout isolado
-  if (pathname.startsWith('/parceiro')) {
+  if (pathname === '/parceiro' || pathname.startsWith('/parceiro/')) {
     let initialTab: 'dashboard' | 'propostas' | 'atendimento' | 'perfil' = 'dashboard';
     if (pathname.startsWith('/parceiro/propostas')) initialTab = 'propostas';
     else if (pathname.startsWith('/parceiro/atendimento') || pathname.startsWith('/parceiro/suporte') || pathname.startsWith('/parceiro/chat')) initialTab = 'atendimento';
     else if (pathname.startsWith('/parceiro/perfil') || pathname.startsWith('/parceiro/cadastro')) initialTab = 'perfil';
 
-    return <PartnerPortalLayout initialTab={initialTab} />;
+    return (
+      <React.Suspense fallback={<div className="p-6 text-sm text-slate-500">Carregando portal...</div>}>
+        <PartnerPortalLayout initialTab={initialTab} />
+      </React.Suspense>
+    );
   }
 
   if (isVerifyingSession) {
@@ -440,21 +529,27 @@ function AppMainContent() {
 
   if (!isAuthenticated) {
     return (
-      <LoginView
-        onLoginSuccess={async () => {
-          await verifyServerSession();
-          if (redirectTarget && redirectTarget !== '/login') {
-            const target = redirectTarget;
-            setRedirectTarget(null);
-            navigate(target, { replace: true });
-          }
-        }}
-      />
+      <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Carregando acesso seguro...</div>}>
+        <LoginView
+          onLoginSuccess={async () => {
+            await verifyServerSession();
+            if (redirectTarget && redirectTarget !== '/login') {
+              const target = redirectTarget;
+              setRedirectTarget(null);
+              navigate(target, { replace: true });
+            }
+          }}
+        />
+      </React.Suspense>
     );
   }
 
   if (activeUser?.requireTenantSelection) {
-    return <TenantSelectionView user={activeUser} onSuccess={() => window.location.reload()} />;
+    return (
+      <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Carregando empresas...</div>}>
+        <TenantSelectionView user={activeUser} onSuccess={() => window.location.reload()} />
+      </React.Suspense>
+    );
   }
 
   // RBAC route access verification
@@ -466,12 +561,24 @@ function AppMainContent() {
     <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased transition-colors">
       {/* Sidebar (Hidden in Focus Mode) */}
       {!isFocusMode && (
-        <Sidebar
-          currentView={effectiveView}
-          currentPath={pathname}
-          onNavigate={handleNavigate}
-          branding={branding}
-        />
+        <>
+          {isMobileNavigationOpen && (
+            <button
+              type="button"
+              aria-label="Fechar menu de navegação"
+              className="md:hidden fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px]"
+              onClick={() => setIsMobileNavigationOpen(false)}
+            />
+          )}
+          <Sidebar
+            currentView={effectiveView}
+            currentPath={pathname}
+            onNavigate={handleNavigate}
+            branding={branding}
+            isMobileOpen={isMobileNavigationOpen}
+            onCloseMobile={() => setIsMobileNavigationOpen(false)}
+          />
+        </>
       )}
 
       {/* Main Content Area */}
@@ -490,6 +597,8 @@ function AppMainContent() {
             onGlobalSearch={handleGlobalSearch}
             searchTerm={globalSearchTerm}
             onNavigate={handleNavigate}
+            onOpenNavigation={() => setIsMobileNavigationOpen(true)}
+            isNavigationOpen={isMobileNavigationOpen}
           />
         ) : (
           <div className="flex h-12 items-center justify-between border-b border-blue-500/20 bg-blue-900/90 dark:bg-blue-950 px-4 text-white shadow-md z-30 transition-all backdrop-blur-xs">
@@ -505,7 +614,7 @@ function AppMainContent() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsNewProductionOpen(true)}
+                onClick={openNewProduction}
                 className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -558,11 +667,13 @@ function AppMainContent() {
           ) : !hasRouteAccess && activeRoute ? (
             <AccessDeniedView
               requiredPermission={activeRoute.requiredPermission}
+              requiredRoles={activeRoute.requiredRoles}
               userRole={activeUser?.role}
               tenantName={branding?.companyName || StorageService.getCurrentTenant().name}
               onNavigateHome={() => navigate('/dashboard')}
             />
           ) : (
+            <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-slate-500">Carregando tela...</div>}>
             <>
               {effectiveView === 'torre-controle' && (
                 <ControlTower
@@ -586,6 +697,8 @@ function AppMainContent() {
 
               {effectiveView === 'agenda-operacional' && <OperationalAgendaView />}
 
+              {effectiveView === 'minha-fila' && <MyTaskQueueView onNavigate={navigate} />}
+
               {effectiveView === 'financeiro-geral' && <GeneralFinanceView />}
 
               {effectiveView === 'saas-tenants' && <PlatformMasterCentral />}
@@ -594,9 +707,9 @@ function AppMainContent() {
 
               {effectiveView === 'home-digitador' && (
                 <DigitizerHome
-                  onOpenNewProduction={() => setIsNewProductionOpen(true)}
-                  onOpenImportExcel={() => setIsImportExcelOpen(true)}
-                  onOpenExport={() => setIsExportOpen(true)}
+                  onOpenNewProduction={canCreateProposals ? openNewProduction : undefined}
+                  onOpenImportExcel={canCreateProposals ? openProposalImport : undefined}
+                  onOpenExport={canViewProposals ? openProposalExport : undefined}
                 />
               )}
 
@@ -611,8 +724,8 @@ function AppMainContent() {
 
               {effectiveView === 'producao' && (
                 <ProductionList
-                  onOpenNewProduction={() => setIsNewProductionOpen(true)}
-                  onOpenImportExcel={() => setIsImportExcelOpen(true)}
+                  onOpenNewProduction={canCreateProposals ? openNewProduction : undefined}
+                  onOpenImportExcel={canCreateProposals ? openProposalImport : undefined}
                   onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
                   isFocusMode={isFocusMode}
                   initialFilter={productionFilter}
@@ -678,6 +791,7 @@ function AppMainContent() {
                 <CentralAtendimentoView />
               )}
             </>
+            </React.Suspense>
           )}
         </main>
 
@@ -718,7 +832,8 @@ function AppMainContent() {
       </div>
 
       {/* Global Modals */}
-      {isNewProductionOpen && (
+      <React.Suspense fallback={null}>
+      {isNewProductionOpen && canCreateProposals && (
         <NewProductionModal
           isOpen={isNewProductionOpen}
           onClose={() => setIsNewProductionOpen(false)}
@@ -729,18 +844,21 @@ function AppMainContent() {
         />
       )}
 
-      {isImportExcelOpen && (
+      {isImportExcelOpen && canCreateProposals && (
         <ExcelImportModal
           isOpen={isImportExcelOpen}
           onClose={() => setIsImportExcelOpen(false)}
-          onImportSuccess={() => {
-            setIsImportExcelOpen(false);
+          onImportSuccess={(count) => {
             navigate('/propostas');
+            toastService.success(
+              'Importação concluída',
+              `${count} proposta(s) criada(s) ou atualizada(s). Confira o resumo e as ocorrências antes de fechar.`,
+            );
           }}
         />
       )}
 
-      {isExportOpen && (
+      {isExportOpen && canViewProposals && (
         <ExcelExportModal
           isOpen={isExportOpen}
           proposals={StorageService.getProposals()}
@@ -755,14 +873,14 @@ function AppMainContent() {
         />
       )}
 
-      <NotificationsDrawer
-        isOpen={isNotificationsOpen}
+      {isNotificationsOpen && <NotificationsDrawer
+        isOpen={true}
         onClose={() => setIsNotificationsOpen(false)}
         onSelectProposal={id => {
           setDetailProposalId(id);
           navigate(`/propostas/${id}`);
         }}
-      />
+      />}
 
       {detailProposalId && (
         <ProposalDetailModal
@@ -776,58 +894,57 @@ function AppMainContent() {
           onProposalUpdated={() => {}}
         />
       )}
-
       {/* Universal Search Command Palette (Ctrl+K) */}
-      <UniversalCommandPalette
+      {isUniversalSearchOpen && <UniversalCommandPalette
         isOpen={isUniversalSearchOpen}
         onClose={() => setIsUniversalSearchOpen(false)}
         onNavigate={handleNavigate}
-      />
+      />}
 
       {/* Legacy/Quick Palette */}
-      <CommandPaletteModal
-        isOpen={isCommandPaletteOpen}
+      {isCommandPaletteOpen && <CommandPaletteModal
+        isOpen={true}
         onClose={() => setIsCommandPaletteOpen(false)}
         onNavigate={handleNavigate}
-        onOpenNewProduction={() => setIsNewProductionOpen(true)}
-        onOpenImportExcel={() => setIsImportExcelOpen(true)}
-        onOpenExport={() => setIsExportOpen(true)}
+        onOpenNewProduction={openNewProduction}
+        onOpenImportExcel={openProposalImport}
+        onOpenExport={openProposalExport}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
         onSelectProposal={id => {
           setDetailProposalId(id);
           navigate(`/propostas/${id}`);
         }}
-      />
+      />}
 
       {/* Keyboard Shortcuts Cheatsheet (?) */}
-      <KeyboardShortcutsModal
-        isOpen={isShortcutsOpen}
+      {isShortcutsOpen && <KeyboardShortcutsModal
+        isOpen={true}
         onClose={() => setIsShortcutsOpen(false)}
-      />
+      />}
 
       {/* Database Backup & Scheduled Cron Modal (Ctrl+Shift+B) */}
-      <BackupManagementModal
-        isOpen={isBackupModalOpen}
+      {isBackupModalOpen && <BackupManagementModal
+        isOpen={true}
         onClose={() => setIsBackupModalOpen(false)}
         onDatabaseRestored={() => {
           setIsBackupModalOpen(false);
           window.location.reload();
         }}
-      />
+      />}
 
       {/* White Label Personalization Modal */}
-      <WhiteLabelModal
-        isOpen={isWhiteLabelModalOpen}
+      {isWhiteLabelModalOpen && <WhiteLabelModal
+        isOpen={true}
         onClose={() => setIsWhiteLabelModalOpen(false)}
-      />
+      />}
 
       {/* Interactive System Onboarding Tour Guide */}
-      <InteractiveTourModal
-        isOpen={isTourOpen}
+      {isTourOpen && <InteractiveTourModal
+        isOpen={true}
         onClose={() => setIsTourOpen(false)}
         onNavigateView={handleNavigate}
-      />
+      />}
 
       {/* Force First Access Password Change Modal */}
       {isAuthenticated && activeUser?.mustChangePassword && (
@@ -838,6 +955,7 @@ function AppMainContent() {
           }}
         />
       )}
+      </React.Suspense>
 
       {/* Global Toast Feedback Container */}
       <ToastContainer />

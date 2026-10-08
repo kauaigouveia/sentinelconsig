@@ -32,7 +32,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
-import { normalizeCpf, formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
+import { normalizeCpf, formatCpf, formatDate, extractPartnerCode, formatCurrency, isPrimaryPortabilityProposal } from '../../lib/utils';
 import { Proposal, ProposalStatus, ResponsibleAlçada } from '../../types';
 import { BulkStatusModal } from './BulkStatusModal';
 import { ExcelExportModal } from './ExcelExportModal';
@@ -43,9 +43,11 @@ import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { ActionBar } from '../ui/ActionBar';
 import { EmptyState } from '../ui/EmptyState';
 import { toastService } from '../ui/toastService';
+import { hasPermission } from '../../lib/permissions';
+import { AutomationService } from '../../services/automationService';
 
 interface ProductionListProps {
-  onOpenNewProduction: () => void;
+  onOpenNewProduction?: () => void;
   onOpenImportExcel?: () => void;
   onToggleFocusMode?: () => void;
   isFocusMode?: boolean;
@@ -56,7 +58,7 @@ interface ProductionListProps {
     bankId?: string;
     promoterId?: string;
     digitizerId?: string;
-  };
+  } | null;
 }
 
 type SortField = 'proposalNumber' | 'clientName' | 'cpf' | 'bank' | 'disbursedValue' | 'createdAt';
@@ -77,6 +79,10 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const partners = StorageService.getPartners();
   const [statuses, setStatuses] = useState<ProposalStatus[]>(() => StorageService.getStatuses());
   const users = StorageService.getUsers();
+  const activeUser = StorageService.getActiveUser();
+  const canCreateProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.create');
+  const canUpdateProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.update');
+  const canDeleteProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.delete');
 
   useEffect(() => {
     StorageService.fetchAndSyncStatuses().then(setStatuses).catch(() => {});
@@ -104,6 +110,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const [filterBank, setFilterBank] = useState(initialFilter?.bankId || savedFilters?.filterBank || '');
   const [filterPromoter, setFilterPromoter] = useState(initialFilter?.promoterId || savedFilters?.filterPromoter || '');
   const [filterPartner, setFilterPartner] = useState(savedFilters?.filterPartner || '');
+  const [filterDigitizer, setFilterDigitizer] = useState(initialFilter?.digitizerId || savedFilters?.filterDigitizer || '');
   const [filterStatus, setFilterStatus] = useState(initialFilter?.statusId || savedFilters?.filterStatus || '');
   const [filterAlçada, setFilterAlçada] = useState<ResponsibleAlçada | ''>(
     initialFilter?.alçada || savedFilters?.filterAlçada || ''
@@ -111,6 +118,16 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const [filterSla, setFilterSla] = useState<'TODOS' | 'NO_PRAZO' | '5_DIA' | 'ATRASADO'>(
     savedFilters?.filterSla || 'TODOS'
   );
+
+  useEffect(() => {
+    if (!initialFilter) return;
+    setFilterProduct(initialFilter.productId || '');
+    setFilterBank(initialFilter.bankId || '');
+    setFilterPromoter(initialFilter.promoterId || '');
+    setFilterStatus(initialFilter.statusId || '');
+    setFilterAlçada(initialFilter.alçada || '');
+    setFilterDigitizer(initialFilter.digitizerId || '');
+  }, [initialFilter]);
 
   // Table Density: 'COMPACTA' | 'CONFORTAVEL'
   const [tableDensity, setTableDensity] = useState<'COMPACTA' | 'CONFORTAVEL'>(() => {
@@ -153,13 +170,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           filterBank,
           filterPromoter,
           filterPartner,
+          filterDigitizer,
           filterStatus,
           filterAlçada,
           filterSla,
         })
       );
     } catch {}
-  }, [searchTerm, filterProduct, filterBank, filterPromoter, filterPartner, filterStatus, filterAlçada, filterSla]);
+  }, [searchTerm, filterProduct, filterBank, filterPromoter, filterPartner, filterDigitizer, filterStatus, filterAlçada, filterSla]);
 
   // Chip bar mode: 'STATUS' or 'BANK'
   const [chipMode, setChipMode] = useState<'STATUS' | 'BANK'>('STATUS');
@@ -314,21 +332,24 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       if (filterBank && p.bankId !== filterBank) return false;
       if (filterPromoter && p.promoterId !== filterPromoter) return false;
       if (filterPartner && p.partnerId !== filterPartner) return false;
+      if (filterDigitizer && p.digitizerId !== filterDigitizer) return false;
       if (filterStatus && p.statusId !== filterStatus && status?.id !== filterStatus && status?.code !== filterStatus) return false;
       if (filterAlçada && status?.responsible !== filterAlçada && (status as any)?.responsibleGroup !== filterAlçada) return false;
 
-      // SLA filter for portability
+      // Keep SLA filters consistent with proposal cards and the server automation:
+      // business days, registered holidays, and the configured target deadline.
       if (filterSla !== 'TODOS') {
-        if (p.productId !== 'prod-port') return false;
+        if (!isPrimaryPortabilityProposal(p, products)) return false;
         const isCip = status?.code === 'AGUARDAR_RETORNO_CIP';
         if (!isCip) return false;
 
         const start = p.portabilitySlaStartedAt || p.createdAt;
-        const diffDays = Math.floor((new Date().getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24));
+        if (!start || Number.isNaN(new Date(start).getTime())) return false;
 
-        if (filterSla === 'NO_PRAZO' && diffDays >= 5) return false;
-        if (filterSla === '5_DIA' && diffDays !== 4 && diffDays !== 5) return false;
-        if (filterSla === 'ATRASADO' && diffDays < 6) return false;
+        const sla = AutomationService.getPortabilitySlaInfo(p);
+        if (filterSla === 'NO_PRAZO' && !['NORMAL', 'ATENCAO'].includes(sla.statusBadge)) return false;
+        if (filterSla === '5_DIA' && sla.statusBadge !== 'URGENTE') return false;
+        if (filterSla === 'ATRASADO' && sla.statusBadge !== 'ESTOURADO') return false;
       }
 
       return true;
@@ -363,6 +384,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     });
   }, [
     proposals,
+    products,
     getProposalClientInfo,
     partners,
     statuses,
@@ -372,6 +394,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     filterBank,
     filterPromoter,
     filterPartner,
+    filterDigitizer,
     filterStatus,
     filterAlçada,
     filterSla,
@@ -381,14 +404,17 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
   // Selection helpers
   const handleSelectAll = () => {
-    if (selectedIds.length === filteredProposals.length) {
+    const visibleIds = filteredProposals.map(p => p.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.includes(id));
+    if (allVisibleSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredProposals.map(p => p.id));
+      setSelectedIds(visibleIds);
     }
   };
 
   const toggleSelect = (id: string) => {
+    if (!canUpdateProposals && !canDeleteProposals) return;
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
@@ -398,6 +424,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     setFilterBank('');
     setFilterPromoter('');
     setFilterPartner('');
+    setFilterDigitizer('');
     setFilterStatus('');
     setFilterAlçada('');
     setFilterSla('TODOS');
@@ -413,6 +440,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     filterBank ||
     filterPromoter ||
     filterPartner ||
+    filterDigitizer ||
     filterStatus ||
     filterAlçada ||
     filterSla !== 'TODOS';
@@ -423,6 +451,15 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
   const proposalIdsList = useMemo(() => filteredProposals.map(p => p.id), [filteredProposals]);
 
+  // Bulk actions must never keep proposals that became hidden after changing filters.
+  useEffect(() => {
+    const visibleIds = new Set(canUpdateProposals || canDeleteProposals ? proposalIdsList : []);
+    setSelectedIds(current => {
+      const visibleSelection = current.filter(id => visibleIds.has(id));
+      return visibleSelection.length === current.length ? current : visibleSelection;
+    });
+  }, [proposalIdsList, canUpdateProposals, canDeleteProposals]);
+
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />;
     return sortDirection === 'asc' ? (
@@ -431,6 +468,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400 font-bold" />
     );
   };
+
+  const getAriaSort = (field: SortField): 'ascending' | 'descending' | 'none' =>
+    sortField !== field ? 'none' : sortDirection === 'asc' ? 'ascending' : 'descending';
 
   const cellPadding = tableDensity === 'COMPACTA' ? 'py-2 px-3' : 'py-3.5 px-3';
 
@@ -492,7 +532,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               <span>Exportar</span>
             </button>
 
-            <button
+            {onOpenNewProduction && <button
               id="btn-open-new-production"
               onClick={onOpenNewProduction}
               className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
@@ -500,7 +540,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               <Plus className="h-3.5 w-3.5" />
               <span>Nova Proposta</span>
               <kbd className="ml-1 rounded bg-blue-700/60 px-1 text-[9px] font-mono text-blue-100">Ctrl+N</kbd>
-            </button>
+            </button>}
           </>
         }
       />
@@ -757,6 +797,20 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             </select>
           </div>
 
+          {/* Digitador */}
+          <div>
+            <select
+              value={filterDigitizer}
+              onChange={e => setFilterDigitizer(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todos os Digitadores</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Produto */}
           <div>
             <select
@@ -795,7 +849,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             >
               <option value="TODOS">SLA: Todas</option>
               <option value="NO_PRAZO">SLA: No Prazo</option>
-              <option value="5_DIA">SLA: No 5º Dia</option>
+              <option value="5_DIA">SLA: No Dia Limite</option>
               <option value="ATRASADO">SLA: Atrasadas</option>
             </select>
           </div>
@@ -834,23 +888,22 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             >
               Desmarcar Todas
             </button>
-            <button
+            {canUpdateProposals && <button
               id="btn-open-bulk-status"
               onClick={() => setBulkModalOpen(true)}
               className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer"
             >
               <Layers className="h-3.5 w-3.5" />
               <span>ALTERAR STATUS EM LOTE</span>
-            </button>
-            <button
+            </button>}
+            {canDeleteProposals && <button
               id="btn-bulk-delete"
               onClick={handleBulkDelete}
               className="flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer"
-              title="Excluir propostas selecionadas"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>EXCLUIR SELECIONADAS</span>
-            </button>
+            </button>}
           </div>
         </div>
       )}
@@ -859,8 +912,10 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       {proposals.length === 0 ? (
         <EmptyState
           title="Nenhuma proposta de crédito cadastrada"
-          description="Sua esteira de produção está pronta para receber cadastros. Comece criando uma nova proposta manualmente ou importando uma planilha Excel."
-          actionLabel="+ Nova Proposta"
+          description={canCreateProposals
+            ? 'Sua esteira de produção está pronta para receber cadastros. Comece criando uma nova proposta manualmente ou importando uma planilha Excel.'
+            : 'Sua esteira de produção está pronta. Aguarde a atribuição de uma proposta ou peça ao gestor acesso para criar novos registros.'}
+          actionLabel={onOpenNewProduction ? '+ Nova Proposta' : undefined}
           onAction={onOpenNewProduction}
           secondaryActionLabel={onOpenImportExcel ? 'Importar Planilha' : undefined}
           onSecondaryAction={onOpenImportExcel}
@@ -880,53 +935,53 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xs text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 select-none">
                 <tr>
                   <th className="px-3 py-2.5 w-10 text-center">
-                    <button onClick={handleSelectAll} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" aria-label="Selecionar todas">
-                      {selectedIds.length === filteredProposals.length && filteredProposals.length > 0 ? (
+                    <button onClick={handleSelectAll} disabled={!canUpdateProposals && !canDeleteProposals} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Selecionar todas as propostas que você pode operar">
+                      {selectedIds.length === filteredProposals.length && filteredProposals.length > 0 && (canUpdateProposals || canDeleteProposals) ? (
                         <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       ) : (
                         <Square className="h-4 w-4" />
                       )}
                     </button>
                   </th>
-                  <th className="px-3 py-2.5 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('proposalNumber')}>
-                    <div className="flex items-center gap-1">
+                  <th aria-sort={getAriaSort('proposalNumber')} className="px-3 py-2.5">
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('proposalNumber')}>
                       <span>ADE / Proposta</span>
                       {getSortIcon('proposalNumber')}
-                    </div>
+                    </button>
                   </th>
-                  <th className="px-3 py-2.5 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('clientName')}>
-                    <div className="flex items-center gap-1">
+                  <th aria-sort={getAriaSort('clientName')} className="px-3 py-2.5">
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('clientName')}>
                       <span>Cliente</span>
                       {getSortIcon('clientName')}
-                    </div>
+                    </button>
                   </th>
-                  <th className="px-3 py-2.5 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('cpf')}>
-                    <div className="flex items-center gap-1">
+                  <th aria-sort={getAriaSort('cpf')} className="px-3 py-2.5">
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('cpf')}>
                       <span>CPF</span>
                       {getSortIcon('cpf')}
-                    </div>
+                    </button>
                   </th>
                   <th className="px-3 py-2.5">Produto</th>
-                  <th className="px-3 py-2.5 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('bank')}>
-                    <div className="flex items-center gap-1">
+                  <th aria-sort={getAriaSort('bank')} className="px-3 py-2.5">
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('bank')}>
                       <span>Banco / Promotora</span>
                       {getSortIcon('bank')}
-                    </div>
+                    </button>
                   </th>
-                  <th className="px-3 py-2.5 text-right cursor-pointer hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('disbursedValue')}>
-                    <div className="flex items-center justify-end gap-1">
+                  <th aria-sort={getAriaSort('disbursedValue')} className="px-3 py-2.5 text-right">
+                    <button type="button" className="flex w-full items-center justify-end gap-1 text-right hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('disbursedValue')}>
                       <span>Valores (R$)</span>
                       {getSortIcon('disbursedValue')}
-                    </div>
+                    </button>
                   </th>
                   <th className="px-3 py-2.5">Parceiro</th>
                   <th className="px-3 py-2.5">Alçada</th>
                   <th className="px-3 py-2.5">Status Atual</th>
-                  <th className="px-3 py-2.5 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('createdAt')}>
-                    <div className="flex items-center gap-1">
+                  <th aria-sort={getAriaSort('createdAt')} className="px-3 py-2.5">
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('createdAt')}>
                       <span>Data</span>
                       {getSortIcon('createdAt')}
-                    </div>
+                    </button>
                   </th>
                   <th className="px-3 py-2.5 text-center">Ações</th>
                 </tr>
@@ -956,7 +1011,8 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       <td className={`${cellPadding} text-center`} onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => toggleSelect(p.id)}
-                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                          disabled={!canUpdateProposals && !canDeleteProposals}
+                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {isSelected ? (
                             <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -1098,14 +1154,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button
+                          {canDeleteProposals && <button
                             onClick={() => handleDeleteProposal(p)}
                             className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                             title="Excluir proposta"
                             aria-label="Excluir proposta"
                           >
                             <Trash2 className="h-4 w-4" />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>

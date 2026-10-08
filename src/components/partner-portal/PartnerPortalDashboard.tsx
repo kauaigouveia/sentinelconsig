@@ -172,7 +172,7 @@ export const PartnerPortalDashboard: React.FC<PartnerPortalDashboardProps> = ({
 
         {/* Aguardando CIP / Retorno */}
         <div
-          onClick={() => onNavigate('propostas')}
+          onClick={() => onNavigate('propostas', { waitingReturnOnly: true })}
           className="p-4 rounded-xl border border-purple-200/80 dark:border-purple-900/50 bg-purple-50/50 dark:bg-purple-950/20 hover:border-purple-400 transition-all cursor-pointer group shadow-2xs"
         >
           <div className="flex items-center justify-between mb-2">

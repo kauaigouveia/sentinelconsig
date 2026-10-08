@@ -31,6 +31,9 @@ import {
   FactaSyncHistoryItem,
 } from '../../types';
 import { HappyIntegrationTab } from './HappyIntegrationTab';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
+import { toastService } from '../ui/toastService';
 
 type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros';
 
@@ -163,6 +166,10 @@ export interface BankIntegrationsViewProps {
 
 export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ initialTab = 'c6' }) => {
   const [activeTab, setActiveTab] = useState<BankTab>(initialTab);
+  const activeUser = StorageService.getActiveUser();
+  const canSync = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canDiagnose = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.diagnose') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canManageConfig = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'].includes(activeUser?.role || '') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
 
   useEffect(() => {
     if (initialTab) {
@@ -352,7 +359,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
       setFactaPassword('');
       await fetchFactaConfigAndStatus();
     } catch (err: any) {
-      alert(err.message || 'Falha ao salvar configurações da FACTA Financeira.');
+      toastService.error('Não foi possível salvar a FACTA', err.message || 'Falha ao salvar as configurações da FACTA Financeira.');
     } finally {
       setIsSavingFactaConfig(false);
     }
@@ -445,7 +452,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
       setC6Password('');
       await fetchC6ConfigAndStatus();
     } catch (err: any) {
-      alert(err.message || 'Falha ao salvar configurações do C6 Bank.');
+      toastService.error('Não foi possível salvar o C6 Bank', err.message || 'Falha ao salvar as configurações do C6 Bank.');
     } finally {
       setIsSavingConfig(false);
     }
@@ -547,11 +554,13 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
             onClick={() => {
               fetchC6ConfigAndStatus();
               fetchC6Logs();
+              fetchFactaConfigAndStatus();
+              fetchFactaLogs();
             }}
-            disabled={isLoadingConfig}
+            disabled={isLoadingConfig || isLoadingFactaConfig}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingConfig ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingConfig || isLoadingFactaConfig ? 'animate-spin' : ''}`} />
             <span>Atualizar Painel</span>
           </button>
         </div>
@@ -561,15 +570,17 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] uppercase font-bold tracking-wider">APIs Bancárias</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider">Bancos configurados</span>
             <Building2 className="h-4 w-4 text-blue-500" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">1</span>
-            <span className="text-[11px] text-slate-500">ativa / 4 em homologação</span>
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100">
+              {[c6Config.isConfigured, factaConfig.isConfigured].filter(Boolean).length}
+            </span>
+            <span className="text-[11px] text-slate-500">de 2 integrações com configuração disponível</span>
           </div>
           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block mt-1">
-            C6 Bank operacional
+            C6: {c6Config.isConfigured ? 'configurado' : 'pendente'} · FACTA: {factaConfig.isConfigured ? 'configurada' : 'pendente'}
           </span>
         </div>
 
@@ -695,7 +706,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
             </div>
 
             <div className="flex items-center gap-3">
-              <button
+              {canSync && <button
                 type="button"
                 onClick={handleRunBatchSync}
                 disabled={isTriggeringSync || !c6Config.isConfigured}
@@ -703,7 +714,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
               >
                 <Play className={`h-3.5 w-3.5 ${isTriggeringSync ? 'animate-spin' : ''}`} />
                 <span>{isTriggeringSync ? 'Sincronizando...' : 'Sincronizar Lote Agora'}</span>
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -846,7 +857,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
 
             {/* Coluna 3: Formulário de Credenciais e Teste Seguro */}
             <div className="space-y-6">
-              <form
+              {canManageConfig ? <form
                 onSubmit={handleSaveC6Config}
                 className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4"
               >
@@ -950,7 +961,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                     {isSavingConfig ? 'Salvando Configurações...' : 'Salvar Configurações'}
                   </button>
 
-                  <button
+                  {canDiagnose && <button
                     type="button"
                     onClick={handleTestC6Connection}
                     disabled={isTesting || !c6Config.username}
@@ -958,7 +969,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                   >
                     <Server className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
                     <span>{isTesting ? 'Testando Conexão...' : 'Testar Conexão com C6'}</span>
-                  </button>
+                  </button>}
                 </div>
 
                 {saveSuccessMsg && (
@@ -994,7 +1005,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                     </div>
                   </div>
                 )}
-              </form>
+              </form> : <div className="p-5 rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">Você pode consultar o status da integração, mas não tem permissão para alterar credenciais ou configurações.</div>}
             </div>
           </div>
 
@@ -1113,7 +1124,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
             </div>
 
             <div className="flex items-center gap-3">
-              <button
+              {canSync && <button
                 type="button"
                 onClick={handleRunFactaBatchSync}
                 disabled={isTriggeringFactaSync || !factaConfig.isConfigured}
@@ -1121,7 +1132,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
               >
                 <Play className={`h-3.5 w-3.5 ${isTriggeringFactaSync ? 'animate-spin' : ''}`} />
                 <span>{isTriggeringFactaSync ? 'Sincronizando...' : 'Sincronizar Lote Agora'}</span>
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -1225,7 +1236,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
 
             {/* Coluna Direita: Formulário de Credenciais e Configurações */}
             <div className="lg:col-span-2">
-              <form onSubmit={handleSaveFactaConfig} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-5">
+              {canManageConfig ? <form onSubmit={handleSaveFactaConfig} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <Lock className="h-4 w-4 text-orange-600" />
@@ -1405,7 +1416,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
 
                 {/* Botões de Ação */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <button
+                  {canDiagnose && <button
                     type="button"
                     onClick={handleTestFactaConnection}
                     disabled={isTestingFacta}
@@ -1413,7 +1424,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                   >
                     <RefreshCw className={`h-3.5 w-3.5 text-orange-600 ${isTestingFacta ? 'animate-spin' : ''}`} />
                     <span>{isTestingFacta ? 'Testando Conexão...' : 'Testar Conexão com FACTA'}</span>
-                  </button>
+                  </button>}
 
                   <button
                     type="submit"
@@ -1452,7 +1463,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                     </div>
                   </div>
                 )}
-              </form>
+              </form> : <div className="p-5 rounded-2xl border border-slate-200 bg-white text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">Você pode consultar o status da integração, mas não tem permissão para alterar credenciais ou configurações.</div>}
             </div>
           </div>
 

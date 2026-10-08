@@ -372,7 +372,9 @@ export class BIComparisonService {
 
       if (isPaid) {
         item.paidCount += 1;
-        item.paidValue += relVal || conVal;
+        // Paid production is measured by the released net value throughout the BI.
+        // Keep a legitimate zero as zero instead of substituting gross contract value.
+        item.paidValue += relVal;
       }
     }
 

@@ -44,6 +44,9 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
   const banks = StorageService.getBanks();
   const partners = StorageService.getPartners();
   const products = StorageService.getProducts();
+  const convenios = StorageService.getConvenios();
+  const statuses = StorageService.getStatuses();
+  const users = StorageService.getUsers().filter((user) => user.active);
 
   const handlePeriodClick = (preset: BIPeriodPreset) => {
     if (preset === 'PERSONALIZADO') {
@@ -71,6 +74,11 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
       convenioId: undefined,
       statusId: undefined,
       standardCategory: undefined,
+      digitizerId: undefined,
+      assignedToId: undefined,
+      source: undefined,
+      proposalType: undefined,
+      groupBy: 'day',
     });
     setShowAdvanced(false);
   };
@@ -79,9 +87,15 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
     filters.period !== 'MES_ATUAL' ||
     filters.bankId ||
     filters.partnerId ||
+    filters.digitizerId ||
+    filters.assignedToId ||
     filters.productId ||
     filters.convenioId ||
     filters.statusId ||
+    filters.standardCategory ||
+    filters.source ||
+    filters.proposalType ||
+    filters.groupBy !== 'day' ||
     filters.startDate ||
     filters.endDate
   );
@@ -183,7 +197,9 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                     id="bi-filter-start-date"
                     type="date"
                     value={filters.startDate ? filters.startDate.split('T')[0] : ''}
+                    max={filters.endDate ? filters.endDate.split('T')[0] : undefined}
                     onChange={(e) => onFilterChange({ startDate: e.target.value })}
+                    aria-label="Data inicial do período do BI"
                     className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                   />
                 </div>
@@ -199,7 +215,9 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                     id="bi-filter-end-date"
                     type="date"
                     value={filters.endDate ? filters.endDate.split('T')[0] : ''}
+                    min={filters.startDate ? filters.startDate.split('T')[0] : undefined}
                     onChange={(e) => onFilterChange({ endDate: e.target.value })}
+                    aria-label="Data final do período do BI"
                     className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                   />
                 </div>
@@ -274,6 +292,97 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Convenio Select */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Convênio</label>
+            <select
+              id="bi-filter-convenio"
+              value={filters.convenioId || ''}
+              onChange={(e) => onFilterChange({ convenioId: e.target.value || undefined })}
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="">Todos os Convênios</option>
+              {convenios.map((convenio) => <option key={convenio.id} value={convenio.id}>{convenio.name}</option>)}
+            </select>
+          </div>
+
+          {/* Status Select */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Status</label>
+            <select
+              id="bi-filter-status"
+              value={filters.statusId || ''}
+              onChange={(e) => onFilterChange({ statusId: e.target.value || undefined })}
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="">Todos os Status</option>
+              {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
+            </select>
+          </div>
+
+          {/* Responsible Operator Selects */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Digitador</label>
+            <select
+              id="bi-filter-digitizer"
+              value={filters.digitizerId || ''}
+              onChange={(e) => onFilterChange({ digitizerId: e.target.value || undefined })}
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="">Todos os Digitadores</option>
+              {users.filter((user) => user.role === 'DIGITADOR').map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Responsável atual</label>
+            <select
+              id="bi-filter-assigned-to"
+              value={filters.assignedToId || ''}
+              onChange={(e) => onFilterChange({ assignedToId: e.target.value || undefined })}
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="">Todos os Responsáveis</option>
+              {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+            </select>
+          </div>
+
+          {/* Proposal Classification */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Tipo de operação</label>
+            <select
+              id="bi-filter-proposal-type"
+              value={filters.proposalType || ''}
+              onChange={(e) => onFilterChange({ proposalType: e.target.value || undefined })}
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="">Todos os Tipos</option>
+              <option value="NOVO">Novo</option>
+              <option value="REFIN">Refinanciamento</option>
+              <option value="PORTABILIDADE">Portabilidade</option>
+              <option value="REFIN_PORTABILIDADE">Refinanciamento de Portabilidade</option>
+              <option value="CARTAO_RMC">Cartão RMC</option>
+              <option value="CARTAO_RCC">Cartão RCC</option>
+              <option value="SAQUE_COMPLEMENTAR">Saque Complementar</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Categoria do status</label>
+            <select
+              id="bi-filter-standard-category"
+              value={filters.standardCategory || ''}
+              onChange={(e) => onFilterChange({ standardCategory: e.target.value || undefined })}
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="">Todas as Categorias</option>
+              <option value="ESTEIRA">Esteira</option>
+              <option value="ANDAMENTO">Em andamento</option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="PAGO">Pago</option>
+              <option value="CANCELADO">Cancelado</option>
+              <option value="RECUSADO">Recusado</option>
+            </select>
           </div>
         </div>
       )}

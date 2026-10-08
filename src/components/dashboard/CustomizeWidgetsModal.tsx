@@ -30,6 +30,8 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
   onUpdateWidgets,
   onResetToDefault,
 }) => {
+  const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+
   if (!isOpen) return null;
 
   const handleToggleVisibility = (id: ExecutiveWidgetId) => {
@@ -55,8 +57,6 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
     newWidgets.splice(targetIndex, 0, moved);
     onUpdateWidgets(newWidgets);
   };
-
-  const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
 
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);

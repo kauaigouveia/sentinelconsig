@@ -51,9 +51,9 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
     convenio: null,
   });
 
-  const loadConvenios = () => {
+  const loadConvenios = async () => {
     try {
-      const data = StorageService.getConvenios(true);
+      const data = await StorageService.fetchAndSyncConvenios(true);
       setConvenios(data);
     } catch (err: any) {
       console.error('Erro ao carregar convênios:', err);
@@ -61,7 +61,14 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
   };
 
   useEffect(() => {
-    loadConvenios();
+    void loadConvenios();
+    const handleStorageUpdate = () => void loadConvenios();
+    window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
+    window.addEventListener('tenantUpdated', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
+      window.removeEventListener('tenantUpdated', handleStorageUpdate);
+    };
   }, []);
 
   const resetForm = () => {
@@ -79,7 +86,7 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       showNotification('O nome do convênio é obrigatório.', 'error');
@@ -88,7 +95,7 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
 
     try {
       if (isEditing && editingId) {
-        StorageService.updateConvenio(editingId, {
+        await StorageService.updateConvenio(editingId, {
           name: name.trim().toUpperCase(),
           code: code.trim().toUpperCase() || undefined,
           description: description.trim() || undefined,
@@ -96,7 +103,7 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
         });
         showNotification(`Convênio "${name.trim().toUpperCase()}" atualizado com sucesso!`);
       } else {
-        StorageService.createConvenio({
+        await StorageService.createConvenio({
           name: name.trim().toUpperCase(),
           code: code.trim().toUpperCase() || undefined,
           description: description.trim() || undefined,
@@ -107,7 +114,7 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
         showNotification(`Convênio "${name.trim().toUpperCase()}" cadastrado com sucesso!`);
       }
 
-      loadConvenios();
+      await loadConvenios();
       resetForm();
     } catch (err: any) {
       showNotification(err.message || 'Erro ao processar operação.', 'error');
@@ -128,14 +135,14 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
     setActive(c.active);
   };
 
-  const handleToggleStatus = (c: Convenio) => {
+  const handleToggleStatus = async (c: Convenio) => {
     if (c.scope === 'GLOBAL' && !isMaster) {
       showNotification('Apenas o Administrador Master pode alterar convênios globais.', 'error');
       return;
     }
     try {
-      StorageService.updateConvenio(c.id, { active: !c.active });
-      loadConvenios();
+      await StorageService.updateConvenio(c.id, { active: !c.active });
+      await loadConvenios();
       showNotification(`Convênio ${c.name} ${!c.active ? 'ativado' : 'desativado'} com sucesso.`);
     } catch (err: any) {
       showNotification(err.message || 'Erro ao alterar status.', 'error');
@@ -153,11 +160,11 @@ export const ConvenioManagement: React.FC<ConvenioManagementProps> = () => {
     });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteModalConfig.convenio) return;
     try {
-      StorageService.deleteConvenio(deleteModalConfig.convenio.id);
-      loadConvenios();
+      await StorageService.deleteConvenio(deleteModalConfig.convenio.id);
+      await loadConvenios();
       showNotification(`Convênio ${deleteModalConfig.convenio.name} excluído com sucesso.`);
       setDeleteModalConfig({ isOpen: false, convenio: null });
     } catch (err: any) {

@@ -52,19 +52,38 @@ export const ExecutiveDashboard: React.FC = () => {
   // Active filter range: 'THIS_MONTH', 'LAST_30_DAYS', 'ALL'
   const [timeRange, setTimeRange] = useState<'THIS_MONTH' | 'LAST_30_DAYS' | 'ALL'>('THIS_MONTH');
 
+  const periodProposals = useMemo(() => {
+    if (timeRange === 'ALL') return proposals;
+
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    if (timeRange === 'THIS_MONTH') {
+      start.setDate(1);
+    } else {
+      start.setDate(start.getDate() - 29);
+    }
+
+    return proposals.filter(proposal => {
+      if (!proposal.createdAt) return false;
+      const createdAt = new Date(proposal.createdAt);
+      return !Number.isNaN(createdAt.getTime()) && createdAt >= start && createdAt <= now;
+    });
+  }, [proposals, timeRange]);
+
   // Executive Core Aggregates
-  const total = proposals.length;
-  const pagas = proposals.filter(p => {
+  const total = periodProposals.length;
+  const pagas = periodProposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
     return s?.code === 'PAGO';
   });
 
-  const canceladas = proposals.filter(p => {
+  const canceladas = periodProposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
     return s?.code === 'CANCELADO' || s?.code === 'REPROVADO';
   });
 
-  const emAndamento = proposals.filter(p => {
+  const emAndamento = periodProposals.filter(p => {
     const s = statuses.find(st => st.id === p.statusId);
     return s?.code !== 'PAGO' && s?.code !== 'CANCELADO' && s?.code !== 'REPROVADO';
   });
@@ -73,7 +92,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const portInCip = proposals.filter(p => p.statusId === cipStatus?.id);
 
   // Financial calculations
-  const totalDisbursed = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+  const totalDisbursed = periodProposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
   const totalDisbursedPago = pagas.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
   const totalDisbursedAndamento = emAndamento.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
   const totalSaldoCip = portInCip.reduce((acc, p) => acc + (p.contractBalance || 0), 0);
@@ -90,7 +109,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const partnerPerformance = useMemo(() => {
     return partners
       .map(pt => {
-        const ptProps = proposals.filter(p => p.partnerId === pt.id);
+        const ptProps = periodProposals.filter(p => p.partnerId === pt.id);
         const ptTotal = ptProps.length;
         const ptPagas = ptProps.filter(p => {
           const s = statuses.find(st => st.id === p.statusId);
@@ -112,13 +131,13 @@ export const ExecutiveDashboard: React.FC = () => {
       })
       .filter(pt => pt.total > 0)
       .sort((a, b) => b.disbursed - a.disbursed);
-  }, [partners, proposals, statuses]);
+  }, [partners, periodProposals, statuses]);
 
   // Bank Volume Distribution
   const bankDistribution = useMemo(() => {
     return banks
       .map(b => {
-        const bProps = proposals.filter(p => p.bankId === b.id);
+        const bProps = periodProposals.filter(p => p.bankId === b.id);
         const bTotal = bProps.length;
         const bPaid = bProps.filter(p => {
           const s = statuses.find(st => st.id === p.statusId);
@@ -137,14 +156,14 @@ export const ExecutiveDashboard: React.FC = () => {
       })
       .filter(b => b.propostas > 0)
       .sort((a, b) => b.volume - a.volume);
-  }, [banks, proposals, statuses]);
+  }, [banks, periodProposals, statuses]);
 
   // Status Funnel Distribution
   const statusDistribution = useMemo(() => {
     return statuses
       .map(s => {
-        const count = proposals.filter(p => p.statusId === s.id).length;
-        const volume = proposals
+        const count = periodProposals.filter(p => p.statusId === s.id).length;
+        const volume = periodProposals
           .filter(p => p.statusId === s.id)
           .reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
         return {
@@ -156,7 +175,7 @@ export const ExecutiveDashboard: React.FC = () => {
       })
       .filter(s => s.count > 0)
       .sort((a, b) => b.count - a.count);
-  }, [statuses, proposals]);
+  }, [statuses, periodProposals]);
 
   // Daily Trend (Last 14 Days)
   const dailyTrend = useMemo(() => {
@@ -247,7 +266,11 @@ export const ExecutiveDashboard: React.FC = () => {
           <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20 p-4 shadow-2xs space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
-                Meta Mensal (R$)
+                {timeRange === 'THIS_MONTH'
+                  ? 'Meta Mensal (R$)'
+                  : timeRange === 'LAST_30_DAYS'
+                    ? 'Liquidado (Últimos 30 Dias)'
+                    : 'Liquidado (Todo o Histórico)'}
               </span>
               <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
@@ -256,15 +279,17 @@ export const ExecutiveDashboard: React.FC = () => {
             </p>
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                <span>{progressoMeta}% da meta</span>
-                <span>Alvo: {formatCurrency(metaFinanceira)}</span>
+                <span>{timeRange === 'THIS_MONTH' ? `${progressoMeta}% da meta` : `${pagas.length} contratos liquidados`}</span>
+                {timeRange === 'THIS_MONTH' && <span>Alvo: {formatCurrency(metaFinanceira)}</span>}
               </div>
-              <div className="h-1.5 w-full bg-blue-200 dark:bg-blue-900 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                  style={{ width: `${progressoMeta}%` }}
-                />
-              </div>
+              {timeRange === 'THIS_MONTH' && (
+                <div className="h-1.5 w-full bg-blue-200 dark:bg-blue-900 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                    style={{ width: `${progressoMeta}%` }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

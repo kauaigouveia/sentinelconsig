@@ -19,6 +19,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { ProposalStatus, Alcada } from '../../types';
 import { ActionBar } from '../ui/ActionBar';
+import { hasPermission } from '../../lib/permissions';
 
 const ALCADA_OPTIONS: { value: Alcada; label: string; color: string; desc: string }[] = [
   {
@@ -69,6 +70,8 @@ const PRESET_COLORS = [
 ];
 
 export const StatusManagement: React.FC = () => {
+  const activeUser = StorageService.getActiveUser();
+  const canManageStatuses = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'statuses.manage');
   const [statuses, setStatuses] = useState<ProposalStatus[]>([]);
   const [editingStatus, setEditingStatus] = useState<ProposalStatus | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -269,7 +272,7 @@ export const StatusManagement: React.FC = () => {
         subtitle="Cadastre novos status, defina alçadas de responsabilidade, ajuste prazos de SLA e organize a esteira operacional"
         badgeText={`${statuses.length} STATUS ATIVOS`}
         badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-        actions={
+        actions={canManageStatuses ? (
           <button
             onClick={openNewModal}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-xs font-bold shadow-sm transition-all cursor-pointer"
@@ -277,7 +280,7 @@ export const StatusManagement: React.FC = () => {
             <Plus className="h-4 w-4" />
             <span>Cadastrar Novo Status</span>
           </button>
-        }
+        ) : undefined}
       />
 
       {/* Success Notification */}
@@ -353,7 +356,7 @@ export const StatusManagement: React.FC = () => {
                         <span className="font-bold font-mono text-slate-400 dark:text-slate-500 text-xs">
                           #{s.order}
                         </span>
-                        <div className="flex flex-col gap-0.5">
+                        {canManageStatuses && <div className="flex flex-col gap-0.5">
                           <button
                             type="button"
                             disabled={index === 0}
@@ -372,7 +375,7 @@ export const StatusManagement: React.FC = () => {
                           >
                             <ArrowDown className="h-3 w-3" />
                           </button>
-                        </div>
+                        </div>}
                       </div>
                     </td>
 
@@ -403,7 +406,7 @@ export const StatusManagement: React.FC = () => {
 
                     {/* Alçada Responsável (With quick change selector) */}
                     <td className="px-4 py-3">
-                      <select
+                      {canManageStatuses ? <select
                         value={s.responsibleGroup || s.responsible}
                         onChange={e => handleQuickAlcadaChange(s.id, e.target.value as Alcada)}
                         className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500 ${
@@ -416,7 +419,7 @@ export const StatusManagement: React.FC = () => {
                             {opt.label}
                           </option>
                         ))}
-                      </select>
+                      </select> : <span className="text-xs text-slate-600 dark:text-slate-300">{s.responsibleGroup || s.responsible}</span>}
                     </td>
 
                     {/* SLA Hours */}
@@ -471,20 +474,20 @@ export const StatusManagement: React.FC = () => {
                     {/* Actions */}
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
+                        {canManageStatuses && <button
                           onClick={() => openEditModal(s)}
                           className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
                           title="Editar Status"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
+                        </button>}
+                        {canManageStatuses && <button
                           onClick={() => handleDeleteRequest(s)}
                           className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
                           title="Excluir Status"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>
@@ -496,7 +499,7 @@ export const StatusManagement: React.FC = () => {
       </div>
 
       {/* Modal: Create / Edit Status */}
-      {isModalOpen && (
+      {isModalOpen && canManageStatuses && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl relative">
             <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -699,7 +702,7 @@ export const StatusManagement: React.FC = () => {
       )}
 
       {/* Modal: Confirm Delete & Migration */}
-      {deleteTarget && (
+      {deleteTarget && canManageStatuses && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 p-6 shadow-2xl relative">
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 mb-3">

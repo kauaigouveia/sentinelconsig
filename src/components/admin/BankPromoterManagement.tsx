@@ -41,7 +41,8 @@ export const BankPromoterManagement: React.FC = () => {
       if (banksRes.ok) {
         const banksData = await banksRes.json();
         if (Array.isArray(banksData)) {
-          setBanks(banksData);
+          StorageService.cacheBanksFromApi(banksData);
+          setBanks(StorageService.getBanks());
         }
       } else {
         setBanks(StorageService.getBanks());
@@ -50,7 +51,8 @@ export const BankPromoterManagement: React.FC = () => {
       if (promRes.ok) {
         const promData = await promRes.json();
         if (Array.isArray(promData)) {
-          setPromoters(promData);
+          StorageService.cachePromotersFromApi(promData);
+          setPromoters(StorageService.getPromoters());
         }
       } else {
         setPromoters(StorageService.getPromoters());
@@ -59,7 +61,8 @@ export const BankPromoterManagement: React.FC = () => {
       if (bpRes.ok) {
         const bpData = await bpRes.json();
         if (Array.isArray(bpData)) {
-          setBankPromoters(bpData);
+          StorageService.cacheBankPromotersFromApi(bpData);
+          setBankPromoters(StorageService.getBankPromoters());
         }
       } else {
         setBankPromoters(StorageService.getBankPromoters());
@@ -97,12 +100,6 @@ export const BankPromoterManagement: React.FC = () => {
         throw new Error(errJson.error || 'Erro ao cadastrar banco no servidor.');
       }
 
-      try {
-        StorageService.createBank(payload);
-      } catch {
-        // Ignora duplicidade em cache local
-      }
-
       setNewBankName('');
       setNewBankCode('');
       setMessage('Banco cadastrado com sucesso!');
@@ -130,12 +127,6 @@ export const BankPromoterManagement: React.FC = () => {
         throw new Error(errJson.error || 'Erro ao cadastrar promotora no servidor.');
       }
 
-      try {
-        StorageService.createPromoter({ name: cleanName });
-      } catch {
-        // Ignora duplicidade em cache local
-      }
-
       setNewPromoterName('');
       setMessage('Promotora cadastrada com sucesso!');
       await refresh();
@@ -160,12 +151,6 @@ export const BankPromoterManagement: React.FC = () => {
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || 'Erro ao atualizar matriz Banco × Promotora.');
-      }
-
-      try {
-        StorageService.toggleBankPromoter(bankId, promoterId, !current);
-      } catch {
-        // Ignora
       }
 
       setMessage('Vínculo Banco × Promotora atualizado!');
@@ -203,12 +188,6 @@ export const BankPromoterManagement: React.FC = () => {
             throw new Error(errJson.error || 'Erro ao excluir banco.');
           }
 
-          try {
-            StorageService.deleteBank(bank.id);
-          } catch {
-            // Ignora
-          }
-
           setMessage(`Banco ${bank.name} excluído com sucesso.`);
           await refresh();
           setTimeout(() => setMessage(null), 3000);
@@ -231,12 +210,6 @@ export const BankPromoterManagement: React.FC = () => {
           if (!res.ok) {
             const errJson = await res.json().catch(() => ({}));
             throw new Error(errJson.error || 'Erro ao excluir promotora.');
-          }
-
-          try {
-            StorageService.deletePromoter(promoter.id);
-          } catch {
-            // Ignora
           }
 
           setMessage(`Promotora ${promoter.name} excluída com sucesso.`);

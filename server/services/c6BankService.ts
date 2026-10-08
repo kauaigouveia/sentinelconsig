@@ -755,19 +755,6 @@ export class C6BankService {
           },
         });
 
-        // Fallback search without tenant restriction if not found
-        if (!targetStatusRecord) {
-          targetStatusRecord = await prisma.proposalStatus.findFirst({
-            where: {
-              OR: [
-                { code: targetCode },
-                { code: { equals: targetCode, mode: 'insensitive' } },
-                { name: { equals: targetCode, mode: 'insensitive' } },
-              ],
-            },
-          });
-        }
-
         if (targetStatusRecord && targetStatusRecord.id !== proposal.statusId) {
           newInternalStatusId = targetStatusRecord.id;
           newStandardCategory = targetStatusRecord.standardCategory;

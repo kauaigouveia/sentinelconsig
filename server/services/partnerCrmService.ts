@@ -1031,22 +1031,22 @@ export class PartnerCrmService {
       req,
     });
 
-    if (isCompleting) {
-      await centralEventBus.publish({
-        tenantId,
-        eventType: 'PARTNER_TASK_COMPLETED',
-        entityId: taskId,
-        entity: 'PartnerTask',
-        userId,
-        userName,
-        data: {
-          taskId,
-          partnerId: existing.partnerId,
-          partnerName: existing.partner.name,
-          title: updated.title,
-        },
-      });
-    }
+    await centralEventBus.publish({
+      tenantId,
+      eventType: isCompleting ? 'PARTNER_TASK_COMPLETED' : 'PARTNER_TASK_UPDATED',
+      entityId: taskId,
+      entity: 'PartnerTask',
+      userId,
+      userName,
+      data: {
+        taskId,
+        partnerId: existing.partnerId,
+        partnerName: existing.partner.name,
+        title: updated.title,
+        status: updated.status,
+        assignedToId: updated.assignedToId,
+      },
+    });
 
     return updated;
   }
@@ -1081,6 +1081,16 @@ export class PartnerCrmService {
       entityId: taskId,
       previousData: existing,
       req,
+    });
+
+    await centralEventBus.publish({
+      tenantId,
+      eventType: 'PARTNER_TASK_DELETED',
+      entityId: taskId,
+      entity: 'PartnerTask',
+      userId,
+      userName,
+      data: { taskId, partnerId: existing.partnerId, title: existing.title },
     });
 
     return { success: true };

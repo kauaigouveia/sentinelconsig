@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Users,
   Search,
@@ -35,6 +35,8 @@ import { ActionBar } from '../ui/ActionBar';
 import { StatusBadge } from '../ui/StatusBadge';
 import { EmptyState } from '../ui/EmptyState';
 import { toastService } from '../ui/toastService';
+import { hasPermission } from '../../lib/permissions';
+import { realtimeHub } from '../../services/realtimeService';
 
 interface Client360ViewProps {
   initialSearchCpf?: string;
@@ -44,23 +46,31 @@ type TabType = 'overview' | 'proposals' | 'contracts' | 'timeline' | 'documents'
 
 export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }) => {
   const [searchTerm, setSearchTerm] = useState(initialSearchCpf || '');
-  const [selectedClientId, setSelectedClientId] = useState<string | null>('cli-maria-jose');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [detailProposalId, setDetailProposalId] = useState<string | null>(null);
+  const [clientDocuments, setClientDocuments] = useState<DocumentItem[]>([]);
 
   // Document modal/form state
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState<DocumentType>('RG');
-  const [docFileUrl, setDocFileUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const documentUploadInProgressRef = useRef(false);
+  const documentFileInputRef = useRef<HTMLInputElement>(null);
 
   // WhatsApp form state
   const [waMessage, setWaMessage] = useState('');
   const [waTemplate, setWaTemplate] = useState('Atualização de Andamento');
+  const [isSendingCommunication, setIsSendingCommunication] = useState(false);
+  const communicationInProgressRef = useRef(false);
+  const [clientCommunications, setClientCommunications] = useState<ClientCommunication[]>([]);
 
   // Internal Note form state
   const [noteText, setNoteText] = useState('');
+  const [clientNotes, setClientNotes] = useState<ClientNote[]>([]);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const noteSaveInProgressRef = useRef(false);
 
   const clients = StorageService.getClients();
   const proposals = StorageService.getProposals();
@@ -71,6 +81,10 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
   const statuses = StorageService.getStatuses();
   const history = StorageService.getHistory();
   const activeUser = StorageService.getActiveUser();
+  const canManageClientData = hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.create') ||
+    hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.update');
+  const canUpdateClientData = hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.update');
+  const canDeleteClientDocuments = hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.delete');
 
   // Filter clients by search
   const filteredClients = clients.filter(c => {
@@ -80,7 +94,9 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
     return c.fullName.toLowerCase().includes(term) || (cleanTerm && c.cpf.includes(cleanTerm));
   });
 
-  const selectedClient = clients.find(c => c.id === selectedClientId) || filteredClients[0];
+  const selectedClient = filteredClients.find(c => c.id === selectedClientId) || filteredClients[0];
+  const selectedClientRef = useRef<string | null>(selectedClient?.id ?? null);
+  selectedClientRef.current = selectedClient?.id ?? null;
   const clientProposals = selectedClient
     ? proposals.filter(p => p.clientId === selectedClient.id)
     : [];
@@ -90,9 +106,106 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
     .filter(h => clientProposalIds.has(h.proposalId))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const clientDocuments = selectedClient ? StorageService.getDocumentsByClient(selectedClient.id) : [];
-  const clientCommunications = selectedClient ? StorageService.getCommunicationsByClient(selectedClient.id) : [];
-  const clientNotes = selectedClient ? StorageService.getClientNotes(selectedClient.id) : [];
+
+  useEffect(() => {
+    if (initialSearchCpf !== undefined) {
+      setSearchTerm(initialSearchCpf);
+      setSelectedClientId(null);
+    }
+  }, [initialSearchCpf]);
+
+  useEffect(() => {
+    setNoteText('');
+    setWaMessage('');
+  }, [selectedClient?.id]);
+
+  useEffect(() => {
+    const loadDocuments = () => {
+      setClientDocuments(selectedClient ? StorageService.getDocumentsByClient(selectedClient.id) : []);
+    };
+    loadDocuments();
+    window.addEventListener('credit_gestao_storage_update', loadDocuments);
+    return () => window.removeEventListener('credit_gestao_storage_update', loadDocuments);
+  }, [selectedClient?.id]);
+
+  useEffect(() => {
+    if (!selectedClient) {
+      setClientNotes([]);
+      return;
+    }
+    let cancelled = false;
+    const loadNotes = () => {
+      fetch(`/api/clients/${encodeURIComponent(selectedClient.id)}/notes`, { credentials: 'include' })
+        .then(async res => {
+          if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            throw new Error(error.error || 'Não foi possível carregar as notas.');
+          }
+          return res.json();
+        })
+        .then((notes: ClientNote[]) => {
+          if (!cancelled) setClientNotes(Array.isArray(notes) ? notes : []);
+        })
+        .catch(err => {
+          if (!cancelled) {
+            setClientNotes([]);
+            console.error('[CLIENT NOTES LOAD ERROR]', err);
+            toastService.error('Erro ao carregar notas', err.message || 'Tente novamente.');
+          }
+        });
+    };
+    loadNotes();
+    const unsubscribeRealtime = realtimeHub.subscribe('CLIENT_NOTE_CREATED', event => {
+      if (event.entityId === selectedClient.id) loadNotes();
+    });
+    window.addEventListener('credit_gestao_storage_update', loadNotes);
+    return () => {
+      cancelled = true;
+      unsubscribeRealtime();
+      window.removeEventListener('credit_gestao_storage_update', loadNotes);
+    };
+  }, [selectedClient?.id]);
+
+  useEffect(() => {
+    if (!selectedClient) {
+      setClientCommunications([]);
+      return;
+    }
+    let cancelled = false;
+    const loadCommunications = async () => {
+      try {
+        const response = await fetch(`/api/clients/${encodeURIComponent(selectedClient.id)}/communications`, { credentials: 'include' });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || 'Não foi possível carregar o histórico de comunicações.');
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          const serverItems: ClientCommunication[] = Array.isArray(data) ? data : [];
+          const localLegacyItems = StorageService.getCommunicationsByClient(selectedClient.id);
+          const knownIds = new Set(serverItems.map(item => item.id));
+          setClientCommunications([
+            ...serverItems,
+            ...localLegacyItems.filter(item => !knownIds.has(item.id)),
+          ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setClientCommunications([]);
+          console.error('[CLIENT COMMUNICATIONS LOAD ERROR]', error);
+          toastService.error('Erro ao carregar histórico', error instanceof Error ? error.message : 'Tente novamente.');
+        }
+      }
+    };
+    void loadCommunications();
+    const unsubscribeRealtime = realtimeHub.subscribe('CLIENT_COMMUNICATION_CREATED', event => {
+      if (event.entityId === selectedClient.id) void loadCommunications();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribeRealtime();
+    };
+  }, [selectedClient?.id]);
 
   // Financial aggregates
   const totalDisbursed = clientProposals.reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
@@ -104,28 +217,31 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
 
   const handleAddDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || !docName.trim()) return;
+    if (!selectedClient || !docName.trim() || documentUploadInProgressRef.current) return;
+    if (!selectedFile) {
+      toastService.error('Arquivo obrigatório', 'Selecione o arquivo que deseja anexar.');
+      return;
+    }
+    if (selectedFile.size <= 0 || selectedFile.size > 15 * 1024 * 1024) {
+      toastService.error('Tamanho de arquivo inválido', 'Selecione um arquivo com até 15 MB.');
+      return;
+    }
 
+    documentUploadInProgressRef.current = true;
     setIsUploadingDoc(true);
     try {
-      let fileBase64 = 'RG9jdW1lbnRvIEV4ZW1wbG8gU2VudGluZWwgQ29uc2ln';
-      let mimeType = 'application/pdf';
-      let fileSize = 1024;
-
-      if (selectedFile) {
-        mimeType = selectedFile.type || 'application/octet-stream';
-        fileSize = selectedFile.size;
-        fileBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const base64Str = result.includes(',') ? result.split(',')[1] : result;
-            resolve(base64Str);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(selectedFile);
-        });
-      }
+      const mimeType = selectedFile.type || 'application/octet-stream';
+      const fileSize = selectedFile.size;
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Str = result.includes(',') ? result.split(',')[1] : result;
+          resolve(base64Str);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedFile);
+      });
 
       const res = await fetch('/api/documents', {
         method: 'POST',
@@ -139,70 +255,139 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
         }),
       });
 
-      if (res.ok) {
-        const docData = await res.json();
-        StorageService.addDocument({
-          id: docData.id,
-          tenantId: docData.tenantId,
-          clientId: selectedClient.id,
-          name: docData.name,
-          type: docData.type,
-          fileUrl: docData.fileUrl,
-          fileSizeBytes: docData.fileSizeBytes || fileSize,
-          uploadedByUserId: activeUser.id,
-          uploadedByUserName: activeUser.name,
-        });
-        toastService.success('Documento Anexado', `Documento ${docName} salvo com sucesso.`);
-      } else {
+      if (!res.ok) {
         const errJson = await res.json().catch(() => ({ error: 'Erro de upload' }));
-        toastService.error('Erro no Upload', errJson.error || 'Erro ao enviar documento para o Azure Storage.');
+        throw new Error(errJson.error || 'Erro ao enviar documento para o Azure Storage.');
       }
+      const docData = await res.json();
+      const savedDocument = StorageService.addDocument({
+        id: docData.id,
+        tenantId: docData.tenantId,
+        clientId: selectedClient.id,
+        name: docData.name,
+        type: docData.type,
+        fileUrl: docData.fileUrl,
+        fileSizeBytes: docData.fileSizeBytes || fileSize,
+        uploadedByUserId: activeUser.id,
+        uploadedByUserName: activeUser.name,
+      });
+      if (selectedClientRef.current === selectedClient.id) {
+        setClientDocuments(current => [savedDocument, ...current.filter(document => document.id !== savedDocument.id)]);
+      }
+      toastService.success('Documento Anexado', `Documento ${docName} salvo com sucesso.`);
+      setDocName('');
+      setSelectedFile(null);
+      if (documentFileInputRef.current) documentFileInputRef.current.value = '';
     } catch (err: any) {
       console.error('Falha no upload do documento:', err);
-      toastService.error('Erro', 'Falha ao enviar documento.');
+      toastService.error('Erro', err.message || 'Falha ao enviar documento.');
     } finally {
+      documentUploadInProgressRef.current = false;
       setIsUploadingDoc(false);
-      setDocName('');
-      setDocFileUrl('');
-      setSelectedFile(null);
     }
   };
 
-  const handleSendCommunication = (e: React.FormEvent) => {
+  const handleSendCommunication = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || !waMessage.trim()) return;
+    if (!selectedClient || !waMessage.trim() || communicationInProgressRef.current) return;
 
-    StorageService.addCommunication({
-      tenantId: StorageService.getCurrentTenantId(),
-      clientId: selectedClient.id,
-      channel: 'WHATSAPP',
-      templateName: waTemplate,
-      eventType: 'AVULSO',
-      recipient: selectedClient.phone || selectedClient.whatsapp || '(11) 98765-4321',
-      messageContent: waMessage.trim(),
-      status: 'ENVIADO',
-      sentByUserId: activeUser.id,
-      sentByUserName: activeUser.name,
-    });
+    const clientId = selectedClient.id;
+    const message = waMessage.trim();
+    const recipient = selectedClient.whatsapp || selectedClient.phone;
+    const phoneDigits = recipient?.replace(/\D/g, '') || '';
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      toastService.error('Telefone inválido', 'Cadastre um telefone válido para abrir a conversa no WhatsApp.');
+      return;
+    }
 
-    toastService.success('Mensagem Enviada', 'Notificação enviada ao cliente via WhatsApp.');
-    setWaMessage('');
+    const whatsappNumber = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    // Reserve the tab during the user gesture, but only navigate after the history is saved.
+    const whatsappWindow = window.open('', '_blank');
+    if (!whatsappWindow) {
+      toastService.error('WhatsApp bloqueado', 'Permita a abertura de nova aba para continuar o envio.');
+      return;
+    }
+    whatsappWindow.document.title = 'Preparando mensagem';
+    whatsappWindow.document.body.textContent = 'Salvando o registro da comunicação…';
+    communicationInProgressRef.current = true;
+    setIsSendingCommunication(true);
+
+    try {
+      const response = await fetch(`/api/clients/${encodeURIComponent(clientId)}/communications`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient, messageContent: message, templateName: waTemplate, eventType: 'AVULSO' }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Não foi possível salvar o histórico da comunicação.');
+      }
+      const created = await response.json() as ClientCommunication;
+      if (selectedClientRef.current === clientId) {
+        setClientCommunications(current => [created, ...current.filter(item => item.id !== created.id)]);
+        setWaMessage('');
+      }
+      whatsappWindow.opener = null;
+      whatsappWindow.location.href = whatsappUrl;
+      toastService.success('WhatsApp aberto', 'Revise e confirme o envio na conversa. O registro ficou salvo no histórico.');
+    } catch (error) {
+      whatsappWindow.close();
+      toastService.error('Histórico não salvo', error instanceof Error ? error.message : 'Não foi possível salvar o histórico da comunicação.');
+    } finally {
+      communicationInProgressRef.current = false;
+      setIsSendingCommunication(false);
+    }
   };
 
-  const handleAddNote = (e: React.FormEvent) => {
+  const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || !noteText.trim()) return;
+    if (!selectedClient || !noteText.trim() || noteSaveInProgressRef.current) return;
+    const clientId = selectedClient.id;
+    const note = noteText.trim();
+    noteSaveInProgressRef.current = true;
+    setIsSavingNote(true);
+    try {
+      const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/notes`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'Não foi possível salvar a nota.');
+      }
+      const created = await res.json() as ClientNote;
+      if (selectedClientRef.current === clientId) {
+        setClientNotes(current => [created, ...current.filter(note => note.id !== created.id)]);
+        setNoteText('');
+      }
+      toastService.success('Nota salva', 'A equipe já pode consultar esta anotação.');
+    } catch (err: any) {
+      toastService.error('Erro ao salvar nota', err.message || 'Tente novamente.');
+    } finally {
+      noteSaveInProgressRef.current = false;
+      setIsSavingNote(false);
+    }
+  };
 
-    StorageService.addClientNote({
-      tenantId: StorageService.getCurrentTenantId(),
-      clientId: selectedClient.id,
-      authorId: activeUser.id,
-      authorName: activeUser.name,
-      note: noteText.trim(),
-    });
-
-    toastService.success('Nota Salva', 'Anotação interna registrada com sucesso.');
-    setNoteText('');
+  const handleDeleteDocument = async (documentId: string) => {
+    const document = clientDocuments.find(item => item.id === documentId);
+    if (!window.confirm(`Excluir ${document?.name || 'este documento'}? Esta ação não pode ser desfeita.`)) return;
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(documentId)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'Não foi possível excluir o documento.');
+      }
+      StorageService.removeDocumentFromCache(documentId);
+      setClientDocuments(current => current.filter(item => item.id !== documentId));
+      toastService.success('Documento excluído', 'O documento foi removido do sistema.');
+    } catch (err: any) {
+      toastService.error('Erro ao excluir', err.message || 'Não foi possível excluir o documento.');
+    }
   };
 
   return (
@@ -216,7 +401,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column: Client Search & List */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs space-y-3 flex flex-col h-[760px]">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs space-y-3 flex flex-col h-[min(70vh,760px)] min-h-[320px] lg:h-[760px]">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -467,30 +652,32 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                         <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
                           <div>
                             <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Convênio</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.convenio || 'INSS / Federal'}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.convenio || 'Não informado'}</span>
                           </div>
                           <div>
                             <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Matrícula / Benefício</span>
                             <div className="flex items-center gap-1 font-semibold font-mono text-slate-800 dark:text-slate-200">
-                              <span>{selectedClient.matricula || '987654321'}</span>
-                              <button
-                                onClick={() => toastService.copyToClipboard(selectedClient.matricula || '987654321', 'Matrícula')}
-                                className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
-                                title="Copiar Matrícula"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </button>
+                              <span>{selectedClient.matricula || 'Não informado'}</span>
+                              {selectedClient.matricula && (
+                                <button
+                                  onClick={() => toastService.copyToClipboard(selectedClient.matricula!, 'Matrícula')}
+                                  className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                                  title="Copiar Matrícula"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              )}
                             </div>
                           </div>
                           <div>
                             <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Margem Consignável</span>
                             <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                              {selectedClient.margemDisponivel ? formatCurrency(selectedClient.margemDisponivel) : 'R$ 480,00'}
+                              {selectedClient.margemDisponivel != null ? formatCurrency(selectedClient.margemDisponivel) : 'Não informada'}
                             </span>
                           </div>
                           <div>
                             <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">UF / Cidade</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.state ? `${selectedClient.city} - ${selectedClient.state}` : 'São Paulo - SP'}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{[selectedClient.city, selectedClient.state].filter(Boolean).join(' - ') || 'Não informado'}</span>
                           </div>
                           <div className="col-span-2">
                             <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Observação Cadastral</span>
@@ -585,8 +772,8 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                 {/* 3. CONTRATOS / SALDOS */}
                 {activeTab === 'contracts' && (
                   <div className="space-y-3">
-                    <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-                      <table className="w-full text-xs text-left">
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
+                      <table className="w-full min-w-[680px] text-xs text-left">
                         <thead className="bg-slate-100 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
                           <tr>
                             <th className="p-3">ADE / Proposta</th>
@@ -665,11 +852,13 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                 {activeTab === 'documents' && (
                   <div className="space-y-4">
                     {/* Add Document Form */}
+                    {canManageClientData ? (
                     <form onSubmit={handleAddDocument} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-5 gap-2">
                       <input
                         type="text"
                         value={docName}
                         onChange={e => setDocName(e.target.value)}
+                        maxLength={180}
                         placeholder="Nome do Documento (Ex: RG_Frente.pdf)"
                         className="sm:col-span-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                         required
@@ -681,14 +870,17 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                       >
                         <option value="RG">RG</option>
                         <option value="CNH">CNH</option>
-                        <option value="CONTRACHEQUE">Contracheque</option>
-                        <option value="EXTRATO">Extrato Bancário</option>
+                        <option value="COMPROVANTE_RENDA">Comprovante de Renda / Contracheque</option>
+                        <option value="EXTRATO_INSS">Extrato do INSS</option>
                         <option value="COMPROVANTE_RESIDENCIA">Comprovante de Residência</option>
                         <option value="CONTRATO_ASSINADO">Contrato Assinado</option>
+                        <option value="PROCURACAO">Procuração</option>
                         <option value="OUTROS">Outros</option>
                       </select>
                       <input
+                        ref={documentFileInputRef}
                         type="file"
+                        disabled={isUploadingDoc}
                         onChange={e => {
                           const file = e.target.files?.[0] || null;
                           setSelectedFile(file);
@@ -707,6 +899,11 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                         <span>{isUploadingDoc ? 'Enviando...' : 'Anexar'}</span>
                       </button>
                     </form>
+                    ) : (
+                      <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+                        Seu perfil pode consultar documentos, mas não possui permissão para anexar novos arquivos.
+                      </p>
+                    )}
 
                     {/* Documents List */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -732,17 +929,19 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                                 target="_blank"
                                 rel="noreferrer"
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded"
-                                title="Visualizar"
+                                title="Abrir ou baixar"
+                                aria-label={`Abrir ou baixar documento ${doc.name}`}
                               >
                                 <Eye className="h-4 w-4" />
                               </a>
-                              <button
-                                onClick={() => StorageService.deleteDocument(doc.id)}
+                              {canDeleteClientDocuments && <button
+                                onClick={() => handleDeleteDocument(doc.id)}
                                 className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded cursor-pointer"
                                 title="Excluir"
+                                aria-label={`Excluir documento ${doc.name}`}
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </button>
+                              </button>}
                             </div>
                           </div>
                         ))
@@ -755,14 +954,14 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                 {activeTab === 'communications' && (
                   <div className="space-y-4">
                     {/* Quick WhatsApp Dispatch */}
-                    <form onSubmit={handleSendCommunication} className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800/60 space-y-2">
+                    {canUpdateClientData ? <form onSubmit={handleSendCommunication} className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800/60 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                           <MessageSquare className="h-4 w-4" />
                           <span>Disparo de Notificação WhatsApp</span>
                         </span>
                         <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                          {selectedClient.phone || selectedClient.whatsapp || '(11) 98765-4321'}
+                          {selectedClient.phone || selectedClient.whatsapp || 'Telefone não cadastrado'}
                         </span>
                       </div>
                       <textarea
@@ -788,13 +987,14 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                         </div>
                         <button
                           type="submit"
+                          disabled={isSendingCommunication || (!selectedClient.phone && !selectedClient.whatsapp)}
                           className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 px-3 rounded cursor-pointer"
                         >
-                          <Send className="h-3.5 w-3.5" />
-                          <span>Enviar Mensagem</span>
+                          <Send className={`h-3.5 w-3.5 ${isSendingCommunication ? 'animate-pulse' : ''}`} />
+                          <span>{isSendingCommunication ? 'Preparando…' : 'Enviar Mensagem'}</span>
                         </button>
                       </div>
-                    </form>
+                    </form> : <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">Seu perfil pode consultar o histórico, mas não possui permissão para registrar comunicações.</p>}
 
                     {/* Messages History */}
                     <div className="space-y-2">
@@ -828,24 +1028,28 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                 {/* 7. OBSERVAÇÕES INTERNAS */}
                 {activeTab === 'notes' && (
                   <div className="space-y-4">
-                    <form onSubmit={handleAddNote} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
+                    {hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.update') ? <form onSubmit={handleAddNote} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
                       <textarea
                         value={noteText}
                         onChange={e => setNoteText(e.target.value)}
-                        placeholder="Adicionar nota interna sobre o cliente (visível apenas para a equipe)..."
+                        placeholder="Adicionar nota interna sobre o cliente..."
+                        maxLength={5000}
                         className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
                         rows={2}
                         required
                       />
-                      <div className="text-right">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400">{noteText.length}/5.000</span>
                         <button
                           type="submit"
-                          className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-1.5 px-4 rounded cursor-pointer"
+                          disabled={isSavingNote || !noteText.trim()}
+                          className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-1.5 px-4 rounded disabled:opacity-50 cursor-pointer"
                         >
-                          Salvar Nota
+                          {isSavingNote ? 'Salvando...' : 'Salvar Nota'}
                         </button>
                       </div>
                     </form>
+                      : <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">Seu perfil pode consultar as anotações, mas não possui permissão para adicionar novas notas.</p>}
 
                     <div className="space-y-2">
                       {clientNotes.length === 0 ? (

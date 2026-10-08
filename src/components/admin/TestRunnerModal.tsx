@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   X,
   Play,
@@ -17,23 +17,28 @@ interface TestRunnerModalProps {
 }
 
 export const TestRunnerModal: React.FC<TestRunnerModalProps> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
   const [tests, setTests] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
-  const runTests = () => {
+  const runTests = useCallback(() => {
     setIsRunning(true);
-    setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       const results = TestRunnerService.runAllTests();
       setTests(results);
       setIsRunning(false);
     }, 200);
-  };
+    return () => {
+      window.clearTimeout(timeout);
+      setIsRunning(false);
+    };
+  }, []);
 
   useEffect(() => {
-    runTests();
-  }, []);
+    if (!isOpen) return;
+    return runTests();
+  }, [isOpen, runTests]);
+
+  if (!isOpen) return null;
 
   const passedCount = tests.filter(t => t.passed).length;
   const totalCount = tests.length;

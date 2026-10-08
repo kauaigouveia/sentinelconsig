@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Users,
   Building,
@@ -29,11 +29,14 @@ import { PartnerDetailModal } from './PartnerDetailModal';
 import { PartnerFormModal } from './PartnerFormModal';
 import { PartnerImportModal } from '../admin/PartnerImportModal';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
+import { useRouter } from '../../router';
 
 export const PartnerCrmHub: React.FC = () => {
+  const { searchParams, navigate } = useRouter();
   const [partners, setPartners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const partnersRequestRef = useRef(0);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,6 +79,7 @@ export const PartnerCrmHub: React.FC = () => {
 
   // Load Partners with CRM aggregates
   const loadPartners = useCallback(async () => {
+    const requestId = ++partnersRequestRef.current;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -91,6 +95,7 @@ export const PartnerCrmHub: React.FC = () => {
         throw new Error(`Erro ao carregar parceiros (HTTP ${res.status})`);
       }
       const json = await res.json();
+      if (requestId !== partnersRequestRef.current) return;
       if (json && Array.isArray(json.data)) {
         setPartners(json.data);
       } else if (Array.isArray(json)) {
@@ -99,9 +104,11 @@ export const PartnerCrmHub: React.FC = () => {
         setPartners([]);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Falha ao buscar dados do CRM de parceiros.');
+      if (requestId === partnersRequestRef.current) {
+        setErrorMsg(err.message || 'Falha ao buscar dados do CRM de parceiros.');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === partnersRequestRef.current) setLoading(false);
     }
   }, [searchTerm, statusFilter, promoterFilter, operationalFilter]);
 
@@ -115,6 +122,16 @@ export const PartnerCrmHub: React.FC = () => {
     }, 200);
     return () => clearTimeout(timer);
   }, [loadPartners]);
+
+  useEffect(() => {
+    const partnerId = searchParams.get('partnerId');
+    if (!partnerId || loading) return;
+    const partner = partners.find(item => item.id === partnerId);
+    if (!partner) return;
+    setSelectedPartnerId(partner.id);
+    setIsDetailOpen(true);
+    navigate('/crm-parceiros', { replace: true });
+  }, [searchParams, partners, loading, navigate]);
 
   // Overall statistics
   const stats = useMemo(() => {

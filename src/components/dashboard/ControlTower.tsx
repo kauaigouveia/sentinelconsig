@@ -31,7 +31,7 @@ import { AutomationService } from '../../services/automationService';
 import { AnalyticsApiService } from '../../services/analyticsApiService';
 import { AgingResponse, BottlenecksResponse } from '../../types/analytics';
 import { ResponsibleAlçada } from '../../types';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, isPrimaryPortabilityProposal } from '../../lib/utils';
 import { isProposalFinal, isProposalOperationalActive, isStatusFinal } from '../../lib/statusUtils';
 
 interface ControlTowerProps {
@@ -92,7 +92,7 @@ export const ControlTower: React.FC<ControlTowerProps> = ({
   const cipStatus = statuses.find(s => s.code === 'AGUARDAR_RETORNO_CIP');
   const portInCip = proposals.filter(
     p =>
-      p.productId === 'prod-port' &&
+      isPrimaryPortabilityProposal(p, products) &&
       p.statusId === cipStatus?.id &&
       isProposalOperationalActive(p, statuses)
   );

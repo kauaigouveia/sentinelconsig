@@ -53,14 +53,25 @@ export const OperationalRulesManagement: React.FC = () => {
     rule: null,
   });
 
-  const loadData = () => {
-    setRules(StorageService.getOperationalRules(true));
+  const loadData = async () => {
+    const [syncedRules, syncedConvenios] = await Promise.all([
+      StorageService.fetchAndSyncOperationalRules(true),
+      StorageService.fetchAndSyncConvenios(true),
+    ]);
+    setRules(syncedRules);
     setProducts(StorageService.getProducts(true));
-    setConvenios(StorageService.getConvenios(true));
+    setConvenios(syncedConvenios);
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
+    const handleStorageUpdate = () => void loadData();
+    window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
+    window.addEventListener('tenantUpdated', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
+      window.removeEventListener('tenantUpdated', handleStorageUpdate);
+    };
   }, []);
 
   const resetForm = () => {
@@ -87,7 +98,7 @@ export const OperationalRulesManagement: React.FC = () => {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       showNotification('O nome da regra é obrigatório.', 'error');
@@ -114,14 +125,14 @@ export const OperationalRulesManagement: React.FC = () => {
       };
 
       if (isEditing && editingId) {
-        StorageService.updateOperationalRule(editingId, payload);
+        await StorageService.updateOperationalRule(editingId, payload);
         showNotification(`Regra "${name.trim()}" atualizada com sucesso!`);
       } else {
-        StorageService.createOperationalRule(payload);
+        await StorageService.createOperationalRule(payload);
         showNotification(`Regra "${name.trim()}" cadastrada com sucesso!`);
       }
 
-      loadData();
+      await loadData();
       resetForm();
     } catch (err: any) {
       showNotification(err.message || 'Erro ao processar regra.', 'error');
@@ -162,10 +173,10 @@ export const OperationalRulesManagement: React.FC = () => {
     });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteModalConfig.rule) return;
     try {
-      StorageService.deleteOperationalRule(deleteModalConfig.rule.id);
+      await StorageService.deleteOperationalRule(deleteModalConfig.rule.id);
       loadData();
       showNotification(`Regra ${deleteModalConfig.rule.name} excluída com sucesso.`);
       setDeleteModalConfig({ isOpen: false, rule: null });

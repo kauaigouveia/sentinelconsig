@@ -42,6 +42,8 @@ import { SimulationImportModal } from './SimulationImportModal';
 import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { HappyCltSimulationModal } from './HappyCltSimulationModal';
+import { toastService } from '../ui/toastService';
+import { hasPermission } from '../../lib/permissions';
 
 interface SimulationViewProps {
   onOpenProposalDetail?: (proposalId: string) => void;
@@ -49,25 +51,19 @@ interface SimulationViewProps {
 
 type TabType = 'VISAO_GERAL' | 'AGUARDANDO_DIGITACAO' | 'DASHBOARD_ANALISES';
 
-export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDetail }) => {
+const toLocalDateKey = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDetail }) => {
   const activeUser = StorageService.getActiveUser();
-
-  if (activeUser?.role === 'DIGITADOR') {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
-        <div className="h-16 w-16 bg-rose-100 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mb-4">
-          <ShieldAlert className="h-8 w-8" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Acesso Restrito</h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-md">
-          Seu perfil de <strong>DIGITADOR</strong> não possui permissão para visualizar a Central de Simulações.
-        </p>
-      </div>
-    );
-  }
-
+  const canSetInitialStatus = hasPermission(activeUser?.role, activeUser?.customPermissions, 'simulations.update');
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
   const [simulations, setSimulations] = useState<SimulationRequest[]>([]);
+  const [simulationsLoadError, setSimulationsLoadError] = useState<string | null>(null);
+  const [isLoadingSimulations, setIsLoadingSimulations] = useState(true);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
 
@@ -96,6 +92,8 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   const [modalError, setModalError] = useState<string | null>(null);
   const [initialStatus, setInitialStatus] = useState<SimulationStatus>('SIMULAÇÃO ENVIADA');
   const [initialRejectionReason, setInitialRejectionReason] = useState<string>('');
+  const [isCreatingSimulation, setIsCreatingSimulation] = useState(false);
+  const isCreatingSimulationRef = useRef(false);
   const [conveniosList, setConveniosList] = useState<Convenio[]>([]);
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [selectedConvenioId, setSelectedConvenioId] = useState<string>('');
@@ -199,78 +197,97 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
         setTimeout(() => setAccessUpdateSuccessMsg(null), 4000);
       } else {
         const errData = await res.json().catch(() => ({}));
-        alert(errData.error || 'Erro ao alterar permissão das Simulações Happy.');
+        toastService.error('Erro ao alterar permissão', errData.error || 'Não foi possível alterar o acesso às Simulações Happy.');
       }
     } catch (err) {
-      alert('Erro de conexão ao alterar status das Simulações Happy.');
+      toastService.error('Erro de conexão', 'Não foi possível alterar o acesso às Simulações Happy.');
     } finally {
       setIsUpdatingAccess(false);
     }
   };
 
   const comboboxRef = useRef<HTMLDivElement>(null);
+  const loadRequestRef = useRef(0);
 
   const loadData = async () => {
+    const requestId = ++loadRequestRef.current;
+    setIsLoadingSimulations(true);
+    setSimulationsLoadError(null);
     try {
       const res = await fetch('/api/simulations', { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
+        if (requestId !== loadRequestRef.current) return;
         setSimulations(data);
       } else {
+        if (requestId !== loadRequestRef.current) return;
         console.error('Erro ao carregar simulações da API:', res.statusText);
+        setSimulationsLoadError('Não foi possível carregar as solicitações. Confira sua conexão e tente novamente.');
       }
     } catch (err) {
+      if (requestId !== loadRequestRef.current) return;
       console.error('Falha de rede ao carregar simulações da API:', err);
+      setSimulationsLoadError('Falha de conexão ao carregar as solicitações. Tente novamente.');
+    } finally {
+      if (requestId === loadRequestRef.current) setIsLoadingSimulations(false);
     }
+    if (requestId !== loadRequestRef.current) return;
 
     try {
       const pRes = await fetch('/api/partners');
       if (pRes.ok) {
         const pData = await pRes.json();
+        if (requestId !== loadRequestRef.current) return;
         setPartners(pData.filter((p: any) => p.status === 'ATIVO' || p.active === true));
       } else {
         console.error('Erro ao carregar parceiros da API:', pRes.statusText);
-        setPartners([]);
+        if (requestId === loadRequestRef.current) setPartners(StorageService.getPartners().filter(p => p.active));
       }
     } catch (err) {
       console.error('Falha de rede ao carregar parceiros da API:', err);
-      setPartners([]);
+      if (requestId === loadRequestRef.current) setPartners(StorageService.getPartners().filter(p => p.active));
     }
+    if (requestId !== loadRequestRef.current) return;
 
     try {
       const uRes = await fetch('/api/users');
       if (uRes.ok) {
         const uData = await uRes.json();
+        if (requestId !== loadRequestRef.current) return;
         setUsers(uData);
       } else {
-        setUsers(StorageService.getUsers());
+        if (requestId === loadRequestRef.current) setUsers(StorageService.getUsers());
       }
     } catch {
-      setUsers(StorageService.getUsers());
+      if (requestId === loadRequestRef.current) setUsers(StorageService.getUsers());
     }
+    if (requestId !== loadRequestRef.current) return;
 
     try {
       const cRes = await fetch('/api/convenios');
       if (cRes.ok) {
         const cData = await cRes.json();
+        if (requestId !== loadRequestRef.current) return;
         setConveniosList(cData.filter((c: any) => c.active !== false));
       } else {
-        setConveniosList(StorageService.getConvenios().filter(c => c.active));
+        if (requestId === loadRequestRef.current) setConveniosList(StorageService.getConvenios().filter(c => c.active));
       }
     } catch {
-      setConveniosList(StorageService.getConvenios().filter(c => c.active));
+      if (requestId === loadRequestRef.current) setConveniosList(StorageService.getConvenios().filter(c => c.active));
     }
+    if (requestId !== loadRequestRef.current) return;
 
     try {
       const prRes = await fetch('/api/products');
       if (prRes.ok) {
         const prData = await prRes.json();
+        if (requestId !== loadRequestRef.current) return;
         setProductsList(prData.filter((p: any) => p.active !== false));
       } else {
-        setProductsList(StorageService.getProducts().filter(p => p.active));
+        if (requestId === loadRequestRef.current) setProductsList(StorageService.getProducts().filter(p => p.active));
       }
     } catch {
-      setProductsList(StorageService.getProducts().filter(p => p.active));
+      if (requestId === loadRequestRef.current) setProductsList(StorageService.getProducts().filter(p => p.active));
     }
   };
 
@@ -284,6 +301,8 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     window.addEventListener('credit_gestao_storage_update', handleUpdate);
     window.addEventListener('tenantUpdated', handleUpdate);
     return () => {
+      // Invalidate any in-flight loadData sequence before the view unmounts.
+      loadRequestRef.current += 1;
       window.removeEventListener('credit_gestao_storage_update', handleUpdate);
       window.removeEventListener('tenantUpdated', handleUpdate);
     };
@@ -357,6 +376,9 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
     statusOverride?: SimulationStatus,
     reasonOverride?: string
   ) => {
+    if (isCreatingSimulationRef.current) return;
+    isCreatingSimulationRef.current = true;
+    setIsCreatingSimulation(true);
     try {
       const res = await fetch('/api/simulations', {
         method: 'POST',
@@ -368,6 +390,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
           simulationType: 'MANUAL',
           convenioId: selectedConvenioId || undefined,
           productId: selectedProductId || undefined,
+          initialStatus: statusOverride || initialStatus,
+          rejectionReason: (statusOverride || initialStatus) === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
+            ? (reasonOverride ?? initialRejectionReason).trim() || undefined
+            : undefined,
         }),
       });
 
@@ -387,19 +413,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
         return;
       }
 
-      const created = await res.json();
-
-      if (statusOverride && statusOverride !== 'SIMULAÇÃO ENVIADA') {
-        await fetch(`/api/simulations/${created.id}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({
-            status: statusOverride,
-            rejectionReason: reasonOverride,
-          }),
-        });
-      }
+      await res.json();
 
       setIsNewModalOpen(false);
       setNewCpf('');
@@ -411,6 +425,9 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       await loadData();
     } catch (err: any) {
       setModalError(err.message || 'Erro de comunicação ao registrar solicitação de simulação.');
+    } finally {
+      isCreatingSimulationRef.current = false;
+      setIsCreatingSimulation(false);
     }
   };
 
@@ -447,7 +464,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       return;
     }
 
-    executeCreateSimulation(cleanCpf, selectedPartner.id);
+    executeCreateSimulation(cleanCpf, selectedPartner.id, initialStatus, initialRejectionReason);
   };
 
   const handleConfirmStatusChange = async () => {
@@ -467,7 +484,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || 'Erro ao atualizar status.');
+        toastService.error('Erro ao atualizar status', data.error || 'Tente novamente.');
         return;
       }
 
@@ -478,7 +495,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       window.dispatchEvent(new Event('proposalsUpdated'));
       await loadData();
     } catch (err: any) {
-      alert(err.message || 'Erro de comunicação ao atualizar status.');
+      toastService.error('Erro de comunicação', err.message || 'Não foi possível atualizar o status.');
     }
   };
 
@@ -611,13 +628,11 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       }
 
       // Date Range Filter
-      if (startDate) {
-        const simDate = new Date(sim.createdAt).toISOString().split('T')[0];
-        if (simDate < startDate) return false;
-      }
-      if (endDate) {
-        const simDate = new Date(sim.createdAt).toISOString().split('T')[0];
-        if (simDate > endDate) return false;
+      if (startDate || endDate) {
+        const simDate = toLocalDateKey(sim.createdAt);
+        if (!simDate) return false;
+        if (startDate && simDate < startDate) return false;
+        if (endDate && simDate > endDate) return false;
       }
 
       return true;
@@ -823,7 +838,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
   const handleExportCsv = () => {
     const dataToExport = filteredSimulations;
     if (dataToExport.length === 0) {
-      alert('Nenhuma solicitação encontrada para exportação.');
+      toastService.info('Sem dados para exportar', 'Ajuste os filtros ou aguarde solicitações na lista.');
       return;
     }
 
@@ -1279,6 +1294,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                 <input
                   type="date"
                   value={startDate}
+                  max={endDate || undefined}
                   onChange={e => setStartDate(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
@@ -1291,6 +1307,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                 <input
                   type="date"
                   value={endDate}
+                  min={startDate || undefined}
                   onChange={e => setEndDate(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
@@ -1374,7 +1391,22 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredSimulations.length === 0 ? (
+                  {simulationsLoadError ? (
+                    <tr>
+                      <td colSpan={11} className="px-4 py-12 text-center">
+                        <ShieldAlert className="h-8 w-8 mx-auto mb-2 text-rose-500" />
+                        <p className="font-medium text-sm text-slate-700 dark:text-slate-200">Não foi possível carregar as simulações</p>
+                        <p className="text-xs mt-1 text-slate-500 dark:text-slate-400">{simulationsLoadError}</p>
+                        <button type="button" onClick={() => void loadData()} className="mt-4 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                          Tentar novamente
+                        </button>
+                      </td>
+                    </tr>
+                  ) : isLoadingSimulations ? (
+                    <tr>
+                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Carregando solicitações...</td>
+                    </tr>
+                  ) : filteredSimulations.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
                         <Calculator className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -1518,7 +1550,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                                       }
                                       loadData();
                                     } catch (err: any) {
-                                      alert(err.message);
+                                      toastService.error('Erro ao atualizar status', err.message || 'Tente novamente.');
                                     }
                                   }
                                 }}
@@ -1939,10 +1971,11 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   </button>
                   <button
                     type="button"
-                    onClick={() => executeCreateSimulation(duplicateWarning.cleanCpf, duplicateWarning.partnerId)}
+                    onClick={() => executeCreateSimulation(duplicateWarning.cleanCpf, duplicateWarning.partnerId, initialStatus, initialRejectionReason)}
+                    disabled={isCreatingSimulation}
                     className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer transition-all"
                   >
-                    CONTINUAR
+                    {isCreatingSimulation ? 'REGISTRANDO...' : 'CONTINUAR'}
                   </button>
                 </div>
               </div>
@@ -2115,7 +2148,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                     STATUS DA SIMULAÇÃO <span className="text-rose-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  {canSetInitialStatus ? <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setInitialStatus('SIMULAÇÃO ENVIADA')}
@@ -2147,11 +2180,11 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Sem margem / política reprovada</div>
                       </div>
                     </button>
-                  </div>
+                  </div> : <p className="text-xs text-slate-500 dark:text-slate-400">SIMULAÇÃO ENVIADA — aguardando digitação pela mesa</p>}
                 </div>
 
                 {/* MOTIVO DE INVIABILIDADE (Se selecionado) */}
-                {initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && (
+                {canSetInitialStatus && initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && (
                   <div className="animate-in fade-in slide-in-from-top-1 duration-150">
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                       MOTIVO DA INVIABILIDADE (OPCIONAL)
@@ -2176,9 +2209,10 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                    disabled={isCreatingSimulation}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
                   >
-                    Registrar Simulação
+                    {isCreatingSimulation ? 'Registrando...' : 'Registrar Simulação'}
                   </button>
                 </div>
               </form>
@@ -2286,7 +2320,7 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
                   />
                   <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
-                    Ao informar a ADE, a simulação ficará vinculada à proposta no sistema.
+                    Se a ADE corresponder a uma proposta deste cliente, o sistema fará o vínculo automaticamente.
                   </p>
                 </div>
               )}
@@ -2688,4 +2722,24 @@ export const SimulationView: React.FC<SimulationViewProps> = ({ onOpenProposalDe
       />
     </div>
   );
+};
+
+export const SimulationView: React.FC<SimulationViewProps> = (props) => {
+  const activeUser = StorageService.getActiveUser();
+
+  if (activeUser?.role === 'DIGITADOR') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
+        <div className="h-16 w-16 bg-rose-100 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mb-4">
+          <ShieldAlert className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Acesso Restrito</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md">
+          Seu perfil de <strong>DIGITADOR</strong> não possui permissão para visualizar a Central de Simulações.
+        </p>
+      </div>
+    );
+  }
+
+  return <SimulationWorkspace {...props} />;
 };

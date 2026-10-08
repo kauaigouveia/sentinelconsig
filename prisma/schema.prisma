@@ -171,6 +171,8 @@ model Tenant {
   statusHistories    StatusHistory[]
   comments           Comment[]
   documents          ClientDocument[]
+  clientNotes        ClientNote[]
+  clientCommunications ClientCommunication[]
   statuses           ProposalStatus[]
   tasks              Task[]
   notifications      Notification[]
@@ -788,6 +790,8 @@ model Client {
 
   proposals Proposal[]
   documents ClientDocument[]
+  notes     ClientNote[]
+  communications ClientCommunication[]
 
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by")
@@ -800,6 +804,45 @@ model Client {
   @@index([cpf])
   @@index([fullName])
   @@map("clients")
+}
+
+model ClientNote {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String @map("client_id")
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  authorId   String   @map("author_id")
+  authorName String   @map("author_name")
+  note       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, clientId, createdAt])
+  @@map("client_notes")
+}
+
+model ClientCommunication {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String @map("client_id")
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  proposalId String? @map("proposal_id")
+  proposal Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  channel        String @default("WHATSAPP")
+  templateName   String? @map("template_name")
+  eventType      String? @map("event_type")
+  recipient      String
+  messageContent String @map("message_content")
+  status         String @default("PENDENTE")
+  sentByUserId   String @map("sent_by_user_id")
+  sentByUserName String @map("sent_by_user_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, clientId, createdAt])
+  @@map("client_communications")
 }
 
 model ClientDocument {
@@ -884,6 +927,7 @@ model Proposal {
 
   // Relations
   ades            ADE[]
+  clientCommunications ClientCommunication[]
   statusHistories StatusHistory[]
   comments        Comment[]
   documents       ClientDocument[]

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AlertTriangle,
   Clock,
@@ -32,6 +32,8 @@ import {
   Timer,
   AlertOctagon,
 } from 'lucide-react';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
 
 export type PriorityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
@@ -122,11 +124,22 @@ export const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const CentralPendencias: React.FC = () => {
+  const activeUser = StorageService.getActiveUser();
+  const canCreate = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.create');
+  const canAssign = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.assign');
+  const canUpdate = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.update');
+  const canResolve = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.resolve');
+  const canCancel = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.cancel');
+  const canReopen = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.reopen');
+  const canManageSla = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.admin') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'admin.manage');
   const [pendencies, setPendencies] = useState<PendencyItem[]>([]);
+  const [uiError, setUiError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PendencySummary | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const listRequestRef = useRef(0);
+  const detailRequestRef = useRef(0);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -134,6 +147,7 @@ export const CentralPendencias: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mineOnly, setMineOnly] = useState(false);
 
   // Selected item for drawer/timeline
   const [selectedPendency, setSelectedPendency] = useState<PendencyItem | null>(null);
@@ -166,22 +180,27 @@ export const CentralPendencias: React.FC = () => {
   const [slaMatrix, setSlaMatrix] = useState<Record<string, number>>({});
   const [isSavingSlaConfig, setIsSavingSlaConfig] = useState(false);
 
+  const readResponseError = async (response: Response, fallback: string) => {
+    const payload = await response.json().catch(() => null);
+    return payload?.error || fallback;
+  };
+
   const fetchSummary = useCallback(async () => {
     setIsSummaryLoading(true);
     try {
       const res = await fetch('/api/pendencies/metrics');
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
-      }
+      if (!res.ok) throw new Error(await readResponseError(res, 'Não foi possível carregar os indicadores.'));
+      setSummary(await res.json());
     } catch (err) {
       console.error('Erro ao buscar métricas de pendências:', err);
+      setUiError(err instanceof Error ? err.message : 'Não foi possível carregar os indicadores.');
     } finally {
       setIsSummaryLoading(false);
     }
   }, []);
 
-  const fetchPendencies = useCallback(async () => {
+  const fetchPendencies = useCallback(async (search = searchQuery) => {
+    const requestId = ++listRequestRef.current;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -189,37 +208,40 @@ export const CentralPendencias: React.FC = () => {
       if (slaFilter !== 'ALL') params.append('slaStatus', slaFilter);
       if (priorityFilter !== 'ALL') params.append('priority', priorityFilter);
       if (typeFilter !== 'ALL') params.append('type', typeFilter);
-      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (mineOnly && activeUser?.id) params.append('assignedToId', activeUser.id);
+      if (search.trim()) params.append('search', search.trim());
       params.append('limit', '100');
 
       const res = await fetch(`/api/pendencies?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPendencies(data.items || []);
-        setTotalCount(data.total || 0);
+      if (!res.ok) throw new Error(await readResponseError(res, 'Não foi possível carregar as pendências.'));
+      const data = await res.json();
+      if (requestId !== listRequestRef.current) return;
+      setPendencies(data.items || []);
+      setTotalCount(data.total || 0);
 
-        // Se uma pendência estiver aberta no drawer, atualizar seus dados em tela
-        if (selectedPendency) {
-          const updatedSelected = (data.items || []).find((p: PendencyItem) => p.id === selectedPendency.id);
-          if (updatedSelected) setSelectedPendency(updatedSelected);
-        }
+      // Se uma pendência estiver aberta no drawer, atualizar seus dados em tela
+      if (selectedPendency) {
+        const updatedSelected = (data.items || []).find((p: PendencyItem) => p.id === selectedPendency.id);
+        if (updatedSelected) setSelectedPendency(updatedSelected);
       }
     } catch (err) {
+      if (requestId !== listRequestRef.current) return;
       console.error('Erro ao listar pendências:', err);
+      setUiError(err instanceof Error ? err.message : 'Não foi possível carregar as pendências.');
     } finally {
-      setIsLoading(false);
+      if (requestId === listRequestRef.current) setIsLoading(false);
     }
-  }, [statusFilter, slaFilter, priorityFilter, typeFilter, searchQuery, selectedPendency?.id]);
+  }, [statusFilter, slaFilter, priorityFilter, typeFilter, searchQuery, mineOnly, activeUser?.id, selectedPendency?.id]);
 
   const fetchSlaConfig = async () => {
     try {
       const res = await fetch('/api/pendencies/sla-config');
-      if (res.ok) {
-        const data = await res.json();
-        setSlaMatrix(data.matrix || {});
-      }
+      if (!res.ok) throw new Error(await readResponseError(res, 'Não foi possível carregar a configuração de SLA.'));
+      const data = await res.json();
+      setSlaMatrix(data.matrix || {});
     } catch (err) {
       console.error('Erro ao carregar configurações de SLA:', err);
+      setUiError(err instanceof Error ? err.message : 'Não foi possível carregar a configuração de SLA.');
     }
   };
 
@@ -229,14 +251,15 @@ export const CentralPendencias: React.FC = () => {
 
   useEffect(() => {
     fetchPendencies();
-  }, [statusFilter, slaFilter, priorityFilter, typeFilter]);
+  }, [statusFilter, slaFilter, priorityFilter, typeFilter, mineOnly]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchPendencies();
+    void fetchPendencies(searchQuery);
   };
 
   const handleRefresh = () => {
+    setUiError(null);
     fetchSummary();
     fetchPendencies();
   };
@@ -266,9 +289,10 @@ export const CentralPendencias: React.FC = () => {
         setNewDescription('');
         setNewProposalNumber('');
         handleRefresh();
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível abrir a pendência.'));
     } catch (err) {
       console.error('Erro ao abrir pendência:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao abrir pendência.');
     } finally {
       setIsSubmitting(false);
     }
@@ -283,9 +307,10 @@ export const CentralPendencias: React.FC = () => {
       });
       if (res.ok) {
         handleRefresh();
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível assumir a pendência.'));
     } catch (err) {
       console.error('Erro ao assumir pendência:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao assumir pendência.');
     }
   };
 
@@ -306,11 +331,12 @@ export const CentralPendencias: React.FC = () => {
         setResolveNotes('');
         handleRefresh();
         if (selectedPendency?.id === resolvingPendency.id) {
-          setIsDrawerOpen(false);
+          closeDrawer();
         }
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível resolver a pendência.'));
     } catch (err) {
       console.error('Erro ao resolver pendência:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao resolver pendência.');
     } finally {
       setIsResolving(false);
     }
@@ -333,11 +359,12 @@ export const CentralPendencias: React.FC = () => {
         setCancelReason('');
         handleRefresh();
         if (selectedPendency?.id === cancellingPendency.id) {
-          setIsDrawerOpen(false);
+          closeDrawer();
         }
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível cancelar a pendência.'));
     } catch (err) {
       console.error('Erro ao cancelar pendência:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao cancelar pendência.');
     } finally {
       setIsCancelling(false);
     }
@@ -352,9 +379,10 @@ export const CentralPendencias: React.FC = () => {
       });
       if (res.ok) {
         handleRefresh();
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível reabrir a pendência.'));
     } catch (err) {
       console.error('Erro ao reabrir pendência:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao reabrir pendência.');
     }
   };
 
@@ -362,26 +390,30 @@ export const CentralPendencias: React.FC = () => {
     e.preventDefault();
     if (!selectedPendency || !newCommentText.trim()) return;
 
+    const targetPendencyId = selectedPendency.id;
+    const detailRequestId = detailRequestRef.current;
     setIsAddingComment(true);
     try {
-      const res = await fetch(`/api/pendencies/${selectedPendency.id}/comments`, {
+      const res = await fetch(`/api/pendencies/${targetPendencyId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: newCommentText.trim() }),
       });
 
       if (res.ok) {
-        setNewCommentText('');
-        // Recarregar os detalhes do item selecionado
-        const detailRes = await fetch(`/api/pendencies/${selectedPendency.id}`);
-        if (detailRes.ok) {
+        if (detailRequestId === detailRequestRef.current) setNewCommentText('');
+        // Só atualiza o drawer se o operador ainda estiver vendo esta pendência.
+        if (detailRequestId === detailRequestRef.current) {
+          const detailRes = await fetch(`/api/pendencies/${targetPendencyId}`);
+          if (!detailRes.ok) throw new Error(await readResponseError(detailRes, 'Comentário salvo, mas não foi possível atualizar os detalhes.'));
           const updated = await detailRes.json();
-          setSelectedPendency(updated);
+          if (detailRequestId === detailRequestRef.current) setSelectedPendency(updated);
         }
         handleRefresh();
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível adicionar o comentário.'));
     } catch (err) {
       console.error('Erro ao adicionar comentário:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao adicionar comentário.');
     } finally {
       setIsAddingComment(false);
     }
@@ -400,27 +432,36 @@ export const CentralPendencias: React.FC = () => {
       if (res.ok) {
         setShowSlaConfigModal(false);
         handleRefresh();
-      }
+      } else setUiError(await readResponseError(res, 'Não foi possível salvar a configuração de SLA.'));
     } catch (err) {
       console.error('Erro ao salvar matriz de SLA:', err);
+      setUiError(err instanceof Error ? err.message : 'Erro ao salvar matriz de SLA.');
     } finally {
       setIsSavingSlaConfig(false);
     }
   };
 
   const openDrawer = async (item: PendencyItem) => {
+    const requestId = ++detailRequestRef.current;
     setSelectedPendency(item);
     setIsDrawerOpen(true);
     // Buscar histórico completo
     try {
       const res = await fetch(`/api/pendencies/${item.id}`);
-      if (res.ok) {
-        const fullData = await res.json();
-        setSelectedPendency(fullData);
-      }
+      if (!res.ok) throw new Error(await readResponseError(res, 'Não foi possível carregar os detalhes da pendência.'));
+      const fullData = await res.json();
+      if (requestId === detailRequestRef.current) setSelectedPendency(fullData);
     } catch (err) {
-      console.error('Erro ao buscar detalhes completos da pendência:', err);
+      if (requestId === detailRequestRef.current) {
+        console.error('Erro ao buscar detalhes completos da pendência:', err);
+        setUiError(err instanceof Error ? err.message : 'Não foi possível carregar os detalhes da pendência.');
+      }
     }
+  };
+
+  const closeDrawer = () => {
+    detailRequestRef.current += 1;
+    setIsDrawerOpen(false);
   };
 
   // Renderizador de Badge de SLA
@@ -478,6 +519,12 @@ export const CentralPendencias: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {uiError && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+          <span>{uiError}</span>
+          <button type="button" onClick={handleRefresh} className="shrink-0 font-semibold underline">Tentar novamente</button>
+        </div>
+      )}
       {/* Top Header Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-4">
@@ -498,7 +545,7 @@ export const CentralPendencias: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          {canManageSla && <button
             onClick={() => {
               fetchSlaConfig();
               setShowSlaConfigModal(true);
@@ -508,7 +555,7 @@ export const CentralPendencias: React.FC = () => {
           >
             <Settings className="w-4 h-4 text-slate-400" />
             Configurar SLA
-          </button>
+          </button>}
           <button
             onClick={handleRefresh}
             className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors"
@@ -516,13 +563,13 @@ export const CentralPendencias: React.FC = () => {
           >
             <RefreshCw className={`w-4 h-4 ${isLoading || isSummaryLoading ? 'animate-spin text-rose-400' : ''}`} />
           </button>
-          <button
+          {canCreate && <button
             onClick={() => setShowCreateModal(true)}
             className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold text-xs shadow-lg shadow-rose-600/20 transition-all flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Nova Pendência
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -650,24 +697,49 @@ export const CentralPendencias: React.FC = () => {
             ))}
           </div>
 
+          <button
+            type="button"
+            aria-pressed={mineOnly}
+            onClick={() => setMineOnly(current => !current)}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+              mineOnly
+                ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
+                : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-indigo-500/60 hover:text-white'
+            }`}
+          >
+            <UserCheck className="h-3.5 w-3.5" />
+            Minhas pendências
+          </button>
+
           {/* Search */}
-          <form onSubmit={handleSearchSubmit} className="relative min-w-[260px]">
+          <form onSubmit={handleSearchSubmit} className="relative w-full min-w-0 lg:w-[320px] lg:flex-none">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
+              type="search"
               placeholder="Buscar contrato, cliente, CPF, título..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-rose-500 placeholder-slate-500"
+              aria-label="Buscar pendências por contrato, cliente, CPF ou título"
+              className="w-full pl-9 pr-16 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-rose-500 placeholder-slate-500"
             />
+            <button
+              type="submit"
+              aria-label="Buscar pendências"
+              title="Buscar pendências"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+            >
+              <Search className="h-3.5 w-3.5" />
+            </button>
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
-                  fetchPendencies();
+                  void fetchPendencies('');
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                aria-label="Limpar busca"
+                title="Limpar busca"
+                className="absolute right-9 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -708,7 +780,7 @@ export const CentralPendencias: React.FC = () => {
             </select>
           </div>
 
-          {(statusFilter !== 'ALL' || slaFilter !== 'ALL' || priorityFilter !== 'ALL' || typeFilter !== 'ALL' || searchQuery) && (
+          {(statusFilter !== 'ALL' || slaFilter !== 'ALL' || priorityFilter !== 'ALL' || typeFilter !== 'ALL' || searchQuery || mineOnly) && (
             <button
               onClick={() => {
                 setStatusFilter('ALL');
@@ -716,6 +788,7 @@ export const CentralPendencias: React.FC = () => {
                 setPriorityFilter('ALL');
                 setTypeFilter('ALL');
                 setSearchQuery('');
+                setMineOnly(false);
               }}
               className="text-rose-400 hover:text-rose-300 ml-auto flex items-center gap-1 font-semibold"
             >
@@ -837,7 +910,7 @@ export const CentralPendencias: React.FC = () => {
                   <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
                     {item.status !== 'RESOLVIDA' && item.status !== 'CANCELADA' && (
                       <>
-                        {!item.assignedTo && (
+                        {!item.assignedTo && canAssign && (
                           <button
                             onClick={() => handleAssignToMe(item.id)}
                             className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
@@ -845,12 +918,12 @@ export const CentralPendencias: React.FC = () => {
                             <UserCheck className="w-3.5 h-3.5" /> Assumir
                           </button>
                         )}
-                        <button
+                        {canResolve && <button
                           onClick={() => setResolvingPendency(item)}
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Baixar
-                        </button>
+                        </button>}
                       </>
                     )}
 
@@ -862,7 +935,7 @@ export const CentralPendencias: React.FC = () => {
                       <History className="w-3.5 h-3.5 text-slate-400" /> Detalhes
                     </button>
 
-                    {(item.status === 'RESOLVIDA' || item.status === 'CANCELADA') && (
+                    {(item.status === 'RESOLVIDA' || item.status === 'CANCELADA') && canReopen && (
                       <button
                         onClick={() => handleReopen(item)}
                         className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition-colors flex items-center gap-1"
@@ -897,7 +970,7 @@ export const CentralPendencias: React.FC = () => {
                 </h3>
               </div>
               <button
-                onClick={() => setIsDrawerOpen(false)}
+                onClick={closeDrawer}
                 className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
@@ -999,7 +1072,7 @@ export const CentralPendencias: React.FC = () => {
 
             {/* Drawer Footer: Add Comment & Quick Resolution */}
             <div className="p-4 border-t border-slate-800 bg-slate-950 space-y-3">
-              <form onSubmit={handleAddComment} className="flex gap-2">
+              {canUpdate && <form onSubmit={handleAddComment} className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Adicionar nota ou comentário na timeline..."
@@ -1014,23 +1087,23 @@ export const CentralPendencias: React.FC = () => {
                 >
                   <Send className="w-3.5 h-3.5" /> Enviar
                 </button>
-              </form>
+              </form>}
 
               <div className="flex items-center justify-between gap-2 pt-1">
                 {selectedPendency.status !== 'RESOLVIDA' && selectedPendency.status !== 'CANCELADA' && (
                   <>
-                    <button
+                    {canCancel && <button
                       onClick={() => setCancellingPendency(selectedPendency)}
                       className="px-3 py-1.5 text-xs text-slate-400 hover:text-rose-400 font-semibold"
                     >
                       Cancelar Pendência
-                    </button>
-                    <button
+                    </button>}
+                    {canResolve && <button
                       onClick={() => setResolvingPendency(selectedPendency)}
                       className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Baixar Pendência
-                    </button>
+                    </button>}
                   </>
                 )}
               </div>
@@ -1040,7 +1113,7 @@ export const CentralPendencias: React.FC = () => {
       )}
 
       {/* Modal Nova Pendência */}
-      {showCreateModal && (
+      {showCreateModal && canCreate && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -1281,7 +1354,7 @@ export const CentralPendencias: React.FC = () => {
       )}
 
       {/* Modal Matriz de SLA */}
-      {showSlaConfigModal && (
+      {showSlaConfigModal && canManageSla && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">

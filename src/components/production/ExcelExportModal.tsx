@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ExcelService } from '../../services/excelService';
 import { Proposal } from '../../types';
+import { toastService } from '../ui/toastService';
 import { StorageService } from '../../services/storageService';
 
 interface ExcelExportModalProps {
@@ -27,17 +28,16 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
   proposals,
   onClose,
 }) => {
-  if (!isOpen) return null;
-
   const [exportType, setExportType] = useState<'PADRAO' | 'PERSONALIZADO'>('PERSONALIZADO');
   const [fileFormat, setFileFormat] = useState<'XLSX' | 'CSV'>('XLSX');
-  const [productFilterName, setProductFilterName] = useState('TODOS');
+  const [standardProductId, setStandardProductId] = useState('TODOS');
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const availableColumns = [
     { key: 'ADE', label: 'ADE / Nº Proposta', category: 'Identificação' },
     { key: 'CPF', label: 'CPF do Cliente (Formatado)', category: 'Cliente' },
-    { key: 'CPF_RAW', label: 'CPF Limpo (Apenas dígitos)', category: 'Cliente' },
+    { key: 'CPF_RAW', label: 'CPF sem formatação (apenas dígitos)', category: 'Cliente' },
     { key: 'NOME', label: 'Nome do Cliente', category: 'Cliente' },
     { key: 'TELEFONE', label: 'Telefone / WhatsApp', category: 'Cliente' },
     { key: 'EMAIL', label: 'E-mail do Cliente', category: 'Cliente' },
@@ -49,15 +49,12 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
     { key: 'PROMOTORA', label: 'Promotora de Vínculo', category: 'Operação' },
     { key: 'STATUS', label: 'Status Atual da Esteira', category: 'Esteira' },
     { key: 'ALCADA', label: 'Alçada de Responsabilidade', category: 'Esteira' },
-    { key: 'SLA_HOURS', label: 'Tempo no Status (Horas)', category: 'Esteira' },
     { key: 'VALOR_LIBERADO', label: 'Valor Liberado Cliente (R$)', category: 'Financeiro' },
     { key: 'SALDO_CONTRATO', label: 'Saldo Contrato / Quitação (R$)', category: 'Financeiro' },
     { key: 'VALOR_CONTRATO', label: 'Valor do Contrato (R$)', category: 'Financeiro' },
     { key: 'VALOR_PARCELA', label: 'Valor da Parcela (R$)', category: 'Financeiro' },
     { key: 'PRAZO', label: 'Prazo / Parcelas', category: 'Financeiro' },
-    { key: 'TAXA_JUROS', label: 'Taxa de Juros (% a.m.)', category: 'Financeiro' },
     { key: 'DIGITADOR', label: 'Digitador Responsável', category: 'Operação' },
-    { key: 'OPERADOR', label: 'Operador / Criador', category: 'Operação' },
     { key: 'OBSERVACOES', label: 'Última Observação', category: 'Operação' },
     { key: 'DATA', label: 'Data de Cadastro', category: 'Auditoria' },
     { key: 'DATA_ATUALIZACAO', label: 'Data de Última Atualização', category: 'Auditoria' },
@@ -75,10 +72,20 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
     'ALCADA',
     'VALOR_LIBERADO',
     'SALDO_CONTRATO',
-    'VALOR_CONTRATO',
-    'OPERADOR',
+    'VALOR_PARCELA',
+    'PRAZO',
+    'DIGITADOR',
     'DATA',
   ]);
+
+  if (!isOpen) return null;
+
+  const columnsCount = availableColumns.length;
+  const activeProducts = StorageService.getProducts().filter(product => product.active);
+  const selectedStandardProduct = activeProducts.find(product => product.id === standardProductId);
+  const proposalsForExport = exportType === 'PADRAO' && selectedStandardProduct
+    ? proposals.filter(proposal => proposal.productId === selectedStandardProduct.id)
+    : proposals;
 
   const toggleColumn = (key: string) => {
     setSelectedColumns(prev =>
@@ -91,7 +98,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
   };
 
   const handleSelectNone = () => {
-    setSelectedColumns(['ADE', 'CPF']);
+    setSelectedColumns([]);
   };
 
   const handleApplyPreset = (preset: 'ESSENCIAL' | 'FINANCEIRO' | 'COMPLETO') => {
@@ -107,9 +114,8 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
         'VALOR_CONTRATO',
         'VALOR_PARCELA',
         'PRAZO',
-        'TAXA_JUROS',
         'STATUS',
-        'OPERADOR',
+        'DIGITADOR',
       ]);
     } else if (preset === 'COMPLETO') {
       setSelectedColumns(availableColumns.map(c => c.key));
@@ -117,18 +123,27 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
   };
 
   const handleExport = async () => {
+    if (isExporting || downloadSuccess) return;
+    if (proposalsForExport.length === 0) {
+      toastService.info('Sem propostas para exportar', 'Altere os filtros da produção e tente novamente.');
+      return;
+    }
     try {
+      setIsExporting(true);
       if (exportType === 'PADRAO') {
-        const { fileName } = await ExcelService.exportStandard(proposals, productFilterName);
+        const { fileName } = await ExcelService.exportStandard(
+          proposalsForExport,
+          selectedStandardProduct?.name || 'TODOS'
+        );
         setDownloadSuccess(`Arquivo padrão gerado com sucesso: ${fileName}`);
       } else {
         if (selectedColumns.length === 0) {
-          alert('Por favor, selecione ao menos uma coluna para exportar.');
+          toastService.warning('Selecione as colunas', 'Marque ao menos uma coluna para gerar o arquivo.');
           return;
         }
 
         const { fileName } = await ExcelService.exportCustom(
-          proposals,
+          proposalsForExport,
           selectedColumns,
           `Personalizado | ${selectedColumns.length} colunas | Formato ${fileFormat}`,
           fileFormat
@@ -140,7 +155,9 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
         onClose();
       }, 1500);
     } catch (err: any) {
-      alert(err.message || 'Erro ao gerar arquivo de exportação.');
+      toastService.error('Falha na exportação', err.message || 'Não foi possível gerar o arquivo.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -156,7 +173,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Exportação de Propostas e Produção</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {proposals.length} proposta(s) filtradas prontas para download
+                {proposalsForExport.length} proposta(s) prontas para download
               </p>
             </div>
           </div>
@@ -208,7 +225,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
           </div>
 
           {/* Format selection (.xlsx vs .csv) */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800">
+          {exportType === 'PERSONALIZADO' ? <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-700 dark:text-slate-300">Formato de Saída:</span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400">Compatível com Excel, Google Sheets e PowerBI</span>
@@ -238,9 +255,24 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                 CSV (.csv)
               </button>
             </div>
-          </div>
+          </div> : <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+            <Info className="h-4 w-4 text-slate-500" />
+            <span>O layout bancário é gerado em Excel (.xlsx).</span>
+          </div>}
 
           {exportType === 'PADRAO' ? (
+            <div className="space-y-3">
+            <label className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 text-xs text-emerald-950 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200">
+              <span className="font-bold">Produto para o arquivo bancário</span>
+              <select
+                value={standardProductId}
+                onChange={event => setStandardProductId(event.target.value)}
+                className="min-h-9 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none focus:border-emerald-500 dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="TODOS">Todos os produtos</option>
+                {activeProducts.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}
+              </select>
+            </label>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-2.5 text-xs text-emerald-900">
               <div className="flex items-center gap-2 font-bold text-emerald-800">
                 <Info className="h-4 w-4 text-emerald-600" />
@@ -251,6 +283,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                 <li>Gera o arquivo no formato <code>PROPOSTAS_PORTABILIDADE_AAAA-MM-DD.xlsx</code>.</li>
                 <li>Registrado de forma imutável na trilha de auditoria e logs de exportação.</li>
               </ul>
+            </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -298,7 +331,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                     Desmarcar
                   </button>
                   <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
-                    {selectedColumns.length} de {availableColumns.length} selecionadas
+                    {selectedColumns.length} de {columnsCount} selecionadas
                   </span>
                 </div>
               </div>
@@ -362,10 +395,11 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
             <button
               id="btn-confirm-download-excel"
               onClick={handleExport}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
+              disabled={isExporting || Boolean(downloadSuccess) || proposalsForExport.length === 0}
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
-              <span>Baixar Arquivo {fileFormat === 'XLSX' ? 'Excel (.xlsx)' : 'CSV (.csv)'}</span>
+              <span>{isExporting ? 'Gerando arquivo…' : `Baixar Arquivo ${exportType === 'PADRAO' || fileFormat === 'XLSX' ? 'Excel (.xlsx)' : 'CSV (.csv)'}`}</span>
             </button>
           </div>
         </div>

@@ -121,6 +121,7 @@ export async function deleteBlob(blobPath: string): Promise<void> {
     const blockBlobClient = container.getBlockBlobClient(blobPath);
     await blockBlobClient.deleteIfExists();
   } catch (err: any) {
-    logger.warn({ error: err?.message || String(err) }, '[AZURE BLOB WARNING] deleteIfExists failed');
+    logger.error({ error: err?.message || String(err), blobPath }, '[AZURE BLOB ERROR] deleteIfExists failed');
+    throw err;
   }
 }

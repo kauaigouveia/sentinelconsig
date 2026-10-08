@@ -38,9 +38,10 @@ import {
   CommercialInsight,
   AIChatMessage,
 } from '../types';
-import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay } from '../lib/utils';
+import { normalizeCpf, formatCpf, extractPartnerCode, calculateBusinessDays, isBusinessDay, isPortabilityProduct } from '../lib/utils';
 import { isValidRole } from '../lib/roleUtils';
 import { toastService } from '../components/ui/toastService';
+import { hasPermission } from '../lib/permissions';
 export function computeSha256(ascii: string): string {
   function rightRotate(value: number, amount: number) {
     return (value >>> amount) | (value << (32 - amount));
@@ -151,6 +152,7 @@ const STORAGE_KEYS = {
   COMMENTS: 'cg_comments',
   PENDINGS: 'cg_pendings',
   HOLIDAYS: 'cg_holidays',
+  HOLIDAYS_TENANT_ID: 'cg_holidays_tenant_id',
   NOTIFICATIONS: 'cg_notifications',
   AUDIT_LOGS: 'cg_audit_logs',
   EXPORT_LOGS: 'cg_export_logs',
@@ -462,7 +464,7 @@ const INITIAL_OPERATIONAL_RULES: OperationalRule[] = [
     scope: 'GLOBAL',
     active: true,
     appliesToAllProducts: false,
-    productIds: ['prod-port', 'prod-refin-port'],
+    productIds: INITIAL_PRODUCTS.filter(isPortabilityProduct).map(product => product.id),
     appliesToAllConvenios: true,
     convenioIds: [],
     minInstallments: 12,
@@ -752,7 +754,7 @@ const INITIAL_DOCUMENTS: DocumentItem[] = [
     clientId: 'cli-maria-jose',
     proposalId: 'prop-833085808',
     name: 'Contracheque_INSS_Agosto_2026.pdf',
-    type: 'CONTRACHEQUE',
+    type: 'COMPROVANTE_RENDA',
     fileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop',
     fileSizeBytes: 850400,
     uploadedByUserId: 'u-digitador',
@@ -765,7 +767,7 @@ const INITIAL_DOCUMENTS: DocumentItem[] = [
     tenantId: 'tenant_evolve',
     clientId: 'cli-maria-jose',
     name: 'Extrato_Bancario_Consignado.pdf',
-    type: 'EXTRATO',
+    type: 'EXTRATO_INSS',
     fileUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=600&auto=format&fit=crop',
     fileSizeBytes: 620000,
     uploadedByUserId: 'u-digitador',
@@ -831,7 +833,7 @@ const INITIAL_OPERATIONAL_TASKS: OperationalTask[] = [
     title: 'Monitorar Retorno CIP (5º Dia Útil) - Maria José',
     description: 'Verificar resposta do banco credor para a ADE 833085808 (Portabilidade C6 Bank).',
     category: 'SALDO_CIP',
-    priority: 'URGENTE',
+    priority: 'URGENT',
     dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     completed: false,
     assignedUserId: 'u-suporte',
@@ -851,7 +853,7 @@ const INITIAL_OPERATIONAL_TASKS: OperationalTask[] = [
     title: 'Cobrar reenvio de RG legível - João Pedro',
     description: 'Documento de identificação cortado na proposta 1902975450.',
     category: 'PENDENCIA',
-    priority: 'ALTA',
+    priority: 'HIGH',
     dueDate: new Date().toISOString().split('T')[0],
     completed: false,
     assignedUserId: 'u-suporte',
@@ -871,7 +873,7 @@ const INITIAL_OPERATIONAL_TASKS: OperationalTask[] = [
     title: 'Confirmar pagamento do cartão - Antonia Souza',
     description: 'Checar crédito em conta do saque complementar da proposta 991823741.',
     category: 'FOLLOW_UP',
-    priority: 'MEDIA',
+    priority: 'MEDIUM',
     dueDate: new Date().toISOString().split('T')[0],
     completed: true,
     completedAt: oneDayAgo,
@@ -969,6 +971,8 @@ export class StorageService {
       'cg_bank_promoters',
       'cg_partners',
       'cg_products',
+      'cg_convenios',
+      'cg_operational_rules',
       'cg_clients',
       'cg_statuses',
       'cg_proposals',
@@ -1140,7 +1144,10 @@ export class StorageService {
       currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
 
       disbursedValue: p.releasedValue !== undefined && p.releasedValue !== null ? Number(p.releasedValue) : 0,
-      contractBalance: p.contractValue !== undefined && p.contractValue !== null ? Number(p.contractValue) : (p.debtBalance ? Number(p.debtBalance) : 0),
+      contractValue: p.contractValue !== undefined && p.contractValue !== null ? Number(p.contractValue) : undefined,
+      contractBalance: p.debtBalance !== undefined && p.debtBalance !== null
+        ? Number(p.debtBalance)
+        : (p.contractValue !== undefined && p.contractValue !== null ? Number(p.contractValue) : 0),
       installmentValue: p.installmentValue !== undefined && p.installmentValue !== null ? Number(p.installmentValue) : 0,
       installmentsCount: p.installmentsCount !== undefined && p.installmentsCount !== null ? Number(p.installmentsCount) : 84,
       debtBalance: p.debtBalance !== undefined && p.debtBalance !== null ? Number(p.debtBalance) : undefined,
@@ -1203,6 +1210,11 @@ export class StorageService {
           fullName: c.fullName,
           phone: c.phone || '',
           email: c.email || '',
+          birthDate: c.birthDate ? String(c.birthDate).slice(0, 10) : undefined,
+          matricula: c.benefitNumber || undefined,
+          margemDisponivel: c.marginFree != null ? Number(c.marginFree) : undefined,
+          city: c.addressCity || undefined,
+          state: c.addressState || undefined,
           observation: '',
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
@@ -1321,7 +1333,7 @@ export class StorageService {
       }
 
       // 7.1 Fetch Convenios
-      const dbConvenios = await safeFetch('/api/convenios');
+      const dbConvenios = await safeFetch('/api/convenios?includeInactive=true');
       if (Array.isArray(dbConvenios)) {
         const formattedConvenios = dbConvenios.map((c: any) => ({
           id: c.id,
@@ -1335,6 +1347,12 @@ export class StorageService {
           updatedAt: c.updatedAt,
         }));
         localStorage.setItem(STORAGE_KEYS.CONVENIOS, JSON.stringify(formattedConvenios));
+      }
+
+      // 7.2 Fetch Operational Rules for the active tenant (including inactive rules for administration).
+      const dbOperationalRules = await safeFetch('/api/operational-rules');
+      if (Array.isArray(dbOperationalRules)) {
+        localStorage.setItem(STORAGE_KEYS.OPERATIONAL_RULES, JSON.stringify(dbOperationalRules));
       }
 
       // 8. Fetch BankPromoters (Matrix)
@@ -1386,6 +1404,19 @@ export class StorageService {
           updatedAt: d.updatedAt,
         }));
         localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(formattedDocs));
+      }
+
+      // 10.1 Fetch Financial Entries for tenants with access to finance
+      const dbFinancialEntries = await safeFetch('/api/financial');
+      if (Array.isArray(dbFinancialEntries)) {
+        const formattedFinancialEntries = dbFinancialEntries.map((entry: any) => ({
+          ...entry,
+          amount: Number(entry.amount),
+          dueDate: entry.dueDate ? String(entry.dueDate).slice(0, 10) : '',
+          paymentDate: entry.paymentDate ? String(entry.paymentDate).slice(0, 10) : undefined,
+        }));
+        localStorage.setItem(STORAGE_KEYS.FINANCIAL_ENTRIES, JSON.stringify(formattedFinancialEntries));
+        window.dispatchEvent(new Event('credit_gestao_financial_update'));
       }
 
       // 11. Fetch Audit Logs
@@ -1487,6 +1518,11 @@ export class StorageService {
             fullName: c.fullName,
             phone: c.phone || '',
             email: c.email || '',
+            birthDate: c.birthDate ? String(c.birthDate).slice(0, 10) : undefined,
+            matricula: c.benefitNumber || undefined,
+            margemDisponivel: c.marginFree != null ? Number(c.marginFree) : undefined,
+            city: c.addressCity || undefined,
+            state: c.addressState || undefined,
             observation: '',
             createdAt: c.createdAt,
             updatedAt: c.updatedAt,
@@ -1533,6 +1569,18 @@ export class StorageService {
               toastService.info(newlyCreated.title, newlyCreated.message);
             }
           }
+        }
+      } else if (entity === 'FinancialEntry') {
+        const dbFinancialEntries = await safeFetch('/api/financial');
+        if (Array.isArray(dbFinancialEntries)) {
+          const formattedFinancialEntries = dbFinancialEntries.map((entry: any) => ({
+            ...entry,
+            amount: Number(entry.amount),
+            dueDate: entry.dueDate ? String(entry.dueDate).slice(0, 10) : '',
+            paymentDate: entry.paymentDate ? String(entry.paymentDate).slice(0, 10) : undefined,
+          }));
+          localStorage.setItem(STORAGE_KEYS.FINANCIAL_ENTRIES, JSON.stringify(formattedFinancialEntries));
+          window.dispatchEvent(new Event('credit_gestao_financial_update'));
         }
       } else if (entity === 'User') {
         const dbUsers = await safeFetch('/api/users');
@@ -2207,6 +2255,17 @@ export class StorageService {
     return this.get<Promoter[]>(STORAGE_KEYS.PROMOTERS, INITIAL_PROMOTERS);
   }
 
+  public static cachePromotersFromApi(items: any[]): void {
+    this.set(STORAGE_KEYS.PROMOTERS, items.map(item => ({
+      id: item.id,
+      name: item.name,
+      observation: item.observation || undefined,
+      active: item.active !== undefined ? Boolean(item.active) : item.status === 'ATIVO',
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: item.updatedAt || new Date().toISOString(),
+    })));
+  }
+
   public static createPromoter(nameOrObj: string | { name: string; observation?: string }, observation?: string): Promoter {
     const promoters = this.getPromoters();
     const rawName = typeof nameOrObj === 'string' ? nameOrObj : nameOrObj.name;
@@ -2274,6 +2333,18 @@ export class StorageService {
   // Banks
   public static getBanks(): Bank[] {
     return this.get<Bank[]>(STORAGE_KEYS.BANKS, INITIAL_BANKS);
+  }
+
+  public static cacheBanksFromApi(items: any[]): void {
+    this.set(STORAGE_KEYS.BANKS, items.map(item => ({
+      id: item.id,
+      name: item.name,
+      code: item.code || undefined,
+      observation: item.observation || undefined,
+      active: item.active !== undefined ? Boolean(item.active) : item.status === 'ATIVO',
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: item.updatedAt || new Date().toISOString(),
+    })));
   }
 
   public static createBank(nameOrObj: string | { name: string; code?: string; observation?: string }, code?: string, observation?: string): Bank {
@@ -2345,6 +2416,17 @@ export class StorageService {
   // BankPromoter Associations
   public static getBankPromoters(): BankPromoter[] {
     return this.get<BankPromoter[]>(STORAGE_KEYS.BANK_PROMOTERS, INITIAL_BANK_PROMOTERS);
+  }
+
+  public static cacheBankPromotersFromApi(items: any[]): void {
+    this.set(STORAGE_KEYS.BANK_PROMOTERS, items.map(item => ({
+      id: item.id,
+      bankId: item.bankId,
+      promoterId: item.promoterId,
+      active: item.active !== undefined ? Boolean(item.active) : item.status === 'ATIVO',
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: item.updatedAt || new Date().toISOString(),
+    })));
   }
 
   public static toggleBankPromoter(bankId: string, promoterId: string, explicitValue?: boolean): boolean {
@@ -2435,7 +2517,7 @@ export class StorageService {
     return filtered;
   }
 
-  public static createProduct(data: {
+  public static async createProduct(data: {
     name: string;
     code?: string;
     description?: string;
@@ -2446,7 +2528,7 @@ export class StorageService {
     requiresPortabilityRelation?: boolean;
     convenioIds?: string[];
     tenantId?: string;
-  }): Product {
+  }): Promise<Product> {
     const list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     const activeUser = this.getActiveUser();
     const currentTenantId = this.getCurrentTenantId();
@@ -2474,25 +2556,29 @@ export class StorageService {
       updatedAt: new Date().toISOString(),
     };
 
-    list.push(newProduct);
-    this.set(STORAGE_KEYS.PRODUCTS, list);
-
-    fetch('/api/products', {
+    const response = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(newProduct),
-    }).catch(err => console.warn('[API] Erro ao sincronizar produto:', err));
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao salvar produto no PostgreSQL.');
+
+    const savedProduct = responseData as Product;
+    list.push(savedProduct);
+    this.set(STORAGE_KEYS.PRODUCTS, list);
 
     this.addAuditLog({
       action: 'CRIAR_PRODUTO',
       entity: 'Product',
-      entityId: newProduct.id,
-      newData: JSON.stringify(newProduct),
+      entityId: savedProduct.id,
+      newData: JSON.stringify(savedProduct),
     });
-    return newProduct;
+    return savedProduct;
   }
 
-  public static updateProduct(id: string, data: Partial<Product>): Product {
+  public static async updateProduct(id: string, data: Partial<Product>): Promise<Product> {
     const list = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     const index = list.findIndex(p => p.id === id);
     if (index === -1) throw new Error('Produto não encontrado.');
@@ -2523,27 +2609,31 @@ export class StorageService {
       updatedAt: new Date().toISOString(),
     };
 
-    list[index] = updated;
-    this.set(STORAGE_KEYS.PRODUCTS, list);
-
-    fetch(`/api/products/${id}`, {
+    const response = await fetch(`/api/products/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(updated),
-    }).catch(err => console.warn('[API] Erro ao atualizar produto:', err));
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao atualizar produto no PostgreSQL.');
+
+    const savedProduct = responseData as Product;
+    list[index] = savedProduct;
+    this.set(STORAGE_KEYS.PRODUCTS, list);
 
     this.addAuditLog({
       action: 'ATUALIZAR_PRODUTO',
       entity: 'Product',
       entityId: id,
       previousData: JSON.stringify(existing),
-      newData: JSON.stringify(updated),
+      newData: JSON.stringify(savedProduct),
     });
 
-    return updated;
+    return savedProduct;
   }
 
-  public static deleteProduct(id: string): void {
+  public static async deleteProduct(id: string): Promise<void> {
     const list = this.getProducts(true);
     const target = list.find(p => p.id === id);
     if (!target) throw new Error('Produto não encontrado.');
@@ -2559,13 +2649,16 @@ export class StorageService {
       throw new Error('Permissão negada para excluir este produto.');
     }
 
+    const response = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao excluir produto no PostgreSQL.');
+
     const allProducts = this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     const updated = allProducts.filter(p => p.id !== id);
     this.set(STORAGE_KEYS.PRODUCTS, updated);
-
-    fetch(`/api/products/${id}`, {
-      method: 'DELETE',
-    }).catch(err => console.warn('[API] Error deleting product:', err));
 
     this.addAuditLog({
       action: 'EXCLUIR_PRODUTO',
@@ -2610,18 +2703,102 @@ export class StorageService {
     return filtered;
   }
 
+  public static async fetchAndSyncProducts(includeInactive = true): Promise<Product[]> {
+    const filterForCurrentTenant = (items: Product[]) => {
+      const activeUser = this.getActiveUser();
+      const currentTenantId = this.getCurrentTenantId();
+      const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+      const scoped = isMaster && !currentTenantId
+        ? items
+        : items.filter(product => (product.scope ?? 'GLOBAL') === 'GLOBAL' || (product.scope === 'EXCLUSIVE' && product.tenantId === currentTenantId));
+      return includeInactive ? scoped : scoped.filter(product => product.active);
+    };
+
+    try {
+      const response = await fetch(`/api/products${includeInactive ? '?includeInactive=true' : ''}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error(`Falha ao carregar produtos (HTTP ${response.status}).`);
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('A API retornou uma lista de produtos inválida.');
+
+      const formatted: Product[] = data.map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        code: product.code || undefined,
+        description: product.description || undefined,
+        type: normalizeProposalType(product.type || 'NOVO', Boolean(product.requiresPortabilityRelation)),
+        scope: product.scope || 'GLOBAL',
+        tenantId: product.tenantId || undefined,
+        tenantName: product.tenantName || product.tenant?.name || undefined,
+        active: product.active !== false,
+        allowsMultipleAde: product.allowsMultipleAde !== false,
+        requiresPortabilityRelation: product.requiresPortabilityRelation !== undefined
+          ? Boolean(product.requiresPortabilityRelation)
+          : product.type === 'REFIN_PORTABILIDADE' || String(product.name || '').toUpperCase().includes('REFIN'),
+        convenioIds: Array.isArray(product.convenioIds) ? product.convenioIds : [],
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+      }));
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(formatted));
+      return filterForCurrentTenant(formatted);
+    } catch (error) {
+      console.warn('[StorageService] Erro ao sincronizar produtos:', error);
+      return filterForCurrentTenant(this.get<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS));
+    }
+  }
+
+  public static async fetchAndSyncConvenios(includeInactive = true): Promise<Convenio[]> {
+    const filterForCurrentTenant = (items: Convenio[]) => {
+      const activeUser = this.getActiveUser();
+      const currentTenantId = this.getCurrentTenantId();
+      const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+      const scoped = isMaster && !currentTenantId
+        ? items
+        : items.filter(convenio => (convenio.scope ?? 'GLOBAL') === 'GLOBAL' || (convenio.scope === 'EXCLUSIVE' && convenio.tenantId === currentTenantId));
+      return includeInactive ? scoped : scoped.filter(convenio => convenio.active);
+    };
+
+    try {
+      const response = await fetch(`/api/convenios${includeInactive ? '?includeInactive=true' : ''}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error(`Falha ao carregar convênios (HTTP ${response.status}).`);
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('A API retornou uma lista de convênios inválida.');
+
+      const formatted: Convenio[] = data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code || undefined,
+        description: c.description || undefined,
+        scope: c.scope || 'GLOBAL',
+        tenantId: c.tenantId || undefined,
+        tenantName: c.tenantName || c.tenant?.name || undefined,
+        active: c.active !== false,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      }));
+      localStorage.setItem(STORAGE_KEYS.CONVENIOS, JSON.stringify(formatted));
+      return filterForCurrentTenant(formatted);
+    } catch (error) {
+      console.warn('[StorageService] Erro ao sincronizar convênios:', error);
+      return filterForCurrentTenant(this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS));
+    }
+  }
+
   public static getConvenioById(id: string): Convenio | undefined {
     return this.getConvenios(true).find(c => c.id === id);
   }
 
-  public static createConvenio(data: {
+  public static async createConvenio(data: {
     name: string;
     code?: string;
     description?: string;
     scope?: 'GLOBAL' | 'EXCLUSIVE';
     active?: boolean;
     tenantId?: string;
-  }): Convenio {
+  }): Promise<Convenio> {
     const list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
     const activeUser = this.getActiveUser();
     const currentTenantId = this.getCurrentTenantId();
@@ -2660,26 +2837,30 @@ export class StorageService {
       updatedAt: new Date().toISOString(),
     };
 
-    list.push(newConvenio);
-    this.set(STORAGE_KEYS.CONVENIOS, list);
-
-    fetch('/api/convenios', {
+    const response = await fetch('/api/convenios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(newConvenio),
-    }).catch(err => console.warn('[API] Erro ao sincronizar convênio:', err));
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao salvar convênio no PostgreSQL.');
+
+    const savedConvenio = responseData as Convenio;
+    list.push(savedConvenio);
+    this.set(STORAGE_KEYS.CONVENIOS, list);
 
     this.addAuditLog({
       action: 'CRIAR_CONVENIO',
       entity: 'Convenio',
-      entityId: newConvenio.id,
-      newData: JSON.stringify(newConvenio),
+      entityId: savedConvenio.id,
+      newData: JSON.stringify(savedConvenio),
     });
 
-    return newConvenio;
+    return savedConvenio;
   }
 
-  public static updateConvenio(id: string, data: Partial<Convenio>): Convenio {
+  public static async updateConvenio(id: string, data: Partial<Convenio>): Promise<Convenio> {
     const list = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
     const index = list.findIndex(c => c.id === id);
     if (index === -1) throw new Error('Convênio não encontrado.');
@@ -2706,27 +2887,31 @@ export class StorageService {
       updatedAt: new Date().toISOString(),
     };
 
-    list[index] = updated;
-    this.set(STORAGE_KEYS.CONVENIOS, list);
-
-    fetch(`/api/convenios/${id}`, {
+    const response = await fetch(`/api/convenios/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(updated),
-    }).catch(err => console.warn('[API] Erro ao atualizar convênio:', err));
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao atualizar convênio no PostgreSQL.');
+
+    const savedConvenio = responseData as Convenio;
+    list[index] = savedConvenio;
+    this.set(STORAGE_KEYS.CONVENIOS, list);
 
     this.addAuditLog({
       action: 'ATUALIZAR_CONVENIO',
       entity: 'Convenio',
       entityId: id,
       previousData: JSON.stringify(existing),
-      newData: JSON.stringify(updated),
+      newData: JSON.stringify(savedConvenio),
     });
 
-    return updated;
+    return savedConvenio;
   }
 
-  public static deleteConvenio(id: string): void {
+  public static async deleteConvenio(id: string): Promise<void> {
     const list = this.getConvenios(true);
     const target = list.find(c => c.id === id);
     if (!target) throw new Error('Convênio não encontrado.');
@@ -2742,13 +2927,16 @@ export class StorageService {
       throw new Error('Permissão negada para excluir este convênio.');
     }
 
+    const response = await fetch(`/api/convenios/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao excluir convênio no PostgreSQL.');
+
     const allConvenios = this.get<Convenio[]>(STORAGE_KEYS.CONVENIOS, INITIAL_CONVENIOS);
     const updated = allConvenios.filter(c => c.id !== id);
     this.set(STORAGE_KEYS.CONVENIOS, updated);
-
-    fetch(`/api/convenios/${id}`, {
-      method: 'DELETE',
-    }).catch(err => console.warn('[API] Error deleting convenio:', err));
 
     this.addAuditLog({
       action: 'EXCLUIR_CONVENIO',
@@ -2780,7 +2968,29 @@ export class StorageService {
     return filtered;
   }
 
-  public static createOperationalRule(data: Omit<OperationalRule, 'id' | 'createdAt' | 'updatedAt'>): OperationalRule {
+  public static async fetchAndSyncOperationalRules(includeInactive = true): Promise<OperationalRule[]> {
+    try {
+      const response = await fetch('/api/operational-rules', { credentials: 'include' });
+      if (!response.ok) throw new Error(`Falha ao carregar regras operacionais (HTTP ${response.status}).`);
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('A API retornou uma lista de regras inválida.');
+
+      const formatted: OperationalRule[] = data.map((rule: any) => ({
+        ...rule,
+        tenantId: rule.tenantId || undefined,
+        tenantName: rule.tenantName || rule.tenant?.name || undefined,
+        productIds: Array.isArray(rule.productIds) ? rule.productIds : [],
+        convenioIds: Array.isArray(rule.convenioIds) ? rule.convenioIds : [],
+      }));
+      localStorage.setItem(STORAGE_KEYS.OPERATIONAL_RULES, JSON.stringify(formatted));
+      return this.getOperationalRules(includeInactive);
+    } catch (error) {
+      console.warn('[StorageService] Erro ao sincronizar regras operacionais:', error);
+      return this.getOperationalRules(includeInactive);
+    }
+  }
+
+  public static async createOperationalRule(data: Omit<OperationalRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<OperationalRule> {
     const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
     const activeUser = this.getActiveUser();
     const currentTenantId = this.getCurrentTenantId();
@@ -2801,19 +3011,23 @@ export class StorageService {
       updatedAt: new Date().toISOString(),
     };
 
-    list.push(newRule);
-    this.set(STORAGE_KEYS.OPERATIONAL_RULES, list);
-
-    fetch('/api/operational-rules', {
+    const response = await fetch('/api/operational-rules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(newRule),
-    }).catch(err => console.warn('[API] Erro ao sincronizar regra:', err));
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao salvar regra operacional no PostgreSQL.');
 
-    return newRule;
+    const savedRule = responseData as OperationalRule;
+    list.push(savedRule);
+    this.set(STORAGE_KEYS.OPERATIONAL_RULES, list);
+
+    return savedRule;
   }
 
-  public static updateOperationalRule(id: string, data: Partial<OperationalRule>): OperationalRule {
+  public static async updateOperationalRule(id: string, data: Partial<OperationalRule>): Promise<OperationalRule> {
     const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
     const index = list.findIndex(r => r.id === id);
     if (index === -1) throw new Error('Regra não encontrada.');
@@ -2824,26 +3038,34 @@ export class StorageService {
       updatedAt: new Date().toISOString(),
     };
 
-    list[index] = updated;
-    this.set(STORAGE_KEYS.OPERATIONAL_RULES, list);
-
-    fetch(`/api/operational-rules/${id}`, {
+    const response = await fetch(`/api/operational-rules/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(updated),
-    }).catch(err => console.warn('[API] Erro ao atualizar regra:', err));
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao atualizar regra operacional no PostgreSQL.');
 
-    return updated;
+    const savedRule = responseData as OperationalRule;
+    list[index] = savedRule;
+    this.set(STORAGE_KEYS.OPERATIONAL_RULES, list);
+
+    return savedRule;
   }
 
-  public static deleteOperationalRule(id: string): void {
+  public static async deleteOperationalRule(id: string): Promise<void> {
     const list = this.get<OperationalRule[]>(STORAGE_KEYS.OPERATIONAL_RULES, INITIAL_OPERATIONAL_RULES);
+    if (!list.some(rule => rule.id === id)) throw new Error('Regra operacional não encontrada.');
+    const response = await fetch(`/api/operational-rules/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(responseData.error || 'Erro ao excluir regra operacional no PostgreSQL.');
+
     const updated = list.filter(r => r.id !== id);
     this.set(STORAGE_KEYS.OPERATIONAL_RULES, updated);
-
-    fetch(`/api/operational-rules/${id}`, {
-      method: 'DELETE',
-    }).catch(err => console.warn('[API] Error deleting rule:', err));
   }
 
   // -------------------------------------------------------------
@@ -3201,7 +3423,7 @@ export class StorageService {
     }
     const cleanName = data.fullName ? data.fullName.trim().toUpperCase() : '';
 
-    // Persist to PostgreSQL first if in browser
+    // Persist to PostgreSQL first if in browser; don't report local-only data as saved.
     if (typeof window !== 'undefined') {
       try {
         const res = await fetch('/api/clients', {
@@ -3214,32 +3436,38 @@ export class StorageService {
             email: data.email,
           }),
         });
-        if (res.ok) {
-          const dbClient = await res.json();
-          if (dbClient && dbClient.id) {
-            const clients = this.getClients();
-            const existingIndex = clients.findIndex(c => normalizeCpf(c.cpf) === cleanCpf);
-            const clientObj: Client = {
-              id: dbClient.id,
-              cpf: cleanCpf,
-              fullName: cleanName || dbClient.fullName || 'CLIENTE NÃO NOMEADO',
-              phone: data.phone || dbClient.phone,
-              email: data.email || dbClient.email,
-              observation: data.observation,
-              createdAt: dbClient.createdAt || new Date().toISOString(),
-              updatedAt: dbClient.updatedAt || new Date().toISOString(),
-            };
-            if (existingIndex !== -1) {
-              clients[existingIndex] = clientObj;
-            } else {
-              clients.push(clientObj);
-            }
-            this.set(STORAGE_KEYS.CLIENTS, clients);
-            return clientObj;
-          }
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({}));
+          throw new Error(error.error || 'Não foi possível salvar o cliente no banco de dados.');
         }
+        const dbClient = await res.json();
+        if (!dbClient?.id) throw new Error('A API não retornou o cliente salvo.');
+
+        const clients = this.getClients();
+        const existingIndex = clients.findIndex(c => normalizeCpf(c.cpf) === cleanCpf);
+        const clientObj: Client = {
+          id: dbClient.id,
+          cpf: cleanCpf,
+          fullName: dbClient.fullName || cleanName || 'CLIENTE NÃO NOMEADO',
+          phone: dbClient.phone || undefined,
+          email: dbClient.email || undefined,
+          birthDate: dbClient.birthDate ? String(dbClient.birthDate).slice(0, 10) : undefined,
+          matricula: dbClient.benefitNumber || undefined,
+          margemDisponivel: dbClient.marginFree != null ? Number(dbClient.marginFree) : undefined,
+          city: dbClient.addressCity || undefined,
+          state: dbClient.addressState || undefined,
+          observation: data.observation,
+          tenantId: dbClient.tenantId,
+          createdAt: dbClient.createdAt || new Date().toISOString(),
+          updatedAt: dbClient.updatedAt || new Date().toISOString(),
+        };
+        if (existingIndex !== -1) clients[existingIndex] = { ...clients[existingIndex], ...clientObj };
+        else clients.push(clientObj);
+        this.set(STORAGE_KEYS.CLIENTS, clients);
+        return clientObj;
       } catch (err) {
-        console.warn('[CLIENT ASYNC POST WARN]', err);
+        console.warn('[CLIENT ASYNC POST ERROR]', err);
+        throw err;
       }
     }
 
@@ -3497,9 +3725,8 @@ export class StorageService {
         }
 
         const dbProposal = await res.json();
-        if (dbProposal && dbProposal.id) {
-          targetProposalId = dbProposal.id;
-        }
+        if (!dbProposal?.id) throw new Error('A API não retornou a proposta salva.');
+        targetProposalId = dbProposal.id;
       } catch (err: any) {
         console.error('[PROPOSAL ASYNC POST ERROR]', err);
         throw err;
@@ -3765,7 +3992,8 @@ export class StorageService {
   public static updateProposal(
     proposalId: string,
     updates: Partial<Proposal>,
-    changeReason?: string
+    changeReason?: string,
+    syncToApi = true
   ): Proposal {
     const proposals = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
     const idx = proposals.findIndex(p => p.id === proposalId);
@@ -3819,7 +4047,7 @@ export class StorageService {
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
 
     // Sync changes to PostgreSQL (Source of Truth)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && syncToApi) {
       fetch(`/api/proposals/${proposalId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -3857,6 +4085,124 @@ export class StorageService {
   }
 
   /**
+   * Saves a proposal update to the source of truth before updating the local cache.
+   * Keeps updateProposal synchronous for legacy/offline flows while giving UI flows
+   * an awaited API that can report authorization, validation and network failures.
+   */
+  public static async updateProposalAsync(
+    proposalId: string,
+    updates: Partial<Proposal>,
+    changeReason?: string,
+    origin: 'MANUAL' | 'IMPORTACAO' = 'MANUAL'
+  ): Promise<Proposal> {
+    if (typeof window === 'undefined') {
+      return this.updateProposal(proposalId, updates, changeReason, false);
+    }
+
+    const current = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS)
+      .find(proposal => proposal.id === proposalId);
+    if (!current) throw new Error('Proposta não encontrada.');
+
+    const response = await fetch(`/api/proposals/${proposalId}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        statusId: updates.statusId,
+        bankId: updates.bankId,
+        bankName: updates.bankName || updates.bank?.name,
+        productId: updates.productId,
+        productName: updates.productName || updates.product?.name,
+        convenioId: updates.convenioId,
+        convenioName: updates.convenioName || updates.convenio?.name,
+        partnerId: updates.partnerId,
+        partnerName: updates.partnerName || updates.partner?.name,
+        promoterId: updates.promoterId,
+        promoterName: updates.promoterName || updates.promoter?.name,
+        releasedValue: updates.disbursedValue,
+        contractValue: updates.contractBalance ?? updates.contractValue,
+        debtBalance: updates.contractBalance ?? updates.debtBalance,
+        installmentValue: updates.installmentValue,
+        installmentsCount: updates.installmentsCount,
+        commissionRate: updates.commissionRate,
+        type: updates.type,
+        relatedPortabilityId: updates.relatedPortabilityId,
+        c6ProposalNumber: updates.c6ProposalNumber,
+        c6OperationNumber: updates.c6OperationNumber,
+        factaProposalNumber: updates.factaProposalNumber,
+        factaAfCode: updates.factaAfCode,
+        happyContractId: updates.happyContractId,
+        notes: changeReason || updates.notes,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.error || `Não foi possível salvar a proposta (HTTP ${response.status}).`);
+    }
+
+    const saved = await response.json();
+    const mapped = this.mapDbProposalToFrontend(saved);
+    const proposals = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
+    const index = proposals.findIndex(proposal => proposal.id === proposalId);
+    if (index === -1) throw new Error('A proposta foi salva, mas não foi encontrada no cache local. Atualize a tela.');
+
+    // Preserve front-end-only fields while replacing database-backed values with the
+    // canonical response, so failed requests never leave a false local success.
+    proposals[index] = { ...proposals[index], ...mapped };
+    this.set(STORAGE_KEYS.PROPOSALS, proposals);
+
+    if (updates.statusId && updates.statusId !== current.statusId) {
+      const previousStatus = this.getStatusById(current.statusId);
+      const nextStatus = this.getStatusById(mapped.statusId);
+      const activeUser = this.getActiveUser();
+      this.addStatusHistory({
+        proposalId,
+        userId: activeUser.id,
+        userName: activeUser.name,
+        previousStatusId: current.statusId,
+        previousStatusName: previousStatus?.name,
+        newStatusId: mapped.statusId,
+        newStatusName: nextStatus?.name || mapped.statusName || 'Novo status',
+        action: 'Alteração de Status',
+        observation: changeReason,
+        origin,
+      });
+    }
+
+    if (updates.disbursedValue !== undefined || updates.contractBalance !== undefined) {
+      const activeUser = this.getActiveUser();
+      const oldDisbursed = current.disbursedValue;
+      const oldBalance = current.contractBalance;
+      const changed =
+        (updates.disbursedValue !== undefined && Number(updates.disbursedValue) !== Number(oldDisbursed || 0)) ||
+        (updates.contractBalance !== undefined && Number(updates.contractBalance) !== Number(oldBalance || 0));
+      if (changed) {
+        const status = this.getStatusById(mapped.statusId);
+        this.addStatusHistory({
+          proposalId,
+          userId: activeUser.id,
+          userName: activeUser.name,
+          newStatusId: mapped.statusId,
+          newStatusName: status?.name || mapped.statusName || 'Status Atual',
+          action: 'Atualização de Valores',
+          observation: changeReason || `Valores da proposta atualizados.`,
+          origin,
+        });
+      }
+    }
+
+    this.addAuditLog({
+      action: 'ATUALIZAR_PROPOSTA',
+      entity: 'Proposal',
+      entityId: proposalId,
+      previousData: JSON.stringify(current),
+      newData: JSON.stringify(mapped),
+    });
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    return proposals[index];
+  }
+
+  /**
    * Updates proposal financial values if they differ from current values.
    * Logs history and returns details of the modification.
    */
@@ -3864,7 +4210,8 @@ export class StorageService {
     proposalId: string,
     financials: { disbursedValue?: number; contractBalance?: number },
     origin: 'IMPORTACAO' | 'MANUAL' | 'SISTEMA' = 'IMPORTACAO',
-    fileName?: string
+    fileName?: string,
+    syncToApi = true
   ): { updated: boolean; details: string; proposal?: Proposal } {
     const proposals = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
     const idx = proposals.findIndex(p => p.id === proposalId);
@@ -3942,7 +4289,7 @@ export class StorageService {
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
 
     // Sync financial changes to PostgreSQL (Source of Truth)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && syncToApi) {
       fetch(`/api/proposals/${proposalId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -3970,8 +4317,14 @@ export class StorageService {
     newStatusId: string,
     observation?: string,
     customUser?: User,
-    origin: 'MANUAL' | 'SISTEMA' | 'ALTERACAO_EM_LOTE' = 'MANUAL'
+    origin: 'MANUAL' | 'SISTEMA' | 'ALTERACAO_EM_LOTE' = 'MANUAL',
+    syncToApi = true
   ): Proposal {
+    const actingUser = customUser || this.getActiveUser();
+    if (origin !== 'SISTEMA' && !hasPermission(actingUser?.role, actingUser?.customPermissions, 'proposals.update')) {
+      throw new Error('Seu perfil não tem permissão para alterar propostas.');
+    }
+
     const proposals = this.getProposals();
     const idx = proposals.findIndex(p => p.id === proposalId);
     if (idx === -1) throw new Error('Proposta não encontrada.');
@@ -3986,7 +4339,7 @@ export class StorageService {
     }
     if (!newStatus) throw new Error('Status inválido.');
 
-    const user = customUser || this.getActiveUser();
+    const user = actingUser;
     const nowIso = new Date().toISOString();
 
     const oldProposalCopy = { ...proposal };
@@ -4068,7 +4421,7 @@ export class StorageService {
     }
 
     // Sync status change to PostgreSQL (Source of Truth)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && syncToApi) {
       fetch(`/api/proposals/${proposalId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -4095,6 +4448,10 @@ export class StorageService {
     let updatedCount = 0;
     const user = this.getActiveUser();
 
+    if (!hasPermission(user?.role, user?.customPermissions, 'proposals.update')) {
+      return { updatedCount: 0, errors: ['Seu perfil não tem permissão para alterar propostas.'] };
+    }
+
     for (const id of proposalIds) {
       try {
         this.updateProposalStatus(id, newStatusId, observation, user, 'ALTERACAO_EM_LOTE');
@@ -4115,6 +4472,11 @@ export class StorageService {
   }
 
   public static async deleteProposal(id: string): Promise<void> {
+    const user = this.getActiveUser();
+    if (!hasPermission(user?.role, user?.customPermissions, 'proposals.delete')) {
+      throw new Error('Seu perfil não tem permissão para excluir propostas.');
+    }
+
     // 1. Delete from PostgreSQL (Source of Truth)
     if (typeof window !== 'undefined') {
       try {
@@ -4171,25 +4533,32 @@ export class StorageService {
   public static async deleteProposals(ids: string[]): Promise<{ deletedCount: number }> {
     if (!ids || ids.length === 0) return { deletedCount: 0 };
 
-    // Delete all from PostgreSQL
+    const user = this.getActiveUser();
+    if (!hasPermission(user?.role, user?.customPermissions, 'proposals.delete')) {
+      throw new Error('Seu perfil não tem permissão para excluir propostas.');
+    }
+
+    const deletedIds: string[] = [];
     if (typeof window !== 'undefined') {
       for (const id of ids) {
-        try {
-          const res = await fetch(`/api/proposals/${id}`, {
-            method: 'DELETE',
-            credentials: 'include',
-          });
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            console.warn(`[BULK DELETE WARN] Failed to delete proposal ${id}: ${errData.error}`);
-          }
-        } catch (err) {
-          console.error(`[BULK DELETE ERROR] Proposal ${id}`, err);
+        const res = await fetch(`/api/proposals/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          deletedIds.push(id);
+          continue;
         }
+
+        const errData = await res.json().catch(() => ({}));
+        const reason = errData.error || `Falha ao excluir proposta (HTTP ${res.status}).`;
+        if (deletedIds.length === 0) throw new Error(reason);
+        toastService.warning('Exclusão parcial', `${deletedIds.length} excluída(s); a proposta ${id} não foi excluída. ${reason}`);
+        break;
       }
     }
 
-    const idSet = new Set(ids);
+    const idSet = new Set(deletedIds);
     const list = this.get<Proposal[]>(STORAGE_KEYS.PROPOSALS, INITIAL_PROPOSALS);
     const targetProposals = list.filter(p => idSet.has(p.id));
     const targetAdes = targetProposals.map(p => p.proposalNumber);
@@ -4407,6 +4776,63 @@ export class StorageService {
   // Holidays
   public static getHolidays(): Holiday[] {
     return this.get<Holiday[]>(STORAGE_KEYS.HOLIDAYS, INITIAL_HOLIDAYS);
+  }
+
+  public static async fetchAndSyncOperationalCalendar(): Promise<void> {
+    const activeTenantId = this.getCurrentTenantId();
+    if (!activeTenantId) return;
+    const response = await fetch('/api/operational-calendar', { credentials: 'include' });
+    if (!response.ok) throw new Error(`Falha ao carregar calendário operacional (${response.status}).`);
+    const data = await response.json();
+    let calendar = data;
+
+    // Migrate the current browser's existing holidays once, when an admin opens a tenant with no saved calendar yet.
+    const cachedTenantId = this.get<string>(STORAGE_KEYS.HOLIDAYS_TENANT_ID, '');
+    if (data?.holidays === null && (!cachedTenantId || cachedTenantId === activeTenantId)) {
+      const user = this.getActiveUser();
+      const canManage = hasPermission(user?.role, user?.customPermissions, 'settings.manage') ||
+        hasPermission(user?.role, user?.customPermissions, 'admin.manage');
+      if (canManage) {
+        const migrationResponse = await fetch('/api/operational-calendar', {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            holidays: this.getHolidays(),
+            portabilityBalanceDays: this.getConfig().portabilityBalanceDays,
+          }),
+        });
+        if (!migrationResponse.ok) throw new Error('Não foi possível migrar as configurações locais do calendário.');
+        calendar = await migrationResponse.json();
+      }
+    }
+
+    if (Array.isArray(calendar?.holidays)) {
+      this.set(STORAGE_KEYS.HOLIDAYS, calendar.holidays);
+      this.set(STORAGE_KEYS.HOLIDAYS_TENANT_ID, activeTenantId);
+    } else if (cachedTenantId && cachedTenantId !== activeTenantId) {
+      this.set(STORAGE_KEYS.HOLIDAYS, INITIAL_HOLIDAYS);
+      this.updateConfig({ portabilityBalanceDays: 5 });
+    }
+    if (Number.isInteger(calendar?.portabilityBalanceDays) && calendar.portabilityBalanceDays >= 1 && calendar.portabilityBalanceDays <= 30) {
+      this.updateConfig({ portabilityBalanceDays: calendar.portabilityBalanceDays });
+    }
+  }
+
+  public static async saveOperationalCalendar(holidays: Holiday[], portabilityBalanceDays: number): Promise<void> {
+    const response = await fetch('/api/operational-calendar', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ holidays, portabilityBalanceDays }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível salvar o calendário operacional.');
+    if (Array.isArray(data?.holidays)) {
+      this.set(STORAGE_KEYS.HOLIDAYS, data.holidays);
+      this.set(STORAGE_KEYS.HOLIDAYS_TENANT_ID, this.getCurrentTenantId());
+    }
+    if (Number.isInteger(data?.portabilityBalanceDays)) this.updateConfig({ portabilityBalanceDays: data.portabilityBalanceDays });
   }
 
   public static addHoliday(dateOrObj: string | { date: string; name: string }, name?: string): Holiday {
@@ -5565,16 +5991,26 @@ export class StorageService {
     return newDoc;
   }
 
-  public static deleteDocument(id: string): void {
+  public static async deleteDocument(id: string): Promise<boolean> {
     const docs = this.getDocuments();
     const target = docs.find(d => d.id === id);
-    if (!target) return;
+    if (!target) return false;
+
+    // Server-backed documents must be removed remotely before deleting their local cache entry.
+    if (target.fileUrl?.startsWith('/api/documents/')) {
+      try {
+        const response = await fetch(`/api/documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (!response.ok) {
+          console.warn('[StorageService] O servidor recusou a exclusão do documento:', response.status);
+          return false;
+        }
+      } catch (err) {
+        console.warn('[StorageService] Erro ao deletar documento no servidor:', err);
+        return false;
+      }
+    }
 
     this.set(STORAGE_KEYS.DOCUMENTS, docs.filter(d => d.id !== id));
-
-    fetch(`/api/documents/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(err => {
-      console.warn('[StorageService] Erro ao deletar documento no servidor:', err);
-    });
 
     this.addAuditLog({
       action: 'EXCLUSAO_DOCUMENTO_CLIENTE',
@@ -5582,6 +6018,13 @@ export class StorageService {
       entityId: id,
       previousData: JSON.stringify(target),
     });
+    return true;
+  }
+
+  public static removeDocumentFromCache(id: string): void {
+    const docs = this.getDocuments();
+    this.set(STORAGE_KEYS.DOCUMENTS, docs.filter(d => d.id !== id));
+    window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
   // ==========================================

@@ -3,8 +3,10 @@ import ExcelJS from 'exceljs';
 import { sseRegistry } from '../realtime.js';
 import { logger } from '../logger';
 import { AuditLogService } from './auditLogService.js';
+import { extractPartnerCode, isValidCpf } from '../../src/lib/utils.js';
 
 export interface ImportProposalRow {
+  sourceLine?: number;
   cpf: string;
   fullName?: string;
   proposalNumber: string;
@@ -30,6 +32,9 @@ export interface ImportStatusRow {
   observation?: string;
   subStatus?: string;
   paymentDate?: string;
+  sourceLine?: number;
+  disbursedValue?: number;
+  contractBalance?: number;
 }
 
 export interface ImportPartnerRow {
@@ -64,6 +69,41 @@ export class ImportWorkerService {
 
   public static isCancellationRequested(jobId: string): boolean {
     return activeCancellationFlags.has(jobId);
+  }
+
+  private static async isCancellationRequestedPersisted(prisma: PrismaClient, jobId: string): Promise<boolean> {
+    if (this.isCancellationRequested(jobId)) return true;
+    const job = await prisma.importJob.findUnique({
+      where: { id: jobId },
+      select: { status: true, metadata: true },
+    });
+    if (!job || job.status === ImportJobStatus.CANCELLED) return true;
+    const metadata = job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata)
+      ? job.metadata as Record<string, unknown>
+      : {};
+    return metadata.cancellationRequested === true;
+  }
+
+  private static async finalizeCancellation(
+    prisma: PrismaClient,
+    jobId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<boolean> {
+    if (!await this.isCancellationRequestedPersisted(prisma, jobId)) return false;
+    await prisma.importJob.update({
+      where: { id: jobId },
+      data: { status: ImportJobStatus.CANCELLED, cancelledAt: new Date(), completedAt: new Date() },
+    });
+    sseRegistry.broadcastToTenant(tenantId, {
+      type: 'IMPORT_CANCELLED',
+      entity: 'ImportJob',
+      entityId: jobId,
+      userId,
+      data: { importId: jobId },
+    });
+    activeCancellationFlags.delete(jobId);
+    return true;
   }
 
   /**
@@ -110,6 +150,68 @@ export class ImportWorkerService {
 
   public static readonly MAX_IMPORT_ROWS = 50000;
 
+  private static parseCsvContent(content: string): string[][] {
+    const text = content.replace(/^\uFEFF/, '');
+    const firstRecord = text.split(/\r?\n/, 1)[0] || '';
+    const delimiters = [',', ';', '\t'];
+    let delimiter = ',';
+    let maxCount = -1;
+    for (const candidate of delimiters) {
+      let count = 0;
+      let quoted = false;
+      for (let i = 0; i < firstRecord.length; i++) {
+        if (firstRecord[i] === '"') {
+          if (quoted && firstRecord[i + 1] === '"') i++;
+          else quoted = !quoted;
+        } else if (!quoted && firstRecord[i] === candidate) {
+          count++;
+        }
+      }
+      if (count > maxCount) {
+        maxCount = count;
+        delimiter = candidate;
+      }
+    }
+
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = '';
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (quoted) {
+        if (char === '"' && text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else if (char === '"') {
+          quoted = false;
+        } else {
+          cell += char;
+        }
+      } else if (char === '"' && cell.trim().length === 0) {
+        cell = '';
+        quoted = true;
+      } else if (char === delimiter) {
+        row.push(cell.trim());
+        cell = '';
+      } else if (char === '\n' || char === '\r') {
+        if (char === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell.trim());
+        if (row.some(value => value.length > 0)) rows.push(row);
+        row = [];
+        cell = '';
+      } else {
+        cell += char;
+      }
+    }
+    if (cell.length > 0 || row.length > 0) {
+      row.push(cell.trim());
+      if (row.some(value => value.length > 0)) rows.push(row);
+    }
+    if (quoted) throw new Error('O arquivo CSV contém um campo com aspas não finalizadas.');
+    return rows;
+  }
+
   /**
    * Helper to parse tabular data from Buffer (xlsx, csv)
    */
@@ -123,13 +225,11 @@ export class ImportWorkerService {
 
     if (isCsv) {
       const content = buffer.toString('utf-8');
-      const lines = content.split(/\r?\n/).filter(line => line.trim().length > 0);
-      if (lines.length === 0) return [];
-      if (lines.length > ImportWorkerService.MAX_IMPORT_ROWS) {
+      const rows = ImportWorkerService.parseCsvContent(content);
+      if (rows.length > ImportWorkerService.MAX_IMPORT_ROWS) {
         throw new Error(`O arquivo excede o limite máximo permitido de ${ImportWorkerService.MAX_IMPORT_ROWS.toLocaleString('pt-BR')} registros para importação.`);
       }
-      const delimiter = lines[0].includes(';') ? ';' : (lines[0].includes('\t') ? '\t' : ',');
-      return lines.map(line => line.split(delimiter).map(cell => cell.replace(/^["']|["']$/g, '').trim()));
+      return rows;
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -177,6 +277,7 @@ export class ImportWorkerService {
     activeCancellationFlags.delete(jobId);
 
     try {
+      if (await this.isCancellationRequestedPersisted(prisma, jobId)) return;
       // 1. Mark Job as PROCESSING
       const totalRecords = parsedRows.length;
       const totalChunks = Math.ceil(totalRecords / this.CHUNK_SIZE) || 1;
@@ -209,7 +310,7 @@ export class ImportWorkerService {
         prisma.bank.findMany({ where: { tenantId } }),
         prisma.promoter.findMany({ where: { tenantId } }),
         prisma.partner.findMany({ where: { tenantId } }),
-        prisma.product.findMany({ where: { tenantId } }),
+        prisma.product.findMany({ where: { OR: [{ tenantId }, { tenantId: null }] } }),
         prisma.proposalStatus.findFirst({ where: { tenantId, standardCategory: 'ESTEIRA' } }),
       ]);
 
@@ -219,11 +320,15 @@ export class ImportWorkerService {
       let invalidCount = 0;
       let failedCount = 0;
       let processedCount = 0;
+      const rowErrors: Array<{ line: number; identifier: string; message: string }> = [];
+      const addRowError = (line: number, identifier: string, message: string) => {
+        if (rowErrors.length < 500) rowErrors.push({ line, identifier, message });
+      };
 
       // 3. Process in Chunks
       for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
         // Check for cancellation token before each chunk
-        if (this.isCancellationRequested(jobId)) {
+        if (await this.isCancellationRequestedPersisted(prisma, jobId)) {
           console.log(`[IMPORT WORKER] Job [${jobId}] cancelado a pedido do usuário no chunk ${chunkIdx + 1}`);
           await prisma.importJob.update({
             where: { id: jobId },
@@ -271,35 +376,23 @@ export class ImportWorkerService {
         const chunk = parsedRows.slice(start, end);
 
         // Process chunk items safely
-        for (const item of chunk) {
+        for (let rowOffset = 0; rowOffset < chunk.length; rowOffset++) {
+          const item = chunk[rowOffset];
+          const sourceLine = Number(item.sourceLine) || start + rowOffset + 2;
+          const identifier = String(item.proposalNumber || item.cpf || `LINHA_${sourceLine}`);
           try {
             const cleanCpf = this.normalizeCpf(item.cpf);
             const cleanAde = String(item.proposalNumber || '').trim();
 
-            if (!cleanCpf || cleanCpf.length !== 11 || !cleanAde) {
+            if (!isValidCpf(cleanCpf)) {
               invalidCount++;
-              processedCount++;
+              addRowError(sourceLine, identifier, 'CPF inválido ou não informado. Confira os 11 dígitos e os dígitos verificadores.');
               continue;
             }
-
-            // Find or create Client (Scoped strictly to tenantId)
-            let client = await prisma.client.findUnique({
-              where: {
-                tenantId_cpf: {
-                  tenantId,
-                  cpf: cleanCpf,
-                },
-              },
-            });
-
-            if (!client) {
-              client = await prisma.client.create({
-                data: {
-                  tenantId,
-                  cpf: cleanCpf,
-                  fullName: this.sanitizeFormula(item.fullName || `Cliente ${cleanCpf}`),
-                },
-              });
+            if (!cleanAde) {
+              invalidCount++;
+              addRowError(sourceLine, identifier, 'Número da proposta/ADE não informado.');
+              continue;
             }
 
             // Match Bank, Promoter, Partner, Product
@@ -320,7 +413,10 @@ export class ImportWorkerService {
             let partnerId: string | null = null;
             if (item.partnerCodeOrLogin) {
               const partClean = item.partnerCodeOrLogin.toUpperCase();
-              const foundPart = partners.find(p => p.code.toUpperCase() === partClean || p.name.toUpperCase().includes(partClean));
+              const partnerCode = extractPartnerCode(partClean).toUpperCase();
+              const foundPart = partners.find(p => p.code.toUpperCase() === partClean) ||
+                partners.find(p => p.code.toUpperCase() === partnerCode) ||
+                partners.find(p => p.name.toUpperCase() === partClean);
               if (foundPart) {
                 partnerId = foundPart.id;
                 if (!promoterId && foundPart.promoterId) promoterId = foundPart.promoterId;
@@ -334,31 +430,63 @@ export class ImportWorkerService {
               if (foundProd) productId = foundProd.id;
             }
 
-            const disbursedVal = item.disbursedValue || 0;
-            const contractBal = item.contractBalance || disbursedVal;
+            const disbursedVal = item.disbursedValue === undefined ? 0 : Number(item.disbursedValue);
+            const contractBal = item.contractBalance === undefined ? disbursedVal : Number(item.contractBalance);
+            const maxProposalAmount = 9_999_999_999.99; // Prisma Decimal(12, 2)
+            if (!Number.isFinite(disbursedVal) || disbursedVal < 0 || disbursedVal > maxProposalAmount ||
+                !Number.isFinite(contractBal) || contractBal < 0 || contractBal > maxProposalAmount) {
+              invalidCount++;
+              addRowError(sourceLine, identifier, 'Valor liberado ou saldo do contrato inválido. Informe valores entre 0 e R$ 9.999.999.999,99.');
+              continue;
+            }
+
+            if (!partnerId || !productId || !bankId || !promoterId) {
+              invalidCount++;
+              const missingCatalogs = [
+                !partnerId ? 'parceiro' : null,
+                !productId ? 'produto' : null,
+                !bankId ? 'banco' : null,
+                !promoterId ? 'promotora' : null,
+              ].filter(Boolean).join(', ');
+              addRowError(sourceLine, identifier, `Não foi possível associar ${missingCatalogs} cadastrado(s) nesta empresa.`);
+              continue;
+            }
 
             // Check if proposal already exists in DB for this tenant
-            const existingProposal = await prisma.proposal.findUnique({
+            const existingProposal = await prisma.proposal.findFirst({
               where: {
-                tenantId_proposalNumber: {
-                  tenantId,
-                  proposalNumber: cleanAde,
-                },
+                tenantId,
+                proposalNumber: { equals: cleanAde, mode: 'insensitive' },
               },
+              include: { client: { select: { cpf: true } } },
             });
 
             if (existingProposal) {
+              if (existingProposal.deletedAt) {
+                invalidCount++;
+                addRowError(sourceLine, identifier, 'A ADE pertence a uma proposta arquivada. Restaure a proposta antes de importar atualizações.');
+                continue;
+              }
+              if (this.normalizeCpf(existingProposal.client?.cpf) !== cleanCpf) {
+                invalidCount++;
+                addRowError(sourceLine, identifier, 'A ADE já existe vinculada a outro CPF. Confira o arquivo antes de atualizar os valores.');
+                continue;
+              }
+
               // Compare financials for legitimate updates
-              const releasedDiff = disbursedVal > 0 && Math.abs(disbursedVal - Number(existingProposal.releasedValue || 0)) > 0.01;
-              const contractDiff = contractBal > 0 && Math.abs(contractBal - Number(existingProposal.contractValue || 0)) > 0.01;
+              const hasDisbursedValue = item.disbursedValue !== undefined;
+              const hasContractBalance = item.contractBalance !== undefined;
+              const releasedDiff = hasDisbursedValue && Math.abs(disbursedVal - Number(existingProposal.releasedValue || 0)) > 0.01;
+              const existingBalance = Number(existingProposal.debtBalance ?? existingProposal.contractValue ?? 0);
+              const contractDiff = hasContractBalance && Math.abs(contractBal - existingBalance) > 0.01;
 
               if (releasedDiff || contractDiff) {
                 await prisma.proposal.update({
                   where: { id: existingProposal.id },
                   data: {
-                    releasedValue: disbursedVal > 0 ? disbursedVal : existingProposal.releasedValue,
-                    contractValue: contractBal > 0 ? contractBal : existingProposal.contractValue,
-                    debtBalance: contractBal > 0 ? contractBal : existingProposal.debtBalance,
+                    releasedValue: hasDisbursedValue ? disbursedVal : existingProposal.releasedValue,
+                    contractValue: hasContractBalance ? contractBal : existingProposal.contractValue,
+                    debtBalance: hasContractBalance ? contractBal : existingProposal.debtBalance,
                     version: { increment: 1 },
                   },
                 });
@@ -368,42 +496,53 @@ export class ImportWorkerService {
               }
             } else {
               // Create new proposal
-              const newProp = await prisma.proposal.create({
-                data: {
-                  tenantId,
-                  proposalNumber: cleanAde,
-                  clientId: client.id,
-                  createdById: userId,
-                  bankId: bankId || undefined,
-                  promoterId: promoterId || undefined,
-                  partnerId: partnerId || undefined,
-                  productId: productId || undefined,
-                  statusId: defaultStatus?.id,
-                  releasedValue: disbursedVal,
-                  contractValue: contractBal,
-                  debtBalance: contractBal,
-                  installmentValue: item.installmentValue || 0,
-                  installmentsCount: item.installments || item.termMonths || 84,
-                  type: (item.operationType as any) || 'NOVO',
-                },
-              });
+              await prisma.$transaction(async (tx) => {
+                const client = await tx.client.upsert({
+                  where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
+                  update: {},
+                  create: {
+                    tenantId,
+                    cpf: cleanCpf,
+                    fullName: this.sanitizeFormula(item.fullName || `Cliente ${cleanCpf}`),
+                  },
+                });
+                const newProp = await tx.proposal.create({
+                  data: {
+                    tenantId,
+                    proposalNumber: cleanAde,
+                    clientId: client.id,
+                    createdById: userId,
+                    bankId: bankId || undefined,
+                    promoterId: promoterId || undefined,
+                    partnerId: partnerId || undefined,
+                    productId: productId || undefined,
+                    statusId: defaultStatus?.id,
+                    releasedValue: disbursedVal,
+                    contractValue: contractBal,
+                    debtBalance: contractBal,
+                    installmentValue: item.installmentValue || 0,
+                    installmentsCount: item.installments || item.termMonths || 84,
+                    type: (item.operationType as any) || 'NOVO',
+                  },
+                });
 
-              // Create ADE entry
-              await prisma.aDE.create({
-                data: {
-                  tenantId,
-                  proposalId: newProp.id,
-                  adeNumber: cleanAde,
-                  value: disbursedVal,
-                  installments: item.installments || 1,
-                },
-              }).catch(() => {});
+                await tx.aDE.create({
+                  data: {
+                    tenantId,
+                    proposalId: newProp.id,
+                    adeNumber: cleanAde,
+                    value: disbursedVal,
+                    installments: item.installments || 1,
+                  },
+                });
+              });
 
               createdCount++;
             }
           } catch (rowErr: any) {
             logger.error({ importId: jobId, error: rowErr?.message || String(rowErr) }, '[IMPORT WORKER ROW ERROR]');
             failedCount++;
+            addRowError(sourceLine, identifier, rowErr?.message || 'Erro inesperado ao processar o registro.');
           } finally {
             processedCount++;
           }
@@ -448,12 +587,17 @@ export class ImportWorkerService {
       }
 
       // 4. Complete Job
+      if (await this.finalizeCancellation(prisma, jobId, tenantId, userId)) return;
       const durationMs = Date.now() - startTime;
       await prisma.importJob.update({
         where: { id: jobId },
         data: {
           status: ImportJobStatus.COMPLETED,
           completedAt: new Date(),
+          metadata: {
+            rowErrors,
+            rowErrorsTruncated: Math.max(0, invalidCount + failedCount - rowErrors.length),
+          },
         },
       });
 
@@ -484,13 +628,35 @@ export class ImportWorkerService {
         data: {
           importId: jobId,
           total: totalRecords,
+          processed: processedCount,
           created: createdCount,
           updated: updatedCount,
           duplicates: duplicateCount,
           invalid: invalidCount,
+          failed: failedCount,
+          rowErrors,
+          rowErrorsTruncated: Math.max(0, invalidCount + failedCount - rowErrors.length),
           durationMs,
         },
       });
+
+      // The UI reloads these tenant-scoped lists after a completed background import.
+      if (createdCount > 0 || updatedCount > 0) {
+        sseRegistry.broadcastToTenant(tenantId, {
+          type: createdCount > 0 ? 'PROPOSAL_CREATED' : 'PROPOSAL_UPDATED',
+          entity: 'Proposal',
+          entityId: `import-${jobId}`,
+          userId,
+        });
+      }
+      if (createdCount > 0) {
+        sseRegistry.broadcastToTenant(tenantId, {
+          type: 'CLIENT_CREATED',
+          entity: 'Client',
+          entityId: `import-${jobId}`,
+          userId,
+        });
+      }
     } catch (jobErr: any) {
       console.error(`[IMPORT WORKER FATAL] Falha no job [${jobId}]:`, jobErr);
       await prisma.importJob.update({
@@ -543,6 +709,7 @@ export class ImportWorkerService {
     activeCancellationFlags.delete(jobId);
 
     try {
+      if (await this.isCancellationRequestedPersisted(prisma, jobId)) return;
       const totalRecords = parsedRows.length;
       const totalChunks = Math.ceil(totalRecords / this.CHUNK_SIZE) || 1;
 
@@ -574,9 +741,13 @@ export class ImportWorkerService {
       let invalidCount = 0;
       let failedCount = 0;
       let processedCount = 0;
+      const rowErrors: Array<{ line: number; identifier: string; message: string }> = [];
+      const addRowError = (line: number, identifier: string, message: string) => {
+        if (rowErrors.length < 500) rowErrors.push({ line, identifier, message });
+      };
 
       for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-        if (this.isCancellationRequested(jobId)) {
+        if (await this.isCancellationRequestedPersisted(prisma, jobId)) {
           await prisma.importJob.update({
             where: { id: jobId },
             data: {
@@ -603,14 +774,17 @@ export class ImportWorkerService {
         const end = Math.min(start + this.CHUNK_SIZE, totalRecords);
         const chunk = parsedRows.slice(start, end);
 
-        for (const item of chunk) {
+        for (let rowOffset = 0; rowOffset < chunk.length; rowOffset++) {
+          const item = chunk[rowOffset];
+          const sourceLine = Number(item.sourceLine) || start + rowOffset + 2;
+          const cleanAde = String(item.proposalNumberOrAde || '').trim();
+          const identifier = cleanAde || `LINHA_${sourceLine}`;
           try {
-            const cleanAde = String(item.proposalNumberOrAde || '').trim();
             const targetStatusName = String(item.targetStatusName || '').trim();
 
             if (!cleanAde || !targetStatusName) {
               invalidCount++;
-              processedCount++;
+              addRowError(sourceLine, identifier, !cleanAde ? 'Número da proposta/ADE não informado.' : 'Status de destino não informado ou mapeado.');
               continue;
             }
 
@@ -620,7 +794,7 @@ export class ImportWorkerService {
 
             if (!targetStatus) {
               invalidCount++;
-              processedCount++;
+              addRowError(sourceLine, identifier, `Status "${targetStatusName}" não encontrado nesta empresa.`);
               continue;
             }
 
@@ -635,34 +809,52 @@ export class ImportWorkerService {
 
             if (!proposal) {
               invalidCount++;
-              processedCount++;
+              addRowError(sourceLine, identifier, 'Proposta não encontrada nesta empresa.');
               continue;
             }
 
-            if (proposal.statusId !== targetStatus.id) {
-              await prisma.proposal.update({
+            const disbursedValue = item.disbursedValue === undefined ? undefined : Number(item.disbursedValue);
+            const contractBalance = item.contractBalance === undefined ? undefined : Number(item.contractBalance);
+            if ((disbursedValue !== undefined && (!Number.isFinite(disbursedValue) || disbursedValue < 0)) ||
+                (contractBalance !== undefined && (!Number.isFinite(contractBalance) || contractBalance < 0))) {
+              invalidCount++;
+              addRowError(sourceLine, identifier, 'Valor liberado ou saldo inválido. Informe valores numéricos não negativos.');
+              continue;
+            }
+
+            const statusChanged = proposal.statusId !== targetStatus.id;
+            const releasedValueChanged = disbursedValue !== undefined && Number(proposal.releasedValue) !== disbursedValue;
+            const debtBalanceChanged = contractBalance !== undefined && Number(proposal.debtBalance ?? 0) !== contractBalance;
+            if (!statusChanged && !releasedValueChanged && !debtBalanceChanged) continue;
+
+            await prisma.$transaction(async (tx) => {
+              await tx.proposal.update({
                 where: { id: proposal.id },
                 data: {
-                  statusId: targetStatus.id,
+                  ...(statusChanged ? { statusId: targetStatus.id } : {}),
+                  ...(disbursedValue !== undefined ? { releasedValue: disbursedValue } : {}),
+                  ...(contractBalance !== undefined ? { debtBalance: contractBalance } : {}),
                   version: { increment: 1 },
                 },
               });
 
-              await prisma.statusHistory.create({
-                data: {
-                  tenantId,
-                  proposalId: proposal.id,
-                  statusId: targetStatus.id,
-                  statusName: targetStatus.name,
-                  userId,
-                  notes: item.observation ? this.sanitizeFormula(item.observation) : 'Atualização em lote via planilha',
-                },
-              });
-
-              updatedCount++;
-            }
+              if (statusChanged) {
+                await tx.statusHistory.create({
+                  data: {
+                    tenantId,
+                    proposalId: proposal.id,
+                    statusId: targetStatus.id,
+                    statusName: targetStatus.name,
+                    userId,
+                    notes: item.observation ? this.sanitizeFormula(item.observation) : 'Atualização em lote via planilha',
+                  },
+                });
+              }
+            });
+            updatedCount++;
           } catch (rowErr) {
             failedCount++;
+            addRowError(sourceLine, identifier, 'Falha inesperada ao atualizar a proposta.');
           } finally {
             processedCount++;
           }
@@ -700,12 +892,17 @@ export class ImportWorkerService {
         });
       }
 
+      if (await this.finalizeCancellation(prisma, jobId, tenantId, userId)) return;
       const durationMs = Date.now() - startTime;
       await prisma.importJob.update({
         where: { id: jobId },
         data: {
           status: ImportJobStatus.COMPLETED,
           completedAt: new Date(),
+          metadata: {
+            rowErrors,
+            rowErrorsTruncated: Math.max(0, invalidCount + failedCount - rowErrors.length),
+          },
         },
       });
 
@@ -735,6 +932,9 @@ export class ImportWorkerService {
           total: totalRecords,
           updated: updatedCount,
           invalid: invalidCount,
+          failed: failedCount,
+          rowErrors,
+          rowErrorsTruncated: Math.max(0, invalidCount + failedCount - rowErrors.length),
           durationMs,
         },
       });
@@ -777,6 +977,7 @@ export class ImportWorkerService {
     activeCancellationFlags.delete(jobId);
 
     try {
+      if (await this.isCancellationRequestedPersisted(prisma, jobId)) return;
       const totalRecords = parsedRows.length;
       const totalChunks = Math.ceil(totalRecords / this.CHUNK_SIZE) || 1;
 
@@ -811,7 +1012,7 @@ export class ImportWorkerService {
       let processedCount = 0;
 
       for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-        if (this.isCancellationRequested(jobId)) {
+        if (await this.isCancellationRequestedPersisted(prisma, jobId)) {
           await prisma.importJob.update({
             where: { id: jobId },
             data: {
@@ -846,7 +1047,6 @@ export class ImportWorkerService {
 
             if (!cleanName || !cleanCode) {
               invalidCount++;
-              processedCount++;
               continue;
             }
 
@@ -933,6 +1133,7 @@ export class ImportWorkerService {
         });
       }
 
+      if (await this.finalizeCancellation(prisma, jobId, tenantId, userId)) return;
       const durationMs = Date.now() - startTime;
       await prisma.importJob.update({
         where: { id: jobId },

@@ -37,8 +37,6 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
   partners,
   onSuccess,
 }) => {
-  if (!isOpen) return null;
-
   const [step, setStep] = useState<InssStep>('CLIENTE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +80,8 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
 
   // Resultado
   const [simulationResult, setSimulationResult] = useState<any>(null);
+
+  if (!isOpen) return null;
 
   const cleanCpf = normalizeCpf(cpf);
   const cleanBeneficio = numeroBeneficio.replace(/\D/g, '');

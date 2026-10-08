@@ -71,9 +71,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
   const activeUser = StorageService.getActiveUser();
   const isManager =
     activeUser?.role === 'MASTER' ||
-    activeUser?.role === 'PLATFORM_MASTER' ||
-    activeUser?.role === 'GESTOR' ||
-    activeUser?.role === 'GERENTE';
+    activeUser?.role === 'PLATFORM_MASTER';
 
   // Se veio pré-preenchido de um incidente de API
   useEffect(() => {
@@ -188,6 +186,9 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
       if (res.ok) {
         toastService.success('Comunicado cancelado.');
         fetchAnnouncements();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toastService.error(err.error || 'Não foi possível cancelar o comunicado.');
       }
     } catch {
       toastService.error('Erro de rede.');
@@ -203,6 +204,9 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
       if (res.ok) {
         toastService.success('Comunicado arquivado.');
         fetchAnnouncements();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toastService.error(err.error || 'Não foi possível arquivar o comunicado.');
       }
     } catch {
       toastService.error('Erro de rede.');
@@ -219,6 +223,9 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
       if (res.ok) {
         toastService.success('Comunicado excluído.');
         fetchAnnouncements();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toastService.error(err.error || 'Não foi possível excluir o comunicado.');
       }
     } catch {
       toastService.error('Erro ao excluir.');
@@ -236,9 +243,13 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
         setAnnouncements((prev) =>
           prev.map((a) => (a.id === id ? { ...a, read: true } : a))
         );
+        window.dispatchEvent(new Event('sentinel:announcements-updated'));
         if (selectedAnnouncement?.id === id) {
           setSelectedAnnouncement((prev) => (prev ? { ...prev, read: true } : null));
         }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toastService.error(err.error || 'Não foi possível registrar a leitura.');
       }
     } catch {
       toastService.error('Erro ao registrar leitura.');

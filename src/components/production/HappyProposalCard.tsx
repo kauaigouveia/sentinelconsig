@@ -12,6 +12,8 @@ import {
   Radio,
 } from 'lucide-react';
 import { Proposal } from '../../types';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
 
 interface HappyProposalCardProps {
   proposal: Proposal;
@@ -24,6 +26,9 @@ export const HappyProposalCard: React.FC<HappyProposalCardProps> = ({
   onProposalUpdated,
   standalone = false,
 }) => {
+  const activeUser = StorageService.getActiveUser();
+  const canSync = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canEditProposal = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.update') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{
     type: 'success' | 'error' | 'info' | 'warning';
@@ -184,16 +189,16 @@ export const HappyProposalCard: React.FC<HappyProposalCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          {canEditProposal && <button
             type="button"
             onClick={() => setShowLinkModal(true)}
             className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
           >
             <LinkIcon className="h-3.5 w-3.5 text-pink-600" />
             <span>{proposal.happyContractId ? 'Alterar Contrato' : 'Vincular Contrato'}</span>
-          </button>
+          </button>}
 
-          <button
+          {canSync && <button
             type="button"
             onClick={handleManualSync}
             disabled={isSyncing}
@@ -201,7 +206,7 @@ export const HappyProposalCard: React.FC<HappyProposalCardProps> = ({
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>{isSyncing ? 'Sincronizando...' : 'Consultar Happy'}</span>
-          </button>
+          </button>}
         </div>
       </div>
 

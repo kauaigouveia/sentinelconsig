@@ -11,7 +11,6 @@ import {
   Layers,
   Info
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { StorageService } from '../../services/storageService';
 import { Product } from '../../types';
 import { normalizeProposalType } from '../../lib/proposalTypeNormalizer';
@@ -151,6 +150,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
         const lines = text.split('\n');
         rows = lines.slice(1).map(line => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
       } else {
+        const { default: ExcelJS } = await import('exceljs');
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
         const worksheet = workbook.worksheets[0];
@@ -173,6 +173,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
   };
 
   const handleDownloadTemplate = async () => {
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Produtos');
 

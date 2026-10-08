@@ -25,6 +25,7 @@ import { ProductImportModal } from './ProductImportModal';
 import { ActionBar } from '../ui/ActionBar';
 import { ConvenioManagement } from './ConvenioManagement';
 import { OperationalRulesManagement } from './OperationalRulesManagement';
+import { hasPermission } from '../../lib/permissions';
 
 export const ProductManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'convenios' | 'produtos' | 'regras'>('convenios');
@@ -53,6 +54,10 @@ export const ProductManagement: React.FC = () => {
   const activeUser = StorageService.getActiveUser();
   const currentTenant = StorageService.getCurrentTenant();
   const isMaster = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER';
+  const canViewProducts = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'products.view');
+  const canCreateProducts = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'products.create');
+  const canUpdateProducts = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'products.update');
+  const canDeleteProducts = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'products.delete');
 
   const [deleteModalConfig, setDeleteModalConfig] = useState<{
     isOpen: boolean;
@@ -62,13 +67,24 @@ export const ProductManagement: React.FC = () => {
     product: null,
   });
 
-  const loadData = () => {
-    setProducts(StorageService.getProducts(true));
-    setConvenios(StorageService.getConvenios(true));
+  const loadData = async () => {
+    const [syncedProducts, syncedConvenios] = await Promise.all([
+      StorageService.fetchAndSyncProducts(true),
+      StorageService.fetchAndSyncConvenios(true),
+    ]);
+    setProducts(syncedProducts);
+    setConvenios(syncedConvenios);
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
+    const handleStorageUpdate = () => void loadData();
+    window.addEventListener('credit_gestao_storage_update', handleStorageUpdate);
+    window.addEventListener('tenantUpdated', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('credit_gestao_storage_update', handleStorageUpdate);
+      window.removeEventListener('tenantUpdated', handleStorageUpdate);
+    };
   }, []);
 
   const resetForm = () => {
@@ -91,7 +107,7 @@ export const ProductManagement: React.FC = () => {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       showNotification('O nome da linha de produto é obrigatório.', 'error');
@@ -113,14 +129,14 @@ export const ProductManagement: React.FC = () => {
       };
 
       if (isEditing && editingId) {
-        StorageService.updateProduct(editingId, payload);
+        await StorageService.updateProduct(editingId, payload);
         showNotification(`Produto "${name.trim().toUpperCase()}" atualizado com sucesso!`);
       } else {
-        StorageService.createProduct(payload);
+        await StorageService.createProduct(payload);
         showNotification(`Produto "${name.trim().toUpperCase()}" cadastrado com sucesso!`);
       }
 
-      loadData();
+      await loadData();
       resetForm();
     } catch (err: any) {
       showNotification(err.message || 'Erro ao processar produto.', 'error');
@@ -162,11 +178,11 @@ export const ProductManagement: React.FC = () => {
     });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteModalConfig.product) return;
     try {
-      StorageService.deleteProduct(deleteModalConfig.product.id);
-      loadData();
+      await StorageService.deleteProduct(deleteModalConfig.product.id);
+      await loadData();
       showNotification(`Produto ${deleteModalConfig.product.name} excluído com sucesso.`);
       setDeleteModalConfig({ isOpen: false, product: null });
     } catch (err: any) {
@@ -222,7 +238,7 @@ export const ProductManagement: React.FC = () => {
           <span>Convênios ({convenios.length})</span>
         </button>
 
-        <button
+        {canViewProducts && <button
           type="button"
           onClick={() => setActiveTab('produtos')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
@@ -233,7 +249,7 @@ export const ProductManagement: React.FC = () => {
         >
           <Layers className="h-4 w-4" />
           <span>Produtos ({products.length})</span>
-        </button>
+        </button>}
 
         <button
           type="button"
@@ -256,7 +272,7 @@ export const ProductManagement: React.FC = () => {
       {activeTab === 'regras' && <OperationalRulesManagement />}
 
       {/* Tab 2: Produtos */}
-      {activeTab === 'produtos' && (
+      {activeTab === 'produtos' && canViewProducts && (
         <div className="space-y-6">
           {/* Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 font-mono">
@@ -324,7 +340,7 @@ export const ProductManagement: React.FC = () => {
           )}
 
           {/* Form Criar/Editar Produto */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+          {(isEditing ? canUpdateProducts : canCreateProducts) && <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
@@ -344,14 +360,14 @@ export const ProductManagement: React.FC = () => {
                     Cancelar Edição
                   </button>
                 )}
-                <button
+                {canCreateProducts && <button
                   type="button"
                   onClick={() => setIsImportModalOpen(true)}
                   className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                   Importar Produtos
-                </button>
+                </button>}
               </div>
             </div>
 
@@ -529,26 +545,15 @@ export const ProductManagement: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
+          </div>}
 
-          <ProductImportModal
+          {canCreateProducts && <ProductImportModal
             isOpen={isImportModalOpen}
             onClose={() => setIsImportModalOpen(false)}
             onImportCompleted={async () => {
-              try {
-                const res = await fetch('/api/products');
-                if (res.ok) {
-                  const data = await res.json();
-                  if (Array.isArray(data)) {
-                    localStorage.setItem('cg_products', JSON.stringify(data));
-                  }
-                }
-              } catch (e) {
-                console.error(e);
-              }
-              loadData();
+              await loadData();
             }}
-          />
+          />}
 
           {/* Filters Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-[#0f172a] p-3 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -585,7 +590,8 @@ export const ProductManagement: React.FC = () => {
             {filteredProducts.map(p => {
               const isPort = p.requiresPortabilityRelation || p.type === 'PORTABILIDADE';
               const isGlobal = (p.scope ?? 'GLOBAL') === 'GLOBAL';
-              const canManage = isMaster || !isGlobal;
+              const canEdit = canUpdateProducts && (isMaster || !isGlobal);
+              const canDelete = canDeleteProducts && (isMaster || !isGlobal);
 
               return (
                 <div
@@ -670,8 +676,9 @@ export const ProductManagement: React.FC = () => {
                     </span>
 
                     <div className="flex items-center gap-1">
-                      {canManage && (
+                      {(canEdit || canDelete) && (
                         <>
+                          {canEdit && <>
                           <button
                             onClick={() => handleEditProduct(p)}
                             className="text-slate-400 hover:text-blue-600 p-1 rounded-lg transition-colors cursor-pointer"
@@ -679,6 +686,8 @@ export const ProductManagement: React.FC = () => {
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
+                          </>}
+                          {canDelete && <>
                           <button
                             onClick={() => handleDeleteProduct(p)}
                             className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
@@ -686,9 +695,10 @@ export const ProductManagement: React.FC = () => {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
+                          </>}
                         </>
                       )}
-                      {!canManage && (
+                      {!canEdit && !canDelete && (
                         <span className="text-[10px] text-slate-400 italic">Padrão da Plataforma</span>
                       )}
                     </div>

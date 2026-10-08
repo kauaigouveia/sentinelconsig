@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { PrismaClient, Prisma, ProposalType, StandardStatusCategory, PriorityLevel, NotificationType, BackupType, BackupStatus } from '@prisma/client';
+import { waitUntil } from '@vercel/functions';
 import crypto from 'crypto';
 import { logger } from './server/logger.js';
 import {
@@ -16,9 +17,66 @@ import {
   sanitizeFileName,
 } from './server/services/azureBlobStorage.js';
 import { backupStorageService } from './server/services/backupStorageService.js';
-import { hasPermission, Permission } from './src/lib/permissions.js';
+import { ALL_PERMISSIONS, getEffectivePermissions, getPermissionsForRole, hasPermission, Permission } from './src/lib/permissions.js';
 import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
+import { isValidCpf } from './src/lib/utils.js';
 import { Role } from './src/types/index.js';
+
+function dispatchImportWorker(task: () => Promise<unknown>, label: string): void {
+  const run = () => task().catch(error => {
+    logger.error({ error }, label);
+  });
+
+  if (process.env.VERCEL) {
+    // Keep post-response work attached to the function invocation lifecycle.
+    waitUntil(run());
+    return;
+  }
+
+  setImmediate(() => { void run(); });
+}
+
+const VALID_USER_ROLES: Role[] = [
+  'PLATFORM_MASTER',
+  'MASTER',
+  'TENANT_ADMIN',
+  'GESTOR',
+  'GERENTE',
+  'SUPORTE',
+  'DIGITADOR',
+  'SIMULACAO',
+];
+
+function getUserGrantError(
+  actorRole: Role,
+  actorCustomPermissions: string[] | null | undefined,
+  targetRoleValue: unknown,
+  targetCustomPermissions: unknown
+): { status: number; message: string } | null {
+  if (typeof targetRoleValue !== 'string' || !VALID_USER_ROLES.includes(targetRoleValue as Role)) {
+    return { status: 400, message: 'Perfil de usuário inválido.' };
+  }
+  const targetRole = targetRoleValue as Role;
+  if (targetRole === 'PLATFORM_MASTER' && actorRole !== 'PLATFORM_MASTER') {
+    return { status: 403, message: 'Apenas um PLATFORM_MASTER pode atribuir esse perfil.' };
+  }
+
+  const requestedPermissions = Array.isArray(targetCustomPermissions) && targetCustomPermissions.length > 0
+    ? targetCustomPermissions
+    : getPermissionsForRole(targetRole);
+  if (requestedPermissions.some(permission =>
+    typeof permission !== 'string' || !ALL_PERMISSIONS.includes(permission as Permission)
+  )) {
+    return { status: 400, message: 'A lista de permissões contém valores inválidos.' };
+  }
+  if (actorRole !== 'PLATFORM_MASTER') {
+    const actorPermissions = new Set(getEffectivePermissions(actorRole, actorCustomPermissions));
+    if (requestedPermissions.some(permission => !actorPermissions.has(permission as Permission))) {
+      return { status: 403, message: 'Não é possível conceder permissões que você não possui.' };
+    }
+  }
+  return null;
+}
 import { sseRegistry } from './server/realtime.js';
 import { eventBus } from './server/services/pusherService.js';
 import { centralEventBus } from './server/services/eventBus.js';
@@ -449,7 +507,8 @@ async function auditAndEnsureMasterUser() {
   );
 
   app.use(createCorsMiddleware(prisma));
-  app.use(express.json({ limit: '20mb' }));
+  // 15 MiB document payloads expand to about 20 MiB when base64-encoded.
+  app.use(express.json({ limit: '21mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());
   app.use(createCsrfMiddleware(prisma));
@@ -592,7 +651,7 @@ async function auditAndEnsureMasterUser() {
   // 1. POST /api/auth/login - Rate limited & Domain-aware
   app.post('/api/auth/login', authRateLimiter, async (req, res) => {
     try {
-      const { email, password } = req.body || {};
+      const { email, password, rememberMe } = req.body || {};
       if (!email || !password) {
         return res.status(400).json({ message: 'E-mail e senha são obrigatórios.' });
       }
@@ -834,8 +893,10 @@ async function auditAndEnsureMasterUser() {
         httpOnly: true,
         secure: isRequestHttps(req),
         sameSite: 'lax',
-        expires: expiresAt,
         path: '/',
+        // A opção altera somente a persistência no navegador; o prazo do registro
+        // de sessão no banco continua limitado às 24 horas existentes.
+        ...(rememberMe === false ? {} : { expires: expiresAt }),
       });
 
       // Audit log LOGIN_SUCCESS (Safe, no passwords or tokens)
@@ -962,6 +1023,14 @@ async function auditAndEnsureMasterUser() {
 
   // Helper middleware/function for tenant context & session auth with instant suspension protection
   const getAuthSession = async (req: express.Request) => {
+    const requestWithSessionCache = req as express.Request & {
+      __authSessionResolved?: boolean;
+      __authSessionValue?: any;
+    };
+    if (requestWithSessionCache.__authSessionResolved) {
+      return requestWithSessionCache.__authSessionValue ?? null;
+    }
+
     const token = extractSessionToken(req);
     if (!token) return null;
 
@@ -1106,6 +1175,42 @@ async function auditAndEnsureMasterUser() {
     };
   };
 
+  // Enforce first-access password changes at the API boundary as well as in the UI.
+  // The session endpoint must remain available so a browser refresh can restore the
+  // forced-change screen; password update and logout are the only other allowed calls.
+  app.use('/api', async (req, res, next) => {
+    if (req.method === 'OPTIONS') return next();
+
+    const path = req.originalUrl.split('?')[0];
+    const allowedPaths = new Set([
+      '/api/auth/session',
+      '/api/auth/update-password',
+      '/api/auth/change-password',
+      '/api/auth/logout',
+    ]);
+    if (allowedPaths.has(path)) return next();
+
+    try {
+      const session = await getAuthSession(req);
+      const requestWithSessionCache = req as express.Request & {
+        __authSessionResolved?: boolean;
+        __authSessionValue?: any;
+      };
+      requestWithSessionCache.__authSessionResolved = true;
+      requestWithSessionCache.__authSessionValue = session;
+      if (session?.user?.mustChangePassword) {
+        return res.status(403).json({
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          error: 'Altere sua senha temporária antes de continuar.',
+        });
+      }
+      return next();
+    } catch (error) {
+      logger.error({ error }, '[AUTH] Falha ao verificar troca obrigatória de senha.');
+      return res.status(503).json({ error: 'Não foi possível validar a sessão. Tente novamente.' });
+    }
+  });
+
   // 3. GET /api/auth/session
 
   app.get('/api/auth/session', async (req, res) => {
@@ -1211,23 +1316,39 @@ async function auditAndEnsureMasterUser() {
       }
 
       const targetTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-      if (!targetTenant || targetTenant.deletedAt || targetTenant.status === 'CANCELLED') {
+      if (
+        !targetTenant ||
+        targetTenant.deletedAt ||
+        (session.user.role !== 'PLATFORM_MASTER' && targetTenant.status !== 'ACTIVE') ||
+        (session.user.role === 'PLATFORM_MASTER' && targetTenant.status === 'CANCELLED')
+      ) {
         return res.status(404).json({ error: 'Empresa não encontrada.' });
       }
 
       // Se for PLATFORM_MASTER, pode alternar para qualquer tenant ativo
       if (session.user.role === 'PLATFORM_MASTER') {
-        await prisma.session.update({
-          where: { id: session.id },
-          data: {
-            effectiveTenantId: targetTenant.id,
-            activeRole: 'PLATFORM_MASTER',
-          },
+        const context = await AdminContextManager.setContext(
+          session.id,
+          targetTenant.id,
+          targetTenant.name,
+          session.user.id,
+          prisma
+        );
+        await AuditLogService.record(prisma, {
+          tenantId: targetTenant.id,
+          userId: session.user.id,
+          userName: session.user.name,
+          action: 'admin.context_entered',
+          entity: 'Tenant',
+          entityId: targetTenant.id,
+          newData: { platformMasterUserId: session.user.id, targetTenantId: targetTenant.id, targetTenantName: targetTenant.name },
+          req,
         });
         return res.json({
           success: true,
           role: 'PLATFORM_MASTER',
           tenantId: targetTenant.id,
+          context: { targetTenantId: context.targetTenantId, targetTenantName: context.targetTenantName },
         });
       }
 
@@ -1287,12 +1408,27 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ message: 'Sessão expirada.' });
       }
 
-      const { newPassword } = req.body || {};
+      const { currentPassword, newPassword } = req.body || {};
+      if (typeof currentPassword !== 'string' || !currentPassword) {
+        return res.status(400).json({ message: 'Informe sua senha atual.' });
+      }
+
+      const { valid: currentPasswordIsValid } = await verifyPassword(currentPassword, session.user.passwordHash);
+      if (!currentPasswordIsValid) {
+        return res.status(400).json({ message: 'A senha atual está incorreta.' });
+      }
+
       if (!newPassword || String(newPassword).trim().length < 6) {
         return res.status(400).json({ message: 'Nova senha deve ter pelo menos 6 caracteres.' });
       }
 
-      const hashedNewPassword = await hashPassword(String(newPassword).trim());
+      const cleanNewPassword = String(newPassword).trim();
+      const { valid: sameAsCurrent } = await verifyPassword(cleanNewPassword, session.user.passwordHash);
+      if (sameAsCurrent) {
+        return res.status(400).json({ message: 'Escolha uma senha diferente da atual.' });
+      }
+
+      const hashedNewPassword = await hashPassword(cleanNewPassword);
 
       await prisma.user.update({
         where: { id: session.userId },
@@ -1464,6 +1600,9 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.view.' });
+      }
       
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) {
@@ -1497,48 +1636,148 @@ async function auditAndEnsureMasterUser() {
       const userCustomPerms = session.user.customPermissions || [];
       const isPlatformMaster = userRole === 'PLATFORM_MASTER';
 
-      if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'clients.create')) {
-        return res.status(403).json({ error: "Acesso negado. Requer permissão 'clients.create'." });
+      const canCreateClients = hasPermission(userRole, userCustomPerms, 'clients.create');
+      const canUpdateClients = hasPermission(userRole, userCustomPerms, 'clients.update');
+      if (!isPlatformMaster && !canCreateClients && !canUpdateClients) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'clients.create' ou 'clients.update'." });
       }
 
-      const { cpf, fullName, phone, email, birthDate, benefitNumber, salary, marginFree, marginCard, addressStreet, addressCity, addressState, addressZip } = req.body;
-      if (!cpf || !fullName) {
+      const { cpf, fullName, phone, email, birthDate, benefitNumber, salary, marginFree, marginCard, addressStreet, addressCity, addressState, addressZip } = req.body || {};
+      if (typeof cpf !== 'string' || !cpf.trim() || typeof fullName !== 'string' || !fullName.trim()) {
         return res.status(400).json({ error: 'CPF e Nome Completo são obrigatórios.' });
       }
 
-      const cleanCpf = String(cpf).replace(/\D/g, '');
+      const cleanCpf = cpf.replace(/\D/g, '');
+      if (cleanCpf.length !== 11 || !isValidCpf(cleanCpf)) {
+        return res.status(400).json({ error: 'CPF inválido. Confira os 11 dígitos informados.' });
+      }
+      const cleanName = fullName.trim();
+      if (!cleanName) {
+        return res.status(400).json({ error: 'Nome Completo é obrigatório.' });
+      }
+      if (cleanName.length > 200) {
+        return res.status(400).json({ error: 'Nome Completo deve ter no máximo 200 caracteres.' });
+      }
+      const optionalStringFields: Record<string, unknown> = {
+        phone, email, benefitNumber, addressStreet, addressCity, addressState, addressZip,
+      };
+      const optionalStringLimits: Record<string, number> = {
+        phone: 40, email: 254, benefitNumber: 64, addressStreet: 255,
+        addressCity: 120, addressState: 2, addressZip: 16,
+      };
+      for (const [field, value] of Object.entries(optionalStringFields)) {
+        if (value !== undefined && value !== null && typeof value !== 'string') {
+          return res.status(400).json({ error: `O campo ${field} deve ser um texto válido.` });
+        }
+        if (typeof value === 'string' && value.trim().length > optionalStringLimits[field]) {
+          return res.status(400).json({ error: `O campo ${field} excede o limite de ${optionalStringLimits[field]} caracteres.` });
+        }
+      }
+      const cleanEmail = typeof email === 'string' ? email.trim() : '';
+      if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return res.status(400).json({ error: 'E-mail inválido. Confira o endereço informado.' });
+      }
+      const parseOptionalDecimal = (value: unknown) => {
+        if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) return undefined;
+        if ((typeof value !== 'string' && typeof value !== 'number') || !Number.isFinite(Number(value))) return null;
+        return Number(value);
+      };
+      const parseOptionalDate = (value: unknown) => {
+        if (value === undefined || value === null || value === '') return undefined;
+        if (typeof value !== 'string' && !(value instanceof Date)) return null;
+        const parsed = new Date(String(value));
+        if (Number.isNaN(parsed.getTime())) return null;
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && parsed.toISOString().slice(0, 10) !== value) return null;
+        return parsed;
+      };
+
+      const parsedBirthDate = parseOptionalDate(birthDate);
+      const parsedSalary = parseOptionalDecimal(salary);
+      const parsedMarginFree = parseOptionalDecimal(marginFree);
+      const parsedMarginCard = parseOptionalDecimal(marginCard);
+      const maxClientDecimal = 9_999_999_999.99; // Prisma Decimal(12, 2)
+      if (parsedBirthDate === null) return res.status(400).json({ error: 'Data de nascimento inválida.' });
+      if (parsedSalary === null || parsedMarginFree === null || parsedMarginCard === null) {
+        return res.status(400).json({ error: 'Salário e margens devem ser valores numéricos válidos.' });
+      }
+      if ([parsedSalary, parsedMarginFree, parsedMarginCard].some(value => typeof value === 'number' && value < 0)) {
+        return res.status(400).json({ error: 'Salário e margens não podem ser negativos.' });
+      }
+      if ([parsedSalary, parsedMarginFree, parsedMarginCard].some(value => typeof value === 'number' && value > maxClientDecimal)) {
+        return res.status(400).json({ error: 'Salário e margens excedem o limite permitido.' });
+      }
+      if ([parsedSalary, parsedMarginFree, parsedMarginCard].some(value =>
+        typeof value === 'number' && Math.abs(value * 100 - Math.round(value * 100)) > 1e-7
+      )) {
+        return res.status(400).json({ error: 'Salário e margens devem ter no máximo duas casas decimais.' });
+      }
+
+      const optionalFields = {
+        phone: typeof phone === 'string' && phone.trim() ? phone.trim() : undefined,
+        email: cleanEmail || undefined,
+        birthDate: parsedBirthDate,
+        benefitNumber: typeof benefitNumber === 'string' && benefitNumber.trim() ? benefitNumber.trim() : undefined,
+        salary: parsedSalary,
+        marginFree: parsedMarginFree,
+        marginCard: parsedMarginCard,
+        addressStreet: typeof addressStreet === 'string' && addressStreet.trim() ? addressStreet.trim() : undefined,
+        addressCity: typeof addressCity === 'string' && addressCity.trim() ? addressCity.trim() : undefined,
+        addressState: typeof addressState === 'string' && addressState.trim() ? addressState.trim().toUpperCase() : undefined,
+        addressZip: typeof addressZip === 'string' && addressZip.trim() ? addressZip.trim() : undefined,
+      };
 
       // Verificar existência para diferenciar com precisão CLIENT_CREATED de CLIENT_UPDATED
       const existingClient = await prisma.client.findUnique({
         where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
-        select: { id: true },
+        select: {
+          id: true,
+          tenantId: true,
+          cpf: true,
+          fullName: true,
+          phone: true,
+          email: true,
+          birthDate: true,
+          benefitNumber: true,
+          salary: true,
+          marginFree: true,
+          marginCard: true,
+          addressStreet: true,
+          addressCity: true,
+          addressState: true,
+          addressZip: true,
+          deletedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
+      const preserveExistingClient = Boolean(existingClient && !isPlatformMaster && !canUpdateClients);
+      const effectiveName = existingClient && cleanName === 'CLIENTE NÃO NOMEADO' ? existingClient.fullName : cleanName;
+
+      if (!existingClient && !isPlatformMaster && !canCreateClients) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'clients.create' para novos clientes." });
+      }
+      if (preserveExistingClient && existingClient && !existingClient.deletedAt) {
+        // This endpoint is also used by proposal creation to get or create the client.
+        // A create-only user may reuse the canonical record but cannot edit its PII.
+        return res.json(existingClient);
+      }
+      if (preserveExistingClient && existingClient?.deletedAt && !canCreateClients) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'clients.create' para restaurar um cliente." });
+      }
 
       const client = await prisma.client.upsert({
         where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
         update: {
-          fullName,
-          phone: phone || null,
-          email: email || null,
-          benefitNumber: benefitNumber || null,
-          addressStreet: addressStreet || null,
-          addressCity: addressCity || null,
-          addressState: addressState || null,
-          addressZip: addressZip || null,
+          fullName: preserveExistingClient && existingClient ? existingClient.fullName : effectiveName,
+          ...(preserveExistingClient ? {} : optionalFields),
           deletedAt: null, // Restaura se estava em soft-delete
           updatedAt: new Date(),
         },
         create: {
           tenantId,
           cpf: cleanCpf,
-          fullName,
-          phone: phone || null,
-          email: email || null,
-          benefitNumber: benefitNumber || null,
-          addressStreet: addressStreet || null,
-          addressCity: addressCity || null,
-          addressState: addressState || null,
-          addressZip: addressZip || null,
+          fullName: cleanName,
+          ...Object.fromEntries(Object.entries(optionalFields).map(([key, value]) => [key, value ?? null])),
         },
       });
 
@@ -1577,6 +1816,10 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/clients/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.delete')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.delete.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       const { id } = req.params;
 
@@ -1627,6 +1870,184 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  app.get('/api/clients/:id/notes', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.view.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+
+      const client = await prisma.client.findFirst({
+        where: { id: req.params.id, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+
+      const notes = await prisma.clientNote.findMany({
+        where: { tenantId, clientId: client.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      return res.json(notes);
+    } catch (err: any) {
+      console.error('[API CLIENT NOTES GET ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao carregar as notas do cliente.' });
+    }
+  });
+
+  app.post('/api/clients/:id/notes', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.update.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+      if (!note) return res.status(400).json({ error: 'A nota não pode ficar vazia.' });
+      if (note.length > 5000) return res.status(400).json({ error: 'A nota deve ter no máximo 5.000 caracteres.' });
+
+      const client = await prisma.client.findFirst({
+        where: { id: req.params.id, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+
+      const created = await prisma.clientNote.create({
+        data: {
+          tenantId,
+          clientId: client.id,
+          authorId: session.user.id,
+          authorName: session.user.name,
+          note,
+        },
+      });
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'CLIENT_NOTE_CREATED',
+        entity: 'Client',
+        entityId: client.id,
+        userId: session.user.id,
+      });
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CLIENT_NOTE_CREATED',
+        entity: 'ClientNote',
+        entityId: created.id,
+        newData: { clientId: client.id },
+        req,
+      });
+      return res.status(201).json(created);
+    } catch (err: any) {
+      console.error('[API CLIENT NOTES POST ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao salvar a nota do cliente.' });
+    }
+  });
+
+  app.get('/api/clients/:id/communications', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.view.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const client = await prisma.client.findFirst({
+        where: { id: req.params.id, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+      const communications = await prisma.clientCommunication.findMany({
+        where: { tenantId, clientId: client.id },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      });
+      return res.json(communications);
+    } catch (err) {
+      logger.error({ error: err }, '[GET /api/clients/:id/communications ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar o histórico de comunicações.' });
+    }
+  });
+
+  app.post('/api/clients/:id/communications', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.update.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      const { recipient, messageContent, templateName, eventType, proposalId } = req.body || {};
+      const cleanRecipient = typeof recipient === 'string' ? recipient.trim() : '';
+      const recipientDigits = cleanRecipient.replace(/\D/g, '');
+      const cleanMessage = typeof messageContent === 'string' ? messageContent.trim() : '';
+      if (!cleanRecipient || cleanRecipient.length > 40 || recipientDigits.length < 10 || recipientDigits.length > 13) {
+        return res.status(400).json({ error: 'Destinatário inválido. Informe um telefone com DDD.' });
+      }
+      if (!cleanMessage || cleanMessage.length > 5000) return res.status(400).json({ error: 'A mensagem deve ter entre 1 e 5.000 caracteres.' });
+      if (proposalId !== undefined && proposalId !== null && typeof proposalId !== 'string') {
+        return res.status(400).json({ error: 'Identificador de proposta inválido.' });
+      }
+      const client = await prisma.client.findFirst({
+        where: { id: req.params.id, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+      if (proposalId) {
+        const proposal = await prisma.proposal.findFirst({
+          where: { id: proposalId, tenantId, clientId: client.id },
+          select: { id: true },
+        });
+        if (!proposal) return res.status(400).json({ error: 'A proposta não pertence a este cliente ou empresa.' });
+      }
+      const allowedEventTypes = ['PROPOSTA_CRIADA', 'PENDENCIA_DOCUMENTACAO', 'SALDO_RETORNADO', 'PAGAMENTO_LIBERADO', 'CANCELAMENTO', 'AVULSO'];
+      if (eventType != null && !allowedEventTypes.includes(eventType)) {
+        return res.status(400).json({ error: 'Tipo de comunicação inválido.' });
+      }
+      const communication = await prisma.clientCommunication.create({
+        data: {
+          tenantId,
+          clientId: client.id,
+          proposalId: proposalId || null,
+          channel: 'WHATSAPP',
+          templateName: typeof templateName === 'string' ? templateName.trim().slice(0, 120) || null : null,
+          eventType: eventType || null,
+          recipient: cleanRecipient,
+          messageContent: cleanMessage,
+          status: 'PENDENTE',
+          sentByUserId: session.user.id,
+          sentByUserName: session.user.name,
+        },
+      });
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'CLIENT_COMMUNICATION_LOGGED',
+        entity: 'ClientCommunication',
+        entityId: communication.id,
+        newData: { clientId: client.id, channel: communication.channel, status: communication.status },
+        req,
+      });
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'CLIENT_COMMUNICATION_CREATED',
+        entity: 'Client',
+        entityId: client.id,
+        userId: session.user.id,
+      });
+      return res.status(201).json(communication);
+    } catch (err) {
+      logger.error({ error: err }, '[POST /api/clients/:id/communications ERROR]');
+      return res.status(500).json({ error: 'Erro ao salvar o histórico de comunicação.' });
+    }
+  });
+
   // -------------------------------------------------------------
   // SIMULATIONS API (PostgreSQL / Prisma)
   // -------------------------------------------------------------
@@ -1635,6 +2056,9 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.view.' });
       }
       const tenantId = session.effectiveTenantId;
       if (!tenantId) {
@@ -1664,6 +2088,9 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Não autenticado.' });
+      }
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.view.' });
       }
       const tenantId = session.effectiveTenantId;
       if (!tenantId) {
@@ -1697,6 +2124,9 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.create.' });
+      }
       const tenantId = session.effectiveTenantId;
       if (!tenantId) {
         return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
@@ -1707,6 +2137,8 @@ async function auditAndEnsureMasterUser() {
         partnerId,
         convenioId,
         productId,
+        initialStatus = 'SIMULAÇÃO ENVIADA',
+        rejectionReason,
         simulationType = 'MANUAL',
         operationType,
         happyClientId,
@@ -1725,7 +2157,18 @@ async function auditAndEnsureMasterUser() {
         happyRawResult,
       } = req.body;
 
-      if (!cpf) {
+      const allowedInitialStatuses = ['SIMULAÇÃO ENVIADA', 'NÃO PASSÍVEL DE CONTRATAÇÃO'];
+      if (!allowedInitialStatuses.includes(initialStatus)) {
+        return res.status(400).json({ error: 'Status inicial da simulação inválido.' });
+      }
+      if (
+        initialStatus !== 'SIMULAÇÃO ENVIADA' &&
+        !hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.update')
+      ) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.update para definir este status.' });
+      }
+
+      if (typeof cpf !== 'string' || !cpf.trim()) {
         return res.status(400).json({ error: 'CPF é obrigatório.' });
       }
 
@@ -1736,6 +2179,9 @@ async function auditAndEnsureMasterUser() {
       const cleanCpf = SimulationService.normalizeCpf(cpf);
       if (cleanCpf.length !== 11) {
         return res.status(400).json({ error: 'CPF inválido. Informe os 11 dígitos do CPF.' });
+      }
+      if (!isValidCpf(cleanCpf)) {
+        return res.status(400).json({ error: 'CPF inválido. Confira os dígitos informados.' });
       }
 
       // Verify partner belongs to tenant and is active (if provided)
@@ -1805,7 +2251,10 @@ async function auditAndEnsureMasterUser() {
           convenioId: convenioId || null,
           productId: productId || null,
           createdById: session.user.id,
-          status: 'SIMULAÇÃO ENVIADA',
+          status: initialStatus,
+          rejectionReason: initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && typeof rejectionReason === 'string'
+            ? rejectionReason.trim().slice(0, 500) || null
+            : null,
           simulationType,
           operationType: operationType || null,
           happyClientId: happyClientId ? String(happyClientId) : null,
@@ -1868,12 +2317,16 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) {
         return res.status(401).json({ error: 'Não autenticado.' });
       }
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.update.' });
+      }
       const tenantId = session.effectiveTenantId;
       if (!tenantId) {
         return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
       }
 
       const { id } = req.params;
+      const body = req.body || {};
       const {
         status,
         rejectionReason,
@@ -1882,7 +2335,34 @@ async function auditAndEnsureMasterUser() {
         matchedDigitizerId,
         matchedDigitizerName,
         matchedAt,
-      } = req.body;
+      } = body;
+
+      const allowedStatuses = [
+        'SIMULAÇÃO ENVIADA',
+        'NÃO PASSÍVEL DE CONTRATAÇÃO',
+        'DIGITADA PELA MESA',
+        'PERDIDA (NÃO DIGITADA)',
+      ];
+      if (status !== undefined && !allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Status da simulação inválido.' });
+      }
+      const parsedMatchedAt = matchedAt ? new Date(matchedAt) : null;
+      if (matchedAt && (!parsedMatchedAt || Number.isNaN(parsedMatchedAt.getTime()))) {
+        return res.status(400).json({ error: 'Data de associação inválida.' });
+      }
+      if (rejectionReason !== undefined && rejectionReason !== null &&
+        (typeof rejectionReason !== 'string' || rejectionReason.length > 500)) {
+        return res.status(400).json({ error: 'O motivo da inviabilidade deve ser um texto de até 500 caracteres.' });
+      }
+      const matchedFields = [
+        matchedProposalId,
+        matchedProposalNumber,
+        matchedDigitizerId,
+        matchedDigitizerName,
+      ];
+      if (matchedFields.some(value => value !== undefined && value !== null && typeof value !== 'string')) {
+        return res.status(400).json({ error: 'Os dados de associação da simulação são inválidos.' });
+      }
 
       const existing = await prisma.simulationRequest.findFirst({
         where: { id, tenantId, deletedAt: null },
@@ -1891,16 +2371,67 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Solicitação de simulação não encontrada ou pertence a outro tenant.' });
       }
 
+      const nextStatus = status || existing.status;
+      let linkedProposalId = matchedProposalId !== undefined ? matchedProposalId : existing.matchedProposalId;
+      let linkedProposalNumber = matchedProposalNumber !== undefined
+        ? (matchedProposalNumber?.trim() || null)
+        : existing.matchedProposalNumber;
+      let linkedDigitizerId = matchedDigitizerId !== undefined ? matchedDigitizerId : existing.matchedDigitizerId;
+      let linkedDigitizerName = matchedDigitizerName !== undefined ? matchedDigitizerName : existing.matchedDigitizerName;
+
+      if (matchedProposalId) {
+        const proposal = await prisma.proposal.findFirst({
+          where: { id: matchedProposalId, tenantId, client: { cpf: existing.cpf } },
+          select: { id: true, proposalNumber: true },
+        });
+        if (!proposal) {
+          return res.status(400).json({ error: 'A proposta vinculada não pertence a este cliente ou empresa.' });
+        }
+        if (linkedProposalNumber && linkedProposalNumber !== proposal.proposalNumber) {
+          return res.status(400).json({ error: 'O número informado não corresponde à proposta selecionada.' });
+        }
+        linkedProposalId = proposal.id;
+        linkedProposalNumber = proposal.proposalNumber;
+      } else if (matchedProposalNumber !== undefined && linkedProposalNumber) {
+        const matchingProposals = await prisma.proposal.findMany({
+          where: {
+            tenantId,
+            proposalNumber: linkedProposalNumber,
+            client: { cpf: existing.cpf },
+          },
+          select: { id: true },
+          take: 2,
+        });
+        // Only make the ADE clickable when it resolves unambiguously to this client's proposal.
+        linkedProposalId = matchingProposals.length === 1 ? matchingProposals[0].id : null;
+      }
+
+      if (matchedDigitizerId) {
+        const digitizer = await prisma.user.findFirst({
+          where: { id: matchedDigitizerId, tenantId },
+          select: { id: true, name: true },
+        });
+        if (!digitizer) {
+          return res.status(400).json({ error: 'O digitador informado não pertence a esta empresa.' });
+        }
+        linkedDigitizerId = digitizer.id;
+        linkedDigitizerName = digitizer.name;
+      }
+
+      const isDigitized = nextStatus === 'DIGITADA PELA MESA';
+
       const updated = await prisma.simulationRequest.update({
         where: { id },
         data: {
-          status: status || existing.status,
-          rejectionReason: rejectionReason !== undefined ? rejectionReason : existing.rejectionReason,
-          matchedProposalId: matchedProposalId !== undefined ? matchedProposalId : existing.matchedProposalId,
-          matchedProposalNumber: matchedProposalNumber !== undefined ? matchedProposalNumber : existing.matchedProposalNumber,
-          matchedDigitizerId: matchedDigitizerId !== undefined ? matchedDigitizerId : existing.matchedDigitizerId,
-          matchedDigitizerName: matchedDigitizerName !== undefined ? matchedDigitizerName : existing.matchedDigitizerName,
-          matchedAt: matchedAt ? new Date(matchedAt) : existing.matchedAt,
+          status: nextStatus,
+          rejectionReason: nextStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
+            ? (rejectionReason !== undefined ? rejectionReason : existing.rejectionReason)
+            : null,
+          matchedProposalId: isDigitized ? linkedProposalId : null,
+          matchedProposalNumber: isDigitized ? linkedProposalNumber : null,
+          matchedDigitizerId: isDigitized ? linkedDigitizerId : null,
+          matchedDigitizerName: isDigitized ? linkedDigitizerName : null,
+          matchedAt: isDigitized ? (parsedMatchedAt || existing.matchedAt || new Date()) : null,
         },
         include: {
           partner: true,
@@ -2476,6 +3007,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const whereCondition = { tenantId, deletedAt: null };
@@ -2494,11 +3028,16 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/proposals', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.create')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.create.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para cadastrar proposta.' });
       }
 
+      const body = req.body || {};
       const {
         proposalNumber,
         clientId,
@@ -2522,30 +3061,91 @@ async function auditAndEnsureMasterUser() {
         notes,
         c6ProposalNumber,
         c6OperationNumber,
-      } = req.body;
+      } = body;
 
+      const proposalNumberFields: Array<[string, unknown]> = [
+        ['Valor liberado', releasedValue],
+        ['Valor do contrato', contractValue],
+        ['Valor da parcela', installmentValue],
+        ['Saldo devedor', debtBalance],
+        ['Taxa de comissão', body.commissionRate],
+      ];
+      for (const [label, value] of proposalNumberFields) {
+        if (value === undefined || value === null || value === '') continue;
+        const number = Number(value);
+        const maximum = label === 'Taxa de comissão' ? 999.99 : 9999999999.99;
+        if (!Number.isFinite(number) || number < 0 || number > maximum) {
+          return res.status(400).json({ error: `${label} deve estar entre 0 e ${maximum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.` });
+        }
+      }
+      if (installmentsCount !== undefined && installmentsCount !== null && installmentsCount !== '') {
+        const count = Number(installmentsCount);
+        if (!Number.isInteger(count) || count < 1 || count > 1200) {
+          return res.status(400).json({ error: 'A quantidade de parcelas deve ser um número inteiro entre 1 e 1.200.' });
+        }
+      }
       let targetClientId = clientId;
 
-      // 1. Resolve client with robust fallback to CPF / upsert
-      let client = targetClientId ? await prisma.client.findFirst({ where: { id: targetClientId, tenantId } }) : null;
+      // 1. Resolve the client without allowing proposal creation to silently
+      // overwrite client data for users who lack clients.update.
+      const cleanCpf = clientCpf !== undefined && clientCpf !== null
+        ? String(clientCpf).replace(/\D/g, '')
+        : '';
+      if (clientCpf !== undefined && clientCpf !== null && (cleanCpf.length !== 11 || !isValidCpf(cleanCpf))) {
+        return res.status(400).json({ error: 'CPF do cliente inválido.' });
+      }
+      const canUpdateClientData = hasPermission(
+        session.user.role as Role,
+        session.user.customPermissions,
+        'clients.update'
+      );
 
-      if (!client && clientCpf) {
-        const cleanCpf = String(clientCpf).replace(/\D/g, '');
-        if (cleanCpf.length === 11) {
-          client = await prisma.client.upsert({
-            where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
-            update: {
-              fullName: clientName ? String(clientName).trim() : undefined,
-              phone: clientPhone || undefined,
-              email: clientEmail || undefined,
+      let client = targetClientId
+        ? await prisma.client.findFirst({ where: { id: targetClientId, tenantId, deletedAt: null } })
+        : null;
+
+      if (client && cleanCpf && client.cpf !== cleanCpf) {
+        return res.status(400).json({ error: 'O CPF informado não corresponde ao cliente selecionado.' });
+      }
+
+      if (!client && cleanCpf) {
+        const existingClient = await prisma.client.findUnique({
+          where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
+        });
+        if (existingClient?.deletedAt) {
+          return res.status(409).json({ error: 'Este cliente está inativo. Reative o cadastro antes de criar uma proposta.' });
+        }
+        if (!existingClient && !hasPermission(
+          session.user.role as Role,
+          session.user.customPermissions,
+          'clients.create'
+        )) {
+          return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.create para cadastrar o cliente da proposta.' });
+        }
+
+        const clientData = {
+          fullName: clientName ? String(clientName).trim() : undefined,
+          phone: clientPhone ? String(clientPhone).trim() : undefined,
+          email: clientEmail ? String(clientEmail).trim() : undefined,
+        };
+        if (existingClient && canUpdateClientData) {
+          client = await prisma.client.update({
+            where: { id: existingClient.id },
+            data: {
+              ...clientData,
               deletedAt: null,
             },
+          });
+        } else {
+          client = await prisma.client.upsert({
+            where: { tenantId_cpf: { tenantId, cpf: cleanCpf } },
+            update: {},
             create: {
               tenantId,
               cpf: cleanCpf,
-              fullName: (clientName && String(clientName).trim()) || 'Cliente',
-              phone: clientPhone || null,
-              email: clientEmail || null,
+              fullName: clientData.fullName || 'Cliente',
+              phone: clientData.phone || null,
+              email: clientData.email || null,
             },
           });
         }
@@ -2557,24 +3157,34 @@ async function auditAndEnsureMasterUser() {
       targetClientId = client.id;
 
       // 2. Resolve Partner
-      const resolvedPartner = await resolvePartnerHelper(tenantId, partnerId, req.body.partnerName);
+      const resolvedPartner = await resolvePartnerHelper(tenantId, partnerId, body.partnerName);
       const targetPartnerId = resolvedPartner ? resolvedPartner.id : null;
 
       // 3. Resolve Bank
-      const selectedBank = await resolveBankHelper(tenantId, bankId, req.body.bankName);
+      const selectedBank = await resolveBankHelper(tenantId, bankId, body.bankName);
       const targetBankId = selectedBank ? selectedBank.id : null;
 
       // 4. Resolve Promoter
-      const resolvedPromoter = await resolvePromoterHelper(tenantId, promoterId, req.body.promoterName);
+      const resolvedPromoter = await resolvePromoterHelper(tenantId, promoterId, body.promoterName);
       const targetPromoterId = resolvedPromoter ? resolvedPromoter.id : null;
 
       // 5. Resolve Product
-      const resolvedProduct = await resolveProductHelper(tenantId, productId, req.body.productName);
+      const resolvedProduct = await resolveProductHelper(tenantId, productId, body.productName);
       const targetProductId = resolvedProduct ? resolvedProduct.id : null;
 
       // 6. Resolve Convenio
-      const resolvedConvenio = await resolveConvenioHelper(tenantId, convenioId, req.body.convenioName);
+      const resolvedConvenio = await resolveConvenioHelper(tenantId, convenioId, body.convenioName);
       const targetConvenioId = resolvedConvenio ? resolvedConvenio.id : null;
+
+      let normalizedProposalType: ReturnType<typeof normalizeProposalType>;
+      try {
+        normalizedProposalType = normalizeProposalType(
+          type || resolvedProduct?.type,
+          Boolean(resolvedProduct?.requiresPortabilityRelation)
+        );
+      } catch (error: any) {
+        return res.status(400).json({ error: error.message || 'Tipo de proposta inválido.' });
+      }
 
       // 7. Resolve Status with legacy mapping
       let targetStatusId = statusId || null;
@@ -2594,7 +3204,7 @@ async function auditAndEnsureMasterUser() {
 
       if (targetStatusId) {
         const searchCode = LEGACY_STATUS_MAP[targetStatusId] || targetStatusId;
-        let validStatus = await prisma.proposalStatus.findFirst({
+        const validStatus = await prisma.proposalStatus.findFirst({
           where: {
             tenantId,
             OR: [
@@ -2606,26 +3216,15 @@ async function auditAndEnsureMasterUser() {
           }
         });
         if (!validStatus) {
-          validStatus = await prisma.proposalStatus.findFirst({
-            where: {
-              OR: [
-                { id: targetStatusId },
-                { code: targetStatusId },
-                { code: searchCode },
-                { name: { contains: targetStatusId, mode: 'insensitive' } }
-              ]
-            }
-          });
+          return res.status(400).json({ error: 'Status informado não existe nesta empresa.' });
         }
-        targetStatusId = validStatus ? validStatus.id : null;
+        targetStatusId = validStatus.id;
       }
       if (!targetStatusId) {
         const defaultStatus = await prisma.proposalStatus.findFirst({
           where: {
-            OR: [
-              { tenantId, code: 'AGUARDAR_FORMALIZACAO' },
-              { code: 'AGUARDAR_FORMALIZACAO' }
-            ]
+            tenantId,
+            code: 'AGUARDAR_FORMALIZACAO',
           }
         });
         targetStatusId = defaultStatus?.id || null;
@@ -2671,7 +3270,7 @@ async function auditAndEnsureMasterUser() {
           convenioId: targetConvenioId,
           statusId: targetStatusId,
           retentionDeadline: initialRetentionDeadline,
-          type: type || 'NOVO',
+          type: normalizedProposalType,
           relatedPortabilityId: relatedPortabilityId || null,
           releasedValue: releasedValue ? Number(releasedValue) : 0,
           contractValue: contractValue ? Number(contractValue) : 0,
@@ -2712,7 +3311,15 @@ async function auditAndEnsureMasterUser() {
       });
 
       return res.status(201).json(proposal);
-    } catch (err) {
+    } catch (err: any) {
+      // The pre-insert lookup improves the common path, while this unique-key
+      // handler closes the race when two operators submit the same ADE at once.
+      const uniqueTarget = Array.isArray(err?.meta?.target)
+        ? err.meta.target.map(String).join(',')
+        : String(err?.meta?.target || '');
+      if (err?.code === 'P2002' && /proposal_number|proposalNumber|tenant_id_proposal_number/i.test(uniqueTarget)) {
+        return res.status(409).json({ error: 'Esta ADE já está cadastrada para esta empresa.' });
+      }
       console.error('[API PROPOSALS POST ERROR]', err);
       return res.status(500).json({ error: 'Erro ao criar proposta no PostgreSQL.' });
     }
@@ -2722,12 +3329,17 @@ async function auditAndEnsureMasterUser() {
   app.patch('/api/proposals/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.update.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários para atualizar proposta.' });
       }
 
       const { id } = req.params;
+      const body = req.body || {};
       const {
         version,
         statusId,
@@ -2752,7 +3364,7 @@ async function auditAndEnsureMasterUser() {
         factaProposalNumber,
         factaAfCode,
         happyContractId,
-      } = req.body;
+      } = body;
 
       // 1. Buscar proposta existente com validação de tenant
       const existing = await prisma.proposal.findFirst({
@@ -2773,8 +3385,48 @@ async function auditAndEnsureMasterUser() {
         });
       }
 
+      const proposalNumberFields: Array<[string, unknown]> = [
+        ['Valor liberado', releasedValue],
+        ['Valor do contrato', contractValue],
+        ['Valor da parcela', installmentValue],
+        ['Saldo devedor', debtBalance],
+        ['Taxa de comissão', commissionRate],
+      ];
+      for (const [label, value] of proposalNumberFields) {
+        if (value === undefined || value === null || value === '') continue;
+        const number = Number(value);
+        const maximum = label === 'Taxa de comissão' ? 999.99 : 9999999999.99;
+        if (!Number.isFinite(number) || number < 0 || number > maximum) {
+          return res.status(400).json({ error: `${label} deve estar entre 0 e ${maximum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.` });
+        }
+      }
+      if (installmentsCount !== undefined && installmentsCount !== null && installmentsCount !== '') {
+        const count = Number(installmentsCount);
+        if (!Number.isInteger(count) || count < 1 || count > 1200) {
+          return res.status(400).json({ error: 'A quantidade de parcelas deve ser um número inteiro entre 1 e 1.200.' });
+        }
+      }
+
+      const standardCategories = ['ESTEIRA', 'ANDAMENTO', 'PENDENTE', 'PAGO', 'CANCELADO', 'RECUSADO'];
+      if (
+        standardCategory !== undefined &&
+        standardCategory !== null &&
+        standardCategory !== '' &&
+        !standardCategories.includes(standardCategory)
+      ) {
+        return res.status(400).json({ error: 'Categoria operacional da proposta inválida.' });
+      }
+      let normalizedUpdatedType: ReturnType<typeof normalizeProposalType> | undefined;
+      if (type !== undefined && type !== null && type !== '') {
+        try {
+          normalizedUpdatedType = normalizeProposalType(type);
+        } catch (error: any) {
+          return res.status(400).json({ error: error.message || 'Tipo de proposta inválido.' });
+        }
+      }
+
       // Validação estrita de statusId no PostgreSQL para evitar Foreign Key Violation (P2003)
-      let validatedStatus: { id: string; name: string; code: string; standardCategory: string | null } | null = null;
+      let validatedStatus: { id: string; name: string; code: string; standardCategory: string | null; manualChangeAllowed: boolean } | null = null;
       let finalStatusId: string | undefined = undefined;
 
       if (statusId !== undefined && statusId !== null && statusId !== '') {
@@ -2804,22 +3456,8 @@ async function auditAndEnsureMasterUser() {
               ...(targetCode ? [{ code: targetCode }] : []),
             ]
           },
-          select: { id: true, name: true, code: true, standardCategory: true },
+          select: { id: true, name: true, code: true, standardCategory: true, manualChangeAllowed: true },
         });
-
-        if (!validatedStatus) {
-          validatedStatus = await prisma.proposalStatus.findFirst({
-            where: {
-              active: true,
-              OR: [
-                { id: statusId },
-                { code: statusId },
-                ...(targetCode ? [{ code: targetCode }] : []),
-              ]
-            },
-            select: { id: true, name: true, code: true, standardCategory: true },
-          });
-        }
 
         if (!validatedStatus) {
           return res.status(400).json({
@@ -2831,7 +3469,10 @@ async function auditAndEnsureMasterUser() {
         finalStatusId = validatedStatus.id;
       }
 
-      const isStatusChanging = statusId !== undefined && statusId !== existing.statusId;
+      const isStatusChanging = finalStatusId !== undefined && finalStatusId !== existing.statusId;
+      if (isStatusChanging && validatedStatus?.manualChangeAllowed === false) {
+        return res.status(403).json({ error: 'Este status é reservado para alteração automática.' });
+      }
       let newRetentionDeadline: Date | null | undefined = undefined;
       if (isStatusChanging) {
         if (validatedStatus?.code === 'AGUARDAR_RETORNO_CIP') {
@@ -2844,32 +3485,37 @@ async function auditAndEnsureMasterUser() {
       // Resolve relational catalog entities if provided
       let resolvedBankId: string | undefined = undefined;
       if (bankId !== undefined && bankId !== null && bankId !== '') {
-        const resolvedBank = await resolveBankHelper(tenantId, bankId, req.body.bankName);
-        if (resolvedBank) resolvedBankId = resolvedBank.id;
+        const resolvedBank = await resolveBankHelper(tenantId, bankId, body.bankName);
+        if (!resolvedBank) return res.status(400).json({ error: 'Banco informado não encontrado para este tenant.' });
+        resolvedBankId = resolvedBank.id;
       }
 
       let resolvedPromoterId: string | undefined = undefined;
       if (promoterId !== undefined && promoterId !== null && promoterId !== '') {
-        const resolvedPromoter = await resolvePromoterHelper(tenantId, promoterId, req.body.promoterName);
-        if (resolvedPromoter) resolvedPromoterId = resolvedPromoter.id;
+        const resolvedPromoter = await resolvePromoterHelper(tenantId, promoterId, body.promoterName);
+        if (!resolvedPromoter) return res.status(400).json({ error: 'Promotora informada não encontrada para este tenant.' });
+        resolvedPromoterId = resolvedPromoter.id;
       }
 
       let resolvedPartnerId: string | undefined = undefined;
       if (partnerId !== undefined && partnerId !== null && partnerId !== '') {
-        const resolvedPartner = await resolvePartnerHelper(tenantId, partnerId, req.body.partnerName);
-        if (resolvedPartner) resolvedPartnerId = resolvedPartner.id;
+        const resolvedPartner = await resolvePartnerHelper(tenantId, partnerId, body.partnerName);
+        if (!resolvedPartner) return res.status(400).json({ error: 'Parceiro informado não encontrado para este tenant.' });
+        resolvedPartnerId = resolvedPartner.id;
       }
 
       let resolvedProductId: string | undefined = undefined;
       if (productId !== undefined && productId !== null && productId !== '') {
-        const resolvedProduct = await resolveProductHelper(tenantId, productId, req.body.productName);
-        if (resolvedProduct) resolvedProductId = resolvedProduct.id;
+        const resolvedProduct = await resolveProductHelper(tenantId, productId, body.productName);
+        if (!resolvedProduct) return res.status(400).json({ error: 'Produto informado não encontrado para este tenant.' });
+        resolvedProductId = resolvedProduct.id;
       }
 
       let resolvedConvenioId: string | undefined = undefined;
       if (convenioId !== undefined && convenioId !== null && convenioId !== '') {
-        const resolvedConvenio = await resolveConvenioHelper(tenantId, convenioId, req.body.convenioName);
-        if (resolvedConvenio) resolvedConvenioId = resolvedConvenio.id;
+        const resolvedConvenio = await resolveConvenioHelper(tenantId, convenioId, body.convenioName);
+        if (!resolvedConvenio) return res.status(400).json({ error: 'Convênio informado não encontrado para este tenant.' });
+        resolvedConvenioId = resolvedConvenio.id;
       }
 
       // 3. Executar transação atômica no PostgreSQL
@@ -2892,7 +3538,7 @@ async function auditAndEnsureMasterUser() {
             partnerId: resolvedPartnerId !== undefined ? resolvedPartnerId : undefined,
             productId: resolvedProductId !== undefined ? resolvedProductId : undefined,
             convenioId: resolvedConvenioId !== undefined ? resolvedConvenioId : undefined,
-            type: type || undefined,
+            type: normalizedUpdatedType,
             relatedPortabilityId: relatedPortabilityId !== undefined ? relatedPortabilityId : undefined,
             c6ProposalNumber: c6ProposalNumber !== undefined ? c6ProposalNumber : undefined,
             c6OperationNumber: c6OperationNumber !== undefined ? c6OperationNumber : undefined,
@@ -2961,8 +3607,6 @@ async function auditAndEnsureMasterUser() {
               // Find status code 'AGUARDAR_PORTABILIDADE'
               targetRefinStatus = await tx.proposalStatus.findFirst({
                 where: { tenantId, code: 'AGUARDAR_PORTABILIDADE', active: true }
-              }) || await tx.proposalStatus.findFirst({
-                where: { code: 'AGUARDAR_PORTABILIDADE', active: true }
               });
 
               if (targetRefinStatus && relatedRefin.statusId !== targetRefinStatus.id) {
@@ -3173,6 +3817,10 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/proposals/:id/comments', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.view.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Sessão e Tenant ativos são necessários.' });
@@ -3261,6 +3909,10 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/proposals/:id/comments', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.view.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) {
         return res.status(401).json({ error: 'Acesso não autorizado.' });
@@ -3282,6 +3934,10 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/proposals/:id/timeline', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.view.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Acesso não autorizado: sessão ou tenant inválido.' });
       
@@ -3368,6 +4024,10 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/proposals/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.delete')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.delete.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       const { id } = req.params;
 
@@ -3424,6 +4084,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'statuses.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'statuses.view'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       let statuses = await prisma.proposalStatus.findMany({
@@ -3452,6 +4115,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'statuses.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'statuses.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -3511,6 +4177,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'statuses.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'statuses.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -3544,6 +4213,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'statuses.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'statuses.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -3602,6 +4274,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'statuses.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'statuses.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -3664,6 +4339,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !['banks.view', 'promoters.view', 'integrations.view'].some(permission => hasPermission(session.user.role as Role, session.user.customPermissions || [], permission))) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão de visualização de bancos, promotoras ou integrações." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const banks = await ensureDefaultBanksForTenant(prisma, tenantId);
@@ -3677,6 +4355,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !['banks.view', 'promoters.view', 'integrations.view'].some(permission => hasPermission(session.user.role as Role, session.user.customPermissions || [], permission))) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão de visualização de bancos, promotoras ou integrações." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       let promoters = await ensureDefaultPromotersForTenant(prisma, tenantId);
@@ -4217,14 +4898,19 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.view'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
+      const includeInactive = req.query.includeInactive === 'true';
 
       let products;
       if (isMaster && req.query.allTenants === 'true') {
         products = await prisma.product.findMany({
+          where: includeInactive ? {} : { active: true },
           include: { tenant: { select: { id: true, name: true } } },
-          orderBy: { name: 'asc' },
+          orderBy: [{ scope: 'asc' }, { name: 'asc' }],
         });
       } else {
         if (!tenantId && !isMaster) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
@@ -4234,9 +4920,10 @@ async function auditAndEnsureMasterUser() {
               { scope: 'GLOBAL' },
               ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
             ],
+            ...(includeInactive ? {} : { active: true }),
           },
           include: { tenant: { select: { id: true, name: true } } },
-          orderBy: { name: 'asc' },
+          orderBy: [{ scope: 'asc' }, { name: 'asc' }],
         });
       }
 
@@ -4252,54 +4939,24 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
-  app.get('/api/convenios', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.effectiveTenantId || session.user.tenantId;
-      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
-
-      let convenios;
-      if (isMaster && req.query.allTenants === 'true') {
-        convenios = await prisma.convenio.findMany({
-          include: { tenant: { select: { id: true, name: true } } },
-          orderBy: { name: 'asc' },
-        });
-      } else {
-        if (!tenantId && !isMaster) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-        convenios = await prisma.convenio.findMany({
-          where: {
-            OR: [
-              { scope: 'GLOBAL' },
-              ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
-            ],
-          },
-          include: { tenant: { select: { id: true, name: true } } },
-          orderBy: { name: 'asc' },
-        });
-      }
-
-      const formatted = convenios.map(c => ({
-        ...c,
-        tenantName: c.tenant?.name,
-      }));
-
-      return res.json(formatted);
-    } catch (err) {
-      console.error('[API CONVENIOS GET ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao buscar convênios.' });
-    }
-  });
-
   // -------------------------------------------------------------
   // FINANCIAL ENTRIES & NOTIFICATIONS
   // -------------------------------------------------------------
+  const parseFinancialDateOnly = (value: unknown): Date | null => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? parsed : null;
+  };
+
   app.get('/api/financial', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'financial.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão financial.view.' });
+      }
       const entries = await prisma.financialEntry.findMany({
         where: { tenantId },
         orderBy: { dueDate: 'desc' },
@@ -4307,6 +4964,164 @@ async function auditAndEnsureMasterUser() {
       return res.json(entries);
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao buscar lançamentos financeiros.' });
+    }
+  });
+
+  app.post('/api/financial', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'financial.create')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão financial.create.' });
+      }
+
+      const { title, type, category, amount, dueDate, paymentDate, status, notes } = req.body || {};
+      const cleanTitle = typeof title === 'string' ? title.trim() : '';
+      const allowedTypes = ['ENTRADA', 'SAIDA'];
+      const allowedCategories = ['RECEBIMENTO_OPERACIONAL', 'COMISSAO_RECEBIDA', 'DESPESA_FIXA', 'DESPESA_VARIAVEL', 'SERVICO', 'OUTROS'];
+      const allowedStatuses = ['PREVISTO', 'REALIZADO', 'CANCELADO'];
+      const numericAmount = Number(amount);
+      const parsedDueDate = parseFinancialDateOnly(dueDate);
+      const parsedPaymentDate = paymentDate ? parseFinancialDateOnly(paymentDate) : null;
+      if (!cleanTitle || cleanTitle.length > 180) return res.status(400).json({ error: 'Informe uma descrição de até 180 caracteres.' });
+      if (!allowedTypes.includes(type)) return res.status(400).json({ error: 'Tipo de lançamento inválido.' });
+      if (!allowedCategories.includes(category)) return res.status(400).json({ error: 'Categoria financeira inválida.' });
+      if (
+        (type === 'ENTRADA' && ['DESPESA_FIXA', 'DESPESA_VARIAVEL'].includes(category)) ||
+        (type === 'SAIDA' && ['RECEBIMENTO_OPERACIONAL', 'COMISSAO_RECEBIDA'].includes(category))
+      ) {
+        return res.status(400).json({ error: 'A categoria selecionada não corresponde ao tipo do lançamento.' });
+      }
+      if (!Number.isFinite(numericAmount) || numericAmount <= 0) return res.status(400).json({ error: 'O valor deve ser maior que zero.' });
+      if (numericAmount > 9_999_999_999.99) return res.status(400).json({ error: 'O valor máximo por lançamento é R$ 9.999.999.999,99.' });
+      if (Math.abs(numericAmount * 100 - Math.round(numericAmount * 100)) > 1e-7) {
+        return res.status(400).json({ error: 'O valor deve ter no máximo duas casas decimais.' });
+      }
+      if (!parsedDueDate) return res.status(400).json({ error: 'Data de vencimento inválida.' });
+      if (!allowedStatuses.includes(status)) return res.status(400).json({ error: 'Status financeiro inválido.' });
+      if (paymentDate && !parsedPaymentDate) return res.status(400).json({ error: 'Data de pagamento inválida.' });
+
+      const entry = await prisma.financialEntry.create({
+        data: {
+          tenantId,
+          title: cleanTitle,
+          type,
+          category,
+          amount: numericAmount,
+          dueDate: parsedDueDate,
+          paymentDate: status === 'REALIZADO' ? (parsedPaymentDate || parsedDueDate) : null,
+          status,
+          notes: typeof notes === 'string' && notes.trim() ? notes.trim() : null,
+        },
+      });
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'FINANCIAL_ENTRY_CREATED',
+        entity: 'FinancialEntry',
+        entityId: entry.id,
+        newData: { type: entry.type, category: entry.category, amount: Number(entry.amount), status: entry.status },
+        req,
+      });
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'FINANCIAL_ENTRY_CREATED',
+        entity: 'FinancialEntry',
+        entityId: entry.id,
+        userId: session.user.id,
+      });
+      return res.status(201).json(entry);
+    } catch (err: any) {
+      console.error('[API FINANCIAL POST ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao salvar o lançamento financeiro.' });
+    }
+  });
+
+  app.put('/api/financial/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'financial.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão financial.update.' });
+      }
+      const { status, paymentDate } = req.body || {};
+      if (!['PREVISTO', 'REALIZADO', 'CANCELADO'].includes(status)) {
+        return res.status(400).json({ error: 'Status financeiro inválido.' });
+      }
+      const parsedPaymentDate = paymentDate ? parseFinancialDateOnly(paymentDate) : null;
+      if (paymentDate && !parsedPaymentDate) {
+        return res.status(400).json({ error: 'Data de pagamento inválida.' });
+      }
+      const existing = await prisma.financialEntry.findFirst({ where: { id: req.params.id, tenantId } });
+      if (!existing) return res.status(404).json({ error: 'Lançamento financeiro não encontrado.' });
+
+      const entry = await prisma.financialEntry.update({
+        where: { id: existing.id },
+        data: {
+          status,
+          paymentDate: status === 'REALIZADO' ? (parsedPaymentDate || existing.paymentDate || existing.dueDate) : null,
+        },
+      });
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'FINANCIAL_ENTRY_UPDATED',
+        entity: 'FinancialEntry',
+        entityId: entry.id,
+        oldData: { status: existing.status },
+        newData: { status: entry.status, paymentDate: entry.paymentDate },
+        req,
+      });
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'FINANCIAL_ENTRY_UPDATED',
+        entity: 'FinancialEntry',
+        entityId: entry.id,
+        userId: session.user.id,
+      });
+      return res.json(entry);
+    } catch (err: any) {
+      console.error('[API FINANCIAL PUT ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar o lançamento financeiro.' });
+    }
+  });
+
+  app.delete('/api/financial/:id', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'financial.delete')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão financial.delete.' });
+      }
+      const existing = await prisma.financialEntry.findFirst({ where: { id: req.params.id, tenantId } });
+      if (!existing) return res.status(404).json({ error: 'Lançamento financeiro não encontrado.' });
+      await prisma.financialEntry.delete({ where: { id: existing.id } });
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'FINANCIAL_ENTRY_DELETED',
+        entity: 'FinancialEntry',
+        entityId: existing.id,
+        oldData: { type: existing.type, category: existing.category, amount: Number(existing.amount), status: existing.status },
+        req,
+      });
+      sseRegistry.broadcastToTenant(tenantId, {
+        type: 'FINANCIAL_ENTRY_DELETED',
+        entity: 'FinancialEntry',
+        entityId: existing.id,
+        userId: session.user.id,
+      });
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[API FINANCIAL DELETE ERROR]', err);
+      return res.status(500).json({ error: 'Erro ao excluir o lançamento financeiro.' });
     }
   });
 
@@ -4446,15 +5261,17 @@ async function auditAndEnsureMasterUser() {
   app.patch('/api/notifications/:id/read', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
 
       const updated = await prisma.notification.updateMany({
-        where: { id, tenantId },
+        where: { id, tenantId, userId: session.user.id },
         data: { read: true },
       });
 
+      if (updated.count === 0) return res.status(404).json({ error: 'Notificação não encontrada.' });
       return res.json({ success: true, count: updated.count });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao marcar notificação como lida.' });
@@ -4464,8 +5281,9 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/notifications/read-all', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
-      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const userId = session.user.id;
 
       const updated = await prisma.notification.updateMany({
@@ -4482,16 +5300,126 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // TASKS API
   // -------------------------------------------------------------
+  const parseTaskDueDate = (value: unknown): Date | null | undefined => {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (typeof value !== 'string' && !(value instanceof Date)) return undefined;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const parsedDateOnly = new Date(`${value}T00:00:00.000Z`);
+      return !Number.isNaN(parsedDateOnly.getTime()) && parsedDateOnly.toISOString().slice(0, 10) === value
+        ? parsedDateOnly
+        : undefined;
+    }
+    const parsed = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+  const isTaskPriority = (value: unknown): value is 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' =>
+    value === 'LOW' || value === 'MEDIUM' || value === 'HIGH' || value === 'URGENT';
+
+  app.get('/api/my-work', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+
+      const canViewOperationalTasks = hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.view');
+      const canViewPartnerTasks =
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'partners.crm.view') ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'partners.crm.tasks') ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'partners.crm.admin');
+      if (!canViewOperationalTasks && !canViewPartnerTasks) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão para visualizar tarefas.' });
+      }
+
+      const [operationalTasks, partnerTasks] = await Promise.all([
+        canViewOperationalTasks
+          ? prisma.task.findMany({
+              where: { tenantId, assignedToId: session.user.id, completed: false },
+              include: {
+                client: { select: { id: true, fullName: true } },
+                proposal: { select: { id: true, proposalNumber: true, client: { select: { fullName: true } } } },
+              },
+            })
+          : Promise.resolve([]),
+        canViewPartnerTasks
+          ? prisma.partnerTask.findMany({
+              where: { tenantId, assignedToId: session.user.id, status: { in: ['PENDENTE', 'EM_ANDAMENTO'] } },
+              include: { partner: { select: { id: true, name: true } } },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const items = [
+        ...operationalTasks.map((task) => ({
+          kind: 'operational' as const,
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          dueDate: task.dueDate,
+          completed: task.completed,
+          client: task.client ? { id: task.client.id, fullName: task.client.fullName } : null,
+          proposal: task.proposal ? {
+            id: task.proposal.id,
+            proposalNumber: task.proposal.proposalNumber,
+            client: task.proposal.client ? { fullName: task.proposal.client.fullName } : null,
+          } : null,
+          partner: null,
+        })),
+        ...partnerTasks.map((task) => ({
+          kind: 'partner' as const,
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          dueDate: task.dueDate,
+          completed: task.status === 'CONCLUIDA',
+          client: null,
+          proposal: null,
+          partner: { id: task.partner.id, name: task.partner.name },
+        })),
+      ].sort((a, b) => {
+        const dueA = a.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const dueB = b.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return dueA - dueB;
+      });
+
+      return res.json(items);
+    } catch (err) {
+      logger.error({ error: err }, '[GET /api/my-work ERROR]');
+      return res.status(500).json({ error: 'Erro ao carregar sua fila de trabalho.' });
+    }
+  });
+
   app.get('/api/tasks', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão tasks.view.' });
+      }
+      const mineOnly = req.query.scope === 'mine';
+      const openOnly = req.query.status === 'open';
       const tasks = await prisma.task.findMany({
-        where: { tenantId },
-        orderBy: { createdAt: 'desc' },
+        where: {
+          tenantId,
+          ...(mineOnly ? { assignedToId: session.user.id } : {}),
+          ...(openOnly ? { completed: false } : {}),
+        },
+        include: {
+          assignedTo: { select: { id: true, name: true } },
+          client: { select: { id: true, fullName: true } },
+          proposal: { select: { id: true, proposalNumber: true, client: { select: { fullName: true } } } },
+        },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
       });
-      return res.json(tasks);
+      return res.json(tasks.map((task) => ({
+        ...task,
+        assignedUserName: task.assignedTo?.name || null,
+        clientName: task.client?.fullName || task.proposal?.client?.fullName || null,
+        proposalNumber: task.proposal?.proposalNumber || null,
+      })));
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao buscar tarefas.' });
     }
@@ -4502,8 +5430,49 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
-      const { id, title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body;
-      if (!title) return res.status(400).json({ error: 'Título é obrigatório.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.create')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão tasks.create.' });
+      }
+      const { id, title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body || {};
+      if (typeof title !== 'string' || !title.trim()) return res.status(400).json({ error: 'Título é obrigatório.' });
+      if (title.trim().length > 200) return res.status(400).json({ error: 'O título deve ter no máximo 200 caracteres.' });
+      if (id !== undefined && typeof id !== 'string') return res.status(400).json({ error: 'Identificador da tarefa inválido.' });
+      if (description !== undefined && description !== null && typeof description !== 'string') return res.status(400).json({ error: 'Descrição inválida.' });
+      if (typeof description === 'string' && description.trim().length > 5000) return res.status(400).json({ error: 'A descrição deve ter no máximo 5.000 caracteres.' });
+      if (category !== undefined && (typeof category !== 'string' || category.trim().length > 64)) return res.status(400).json({ error: 'Categoria inválida (máximo de 64 caracteres).' });
+      if ([assignedToId, proposalId, clientId].some(value => value !== undefined && value !== null && typeof value !== 'string')) {
+        return res.status(400).json({ error: 'Responsável, proposta ou cliente inválido.' });
+      }
+      const parsedDueDate = parseTaskDueDate(dueDate);
+      if (dueDate !== undefined && parsedDueDate === undefined) return res.status(400).json({ error: 'Data de vencimento inválida.' });
+      if (priority !== undefined && !isTaskPriority(priority)) return res.status(400).json({ error: 'Prioridade inválida.' });
+      if (completed !== undefined && typeof completed !== 'boolean') return res.status(400).json({ error: 'Status de conclusão inválido.' });
+      if (
+        assignedToId &&
+        assignedToId !== session.user.id &&
+        !hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.assign')
+      ) {
+        return res.status(403).json({ error: 'Acesso negado. Você só pode atribuir tarefas a outras pessoas com tasks.assign.' });
+      }
+      const [assigneeExists, proposalExists, clientExists] = await Promise.all([
+        assignedToId ? prisma.user.findFirst({
+          where: {
+            id: assignedToId,
+            active: true,
+            deletedAt: null,
+            OR: [
+              { tenantId },
+              { memberships: { some: { tenantId, active: true } } },
+            ],
+          },
+          select: { id: true },
+        }) : Promise.resolve(true),
+        proposalId ? prisma.proposal.findFirst({ where: { id: proposalId, tenantId }, select: { id: true } }) : Promise.resolve(true),
+        clientId ? prisma.client.findFirst({ where: { id: clientId, tenantId }, select: { id: true } }) : Promise.resolve(true),
+      ]);
+      if (!assigneeExists || !proposalExists || !clientExists) {
+        return res.status(400).json({ error: 'Responsável, proposta ou cliente não pertence a esta empresa.' });
+      }
 
       // 1. Transação de Negócio (Isolada e Prioritária)
       const task = await prisma.$transaction(async (tx) => {
@@ -4511,12 +5480,12 @@ async function auditAndEnsureMasterUser() {
           data: {
             id: id || undefined,
             tenantId,
-            title,
-            description: description || null,
+            title: title.trim(),
+            description: typeof description === 'string' && description.trim() ? description.trim() : null,
             category: category || 'OPERACIONAL',
             priority: priority || 'MEDIUM',
-            dueDate: dueDate ? new Date(dueDate) : null,
-            completed: Boolean(completed),
+            dueDate: parsedDueDate ?? null,
+            completed: completed ?? false,
             assignedToId: assignedToId || null,
             proposalId: proposalId || null,
             clientId: clientId || null,
@@ -4566,10 +5535,10 @@ async function auditAndEnsureMasterUser() {
   app.put('/api/tasks/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
       const { id } = req.params;
-      const { title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body;
+      const { title, description, category, priority, dueDate, completed, assignedToId, proposalId, clientId } = req.body || {};
 
       const existing = await prisma.task.findFirst({
         where: { id, tenantId },
@@ -4579,15 +5548,65 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Tarefa não encontrada.' });
       }
 
+      if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
+        return res.status(400).json({ error: 'Título é obrigatório.' });
+      }
+      if (typeof title === 'string' && title.trim().length > 200) return res.status(400).json({ error: 'O título deve ter no máximo 200 caracteres.' });
+      if (description !== undefined && description !== null && typeof description !== 'string') return res.status(400).json({ error: 'Descrição inválida.' });
+      if (typeof description === 'string' && description.trim().length > 5000) return res.status(400).json({ error: 'A descrição deve ter no máximo 5.000 caracteres.' });
+      if (category !== undefined && (typeof category !== 'string' || category.trim().length > 64)) return res.status(400).json({ error: 'Categoria inválida (máximo de 64 caracteres).' });
+      if ([assignedToId, proposalId, clientId].some(value => value !== undefined && value !== null && typeof value !== 'string')) {
+        return res.status(400).json({ error: 'Responsável, proposta ou cliente inválido.' });
+      }
+      const parsedDueDate = parseTaskDueDate(dueDate);
+      if (dueDate !== undefined && parsedDueDate === undefined) return res.status(400).json({ error: 'Data de vencimento inválida.' });
+      if (priority !== undefined && !isTaskPriority(priority)) return res.status(400).json({ error: 'Prioridade inválida.' });
+      if (completed !== undefined && typeof completed !== 'boolean') return res.status(400).json({ error: 'Status de conclusão inválido.' });
+
+      const canEditAll = hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.update');
+      const canToggleOwnTaskCompletion =
+        existing.assignedToId === session.user.id &&
+        typeof completed === 'boolean' &&
+        Object.keys(req.body || {}).every((key) => key === 'completed');
+      if (!canEditAll && !canToggleOwnTaskCompletion) {
+        return res.status(403).json({ error: 'Acesso negado. Você só pode alterar o status de tarefas atribuídas a você.' });
+      }
+      if (
+        assignedToId !== undefined &&
+        assignedToId !== existing.assignedToId &&
+        !hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.assign')
+      ) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão tasks.assign para trocar o responsável.' });
+      }
+      const [assigneeExists, proposalExists, clientExists] = await Promise.all([
+        assignedToId ? prisma.user.findFirst({
+          where: {
+            id: assignedToId,
+            active: true,
+            deletedAt: null,
+            OR: [
+              { tenantId },
+              { memberships: { some: { tenantId, active: true } } },
+            ],
+          },
+          select: { id: true },
+        }) : Promise.resolve(true),
+        proposalId ? prisma.proposal.findFirst({ where: { id: proposalId, tenantId }, select: { id: true } }) : Promise.resolve(true),
+        clientId ? prisma.client.findFirst({ where: { id: clientId, tenantId }, select: { id: true } }) : Promise.resolve(true),
+      ]);
+      if (!assigneeExists || !proposalExists || !clientExists) {
+        return res.status(400).json({ error: 'Responsável, proposta ou cliente não pertence a esta empresa.' });
+      }
+
       const task = await prisma.task.update({
         where: { id },
         data: {
-          title: title !== undefined ? title : undefined,
-          description: description !== undefined ? description : undefined,
-          category: category !== undefined ? category : undefined,
+          title: title !== undefined ? title.trim() : undefined,
+          description: description !== undefined ? (typeof description === 'string' && description.trim() ? description.trim() : null) : undefined,
+          category: category !== undefined ? (category.trim() || 'OPERACIONAL') : undefined,
           priority: priority !== undefined ? priority : undefined,
-          dueDate: dueDate !== undefined ? (dueDate ? new Date(dueDate) : null) : undefined,
-          completed: completed !== undefined ? Boolean(completed) : undefined,
+          dueDate: parsedDueDate,
+          completed: completed !== undefined ? completed : undefined,
           assignedToId: assignedToId !== undefined ? assignedToId : undefined,
           proposalId: proposalId !== undefined ? proposalId : undefined,
           clientId: clientId !== undefined ? clientId : undefined,
@@ -4611,8 +5630,11 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/tasks/:id', async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'tasks.delete')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão tasks.delete.' });
+      }
       const { id } = req.params;
 
       const existing = await prisma.task.findFirst({
@@ -4649,6 +5671,10 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/documents', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.view.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
@@ -4673,6 +5699,12 @@ async function auditAndEnsureMasterUser() {
   app.post('/api/documents', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const userRole = session.user.role as Role;
+      const customPermissions = session.user.customPermissions || [];
+      if (!hasPermission(userRole, customPermissions, 'clients.create') && !hasPermission(userRole, customPermissions, 'clients.update')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão para cadastrar ou editar clientes.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
@@ -4685,9 +5717,23 @@ async function auditAndEnsureMasterUser() {
       if (!name || typeof name !== 'string') {
         return res.status(400).json({ error: 'name é obrigatório.' });
       }
+      const cleanName = name.trim();
+      if (!cleanName || cleanName.length > 180) {
+        return res.status(400).json({ error: 'O nome do documento deve ter entre 1 e 180 caracteres.' });
+      }
 
       if (!fileBase64 || typeof fileBase64 !== 'string') {
         return res.status(400).json({ error: 'fileBase64 é obrigatório.' });
+      }
+      const allowedDocumentTypes = [
+        'RG', 'CNH', 'COMPROVANTE_RESIDENCIA', 'COMPROVANTE_RENDA',
+        'EXTRATO_INSS', 'CONTRATO_ASSINADO', 'PROCURACAO', 'OUTROS',
+      ];
+      if (type !== undefined && !allowedDocumentTypes.includes(type)) {
+        return res.status(400).json({ error: 'Tipo de documento inválido.' });
+      }
+      if (proposalId !== undefined && proposalId !== null && typeof proposalId !== 'string') {
+        return res.status(400).json({ error: 'Identificador de proposta inválido.' });
       }
 
       // Validate Client belongs to Tenant (Strict Security Check)
@@ -4697,23 +5743,47 @@ async function auditAndEnsureMasterUser() {
       if (!client) {
         return res.status(400).json({ error: 'Cliente inválido ou pertence a outro tenant.' });
       }
+      if (proposalId) {
+        const proposal = await prisma.proposal.findFirst({
+          where: { id: proposalId, tenantId, clientId },
+          select: { id: true },
+        });
+        if (!proposal) return res.status(400).json({ error: 'A proposta não pertence a este cliente ou empresa.' });
+      }
 
       // Convert base64 to Buffer
-      const cleanBase64 = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+      const cleanBase64 = (fileBase64.includes(',') ? fileBase64.split(',').pop() || '' : fileBase64).trim();
+      if (!cleanBase64 || cleanBase64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+        return res.status(400).json({ error: 'Conteúdo do arquivo inválido.' });
+      }
+      const estimatedFileSize = (cleanBase64.length / 4) * 3 - (cleanBase64.endsWith('==') ? 2 : cleanBase64.endsWith('=') ? 1 : 0);
+      const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MiB
+      if (estimatedFileSize <= 0 || estimatedFileSize > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'O arquivo deve ter até 15 MB e não pode estar vazio.' });
+      }
       const fileBuffer = Buffer.from(cleanBase64, 'base64');
-
-      // Server-Side File Size Limit (15 MB Max)
-      const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
-      if (fileBuffer.length > MAX_FILE_SIZE) {
-        return res.status(400).json({ error: 'Tamanho do arquivo excede o limite máximo permitido de 15MB.' });
+      if (fileBuffer.length !== estimatedFileSize || fileBuffer.length > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'Conteúdo do arquivo inválido ou acima do limite de 15 MB.' });
       }
 
       // Path Traversal Protection & Physical Blob Path Construction
       const documentId = `doc_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const { blobPath, safeFileName } = buildBlobPath(tenantId, clientId, documentId, name);
+      const { blobPath, safeFileName } = buildBlobPath(tenantId, clientId, documentId, cleanName);
 
       // Upload Blob to Azure Storage
-      const detectedMime = mimeType || 'application/octet-stream';
+      const normalizedMime = typeof mimeType === 'string' ? mimeType.split(';')[0].trim().toLowerCase() : '';
+      const safeInlineMimes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+      const hasExpectedSignature = (() => {
+        if (normalizedMime === 'application/pdf') return fileBuffer.subarray(0, 5).toString('ascii') === '%PDF-';
+        if (normalizedMime === 'image/jpeg') return fileBuffer[0] === 0xff && fileBuffer[1] === 0xd8 && fileBuffer[2] === 0xff;
+        if (normalizedMime === 'image/png') return fileBuffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+        if (normalizedMime === 'image/gif') return ['GIF87a', 'GIF89a'].includes(fileBuffer.subarray(0, 6).toString('ascii'));
+        if (normalizedMime === 'image/webp') return fileBuffer.subarray(0, 4).toString('ascii') === 'RIFF' && fileBuffer.subarray(8, 12).toString('ascii') === 'WEBP';
+        return false;
+      })();
+      const detectedMime = safeInlineMimes.has(normalizedMime) && hasExpectedSignature
+        ? normalizedMime
+        : 'application/octet-stream';
       await uploadBlob(blobPath, fileBuffer, detectedMime);
 
       // PostgreSQL Metadata Record Creation + Orphan Blob Compensation Guard
@@ -4787,6 +5857,10 @@ async function auditAndEnsureMasterUser() {
   app.get('/api/documents/:id', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.view.' });
+      }
       const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
@@ -4810,7 +5884,13 @@ async function auditAndEnsureMasterUser() {
 
       const mime = docRecord.mimeType || contentType || 'application/octet-stream';
       res.setHeader('Content-Type', mime);
-      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(docRecord.name)}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, no-store');
+      const safeInlineMimes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+      const disposition = safeInlineMimes.has(mime) ? 'inline' : 'attachment';
+      const downloadName = sanitizeFileName(docRecord.name || 'document.bin') || 'document.bin';
+      const encodedDownloadName = encodeURIComponent(downloadName).replace(/[!'()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+      res.setHeader('Content-Disposition', `${disposition}; filename="${downloadName}"; filename*=UTF-8''${encodedDownloadName}`);
       res.setHeader('Content-Length', buffer.length);
 
       await AuditLogService.record(prisma, {
@@ -4838,7 +5918,11 @@ async function auditAndEnsureMasterUser() {
   app.delete('/api/documents/:id', documentRateLimiter, async (req, res) => {
     try {
       const session = await getAuthSession(req);
-      const tenantId = session?.user?.tenantId;
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'clients.delete')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão clients.delete.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { id } = req.params;
@@ -4852,9 +5936,14 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Documento não encontrado ou sem permissão para exclusão.' });
       }
 
-      // Delete Blob from Azure Storage (Idempotent)
+      // Keep the database row if Azure is unavailable so the document can be retried.
       if (docRecord.storagePath) {
-        await deleteBlob(docRecord.storagePath);
+        try {
+          await deleteBlob(docRecord.storagePath);
+        } catch (storageError) {
+          console.error('[API /api/documents/:id DELETE] Azure blob deletion failed:', storageError);
+          return res.status(502).json({ error: 'Não foi possível remover o arquivo do armazenamento. O documento foi mantido para tentar novamente.' });
+        }
       }
 
       // Delete Metadata from PostgreSQL
@@ -5394,6 +6483,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'promoters.create')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'promoters.create'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id, name, code, status } = req.body;
@@ -5419,6 +6511,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'promoters.update')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'promoters.update'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
@@ -5442,6 +6537,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'promoters.delete')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'promoters.delete'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
@@ -5461,6 +6559,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'banks.create')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'banks.create'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id, name, code, color, status } = req.body;
@@ -5485,6 +6586,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'banks.update')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'banks.update'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
@@ -5509,6 +6613,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'banks.delete')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'banks.delete'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
@@ -5528,6 +6635,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !['banks.view', 'promoters.view', 'integrations.view'].some(permission => hasPermission(session.user.role as Role, session.user.customPermissions || [], permission))) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão de visualização de bancos, promotoras ou integrações." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const links = await ensureDefaultBankPromotersForTenant(prisma, tenantId);
@@ -5541,6 +6651,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && (!hasPermission(session.user.role as Role, session.user.customPermissions || [], 'banks.update') || !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'promoters.update'))) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão de edição de bancos e promotoras." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { bankId, promoterId, login, status } = req.body;
@@ -5589,6 +6702,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && (!hasPermission(session.user.role as Role, session.user.customPermissions || [], 'banks.update') || !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'promoters.update'))) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão de edição de bancos e promotoras." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
@@ -5604,43 +6720,13 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // PRODUCTS (GET, POST, PUT, DELETE)
   // -------------------------------------------------------------
-  app.get('/api/products', async (req, res) => {
-    try {
-      const session = await getAuthSession(req);
-      if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
-      const tenantId = session.effectiveTenantId || session.user.tenantId;
-      const includeInactive = req.query.includeInactive === 'true';
-
-      const whereCondition: any = {
-        OR: [
-          { scope: 'GLOBAL' },
-          ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
-        ],
-        ...(includeInactive ? {} : { active: true }),
-      };
-
-      const products = await prisma.product.findMany({
-        where: whereCondition,
-        include: { tenant: { select: { id: true, name: true } } },
-        orderBy: [{ scope: 'asc' }, { name: 'asc' }],
-      });
-
-      return res.json(
-        products.map(p => ({
-          ...p,
-          tenantName: p.tenant?.name,
-        }))
-      );
-    } catch (err) {
-      console.error('[API PRODUCTS GET ERROR]', err);
-      return res.status(500).json({ error: 'Erro ao listar produtos.' });
-    }
-  });
-
   app.post('/api/products', async (req, res) => {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.create')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.create'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
 
@@ -5727,6 +6813,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.update')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.update'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
@@ -5794,6 +6883,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.delete')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.delete'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
@@ -5835,17 +6927,24 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.view') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.view' ou 'admin.view'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const includeInactive = req.query.includeInactive === 'true';
+      const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
 
       const whereCondition: any = {
-        OR: [
-          { scope: 'GLOBAL' },
-          ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
-        ],
+        ...(isMaster && req.query.allTenants === 'true' ? {} : {
+          OR: [
+            { scope: 'GLOBAL' },
+            ...(tenantId ? [{ scope: 'EXCLUSIVE', tenantId }] : []),
+          ],
+        }),
         ...(includeInactive ? {} : { active: true }),
       };
 
+      if (!tenantId && !isMaster) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const convenios = await prisma.convenio.findMany({
         where: whereCondition,
         include: { tenant: { select: { id: true, name: true } } },
@@ -5868,6 +6967,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.create') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.create' ou 'admin.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
 
@@ -5879,6 +6981,10 @@ async function auditAndEnsureMasterUser() {
 
       if (targetScope === 'EXCLUSIVE' && !finalTenantId) {
         return res.status(400).json({ error: 'Convênios exclusivos necessitam de um tenantId associado.' });
+      }
+      if (finalTenantId && isMaster && targetTenantId) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: finalTenantId }, select: { id: true } });
+        if (!targetTenant) return res.status(400).json({ error: 'Empresa de destino não encontrada.' });
       }
 
       const existing = await prisma.convenio.findFirst({
@@ -5930,6 +7036,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.update') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.update' ou 'admin.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
@@ -5982,6 +7091,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.delete') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.delete' ou 'admin.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
@@ -6023,6 +7135,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.view') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.view')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.view' ou 'admin.view'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
 
@@ -6057,6 +7172,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.create') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.create' ou 'admin.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
 
@@ -6065,6 +7183,13 @@ async function auditAndEnsureMasterUser() {
 
       const targetScope = isMaster && scope === 'GLOBAL' ? 'GLOBAL' : 'EXCLUSIVE';
       const finalTenantId = targetScope === 'GLOBAL' ? null : (isMaster && targetTenantId ? targetTenantId : tenantId);
+      if (targetScope === 'EXCLUSIVE' && !finalTenantId) {
+        return res.status(400).json({ error: 'Regras exclusivas necessitam de uma empresa associada.' });
+      }
+      if (finalTenantId && isMaster && targetTenantId) {
+        const targetTenant = await prisma.tenant.findUnique({ where: { id: finalTenantId }, select: { id: true } });
+        if (!targetTenant) return res.status(400).json({ error: 'Empresa de destino não encontrada.' });
+      }
 
       const rule = await prisma.operationalRule.create({
         data: {
@@ -6099,6 +7224,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.update') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.update' ou 'admin.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
@@ -6145,6 +7273,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (session.user.role !== 'PLATFORM_MASTER' && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.delete') && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'products.delete' ou 'admin.manage'." });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       const isMaster = session.user.role === 'PLATFORM_MASTER' || session.user.role === 'MASTER';
       const { id } = req.params;
@@ -6508,7 +7639,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.create'." });
       }
 
-      const { id, name, email, password, role, customPermissions, tenantId, phone, memberships } = req.body;
+      const { id, name, email, password, role, customPermissions, tenantId, phone, memberships } = req.body || {};
       if (!name || !email) {
         return res.status(400).json({ error: 'Nome e E-mail são obrigatórios.' });
       }
@@ -6520,6 +7651,9 @@ async function auditAndEnsureMasterUser() {
       const targetTenantId = (isPlatformMaster && tenantId)
         ? tenantId
         : (session.effectiveTenantId || session.user.tenantId);
+      if (!isPlatformMaster && Array.isArray(memberships) && memberships.some((membership: any) => membership?.tenantId && membership.tenantId !== targetTenantId)) {
+        return res.status(403).json({ error: 'Você só pode vincular usuários à empresa ativa da sua sessão.' });
+      }
 
       const cleanEmail = String(email).trim().toLowerCase();
       const existing = await prisma.user.findFirst({
@@ -6528,6 +7662,28 @@ async function auditAndEnsureMasterUser() {
       });
 
       const cleanPermissions = Array.isArray(customPermissions) ? customPermissions : [];
+      const grantError = getUserGrantError(
+        userRole,
+        userCustomPerms,
+        role || 'DIGITADOR',
+        cleanPermissions
+      );
+      if (grantError) return res.status(grantError.status).json({ error: grantError.message });
+
+      if (Array.isArray(memberships)) {
+        for (const membership of memberships) {
+          if (!membership?.tenantId) continue;
+          const membershipGrantError = getUserGrantError(
+            userRole,
+            userCustomPerms,
+            membership.role || 'DIGITADOR',
+            membership.customPermissions
+          );
+          if (membershipGrantError) {
+            return res.status(membershipGrantError.status).json({ error: membershipGrantError.message });
+          }
+        }
+      }
 
       if (existing) {
         if (!targetTenantId) {
@@ -6537,6 +7693,15 @@ async function auditAndEnsureMasterUser() {
         // Multi-tenant: 1 USER = 1 IDENTIDADE GLOBAL = 1 LOGIN
         // If user already belongs to targetTenantId, update role and reactivate if inactive
         const existingMembership = existing.memberships?.find((m: any) => m.tenantId === targetTenantId);
+        const updatesExistingSecondaryMembership = Array.isArray(memberships) &&
+          memberships.some((m: any) => existing.memberships?.some((item: any) => item.tenantId === m?.tenantId));
+        if (
+          !isPlatformMaster &&
+          (existingMembership || updatesExistingSecondaryMembership) &&
+          !hasPermission(userRole, userCustomPerms, 'users.update')
+        ) {
+          return res.status(403).json({ error: "Alterar um usuário ou vínculo existente requer permissão 'users.update'." });
+        }
         if (existingMembership) {
           await prisma.userTenantMembership.update({
             where: { id: existingMembership.id },
@@ -6614,19 +7779,76 @@ async function auditAndEnsureMasterUser() {
 
       // New User Creation
       const initialPassword = password || ('Mudar@' + Math.random().toString(36).slice(-8));
-      const user = await prisma.user.create({
-        data: {
-          id: id || undefined,
-          tenantId: targetTenantId || null,
-          name: String(name).trim(),
-          email: cleanEmail,
-          passwordHash: await hashPassword(String(initialPassword).trim()),
-          mustChangePassword: true,
-          role: role || 'DIGITADOR',
-          customPermissions: cleanPermissions,
-          phone: phone || null,
-          active: true,
-        },
+      const hashedInitialPassword = await hashPassword(String(initialPassword).trim());
+      const user = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            id: id || undefined,
+            tenantId: targetTenantId || null,
+            name: String(name).trim(),
+            email: cleanEmail,
+            passwordHash: hashedInitialPassword,
+            mustChangePassword: true,
+            role: role || 'DIGITADOR',
+            customPermissions: cleanPermissions,
+            phone: phone || null,
+            active: true,
+          },
+        });
+
+        if (createdUser.tenantId) {
+          await tx.userTenantMembership.upsert({
+            where: {
+              userId_tenantId: {
+                userId: createdUser.id,
+                tenantId: createdUser.tenantId,
+              },
+            },
+            update: {
+              role: createdUser.role,
+              customPermissions: createdUser.customPermissions,
+              active: createdUser.active,
+            },
+            create: {
+              userId: createdUser.id,
+              tenantId: createdUser.tenantId,
+              role: createdUser.role,
+              customPermissions: createdUser.customPermissions,
+              active: createdUser.active,
+            },
+          });
+        }
+
+        if (Array.isArray(memberships)) {
+          for (const membership of memberships) {
+            if (!membership?.tenantId || membership.tenantId === createdUser.tenantId) continue;
+            await tx.userTenantMembership.upsert({
+              where: {
+                userId_tenantId: {
+                  userId: createdUser.id,
+                  tenantId: membership.tenantId,
+                },
+              },
+              update: {
+                role: membership.role || createdUser.role,
+                customPermissions: Array.isArray(membership.customPermissions)
+                  ? membership.customPermissions
+                  : createdUser.customPermissions,
+                active: membership.active !== undefined ? Boolean(membership.active) : true,
+              },
+              create: {
+                userId: createdUser.id,
+                tenantId: membership.tenantId,
+                role: membership.role || createdUser.role,
+                customPermissions: Array.isArray(membership.customPermissions)
+                  ? membership.customPermissions
+                  : createdUser.customPermissions,
+                active: membership.active !== undefined ? Boolean(membership.active) : true,
+              },
+            });
+          }
+        }
+        return createdUser;
       });
 
       await AuditLogService.record(prisma, {
@@ -6648,65 +7870,12 @@ async function auditAndEnsureMasterUser() {
       });
 
       if (user.tenantId) {
-        await prisma.userTenantMembership.upsert({
-          where: {
-            userId_tenantId: {
-              userId: user.id,
-              tenantId: user.tenantId,
-            },
-          },
-          update: {
-            role: user.role,
-            customPermissions: user.customPermissions,
-            active: user.active,
-          },
-          create: {
-            userId: user.id,
-            tenantId: user.tenantId,
-            role: user.role,
-            customPermissions: user.customPermissions,
-            active: user.active,
-          },
-        }).catch((err) => {
-          console.error('[AUTO_MEMBERSHIP_CREATE ERROR]', err);
-        });
-
         sseRegistry.broadcastToTenant(user.tenantId, {
           type: 'USER_CREATED',
           entity: 'User',
           entityId: user.id,
           userId: session.user.id,
         });
-      }
-
-      // If additional memberships provided:
-      if (Array.isArray(memberships) && memberships.length > 0) {
-        for (const m of memberships) {
-          if (m.tenantId && m.tenantId !== user.tenantId) {
-            await prisma.userTenantMembership.upsert({
-              where: {
-                userId_tenantId: {
-                  userId: user.id,
-                  tenantId: m.tenantId,
-                },
-              },
-              update: {
-                role: m.role || user.role,
-                customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : user.customPermissions,
-                active: m.active !== undefined ? Boolean(m.active) : true,
-              },
-              create: {
-                userId: user.id,
-                tenantId: m.tenantId,
-                role: m.role || user.role,
-                customPermissions: Array.isArray(m.customPermissions) ? m.customPermissions : user.customPermissions,
-                active: m.active !== undefined ? Boolean(m.active) : true,
-              },
-            }).catch((err) => {
-              console.error('[ADDITIONAL_MEMBERSHIP_CREATE ERROR]', err);
-            });
-          }
-        }
       }
 
       const fullCreatedUser = await prisma.user.findUnique({
@@ -6733,7 +7902,7 @@ async function auditAndEnsureMasterUser() {
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { id } = req.params;
-      const { name, active, role, customPermissions, tenantId, phone, password, memberships } = req.body;
+      const { name, active, role, customPermissions, tenantId, phone, password, memberships } = req.body || {};
 
       const isSelf = id === session.user.id;
       const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
@@ -6747,7 +7916,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       if (!canUpdateUsers) {
-        if (role !== undefined || customPermissions !== undefined || tenantId !== undefined || active !== undefined) {
+        if (role !== undefined || customPermissions !== undefined || tenantId !== undefined || active !== undefined || memberships !== undefined) {
           return res.status(403).json({ error: "Acesso negado. Alteração de role, permissões ou status requer permissão 'users.update'." });
         }
       }
@@ -6758,8 +7927,39 @@ async function auditAndEnsureMasterUser() {
       }
 
       const effectiveTenant = session.effectiveTenantId || session.user.tenantId;
-      if (!isPlatformMaster && targetUser.tenantId !== effectiveTenant && targetUser.tenantId !== session.user.tenantId) {
-        return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
+      if (!isPlatformMaster && targetUser.tenantId !== effectiveTenant) {
+        const membership = await prisma.userTenantMembership.findFirst({
+          where: { userId: targetUser.id, tenantId: effectiveTenant, active: true },
+          select: { id: true },
+        });
+        if (!membership) return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
+      }
+      if (!isPlatformMaster && targetUser.role === 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Somente um PLATFORM_MASTER pode alterar outra conta PLATFORM_MASTER.' });
+      }
+      if (role !== undefined || customPermissions !== undefined) {
+        const grantError = getUserGrantError(
+          userRole,
+          userCustomPerms,
+          role || targetUser.role,
+          customPermissions !== undefined ? customPermissions : targetUser.customPermissions
+        );
+        if (grantError) return res.status(grantError.status).json({ error: grantError.message });
+      }
+      if (!isPlatformMaster && Array.isArray(memberships) && memberships.some((membership: any) => membership?.tenantId && membership.tenantId !== effectiveTenant)) {
+        return res.status(403).json({ error: 'Você só pode gerenciar vínculos da empresa ativa da sua sessão.' });
+      }
+      if (Array.isArray(memberships)) {
+        for (const membership of memberships) {
+          if (!membership?.tenantId) continue;
+          const grantError = getUserGrantError(
+            userRole,
+            userCustomPerms,
+            membership.role || 'DIGITADOR',
+            membership.customPermissions
+          );
+          if (grantError) return res.status(grantError.status).json({ error: grantError.message });
+        }
       }
 
       if (role === 'PLATFORM_MASTER' && !isPlatformMaster) {
@@ -6820,6 +8020,9 @@ async function auditAndEnsureMasterUser() {
           passwordHash: hashedPassword,
         },
       });
+      if (active === false || hashedPassword) {
+        await prisma.session.deleteMany({ where: { userId: id } });
+      }
 
       for (const item of auditActions) {
         await AuditLogService.record(prisma, {
@@ -6939,8 +8142,37 @@ async function auditAndEnsureMasterUser() {
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
       const { id } = req.params;
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      if (!isPlatformMaster && !hasPermission(
+        session.user.role as Role,
+        session.user.customPermissions,
+        'users.view'
+      )) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.view'." });
+      }
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const canViewAllTenants = isPlatformMaster && !session.adminContext;
+      if (!canViewAllTenants && !effectiveTenantId) {
+        return res.status(403).json({ error: 'Contexto de empresa obrigatório.' });
+      }
+
+      const targetUser = await prisma.user.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+          ...(canViewAllTenants ? {} : {
+            OR: [
+              { tenantId: effectiveTenantId },
+              { memberships: { some: { tenantId: effectiveTenantId, active: true } } },
+            ],
+          }),
+        },
+        select: { id: true },
+      });
+      if (!targetUser) return res.status(404).json({ error: 'Usuário não encontrado nesta empresa.' });
+
       const memberships = await prisma.userTenantMembership.findMany({
-        where: { userId: id },
+        where: { userId: id, ...(canViewAllTenants ? {} : { tenantId: effectiveTenantId }) },
         include: { tenant: true },
         orderBy: { createdAt: 'asc' },
       });
@@ -6966,11 +8198,60 @@ async function auditAndEnsureMasterUser() {
       }
 
       const { id } = req.params;
-      const { tenantId, role, customPermissions, active } = req.body;
+      const { tenantId, role, customPermissions, active } = req.body || {};
 
       if (!tenantId) {
         return res.status(400).json({ error: 'TenantId é obrigatório.' });
       }
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if ((!isPlatformMaster || session.adminContext) && tenantId !== effectiveTenantId) {
+        return res.status(403).json({ error: 'Você só pode gerenciar vínculos da empresa ativa da sua sessão.' });
+      }
+      if ((!isPlatformMaster || session.adminContext) && !effectiveTenantId) {
+        return res.status(403).json({ error: 'Contexto de empresa obrigatório.' });
+      }
+
+      const targetUser = await prisma.user.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+          ...((!isPlatformMaster || session.adminContext) ? {
+            OR: [
+              { tenantId: effectiveTenantId },
+              { memberships: { some: { tenantId: effectiveTenantId, active: true } } },
+            ],
+          } : {}),
+        },
+        select: { id: true },
+      });
+      if (!targetUser) return res.status(404).json({ error: 'Usuário não encontrado nesta empresa.' });
+
+      const currentMembership = await prisma.userTenantMembership.findUnique({
+        where: { userId_tenantId: { userId: id, tenantId } },
+        select: { id: true, role: true, customPermissions: true },
+      });
+      if (
+        currentMembership &&
+        !isPlatformMaster &&
+        !hasPermission(userRole, userCustomPerms, 'users.update')
+      ) {
+        return res.status(403).json({ error: "Acesso negado. Atualizar um vínculo requer permissão 'users.update'." });
+      }
+      if (
+        !currentMembership &&
+        !isPlatformMaster &&
+        !hasPermission(userRole, userCustomPerms, 'users.create') &&
+        !hasPermission(userRole, userCustomPerms, 'users.update')
+      ) {
+        return res.status(403).json({ error: "Acesso negado. Criar um vínculo requer permissão 'users.create'." });
+      }
+      const grantError = getUserGrantError(
+        userRole,
+        userCustomPerms,
+        role || currentMembership?.role || 'DIGITADOR',
+        customPermissions !== undefined ? customPermissions : currentMembership?.customPermissions
+      );
+      if (grantError) return res.status(grantError.status).json({ error: grantError.message });
 
       const membership = await prisma.userTenantMembership.upsert({
         where: {
@@ -7014,8 +8295,29 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.update'." });
       }
 
-      const { membershipId } = req.params;
-      const { role, active, customPermissions } = req.body;
+      const { id, membershipId } = req.params;
+      const { role, active, customPermissions } = req.body || {};
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const existingMembership = await prisma.userTenantMembership.findFirst({
+        where: { id: membershipId, userId: id },
+        include: { user: { select: { role: true, deletedAt: true } } },
+      });
+      if (!existingMembership || existingMembership.user.deletedAt) {
+        return res.status(404).json({ error: 'Vínculo de empresa não encontrado.' });
+      }
+      if (
+        (!isPlatformMaster || session.adminContext) &&
+        (!effectiveTenantId || existingMembership.tenantId !== effectiveTenantId || existingMembership.user.role === 'PLATFORM_MASTER')
+      ) {
+        return res.status(403).json({ error: 'Acesso negado para alterar este vínculo.' });
+      }
+      const grantError = getUserGrantError(
+        userRole,
+        userCustomPerms,
+        role || existingMembership.role,
+        customPermissions !== undefined ? customPermissions : existingMembership.customPermissions
+      );
+      if (grantError) return res.status(grantError.status).json({ error: grantError.message });
 
       const updated = await prisma.userTenantMembership.update({
         where: { id: membershipId },
@@ -7048,6 +8350,15 @@ async function auditAndEnsureMasterUser() {
       }
 
       const { membershipId } = req.params;
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      const membership = await prisma.userTenantMembership.findFirst({
+        where: { id: membershipId, userId: req.params.id },
+        include: { user: { select: { role: true } } },
+      });
+      if (!membership) return res.status(404).json({ error: 'Vínculo de empresa não encontrado.' });
+      if (!isPlatformMaster && (membership.tenantId !== effectiveTenantId || membership.user.role === 'PLATFORM_MASTER')) {
+        return res.status(403).json({ error: 'Acesso negado para remover este vínculo.' });
+      }
       await prisma.userTenantMembership.delete({
         where: { id: membershipId },
       });
@@ -7181,8 +8492,16 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Usuário não encontrado.' });
       }
 
-      if (!isPlatformMaster && targetUser.tenantId !== session.user.tenantId) {
-        return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
+      const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!isPlatformMaster && targetUser.tenantId !== effectiveTenantId) {
+        const membership = await prisma.userTenantMembership.findFirst({
+          where: { userId: targetUser.id, tenantId: effectiveTenantId, active: true },
+          select: { id: true },
+        });
+        if (!membership) return res.status(403).json({ error: 'Acesso negado a usuário de outro tenant.' });
+      }
+      if (!isPlatformMaster && targetUser.role === 'PLATFORM_MASTER') {
+        return res.status(403).json({ error: 'Somente um PLATFORM_MASTER pode excluir uma conta PLATFORM_MASTER.' });
       }
 
       if (targetUser.role === 'PLATFORM_MASTER') {
@@ -7207,6 +8526,7 @@ async function auditAndEnsureMasterUser() {
         where: { id },
         data: { deletedAt: new Date(), active: false },
       });
+      await prisma.session.deleteMany({ where: { userId: id } });
 
       await AuditLogService.record(prisma, {
         tenantId: targetUser.tenantId,
@@ -8764,18 +10084,19 @@ async function auditAndEnsureMasterUser() {
 
   // 6.7. POST /api/saas/users/bulk-delete (and alias /api/admin/users/bulk-delete) - Soft delete users in batch
   const bulkDeleteUsersHandler = async (req: express.Request, res: express.Response) => {
-    let currentStep = 'STEP 1: validar sessão/PLATFORM_MASTER';
+    let currentStep = 'STEP 1: validar sessão/permissão users.delete';
     let processingUserId: string | null = null;
 
     try {
-      // STEP 1: validar sessão/PLATFORM_MASTER
-      currentStep = 'STEP 1: validar sessão/PLATFORM_MASTER';
+      // STEP 1: validar sessão e permissão de exclusão
+      currentStep = 'STEP 1: validar sessão/permissão users.delete';
       const session = await getAuthSession(req);
       if (!session) {
         return res.status(401).json({ error: 'Não autenticado.', code: 'UNAUTHENTICATED' });
       }
-      if (session.user.role !== 'PLATFORM_MASTER') {
-        return res.status(403).json({ error: 'Acesso restrito para PLATFORM_MASTER.', code: 'FORBIDDEN' });
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      if (!isPlatformMaster && !hasPermission(session.user.role as Role, session.user.customPermissions || [], 'users.delete')) {
+        return res.status(403).json({ error: "Acesso negado. Requer permissão 'users.delete'.", code: 'FORBIDDEN' });
       }
 
       const isDryRun = req.query.dryRun === 'true' || req.body?.dryRun === true;
@@ -8814,14 +10135,30 @@ async function auditAndEnsureMasterUser() {
 
       // STEP 4: buscar usuários no banco
       currentStep = 'STEP 4: buscar usuários';
+      const actorTenantId = session.effectiveTenantId || session.user.tenantId;
+      const userScope = isPlatformMaster && !session.adminContext
+        ? {}
+        : {
+            ...(actorTenantId
+              ? {
+                  OR: [
+                    { tenantId: actorTenantId },
+                    { memberships: { some: { tenantId: actorTenantId, active: true } } },
+                  ],
+                }
+              : { tenantId: null }),
+          };
       const existingUsers = await prisma.user.findMany({
-        where: { id: { in: uniqueIds } },
+        where: { id: { in: uniqueIds }, ...userScope },
         include: {
           tenant: {
             select: { id: true, name: true, slug: true },
           },
         },
       });
+      if (!isPlatformMaster && existingUsers.some((user) => user.role === 'PLATFORM_MASTER')) {
+        return res.status(403).json({ error: 'Somente um PLATFORM_MASTER pode excluir uma conta PLATFORM_MASTER.', code: 'PROTECTED_PLATFORM_MASTER' });
+      }
 
       // STEP 5: salvaguarda de PLATFORM_MASTER ativo (mínimo 1 ativo na plataforma)
       currentStep = 'STEP 5: verificar salvaguarda de PLATFORM_MASTER ativo';
@@ -9728,6 +11065,12 @@ async function auditAndEnsureMasterUser() {
       if (!rows || !Array.isArray(rows) || rows.length === 0) {
         return res.status(400).json({ error: 'Nenhum registro válido enviado para importação.' });
       }
+      const malformedRowIndex = rows.findIndex(row => !row || typeof row !== 'object' || Array.isArray(row));
+      if (malformedRowIndex !== -1) {
+        return res.status(400).json({
+          error: `Registro inválido na posição ${malformedRowIndex + 1}. Reenvie a planilha após revisar os dados.`,
+        });
+      }
 
       const MAX_IMPORT_ROWS = 50000;
       if (rows.length > MAX_IMPORT_ROWS) {
@@ -9749,18 +11092,41 @@ async function auditAndEnsureMasterUser() {
 
       const numFileSize = Number(fileSize) || 0;
 
-      // Create ImportJob record in PostgreSQL
-      const job = await prisma.importJob.create({
-        data: {
-          tenantId,
-          userId,
-          type: 'PROPOSALS',
-          fileName: cleanFileName,
-          fileSize: numFileSize,
-          status: 'QUEUED',
-          totalRecords: rows.length,
-        },
-      });
+      // Recheck and enqueue atomically so concurrent requests cannot start duplicate jobs.
+      let jobResult: { job: Awaited<ReturnType<typeof prisma.importJob.create>> | null; activeJob: { id: string } | null };
+      try {
+        jobResult = await prisma.$transaction(async (tx) => {
+          const concurrentJob = await tx.importJob.findFirst({
+            where: { tenantId, status: { in: ['QUEUED', 'PROCESSING'] } },
+            select: { id: true },
+          });
+          if (concurrentJob) return { job: null, activeJob: concurrentJob };
+          const job = await tx.importJob.create({
+            data: {
+              tenantId,
+              userId,
+              type: 'PROPOSALS',
+              fileName: cleanFileName,
+              fileSize: numFileSize,
+              status: 'QUEUED',
+              totalRecords: rows.length,
+            },
+          });
+          return { job, activeJob: null };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      } catch (transactionError: any) {
+        if (transactionError?.code === 'P2034') {
+          return res.status(429).json({ error: 'Outra importação foi iniciada para esta empresa. Aguarde a conclusão antes de tentar novamente.' });
+        }
+        throw transactionError;
+      }
+      if (jobResult.activeJob) {
+        return res.status(429).json({
+          error: 'Já existe uma importação em processamento para este tenant.',
+          activeJobId: jobResult.activeJob.id,
+        });
+      }
+      const job = jobResult.job!;
 
       // Audit Log
       await AuditLogService.record(prisma, {
@@ -9778,11 +11144,10 @@ async function auditAndEnsureMasterUser() {
       });
 
       // Dispatch async background runner without blocking HTTP response
-      setImmediate(() => {
-        ImportWorkerService.processProposalsJob(prisma, job.id, tenantId, userId, rows).catch(err => {
-          console.error(`[BACKGROUND IMPORT ERROR] Job ${job.id} failed:`, err);
-        });
-      });
+      dispatchImportWorker(
+        () => ImportWorkerService.processProposalsJob(prisma, job.id, tenantId, userId, rows),
+        `[BACKGROUND IMPORT ERROR] Job ${job.id} failed`
+      );
 
       // Return 202 Accepted immediately
       return res.status(202).json({
@@ -9885,11 +11250,10 @@ async function auditAndEnsureMasterUser() {
         req,
       });
 
-      setImmediate(() => {
-        ImportWorkerService.processStatusJob(prisma, job.id, tenantId, userId, rows).catch(err => {
-          console.error(`[BACKGROUND STATUS IMPORT ERROR] Job ${job.id} failed:`, err);
-        });
-      });
+      dispatchImportWorker(
+        () => ImportWorkerService.processStatusJob(prisma, job.id, tenantId, userId, rows),
+        `[BACKGROUND STATUS IMPORT ERROR] Job ${job.id} failed`
+      );
 
       return res.status(202).json({
         success: true,
@@ -9914,10 +11278,10 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Autenticação necessária para importar produtos.' });
       }
 
-      const userRole = session.user.role as string;
-      if (userRole !== 'PLATFORM_MASTER' && userRole !== 'MASTER' && userRole !== 'TENANT_ADMIN' && userRole !== 'ADMIN') {
-        return res.status(403).json({ error: 'Você não tem permissão para gerenciar produtos.' });
-      }
+      const isPlatformMaster = session.user.role === 'PLATFORM_MASTER';
+      const isMaster = isPlatformMaster || session.user.role === 'MASTER';
+      const canCreateProducts = isPlatformMaster || hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.create');
+      const canUpdateProducts = isPlatformMaster || hasPermission(session.user.role as Role, session.user.customPermissions || [], 'products.update');
 
       const { rows } = req.body || {};
       if (!rows || !Array.isArray(rows) || rows.length === 0) {
@@ -9977,6 +11341,11 @@ async function auditAndEnsureMasterUser() {
 
           if (existingProduct) {
             if (action === 'UPDATE' || (existingProduct.type !== validatedType || existingProduct.requiresPortabilityRelation !== isPortabilityRequired)) {
+              if (!canUpdateProducts || (existingProduct.scope === 'GLOBAL' && !isMaster)) {
+                errorCount++;
+                errors.push({ line: lineNum, name: trimmedName, error: `Linha ${lineNum}: Sem permissão para atualizar este produto.` });
+                continue;
+              }
               await prisma.product.update({
                 where: { id: existingProduct.id },
                 data: {
@@ -9991,6 +11360,11 @@ async function auditAndEnsureMasterUser() {
               ignoredCount++;
             }
           } else {
+            if (!canCreateProducts) {
+              errorCount++;
+              errors.push({ line: lineNum, name: trimmedName, error: `Linha ${lineNum}: Sem permissão para criar produtos.` });
+              continue;
+            }
             await prisma.product.create({
               data: {
                 tenantId,
@@ -10098,11 +11472,10 @@ async function auditAndEnsureMasterUser() {
         },
       });
 
-      setImmediate(() => {
-        ImportWorkerService.processPartnersJob(prisma, job.id, tenantId, userId, rows).catch(err => {
-          console.error(`[BACKGROUND PARTNER IMPORT ERROR] Job ${job.id} failed:`, err);
-        });
-      });
+      dispatchImportWorker(
+        () => ImportWorkerService.processPartnersJob(prisma, job.id, tenantId, userId, rows),
+        `[BACKGROUND PARTNER IMPORT ERROR] Job ${job.id} failed`
+      );
 
       return res.status(202).json({
         success: true,
@@ -10178,22 +11551,33 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Job de importação não encontrado.' });
       }
 
+      const canManageImports = hasPermission(
+        session.user.role as Role,
+        session.user.customPermissions,
+        'admin.manage'
+      );
+      if (!isMaster && job.userId !== session.user.id && !canManageImports) {
+        return res.status(403).json({ error: 'Somente quem iniciou a importação ou um administrador autorizado pode cancelá-la.' });
+      }
+
       if (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED') {
         return res.status(400).json({ error: `O job já está finalizado (${job.status}).` });
       }
 
-      // Flag cancellation
+      // Persist the cancellation request so workers on other Vercel instances can observe it.
       ImportWorkerService.requestCancellation(id);
+      const currentMetadata = job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata)
+        ? job.metadata as Record<string, unknown>
+        : {};
+      await prisma.importJob.update({
+        where: { id },
+        data: {
+          metadata: { ...currentMetadata, cancellationRequested: true },
+          ...(job.status === 'QUEUED' ? { status: 'CANCELLED', cancelledAt: new Date() } : {}),
+        },
+      });
 
       if (job.status === 'QUEUED') {
-        await prisma.importJob.update({
-          where: { id },
-          data: {
-            status: 'CANCELLED',
-            cancelledAt: new Date(),
-          },
-        });
-
         sseRegistry.broadcastToTenant(job.tenantId, {
           type: 'IMPORT_CANCELLED',
           entity: 'ImportJob',
@@ -11995,6 +13379,112 @@ async function auditAndEnsureMasterUser() {
   // ANNOUNCEMENTS
   // ==========================================
 
+  // Tenant-scoped operational calendar and portability SLA settings.
+  const operationalCalendarKeys = ['OPERATIONAL_HOLIDAYS', 'PORTABILITY_BALANCE_DAYS'];
+  const canManageOperationalCalendar = (session: any) =>
+    session.user.role === 'PLATFORM_MASTER' ||
+    hasPermission(session.user.role as Role, session.user.customPermissions || [], 'settings.manage') ||
+    hasPermission(session.user.role as Role, session.user.customPermissions || [], 'admin.manage');
+  const readOperationalCalendar = async (tenantId: string) => {
+    const rows = await prisma.systemConfig.findMany({
+      where: { tenantId, configKey: { in: operationalCalendarKeys } },
+    });
+    const holidaysRow = rows.find(row => row.configKey === 'OPERATIONAL_HOLIDAYS');
+    const balanceRow = rows.find(row => row.configKey === 'PORTABILITY_BALANCE_DAYS');
+    let holidays: any = null;
+    if (holidaysRow) {
+      try { holidays = JSON.parse(holidaysRow.configValue); } catch { holidays = []; }
+    }
+    const parsedDays = balanceRow ? Number(balanceRow.configValue) : null;
+    return {
+      holidays: Array.isArray(holidays) ? holidays : null,
+      portabilityBalanceDays: Number.isInteger(parsedDays) && parsedDays! >= 1 && parsedDays! <= 30 ? parsedDays : null,
+    };
+  };
+
+  app.get('/api/operational-calendar', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(400).json({ error: 'Empresa ativa não encontrada.' });
+      return res.json(await readOperationalCalendar(tenantId));
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[GET /api/operational-calendar ERROR]');
+      return res.status(500).json({ error: 'Não foi possível carregar o calendário operacional.' });
+    }
+  });
+
+  app.put('/api/operational-calendar', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!canManageOperationalCalendar(session)) return res.status(403).json({ error: 'Acesso negado. Requer permissão settings.manage.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(400).json({ error: 'Empresa ativa não encontrada.' });
+
+      const { holidays, portabilityBalanceDays } = req.body || {};
+      if (!Array.isArray(holidays) || holidays.length > 1000) {
+        return res.status(400).json({ error: 'A lista de feriados é inválida.' });
+      }
+      if (!Number.isInteger(portabilityBalanceDays) || portabilityBalanceDays < 1 || portabilityBalanceDays > 30) {
+        return res.status(400).json({ error: 'O prazo de SLA deve ser um número inteiro entre 1 e 30 dias úteis.' });
+      }
+
+      const seenDates = new Set<string>();
+      const normalizedHolidays: Array<{ id: string; date: string; name: string; active: boolean }> = [];
+      for (const item of holidays) {
+        const date = typeof item?.date === 'string' ? item.date : '';
+        const name = typeof item?.name === 'string' ? item.name.trim() : '';
+        const dateIsValid = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+        if (!dateIsValid || !name || name.length > 120 || seenDates.has(date)) {
+          return res.status(400).json({ error: 'Revise os feriados: datas únicas válidas e nomes de até 120 caracteres são obrigatórios.' });
+        }
+        seenDates.add(date);
+        normalizedHolidays.push({
+          id: typeof item.id === 'string' && item.id.length <= 80 ? item.id : `holiday-${date}`,
+          date,
+          name,
+          active: item.active !== false,
+        });
+      }
+
+      await prisma.$transaction([
+        prisma.systemConfig.upsert({
+          where: { tenantId_configKey: { tenantId, configKey: 'OPERATIONAL_HOLIDAYS' } },
+          create: { tenantId, configKey: 'OPERATIONAL_HOLIDAYS', configValue: JSON.stringify(normalizedHolidays) },
+          update: { configValue: JSON.stringify(normalizedHolidays) },
+        }),
+        prisma.systemConfig.upsert({
+          where: { tenantId_configKey: { tenantId, configKey: 'PORTABILITY_BALANCE_DAYS' } },
+          create: { tenantId, configKey: 'PORTABILITY_BALANCE_DAYS', configValue: String(portabilityBalanceDays) },
+          update: { configValue: String(portabilityBalanceDays) },
+        }),
+      ]);
+
+      const calendar = await readOperationalCalendar(tenantId);
+      eventBus.publishToTenant(tenantId, {
+        type: 'TENANT_SETTINGS_UPDATED',
+        entity: 'TenantSettings',
+        entityId: 'operational-calendar',
+      });
+      await AuditLogService.record(prisma, {
+        tenantId,
+        userId: session.user.id,
+        userName: session.user.name,
+        action: 'OPERATIONAL_CALENDAR_UPDATED',
+        entity: 'SystemConfig',
+        entityId: 'operational-calendar',
+        newData: { holidayCount: normalizedHolidays.length, portabilityBalanceDays },
+        req,
+      });
+      return res.json(calendar);
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[PUT /api/operational-calendar ERROR]');
+      return res.status(500).json({ error: 'Não foi possível salvar o calendário operacional.' });
+    }
+  });
+
   const getVisibilityWhere = () => {
     const now = new Date();
     return {
@@ -12165,15 +13655,18 @@ async function auditAndEnsureMasterUser() {
         return res.json({ count: 0 });
       }
 
-      const readRecords = await prisma.announcementRead.count({
+      const userRecords = await prisma.announcementRead.findMany({
         where: {
           userId,
           announcementId: { in: visibleAnnouncements.map(a => a.id) },
-          readAt: { not: null }
-        }
+        },
+        select: { announcementId: true, readAt: true, dismissedAt: true },
       });
 
-      const count = visibleAnnouncements.length - readRecords;
+      const handledAnnouncementIds = new Set(
+        userRecords.filter(record => record.readAt || record.dismissedAt).map(record => record.announcementId)
+      );
+      const count = Math.max(0, visibleAnnouncements.length - handledAnnouncementIds.size);
       res.json({ count });
     } catch (err) {
       console.error(err);
@@ -12709,6 +14202,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.sync.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12779,6 +14276,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12795,6 +14295,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.update.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12832,6 +14336,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12861,7 +14368,8 @@ async function auditAndEnsureMasterUser() {
 
       // Apenas gestores e administradores
       const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'];
-      if (!allowedRoles.includes(session.user.role)) {
+      if (!allowedRoles.includes(session.user.role) &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
         return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
       }
 
@@ -12914,6 +14422,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.diagnose') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.diagnose.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12932,6 +14444,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12947,6 +14462,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.sync.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -12972,10 +14491,14 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.logs') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.logs.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
       const logs = await prisma.c6SyncHistory.findMany({
         where: { tenantId },
         orderBy: { queryDate: 'desc' },
@@ -12997,6 +14520,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.sync.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13067,6 +14594,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13083,6 +14613,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão proposals.update.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13121,6 +14655,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13157,7 +14694,8 @@ async function auditAndEnsureMasterUser() {
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
       const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'];
-      if (!allowedRoles.includes(session.user.role)) {
+      if (!allowedRoles.includes(session.user.role) &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
         return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
       }
 
@@ -13241,6 +14779,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.diagnose') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.diagnose.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13259,6 +14801,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13274,6 +14819,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.sync.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13299,10 +14848,14 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.logs') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.logs.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
       const logs = await FactaBankService.getRecentLogs(prisma, tenantId, limit);
 
       res.json(logs);
@@ -13320,6 +14873,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.sync.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13365,6 +14922,9 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.view.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13383,8 +14943,9 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'ADMIN', 'GESTOR'];
-      if (!allowedRoles.includes(session.user.role)) {
+      const allowedRoles = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'];
+      if (!allowedRoles.includes(session.user.role) &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
         return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
       }
 
@@ -13406,6 +14967,10 @@ async function auditAndEnsureMasterUser() {
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.diagnose') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.diagnose.' });
+      }
 
       const result = await HappyBankService.testConnection(prisma, tenantId, req.body);
       res.json(result);
@@ -13422,6 +14987,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.health') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.health.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13437,6 +15006,11 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.diagnose') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão de diagnóstico ou sincronização.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13452,6 +15026,10 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.sync') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.sync.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
@@ -13471,10 +15049,14 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.logs') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.logs.' });
+      }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
       const logs = await prisma.happySyncHistory.findMany({
         where: { tenantId },
         orderBy: { startedAt: 'desc' },
@@ -13501,17 +15083,27 @@ async function auditAndEnsureMasterUser() {
     try {
       const session = await getAuthSession(req);
       if (!session || !session.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.logs') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Acesso negado. Requer permissão integrations.logs.' });
+      }
+      const isGlobalPlatformMaster = session.user.role === 'PLATFORM_MASTER' && !session.adminContext;
       const tenantId = session.effectiveTenantId || session.user.tenantId;
-      if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      if (!tenantId && !isGlobalPlatformMaster) {
+        return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
+      }
 
-      const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
       const events = await prisma.happyWebhookEvent.findMany({
         where: {
-          OR: [
-            { tenantId },
-            { processingStatus: 'UNMATCHED' },
-            { processingStatus: 'UNRESOLVED_TENANT' },
-          ],
+          ...(isGlobalPlatformMaster
+            ? {
+                OR: [
+                  { tenantId: { not: null } },
+                  { tenantId: null, processingStatus: { in: ['UNMATCHED', 'UNRESOLVED_TENANT'] } },
+                ],
+              }
+            : { tenantId }),
         },
         orderBy: { receivedAt: 'desc' },
         take: limit,
@@ -15033,14 +16625,30 @@ async function auditAndEnsureMasterUser() {
         metadata,
       } = req.body || {};
 
-      if (!title || String(title).trim() === '') {
+      if (typeof title !== 'string' || title.trim() === '') {
         return res.status(400).json({ error: 'Título da pendência é obrigatório.' });
+      }
+      if (title.trim().length > 200 || (description != null && (typeof description !== 'string' || description.length > 5000))) {
+        return res.status(400).json({ error: 'Título deve ter até 200 caracteres e descrição até 5.000 caracteres.' });
+      }
+      if (!['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) {
+        return res.status(400).json({ error: 'Prioridade da pendência inválida.' });
+      }
+      if (proposalId != null && typeof proposalId !== 'string') {
+        return res.status(400).json({ error: 'Proposta vinculada inválida.' });
+      }
+      if (proposalId) {
+        const proposal = await prisma.proposal.findFirst({
+          where: { id: proposalId, tenantId: effectiveTenantId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!proposal) return res.status(400).json({ error: 'A proposta não pertence à empresa ativa ou não está disponível.' });
       }
 
       const { pendency, isDuplicate } = await PendencyService.createPendency(prisma, {
         tenantId: effectiveTenantId,
-        title: String(title).trim(),
-        description: description ? String(description).trim() : null,
+        title: title.trim(),
+        description: description ? description.trim() : null,
         type: String(type).trim().toUpperCase(),
         priority: priority as PriorityLevel,
         proposalId: proposalId || null,
@@ -15808,7 +17416,6 @@ async function auditAndEnsureMasterUser() {
 
       return res.json({
         success: true,
-        token: result.token,
         access: result.access,
         partner: result.partner,
         tenant: result.tenant,
@@ -15862,8 +17469,14 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Não autorizado. Faça login novamente.' });
       }
 
-      const { newPassword } = req.body || {};
-      const result = await PartnerPortalService.changePassword(sessionContext.access.id, newPassword, prisma);
+      const { currentPassword, newPassword } = req.body || {};
+      const result = await PartnerPortalService.changePassword(
+        sessionContext.access.id,
+        newPassword,
+        sessionContext.session.id,
+        prisma,
+        currentPassword
+      );
 
       if (!result.success) {
         return res.status(result.statusCode).json({ error: result.message });
@@ -15873,6 +17486,56 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       logger.error({ error: err?.message }, '[POST /api/partner-portal/auth/change-password ERROR]');
       return res.status(500).json({ error: 'Erro ao alterar senha.' });
+    }
+  });
+
+  app.post('/api/partner-portal/profile/contact', async (req, res) => {
+    try {
+      const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!sessionContext) return res.status(401).json({ error: 'Autenticação necessária.' });
+
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : '';
+      if (email.length > 254 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+        return res.status(400).json({ error: 'Informe um e-mail comercial válido.' });
+      }
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phone.length > 30 || (phone && (phoneDigits.length < 10 || phoneDigits.length > 15))) {
+        return res.status(400).json({ error: 'Informe um telefone com DDD válido.' });
+      }
+
+      const partner = await prisma.partner.findFirst({
+        where: {
+          id: sessionContext.partner.id,
+          tenantId: sessionContext.tenant.id,
+          deletedAt: null,
+        },
+        select: { id: true, email: true, phone: true },
+      });
+      if (!partner) return res.status(404).json({ error: 'Cadastro de parceiro não encontrado.' });
+
+      const updated = await prisma.partner.update({
+        where: { id: partner.id },
+        data: { email: email || null, phone: phone || null },
+        select: { id: true, email: true, phone: true },
+      });
+
+      await AuditLogService.record(prisma, {
+        tenantId: sessionContext.tenant.id,
+        userId: null,
+        userName: `Parceiro: ${sessionContext.partner.name}`,
+        action: 'PARTNER_PORTAL_CONTACT_UPDATED',
+        entity: 'Partner',
+        entityId: partner.id,
+        oldData: { email: partner.email, phone: partner.phone },
+        newData: { email: updated.email, phone: updated.phone },
+        req,
+      });
+
+      return res.json({ email: updated.email, phone: updated.phone });
+    } catch (err: any) {
+      logger.error({ error: err?.message }, '[POST /api/partner-portal/profile/contact ERROR]');
+      return res.status(500).json({ error: 'Erro ao atualizar os contatos do parceiro.' });
     }
   });
 
@@ -15913,7 +17576,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Autenticação necessária.' });
       }
 
-      const { search, statusId, standardCategory, startDate, endDate, page, limit } = req.query;
+      const { search, statusId, standardCategory, waitingReturnOnly, startDate, endDate, page, limit } = req.query;
 
       const result = await PartnerPortalService.getProposals(
         sessionContext.partner.id,
@@ -15922,6 +17585,7 @@ async function auditAndEnsureMasterUser() {
           search: search ? String(search) : undefined,
           statusId: statusId ? String(statusId) : undefined,
           standardCategory: standardCategory ? String(standardCategory) : undefined,
+          waitingReturnOnly: waitingReturnOnly === 'true' || waitingReturnOnly === '1',
           startDate: startDate ? String(startDate) : undefined,
           endDate: endDate ? String(endDate) : undefined,
           page: page ? Number(page) : 1,
@@ -16890,4 +18554,3 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && !process.env.TEST_
 }
 
 export default app;
-

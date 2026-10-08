@@ -25,6 +25,8 @@ import { ProposalDetailModal } from './ProposalDetailModal';
 import { ActionBar } from '../ui/ActionBar';
 import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { EmptyState } from '../ui/EmptyState';
+import { toastService } from '../ui/toastService';
+import { hasPermission } from '../../lib/permissions';
 
 export const KanbanBoard: React.FC = () => {
   const [proposals, setProposals] = useState<Proposal[]>(() => StorageService.getProposals());
@@ -37,6 +39,9 @@ export const KanbanBoard: React.FC = () => {
   const historyList = StorageService.getHistory();
 
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [updatingProposalId, setUpdatingProposalId] = useState<string | null>(null);
+  const activeUser = StorageService.getActiveUser();
+  const canUpdateProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.update');
   const [productFilter, setProductFilter] = useState('');
   const [slaFilter, setSlaFilter] = useState<'ALL' | 'WARNING_AND_OVERDUE' | 'OVERDUE' | 'WARNING' | 'ON_TRACK'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,24 +57,51 @@ export const KanbanBoard: React.FC = () => {
     return () => window.removeEventListener('credit_gestao_storage_update', refreshData);
   }, []);
 
-  const handleMoveStatus = (proposalId: string, direction: 'PREV' | 'NEXT') => {
+  const handleMoveStatus = async (proposalId: string, direction: 'PREV' | 'NEXT') => {
+    if (updatingProposalId) return;
     const prop = proposals.find(p => p.id === proposalId);
     if (!prop) return;
 
     const currentIdx = statuses.findIndex(s => s.id === prop.statusId);
     if (currentIdx === -1) return;
 
-    const nextIdx = direction === 'NEXT' ? currentIdx + 1 : currentIdx - 1;
+    const step = direction === 'NEXT' ? 1 : -1;
+    let nextIdx = currentIdx + step;
+    while (nextIdx >= 0 && nextIdx < statuses.length && !statuses[nextIdx].manualChangeAllowed) {
+      nextIdx += step;
+    }
     if (nextIdx >= 0 && nextIdx < statuses.length) {
       const targetStatus = statuses[nextIdx];
-      StorageService.updateProposalStatus(
-        proposalId,
-        targetStatus.id,
-        `Movido na Esteira Kanban para ${targetStatus.name}`,
-        undefined,
-        'MANUAL'
-      );
-      refreshData();
+      setUpdatingProposalId(proposalId);
+      try {
+        const response = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            statusId: targetStatus.id,
+            statusName: targetStatus.name,
+            notes: `Movido na Esteira Kanban para ${targetStatus.name}`,
+          }),
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || 'Não foi possível atualizar o status.');
+        }
+        StorageService.updateProposalStatus(
+          proposalId,
+          targetStatus.id,
+          `Movido na Esteira Kanban para ${targetStatus.name}`,
+          activeUser,
+          'MANUAL',
+          false
+        );
+        refreshData();
+      } catch (error) {
+        toastService.error('Falha ao mover proposta', error instanceof Error ? error.message : 'Tente novamente.');
+      } finally {
+        setUpdatingProposalId(null);
+      }
     }
   };
 
@@ -413,32 +445,34 @@ export const KanbanBoard: React.FC = () => {
                             </span>
 
                             {/* Quick Next/Prev Navigation */}
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {statusIdx > 0 && (
+                            {canUpdateProposals && <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {statuses.slice(0, statusIdx).some(status => status.manualChangeAllowed) && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleMoveStatus(p.id, 'PREV');
+                                    void handleMoveStatus(p.id, 'PREV');
                                   }}
+                                  disabled={Boolean(updatingProposalId)}
                                   className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
                                   title="Mover para etapa anterior"
                                 >
                                   <ChevronLeft className="h-3 w-3" />
                                 </button>
                               )}
-                              {statusIdx < statuses.length - 1 && (
+                              {statuses.slice(statusIdx + 1).some(status => status.manualChangeAllowed) && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleMoveStatus(p.id, 'NEXT');
+                                    void handleMoveStatus(p.id, 'NEXT');
                                   }}
+                                  disabled={Boolean(updatingProposalId)}
                                   className="p-1 rounded bg-blue-50 dark:bg-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-300 cursor-pointer"
                                   title="Avançar para próxima etapa"
                                 >
                                   <ChevronRight className="h-3 w-3" />
                                 </button>
                               )}
-                            </div>
+                            </div>}
                           </div>
                         </div>
                       );

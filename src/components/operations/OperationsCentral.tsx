@@ -17,7 +17,7 @@ import { SentinelaAIChat } from '../bi/SentinelaAIChat';
 export const OperationsCentral: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'MONITORING' | 'AI_ASSISTANT' | 'ANNOUNCEMENTS'>('MONITORING');
   const [incidentToAnnounce, setIncidentToAnnounce] = useState<ApiIncident | null>(null);
-  const [healthStatus, setHealthStatus] = useState<string>('OPERATIONAL');
+  const [healthStatus, setHealthStatus] = useState<string>('CHECKING');
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState<number>(0);
 
   // Consulta status rápido para os badges das abas
@@ -26,28 +26,33 @@ export const OperationsCentral: React.FC = () => {
       try {
         const [resHealth, resAnnounce] = await Promise.all([
           fetch('/api/monitoring/health', { credentials: 'include' }),
-          fetch('/api/announcements', { credentials: 'include' }),
+          fetch('/api/announcements/unread-count', { credentials: 'include' }),
         ]);
 
         if (resHealth.ok) {
           const h = await resHealth.json();
-          setHealthStatus(h.overallStatus || 'OPERATIONAL');
+          setHealthStatus(h.overallStatus || 'UNKNOWN');
+        } else {
+          setHealthStatus('UNKNOWN');
         }
 
         if (resAnnounce.ok) {
-          const a = await resAnnounce.json();
-          const list = Array.isArray(a) ? a : a.data || [];
-          const unread = list.filter((item: any) => !item.read).length;
-          setUnreadAnnouncementsCount(unread);
+          const count = await resAnnounce.json();
+          setUnreadAnnouncementsCount(Math.max(0, Number(count?.count) || 0));
         }
       } catch (err) {
         // Silently catch in background poll
+        setHealthStatus('UNKNOWN');
       }
     };
 
     fetchQuickBadges();
+    window.addEventListener('sentinel:announcements-updated', fetchQuickBadges);
     const interval = setInterval(fetchQuickBadges, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('sentinel:announcements-updated', fetchQuickBadges);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleOpenAnnouncementsWithIncident = (incident: ApiIncident) => {
@@ -102,12 +107,14 @@ export const OperationsCentral: React.FC = () => {
             className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
               activeTab === 'MONITORING'
                 ? 'bg-white/20 text-white'
-                : healthStatus === 'OPERATIONAL'
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+              : healthStatus === 'OPERATIONAL'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+              : healthStatus === 'CHECKING' || healthStatus === 'UNKNOWN'
+              ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
             }`}
           >
-            {healthStatus === 'OPERATIONAL' ? '100% OK' : 'Alerta'}
+            {healthStatus === 'OPERATIONAL' ? 'Status OK' : healthStatus === 'CHECKING' ? 'Verificando' : healthStatus === 'UNKNOWN' ? 'Sem resposta' : 'Alerta'}
           </span>
         </button>
 

@@ -23,6 +23,7 @@ import {
 import { StorageService } from '../../services/storageService';
 import { formatCpf } from '../../lib/utils';
 import { useTheme } from '../../context/ThemeContext';
+import { hasPermission } from '../../lib/permissions';
 
 interface CommandPaletteModalProps {
   isOpen: boolean;
@@ -67,6 +68,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   // Actions & Navigation items
   const staticItems = useMemo(() => {
     const activeUser = StorageService.getActiveUser();
+    const can = (permission: Parameters<typeof hasPermission>[2]) =>
+      hasPermission(activeUser?.role, activeUser?.customPermissions, permission);
     const items = [
       {
         id: 'act-new-prod',
@@ -187,11 +190,11 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       },
       {
         id: 'nav-suporte',
-        title: 'Central de Suporte & Pendências',
-        subtitle: 'Gestão de pendências e alçadas operacionais',
+        title: 'Central de Atendimento',
+        subtitle: 'Atendimento e conversas com parceiros',
         category: 'Navegação',
         icon: Clock,
-        run: () => onNavigate('suporte'),
+        run: () => onNavigate('/central-atendimento'),
       },
       {
         id: 'nav-auditoria',
@@ -203,11 +206,40 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       },
     ];
 
-    if (activeUser?.role === 'DIGITADOR') {
-      return items.filter(item => item.id !== 'nav-simulacoes');
-    }
-    return items;
-  }, [isDark, onNavigate, onOpenNewProduction, onToggleFocusMode, onOpenBackupModal, toggleTheme, onOpenImportExcel, onOpenExport]);
+    const visibleItems = items.filter(item => {
+      switch (item.id) {
+        case 'act-new-prod':
+        case 'act-import':
+          return can('proposals.create');
+        case 'act-export':
+        case 'nav-producao':
+        case 'nav-esteira':
+        case 'nav-portabilidades':
+          return can('proposals.view');
+        case 'act-backup':
+          return can('admin.view');
+        case 'nav-gargalos':
+        case 'nav-executivo':
+          return can('bi.view');
+        case 'nav-torre':
+          return can('dashboard.view');
+        case 'nav-simulacoes':
+          return can('simulations.view');
+        case 'nav-clientes':
+          return can('clients.view');
+        case 'nav-suporte':
+          return can('support.view');
+        case 'nav-auditoria':
+          return can('users.view') || can('audit_logs.view');
+        default:
+          return true;
+      }
+    });
+
+    return activeUser?.role === 'DIGITADOR'
+      ? visibleItems.filter(item => item.id !== 'nav-simulacoes')
+      : visibleItems;
+  }, [isOpen, isDark, onNavigate, onOpenNewProduction, onToggleFocusMode, onOpenBackupModal, toggleTheme, onOpenImportExcel, onOpenExport]);
 
   // Dynamic filter matching
   const matchingItems = useMemo(() => {
@@ -227,7 +259,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     }
 
     // 2. Proposals matching search term
-    const matchedProposals = proposals
+    const activeUser = StorageService.getActiveUser();
+    const matchedProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.view') ? proposals
       .filter(p => {
         const client = clients.find(c => c.id === p.clientId);
         return (
@@ -248,7 +281,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           icon: FileText,
           run: () => onSelectProposal(p.id),
         };
-      });
+      }) : [];
 
     // 3. Clients matching search term
     const matchedClients = clients

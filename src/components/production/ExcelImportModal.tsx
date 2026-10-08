@@ -13,6 +13,7 @@ import {
   StopCircle,
   ArrowRight,
   Layers,
+  Download,
 } from 'lucide-react';
 import { ExcelService, ImportAnalysisResult, ImportPreviewRow } from '../../services/excelService';
 import { formatCpf, formatCurrency } from '../../lib/utils';
@@ -38,6 +39,8 @@ interface ImportJobProgressState {
   totalChunks: number;
   status: 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
   errorMessage?: string;
+  rowErrors: Array<{ line: number; identifier: string; message: string }>;
+  rowErrorsTruncated: number;
 }
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
@@ -45,8 +48,6 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   onClose,
   onImportSuccess,
 }) => {
-  if (!isOpen) return null;
-
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<ImportAnalysisResult | null>(null);
@@ -57,8 +58,26 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<ImportJobProgressState | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const completedJobIdsRef = useRef(new Set<string>());
+  const dispatchInFlightRef = useRef(false);
+  const analysisRequestRef = useRef(0);
+
+  const handleClose = () => {
+    if (isDispatching || jobProgress?.status === 'PROCESSING') return;
+    analysisRequestRef.current += 1;
+    setIsAnalyzing(false);
+    setAnalysisResult(null);
+    setErrorMsg(null);
+    setActiveTab('VALIDAS');
+    setActiveJobId(null);
+    setJobProgress(null);
+    setIsCancelling(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    onClose();
+  };
 
   // Determine current wizard step
   const currentStep = jobProgress?.status === 'COMPLETED'
@@ -75,7 +94,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
     const unsubscribeProgress = realtime.subscribe('IMPORT_PROGRESS', (event) => {
       const data = event.data || event.payload;
-      if (data && (!activeJobId || data.importId === activeJobId)) {
+      if (data && activeJobId && data.importId === activeJobId) {
         setActiveJobId(data.importId);
         setJobProgress({
           importId: data.importId,
@@ -90,32 +109,46 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           currentChunk: data.currentChunk || 0,
           totalChunks: data.totalChunks || 0,
           status: 'PROCESSING',
+          rowErrors: [],
+          rowErrorsTruncated: 0,
         });
       }
     });
 
     const unsubscribeCompleted = realtime.subscribe('IMPORT_COMPLETED', (event) => {
       const data = event.data || event.payload;
-      if (data && (!activeJobId || data.importId === activeJobId)) {
+      if (data && activeJobId && data.importId === activeJobId) {
+        if (!completedJobIdsRef.current.has(data.importId)) {
+          completedJobIdsRef.current.add(data.importId);
+          onImportSuccess((data.created || 0) + (data.updated || 0));
+        }
         setJobProgress(prev =>
           prev
             ? {
                 ...prev,
                 status: 'COMPLETED',
                 percent: 100,
+                processed: data.processed ?? prev.processed,
+                totalRecords: data.total ?? prev.totalRecords,
                 created: data.created || prev.created,
                 updated: data.updated || prev.updated,
                 invalid: data.invalid || prev.invalid,
+                duplicates: data.duplicates || prev.duplicates,
+                failed: data.failed || prev.failed,
+                rowErrors: Array.isArray(data.rowErrors) ? data.rowErrors : prev.rowErrors,
+                rowErrorsTruncated: Number(data.rowErrorsTruncated) || prev.rowErrorsTruncated,
+                errorMessage: (data.invalid || 0) + (data.failed || 0) > 0
+                  ? `${(data.invalid || 0) + (data.failed || 0)} registro(s) não foram importados. Confira os detalhes do processamento.`
+                  : undefined,
               }
             : null
         );
-        onImportSuccess((data.created || 0) + (data.updated || 0));
       }
     });
 
     const unsubscribeFailed = realtime.subscribe('IMPORT_FAILED', (event) => {
       const data = event.data || event.payload;
-      if (data && (!activeJobId || data.importId === activeJobId)) {
+      if (data && activeJobId && data.importId === activeJobId) {
         setJobProgress(prev =>
           prev
             ? {
@@ -131,7 +164,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
     const unsubscribeCancelled = realtime.subscribe('IMPORT_CANCELLED', (event) => {
       const data = event.data || event.payload;
-      if (data && (!activeJobId || data.importId === activeJobId)) {
+      if (data && activeJobId && data.importId === activeJobId) {
         setJobProgress(prev => (prev ? { ...prev, status: 'CANCELLED' } : null));
         setIsCancelling(false);
       }
@@ -145,8 +178,69 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     };
   }, [activeJobId, onImportSuccess]);
 
+  // Recover missed SSE updates (for example after a brief connection drop).
+  useEffect(() => {
+    if (!activeJobId || jobProgress?.status !== 'PROCESSING') return;
+    let cancelled = false;
+    let requestInFlight = false;
+    const pollJob = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const response = await fetch(`/api/import/${encodeURIComponent(activeJobId)}`, { credentials: 'include' });
+        if (!response.ok) return;
+        const job = await response.json();
+        if (cancelled || job.id !== activeJobId) return;
+        const status: ImportJobProgressState['status'] =
+          job.status === 'COMPLETED' || job.status === 'CANCELLED' || job.status === 'FAILED'
+            ? job.status
+            : 'PROCESSING';
+        const nextProgress: ImportJobProgressState = {
+          importId: job.id,
+          totalRecords: Number(job.totalRecords) || 0,
+          processed: Number(job.processedRecords) || 0,
+          created: Number(job.createdRecords) || 0,
+          updated: Number(job.updatedRecords) || 0,
+          duplicates: Number(job.duplicateRecords) || 0,
+          invalid: Number(job.invalidRecords) || 0,
+          failed: Number(job.failedRecords) || 0,
+          percent: status === 'COMPLETED' ? 100 : Number(job.percent) || 0,
+          currentChunk: 0,
+          totalChunks: 0,
+          status,
+          errorMessage: job.errorMessage || undefined,
+          rowErrors: Array.isArray(job.metadata?.rowErrors) ? job.metadata.rowErrors : [],
+          rowErrorsTruncated: Number(job.metadata?.rowErrorsTruncated) || 0,
+        };
+        setJobProgress(previous => previous?.importId === activeJobId
+          ? { ...previous, ...nextProgress, currentChunk: previous.currentChunk, totalChunks: previous.totalChunks }
+          : nextProgress);
+        if (status === 'COMPLETED' && !completedJobIdsRef.current.has(activeJobId)) {
+          completedJobIdsRef.current.add(activeJobId);
+          onImportSuccess(nextProgress.created + nextProgress.updated);
+        }
+        if (status === 'CANCELLED') setIsCancelling(false);
+        if (status === 'FAILED') setErrorMsg(nextProgress.errorMessage || 'Erro no processamento da importação.');
+      } catch {
+        // SSE remains the primary progress channel; polling retries on the next interval.
+      } finally {
+        requestInFlight = false;
+      }
+    };
+    void pollJob();
+    const timer = window.setInterval(() => void pollJob(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeJobId, jobProgress?.status, onImportSuccess]);
+
   const handleFileSelected = async (file: File) => {
+    if (dispatchInFlightRef.current || isAnalyzing || jobProgress?.status === 'PROCESSING') return;
+    const requestId = ++analysisRequestRef.current;
     setErrorMsg(null);
+    setAnalysisResult(null);
+    setActiveTab('VALIDAS');
     if (file.name.toLowerCase().endsWith('.xls')) {
       setErrorMsg('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
       return;
@@ -154,6 +248,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     setIsAnalyzing(true);
     try {
       const result = await ExcelService.parseAndAnalyzeFile(file);
+      if (requestId !== analysisRequestRef.current) return;
       setAnalysisResult(result);
       if (result.validRows.length > 0) {
         setActiveTab('VALIDAS');
@@ -163,9 +258,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         setActiveTab('DUPLICADAS');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Falha ao processar arquivo.');
+      if (requestId === analysisRequestRef.current) setErrorMsg(err.message || 'Falha ao processar arquivo.');
     } finally {
-      setIsAnalyzing(false);
+      if (requestId === analysisRequestRef.current) setIsAnalyzing(false);
     }
   };
 
@@ -181,13 +276,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (isAnalyzing || isDispatching || jobProgress?.status === 'PROCESSING') return;
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelected(e.dataTransfer.files[0]);
     }
   };
 
+  const handleReplaceFile = () => {
+    if (isAnalyzing || isDispatching) return;
+    analysisRequestRef.current += 1;
+    setAnalysisResult(null);
+    setErrorMsg(null);
+    setActiveTab('VALIDAS');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleConfirmImport = async () => {
-    if (!analysisResult || analysisResult.validRows.length === 0) return;
+    if (dispatchInFlightRef.current || !analysisResult || analysisResult.validRows.length === 0) return;
+    dispatchInFlightRef.current = true;
+    setIsDispatching(true);
 
     setErrorMsg(null);
 
@@ -196,6 +303,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       fullName: r.fullName,
       proposalNumber: r.proposalNumber,
       partnerCodeOrLogin: r.matchedPartnerLogin || r.rawPartner,
+      sourceLine: r.rowNumber,
       productName: r.matchedProductName || r.rawProduct,
       bankName: r.matchedBankName || r.rawBank,
       promoterName: r.matchedPromoterName || r.rawPromoter,
@@ -204,15 +312,23 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }));
 
     try {
+      const requestBody = JSON.stringify({
+        fileName: analysisResult.fileName,
+        fileSize: analysisResult.fileSize,
+        rows: rowsPayload,
+      });
+      const requestSizeBytes = new TextEncoder().encode(requestBody).byteLength;
+      // Vercel Functions reject request bodies above 4.5 MB; keep headroom for routing overhead.
+      const maxRequestSizeBytes = 4 * 1024 * 1024;
+      if (requestSizeBytes > maxRequestSizeBytes) {
+        throw new Error('Os dados desta planilha excedem o limite de envio seguro de 4 MB. Divida o arquivo em partes menores e tente novamente.');
+      }
+
       const res = await fetch('/api/import/proposals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          fileName: analysisResult.fileName,
-          fileSize: analysisResult.fileSize,
-          rows: rowsPayload,
-        }),
+        body: requestBody,
       });
 
       const data = await res.json();
@@ -221,6 +337,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       }
 
       setActiveJobId(data.importId);
+      setIsCancelling(false);
       setJobProgress({
         importId: data.importId,
         totalRecords: data.totalRecords || rowsPayload.length,
@@ -234,9 +351,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         currentChunk: 1,
         totalChunks: Math.ceil(rowsPayload.length / 500) || 1,
         status: 'PROCESSING',
+        rowErrors: [],
+        rowErrorsTruncated: 0,
       });
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao iniciar importação em massa.');
+    } finally {
+      dispatchInFlightRef.current = false;
+      setIsDispatching(false);
     }
   };
 
@@ -244,13 +366,32 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     if (!activeJobId) return;
     setIsCancelling(true);
     try {
-      await fetch(`/api/import/${activeJobId}/cancel`, {
+      const response = await fetch(`/api/import/${activeJobId}/cancel`, {
         method: 'POST',
         credentials: 'include',
       });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Não foi possível cancelar a importação.');
     } catch (err) {
-      console.error('Falha ao cancelar job:', err);
+      setErrorMsg(err instanceof Error ? err.message : 'Não foi possível cancelar a importação.');
+      setIsCancelling(false);
     }
+  };
+
+  const handleDownloadImportErrors = () => {
+    if (!jobProgress?.rowErrors.length) return;
+    const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['Linha', 'Identificador', 'Motivo'],
+      ...jobProgress.rowErrors.map(error => [error.line, error.identifier, error.message]),
+    ];
+    const csv = `\uFEFF${rows.map(row => row.map(escapeCsv).join(';')).join('\r\n')}`;
+    const blobUrl = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `erros-importacao-${jobProgress.importId}.csv`;
+    link.click();
+    URL.revokeObjectURL(blobUrl);
   };
 
   const steps = [
@@ -259,6 +400,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     { num: 3, label: 'Processamento Server' },
     { num: 4, label: 'Concluído' },
   ];
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
@@ -280,8 +423,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
             </div>
             <button
-              onClick={onClose}
-              disabled={jobProgress?.status === 'PROCESSING'}
+              onClick={handleClose}
+              disabled={isDispatching || jobProgress?.status === 'PROCESSING'}
               className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
             >
               <X className="h-5 w-5" />
@@ -345,6 +488,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <div className="flex items-center gap-2.5">
                     {jobProgress.status === 'PROCESSING' ? (
                       <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                    ) : jobProgress.status === 'COMPLETED' && jobProgress.invalid + jobProgress.failed > 0 ? (
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
                     ) : jobProgress.status === 'COMPLETED' ? (
                       <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                     ) : jobProgress.status === 'CANCELLED' ? (
@@ -355,7 +500,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                         {jobProgress.status === 'PROCESSING' && 'Processando importação de propostas...'}
-                        {jobProgress.status === 'COMPLETED' && 'Importação Concluída com Sucesso!'}
+                        {jobProgress.status === 'COMPLETED' && (jobProgress.invalid + jobProgress.failed > 0
+                          ? 'Importação concluída com ocorrências'
+                          : 'Importação concluída com sucesso')}
                         {jobProgress.status === 'CANCELLED' && 'Importação Cancelada pelo Usuário'}
                         {jobProgress.status === 'FAILED' && 'Falha no Processamento da Importação'}
                       </h4>
@@ -382,7 +529,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <div className="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
-                      jobProgress.status === 'COMPLETED'
+                      jobProgress.status === 'COMPLETED' && jobProgress.invalid + jobProgress.failed > 0
+                        ? 'bg-amber-500'
+                        : jobProgress.status === 'COMPLETED'
                         ? 'bg-emerald-600'
                         : jobProgress.status === 'CANCELLED'
                         ? 'bg-amber-500'
@@ -423,6 +572,29 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     {jobProgress.errorMessage}
                   </div>
                 )}
+                {jobProgress.rowErrors.length > 0 && (
+                  <div className="rounded-lg border border-rose-200 dark:border-rose-800 overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 bg-rose-50 dark:bg-rose-950/40 px-3 py-2">
+                      <div className="text-xs font-semibold text-rose-800 dark:text-rose-200">
+                        Motivos das ocorrências ({jobProgress.rowErrors.length}{jobProgress.rowErrorsTruncated > 0 ? ` de ${jobProgress.rowErrors.length + jobProgress.rowErrorsTruncated}` : ''})
+                        {jobProgress.rowErrorsTruncated > 0 && <span className="block font-normal">O relatório mostra as primeiras 500 ocorrências.</span>}
+                      </div>
+                      <button onClick={handleDownloadImportErrors} className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/50">
+                        <Download className="h-3.5 w-3.5" /> Baixar CSV
+                      </button>
+                    </div>
+                    <div className="max-h-40 overflow-auto divide-y divide-rose-100 dark:divide-rose-900/50">
+                      {jobProgress.rowErrors.slice(0, 20).map((error, index) => (
+                        <div key={`${error.line}-${index}`} className="grid grid-cols-[70px_minmax(90px,0.7fr)_minmax(180px,2fr)] gap-2 px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300">
+                          <span className="font-mono">Linha {error.line}</span>
+                          <span className="truncate font-mono" title={error.identifier}>{error.identifier}</span>
+                          <span>{error.message}</span>
+                        </div>
+                      ))}
+                      {jobProgress.rowErrors.length > 20 && <p className="px-3 py-2 text-[11px] text-slate-500">Mais ocorrências disponíveis no CSV.</p>}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : !analysisResult ? (
@@ -431,7 +603,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              aria-busy={isAnalyzing}
+              onClick={() => { if (!isAnalyzing) fileInputRef.current?.click(); }}
               className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
                 isDragging
                   ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 scale-[0.99]'
@@ -443,15 +616,18 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 type="file"
                 accept=".xlsx,.csv"
                 className="hidden"
+                disabled={isAnalyzing}
                 onChange={e => {
-                  if (e.target.files?.[0]) handleFileSelected(e.target.files[0]);
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) handleFileSelected(file);
                 }}
               />
               <div className="h-14 w-14 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4">
-                <FileSpreadsheet className="h-7 w-7" />
+                {isAnalyzing ? <Loader2 className="h-7 w-7 animate-spin" /> : <FileSpreadsheet className="h-7 w-7" />}
               </div>
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
-                Arraste sua planilha aqui ou clique para selecionar
+                {isAnalyzing ? 'Analisando planilha…' : 'Arraste sua planilha aqui ou clique para selecionar'}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-3">
                 Formatos aceitos: <strong>.xlsx, .csv</strong>. O sistema identifica automaticamente colunas como CPF, ADE, Parceiro, Produto e Banco/Promotora.
@@ -502,7 +678,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               {/* Reset button */}
               <div className="flex justify-end">
                 <button
-                  onClick={() => setAnalysisResult(null)}
+                  onClick={handleReplaceFile}
+                  disabled={isAnalyzing || isDispatching}
                   className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1 rounded cursor-pointer"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -687,8 +864,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={onClose}
-              disabled={jobProgress?.status === 'PROCESSING'}
+              onClick={handleClose}
+              disabled={isDispatching || jobProgress?.status === 'PROCESSING'}
               className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
             >
               {jobProgress?.status === 'COMPLETED' ? 'Fechar' : 'Cancelar'}
@@ -697,11 +874,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <button
                 id="btn-confirm-import-excel"
                 onClick={handleConfirmImport}
-                disabled={!analysisResult || analysisResult.validRows.length === 0}
+                disabled={isDispatching || !analysisResult || analysisResult.validRows.length === 0}
                 className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
               >
-                <FileCheck className="h-4 w-4" />
-                <span>Importar Propostas ({analysisResult?.validRows.length || 0})</span>
+                {isDispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck className="h-4 w-4" />}
+                <span>{isDispatching ? 'Enviando importação…' : `Importar Propostas (${analysisResult?.validRows.length || 0})`}</span>
               </button>
             )}
           </div>

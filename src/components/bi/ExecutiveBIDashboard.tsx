@@ -37,6 +37,7 @@ import {
 } from 'recharts';
 import {
   BIFilterState,
+  BIPeriodPreset,
   BIOverviewResponse,
   BIProductionResponse,
   BIConversionFunnelResponse,
@@ -59,6 +60,7 @@ import { BIApiService } from '../../services/biApiService';
 import { RealtimeService } from '../../services/realtimeService';
 import { formatCurrency } from '../../lib/utils';
 import { BIFilterBar } from './BIFilterBar';
+import { toastService } from '../ui/toastService';
 
 type BITab =
   | 'visao-geral'
@@ -74,11 +76,28 @@ type BITab =
 
 const getInitialFilters = (): BIFilterState => {
   const params = new URLSearchParams(window.location.search);
-  const period = (params.get('period') as any) || 'MES_ATUAL';
+  const periodPresets: BIPeriodPreset[] = [
+    'HOJE', 'ONTEM', 'ULTIMOS_7_DIAS', 'ULTIMOS_30_DIAS',
+    'MES_ATUAL', 'MES_ANTERIOR', 'ANO_ATUAL', 'PERSONALIZADO',
+  ];
+  const requestedPeriod = params.get('period');
+  const requestedGroupBy = params.get('groupBy');
+  const requestedStartDate = params.get('startDate') || undefined;
+  const requestedEndDate = params.get('endDate') || undefined;
+  const hasInvertedDateRange = Boolean(
+    requestedStartDate && requestedEndDate &&
+    requestedStartDate.slice(0, 10) > requestedEndDate.slice(0, 10)
+  );
+  const period = periodPresets.includes(requestedPeriod as BIPeriodPreset)
+    ? requestedPeriod as BIPeriodPreset
+    : 'MES_ATUAL';
+  const groupBy = requestedGroupBy === 'week' || requestedGroupBy === 'month'
+    ? requestedGroupBy
+    : 'day';
   return {
     period,
-    startDate: params.get('startDate') || undefined,
-    endDate: params.get('endDate') || undefined,
+    startDate: hasInvertedDateRange ? undefined : requestedStartDate,
+    endDate: hasInvertedDateRange ? undefined : requestedEndDate,
     bankId: params.get('bankId') || undefined,
     partnerId: params.get('partnerId') || undefined,
     digitizerId: params.get('digitizerId') || undefined,
@@ -89,7 +108,7 @@ const getInitialFilters = (): BIFilterState => {
     proposalType: params.get('proposalType') || undefined,
     statusId: params.get('statusId') || undefined,
     standardCategory: params.get('standardCategory') || undefined,
-    groupBy: (params.get('groupBy') as any) || 'day',
+    groupBy,
   };
 };
 
@@ -121,6 +140,8 @@ export const ExecutiveBIDashboard: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const debounceTimerRef = useRef<any>(null);
+  const filterRefreshTimerRef = useRef<number | null>(null);
+  const dataLoadRequestRef = useRef(0);
 
   // Sync state to URL Query Parameters
   useEffect(() => {
@@ -145,6 +166,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
   }, [filters]);
 
   const loadData = useCallback(async () => {
+    const requestId = ++dataLoadRequestRef.current;
     setIsLoading(true);
     setError(null);
     try {
@@ -184,6 +206,8 @@ export const ExecutiveBIDashboard: React.FC = () => {
         BIApiService.fetchRankings(filters).catch(() => null),
       ]);
 
+      if (requestId !== dataLoadRequestRef.current) return;
+
       setOverview(overviewData);
       setProduction(productionData);
       setConversion(conversionData);
@@ -202,16 +226,37 @@ export const ExecutiveBIDashboard: React.FC = () => {
       setRankings(rankingsData);
       setLastUpdated(new Date());
     } catch (err: any) {
+      if (requestId !== dataLoadRequestRef.current) return;
       console.error('[ExecutiveBIDashboard] Erro ao carregar dados do BI:', err);
       setError(err?.message || 'Falha ao carregar indicadores de BI do PostgreSQL.');
     } finally {
-      setIsLoading(false);
+      if (requestId === dataLoadRequestRef.current) setIsLoading(false);
     }
   }, [filters]);
 
   useEffect(() => {
-    loadData();
+    if (filterRefreshTimerRef.current !== null) {
+      window.clearTimeout(filterRefreshTimerRef.current);
+    }
+    filterRefreshTimerRef.current = window.setTimeout(() => {
+      filterRefreshTimerRef.current = null;
+      void loadData();
+    }, 250);
+    return () => {
+      if (filterRefreshTimerRef.current !== null) {
+        window.clearTimeout(filterRefreshTimerRef.current);
+        filterRefreshTimerRef.current = null;
+      }
+    };
   }, [loadData]);
+
+  const refreshImmediately = () => {
+    if (filterRefreshTimerRef.current !== null) {
+      window.clearTimeout(filterRefreshTimerRef.current);
+      filterRefreshTimerRef.current = null;
+    }
+    void loadData();
+  };
 
   // Realtime updates
   useEffect(() => {
@@ -267,7 +312,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err: any) {
-      alert(err?.message || 'Falha ao gerar exportação CSV.');
+      toastService.error('Falha ao exportar relatório', err?.message || 'Tente novamente.');
     } finally {
       setIsExporting(false);
     }
@@ -356,7 +401,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
       <BIFilterBar
         filters={filters}
         onFilterChange={handleFilterChange}
-        onRefresh={loadData}
+        onRefresh={refreshImmediately}
         isLoading={isLoading}
         lastUpdated={lastUpdated}
       />
@@ -365,7 +410,10 @@ export const ExecutiveBIDashboard: React.FC = () => {
       {error && (
         <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-          <span>{error}</span>
+          <span className="flex-1">{error}</span>
+          <button type="button" onClick={loadData} disabled={isLoading} className="shrink-0 px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 font-bold hover:bg-rose-100 dark:hover:bg-rose-900/40 disabled:opacity-50">
+            {isLoading ? 'Atualizando...' : 'Tentar novamente'}
+          </button>
         </div>
       )}
 

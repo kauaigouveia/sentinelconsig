@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   FileSpreadsheet,
@@ -19,6 +19,13 @@ import {
   ChevronLeft,
   ArrowLeftRight,
   Headphones,
+  CalendarDays,
+  UsersRound,
+  CircleDollarSign,
+  MonitorUp,
+  Trophy,
+  Workflow,
+  ListChecks,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub } from '../../services/realtimeService';
@@ -33,6 +40,8 @@ interface SidebarProps {
   onNavigate: (viewOrPath: string) => void;
   branding?: TenantBranding;
   activeUser?: User | null;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 type SemanticColor =
@@ -193,19 +202,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   branding,
   activeUser: propActiveUser,
+  isMobileOpen = false,
+  onCloseMobile,
 }) => {
   const [userFromStorage, setUserFromStorage] = useState<User>(() => StorageService.getActiveUser());
   const activeUser = propActiveUser || userFromStorage;
   const role: Role = activeUser?.role || 'DIGITADOR';
   const userCustomPerms = activeUser?.customPermissions || [];
 
-  const [isCollapsed, setIsCollapsed] = useState(() => {
+  const [isCollapsedPreference, setIsCollapsedPreference] = useState(() => {
     try {
       return localStorage.getItem('cg_sidebar_collapsed') === 'true';
     } catch {
       return false;
     }
   });
+  const isCollapsed = isMobileOpen ? false : isCollapsedPreference;
+  const onCloseMobileRef = useRef(onCloseMobile);
+  onCloseMobileRef.current = onCloseMobile;
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+
+    const sidebar = document.getElementById('app-sidebar');
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusFrame = window.requestAnimationFrame(() => {
+      sidebar?.querySelector<HTMLElement>('a[href]')?.focus();
+    });
+
+    document.body.style.overflow = 'hidden';
+    const handleDrawerKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseMobileRef.current?.();
+        return;
+      }
+      if (event.key !== 'Tab' || !sidebar) return;
+
+      const focusable = Array.from(sidebar.querySelectorAll<HTMLElement>(focusableSelector))
+        .filter(element => element.getAttribute('aria-hidden') !== 'true' && element.getClientRects().length > 0);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !sidebar.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !sidebar.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDrawerKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', handleDrawerKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [isMobileOpen]);
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     try {
@@ -215,6 +276,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return {
       inicio: true,
       operacao: true,
+      relacionamento: true,
+      rotina: true,
+      financeiro: true,
       integracoes: true,
       gestao: true,
       administracao: true,
@@ -251,19 +315,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (data?.summary) {
           const totalOpen = (data.summary.openCount || 0) + (data.summary.inProgressCount || 0);
           setOpenPendenciesCount(totalOpen);
+        } else {
+          setOpenPendenciesCount(null);
         }
+      } else {
+        setOpenPendenciesCount(null);
       }
-    } catch {}
+    } catch {
+      setOpenPendenciesCount(null);
+    }
 
     try {
       const autoRes = await fetch('/api/automations');
       if (autoRes.ok) {
         const data = await autoRes.json();
         const list = Array.isArray(data) ? data : data.automations || [];
-        setAutomationsCount(list.filter((a: any) => a.isActive !== false).length || 3);
+        setAutomationsCount(list.filter((a: any) => a.isActive !== false).length);
+      } else {
+        setAutomationsCount(null);
       }
     } catch {
-      setAutomationsCount(3);
+      setAutomationsCount(null);
     }
   };
 
@@ -331,7 +403,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [propActiveUser, activeUser?.id, activeUser?.role, JSON.stringify(userCustomPerms)]);
 
   const toggleCollapse = () => {
-    setIsCollapsed((prev) => {
+    setIsCollapsedPreference((prev) => {
       const next = !prev;
       try {
         localStorage.setItem('cg_sidebar_collapsed', String(next));
@@ -413,7 +485,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // ==================================================
-  // DEFINIÇÃO DOS 6 GRUPOS PRINCIPAIS BASEADOS EM RBAC
+  // Navegação organizada por área e filtrada pelas permissões do usuário
   // ==================================================
   const navGroups: NavGroupConfig[] = [
     // 1. INÍCIO
@@ -436,17 +508,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // 2. OPERAÇÃO
     {
       id: 'operacao',
-      title: 'Operação',
+      title: 'Produção',
       visible: true,
       items: [
-        {
-          id: role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle',
-          to: '/dashboard',
-          label: 'Dashboard',
-          icon: LayoutDashboard,
-          color: 'blue',
-          visible: hasPermission(role, userCustomPerms, 'dashboard.view'),
-        },
         {
           id: 'central-pendencias',
           to: '/central-pendencias',
@@ -455,8 +519,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           color: 'rose',
           visible: hasPermission(role, userCustomPerms, 'pendencies.view'),
           badge:
-            openPendenciesCount && openPendenciesCount > 0
-              ? { text: `🔴 ${openPendenciesCount}`, variant: 'alert' }
+            openPendenciesCount !== null && openPendenciesCount > 0
+              ? { text: String(openPendenciesCount), variant: 'alert' }
               : undefined,
         },
         {
@@ -483,24 +547,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
           color: 'violet',
           visible: hasPermission(role, userCustomPerms, 'simulations.view'),
         },
-        {
-          id: 'parceiros',
-          to: '/crm-parceiros',
-          label: 'CRM de Parceiros',
-          icon: Handshake,
-          color: 'indigo',
-          visible:
-            hasPermission(role, userCustomPerms, 'partners.crm.view') ||
-            hasPermission(role, userCustomPerms, 'partners.view'),
-        },
-        {
-          id: 'central-atendimento',
-          to: '/central-atendimento',
-          label: 'Central de Atendimento',
-          icon: Headphones,
-          color: 'sky',
-          visible: hasPermission(role, userCustomPerms, 'support.view'),
-        },
+      ],
+    },
+
+    {
+      id: 'relacionamento',
+      title: 'Relacionamento',
+      visible: true,
+      items: [
+        { id: 'clientes', to: '/clientes', label: 'Clientes 360º', icon: UsersRound, color: 'cyan', visible: hasPermission(role, userCustomPerms, 'clients.view') },
+        { id: 'parceiros', to: '/crm-parceiros', label: 'CRM de Parceiros', icon: Handshake, color: 'indigo', visible: hasPermission(role, userCustomPerms, 'partners.crm.view') || hasPermission(role, userCustomPerms, 'partners.view') },
+        { id: 'central-atendimento', to: '/central-atendimento', label: 'Central de Atendimento', icon: Headphones, color: 'sky', visible: hasPermission(role, userCustomPerms, 'support.view') },
+      ],
+    },
+    {
+      id: 'rotina',
+      title: 'Rotina',
+      visible: true,
+      items: [
+        { id: 'minha-fila', to: '/minha-fila', label: 'Minha Fila', icon: ListChecks, color: 'blue', visible: hasPermission(role, userCustomPerms, 'tasks.view') || hasPermission(role, userCustomPerms, 'partners.crm.view') || hasPermission(role, userCustomPerms, 'partners.crm.tasks') || hasPermission(role, userCustomPerms, 'partners.crm.admin') },
+        { id: 'agenda-operacional', to: '/agenda-operacional', label: 'Agenda & Tarefas', icon: CalendarDays, color: 'sky', visible: hasPermission(role, userCustomPerms, 'tasks.view') },
+        { id: 'central-operacoes', to: '/central-operacoes', label: 'Central de Operações', icon: ListChecks, color: 'indigo', visible: hasPermission(role, userCustomPerms, 'proposals.view') },
+        { id: 'esteira', to: '/esteira', label: 'Esteira Kanban', icon: Workflow, color: 'blue', visible: hasPermission(role, userCustomPerms, 'proposals.view') },
+        { id: 'tv-monitor', to: '/tv-monitor', label: 'Monitor de Operações', icon: MonitorUp, color: 'emerald', visible: hasPermission(role, userCustomPerms, 'dashboard.view') },
+        { id: 'gamificacao', to: '/gamificacao', label: 'Metas & Conquistas', icon: Trophy, color: 'yellow', visible: hasPermission(role, userCustomPerms, 'proposals.view') },
+      ],
+    },
+    {
+      id: 'financeiro',
+      title: 'Financeiro',
+      visible: hasPermission(role, userCustomPerms, 'financial.view'),
+      items: [
+        { id: 'financeiro-geral', to: '/financeiro-geral', label: 'Fluxo Financeiro', icon: CircleDollarSign, color: 'emerald', visible: hasPermission(role, userCustomPerms, 'financial.view') },
       ],
     },
 
@@ -545,7 +623,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // 4. GESTÃO
     {
       id: 'gestao',
-      title: 'Gestão',
+      title: 'Inteligência',
       visible: true,
       items: [
         {
@@ -575,7 +653,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Shield,
           color: 'rose',
           visible: hasPermission(role, userCustomPerms, 'command.view'),
-          badge: { text: 'AO VIVO', variant: 'alert' },
+          badge: undefined,
         },
         {
           id: 'sentinela-ai',
@@ -585,6 +663,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           color: 'violet',
           visible: hasPermission(role, userCustomPerms, 'intelligence.view'),
         },
+        { id: 'radar-comercial', to: '/radar-comercial', label: 'Radar Comercial', icon: Activity, color: 'cyan', visible: hasPermission(role, userCustomPerms, 'bi.view') },
+        { id: 'relatorio-gargalos', to: '/relatorio-gargalos', label: 'Gargalos & Permanência', icon: BarChart3, color: 'amber', visible: hasPermission(role, userCustomPerms, 'bi.view') },
       ],
     },
 
@@ -651,6 +731,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
       e.preventDefault();
       onNavigate(item.to);
+      onCloseMobile?.();
     };
 
     return (
@@ -660,8 +741,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         href={item.to}
         onClick={handleClick}
         title={item.label}
+        aria-current={isActive ? 'page' : undefined}
         className={`group relative flex items-center w-full rounded-lg transition-all duration-150 cursor-pointer select-none text-left no-underline ${
-          isCollapsed ? 'h-9 px-0 justify-center' : 'h-[34px] px-2.5 text-xs'
+          isCollapsed ? 'h-10 px-0 justify-center' : 'h-10 px-2.5 text-sm'
         } ${
           isActive
             ? `${style.activeBg} border ${style.activeBorder}`
@@ -694,7 +776,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Nome do item (apenas no modo expandido) */}
         {!isCollapsed && (
-          <span className="flex-1 truncate tracking-tight text-[12.5px] font-medium">
+          <span className="flex-1 truncate tracking-tight text-[13px] font-medium">
             {item.label}
           </span>
         )}
@@ -719,8 +801,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
+      id="app-sidebar"
+      role={isMobileOpen ? 'dialog' : undefined}
+      aria-modal={isMobileOpen || undefined}
+      aria-label="Menu principal"
+      tabIndex={isMobileOpen ? -1 : undefined}
       className={`border-r border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#080d18] flex flex-col shrink-0 transition-all duration-200 ease-in-out select-none ${
-        isCollapsed ? 'w-[68px]' : 'w-[248px]'
+        isMobileOpen
+          ? 'fixed inset-y-0 left-0 z-50 w-[min(82vw,280px)] shadow-2xl md:static md:z-auto md:shadow-none'
+          : 'hidden md:flex'
+      } md:flex ${
+        isCollapsed ? 'md:w-[68px]' : 'md:w-[248px]'
       }`}
     >
       {/* ==================================================
@@ -809,7 +900,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* ==================================================
           ÁRVORE DE NAVEGAÇÃO REORGANIZADA (6 GRUPOS)
       ================================================== */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-2">
+      <nav aria-label="Navegação principal" className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-2">
         {navGroups
           .filter((g) => g.visible)
           .map((group) => {
@@ -824,12 +915,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ) : (
                   // Cabeçalho Expansível do Grupo
                   <button
+                    type="button"
                     onClick={() => toggleGroup(group.id)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`nav-group-${group.id}`}
                     className="w-full px-2.5 pt-2 pb-1 flex items-center justify-between text-slate-400 hover:text-slate-200 transition-colors cursor-pointer group select-none"
                     title={`Recolher/Expandir ${group.title}`}
                   >
                     <div className="flex items-center gap-1.5 truncate">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-slate-300">
+                      <span className="text-[11px] font-semibold tracking-wide text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
                         {group.title}
                       </span>
                       {hasActiveItem && (
@@ -847,11 +941,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {/* Subitens do Grupo */}
-                {(isCollapsed || isExpanded) && (
-                  <div className="space-y-0.5">
-                    {group.items.map(renderNavItem)}
-                  </div>
-                )}
+                <div
+                  id={`nav-group-${group.id}`}
+                  className="space-y-0.5"
+                  hidden={!isCollapsed && !isExpanded}
+                >
+                  {group.items.map(renderNavItem)}
+                </div>
               </div>
             );
           })}

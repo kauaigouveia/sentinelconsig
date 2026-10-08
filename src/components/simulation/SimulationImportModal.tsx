@@ -9,10 +9,10 @@ import {
   AlertTriangle,
   Calculator,
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { Partner } from '../../types';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
+import { parseCsvText } from '../../services/excelService';
 
 interface SimulationImportModalProps {
   isOpen: boolean;
@@ -161,28 +161,38 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
           throw new Error('Não foi possível ler o arquivo.');
         }
 
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(buffer);
-        const worksheet = workbook.worksheets[0];
-        if (!worksheet) {
-          throw new Error('Nenhuma planilha encontrada no arquivo.');
-        }
-
         const rawJson: any[] = [];
         let headers: string[] = [];
-
-        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-          const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
-          if (rowNumber === 1) {
-            headers = rowValues.map(v => String(v || '').trim());
-          } else {
-            const rowObj: Record<string, any> = {};
-            headers.forEach((h, idx) => {
-              rowObj[h] = rowValues[idx] !== undefined ? rowValues[idx] : '';
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const rows = parseCsvText(await file.text());
+          if (rows.length > 0) {
+            headers = rows[0].map(header => header.trim());
+            rows.slice(1).forEach(rowValues => {
+              const rowObj: Record<string, any> = {};
+              headers.forEach((header, index) => { rowObj[header] = rowValues[index] ?? ''; });
+              rawJson.push(rowObj);
             });
-            rawJson.push(rowObj);
           }
-        });
+        } else {
+          const { default: ExcelJS } = await import('exceljs');
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(buffer);
+          const worksheet = workbook.worksheets[0];
+          if (!worksheet) throw new Error('Nenhuma planilha encontrada no arquivo.');
+
+          worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+            if (rowNumber === 1) {
+              headers = rowValues.map(v => String(v || '').trim());
+            } else {
+              const rowObj: Record<string, any> = {};
+              headers.forEach((header, index) => {
+                rowObj[header] = rowValues[index] !== undefined ? rowValues[index] : '';
+              });
+              rawJson.push(rowObj);
+            }
+          });
+        }
 
         if (rawJson.length === 0) {
           setErrorMsg('A planilha selecionada está vazia.');
@@ -223,6 +233,7 @@ export const SimulationImportModal: React.FC<SimulationImportModalProps> = ({
 
   // Download Excel Template
   const handleDownloadTemplate = async () => {
+    const { default: ExcelJS } = await import('exceljs');
     const templateData = [
       { 'CPF CLIENTE': '012.345.678-90', 'PARCEIRO (LOGIN / CÓDIGO)': 'KAUAI@16740' },
       { 'CPF CLIENTE': '987.654.321-00', 'PARCEIRO (LOGIN / CÓDIGO)': '16690' },

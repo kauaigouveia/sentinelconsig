@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
@@ -17,6 +17,8 @@ import {
   Sparkles,
   ShieldCheck,
   Zap,
+  RefreshCw,
+  Search,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { OperationalTask, TaskCategory, TaskPriority } from '../../types';
@@ -24,63 +26,135 @@ import { formatDate } from '../../lib/utils';
 import { ActionBar } from '../ui/ActionBar';
 import { MetricCard } from '../ui/MetricCard';
 import { EmptyState } from '../ui/EmptyState';
+import { hasPermission } from '../../lib/permissions';
+import { toastService } from '../ui/toastService';
+
+const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  LOW: 'Baixa',
+  MEDIUM: 'Média',
+  HIGH: 'Alta',
+  URGENT: 'Urgente',
+};
+
+const TASK_CATEGORY_LABELS: Record<string, string> = {
+  RETORNO: 'Retorno',
+  FOLLOW_UP: 'Follow-up',
+  PENDENCIA: 'Pendência',
+  SALDO_CIP: 'Saldo CIP',
+  CLIENTE: 'Cliente',
+  PARCEIRO: 'Parceiro',
+  INTERNA: 'Rotina interna',
+  OUTRO: 'Outro',
+  DOCUMENTACAO: 'Documentação',
+  FORMALIZACAO: 'Formalização',
+  AVERBACAO: 'Averbação',
+  OUTROS: 'Outros',
+  OPERACIONAL: 'Operacional',
+};
+
+const getLocalDateInputValue = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
+const formatTaskDate = (value?: string | null) => {
+  if (!value) return 'Sem vencimento';
+  const dateKey = String(value).slice(0, 10);
+  const date = new Date(`${dateKey}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? 'Data inválida' : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(date);
+};
+
+const getTaskApiError = async (response: Response, fallback: string) => {
+  const payload = await response.json().catch(() => null);
+  return new Error(payload?.error || fallback);
+};
 
 export const OperationalAgendaView: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const loadRequestRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [filterPriority, setFilterPriority] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TaskCategory>('SALDO_CIP');
-  const [priority, setPriority] = useState<TaskPriority>('ALTA');
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [priority, setPriority] = useState<TaskPriority>('HIGH');
+  const [dueDate, setDueDate] = useState(getLocalDateInputValue);
   const [assignedUserId, setAssignedUserId] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [proposalNumber, setProposalNumber] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [proposalId, setProposalId] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
   const users = StorageService.getUsers();
+  const clients = StorageService.getClients();
+  const proposals = StorageService.getProposals();
   const activeUser = StorageService.getActiveUser();
+  const canCreateTasks = hasPermission(activeUser?.role, activeUser?.customPermissions, 'tasks.create');
+  const canDeleteTasks = hasPermission(activeUser?.role, activeUser?.customPermissions, 'tasks.delete');
+  const canAssignTasks = hasPermission(activeUser?.role, activeUser?.customPermissions, 'tasks.assign');
+  const canEditTasks = hasPermission(activeUser?.role, activeUser?.customPermissions, 'tasks.update');
 
   useEffect(() => {
-    refreshTasks();
+    void refreshTasks();
+    return () => {
+      loadRequestRef.current += 1;
+    };
   }, []);
 
   const refreshTasks = async () => {
+    const requestId = ++loadRequestRef.current;
+    if (!hasLoadedRef.current) setIsLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch('/api/tasks');
-      if (res.ok) {
-        const data = await res.json();
-        setTasks(data);
-      }
+      const res = await fetch('/api/tasks', { credentials: 'include' });
+      if (!res.ok) throw await getTaskApiError(res, 'Não foi possível carregar as tarefas.');
+      const data = await res.json();
+      if (requestId !== loadRequestRef.current) return;
+      setTasks(Array.isArray(data) ? data : []);
+      hasLoadedRef.current = true;
     } catch (e) {
-      console.error(e);
+      if (requestId !== loadRequestRef.current) return;
+      const message = e instanceof Error ? e.message : 'Não foi possível carregar as tarefas.';
+      setLoadError(message);
+      toastService.error(message);
+    } finally {
+      if (requestId === loadRequestRef.current) setIsLoading(false);
     }
   };
 
   const handleToggleCompleted = async (task: any) => {
     try {
-      await fetch(`/api/tasks/${task.id}`, {
+      const response = await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: !task.completed })
       });
-      refreshTasks();
-    } catch (e) {
-      console.error(e);
+      if (!response.ok) throw await getTaskApiError(response, 'Não foi possível atualizar a tarefa.');
+      await refreshTasks();
+      toastService.success('Tarefa atualizada.');
+    } catch (error) {
+      toastService.error(error instanceof Error ? error.message : 'Não foi possível atualizar a tarefa.');
     }
   };
 
   const handleDeleteTask = async (id: string) => {
     if (confirm('Deseja realmente excluir esta tarefa da agenda?')) {
       try {
-        await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-        refreshTasks();
-      } catch (e) {
-        console.error(e);
+        const response = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!response.ok) throw await getTaskApiError(response, 'Não foi possível excluir a tarefa.');
+        await refreshTasks();
+        toastService.success('Tarefa excluída.');
+      } catch (error) {
+        toastService.error(error instanceof Error ? error.message : 'Não foi possível excluir a tarefa.');
       }
     }
   };
@@ -89,9 +163,12 @@ export const OperationalAgendaView: React.FC = () => {
     e.preventDefault();
     if (!title.trim()) return;
 
+    setIsSaving(true);
     try {
-      await fetch('/api/tasks', {
-        method: 'POST',
+      const linkedProposal = proposals.find(p => p.id === proposalId);
+      const response = await fetch(editingTaskId ? `/api/tasks/${encodeURIComponent(editingTaskId)}` : '/api/tasks', {
+        method: editingTaskId ? 'PUT' : 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
@@ -99,20 +176,54 @@ export const OperationalAgendaView: React.FC = () => {
           category,
           priority,
           dueDate: dueDate ? new Date(dueDate).toISOString() : null,
-          assignedToId: assignedUserId || activeUser?.id,
-          // clientName and proposalNumber should be related by IDs if available, 
-          // passing null for now since they are legacy concepts from localstorage
+          ...(canAssignTasks
+            ? { assignedToId: assignedUserId === '__UNASSIGNED__' ? null : (assignedUserId || activeUser?.id) }
+            : (!editingTaskId ? { assignedToId: activeUser?.id } : {})),
+          proposalId: linkedProposal?.id || null,
+          clientId: linkedProposal?.clientId || clientId || null,
         })
       });
+      if (!response.ok) throw await getTaskApiError(response, 'Não foi possível criar a tarefa.');
       setTitle('');
       setDescription('');
-      setClientName('');
-      setProposalNumber('');
+      setDueDate(getLocalDateInputValue());
+      setAssignedUserId('');
+      setClientId('');
+      setProposalId('');
+      const wasEditing = Boolean(editingTaskId);
+      setEditingTaskId(null);
       setIsModalOpen(false);
-      refreshTasks();
+      await refreshTasks();
+      toastService.success(wasEditing ? 'Tarefa atualizada.' : 'Tarefa criada.');
     } catch (err) {
-      console.error(err);
+      toastService.error(err instanceof Error ? err.message : 'Não foi possível criar a tarefa.');
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const startEditingTask = (task: any) => {
+    setEditingTaskId(task.id);
+    setTitle(task.title || '');
+    setDescription(task.description || '');
+    setCategory((task.category || 'OPERACIONAL') as TaskCategory);
+    setPriority((task.priority || 'MEDIUM') as TaskPriority);
+    setDueDate(task.dueDate ? String(task.dueDate).slice(0, 10) : '');
+    setAssignedUserId(task.assignedToId || '__UNASSIGNED__');
+    setClientId(task.clientId || '');
+    setProposalId(task.proposalId || '');
+    setIsModalOpen(true);
+  };
+
+  const closeTaskModal = () => {
+    setIsModalOpen(false);
+    setEditingTaskId(null);
+    setTitle('');
+    setDescription('');
+    setDueDate(getLocalDateInputValue());
+    setAssignedUserId('');
+    setClientId('');
+    setProposalId('');
   };
 
   const filteredTasks = tasks.filter(t => {
@@ -120,12 +231,20 @@ export const OperationalAgendaView: React.FC = () => {
     if (filterPriority !== 'ALL' && t.priority !== filterPriority) return false;
     if (filterStatus === 'PENDING' && t.completed) return false;
     if (filterStatus === 'COMPLETED' && !t.completed) return false;
+    const term = searchTerm.trim().toLocaleLowerCase('pt-BR');
+    if (term) {
+      const searchable = [t.title, t.description, t.clientName, t.proposalNumber, t.assignedUserName]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('pt-BR');
+      if (!searchable.includes(term)) return false;
+    }
     return true;
   });
 
   const pendingCount = tasks.filter(t => !t.completed).length;
   const completedCount = tasks.filter(t => t.completed).length;
-  const criticalCount = tasks.filter(t => !t.completed && t.priority === 'ALTA').length;
+  const criticalCount = tasks.filter(t => !t.completed && (t.priority === 'HIGH' || t.priority === 'URGENT')).length;
 
   return (
     <div className="space-y-6">
@@ -134,7 +253,7 @@ export const OperationalAgendaView: React.FC = () => {
         subtitle="Controle de vencimento de saldo CIP, follow-up de pendências, averbações e rotinas diárias da mesa"
         badgeText="ROTINA DE OPERAÇÃO"
         badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-        actions={
+        actions={canCreateTasks ? (
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
@@ -142,7 +261,7 @@ export const OperationalAgendaView: React.FC = () => {
             <Plus className="h-4 w-4" />
             <span>+ Nova Tarefa</span>
           </button>
-        }
+        ) : undefined}
       />
 
       {/* KPI Cards */}
@@ -204,6 +323,17 @@ export const OperationalAgendaView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <label className="relative min-w-40 flex-1 sm:flex-none">
+              <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Buscar tarefas"
+                aria-label="Buscar tarefas por título, descrição, cliente, proposta ou responsável"
+                className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:w-48"
+              />
+            </label>
             <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5 text-xs font-semibold">
               <button
                 onClick={() => setFilterStatus('ALL')}
@@ -230,15 +360,43 @@ export const OperationalAgendaView: React.FC = () => {
                 Concluídas ({completedCount})
               </button>
             </div>
+            <label className="sr-only" htmlFor="agenda-category-filter">Filtrar por categoria</label>
+            <select
+              id="agenda-category-filter"
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <option value="ALL">Todas as categorias</option>
+              {Array.from(new Set(tasks.map(task => task.category).filter(Boolean))).sort().map(taskCategory => (
+                <option key={taskCategory} value={taskCategory}>{TASK_CATEGORY_LABELS[taskCategory] || taskCategory}</option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="agenda-priority-filter">Filtrar por prioridade</label>
+            <select
+              id="agenda-priority-filter"
+              value={filterPriority}
+              onChange={e => setFilterPriority(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <option value="ALL">Todas as prioridades</option>
+              {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
           </div>
         </div>
 
-        {filteredTasks.length === 0 ? (
+        {loadError ? (
+          <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+            <span>{loadError}</span>
+            <button type="button" onClick={() => void refreshTasks()} className="inline-flex items-center gap-2 font-semibold underline"><RefreshCw className="h-3.5 w-3.5" />Tentar novamente</button>
+          </div>
+        ) : isLoading ? (
+          <div className="py-10 text-center text-sm text-slate-500">Carregando tarefas…</div>
+        ) : filteredTasks.length === 0 ? (
           <EmptyState
             title="Nenhuma tarefa encontrada"
             description="Não existem tarefas cadastradas para os filtros selecionados."
-            actionLabel="+ Criar Primeira Tarefa"
-            onAction={() => setIsModalOpen(true)}
+            {...(canCreateTasks ? { actionLabel: '+ Criar Primeira Tarefa', onAction: () => setIsModalOpen(true) } : {})}
           />
         ) : (
           <div className="space-y-2.5">
@@ -248,15 +406,17 @@ export const OperationalAgendaView: React.FC = () => {
                 className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-3 ${
                   task.completed
                     ? 'border-slate-200 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/30 opacity-60'
-                    : task.priority === 'ALTA'
+                    : task.priority === 'HIGH' || task.priority === 'URGENT'
                     ? 'border-amber-200 dark:border-amber-900/60 bg-amber-50/20 dark:bg-amber-950/10'
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <button
-                    onClick={() => handleToggleCompleted(task.id)}
-                    className="mt-0.5 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
+                    onClick={() => handleToggleCompleted(task)}
+                    disabled={!canEditTasks && task.assignedToId !== activeUser?.id}
+                    title={!canEditTasks && task.assignedToId !== activeUser?.id ? 'Você só pode alterar tarefas atribuídas a você.' : 'Alterar conclusão'}
+                    className="mt-0.5 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {task.completed ? (
                       <CheckSquare className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -279,18 +439,20 @@ export const OperationalAgendaView: React.FC = () => {
 
                       <span
                         className={`px-2 py-0.2 rounded text-[9.5px] font-bold ${
-                          task.priority === 'ALTA'
+                          task.priority === 'URGENT'
                             ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                            : task.priority === 'MEDIA'
+                            : task.priority === 'HIGH'
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : task.priority === 'MEDIUM'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
                             : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
                         }`}
                       >
-                        {task.priority}
+                        {TASK_PRIORITY_LABELS[task.priority as TaskPriority] || task.priority}
                       </span>
 
                       <span className="px-2 py-0.2 rounded text-[9.5px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                        {task.category}
+                        {TASK_CATEGORY_LABELS[task.category] || task.category}
                       </span>
                     </div>
 
@@ -299,7 +461,7 @@ export const OperationalAgendaView: React.FC = () => {
                     )}
 
                     <div className="flex flex-wrap items-center gap-3 text-[10.5px] text-slate-400 pt-1 font-mono">
-                      <span>Vencimento: {task.dueDate}</span>
+                      <span>Vencimento: {formatTaskDate(task.dueDate)}</span>
                       <span>•</span>
                       <span>Responsável: {task.assignedUserName}</span>
                       {task.proposalNumber && (
@@ -318,13 +480,26 @@ export const OperationalAgendaView: React.FC = () => {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer shrink-0"
-                  title="Excluir tarefa"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {canEditTasks && <button
+                    type="button"
+                    onClick={() => startEditingTask(task)}
+                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/50"
+                    title="Editar tarefa"
+                    aria-label={`Editar tarefa: ${task.title}`}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>}
+                  {canDeleteTasks && <button
+                    type="button"
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/50"
+                    title="Excluir tarefa"
+                    aria-label={`Excluir tarefa: ${task.title}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>}
+                </div>
               </div>
             ))}
           </div>
@@ -336,9 +511,9 @@ export const OperationalAgendaView: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Nova Tarefa Operacional</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{editingTaskId ? 'Editar Tarefa Operacional' : 'Nova Tarefa Operacional'}</h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={closeTaskModal}
                 className="text-slate-400 hover:text-slate-200 text-xs font-bold"
               >
                 ✕
@@ -353,6 +528,7 @@ export const OperationalAgendaView: React.FC = () => {
                 <input
                   type="text"
                   required
+                  maxLength={200}
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Ex: Cobrar saldo devedor Banco Santander"
@@ -371,10 +547,17 @@ export const OperationalAgendaView: React.FC = () => {
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
                   >
                     <option value="SALDO_CIP">Saldo CIP</option>
+                    <option value="RETORNO">Retorno</option>
+                    <option value="FOLLOW_UP">Follow-up</option>
+                    <option value="PENDENCIA">Pendência</option>
                     <option value="DOCUMENTACAO">Documentação</option>
                     <option value="FORMALIZACAO">Formalização</option>
                     <option value="AVERBACAO">Averbação</option>
+                    <option value="CLIENTE">Cliente</option>
+                    <option value="PARCEIRO">Parceiro</option>
+                    <option value="INTERNA">Rotina interna</option>
                     <option value="OUTROS">Outros</option>
+                    {category && !TASK_CATEGORY_LABELS[category] && <option value={category}>{category}</option>}
                   </select>
                 </div>
 
@@ -387,9 +570,10 @@ export const OperationalAgendaView: React.FC = () => {
                     onChange={e => setPriority(e.target.value as TaskPriority)}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
                   >
-                    <option value="ALTA">Alta</option>
-                    <option value="MEDIA">Média</option>
-                    <option value="BAIXA">Baixa</option>
+                    <option value="URGENT">Urgente</option>
+                    <option value="HIGH">Alta</option>
+                    <option value="MEDIUM">Média</option>
+                    <option value="LOW">Baixa</option>
                   </select>
                 </div>
               </div>
@@ -414,9 +598,11 @@ export const OperationalAgendaView: React.FC = () => {
                   <select
                     value={assignedUserId}
                     onChange={e => setAssignedUserId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                    disabled={!canAssignTasks}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden disabled:opacity-60"
                   >
                     <option value="">Eu mesmo ({activeUser.name})</option>
+                    {editingTaskId && <option value="__UNASSIGNED__">Sem responsável</option>}
                     {users.map(u => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.role})
@@ -432,6 +618,7 @@ export const OperationalAgendaView: React.FC = () => {
                 </label>
                 <textarea
                   rows={3}
+                  maxLength={5000}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Instruções adicionais..."
@@ -439,19 +626,37 @@ export const OperationalAgendaView: React.FC = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Vincular cliente</label>
+                  <select value={clientId} onChange={e => { setClientId(e.target.value); setProposalId(''); }} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <option value="">Nenhum cliente</option>
+                    {clients.map(client => <option key={client.id} value={client.id}>{client.fullName}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Vincular proposta</label>
+                  <select value={proposalId} onChange={e => { const nextId = e.target.value; setProposalId(nextId); const proposal = proposals.find(item => item.id === nextId); if (proposal?.clientId) setClientId(proposal.clientId); }} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <option value="">Nenhuma proposta</option>
+                    {proposals.filter(proposal => !clientId || proposal.clientId === clientId).map(proposal => <option key={proposal.id} value={proposal.id}>ADE {proposal.proposalNumber}</option>)}
+                  </select>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeTaskModal}
                   className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xs cursor-pointer"
+                  disabled={isSaving}
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xs cursor-pointer disabled:opacity-60"
                 >
-                  Salvar Tarefa
+                  {isSaving ? 'Salvando…' : editingTaskId ? 'Salvar Alterações' : 'Salvar Tarefa'}
                 </button>
               </div>
             </form>

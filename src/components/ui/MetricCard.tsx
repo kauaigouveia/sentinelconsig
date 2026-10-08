@@ -76,13 +76,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     }
   };
 
-  return (
-    <div
-      onClick={onClick}
-      className={`rounded-lg border px-3.5 py-3 transition-colors ${getVariantStyles()} ${
-        onClick ? 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-700' : ''
-      } ${className}`}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
           {label}
@@ -121,6 +116,22 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           {subValue}
         </p>
       )}
-    </div>
+    </>
   );
+
+  const cardClassName = `rounded-lg border px-3.5 py-3 transition-colors ${getVariantStyles()} ${className}`;
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${cardClassName} w-full cursor-pointer text-left hover:border-slate-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:border-slate-700`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={cardClassName}>{content}</div>;
 };

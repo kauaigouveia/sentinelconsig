@@ -1,23 +1,31 @@
 import React, { useState } from 'react';
-import { User, Lock, Building2, Mail, Phone, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Lock, Building2, Mail, Phone, Shield, CheckCircle2, AlertCircle, Save } from 'lucide-react';
 import { PartnerInfo, PartnerPortalAccessInfo, PartnerPortalClient, TenantInfo } from '../../services/partnerPortalClient';
 
 interface PartnerProfileViewProps {
   partner: PartnerInfo;
   access: PartnerPortalAccessInfo;
   tenant: TenantInfo;
+  onContactUpdated?: (contact: { email: string | null; phone: string | null }) => void;
 }
 
 export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
   partner,
   access,
   tenant,
+  onContactUpdated,
 }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [email, setEmail] = useState(partner.email || '');
+  const [phone, setPhone] = useState(partner.phone || '');
+  const [isSavingContact, setIsSavingContact] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,20 +37,44 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
       setErrorMsg('A confirmação de senha não confere.');
       return;
     }
+    if (!access.mustChangePassword && !currentPassword) {
+      setErrorMsg('Informe sua senha atual.');
+      return;
+    }
 
     setIsUpdating(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
     try {
-      const res = await PartnerPortalClient.changePassword(newPassword);
+      const res = await PartnerPortalClient.changePassword(newPassword, currentPassword);
       setSuccessMsg(res.message || 'Senha alterada com sucesso!');
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
       setErrorMsg(err?.message || 'Falha ao alterar senha.');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSavingContact) return;
+    setIsSavingContact(true);
+    setContactError(null);
+    setContactSuccess(null);
+    try {
+      const updated = await PartnerPortalClient.updateContact({ email, phone });
+      setEmail(updated.email || '');
+      setPhone(updated.phone || '');
+      onContactUpdated?.(updated);
+      setContactSuccess('E-mail e telefone atualizados com sucesso.');
+    } catch (err: any) {
+      setContactError(err?.message || 'Não foi possível atualizar seus contatos.');
+    } finally {
+      setIsSavingContact(false);
     }
   };
 
@@ -80,16 +112,44 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
             </p>
           </div>
 
-          <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">E-mail Comercial</span>
-            <p className="text-slate-700 dark:text-slate-300">{partner.email || 'Não informado'}</p>
+        </div>
+
+        <form onSubmit={handleUpdateContact} className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="space-y-1 text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> E-mail Comercial</span>
+              <input
+                type="email"
+                value={email}
+                onChange={event => setEmail(event.target.value)}
+                maxLength={254}
+                autoComplete="email"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </label>
+            <label className="space-y-1 text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Telefone / WhatsApp</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={event => setPhone(event.target.value)}
+                maxLength={30}
+                autoComplete="tel"
+                placeholder="DDD + número"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </label>
           </div>
 
-          <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Telefone / WhatsApp</span>
-            <p className="text-slate-700 dark:text-slate-300">{partner.phone || 'Não informado'}</p>
+          {contactSuccess && <p role="status" className="text-emerald-600 dark:text-emerald-400">{contactSuccess}</p>}
+          {contactError && <p role="alert" className="text-rose-600 dark:text-rose-400">{contactError}</p>}
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-1.5 text-[10px] text-slate-400"><Shield className="h-3.5 w-3.5" /> Nome, documento e promotora são gerenciados pela organização {tenant.name}.</p>
+            <button type="submit" disabled={isSavingContact} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+              <Save className="h-3.5 w-3.5" /> {isSavingContact ? 'Salvando…' : 'Salvar contatos'}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Usuário de Acesso & Segurança */}
@@ -135,26 +195,49 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
           )}
 
           <form onSubmit={handleChangePassword} className="space-y-3 max-w-md">
+            {!access.mustChangePassword && (
+              <div className="space-y-1">
+                <label htmlFor="partner-current-password" className="font-semibold text-slate-600 dark:text-slate-400 block">Senha Atual</label>
+                <input
+                  id="partner-current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={event => setCurrentPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={isUpdating}
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                />
+              </div>
+            )}
             <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400 block">Nova Senha</label>
+              <label htmlFor="partner-new-password" className="font-semibold text-slate-600 dark:text-slate-400 block">Nova Senha</label>
               <input
+                id="partner-new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
                 required
+                minLength={6}
+                autoComplete="new-password"
+                disabled={isUpdating}
                 className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-600 dark:text-slate-400 block">Confirme a Nova Senha</label>
+              <label htmlFor="partner-confirm-password" className="font-semibold text-slate-600 dark:text-slate-400 block">Confirme a Nova Senha</label>
               <input
+                id="partner-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repita a nova senha"
                 required
+                minLength={6}
+                autoComplete="new-password"
+                disabled={isUpdating}
                 className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
               />
             </div>

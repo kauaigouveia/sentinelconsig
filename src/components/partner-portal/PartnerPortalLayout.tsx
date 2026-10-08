@@ -43,6 +43,8 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'propostas' | 'atendimento' | 'perfil'>(initialTab);
+  const [proposalFilters, setProposalFilters] = useState<{ standardCategory?: string; waitingReturnOnly?: boolean }>({});
+  const [dashboardProposalId, setDashboardProposalId] = useState<string | null>(null);
   const [unreadSupportCount, setUnreadSupportCount] = useState<number>(0);
   const [chatProposal, setChatProposal] = useState<{ id: string; number: string } | null>(null);
 
@@ -158,7 +160,10 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('propostas')}
+            onClick={() => {
+              setProposalFilters({});
+              setActiveTab('propostas');
+            }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'propostas'
                 ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
@@ -271,7 +276,10 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('propostas')}
+          onClick={() => {
+            setProposalFilters({});
+            setActiveTab('propostas');
+          }}
           className={`flex items-center gap-1 py-1 px-2.5 rounded-lg font-bold ${
             activeTab === 'propostas' ? 'bg-blue-500/10 text-blue-600' : 'text-slate-500'
           }`}
@@ -310,8 +318,18 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
       <main className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0">
         {activeTab === 'dashboard' && (
           <PartnerPortalDashboard
-            onNavigate={(tab) => setActiveTab(tab as any)}
+            onNavigate={(tab, params) => {
+              if (tab === 'propostas') {
+                setProposalFilters({
+                  standardCategory: params?.standardCategory,
+                  waitingReturnOnly: params?.waitingReturnOnly === true,
+                });
+              }
+              setActiveTab(tab as any);
+            }}
             onSelectProposal={(propId) => {
+              setProposalFilters({});
+              setDashboardProposalId(propId);
               setActiveTab('propostas');
             }}
           />
@@ -319,6 +337,10 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
 
         {activeTab === 'propostas' && (
           <PartnerProposalsView
+            initialStatusCategory={proposalFilters.standardCategory}
+            initialWaitingReturnOnly={proposalFilters.waitingReturnOnly}
+            initialProposalId={dashboardProposalId}
+            onInitialProposalHandled={() => setDashboardProposalId(null)}
             onOpenChatForProposal={handleOpenChatForProposal}
           />
         )}
@@ -335,6 +357,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
             partner={partner}
             access={access}
             tenant={tenant}
+            onContactUpdated={(contact) => setPartner(current => current ? { ...current, ...contact } : current)}
           />
         )}
       </main>

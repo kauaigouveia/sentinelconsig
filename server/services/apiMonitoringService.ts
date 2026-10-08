@@ -8,7 +8,6 @@ export interface DefaultServiceSeed {
   description: string;
   criticality: ServiceCriticality;
   endpointUrl?: string;
-  baseLatencyMs: number;
 }
 
 const DEFAULT_SERVICES: DefaultServiceSeed[] = [
@@ -19,7 +18,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Consulta de margens consignáveis, benefícios concedidos e elegibilidade previdenciária.',
     criticality: 'CRITICAL',
     endpointUrl: 'https://extrato.dataprev.gov.br/api/health',
-    baseLatencyMs: 145,
   },
   {
     name: 'CIP - Câmara Interbancária (Portabilidade & STR)',
@@ -28,7 +26,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Troca de mensagens financeiras, Dwell time, solicitações de saldo devedor e retenções.',
     criticality: 'CRITICAL',
     endpointUrl: 'https://cip-barramento.cip-bancos.org.br/health',
-    baseLatencyMs: 110,
   },
   {
     name: 'Barramento Banco Pan (Esteira & Formalização)',
@@ -37,7 +34,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Integração direta com o barramento do Banco Pan para digitação e esteira de crédito.',
     criticality: 'HIGH',
     endpointUrl: 'https://api.bancopan.com.br/credito/v1/health',
-    baseLatencyMs: 85,
   },
   {
     name: 'Barramento Banco Daycoval',
@@ -46,7 +42,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Esteira de consignado, simulação e averbação Banco Daycoval.',
     criticality: 'HIGH',
     endpointUrl: 'https://servicos.daycoval.com.br/api/consignado/health',
-    baseLatencyMs: 92,
   },
   {
     name: 'Barramento Banco BMG',
@@ -55,7 +50,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Conexão para cartão RMC/RCC e propostas consignadas BMG.',
     criticality: 'HIGH',
     endpointUrl: 'https://api.bancobmg.com.br/status',
-    baseLatencyMs: 98,
   },
   {
     name: 'Barramento Banco Facta Financeira',
@@ -64,7 +58,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Digitação de contratos, esteira automatizada e averbações Facta.',
     criticality: 'MEDIUM',
     endpointUrl: 'https://api.facta.com.br/health',
-    baseLatencyMs: 130,
   },
   {
     name: 'Consulta Receita Federal / CPF & Regularidade',
@@ -73,7 +66,6 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Validação cadastral de situação cadastral e óbitos na base governamental.',
     criticality: 'HIGH',
     endpointUrl: 'https://servicos.receita.fazenda.gov.br/api/cpf/status',
-    baseLatencyMs: 65,
   },
   {
     name: 'Azure Blob Storage (Repositório de Documentos)',
@@ -82,16 +74,14 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Armazenamento seguro, upload e download de CNH, RG e comprovantes de clientes.',
     criticality: 'HIGH',
     endpointUrl: 'https://sentinelstorage.blob.core.windows.net',
-    baseLatencyMs: 42,
   },
   {
-    name: 'Pusher & SSE (Mensageria e Sockets em Tempo Real)',
+    name: 'API Sentinel & PostgreSQL',
     slug: 'realtime-pusher-sse',
     category: 'INTERNAL',
-    description: 'Barramento WebSocket e SSE para atualização de propostas, kanban e avisos operacionais.',
+    description: 'Endpoint interno para verificar disponibilidade da API e conexão PostgreSQL.',
     criticality: 'HIGH',
-    endpointUrl: '/api/realtime/health',
-    baseLatencyMs: 25,
+    endpointUrl: '/api/health',
   },
   {
     name: 'Sentinela AI Engine (Google Gemini 3.8 Flash)',
@@ -100,9 +90,73 @@ const DEFAULT_SERVICES: DefaultServiceSeed[] = [
     description: 'Processamento analítico, diagnóstico gerencial e assistente operacional inteligente.',
     criticality: 'MEDIUM',
     endpointUrl: 'https://generativelanguage.googleapis.com',
-    baseLatencyMs: 280,
   },
 ];
+
+type MonitorStatus = ServiceStatus | 'UNKNOWN';
+type ProbeResult = {
+  status: MonitorStatus;
+  latencyMs: number | null;
+  httpStatus?: number;
+  message: string;
+};
+
+const CHECK_FRESHNESS_FLOOR_MS = 5 * 60 * 1000;
+
+function isProbeFresh(service: { lastCheckedAt: Date | null; checkIntervalSec: number }, now = Date.now()) {
+  if (!service.lastCheckedAt) return false;
+  const freshnessWindow = Math.max(CHECK_FRESHNESS_FLOOR_MS, service.checkIntervalSec * 3 * 1000);
+  return now - service.lastCheckedAt.getTime() <= freshnessWindow;
+}
+
+function getEffectiveStatus(service: {
+  status: ServiceStatus;
+  lastCheckedAt: Date | null;
+  lastStatusChange: Date | null;
+  checkIntervalSec: number;
+}, now = Date.now()): MonitorStatus {
+  const manualStatusIsActive =
+    service.status !== 'OPERATIONAL' &&
+    service.lastStatusChange &&
+    (!service.lastCheckedAt || service.lastStatusChange > service.lastCheckedAt);
+  if (manualStatusIsActive) return service.status;
+  return isProbeFresh(service, now) ? service.status : 'UNKNOWN';
+}
+
+function isProbeSupported(service: { slug: string; endpointUrl: string | null }) {
+  if (service.endpointUrl === '/api/health') return true;
+  const seed = DEFAULT_SERVICES.find((item) => item.slug === service.slug);
+  if (!seed?.endpointUrl?.startsWith('https://') || !service.endpointUrl) return false;
+  try {
+    const configured = new URL(service.endpointUrl);
+    const approved = new URL(seed.endpointUrl);
+    return configured.protocol === 'https:' && configured.hostname === approved.hostname && !configured.username && !configured.password;
+  } catch {
+    return false;
+  }
+}
+
+function presentService<T extends {
+  slug: string;
+  endpointUrl: string | null;
+  status: ServiceStatus;
+  lastCheckedAt: Date | null;
+  lastStatusChange: Date | null;
+  checkIntervalSec: number;
+  latencyMs: number;
+}>(service: T, now = Date.now()) {
+  const fresh = isProbeFresh(service, now);
+  const status = getEffectiveStatus(service, now);
+  const { status: _storedStatus, ...serviceData } = service;
+  return {
+    ...serviceData,
+    status,
+    statusSource: fresh ? 'CHECK' as const : status === 'UNKNOWN' ? 'UNKNOWN' as const : 'MANUAL' as const,
+    latencyMs: fresh ? service.latencyMs : null,
+    uptimePercent: null,
+    probeSupported: isProbeSupported(service),
+  };
+}
 
 export class ApiMonitoringService {
   /**
@@ -117,10 +171,6 @@ export class ApiMonitoringService {
       if (existingCount === 0) {
         logger.info({ tenantId }, '[API MONITORING] Inicializando serviços de monitoramento padrão');
         for (const seed of DEFAULT_SERVICES) {
-          // Variação orgânica inicial de latência
-          const latencyVariance = Math.floor(Math.random() * 20) - 10;
-          const initialLatency = Math.max(15, seed.baseLatencyMs + latencyVariance);
-
           await prisma.monitoredService.create({
             data: {
               tenantId,
@@ -131,10 +181,10 @@ export class ApiMonitoringService {
               endpointUrl: seed.endpointUrl,
               status: 'OPERATIONAL',
               criticality: seed.criticality,
-              latencyMs: initialLatency,
-              uptimePercent: 99.8 + +(Math.random() * 0.19).toFixed(2),
-              lastCheckedAt: new Date(),
-              lastStatusChange: new Date(Date.now() - 3600000 * 24), // 24h atrás
+              latencyMs: 0,
+              uptimePercent: 0,
+              lastCheckedAt: null,
+              lastStatusChange: null,
               checkIntervalSec: 60,
               isActive: true,
             },
@@ -176,7 +226,7 @@ export class ApiMonitoringService {
       ],
     });
 
-    return services;
+    return services.map((service) => presentService(service));
   }
 
   /**
@@ -212,26 +262,26 @@ export class ApiMonitoringService {
     });
 
     const total = services.length;
-    const operational = services.filter(s => s.status === 'OPERATIONAL').length;
-    const degraded = services.filter(s => s.status === 'DEGRADED').length;
-    const outage = services.filter(s => s.status === 'OUTAGE').length;
-    const maintenance = services.filter(s => s.status === 'MAINTENANCE').length;
+    const presented = services.map((service) => presentService(service));
+    const operational = presented.filter((s) => s.status === 'OPERATIONAL').length;
+    const degraded = presented.filter((s) => s.status === 'DEGRADED').length;
+    const outage = presented.filter((s) => s.status === 'OUTAGE').length;
+    const maintenance = presented.filter((s) => s.status === 'MAINTENANCE').length;
+    const unknown = presented.filter((s) => s.status === 'UNKNOWN').length;
+    const checkedServices = presented.filter((s) => s.statusSource === 'CHECK' && s.latencyMs !== null);
+    const avgLatency = checkedServices.length > 0
+      ? Math.round(checkedServices.reduce((acc, s) => acc + (s.latencyMs || 0), 0) / checkedServices.length)
+      : null;
 
-    const avgLatency = total > 0
-      ? Math.round(services.reduce((acc, s) => acc + s.latencyMs, 0) / total)
-      : 0;
-
-    const avgUptime = total > 0
-      ? +(services.reduce((acc, s) => acc + s.uptimePercent, 0) / total).toFixed(2)
-      : 100;
-
-    let overallStatus: ServiceStatus = 'OPERATIONAL';
+    let overallStatus: MonitorStatus = unknown === total ? 'UNKNOWN' : 'OPERATIONAL';
     if (outage > 0) {
       overallStatus = 'OUTAGE';
     } else if (degraded > 0) {
       overallStatus = 'DEGRADED';
     } else if (maintenance > 0 && operational === 0) {
       overallStatus = 'MAINTENANCE';
+    } else if (unknown > 0) {
+      overallStatus = 'UNKNOWN';
     }
 
     return {
@@ -241,8 +291,9 @@ export class ApiMonitoringService {
       degraded,
       outage,
       maintenance,
+      unknown,
       averageLatencyMs: avgLatency,
-      averageUptimePercent: avgUptime,
+      averageUptimePercent: null,
       activeIncidentsCount: activeIncidents.length,
       activeIncidents,
       lastUpdated: new Date().toISOString(),
@@ -250,8 +301,94 @@ export class ApiMonitoringService {
   }
 
   /**
-   * Executa check sob demanda de um serviço específico
+   * Executa um health check real. Alvos externos são limitados ao host aprovado
+   * para o serviço; para o endpoint interno, o ping consulta o próprio PostgreSQL.
    */
+  private static async probeService(prisma: PrismaClient, service: {
+    id: string;
+    slug: string;
+    name: string;
+    endpointUrl: string | null;
+  }): Promise<ProbeResult> {
+    const startedAt = Date.now();
+    if (service.endpointUrl === '/api/health') {
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        return {
+          status: 'OPERATIONAL',
+          latencyMs: Date.now() - startedAt,
+          httpStatus: 200,
+          message: 'API e conexão PostgreSQL responderam ao health check.',
+        };
+      } catch {
+        return { status: 'OUTAGE', latencyMs: Date.now() - startedAt, message: 'A consulta de saúde do PostgreSQL falhou.' };
+      }
+    }
+
+    const approvedSeed = DEFAULT_SERVICES.find((item) => item.slug === service.slug);
+    if (!service.endpointUrl || !approvedSeed?.endpointUrl?.startsWith('https://') || !isProbeSupported(service)) {
+      return {
+        status: 'UNKNOWN',
+        latencyMs: null,
+        message: 'Endpoint não testado: configure um host HTTPS aprovado para este serviço.',
+      };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(service.endpointUrl, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: controller.signal,
+        headers: { Accept: 'application/json, text/plain, */*' },
+      });
+      const latencyMs = Date.now() - startedAt;
+      await response.body?.cancel().catch(() => undefined);
+      const status: MonitorStatus = response.status < 300
+        ? 'OPERATIONAL'
+        : response.status < 500
+          ? 'DEGRADED'
+          : 'OUTAGE';
+      return {
+        status,
+        latencyMs,
+        httpStatus: response.status,
+        message: `O endpoint respondeu com HTTP ${response.status} em ${latencyMs}ms.`,
+      };
+    } catch (error: any) {
+      const timedOut = error?.name === 'AbortError';
+      return {
+        status: 'OUTAGE',
+        latencyMs: Date.now() - startedAt,
+        message: timedOut ? 'O endpoint não respondeu dentro de 8 segundos.' : 'Não foi possível conectar ao endpoint HTTPS aprovado.',
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private static async persistProbeResult(prisma: PrismaClient, service: {
+    id: string;
+    status: ServiceStatus;
+    lastCheckedAt: Date | null;
+    lastStatusChange: Date | null;
+  }, result: ProbeResult) {
+    if (result.status === 'UNKNOWN' || result.latencyMs === null) return null;
+    const now = new Date();
+    return prisma.monitoredService.update({
+      where: { id: service.id },
+      data: {
+        status: result.status,
+        latencyMs: result.latencyMs,
+        lastCheckedAt: now,
+        ...(service.status !== result.status || (service.lastStatusChange && (!service.lastCheckedAt || service.lastStatusChange > service.lastCheckedAt))
+          ? { lastStatusChange: now }
+          : {}),
+      },
+    });
+  }
+
   public static async pingService(prisma: PrismaClient, serviceId: string, tenantId: string | null) {
     const service = await prisma.monitoredService.findFirst({
       where: {
@@ -264,27 +401,17 @@ export class ApiMonitoringService {
       throw new Error('Serviço de API não encontrado.');
     }
 
-    // Medição de latência simulada de ponta a ponta
-    const jitter = Math.floor(Math.random() * 35) - 15;
-    const newLatency = Math.max(12, service.latencyMs + jitter);
-
-    // Se o serviço estiver em OUTAGE ou DEGRADED, chance de auto-recuperação durante o ping se for check
-    const updated = await prisma.monitoredService.update({
-      where: { id: serviceId },
-      data: {
-        latencyMs: newLatency,
-        lastCheckedAt: new Date(),
-      },
-    });
+    const result = await this.probeService(prisma, service);
+    const updated = await this.persistProbeResult(prisma, service, result);
 
     return {
-      serviceId: updated.id,
-      name: updated.name,
-      status: updated.status,
-      latencyMs: updated.latencyMs,
-      uptimePercent: updated.uptimePercent,
-      checkedAt: updated.lastCheckedAt,
-      message: `Verificação de conectividade concluída com sucesso. Resposta em ${updated.latencyMs}ms.`,
+      serviceId: service.id,
+      name: service.name,
+      status: result.status,
+      latencyMs: result.latencyMs,
+      httpStatus: result.httpStatus,
+      checkedAt: updated?.lastCheckedAt || null,
+      message: result.message,
     };
   }
 
@@ -299,27 +426,23 @@ export class ApiMonitoringService {
       },
     });
 
-    const results = [];
-    for (const s of services) {
-      const jitter = Math.floor(Math.random() * 30) - 12;
-      const newLatency = Math.max(15, s.latencyMs + jitter);
-      const updated = await prisma.monitoredService.update({
-        where: { id: s.id },
-        data: {
-          latencyMs: newLatency,
-          lastCheckedAt: new Date(),
-        },
-      });
-      results.push({
-        id: updated.id,
-        name: updated.name,
-        status: updated.status,
-        latencyMs: updated.latencyMs,
-      });
-    }
+    const results = await Promise.all(services.map(async (service) => {
+      const result = await this.probeService(prisma, service);
+      const updated = await this.persistProbeResult(prisma, service, result);
+      return {
+        id: service.id,
+        name: service.name,
+        status: result.status,
+        latencyMs: result.latencyMs,
+        httpStatus: result.httpStatus,
+        checkedAt: updated?.lastCheckedAt || null,
+        message: result.message,
+      };
+    }));
 
     return {
-      checkedCount: results.length,
+      checkedCount: results.filter((result) => result.checkedAt !== null).length,
+      unsupportedCount: results.filter((result) => result.status === 'UNKNOWN').length,
       timestamp: new Date().toISOString(),
       services: results,
     };
@@ -359,7 +482,6 @@ export class ApiMonitoringService {
       data: {
         ...data,
         lastStatusChange: isStatusChanged ? new Date() : undefined,
-        lastCheckedAt: new Date(),
       },
     });
 

@@ -22,6 +22,7 @@ import {
   Copy,
   Phone,
   Mail,
+  Loader2,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { formatDate, formatCpf, extractPartnerCode, formatCurrency, parseCurrency } from '../../lib/utils';
@@ -33,6 +34,7 @@ import { toastService } from '../ui/toastService';
 import { C6ProposalCard } from './C6ProposalCard';
 import { FactaProposalCard } from './FactaProposalCard';
 import { HappyProposalCard } from './HappyProposalCard';
+import { hasPermission } from '../../lib/permissions';
 
 interface ProposalDetailModalProps {
   proposalId: string | null;
@@ -42,16 +44,43 @@ interface ProposalDetailModalProps {
   onProposalUpdated: () => void;
 }
 
-export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
+interface ProposalPendencyItem {
+  id: string;
+  type: string;
+  title: string;
+  description?: string | null;
+  priority: string;
+  status: string;
+  createdAt: string;
+  assignedTo?: { name?: string } | null;
+}
+
+export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = (props) => {
+  const { proposalId } = props;
+  if (!proposalId) return null;
+  const initialProposal = StorageService.getProposalById(proposalId);
+  if (!initialProposal) return null;
+
+  return (
+    <ProposalDetailModalContent
+      key={proposalId}
+      {...props}
+      proposalId={proposalId}
+      initialProposal={initialProposal}
+    />
+  );
+};
+
+const ProposalDetailModalContent: React.FC<
+  Omit<ProposalDetailModalProps, 'proposalId'> & { proposalId: string; initialProposal: Proposal }
+> = ({
   proposalId,
   proposalIdsList = [],
   onSelectProposal,
   onClose,
   onProposalUpdated,
+  initialProposal,
 }) => {
-  if (!proposalId) return null;
-
-  const initialProposal = StorageService.getProposalById(proposalId);
   const [liveProposal, setLiveProposal] = useState<Proposal | null>(initialProposal || null);
 
   useEffect(() => {
@@ -61,8 +90,12 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
   const proposal = liveProposal || initialProposal;
   const activeUser = StorageService.getActiveUser();
-
-  if (!proposal) return null;
+  const canUpdateProposal = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.update');
+  const canDeleteProposal = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.delete');
+  const canViewPendencies = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.view');
+  const canCreatePendency = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.create');
+  const canResolvePendency = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.resolve');
+  const canDeletePendency = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.delete');
 
   const allClients = StorageService.getClients();
   const matchedClient =
@@ -270,6 +303,35 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
   const [pendencyType, setPendencyType] = useState<PendencyType>('DOCUMENTACAO');
   const [pendencyDesc, setPendencyDesc] = useState('');
   const [pendencyPriority, setPendencyPriority] = useState<PendencyPriority>('NORMAL');
+  const [proposalPendencies, setProposalPendencies] = useState<ProposalPendencyItem[]>([]);
+  const [isLoadingPendencies, setIsLoadingPendencies] = useState(false);
+  const [isSavingPendency, setIsSavingPendency] = useState(false);
+
+  const refreshProposalPendencies = async () => {
+    if (!canViewPendencies) {
+      setProposalPendencies([]);
+      return;
+    }
+    setIsLoadingPendencies(true);
+    try {
+      const response = await fetch(`/api/pendencies?proposalId=${encodeURIComponent(proposalId)}&limit=100`, { credentials: 'include' });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Não foi possível carregar as pendências da proposta.');
+      }
+      const result = await response.json();
+      setProposalPendencies(Array.isArray(result?.items) ? result.items : []);
+    } catch (error) {
+      console.error('[ProposalDetailModal] Erro ao carregar pendências:', error);
+      toastService.error('Erro ao carregar pendências', error instanceof Error ? error.message : 'Tente novamente.');
+    } finally {
+      setIsLoadingPendencies(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshProposalPendencies();
+  }, [proposalId, canViewPendencies]);
 
   // New Comment Form
   const [commentText, setCommentText] = useState('');
@@ -283,42 +345,19 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     proposal.contractBalance !== undefined ? String(proposal.contractBalance) : ''
   );
   const [financialsSuccess, setFinancialsSuccess] = useState(false);
+  const [financialsSaving, setFinancialsSaving] = useState(false);
 
   const handleSaveFinancials = async () => {
+    if (financialsSaving) return;
     const parsedDisbursed = editDisbursedStr.trim() ? parseCurrency(editDisbursedStr) : undefined;
     const parsedBalance = editBalanceStr.trim() ? parseCurrency(editBalanceStr) : undefined;
 
+    setFinancialsSaving(true);
     try {
-      const res = await fetch(`/api/proposals/${proposal.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          releasedValue: parsedDisbursed !== undefined ? Number(parsedDisbursed) : undefined,
-          contractValue: parsedBalance !== undefined ? Number(parsedBalance) : undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        throw new Error(errData?.error || 'Erro ao atualizar valores no PostgreSQL.');
-      }
-
-      // Fallback local update
-      StorageService.updateProposalFinancials(
-        proposal.id,
-        {
-          disbursedValue: parsedDisbursed,
-          contractBalance: parsedBalance,
-        },
-        'MANUAL'
-      );
-
-      // Sync with PostgreSQL
-      try {
-        await StorageService.syncWithPostgreSQL();
-      } catch (syncErr) {
-        console.warn('[ProposalDetailModal] Erro ao sincronizar com PostgreSQL pós-valores:', syncErr);
-      }
+      await StorageService.updateProposalAsync(proposal.id, {
+        disbursedValue: parsedDisbursed,
+        contractBalance: parsedBalance,
+      }, 'Atualização de valores financeiros');
 
       setFinancialsSuccess(true);
       toastService.success('Valores Atualizados', 'Informações financeiras registradas com sucesso.');
@@ -329,6 +368,8 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
       }, 800);
     } catch (err: any) {
       toastService.error('Erro ao Atualizar', err.message || 'Erro ao atualizar valores da proposta.');
+    } finally {
+      setFinancialsSaving(false);
     }
   };
 
@@ -345,39 +386,9 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     setStatusUpdating(true);
     try {
       const targetStatus = allStatuses.find(s => s.id === selectedStatusId);
-      const res = await fetch(`/api/proposals/${proposal.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          statusId: selectedStatusId,
-          statusName: targetStatus?.name,
-          notes: statusObservation || undefined
-        })
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        throw new Error(errData?.error || 'Erro ao atualizar status na API');
-      }
-      
-      // Fallback update in local storage for legacy compatibility
-      try {
-        StorageService.updateProposalStatus(
-          proposal.id,
-          selectedStatusId,
-          statusObservation || undefined,
-          activeUser,
-          'MANUAL'
-        );
-      } catch (storageErr) {
-        console.warn('[ProposalDetailModal] Aviso ao sincronizar StorageService:', storageErr);
-      }
-
-      // Sync with PostgreSQL immediately to get the updated status and any automated related changes
-      try {
-        await StorageService.syncWithPostgreSQL();
-      } catch (syncErr) {
-        console.warn('[ProposalDetailModal] Erro ao sincronizar com PostgreSQL pós-status:', syncErr);
-      }
+      await StorageService.updateProposalAsync(proposal.id, {
+        statusId: selectedStatusId,
+      }, statusObservation || `Status alterado para ${targetStatus?.name || 'novo status'}`);
       
       setStatusSuccess(true);
       setStatusObservation('');
@@ -405,17 +416,38 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     }
   };
 
-  const handleAddPendency = () => {
-    if (!pendencyDesc.trim()) return;
-    StorageService.addPendency({
-      proposalId: proposal.id,
-      type: pendencyType,
-      description: pendencyDesc.trim(),
-      priority: pendencyPriority,
-    });
-    setPendencyDesc('');
-    toastService.success('Pendência Aberta', 'Nova pendência registrada para a proposta.');
-    onProposalUpdated();
+  const handleAddPendency = async () => {
+    if (!pendencyDesc.trim() || isSavingPendency) return;
+    setIsSavingPendency(true);
+    try {
+      const priority = pendencyPriority === 'URGENTE' ? 'URGENT' : pendencyPriority === 'ALTA' ? 'HIGH' : 'MEDIUM';
+      const response = await fetch('/api/pendencies', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposalId: proposal.id,
+          title: `${pendencyType}: ${pendencyDesc.trim()}`,
+          description: pendencyDesc.trim(),
+          type: pendencyType,
+          priority,
+          source: 'MANUAL',
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Não foi possível registrar a pendência.');
+      }
+      setPendencyDesc('');
+      await refreshProposalPendencies();
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+      toastService.success('Pendência Aberta', 'Pendência salva e disponível na Central de Pendências.');
+      onProposalUpdated();
+    } catch (error) {
+      toastService.error('Erro ao abrir pendência', error instanceof Error ? error.message : 'Tente novamente.');
+    } finally {
+      setIsSavingPendency(false);
+    }
   };
 
   const [deleteModalConfig, setDeleteModalConfig] = useState<{
@@ -431,25 +463,50 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
     onConfirm: () => {},
   });
 
-  const handleResolvePendency = (pendencyId: string) => {
-    StorageService.resolvePendency(pendencyId, 'Resolvido pelo operador');
-    toastService.success('Pendência Resolvida', 'Status de pendência atualizado para resolvido.');
-    onProposalUpdated();
+  const handleResolvePendency = async (pendencyId: string) => {
+    try {
+      const response = await fetch(`/api/pendencies/${encodeURIComponent(pendencyId)}/resolve`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution: 'Resolvido pelo operador da proposta.' }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Não foi possível resolver a pendência.');
+      }
+      await refreshProposalPendencies();
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+      toastService.success('Pendência Resolvida', 'Status atualizado na Central de Pendências.');
+      onProposalUpdated();
+    } catch (error) {
+      toastService.error('Erro ao resolver pendência', error instanceof Error ? error.message : 'Tente novamente.');
+    }
   };
 
-  const handleDeletePendency = (pen: { id: string; type: string; description: string }) => {
+  const handleDeletePendency = (pen: { id: string; type: string; title?: string; description?: string | null }) => {
     setDeleteModalConfig({
       isOpen: true,
       itemType: 'Pendência Operacional',
-      itemName: `${pen.type}: ${pen.description}`,
+      itemName: `${pen.type}: ${pen.description || pen.title || 'Pendência'}`,
       description: 'A pendência será removida da proposta definitivamente.',
-      onConfirm: () => {
+      onConfirm: async () => {
         try {
-          StorageService.deletePendency(pen.id);
-          toastService.success('Pendência Removida');
+          const response = await fetch(`/api/pendencies/${encodeURIComponent(pen.id)}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || 'Não foi possível excluir a pendência.');
+          }
+          setDeleteModalConfig(prev => ({ ...prev, isOpen: false }));
+          await refreshProposalPendencies();
+          window.dispatchEvent(new Event('credit_gestao_storage_update'));
+          toastService.success('Pendência Removida', 'Pendência excluída da Central de Pendências.');
           onProposalUpdated();
-        } catch (err: any) {
-          toastService.error('Erro ao Excluir', err.message || 'Erro ao excluir pendência.');
+        } catch (error) {
+          toastService.error('Erro ao Excluir', error instanceof Error ? error.message : 'Erro ao excluir pendência.');
         }
       },
     });
@@ -653,17 +710,17 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             </div>
           </div>
 
-          <button
+          {canUpdateProposal && <button
             onClick={() => setIsEditingFinancials(prev => !prev)}
             className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:border-blue-400 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
           >
             <Edit3 className="h-3 w-3" />
             <span>{isEditingFinancials ? 'Cancelar Edição' : 'Ajustar Valores'}</span>
-          </button>
+          </button>}
         </div>
 
         {/* Financial Inline Form */}
-        {isEditingFinancials && (
+        {canUpdateProposal && isEditingFinancials && (
           <div className="px-6 py-3 bg-blue-50/70 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900/60 flex flex-wrap items-end gap-3 text-xs animate-in fade-in duration-100">
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
@@ -691,10 +748,12 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             </div>
             <button
               onClick={handleSaveFinancials}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1.5 cursor-pointer"
+              disabled={financialsSaving}
+              aria-busy={financialsSaving}
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-wait px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Salvar Valores</span>
+              {financialsSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              <span>{financialsSaving ? 'Salvando...' : 'Salvar Valores'}</span>
             </button>
             {financialsSuccess && (
               <span className="text-emerald-700 dark:text-emerald-400 font-bold text-xs py-1">
@@ -720,7 +779,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
         )}
 
         {/* Status Update Action Bar */}
-        <div className="px-6 py-3 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
+        {canUpdateProposal ? <div className="px-6 py-3 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
             Alterar Status da Proposta
           </label>
@@ -754,8 +813,8 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                     ? `(${s.responsible})`
                     : (s.standardCategory ? `(${s.standardCategory})` : '');
                   return (
-                    <option key={s.id} value={s.id}>
-                      {s.name} {badge}
+                    <option key={s.id} value={s.id} disabled={!s.manualChangeAllowed && s.id !== proposal.statusId}>
+                      {s.name} {badge}{!s.manualChangeAllowed && s.id !== proposal.statusId ? ' (Automático)' : ''}
                     </option>
                   );
                 })}
@@ -785,7 +844,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
               Status atualizado com sucesso e registrado na linha do tempo!
             </p>
           )}
-        </div>
+        </div> : <div className="px-6 py-3 bg-slate-50/80 text-xs text-slate-500 dark:bg-slate-950/40 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">Seu perfil pode consultar a proposta, mas não possui permissão para alterar status ou valores.</div>}
 
         {/* Integração C6 Bank Status Bar */}
         {isC6Bank && (
@@ -958,7 +1017,7 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
             }`}
           >
             <AlertCircle className="h-3.5 w-3.5" />
-            <span>Pendências ({(proposal.pendencies || []).length})</span>
+            <span>Pendências ({proposalPendencies.length})</span>
           </button>
 
           <button
@@ -1127,6 +1186,12 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
           {/* TAB 2: PENDÊNCIAS */}
           {activeTab === 'PENDENCIAS' && (
             <div className="space-y-4">
+              {!canViewPendencies && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                  Seu perfil não possui permissão para consultar as pendências desta proposta.
+                </p>
+              )}
+              {canCreatePendency && (
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3">
                 <h4 className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
                   Cadastrar Nova Pendência
@@ -1157,10 +1222,11 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
                   <button
                     onClick={handleAddPendency}
-                    className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    disabled={isSavingPendency || !pendencyDesc.trim()}
+                    className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <AlertCircle className="h-3.5 w-3.5" />
-                    <span>Adicionar Pendência</span>
+                    <span>{isSavingPendency ? 'Salvando...' : 'Adicionar Pendência'}</span>
                   </button>
                 </div>
                 <input
@@ -1171,14 +1237,17 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200"
                 />
               </div>
+              )}
 
               <div className="space-y-2">
-                {(!proposal.pendencies || proposal.pendencies.length === 0) ? (
+                {isLoadingPendencies ? (
+                  <p className="text-xs text-slate-400 italic text-center py-6">Carregando pendências...</p>
+                ) : proposalPendencies.length === 0 ? (
                   <p className="text-xs text-slate-400 italic text-center py-6">
                     Nenhuma pendência ativa nesta proposta.
                   </p>
                 ) : (
-                  proposal.pendencies.map(pen => (
+                  proposalPendencies.map(pen => (
                     <div
                       key={pen.id}
                       className={`flex items-center justify-between p-3.5 rounded-xl border text-xs ${
@@ -1200,14 +1269,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                             {pen.status}
                           </span>
                         </div>
-                        <p className="text-slate-700 dark:text-slate-300">{pen.description}</p>
+                        <p className="text-slate-700 dark:text-slate-300">{pen.description || pen.title}</p>
                         <span className="text-[10px] text-slate-400 block">
-                          Aberta em {formatDate(pen.openedAt)} • Grupo: {pen.responsibleGroup}
+                          Aberta em {formatDate(pen.createdAt)} • Responsável: {pen.assignedTo?.name || 'Não atribuído'} • Prioridade: {pen.priority}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {pen.status === 'ABERTA' && (
+                        {canResolvePendency && ['ABERTA', 'EM_ATENDIMENTO', 'AGUARDANDO'].includes(pen.status) && (
                           <button
                             onClick={() => handleResolvePendency(pen.id)}
                             className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs cursor-pointer"
@@ -1216,13 +1285,13 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                             <span>Resolver</span>
                           </button>
                         )}
-                        <button
+                        {canDeletePendency && <button
                           onClick={() => handleDeletePendency(pen)}
                           className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
                           title="Excluir pendência"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </button>}
                       </div>
                     </div>
                   ))
@@ -1379,13 +1448,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                         updated.statusId,
                         `Sincronização C6 Bank: Situação "${updated.c6RawSituation || ''}" - Atividade "${updated.c6ActivityDescription || ''}"`,
                         undefined,
-                        'SISTEMA'
+                        'SISTEMA',
+                        false
                       );
                     } catch (e) {
                       console.warn('[C6 SYNC] Status local não alterado:', e);
                     }
                   }
-                  StorageService.updateProposal(updated.id, updated, 'Consulta C6 Bank');
+                  StorageService.updateProposal(updated.id, updated, 'Consulta C6 Bank', false);
                   if (onProposalUpdated) onProposalUpdated();
                 }}
               />
@@ -1407,13 +1477,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                         updated.statusId,
                         `Sincronização FACTA: Status "${updated.factaRawStatus || ''}" - Crivo "${updated.factaCrivoStatus || ''}"`,
                         undefined,
-                        'SISTEMA'
+                        'SISTEMA',
+                        false
                       );
                     } catch (e) {
                       console.warn('[FACTA SYNC] Status local não alterado:', e);
                     }
                   }
-                  StorageService.updateProposal(updated.id, updated, 'Consulta FACTA Financeira');
+                  StorageService.updateProposal(updated.id, updated, 'Consulta FACTA Financeira', false);
                   if (onProposalUpdated) onProposalUpdated();
                 }}
               />
@@ -1435,13 +1506,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
                         updated.statusId,
                         `Sincronização Happy: Status "${updated.happyStatusName || updated.happyStatus || ''}"`,
                         undefined,
-                        'SISTEMA'
+                        'SISTEMA',
+                        false
                       );
                     } catch (e) {
                       console.warn('[HAPPY SYNC] Status local não alterado:', e);
                     }
                   }
-                  StorageService.updateProposal(updated.id, updated, 'Consulta Happy / BYX Capital');
+                  StorageService.updateProposal(updated.id, updated, 'Consulta Happy / BYX Capital', false);
                   if (onProposalUpdated) onProposalUpdated();
                 }}
               />
@@ -1451,14 +1523,14 @@ export const ProposalDetailModal: React.FC<ProposalDetailModalProps> = ({
 
         {/* Modal Footer */}
         <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-3 bg-slate-50 dark:bg-slate-950/60 rounded-b-2xl shrink-0">
-          <button
+          {canDeleteProposal && <button
             onClick={handleDeleteProposal}
             className="flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
             title="Excluir proposta permanentemente"
           >
             <Trash2 className="h-3.5 w-3.5" />
             <span>Excluir Proposta</span>
-          </button>
+          </button>}
           <button
             onClick={onClose}
             className="rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"

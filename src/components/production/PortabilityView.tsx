@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { AutomationService } from '../../services/automationService';
-import { formatCpf, formatDate, extractPartnerCode, formatCurrency } from '../../lib/utils';
+import { formatCpf, formatDate, extractPartnerCode, formatCurrency, isPortabilityProposal } from '../../lib/utils';
 import { Proposal } from '../../types';
 import { ProposalDetailModal } from './ProposalDetailModal';
 import { ActionBar } from '../ui/ActionBar';
@@ -24,11 +24,7 @@ export const PortabilityView: React.FC = () => {
   const getPortabilityProposals = (): Proposal[] => {
     const products = StorageService.getProducts();
     const all = StorageService.getProposals();
-    return all.filter(p => {
-      if (p.productId === 'prod-port' || p.productId === 'prod-refin-port') return true;
-      const prod = products.find(pr => pr.id === p.productId);
-      return prod?.type === 'PORTABILIDADE' || prod?.name?.toUpperCase().includes('PORTABILIDADE');
-    });
+    return all.filter(proposal => isPortabilityProposal(proposal, products));
   };
 
   const [proposals, setProposals] = useState<Proposal[]>(getPortabilityProposals);

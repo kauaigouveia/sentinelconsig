@@ -39,9 +39,9 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
   onClose,
   onNavigateView,
 }) => {
-  if (!isOpen) return null;
-
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  if (!isOpen) return null;
 
   const steps: TourStep[] = [
     {

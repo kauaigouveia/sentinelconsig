@@ -1,5 +1,51 @@
 import { Holiday } from '../types';
 
+type PortabilityProductLike = {
+  id?: string;
+  name?: string | null;
+  type?: string | null;
+  requiresPortabilityRelation?: boolean | null;
+} | null | undefined;
+
+export function isPortabilityProduct(product: PortabilityProductLike): boolean {
+  if (!product) return false;
+  const type = String(product.type || '').toUpperCase();
+  const name = String(product.name || '').toUpperCase();
+  return type.includes('PORTABILIDADE') || name.includes('PORTABIL');
+}
+
+export function isPrimaryPortabilityProduct(product: PortabilityProductLike): boolean {
+  if (!isPortabilityProduct(product)) return false;
+  const type = String(product?.type || '').toUpperCase();
+  const name = String(product?.name || '').toUpperCase();
+  return product?.requiresPortabilityRelation !== true &&
+    type !== 'REFIN_PORTABILIDADE' &&
+    !name.includes('REFIN');
+}
+
+export function isPortabilityProposal(
+  proposal: { productId?: string | null; productName?: string | null; product?: PortabilityProductLike; type?: string | null },
+  products: Array<NonNullable<PortabilityProductLike>>
+): boolean {
+  const product = products.find(item => item.id === proposal.productId) || proposal.product;
+  if (product) return isPortabilityProduct(product);
+  const name = String(proposal.productName || '').toUpperCase();
+  return String(proposal.type || '').toUpperCase().includes('PORTABILIDADE') || name.includes('PORTABIL');
+}
+
+export function isPrimaryPortabilityProposal(
+  proposal: { productId?: string | null; productName?: string | null; product?: PortabilityProductLike; type?: string | null },
+  products: Array<NonNullable<PortabilityProductLike>>
+): boolean {
+  const product = products.find(item => item.id === proposal.productId) || proposal.product;
+  if (product) return isPrimaryPortabilityProduct(product);
+  const name = String(proposal.productName || '').toUpperCase();
+  const type = String(proposal.type || '').toUpperCase();
+  return (type === 'PORTABILIDADE' || name.includes('PORTABIL')) &&
+    type !== 'REFIN_PORTABILIDADE' &&
+    !name.includes('REFIN');
+}
+
 /**
  * Extracts partner code from login string.
  * The code is defined as everything after the last '@'.

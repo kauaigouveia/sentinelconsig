@@ -9,7 +9,8 @@
  * - Event only triggers targeted reload; PostgreSQL remains the single source of truth
  */
 
-import PusherClient, { Channel } from 'pusher-js';
+import type PusherClient from 'pusher-js';
+import type { Channel } from 'pusher-js';
 
 export interface RealtimeEvent<T = any> {
   id?: string;
@@ -29,6 +30,7 @@ export interface RealtimeEvent<T = any> {
     | 'CLIENT_DELETED'
     | 'NOTIFICATION_CREATED'
     | 'TENANT_UPDATED'
+    | 'TENANT_SETTINGS_UPDATED'
     | 'TENANT_SUSPENDED'
     | 'TENANT_CREATED'
     | 'TENANT_REACTIVATED'
@@ -70,6 +72,7 @@ export class RealtimeService {
   private initialReconnectDelay = 1000;
   private lastPingAt: number = Date.now();
   private isConnecting = false;
+  private connectionEpoch = 0;
 
   // Pusher specific
   private pusherClient: PusherClient | null = null;
@@ -147,18 +150,23 @@ export class RealtimeService {
     this.isConnecting = true;
     this.setStatus('CONNECTING');
 
-    try {
+    const key = (import.meta as any).env?.VITE_PUSHER_KEY;
+    if (!key) {
+      this.isConnecting = false;
+      console.warn('[REALTIME] VITE_PUSHER_KEY não definida. Realtime (Pusher) desativado.');
+      this.setStatus('ERROR', { error: 'Pusher Key ausente' });
+      return;
+    }
+
+    const epoch = this.connectionEpoch;
+    void import('pusher-js').then(({ default: PusherConstructor }) => {
+      if (epoch !== this.connectionEpoch || !this.usePusher) {
+        return;
+      }
+
       if (!this.pusherClient) {
-        const key = (import.meta as any).env?.VITE_PUSHER_KEY;
         const cluster = (import.meta as any).env?.VITE_PUSHER_CLUSTER;
-
-        if (!key) {
-          console.warn('[REALTIME] VITE_PUSHER_KEY não definida. Realtime (Pusher) desativado.');
-          this.setStatus('ERROR', { error: 'Pusher Key ausente' });
-          return;
-        }
-
-        this.pusherClient = new PusherClient(key, {
+        this.pusherClient = new PusherConstructor(key, {
           cluster: cluster || 'mt1',
           authEndpoint: '/api/pusher/auth',
         });
@@ -189,11 +197,10 @@ export class RealtimeService {
       } else {
         this.pusherClient.connect();
       }
-
-    } catch (err: any) {
+    }).catch((err: any) => {
       this.isConnecting = false;
       this.setStatus('ERROR', { error: err?.message || 'Falha ao instanciar Pusher' });
-    }
+    });
   }
 
   private subscribePusherChannels(): void {
@@ -236,9 +243,11 @@ export class RealtimeService {
       'ANNOUNCEMENT_PUBLISHED', 'ANNOUNCEMENT_UPDATED',
       'PROPOSAL_CREATED', 'PROPOSAL_UPDATED', 'PROPOSAL_DELETED',
       'STATUS_CHANGED', 'COMMENT_ADDED', 'TASK_CREATED', 'TASK_UPDATED', 'TASK_DELETED',
+      'PARTNER_TASK_CREATED', 'PARTNER_TASK_UPDATED', 'PARTNER_TASK_COMPLETED', 'PARTNER_TASK_DELETED',
       'CLIENT_CREATED', 'CLIENT_UPDATED', 'CLIENT_DELETED',
       'USER_CREATED', 'USER_UPDATED', 'USER_DELETED',
       'TENANT_UPDATED', 'TENANT_SUSPENDED', 'TENANT_CREATED', 'TENANT_REACTIVATED', 'NOTIFICATION_CREATED',
+      'TENANT_SETTINGS_UPDATED',
       'IMPORT_STARTED', 'IMPORT_PROGRESS', 'IMPORT_COMPLETED', 'IMPORT_FAILED', 'IMPORT_CANCELLED'
     ];
     
@@ -304,11 +313,16 @@ export class RealtimeService {
         'TASK_CREATED',
         'TASK_UPDATED',
         'TASK_DELETED',
+        'PARTNER_TASK_CREATED',
+        'PARTNER_TASK_UPDATED',
+        'PARTNER_TASK_COMPLETED',
+        'PARTNER_TASK_DELETED',
         'CLIENT_CREATED',
         'CLIENT_UPDATED',
         'CLIENT_DELETED',
         'NOTIFICATION_CREATED',
         'TENANT_UPDATED',
+        'TENANT_SETTINGS_UPDATED',
         'USER_UPDATED',
         'USER_DELETED',
         'IMPORT_STARTED',
@@ -373,6 +387,7 @@ export class RealtimeService {
   }
 
   public disconnect(): void {
+    this.connectionEpoch++;
     if (this.usePusher) {
       if (this.pusherClient) {
         if (this.tenantChannel) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Landmark,
   CheckCircle2,
@@ -136,7 +136,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
     disabled: 0,
     errors24h: 0,
   });
-  const [overallStatus, setOverallStatus] = useState<string>('OPERATIONAL');
+  const [overallStatus, setOverallStatus] = useState<string>('CHECKING');
   const [isLoading, setIsLoading] = useState(true);
 
   // Ações de teste e diagnóstico
@@ -161,6 +161,8 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   // Estado da aba "Logs & Auditoria"
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState('');
+  const logsRequestRef = useRef(0);
   const [logsPage, setLogsPage] = useState(1);
   const [logsTotalPages, setLogsTotalPages] = useState(1);
   const [logsTotal, setLogsTotal] = useState(0);
@@ -187,10 +189,13 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
         if (data.summary) {
           setSummary(data.summary);
         }
-        setOverallStatus(data.overallStatus || 'OPERATIONAL');
+        setOverallStatus(data.overallStatus || 'UNKNOWN');
+      } else {
+        setOverallStatus('UNKNOWN');
       }
     } catch (err) {
       console.error('Erro ao verificar saúde das integrações:', err);
+      setOverallStatus('UNKNOWN');
     } finally {
       setIsLoading(false);
     }
@@ -246,7 +251,9 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
   // Carregar Logs Paginados com filtros server-side
   const fetchLogs = useCallback(async () => {
+    const requestId = ++logsRequestRef.current;
     setLogsLoading(true);
+    setLogsError('');
     try {
       const params = new URLSearchParams({
         page: logsPage.toString(),
@@ -259,16 +266,25 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       if (logsSearch.trim()) params.append('search', logsSearch.trim());
 
       const res = await fetch(`/api/integrations/logs?${params.toString()}`);
+      if (requestId !== logsRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
+        if (requestId !== logsRequestRef.current) return;
         setLogs(data.logs || []);
         setLogsTotalPages(data.pagination?.totalPages || 1);
         setLogsTotal(data.pagination?.total || 0);
+      } else {
+        const data = await res.json().catch(() => null);
+        if (requestId !== logsRequestRef.current) return;
+        setLogsError(data?.error || 'Não foi possível carregar os logs. Tente novamente.');
       }
     } catch (err) {
-      console.error('Erro ao carregar logs:', err);
+      if (requestId === logsRequestRef.current) {
+        console.error('Erro ao carregar logs:', err);
+        setLogsError('Não foi possível carregar os logs. Verifique sua conexão e tente novamente.');
+      }
     } finally {
-      setLogsLoading(false);
+      if (requestId === logsRequestRef.current) setLogsLoading(false);
     }
   }, [logsPage, logsBankFilter, logsStatusFilter, logsPeriodFilter, logsSearch]);
 
@@ -414,16 +430,22 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             className={`px-3 py-1.5 text-xs font-semibold rounded-full flex items-center gap-1.5 border ${
               overallStatus === 'OPERATIONAL'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                : overallStatus === 'ATTENTION'
+              : overallStatus === 'ATTENTION'
                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                : overallStatus === 'CHECKING' || overallStatus === 'UNKNOWN'
+                  ? 'bg-slate-500/10 text-slate-300 border-slate-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
             }`}
           >
             <Activity className="w-3.5 h-3.5 animate-pulse" />
             {overallStatus === 'OPERATIONAL'
-              ? 'Hub 100% Operacional'
+              ? 'Hub operacional'
               : overallStatus === 'ATTENTION'
               ? 'Atenção Operacional'
+              : overallStatus === 'CHECKING'
+              ? 'Verificando integrações'
+              : overallStatus === 'UNKNOWN'
+              ? 'Status indisponível'
               : 'Indisponibilidade Detectada'}
           </span>
           <button
@@ -1027,6 +1049,21 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-slate-500">
                         Carregando registros de auditoria...
+                      </td>
+                    </tr>
+                  ) : logsError ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-amber-400">
+                        <div className="flex flex-col items-center gap-3">
+                          <span>{logsError}</span>
+                          <button
+                            type="button"
+                            onClick={fetchLogs}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200 hover:bg-slate-700"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ) : logs.length === 0 ? (

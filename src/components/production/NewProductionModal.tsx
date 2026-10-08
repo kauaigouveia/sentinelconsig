@@ -449,6 +449,10 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       }
     }
 
+    const createdProposalMap = new Map<number, any>();
+    const createdRows = new Map<string, string>();
+    const allCreated: any[] = [];
+
     try {
       setLinkingErrorLog(null);
 
@@ -461,14 +465,12 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       });
 
       // 2. Insert all proposals with robust portability relation handling
-      const createdProposalMap = new Map<number, any>();
       const portRowIndex = adeRows.findIndex(r => {
         const prod = products.find(p => p.id === r.productId);
         return isPortProduct(prod);
       });
 
       // First pass: Create PORTABILIDADE proposals first
-      const allCreated: any[] = [];
       for (let i = 0; i < adeRows.length; i++) {
         const row = adeRows[i];
         const prod = products.find(p => p.id === row.productId);
@@ -497,6 +499,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           });
           createdProposalMap.set(i, prop);
           allCreated.push(prop);
+          createdRows.set(row.id, row.proposalNumber.trim());
         }
       }
 
@@ -553,6 +556,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
           createdProposalMap.set(i, prop);
           allCreated.push(prop);
+          createdRows.set(row.id, row.proposalNumber.trim());
         }
       }
 
@@ -564,6 +568,22 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       }, 1200);
     } catch (err: any) {
       setIsSaving(false);
+      if (createdRows.size > 0) {
+        const savedAdeNumbers = Array.from(createdRows.values()).filter(Boolean);
+        setAdeRows(current => current
+          .filter(row => !createdRows.has(row.id))
+          .map(row => ({ ...row, linkWithPortabilityIndex: undefined })));
+        const partialMessage = `${createdRows.size} proposta(s) já foram salvas${savedAdeNumbers.length ? ` (ADEs ${savedAdeNumbers.slice(0, 8).join(', ')}${savedAdeNumbers.length > 8 ? ', …' : ''})` : ''}. Essas linhas foram retiradas do formulário para evitar duplicidade; revise e tente salvar as linhas restantes.`;
+        setSuccessMsg(partialMessage);
+        setErrorMsg(`O lote foi interrompido após uma falha: ${err.message || 'erro inesperado'}. ${partialMessage}`);
+        setLinkingErrorLog({
+          title: 'Lote parcialmente salvo',
+          message: partialMessage,
+          details: `CPF: ${cleanCpf} | ADEs salvas: ${savedAdeNumbers.join(', ') || createdRows.size} | Linhas restantes: ${adeRows.length - createdRows.size}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        return;
+      }
       const errPayload = {
         title: 'Erro ao Persistir Propostas no Banco',
         message: err.message || 'Falha na gravação ou vinculação no banco de dados.',
@@ -609,7 +629,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-white dark:bg-slate-900">
+        <fieldset disabled={isSaving} aria-busy={isSaving} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-white dark:bg-slate-900 border-0 m-0 min-w-0">
           {/* Visual Error Log with Retry Mechanism */}
           {linkingErrorLog && (
             <div className="rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 p-4 shadow-sm animate-shake">
@@ -1030,7 +1050,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
               <span>{successMsg}</span>
             </div>
           )}
-        </div>
+        </fieldset>
 
         {/* Modal Footer */}
         <div className="shrink-0 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 dark:bg-slate-950/40 rounded-b-xl">

@@ -11,6 +11,7 @@ import {
   DollarSign,
   Layers,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
 import { PartnerPortalClient, PartnerProposalDetailData } from '../../services/partnerPortalClient';
 import { formatCurrency } from '../../lib/utils';
@@ -29,6 +30,7 @@ export const PartnerProposalDetailModal: React.FC<PartnerProposalDetailModalProp
   const [data, setData] = useState<PartnerProposalDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!proposalId) return;
@@ -36,6 +38,7 @@ export const PartnerProposalDetailModal: React.FC<PartnerProposalDetailModalProp
     let isMounted = true;
     setIsLoading(true);
     setError(null);
+    setData(null);
 
     PartnerPortalClient.getProposalDetail(proposalId)
       .then((res) => {
@@ -51,7 +54,7 @@ export const PartnerProposalDetailModal: React.FC<PartnerProposalDetailModalProp
     return () => {
       isMounted = false;
     };
-  }, [proposalId]);
+  }, [proposalId, retryCount]);
 
   if (!proposalId) return null;
 
@@ -102,8 +105,17 @@ export const PartnerProposalDetailModal: React.FC<PartnerProposalDetailModalProp
               <span className="text-slate-400 font-medium">Carregando detalhes...</span>
             </div>
           ) : error || !data ? (
-            <div className="p-6 text-center text-rose-400 font-semibold bg-rose-500/10 rounded-xl border border-rose-500/20">
-              {error || 'Proposta não encontrada ou acesso restrito.'}
+            <div role="alert" className="flex flex-col items-center gap-4 p-6 text-center text-rose-400 font-semibold bg-rose-500/10 rounded-xl border border-rose-500/20">
+              <span>{error || 'Proposta não encontrada ou acesso restrito.'}</span>
+              {error && (
+                <button
+                  type="button"
+                  onClick={() => setRetryCount(count => count + 1)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200 transition hover:bg-rose-500/20"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
+                </button>
+              )}
             </div>
           ) : (
             <>

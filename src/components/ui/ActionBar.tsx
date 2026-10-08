@@ -32,14 +32,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 shadow-xs transition-colors ${className}`}
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm transition-colors ${className}`}
     >
       {/* Left side: Context / Title / Counts or Filter items */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
         {title && (
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              <h2 className="text-[15px] font-bold leading-5 tracking-tight text-slate-900 dark:text-slate-100">
                 {title}
               </h2>
               {finalBadge && (
@@ -56,7 +56,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
               )}
             </div>
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-400">
                 {subtitle}
               </p>
             )}
@@ -77,7 +77,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
 
       {/* Right side: Primary & secondary actions */}
       {finalRightActions && (
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {finalRightActions}
         </div>
       )}

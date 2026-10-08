@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Activity,
   CheckCircle2,
@@ -26,10 +26,11 @@ export interface MonitoredService {
   category: string;
   description?: string;
   endpointUrl?: string;
-  status: 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE' | 'MAINTENANCE';
+  status: 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE' | 'MAINTENANCE' | 'UNKNOWN';
   criticality: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  latencyMs: number;
-  uptimePercent: number;
+  latencyMs: number | null;
+  uptimePercent: number | null;
+  probeSupported?: boolean;
   lastCheckedAt?: string;
   lastStatusChange?: string;
   checkIntervalSec: number;
@@ -58,16 +59,17 @@ export interface ApiIncident {
 }
 
 export interface HealthOverview {
-  overallStatus: 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE' | 'MAINTENANCE';
+  overallStatus: 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE' | 'MAINTENANCE' | 'UNKNOWN';
   totalServices: number;
   operational: number;
   degraded: number;
   outage: number;
   maintenance: number;
-  averageLatencyMs: number;
-  averageUptimePercent: number;
+  averageLatencyMs: number | null;
+  averageUptimePercent: number | null;
   activeIncidentsCount: number;
   activeIncidents: ApiIncident[];
+  lastUpdated?: string;
 }
 
 interface ApiMonitoringTabProps {
@@ -81,9 +83,11 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
   const [overview, setOverview] = useState<HealthOverview | null>(null);
   const [incidents, setIncidents] = useState<ApiIncident[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [testingServiceId, setTestingServiceId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const loadRequestRef = useRef(0);
 
   // Modais de Gestão
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
@@ -112,33 +116,52 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 45000); // Polling suave a cada 45s
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      loadRequestRef.current += 1;
+    };
   }, []);
 
   const loadData = async () => {
+    const requestId = ++loadRequestRef.current;
     try {
-      const [resHealth, resServices, resIncidents] = await Promise.all([
-        fetch('/api/monitoring/health', { credentials: 'include' }),
-        fetch('/api/monitoring/services', { credentials: 'include' }),
-        fetch('/api/monitoring/incidents', { credentials: 'include' }),
+      const fetchJson = async (url: string) => {
+        const response = await fetch(url, { credentials: 'include' });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || `Falha ao carregar dados (HTTP ${response.status}).`);
+        return data;
+      };
+      const [healthResult, servicesResult, incidentsResult] = await Promise.allSettled([
+        fetchJson('/api/monitoring/health'),
+        fetchJson('/api/monitoring/services'),
+        fetchJson('/api/monitoring/incidents'),
       ]);
-
-      if (resHealth.ok) {
-        const hData = await resHealth.json();
-        setOverview(hData);
+      if (requestId !== loadRequestRef.current) return;
+      const errors: string[] = [];
+      if (healthResult.status === 'fulfilled') {
+        setOverview(healthResult.value);
+      } else {
+        errors.push(`Saúde geral: ${healthResult.reason instanceof Error ? healthResult.reason.message : 'falha ao carregar.'}`);
       }
-      if (resServices.ok) {
-        const sData = await resServices.json();
-        setServices(sData);
+      if (servicesResult.status === 'fulfilled') {
+        if (Array.isArray(servicesResult.value)) setServices(servicesResult.value);
+        else errors.push('Serviços: resposta inválida do servidor.');
+      } else {
+        errors.push(`Serviços: ${servicesResult.reason instanceof Error ? servicesResult.reason.message : 'falha ao carregar.'}`);
       }
-      if (resIncidents.ok) {
-        const iData = await resIncidents.json();
-        setIncidents(iData);
+      if (incidentsResult.status === 'fulfilled') {
+        if (Array.isArray(incidentsResult.value)) setIncidents(incidentsResult.value);
+        else errors.push('Incidentes: resposta inválida do servidor.');
+      } else {
+        errors.push(`Incidentes: ${incidentsResult.reason instanceof Error ? incidentsResult.reason.message : 'falha ao carregar.'}`);
       }
+      setLoadError(errors.length ? errors.join(' ') : null);
     } catch (err) {
+      if (requestId !== loadRequestRef.current) return;
+      setLoadError(err instanceof Error ? err.message : 'Falha ao atualizar os dados de monitoramento.');
       console.error('[API MONITORING] Erro ao buscar dados:', err);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
   };
 
@@ -150,7 +173,8 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
         credentials: 'include',
       });
       if (res.ok) {
-        toastService.success('Verificação de conectividade concluída para todas as APIs.');
+        const result = await res.json();
+        toastService.success(`${result.checkedCount} endpoint(s) verificado(s); ${result.unsupportedCount} sem verificação configurada.`);
         await loadData();
       } else {
         toastService.error('Erro ao executar ping em lote.');
@@ -171,7 +195,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
       });
       if (res.ok) {
         const result = await res.json();
-        toastService.success(`${name}: Conexão ativa (${result.latencyMs}ms)`);
+        toastService.success(`${name}: ${result.message}`);
         await loadData();
       } else {
         toastService.error(`Falha ao testar conectividade de ${name}`);
@@ -315,6 +339,13 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
             Manutenção
           </span>
         );
+      case 'UNKNOWN':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+            <span className="h-2 w-2 rounded-full bg-slate-400" />
+            Não verificado
+          </span>
+        );
       default:
         return null;
     }
@@ -361,6 +392,8 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                   ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                   : overview?.overallStatus === 'DEGRADED'
                   ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  : overview?.overallStatus === 'UNKNOWN' || !overview
+                  ? 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30'
                   : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
               }`}
             >
@@ -368,6 +401,8 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 <CheckCircle2 className="h-6 w-6" />
               ) : overview?.overallStatus === 'DEGRADED' ? (
                 <AlertTriangle className="h-6 w-6" />
+              ) : overview?.overallStatus === 'UNKNOWN' || !overview ? (
+                <Clock className="h-6 w-6" />
               ) : (
                 <XCircle className="h-6 w-6" />
               )}
@@ -380,12 +415,16 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                     ? 'Todas as Integrações & APIs Operando Normalmente'
                     : overview?.overallStatus === 'DEGRADED'
                     ? 'Atenção: Instabilidade Detectada em Integrações'
+                    : overview?.overallStatus === 'UNKNOWN'
+                    ? 'Integrações aguardando verificação'
                     : 'Alerta Crítico: Paralisação ou Queda de Serviço Detectada'}
                 </h3>
                 {overview && getStatusBadge(overview.overallStatus)}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Monitoramento contínuo de esteiras bancárias, Dataprev INSS, CIP Portabilidades, Barramentos e mensageria em tempo real.
+                O status considera apenas verificações recentes ou incidentes registrados.
+                {overview?.lastUpdated && ` Atualizado às ${new Date(overview.lastUpdated).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.`}
+                {loading && ' Carregando dados...'}
               </p>
             </div>
           </div>
@@ -407,7 +446,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Verificar Conectividade (Ping Geral)
+              Verificar endpoints compatíveis
             </button>
           </div>
         </div>
@@ -428,25 +467,25 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
 
           <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-200/60 dark:border-slate-800/50">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
-              Latência Média Global
+              Latência média das verificações recentes
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
               <span className="text-xl font-black text-blue-600 dark:text-blue-400">
-                {overview?.averageLatencyMs ?? 0} ms
+                {overview?.averageLatencyMs == null ? '—' : `${overview.averageLatencyMs} ms`}
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Excelente</span>
+              <span className="text-[10px] text-slate-400">{overview?.averageLatencyMs == null ? 'Sem medições' : 'Atual'}</span>
             </div>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-200/60 dark:border-slate-800/50">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
-              Uptime Global
+              Disponibilidade histórica
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
               <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                {overview?.averageUptimePercent ?? 99.9}%
+                {overview?.averageUptimePercent == null ? '—' : `${overview.averageUptimePercent}%`}
               </span>
-              <span className="text-[10px] text-slate-400">Últimos 30 dias</span>
+              <span className="text-[10px] text-slate-400">{overview?.averageUptimePercent == null ? 'Sem histórico' : 'Últimos 30 dias'}</span>
             </div>
           </div>
 
@@ -471,6 +510,13 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <div role="alert" className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center">
+          <span className="flex-1">Alguns dados podem estar desatualizados. {loadError}</span>
+          <button type="button" onClick={() => void loadData()} className="shrink-0 font-bold underline">Tentar carregar novamente</button>
+        </div>
+      )}
 
       {/* Se houver incidentes ativos, exibir faixa de atenção prioritária */}
       {overview && overview.activeIncidents && overview.activeIncidents.length > 0 && (
@@ -581,7 +627,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 <th className="px-3 py-3">Criticidade</th>
                 <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3">Latência</th>
-                <th className="px-3 py-3">Disponibilidade</th>
+                <th className="px-3 py-3">Histórico</th>
                 <th className="px-3 py-3">Última Checagem</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
@@ -621,30 +667,20 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`font-mono font-bold ${
-                            service.latencyMs < 100
+                            service.latencyMs == null ? 'text-slate-400' : service.latencyMs < 100
                               ? 'text-emerald-600 dark:text-emerald-400'
                               : service.latencyMs < 200
                               ? 'text-amber-600 dark:text-amber-400'
                               : 'text-rose-600 dark:text-rose-400'
                           }`}
                         >
-                          {service.latencyMs}ms
+                          {service.latencyMs == null ? '—' : `${service.latencyMs}ms`}
                         </span>
                       </div>
                     </td>
 
                     <td className="px-3 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500 rounded-full"
-                            style={{ width: `${Math.min(100, service.uptimePercent)}%` }}
-                          />
-                        </div>
-                        <span className="font-mono text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                          {service.uptimePercent}%
-                        </span>
-                      </div>
+                      <span className="text-slate-400">{service.uptimePercent == null ? 'Sem histórico' : `${service.uptimePercent}%`}</span>
                     </td>
 
                     <td className="px-3 py-3.5 text-slate-500 dark:text-slate-400 text-[11px]">
@@ -654,24 +690,24 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                             minute: '2-digit',
                             second: '2-digit',
                           })
-                        : 'Recente'}
+                        : 'Nunca verificado'}
                     </td>
 
                     <td className="px-4 py-3.5 text-right space-x-1.5">
                       <button
                         onClick={() => handlePingSingle(service.id, service.name)}
-                        disabled={isTesting}
+                        disabled={isTesting || !service.probeSupported}
                         className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
-                        title="Executar ping de teste nesta API"
+                        title={service.probeSupported ? 'Executar verificação neste endpoint' : 'Não há verificação configurada para este serviço'}
                       >
-                        {isTesting ? 'Testando...' : 'Testar'}
+                        {isTesting ? 'Verificando...' : service.probeSupported ? 'Verificar' : 'Sem check'}
                       </button>
 
                       {isManager && (
                         <button
                           onClick={() => {
                             setSelectedService(service);
-                            setEditStatus(service.status);
+                            setEditStatus(service.status === 'UNKNOWN' ? 'OPERATIONAL' : service.status);
                             setEditCriticality(service.criticality);
                             setIsEditServiceModalOpen(true);
                           }}

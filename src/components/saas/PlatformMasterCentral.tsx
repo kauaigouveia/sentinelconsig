@@ -36,6 +36,7 @@ import { realtimeHub } from '../../services/realtimeService';
 import { ActionBar } from '../common/ActionBar';
 import { MetricCard } from '../common/MetricCard';
 import { DomainManagement } from '../admin/DomainManagement';
+import { toastService } from '../ui/toastService';
 
 const AVAILABLE_MODULES = [
   { id: 'PROPOSALS', label: 'Esteira de Propostas' },
@@ -490,9 +491,10 @@ export const PlatformMasterCentral: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao suspender tenant.');
+      toastService.success('Empresa suspensa', data.message || 'As sessões ativas foram encerradas.');
       await fetchTenants();
     } catch (err: any) {
-      alert(err.message || 'Erro ao suspender tenant.');
+      toastService.error('Não foi possível suspender a empresa', err.message || 'Tente novamente.');
     }
   };
 
@@ -503,9 +505,10 @@ export const PlatformMasterCentral: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao reativar tenant.');
+      toastService.success('Empresa reativada', data.message || 'O acesso foi liberado novamente.');
       await fetchTenants();
     } catch (err: any) {
-      alert(err.message || 'Erro ao reativar tenant.');
+      toastService.error('Não foi possível reativar a empresa', err.message || 'Tente novamente.');
     }
   };
 
@@ -562,10 +565,11 @@ export const PlatformMasterCentral: React.FC = () => {
   // Context Switch (Inspection Mode)
   const handleStartContextSwitch = async (targetTenantId: string, targetTenantName: string) => {
     try {
-      const res = await fetch('/api/auth/switch-tenant', {
+      const res = await fetch('/api/admin/switch-tenant', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: targetTenantId }),
+        body: JSON.stringify({ targetTenantId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error || 'Erro ao alternar contexto.');

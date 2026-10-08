@@ -33,6 +33,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [recoveryHelpVisible, setRecoveryHelpVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSuspended = branding.status === 'SUSPENDED';
@@ -144,7 +145,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: cleanEmail, password: password.trim() }),
+          body: JSON.stringify({ email: cleanEmail, password: password.trim(), rememberMe }),
           credentials: 'include',
         });
       } catch (fetchErr: any) {
@@ -269,13 +270,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Footer Telemetry */}
+        {/* Footer */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-500 pt-6 border-t border-slate-800/60 font-mono">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>SISTEMA 100% OPERACIONAL</span>
+            <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
+            <span>ACESSO AO SENTINEL CONSIG</span>
           </span>
-          <span>v3.4.0 • SOC 2 COMPLIANT</span>
+          <span>AMBIENTE SEGURO</span>
         </div>
       </div>
 
@@ -333,13 +334,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label htmlFor="login-email" className="block text-xs font-semibold text-slate-300">
                 E-mail Corporativo
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="email"
+                  id="login-email"
+                  name="email"
+                  autoComplete="username"
+                  required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="seu.email@promotora.com.br"
@@ -351,17 +356,26 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label htmlFor="login-password" className="block text-xs font-semibold text-slate-300">
                   Senha de Acesso
                 </label>
-                <span className="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer">
+                <button type="button" onClick={() => setRecoveryHelpVisible(value => !value)} aria-expanded={recoveryHelpVisible} className="text-[11px] text-blue-400 hover:text-blue-300">
                   Esqueceu a senha?
-                </span>
+                </button>
               </div>
+              {recoveryHelpVisible && (
+                <p className="rounded-lg border border-blue-900/70 bg-blue-950/40 px-3 py-2 text-[11px] leading-relaxed text-blue-200">
+                  Para proteger sua conta, solicite a redefinição de senha ao gestor da sua empresa.
+                </p>
+              )}
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  id="login-password"
+                  name="password"
+                  autoComplete="current-password"
+                  required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••••••"
@@ -384,6 +398,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
+                  disabled={isSubmitting}
                   className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-0"
                 />
                 <span className="text-xs text-slate-400">Lembrar neste navegador</span>

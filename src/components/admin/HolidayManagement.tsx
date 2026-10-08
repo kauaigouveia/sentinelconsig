@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -9,12 +9,14 @@ import {
   ShieldCheck,
   CalendarDays,
   Save,
+  AlertCircle,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { Holiday } from '../../types';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { ActionBar } from '../ui/ActionBar';
 import { MetricCard } from '../ui/MetricCard';
+import { hasPermission } from '../../lib/permissions';
 
 export const HolidayManagement: React.FC = () => {
   const [holidays, setHolidays] = useState<Holiday[]>(() => StorageService.getHolidays());
@@ -24,6 +26,35 @@ export const HolidayManagement: React.FC = () => {
   const [name, setName] = useState('');
   const [balanceDays, setBalanceDays] = useState(config.portabilityBalanceDays);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageIsError, setMessageIsError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const activeUser = StorageService.getActiveUser();
+  const canManageCalendar = hasPermission(activeUser?.role, activeUser?.customPermissions, 'settings.manage') ||
+    hasPermission(activeUser?.role, activeUser?.customPermissions, 'admin.manage');
+
+  useEffect(() => {
+    StorageService.fetchAndSyncOperationalCalendar()
+      .then(() => {
+        setHolidays(StorageService.getHolidays());
+        setConfig(StorageService.getConfig());
+        setBalanceDays(StorageService.getConfig().portabilityBalanceDays);
+      })
+      .catch(error => {
+        setMessageIsError(true);
+        setMessage(error instanceof Error ? error.message : 'Falha ao carregar calendário compartilhado.');
+      });
+  }, []);
+
+  useEffect(() => {
+    const syncLocalCalendar = () => {
+      setHolidays(StorageService.getHolidays());
+      const currentConfig = StorageService.getConfig();
+      setConfig(currentConfig);
+      setBalanceDays(currentConfig.portabilityBalanceDays);
+    };
+    window.addEventListener('credit_gestao_storage_update', syncLocalCalendar);
+    return () => window.removeEventListener('credit_gestao_storage_update', syncLocalCalendar);
+  }, []);
 
   const [deleteModalConfig, setDeleteModalConfig] = useState<{
     isOpen: boolean;
@@ -38,22 +69,30 @@ export const HolidayManagement: React.FC = () => {
     onConfirm: () => {},
   });
 
-  const handleAddHoliday = (e: React.FormEvent) => {
+  const handleAddHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date || !name.trim()) return;
+    if (!canManageCalendar || !date || !name.trim() || isSaving) return;
 
     try {
-      StorageService.createHoliday({
+      setIsSaving(true);
+      const nextHolidays = [...holidays, {
+        id: `h-${Date.now()}`,
         date,
         name: name.trim(),
-      });
+        active: true,
+      }];
+      await StorageService.saveOperationalCalendar(nextHolidays, balanceDays);
       setHolidays(StorageService.getHolidays());
       setDate('');
       setName('');
+      setMessageIsError(false);
       setMessage('Feriado cadastrado com sucesso no calendário!');
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
-      alert(err.message);
+      setMessageIsError(true);
+      setMessage(err?.message || 'Não foi possível salvar o feriado.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -63,20 +102,41 @@ export const HolidayManagement: React.FC = () => {
       itemType: 'Feriado / Calendário',
       itemName: `${h.date} - ${h.name}`,
       description: 'O feriado será removido da contagem de dias úteis da esteira de portabilidade.',
-      onConfirm: () => {
-        StorageService.deleteHoliday(h.id);
-        setHolidays(StorageService.getHolidays());
-        setMessage('Feriado removido com sucesso.');
-        setTimeout(() => setMessage(null), 3000);
+      onConfirm: async () => {
+        if (!canManageCalendar || isSaving) return;
+        setIsSaving(true);
+        try {
+          await StorageService.saveOperationalCalendar(holidays.filter(item => item.id !== h.id), balanceDays);
+          setHolidays(StorageService.getHolidays());
+          setMessageIsError(false);
+          setMessage('Feriado removido com sucesso.');
+          setTimeout(() => setMessage(null), 3000);
+          setDeleteModalConfig(prev => ({ ...prev, isOpen: false }));
+        } catch (err: any) {
+          setMessageIsError(true);
+          setMessage(err?.message || 'Não foi possível remover o feriado.');
+        } finally {
+          setIsSaving(false);
+        }
       },
     });
   };
 
-  const handleSaveConfig = () => {
-    StorageService.updateConfig({ portabilityBalanceDays: balanceDays });
-    setConfig(StorageService.getConfig());
-    setMessage(`Meta de SLA atualizada para ${balanceDays} dias úteis!`);
-    setTimeout(() => setMessage(null), 3000);
+  const handleSaveConfig = async () => {
+    if (!canManageCalendar || isSaving) return;
+    setIsSaving(true);
+    try {
+      await StorageService.saveOperationalCalendar(holidays, balanceDays);
+      setConfig(StorageService.getConfig());
+      setMessageIsError(false);
+      setMessage(`Meta de SLA atualizada para ${balanceDays} dias úteis!`);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setMessageIsError(true);
+      setMessage(err?.message || 'Não foi possível salvar o prazo de SLA.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const sortedHolidays = [...holidays].sort((a, b) => a.date.localeCompare(b.date));
@@ -139,8 +199,8 @@ export const HolidayManagement: React.FC = () => {
       </div>
 
       {message && (
-        <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <div role={messageIsError ? 'alert' : 'status'} className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${messageIsError ? 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300' : 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'}`}>
+          {messageIsError ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
           <span>{message}</span>
         </div>
       )}
@@ -164,15 +224,17 @@ export const HolidayManagement: React.FC = () => {
             max={30}
             value={balanceDays}
             onChange={e => setBalanceDays(Number(e.target.value))}
+            disabled={!canManageCalendar || isSaving}
             className="w-20 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-center focus:outline-hidden"
           />
-          <button
+          {canManageCalendar && <button
             onClick={handleSaveConfig}
+            disabled={isSaving}
             className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 shadow-xs transition-colors cursor-pointer"
           >
             <Save className="h-3.5 w-3.5" />
-            <span>Salvar Parâmetro</span>
-          </button>
+            <span>{isSaving ? 'Salvando…' : 'Salvar Parâmetro'}</span>
+          </button>}
         </div>
       </div>
 
@@ -182,7 +244,7 @@ export const HolidayManagement: React.FC = () => {
           Adicionar Feriado ao Calendário
         </h3>
 
-        <form onSubmit={handleAddHoliday} className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end">
+        {canManageCalendar ? <form onSubmit={handleAddHoliday} className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end">
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
               Data do Feriado *
@@ -192,6 +254,7 @@ export const HolidayManagement: React.FC = () => {
               required
               value={date}
               onChange={e => setDate(e.target.value)}
+              disabled={isSaving}
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
             />
           </div>
@@ -205,6 +268,7 @@ export const HolidayManagement: React.FC = () => {
               required
               value={name}
               onChange={e => setName(e.target.value)}
+              disabled={isSaving}
               placeholder="Ex: Tiradentes"
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
             />
@@ -212,12 +276,13 @@ export const HolidayManagement: React.FC = () => {
 
           <button
             type="submit"
+            disabled={isSaving}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2.5 shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            <span>Adicionar Feriado</span>
+            <span>{isSaving ? 'Salvando…' : 'Adicionar Feriado'}</span>
           </button>
-        </form>
+        </form> : <p className="text-xs text-slate-500 dark:text-slate-400">Você tem acesso somente para consulta. Solicite a permissão de gestão de configurações para alterar feriados ou prazos.</p>}
       </div>
 
       {/* Holiday Table */}
@@ -238,7 +303,7 @@ export const HolidayManagement: React.FC = () => {
                 <th className="px-3.5 py-2.5 font-mono">Data (AAAA-MM-DD)</th>
                 <th className="px-3.5 py-2.5">Nome / Motivo</th>
                 <th className="px-3.5 py-2.5 text-center">Status</th>
-                <th className="px-3.5 py-2.5 text-center">Ações</th>
+                {canManageCalendar && <th className="px-3.5 py-2.5 text-center">Ações</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
@@ -253,15 +318,16 @@ export const HolidayManagement: React.FC = () => {
                       NÃO ÚTIL
                     </span>
                   </td>
-                  <td className="px-3.5 py-2.5 text-center">
+                  {canManageCalendar && <td className="px-3.5 py-2.5 text-center">
                     <button
                       onClick={() => handleRemoveHoliday(h)}
+                      disabled={isSaving}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       title="Excluir feriado"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
-                  </td>
+                  </td>}
                 </tr>
               ))}
             </tbody>

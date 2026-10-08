@@ -12,6 +12,7 @@ export interface RouteConfig {
   title: string;
   category: 'Início' | 'Operação' | 'Integrações' | 'Gestão' | 'Administração' | 'Plataforma' | 'Sistema' | 'Portal do Parceiro';
   requiredPermission?: Permission | Permission[];
+  requiredRoles?: Role[];
   aliases?: string[];
   isDynamic?: boolean;
   getBreadcrumbs?: (params: Record<string, string>) => RouteBreadcrumb[];
@@ -266,6 +267,8 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'central-administracao',
     title: 'Central de Administração',
     category: 'Administração',
+    // This page aggregates modules beyond user management. Users with only
+    // users.view have a dedicated /admin-usuarios route.
     requiredPermission: 'admin.view',
     aliases: ['/administracao'],
     getBreadcrumbs: () => [
@@ -321,7 +324,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'clientes',
     title: 'Clientes 360º & CRM',
     category: 'Operação',
-    requiredPermission: 'proposals.view',
+    requiredPermission: 'clients.view',
     aliases: ['/busca-cpf', '/pesquisa-cpf'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
@@ -356,11 +359,23 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'agenda-operacional',
     title: 'Agenda & Tarefas',
     category: 'Operação',
-    requiredPermission: 'proposals.view',
+    requiredPermission: 'tasks.view',
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Operação' },
       { label: 'Agenda & Tarefas' },
+    ],
+  },
+  {
+    path: '/minha-fila',
+    viewId: 'minha-fila',
+    title: 'Minha Fila',
+    category: 'Operação',
+    requiredPermission: ['tasks.view', 'partners.crm.view', 'partners.crm.tasks', 'partners.crm.admin'],
+    getBreadcrumbs: () => [
+      { label: 'Início', path: '/' },
+      { label: 'Rotina' },
+      { label: 'Minha Fila' },
     ],
   },
   {
@@ -380,7 +395,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'financeiro-geral',
     title: 'Fluxo Financeiro',
     category: 'Gestão',
-    requiredPermission: 'admin.view',
+    requiredPermission: 'financial.view',
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Gestão' },
@@ -416,7 +431,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'admin-usuarios',
     title: 'Usuários & Permissões',
     category: 'Administração',
-    requiredPermission: 'admin.view',
+    requiredPermission: ['admin.view', 'users.view'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
@@ -428,7 +443,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'admin-produtos',
     title: 'Produtos & Regras',
     category: 'Administração',
-    requiredPermission: 'admin.view',
+    requiredPermission: ['admin.view', 'products.view'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
@@ -440,7 +455,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'admin-status',
     title: 'Status & Regras',
     category: 'Administração',
-    requiredPermission: 'admin.view',
+    requiredPermission: 'statuses.view',
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
@@ -464,7 +479,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'admin-auditoria',
     title: 'Auditoria & Logs',
     category: 'Administração',
-    requiredPermission: 'admin.view',
+    requiredPermission: ['users.view', 'audit_logs.view'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
@@ -476,7 +491,8 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'admin-comunicados',
     title: 'Comunicados do Sistema',
     category: 'Administração',
-    requiredPermission: 'admin.view',
+    requiredPermission: ['admin.view', 'settings.manage', 'admin.manage'],
+    requiredRoles: ['MASTER', 'PLATFORM_MASTER'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
@@ -488,7 +504,7 @@ export const APP_ROUTES: RouteConfig[] = [
     viewId: 'admin-import-status',
     title: 'Importação de Status',
     category: 'Administração',
-    requiredPermission: 'admin.view',
+    requiredPermission: ['statuses.manage', 'proposals.update'],
     getBreadcrumbs: () => [
       { label: 'Início', path: '/' },
       { label: 'Administração', path: '/central-administracao' },
@@ -615,7 +631,14 @@ export function matchRoute(pathname: string): MatchResult | null {
     for (let i = 0; i < routeParts.length; i++) {
       if (routeParts[i].startsWith(':')) {
         const paramName = routeParts[i].slice(1);
-        params[paramName] = decodeURIComponent(pathParts[i]);
+        try {
+          params[paramName] = decodeURIComponent(pathParts[i]);
+        } catch {
+          // Malformed percent-encoding should behave like an unknown route,
+          // not throw during application render.
+          isMatch = false;
+          break;
+        }
       } else if (routeParts[i] !== pathParts[i]) {
         isMatch = false;
         break;
@@ -638,6 +661,7 @@ export function canAccessRoute(
   role?: Role,
   customPermissions: string[] = []
 ): boolean {
+  if (route.requiredRoles?.length && (!role || !route.requiredRoles.includes(role))) return false;
   if (!route.requiredPermission) return true;
   if (!role) return false;
   if (role === 'PLATFORM_MASTER') return true;

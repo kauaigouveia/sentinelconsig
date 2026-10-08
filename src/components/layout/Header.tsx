@@ -6,6 +6,7 @@ import {
   Moon,
   Database,
   Keyboard,
+  KeyRound,
   CheckCircle2,
   Play,
   RotateCcw,
@@ -16,12 +17,12 @@ import {
   Activity,
   ChevronDown,
   RefreshCw,
-  Server,
   Layers,
   Sparkles,
   Radio,
   Sliders,
   Maximize2,
+  Menu,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { realtimeHub, ConnectionStatus } from '../../services/realtimeService';
@@ -31,6 +32,7 @@ import { User, Role } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { getRoleEmoji } from '../../lib/roleUtils';
 import { getRoleLabel } from '../../lib/roleLabels';
+import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 
 interface HeaderProps {
   onOpenNotifications: () => void;
@@ -44,6 +46,8 @@ interface HeaderProps {
   onGlobalSearch: (term: string) => void;
   searchTerm: string;
   onNavigate: (view: string) => void;
+  onOpenNavigation?: () => void;
+  isNavigationOpen?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -57,21 +61,30 @@ export const Header: React.FC<HeaderProps> = ({
   onGlobalSearch,
   searchTerm,
   onNavigate,
+  onOpenNavigation,
+  isNavigationOpen = false,
 }) => {
   const activeUser = StorageService.getActiveUser();
   const allUsers = StorageService.getUsers();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadAnnouncementCount, setUnreadAnnouncementCount] = useState(0);
+  const unreadCount = unreadNotificationCount + unreadAnnouncementCount;
 
   const fetchUnreadCounts = async () => {
-    try {
-      const [notifRes, annRes] = await Promise.all([
-        fetch('/api/notifications/unread-count'),
-        fetch('/api/announcements/unread-count')
-      ]);
-      const notifData = notifRes.ok ? await notifRes.json() : { count: 0 };
-      const annData = annRes.ok ? await annRes.json() : { count: 0 };
-      setUnreadCount((notifData.count || 0) + (annData.count || 0));
-    } catch (e) {}
+    const results = await Promise.allSettled([
+      fetch('/api/notifications/unread-count', { credentials: 'include' }).then(async response => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+        return Number(data?.count) || 0;
+      }),
+      fetch('/api/announcements/unread-count', { credentials: 'include' }).then(async response => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+        return Number(data?.count) || 0;
+      }),
+    ]);
+    if (results[0].status === 'fulfilled') setUnreadNotificationCount(results[0].value);
+    if (results[1].status === 'fulfilled') setUnreadAnnouncementCount(results[1].value);
   };
 
   useEffect(() => {
@@ -86,8 +99,14 @@ export const Header: React.FC<HeaderProps> = ({
         fetchUnreadCounts();
       }
     });
+
+    const handleNotificationsUpdated = () => fetchUnreadCounts();
+    window.addEventListener('sentinel:notifications-updated', handleNotificationsUpdated);
     
-    return () => unsub();
+    return () => {
+      unsub();
+      window.removeEventListener('sentinel:notifications-updated', handleNotificationsUpdated);
+    };
   }, []);
 
   const { theme, toggleTheme, isDark } = useTheme();
@@ -100,6 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   // User Menu Popover state
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // PostgreSQL API status
@@ -120,44 +140,6 @@ export const Header: React.FC<HeaderProps> = ({
       }
     });
     return () => unsub();
-  }, []);
-
-  const checkDatabase = async (forceCheckingState = true) => {
-    if (!navigator.onLine) {
-      setDatabaseStatus('offline');
-      setDatabaseLatency(null);
-      return;
-    }
-
-    if (forceCheckingState) setDatabaseStatus('checking');
-
-    const start = performance.now();
-    try {
-      const response = await fetch('/api/health', { credentials: 'include' });
-      if (!response.ok) throw new Error(`Health check returned ${response.status}`);
-      setDatabaseLatency(Math.round(performance.now() - start));
-      setDatabaseStatus('online');
-    } catch {
-      setDatabaseStatus('error');
-      setDatabaseLatency(null);
-    }
-  };
-
-  useEffect(() => {
-    checkDatabase(true);
-    const handleOnline = () => checkDatabase(true);
-    const handleOffline = () => {
-      setDatabaseStatus('offline');
-      setDatabaseLatency(null);
-    };
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    const interval = setInterval(() => checkDatabase(false), 45000);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(interval);
-    };
   }, []);
 
   const [adminContext, setAdminContext] = useState<{ active: boolean; context?: { targetTenantId: string; targetTenantName: string } } | null>(null);
@@ -221,10 +203,12 @@ export const Header: React.FC<HeaderProps> = ({
           alert('Erro ao retornar ao contexto global.');
         }
       } else {
-        const res = await fetch('/api/auth/switch-tenant', {
+        const isPlatformMaster = activeUser?.role === 'PLATFORM_MASTER';
+        const res = await fetch(isPlatformMaster ? '/api/admin/switch-tenant' : '/api/auth/switch-tenant', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tenantId: targetValue }),
+          body: JSON.stringify(isPlatformMaster ? { targetTenantId: targetValue } : { tenantId: targetValue }),
         });
         if (res.ok) {
           StorageService.clearBusinessCache();
@@ -249,19 +233,33 @@ export const Header: React.FC<HeaderProps> = ({
   } | null>(null);
 
   const checkServerHealth = async () => {
+    if (!navigator.onLine) {
+      setServerHealth({ status: 'offline', api: 'unreachable', database: 'unreachable', realtime: 'unreachable', storage: 'unreachable' });
+      setDatabaseStatus('offline');
+      setDatabaseLatency(null);
+      return;
+    }
+
+    setDatabaseStatus('checking');
+    const startedAt = performance.now();
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch('/api/health', { credentials: 'include' });
+      const data = await res.json().catch(() => null);
       if (res.ok) {
-        const data = await res.json();
-        setServerHealth(data);
+        setServerHealth({ ...data, status: data?.status || 'ok', api: 'healthy', database: data?.database || 'healthy' });
+        setDatabaseLatency(Math.round(performance.now() - startedAt));
+        setDatabaseStatus(data?.database === 'unreachable' ? 'error' : 'online');
       } else {
         setServerHealth({
-          status: 'degraded',
-          api: 'healthy',
-          database: 'unreachable',
+          ...data,
+          status: data?.status || 'degraded',
+          api: data?.status === 'degraded' ? 'healthy' : 'unreachable',
+          database: data?.database || 'unreachable',
           realtime: 'degraded',
           storage: 'degraded',
         });
+        setDatabaseStatus('error');
+        setDatabaseLatency(null);
       }
     } catch {
       setServerHealth({
@@ -271,13 +269,27 @@ export const Header: React.FC<HeaderProps> = ({
         realtime: 'unreachable',
         storage: 'unreachable',
       });
+      setDatabaseStatus('error');
+      setDatabaseLatency(null);
     }
   };
 
   useEffect(() => {
     checkServerHealth();
+    const handleOnline = () => checkServerHealth();
+    const handleOffline = () => {
+      setServerHealth({ status: 'offline', api: 'unreachable', database: 'unreachable', realtime: 'unreachable', storage: 'unreachable' });
+      setDatabaseStatus('offline');
+      setDatabaseLatency(null);
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     const interval = setInterval(checkServerHealth, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleTriggerCron = async () => {
@@ -316,12 +328,25 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   // Overall system health indicator
-  const isHealthy = serverHealth ? serverHealth.status === 'ok' && serverHealth.database === 'healthy' : true;
+  const isHealthy = serverHealth?.status === 'ok' && serverHealth.database === 'healthy';
+  const isHealthChecking = serverHealth === null;
 
   return (
-    <header className="h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-4 flex items-center justify-between gap-4 shrink-0 z-30 transition-colors select-none">
+    <header className="h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-2 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 transition-colors select-none">
+      {onOpenNavigation && (
+        <button
+          type="button"
+          onClick={onOpenNavigation}
+          className="md:hidden h-11 w-11 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+          aria-label="Abrir menu de navegação"
+          aria-controls="app-sidebar"
+          aria-expanded={isNavigationOpen}
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+      )}
       {/* CENTRO: Busca Global */}
-      <div className="flex-1 max-w-xl">
+      <div className="flex-1 min-w-0 max-w-xl">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
@@ -350,13 +375,15 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <span
               className={`h-2 w-2 rounded-full ${
-                isHealthy
+                isHealthChecking
+                  ? 'bg-slate-400'
+                  : isHealthy
                   ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]'
                   : 'bg-amber-500 animate-pulse'
               }`}
             />
             <span className="hidden xl:inline text-[11px] font-bold">
-              {isHealthy ? 'Operacional' : 'Atenção'}
+              {isHealthChecking ? 'Verificando' : isHealthy ? 'Operacional' : 'Atenção'}
             </span>
           </button>
 
@@ -366,8 +393,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="font-bold text-slate-900 dark:text-slate-100">
                   Status dos Serviços
                 </span>
-                <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  100% OPERACIONAL
+                <span className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded border ${isHealthChecking ? 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-300' : isHealthy ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20'}`}>
+                  {isHealthChecking ? 'VERIFICANDO' : isHealthy ? 'OPERACIONAL' : 'ATENÇÃO'}
                 </span>
               </div>
 
@@ -378,8 +405,8 @@ export const Header: React.FC<HeaderProps> = ({
                     <Radio className="h-3.5 w-3.5 text-blue-500" />
                     <span className="text-slate-700 dark:text-slate-300">Conexão em Tempo Real</span>
                   </div>
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    ATIVA
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded font-mono ${realtimeStatus === 'CONNECTED' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-500/10 text-slate-600 dark:text-slate-300'}`}>
+                    {realtimeStatus === 'CONNECTED' ? 'CONECTADA' : realtimeStatus === 'CONNECTING' ? 'CONECTANDO' : 'DESCONECTADA'}
                   </span>
                 </div>
 
@@ -387,44 +414,22 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
                   <div className="flex items-center gap-2">
                     <Activity className="h-3.5 w-3.5 text-emerald-500" />
-                    <span className="text-slate-700 dark:text-slate-300">Sincronização Segura</span>
+                    <span className="text-slate-700 dark:text-slate-300">API da Plataforma</span>
                   </div>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    ESTÁVEL
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${serverHealth?.status === 'ok' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-500/10 text-slate-600 dark:text-slate-300'}`}>
+                    {serverHealth ? (serverHealth.status === 'ok' ? 'DISPONÍVEL' : 'INDISPONÍVEL') : 'VERIFICANDO'}
                   </span>
                 </div>
 
-                {/* Official Database */}
-                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                  <div className="flex items-center gap-2">
-                    <Database className="h-3.5 w-3.5 text-indigo-500" />
-                    <span className="text-slate-700 dark:text-slate-300">Base de Dados Oficial</span>
-                  </div>
-                  <span className="text-[10px] font-black font-mono text-emerald-600 dark:text-emerald-400">
-                    CONECTADA
-                  </span>
-                </div>
-
-                {/* Application Host */}
-                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                  <div className="flex items-center gap-2">
-                    <Server className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-slate-700 dark:text-slate-300">Serviço da Plataforma</span>
-                  </div>
-                  <span className="text-[10px] font-black font-mono text-emerald-600 dark:text-emerald-400">
-                    ONLINE
-                  </span>
-                </div>
-
-                {/* Cloud Storage / Sync */}
+                {/* API e banco consultados pelo endpoint de saúde */}
                 <div className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">
-                    <Wifi className="h-3.5 w-3.5 text-amber-500" />
-                    <span className="text-slate-700 dark:text-slate-300">API e banco de dados</span>
+                    <Database className="h-3.5 w-3.5 text-indigo-500" />
+                    <span className="text-slate-700 dark:text-slate-300">Banco de dados</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-[10px] font-bold font-mono ${databaseStatus === 'online' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      {databaseStatus === 'online' ? 'DISPONÍVEL' : databaseStatus === 'checking' ? 'VERIFICANDO' : 'INDISPONÍVEL'}
+                    <span className={`text-[10px] font-bold font-mono ${databaseStatus === 'online' ? 'text-emerald-600 dark:text-emerald-400' : databaseStatus === 'checking' ? 'text-slate-500 dark:text-slate-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {databaseStatus === 'online' ? 'CONECTADO' : databaseStatus === 'checking' ? 'VERIFICANDO' : 'INDISPONÍVEL'}
                     </span>
                     {databaseLatency !== null && (
                       <span className="text-[10px] text-slate-400 font-mono">
@@ -436,11 +441,11 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               <button
-                onClick={() => checkDatabase(true)}
+                onClick={checkServerHealth}
                 className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs py-1.5 font-bold transition-colors cursor-pointer"
               >
                 <RefreshCw className={`h-3 w-3 ${databaseStatus === 'checking' ? 'animate-spin' : ''}`} />
-                <span>Verificar Latência</span>
+                <span>Verificar API e banco</span>
               </button>
             </div>
           )}
@@ -592,6 +597,17 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 )}
 
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsChangePasswordOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-left font-semibold transition-colors cursor-pointer"
+                >
+                  <KeyRound className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Alterar senha</span>
+                </button>
+
                 <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
 
                 <button
@@ -619,6 +635,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Floating Cron Toast */}
+      {isChangePasswordOpen && <ChangePasswordModal onClose={() => setIsChangePasswordOpen(false)} />}
       {cronMessage && (
         <div className="absolute top-14 right-4 z-50 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/90 px-3.5 py-2 text-xs text-emerald-800 dark:text-emerald-200 shadow-lg flex items-center gap-2">
           <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 animate-pulse" />

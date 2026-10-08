@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Building,
@@ -54,6 +54,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
   >('overview');
 
   const [partner, setPartner] = useState<any | null>(null);
+  const currentPartnerIdRef = useRef(partnerId);
+  currentPartnerIdRef.current = partnerId;
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -112,45 +114,49 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
   // Load Partner Overview
   const loadPartnerDetails = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/partners/${partnerId}`);
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}`);
       if (!res.ok) {
         throw new Error('Falha ao obter dados do parceiro.');
       }
       const data = await res.json();
+      if (currentPartnerIdRef.current !== requestedPartnerId) return;
       setPartner(data);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao carregar parceiro.');
+      if (currentPartnerIdRef.current === requestedPartnerId) setErrorMsg(err.message || 'Erro ao carregar parceiro.');
     } finally {
-      setLoading(false);
+      if (currentPartnerIdRef.current === requestedPartnerId) setLoading(false);
     }
   };
 
   // Load Timeline
   const loadTimeline = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     setTimelineLoading(true);
     try {
-      const res = await fetch(`/api/partners/${partnerId}/timeline?limit=60`);
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/timeline?limit=60`);
       if (res.ok) {
         const data = await res.json();
-        setTimeline(data);
+        if (currentPartnerIdRef.current === requestedPartnerId) setTimeline(data);
       }
     } catch (err) {
       console.error('Error loading timeline:', err);
     } finally {
-      setTimelineLoading(false);
+      if (currentPartnerIdRef.current === requestedPartnerId) setTimelineLoading(false);
     }
   };
 
   // Load Metrics
   const loadMetrics = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     setMetricsLoading(true);
     try {
-      let url = `/api/partners/${partnerId}/metrics?period=${period}`;
+      let url = `/api/partners/${encodeURIComponent(requestedPartnerId)}/metrics?period=${period}`;
       if (period === 'custom' && customStartDate) {
         url += `&startDate=${customStartDate}`;
         if (customEndDate) url += `&endDate=${customEndDate}`;
@@ -158,80 +164,102 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setMetrics(data);
+        if (currentPartnerIdRef.current === requestedPartnerId) setMetrics(data);
       }
     } catch (err) {
       console.error('Error loading metrics:', err);
     } finally {
-      setMetricsLoading(false);
+      if (currentPartnerIdRef.current === requestedPartnerId) setMetricsLoading(false);
     }
   };
 
   // Load Sub-entities
   const loadInteractions = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     try {
-      const res = await fetch(`/api/partners/${partnerId}/interactions`);
-      if (res.ok) setInteractions(await res.json());
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/interactions`);
+      if (res.ok) {
+        const data = await res.json();
+        if (currentPartnerIdRef.current === requestedPartnerId) setInteractions(data);
+      }
     } catch (err) {}
   };
 
   const loadNotes = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     try {
-      const res = await fetch(`/api/partners/${partnerId}/notes`);
-      if (res.ok) setNotes(await res.json());
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/notes`);
+      if (res.ok) {
+        const data = await res.json();
+        if (currentPartnerIdRef.current === requestedPartnerId) setNotes(data);
+      }
     } catch (err) {}
   };
 
   const loadTasks = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     try {
-      const res = await fetch(`/api/partners/${partnerId}/tasks`);
-      if (res.ok) setTasks(await res.json());
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/tasks`);
+      if (res.ok) {
+        const data = await res.json();
+        if (currentPartnerIdRef.current === requestedPartnerId) setTasks(data);
+      }
     } catch (err) {}
   };
 
   const loadProposals = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     try {
-      const res = await fetch(`/api/partners/${partnerId}/proposals?limit=50`);
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/proposals?limit=50`);
       if (res.ok) {
         const result = await res.json();
-        setProposals(result.data || []);
+        if (currentPartnerIdRef.current === requestedPartnerId) setProposals(result.data || []);
       }
     } catch (err) {}
   };
 
   const loadSimulations = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     try {
-      const res = await fetch(`/api/partners/${partnerId}/simulations`);
-      if (res.ok) setSimulations(await res.json());
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/simulations`);
+      if (res.ok) {
+        const data = await res.json();
+        if (currentPartnerIdRef.current === requestedPartnerId) setSimulations(data);
+      }
     } catch (err) {}
   };
 
   const loadPendencies = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     try {
-      const res = await fetch(`/api/partners/${partnerId}/pendencies`);
-      if (res.ok) setPendencies(await res.json());
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/pendencies`);
+      if (res.ok) {
+        const data = await res.json();
+        if (currentPartnerIdRef.current === requestedPartnerId) setPendencies(data);
+      }
     } catch (err) {}
   };
 
   const loadPortalAccesses = async () => {
     if (!partnerId) return;
+    const requestedPartnerId = partnerId;
     setLoadingPortal(true);
     try {
-      const res = await fetch(`/api/partners/${partnerId}/portal-access`);
+      const res = await fetch(`/api/partners/${encodeURIComponent(requestedPartnerId)}/portal-access`);
       if (res.ok) {
         const data = await res.json();
-        setPortalAccesses(Array.isArray(data) ? data : []);
+        if (currentPartnerIdRef.current === requestedPartnerId) setPortalAccesses(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Error loading portal access:', err);
     } finally {
-      setLoadingPortal(false);
+      if (currentPartnerIdRef.current === requestedPartnerId) setLoadingPortal(false);
     }
   };
 
@@ -361,6 +389,17 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
   useEffect(() => {
     if (isOpen && partnerId) {
+      setPartner(null);
+      setErrorMsg(null);
+      setPortalAccesses([]);
+      setTimeline([]);
+      setInteractions([]);
+      setNotes([]);
+      setTasks([]);
+      setProposals([]);
+      setSimulations([]);
+      setPendencies([]);
+      setMetrics(null);
       loadPartnerDetails();
       loadPortalAccesses();
       loadTimeline();

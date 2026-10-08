@@ -18,7 +18,6 @@ import {
   Loader2,
   StopCircle,
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { StorageService } from '../../services/storageService';
 import { Proposal, ProposalStatus } from '../../types';
 import { parseCurrency, formatCurrency } from '../../lib/utils';
@@ -153,6 +152,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
       // 1. Tentar ler via ExcelJS (.xlsx)
       try {
+        const { default: ExcelJS } = await import('exceljs');
         const buffer = await selectedFile.arrayBuffer();
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(buffer);
@@ -423,6 +423,10 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
     total: number;
     percent: number;
     updated: number;
+    invalid: number;
+    failed: number;
+    rowErrors: Array<{ line: number; identifier: string; message: string }>;
+    rowErrorsTruncated: number;
     status: 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
   } | null>(null);
 
@@ -430,13 +434,16 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
     const realtime = RealtimeService.getInstance();
     const unsubProgress = realtime.subscribe('IMPORT_PROGRESS', (event) => {
       const data = event.data || event.payload;
-      if (data && (!activeJobId || data.importId === activeJobId)) {
-        setActiveJobId(data.importId);
+      if (data && activeJobId && data.importId === activeJobId) {
         setJobProgress({
           processed: data.processed || 0,
           total: data.totalRecords || 0,
           percent: data.percent || 0,
           updated: data.updated || 0,
+          invalid: data.invalid || 0,
+          failed: data.failed || 0,
+          rowErrors: [],
+          rowErrorsTruncated: 0,
           status: 'PROCESSING',
         });
       }
@@ -444,8 +451,17 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
     const unsubCompleted = realtime.subscribe('IMPORT_COMPLETED', (event) => {
       const data = event.data || event.payload;
-      if (data && (!activeJobId || data.importId === activeJobId)) {
-        setJobProgress(prev => prev ? { ...prev, status: 'COMPLETED', percent: 100 } : null);
+      if (data && activeJobId && data.importId === activeJobId) {
+        setJobProgress(prev => prev ? {
+          ...prev,
+          status: 'COMPLETED',
+          percent: 100,
+          updated: Number(data.updated) || prev.updated,
+          invalid: Number(data.invalid) || 0,
+          failed: Number(data.failed) || 0,
+          rowErrors: Array.isArray(data.rowErrors) ? data.rowErrors : prev.rowErrors,
+          rowErrorsTruncated: Number(data.rowErrorsTruncated) || 0,
+        } : null);
         setIsProcessing(false);
         setStep(3);
       }
@@ -456,6 +472,54 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
       unsubCompleted();
     };
   }, [activeJobId]);
+
+  useEffect(() => {
+    if (!activeJobId || !isProcessing) return;
+    let cancelled = false;
+    let requestInFlight = false;
+    const pollJob = async () => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const response = await fetch(`/api/import/${encodeURIComponent(activeJobId)}`, { credentials: 'include' });
+        if (!response.ok) return;
+        const job = await response.json();
+        if (cancelled || job.id !== activeJobId) return;
+        const status: NonNullable<typeof jobProgress>['status'] =
+          job.status === 'COMPLETED' || job.status === 'CANCELLED' || job.status === 'FAILED'
+            ? job.status
+            : 'PROCESSING';
+        setJobProgress({
+          processed: Number(job.processedRecords) || 0,
+          total: Number(job.totalRecords) || 0,
+          percent: status === 'COMPLETED' ? 100 : Number(job.percent) || 0,
+          updated: Number(job.updatedRecords) || 0,
+          invalid: Number(job.invalidRecords) || 0,
+          failed: Number(job.failedRecords) || 0,
+          rowErrors: Array.isArray(job.metadata?.rowErrors) ? job.metadata.rowErrors : [],
+          rowErrorsTruncated: Number(job.metadata?.rowErrorsTruncated) || 0,
+          status,
+        });
+        if (status === 'COMPLETED') {
+          setIsProcessing(false);
+          setStep(3);
+        } else if (status === 'FAILED' || status === 'CANCELLED') {
+          setIsProcessing(false);
+          setErrorMsg(job.errorMessage || (status === 'CANCELLED' ? 'A importação foi cancelada.' : 'Falha ao processar a importação.'));
+        }
+      } catch {
+        // Retry on the next interval while the job is running.
+      } finally {
+        requestInFlight = false;
+      }
+    };
+    void pollJob();
+    const timer = window.setInterval(() => void pollJob(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeJobId, isProcessing]);
 
   const handleConfirmImport = async () => {
     const toUpdate = previewItems.filter(item => item.matchType === 'UPDATE');
@@ -468,8 +532,9 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
     setErrorMsg(null);
 
     const rowsPayload = toUpdate.map(item => ({
-      proposalNumber: item.contractNumber,
-      newStatusNameOrId: item.mappedStatusName,
+      sourceLine: item.rowNumber,
+      proposalNumberOrAde: item.contractNumber,
+      targetStatusName: item.mappedStatusName,
       disbursedValue: item.financialUpdate?.disbursedValue,
       contractBalance: item.financialUpdate?.contractBalance,
     }));
@@ -497,6 +562,10 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
         total: rowsPayload.length,
         percent: 0,
         updated: 0,
+        invalid: 0,
+        failed: 0,
+        rowErrors: [],
+        rowErrorsTruncated: 0,
         status: 'PROCESSING',
       });
     } catch (err: any) {
@@ -512,6 +581,9 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
     setUniqueCsvStatuses([]);
     setStatusMapping({});
     setPreviewItems([]);
+    setActiveJobId(null);
+    setJobProgress(null);
+    setIsProcessing(false);
     setStep(1);
     setErrorMsg(null);
   };
@@ -799,6 +871,17 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                   </>
                 )}
               </button>
+              {isProcessing && jobProgress && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                    <span>Processadas {jobProgress.processed} de {jobProgress.total}</span>
+                    <span>{jobProgress.percent}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-950">
+                    <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${jobProgress.percent}%` }} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -934,14 +1017,16 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
               Importação e Atualização Concluídas!
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              O lote de dados extraído da planilha foi processado com sucesso. Os status dos contratos foram atualizados e sincronizados em tempo real.
+              {jobProgress && jobProgress.invalid + jobProgress.failed > 0
+                ? 'A importação terminou com algumas ocorrências. Revise os motivos abaixo e corrija as linhas indicadas.'
+                : 'O lote de dados da planilha foi processado. Os status e valores financeiros selecionados foram atualizados.'}
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-4 border-t border-b border-slate-100 dark:border-slate-800 py-6 text-center">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atualizados</p>
-              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.updated}</p>
+              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{jobProgress?.updated ?? stats.updated}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Inalterados</p>
@@ -949,9 +1034,27 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ignorados</p>
-              <p className="text-2xl font-black text-amber-500 dark:text-amber-400 mt-1">{stats.notFound}</p>
+              <p className="text-2xl font-black text-amber-500 dark:text-amber-400 mt-1">{jobProgress ? jobProgress.invalid + jobProgress.failed : stats.notFound}</p>
             </div>
           </div>
+
+          {jobProgress?.rowErrors.length ? (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-900 text-left overflow-hidden">
+              <div className="bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs font-bold text-amber-800 dark:text-amber-300">
+                Ocorrências para revisar ({jobProgress.rowErrors.length}{jobProgress.rowErrorsTruncated ? ` de ${jobProgress.rowErrors.length + jobProgress.rowErrorsTruncated}` : ''})
+                {jobProgress.rowErrorsTruncated > 0 && <span className="block font-normal">Exibindo as primeiras 500 ocorrências.</span>}
+              </div>
+              <div className="max-h-52 overflow-y-auto divide-y divide-amber-100 dark:divide-amber-900/50">
+                {jobProgress.rowErrors.slice(0, 20).map((error, index) => (
+                  <div key={`${error.line}-${index}`} className="grid grid-cols-[70px_minmax(90px,0.7fr)_minmax(180px,2fr)] gap-2 px-4 py-2 text-[11px] text-slate-700 dark:text-slate-300">
+                    <span className="font-mono">Linha {error.line}</span>
+                    <span className="truncate font-mono" title={error.identifier}>{error.identifier}</span>
+                    <span>{error.message}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button

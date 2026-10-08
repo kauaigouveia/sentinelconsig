@@ -14,6 +14,8 @@ import {
   Building2,
 } from 'lucide-react';
 import { Proposal, FactaSyncHistoryItem } from '../../types';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
 
 interface FactaProposalCardProps {
   proposal: Proposal;
@@ -26,6 +28,9 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
   onProposalUpdated,
   standalone = false,
 }) => {
+  const activeUser = StorageService.getActiveUser();
+  const canSync = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canEditProposal = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.update') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{
     type: 'success' | 'error' | 'info' | 'warning';
@@ -172,7 +177,10 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
         });
       }
     } catch (err: any) {
-      alert(err.message || 'Falha ao vincular número FACTA');
+      setSyncFeedback({
+        type: 'error',
+        message: err.message || 'Falha ao vincular identificadores FACTA.',
+      });
     } finally {
       setIsLinking(false);
     }
@@ -245,7 +253,7 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
 
         {/* Ações */}
         <div className="flex items-center gap-2">
-          <button
+          {canEditProposal && <button
             type="button"
             onClick={() => setShowLinkModal(true)}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
@@ -253,9 +261,9 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
           >
             <LinkIcon className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Vincular AF / Proposta</span>
-          </button>
+          </button>}
 
-          <button
+          {canSync && <button
             type="button"
             onClick={handleManualSync}
             disabled={isSyncing}
@@ -267,7 +275,7 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>{isSyncing ? 'Consultando FACTA...' : 'Consultar status na FACTA'}</span>
-          </button>
+          </button>}
         </div>
       </div>
 

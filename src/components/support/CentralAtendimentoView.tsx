@@ -19,7 +19,10 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { ActionBar } from '../ui/ActionBar';
+import { toastService } from '../ui/toastService';
 import { realtimeHub } from '../../services/realtimeService';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
 
 interface SupportConversationAdmin {
   id: string;
@@ -61,6 +64,9 @@ interface SupportMessageAdmin {
 }
 
 export const CentralAtendimentoView: React.FC = () => {
+  const activeUser = StorageService.getActiveUser();
+  const canReply = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.reply');
+  const canManage = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.manage');
   const [conversations, setConversations] = useState<SupportConversationAdmin[]>([]);
   const [metrics, setMetrics] = useState({
     openCount: 0,
@@ -82,15 +88,24 @@ export const CentralAtendimentoView: React.FC = () => {
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [conversationError, setConversationError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversationRequestIdRef = useRef(0);
+  const messageRequestIdRef = useRef(0);
+  const activeConversationIdRef = useRef(activeConversationId);
+  activeConversationIdRef.current = activeConversationId;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const fetchConversations = async (autoSelectFirst = false) => {
+    const requestId = ++conversationRequestIdRef.current;
     setIsLoadingList(true);
+    setConversationError(null);
     try {
       const q = new URLSearchParams();
       if (statusFilter !== 'ALL') q.set('status', statusFilter);
@@ -102,56 +117,84 @@ export const CentralAtendimentoView: React.FC = () => {
         fetch('/api/support/metrics'),
       ]);
 
-      if (resConv.ok) {
-        const list = await resConv.json();
-        setConversations(list);
-        if (autoSelectFirst && list.length > 0 && !activeConversationId) {
-          setActiveConversationId(list[0].id);
-        }
+      if (!resConv.ok) {
+        const errData = await resConv.json().catch(() => ({}));
+        throw new Error(errData.error || 'Não foi possível carregar os atendimentos.');
+      }
+      const list = await resConv.json();
+      if (!Array.isArray(list)) throw new Error('A API retornou uma lista de atendimentos inválida.');
+      if (requestId !== conversationRequestIdRef.current) return;
+      setConversations(list);
+      if (autoSelectFirst && list.length > 0 && !activeConversationIdRef.current) {
+        setActiveConversationId(list[0].id);
       }
 
       if (resMetrics.ok) {
         const met = await resMetrics.json();
-        setMetrics(met);
+        if (requestId === conversationRequestIdRef.current) setMetrics(met);
       }
     } catch (err) {
       console.error('[CentralAtendimentoView] Erro ao carregar atendimentos:', err);
+      if (requestId === conversationRequestIdRef.current) {
+        setConversationError(err instanceof Error ? err.message : 'Falha ao carregar a fila de atendimento.');
+      }
     } finally {
-      setIsLoadingList(false);
+      if (requestId === conversationRequestIdRef.current) setIsLoadingList(false);
     }
   };
 
   const fetchMessages = async (convId: string) => {
+    const requestId = ++messageRequestIdRef.current;
     setIsLoadingMessages(true);
+    setMessagesError(null);
+    if (activeConversationData?.id !== convId) {
+      setActiveConversationData(null);
+      setMessages([]);
+    }
     try {
       const res = await fetch(`/api/support/conversations/${encodeURIComponent(convId)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setActiveConversationData(data.conversation);
-        setMessages(data.messages);
-        setTimeout(scrollToBottom, 100);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Não foi possível carregar as mensagens deste atendimento.');
       }
+      const data = await res.json();
+      if (requestId !== messageRequestIdRef.current || activeConversationIdRef.current !== convId) return;
+      setActiveConversationData(data.conversation);
+      setMessages(Array.isArray(data.messages) ? data.messages : []);
+      setTimeout(scrollToBottom, 100);
     } catch (err) {
       console.error('[CentralAtendimentoView] Erro ao carregar mensagens:', err);
+      if (requestId === messageRequestIdRef.current && activeConversationIdRef.current === convId) {
+        setMessagesError(err instanceof Error ? err.message : 'Falha ao carregar mensagens.');
+      }
     } finally {
-      setIsLoadingMessages(false);
+      if (requestId === messageRequestIdRef.current) setIsLoadingMessages(false);
     }
   };
 
-  useEffect(() => {
-    fetchConversations(true);
+  const fetchConversationsRef = useRef(fetchConversations);
+  fetchConversationsRef.current = fetchConversations;
+  const fetchMessagesRef = useRef(fetchMessages);
+  fetchMessagesRef.current = fetchMessages;
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void fetchConversations(true), 250);
+    return () => window.clearTimeout(timeout);
+  }, [statusFilter, channelFilter, searchTerm]);
+
+  useEffect(() => {
     const unsub = realtimeHub.subscribe('*', (event) => {
       if (event?.type === 'SUPPORT_MESSAGE_RECEIVED' || event?.type === 'SUPPORT_CONVERSATION_CREATED') {
-        if (event?.data?.conversationId === activeConversationId) {
-          fetchMessages(activeConversationId);
+        const activeId = activeConversationIdRef.current;
+        if (event?.data?.conversationId === activeId && activeId) {
+          void fetchMessagesRef.current(activeId);
         }
-        fetchConversations(false);
+        void fetchConversationsRef.current(false);
       }
     });
 
     return () => unsub();
-  }, [activeConversationId, statusFilter, channelFilter]);
+  }, []);
 
   useEffect(() => {
     if (activeConversationId) {
@@ -161,7 +204,7 @@ export const CentralAtendimentoView: React.FC = () => {
 
   const handleSendReply = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!replyText.trim() || !activeConversationId || isSending) return;
+    if (!replyText.trim() || !activeConversationId || activeConversationData?.id !== activeConversationId || isSending) return;
 
     const text = replyText.trim();
     setReplyText('');
@@ -180,19 +223,22 @@ export const CentralAtendimentoView: React.FC = () => {
       }
 
       const createdMsg = await res.json();
-      setMessages((prev) => [...prev, createdMsg]);
-      setTimeout(scrollToBottom, 50);
+      if (activeConversationIdRef.current === activeConversationId) {
+        setMessages((prev) => [...prev, createdMsg]);
+        setTimeout(scrollToBottom, 50);
+      }
       fetchConversations(false);
     } catch (err: any) {
-      alert(err?.message || 'Falha ao enviar resposta.');
-      setReplyText(text);
+      toastService.error('Falha ao enviar resposta', err?.message || 'Tente novamente.');
+      if (activeConversationIdRef.current === activeConversationId) setReplyText(text);
     } finally {
       setIsSending(false);
     }
   };
 
   const handleUpdateStatus = async (newStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED') => {
-    if (!activeConversationId) return;
+    if (!activeConversationId || activeConversationData?.id !== activeConversationId || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
     try {
       const res = await fetch(`/api/support/conversations/${encodeURIComponent(activeConversationId)}/status`, {
         method: 'PATCH',
@@ -200,13 +246,19 @@ export const CentralAtendimentoView: React.FC = () => {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (res.ok) {
-        const updated = await res.json();
-        setActiveConversationData((prev: any) => ({ ...prev, status: updated.status }));
-        fetchConversations(false);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Não foi possível atualizar o atendimento.');
       }
+      const updated = await res.json();
+      setActiveConversationData((prev: any) => prev?.id === activeConversationId ? { ...prev, status: updated.status } : prev);
+      void fetchConversationsRef.current(false);
+      toastService.success(newStatus === 'RESOLVED' ? 'Atendimento concluído.' : 'Atendimento reaberto.');
     } catch (err) {
       console.error('[CentralAtendimentoView] Erro ao alterar status:', err);
+      toastService.error('Erro ao atualizar atendimento', err instanceof Error ? err.message : 'Tente novamente.');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -221,11 +273,12 @@ export const CentralAtendimentoView: React.FC = () => {
         badgeColor="bg-blue-500/10 text-blue-600 dark:text-blue-400"
         rightActions={
           <button
-            onClick={() => fetchConversations(false)}
+            onClick={() => void fetchConversations(false)}
+            disabled={isLoadingList}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Atualizar</span>
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingList ? 'animate-spin' : ''}`} />
+            <span>{isLoadingList ? 'Atualizando...' : 'Atualizar'}</span>
           </button>
         }
       />
@@ -296,7 +349,6 @@ export const CentralAtendimentoView: React.FC = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchConversations(false)}
                 placeholder="Buscar parceiro, proposta ou assunto..."
                 className="w-full h-8 pl-8 pr-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
               />
@@ -332,6 +384,12 @@ export const CentralAtendimentoView: React.FC = () => {
                 <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                 <span className="text-[11px] text-slate-400">Carregando fila...</span>
               </div>
+            ) : conversationError ? (
+              <div className="p-6 text-center text-xs text-rose-700 dark:text-rose-300 space-y-2" role="alert">
+                <AlertTriangle className="mx-auto h-6 w-6" />
+                <p>{conversationError}</p>
+                <button type="button" onClick={() => void fetchConversations(false)} className="font-bold underline underline-offset-2">Tentar novamente</button>
+              </div>
             ) : conversations.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 space-y-2">
                 <MessageSquare className="h-6 w-6 text-slate-300 dark:text-slate-600 mx-auto" />
@@ -343,7 +401,14 @@ export const CentralAtendimentoView: React.FC = () => {
                 return (
                   <div
                     key={c.id}
-                    onClick={() => setActiveConversationId(c.id)}
+                    onClick={() => {
+                      if (activeConversationId === c.id) return;
+                      setActiveConversationId(c.id);
+                      setActiveConversationData(null);
+                      setMessages([]);
+                      setMessagesError(null);
+                      setReplyText('');
+                    }}
                     className={`p-3 transition-colors cursor-pointer text-xs space-y-1 ${
                       isActive
                         ? 'bg-blue-500/10 dark:bg-blue-500/15 border-l-3 border-blue-600'
@@ -442,24 +507,26 @@ export const CentralAtendimentoView: React.FC = () => {
                 </div>
 
                 {/* Status Action Buttons */}
-                <div className="flex items-center gap-1.5">
+                {canManage && <div className="flex items-center gap-1.5">
                   {activeConversationData.status !== 'RESOLVED' ? (
                     <button
                       onClick={() => handleUpdateStatus('RESOLVED')}
+                      disabled={isUpdatingStatus}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>Concluir Atendimento</span>
+                      <span>{isUpdatingStatus ? 'Salvando...' : 'Concluir Atendimento'}</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => handleUpdateStatus('IN_PROGRESS')}
+                      disabled={isUpdatingStatus}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
                     >
-                      <span>Reabrir</span>
+                      <span>{isUpdatingStatus ? 'Salvando...' : 'Reabrir'}</span>
                     </button>
                   )}
-                </div>
+                </div>}
               </div>
 
               {/* Chat Message List */}
@@ -469,8 +536,13 @@ export const CentralAtendimentoView: React.FC = () => {
                     <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="text-center py-12 text-xs text-slate-400">
-                    Nenhuma mensagem registrada nesta conversa.
+                  <div className={`text-center py-12 text-xs ${messagesError ? 'text-rose-600 dark:text-rose-300' : 'text-slate-400'}`}>
+                    {messagesError ? (
+                      <>
+                        <p>{messagesError}</p>
+                        <button type="button" onClick={() => activeConversationId && void fetchMessages(activeConversationId)} className="mt-2 font-bold underline underline-offset-2">Tentar novamente</button>
+                      </>
+                    ) : 'Nenhuma mensagem registrada nesta conversa.'}
                   </div>
                 ) : (
                   messages.map((m) => {
@@ -507,7 +579,7 @@ export const CentralAtendimentoView: React.FC = () => {
               </div>
 
               {/* Reply Input Form */}
-              <form onSubmit={handleSendReply} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
+              {canReply ? <form onSubmit={handleSendReply} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
                 <input
                   type="text"
                   value={replyText}
@@ -517,7 +589,7 @@ export const CentralAtendimentoView: React.FC = () => {
                 />
                 <button
                   type="submit"
-                  disabled={!replyText.trim() || isSending}
+                  disabled={!replyText.trim() || isSending || isLoadingMessages || activeConversationData?.id !== activeConversationId}
                   className="h-9.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   {isSending ? (
@@ -529,7 +601,7 @@ export const CentralAtendimentoView: React.FC = () => {
                     </>
                   )}
                 </button>
-              </form>
+              </form> : <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">Seu perfil pode consultar o atendimento, mas não possui permissão para responder.</div>}
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-slate-400 space-y-2">

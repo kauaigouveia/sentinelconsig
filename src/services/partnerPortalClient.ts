@@ -186,16 +186,27 @@ export class PartnerPortalClient {
     return res.json();
   }
 
-  public static async changePassword(newPassword: string) {
+  public static async changePassword(newPassword: string, currentPassword?: string) {
     const res = await fetch('/api/partner-portal/auth/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newPassword }),
+      body: JSON.stringify({ newPassword, currentPassword }),
     });
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error || 'Erro ao alterar senha.');
     }
+    return data;
+  }
+
+  public static async updateContact(payload: { email: string; phone: string }): Promise<{ email: string | null; phone: string | null }> {
+    const res = await fetch('/api/partner-portal/profile/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao atualizar os contatos do parceiro.');
     return data;
   }
 
@@ -212,6 +223,7 @@ export class PartnerPortalClient {
     search?: string;
     statusId?: string;
     standardCategory?: string;
+    waitingReturnOnly?: boolean;
     startDate?: string;
     endDate?: string;
     page?: number;
@@ -221,6 +233,7 @@ export class PartnerPortalClient {
     if (params.search) q.set('search', params.search);
     if (params.statusId) q.set('statusId', params.statusId);
     if (params.standardCategory) q.set('standardCategory', params.standardCategory);
+    if (params.waitingReturnOnly) q.set('waitingReturnOnly', 'true');
     if (params.startDate) q.set('startDate', params.startDate);
     if (params.endDate) q.set('endDate', params.endDate);
     if (params.page) q.set('page', String(params.page));

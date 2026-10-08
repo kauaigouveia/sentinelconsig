@@ -40,20 +40,25 @@
     background-color: var(--bg-canvas);
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.55;
   }
 
   code, kbd, samp, pre, .font-mono {
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
-  /* Compact native form controls by default */
+  /* Native controls inherit the same readable scale as the rest of the interface. */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   select,
   textarea {
-    font-size: 12px;
+    font-size: 13px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary-main);
+    outline-offset: 2px;
   }
 
   /* Subtle, clean custom scrollbars */
@@ -159,5 +164,16 @@
 
 .glow-amber {
   box-shadow: 0 0 15px -3px rgba(245, 158, 11, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 

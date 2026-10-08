@@ -110,14 +110,26 @@ export class BIService {
     if (preset === 'PERSONALIZADO') {
       let start: Date | null = null;
       let end: Date | null = null;
+      const parseCustomDate = (value: string, endOfDay: boolean): Date | null => {
+        const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+        if (dateOnly) {
+          const y = Number(dateOnly[1]);
+          const m = Number(dateOnly[2]) - 1;
+          const d = Number(dateOnly[3]);
+          const parsed = makeSpDate(y, m, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+          const valid = new Date(Date.UTC(y, m, d));
+          if (valid.getUTCFullYear() !== y || valid.getUTCMonth() !== m || valid.getUTCDate() !== d) return null;
+          return parsed;
+        }
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      };
 
       if (filters.startDate) {
-        const parsedStart = new Date(filters.startDate);
-        if (!isNaN(parsedStart.getTime())) start = parsedStart;
+        start = parseCustomDate(filters.startDate, false);
       }
       if (filters.endDate) {
-        const parsedEnd = new Date(filters.endDate);
-        if (!isNaN(parsedEnd.getTime())) end = parsedEnd;
+        end = parseCustomDate(filters.endDate, true);
       }
 
       if (start && end) {
@@ -136,6 +148,16 @@ export class BIService {
         return {
           startDate: start,
           endDate: makeSpDate(year, month, day, 23, 59, 59, 999),
+          preset: 'PERSONALIZADO',
+          label: 'Período Personalizado',
+        };
+      } else if (end) {
+        const endParts = spFormatter.formatToParts(end);
+        const endYear = Number(endParts.find(part => part.type === 'year')?.value || year);
+        const endMonth = Number(endParts.find(part => part.type === 'month')?.value || month + 1) - 1;
+        return {
+          startDate: makeSpDate(endYear, endMonth, 1, 0, 0, 0, 0),
+          endDate: end,
           preset: 'PERSONALIZADO',
           label: 'Período Personalizado',
         };
@@ -517,17 +539,29 @@ export class BIService {
         totalInProgressCount++;
       }
 
+      // Group by the same America/Sao_Paulo calendar dates used to resolve BI ranges.
+      const proposalDateParts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(p.createdAt);
+      const proposalDatePart = (type: string) => proposalDateParts.find(part => part.type === type)?.value || '01';
+      const proposalYear = Number(proposalDatePart('year'));
+      const proposalMonth = Number(proposalDatePart('month'));
+      const proposalDay = Number(proposalDatePart('day'));
+
       // Group key calculation
       let key = '';
       let formattedDate = '';
 
       if (groupBy === 'month') {
-        const y = p.createdAt.getFullYear();
-        const m = String(p.createdAt.getMonth() + 1).padStart(2, '0');
+        const y = proposalYear;
+        const m = String(proposalMonth).padStart(2, '0');
         key = `${y}-${m}`;
         formattedDate = `${m}/${y}`;
       } else if (groupBy === 'week') {
-        const d = new Date(Date.UTC(p.createdAt.getFullYear(), p.createdAt.getMonth(), p.createdAt.getDate()));
+        const d = new Date(Date.UTC(proposalYear, proposalMonth - 1, proposalDay));
         const dayNum = d.getUTCDay() || 7;
         d.setUTCDate(d.getUTCDate() + 4 - dayNum);
         const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -535,9 +569,9 @@ export class BIService {
         key = `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
         formattedDate = `Sem ${weekNo}/${d.getUTCFullYear()}`;
       } else {
-        const y = p.createdAt.getFullYear();
-        const m = String(p.createdAt.getMonth() + 1).padStart(2, '0');
-        const d = String(p.createdAt.getDate()).padStart(2, '0');
+        const y = proposalYear;
+        const m = String(proposalMonth).padStart(2, '0');
+        const d = String(proposalDay).padStart(2, '0');
         key = `${y}-${m}-${d}`;
         formattedDate = `${d}/${m}`;
       }

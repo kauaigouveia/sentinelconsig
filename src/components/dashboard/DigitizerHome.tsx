@@ -23,9 +23,9 @@ import { MetricCard } from '../ui/MetricCard';
 import { StatusBadge } from '../ui/StatusBadge';
 
 interface DigitizerHomeProps {
-  onOpenNewProduction: () => void;
-  onOpenImportExcel: () => void;
-  onOpenExport: () => void;
+  onOpenNewProduction?: () => void;
+  onOpenImportExcel?: () => void;
+  onOpenExport?: () => void;
 }
 
 export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
@@ -108,29 +108,29 @@ export const DigitizerHome: React.FC<DigitizerHomeProps> = ({
         badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
         actions={
           <div className="flex items-center gap-2">
-            <button
+            {onOpenImportExcel && <button
               onClick={onOpenImportExcel}
               className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Upload className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
               <span>Importar Planilha</span>
-            </button>
+            </button>}
 
-            <button
+            {onOpenExport && <button
               onClick={onOpenExport}
               className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Exportar</span>
-            </button>
+            </button>}
 
-            <button
+            {onOpenNewProduction && <button
               onClick={onOpenNewProduction}
               className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
             >
               <PlusCircle className="h-4 w-4" />
               <span>+ Nova Produção</span>
-            </button>
+            </button>}
           </div>
         }
       />

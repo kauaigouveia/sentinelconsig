@@ -18,6 +18,7 @@ import {
   PartnerSupportMessage,
 } from '../../services/partnerPortalClient';
 import { realtimeHub } from '../../services/realtimeService';
+import { toastService } from '../ui/toastService';
 
 interface PartnerSupportViewProps {
   initialProposalId?: string | null;
@@ -37,6 +38,9 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const isSendingRef = useRef(false);
 
   // New Conversation Modal
   const [isNewConvModalOpen, setIsNewConvModalOpen] = useState(false);
@@ -44,40 +48,68 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
   const [newProposalId, setNewProposalId] = useState(initialProposalId || '');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeConversationIdRef = useRef<string | null>(activeConversationId);
+  const messageRequestRef = useRef(0);
+  const listRequestRef = useRef(0);
+  const fetchConversationsRef = useRef<(autoSelectFirst?: boolean) => Promise<void>>(async () => {});
+  const fetchMessagesRef = useRef<(convId: string) => Promise<void>>(async () => {});
+
+  activeConversationIdRef.current = activeConversationId;
+
+  const selectConversation = (conversationId: string | null) => {
+    activeConversationIdRef.current = conversationId;
+    setActiveConversationId(conversationId);
+    setActiveConversationData(null);
+    setMessages([]);
+    setMessagesError(null);
+    setInputText('');
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const fetchConversations = async (autoSelectFirst = true) => {
+    const requestId = ++listRequestRef.current;
     setIsLoadingList(true);
+    setError(null);
     try {
       const list = await PartnerPortalClient.getConversations();
+      if (requestId !== listRequestRef.current) return;
       setConversations(list);
 
-      if (autoSelectFirst && list.length > 0 && !activeConversationId) {
-        setActiveConversationId(list[0].id);
+      if (autoSelectFirst && list.length > 0 && !activeConversationIdRef.current) {
+        selectConversation(list[0].id);
       }
     } catch (err: any) {
+      if (requestId !== listRequestRef.current) return;
       setError(err?.message || 'Erro ao carregar atendimentos.');
     } finally {
-      setIsLoadingList(false);
+      if (requestId === listRequestRef.current) setIsLoadingList(false);
     }
   };
 
   const fetchMessages = async (convId: string) => {
+    const requestId = ++messageRequestRef.current;
     setIsLoadingMessages(true);
+    setMessagesError(null);
     try {
       const res = await PartnerPortalClient.getConversationMessages(convId);
+      if (requestId !== messageRequestRef.current || activeConversationIdRef.current !== convId) return;
       setActiveConversationData(res.conversation);
       setMessages(res.messages);
       setTimeout(scrollToBottom, 100);
     } catch (err: any) {
+      if (requestId !== messageRequestRef.current || activeConversationIdRef.current !== convId) return;
       console.error('[PartnerSupportView] Erro ao carregar mensagens:', err);
+      setMessagesError(err?.message || 'Não foi possível carregar as mensagens.');
     } finally {
-      setIsLoadingMessages(false);
+      if (requestId === messageRequestRef.current) setIsLoadingMessages(false);
     }
   };
+
+  fetchConversationsRef.current = fetchConversations;
+  fetchMessagesRef.current = fetchMessages;
 
   useEffect(() => {
     fetchConversations(true);
@@ -85,17 +117,22 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
     // Realtime Listener
     const unsub = realtimeHub.subscribe('*', (event) => {
       if (event?.type === 'SUPPORT_MESSAGE_RECEIVED') {
-        if (event?.data?.conversationId === activeConversationId) {
-          fetchMessages(activeConversationId);
+        const conversationId = activeConversationIdRef.current;
+        if (event?.data?.conversationId === conversationId && conversationId) {
+          fetchMessagesRef.current(conversationId);
         }
-        fetchConversations(false);
+        fetchConversationsRef.current(false);
       }
     });
 
     return () => unsub();
-  }, [activeConversationId]);
+  }, []);
 
   useEffect(() => {
+    if (!activeConversationId) {
+      setIsLoadingMessages(false);
+      return;
+    }
     if (activeConversationId) {
       fetchMessages(activeConversationId);
     }
@@ -110,7 +147,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
       })
         .then((conv) => {
           fetchConversations(false);
-          setActiveConversationId(conv.id);
+          selectConversation(conv.id);
         })
         .catch((err) => {
           console.warn('[PartnerSupportView] Erro ao auto-abrir conversa de proposta:', err);
@@ -120,29 +157,34 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim() || !activeConversationId || isSending) return;
+    if (!inputText.trim() || !activeConversationId || isSendingRef.current) return;
 
+    const conversationId = activeConversationId;
     const text = inputText.trim();
     setInputText('');
+    isSendingRef.current = true;
     setIsSending(true);
 
     try {
-      const newMsg = await PartnerPortalClient.sendMessage(activeConversationId, text);
+      const newMsg = await PartnerPortalClient.sendMessage(conversationId, text);
+      if (activeConversationIdRef.current !== conversationId) return;
       setMessages((prev) => [...prev, newMsg]);
       setTimeout(scrollToBottom, 50);
       fetchConversations(false);
     } catch (err: any) {
-      alert(err?.message || 'Falha ao enviar mensagem.');
-      setInputText(text); // recupera texto em caso de falha
+      toastService.error('Falha ao enviar mensagem', err?.message || 'Tente novamente.');
+      if (activeConversationIdRef.current === conversationId) setInputText(text); // recupera o texto apenas no atendimento de origem
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
     }
   };
 
   const handleCreateNewConversation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubject.trim()) return;
+    if (!newSubject.trim() || isCreatingConversation) return;
 
+    setIsCreatingConversation(true);
     try {
       const conv = await PartnerPortalClient.createConversation({
         subject: newSubject.trim(),
@@ -153,9 +195,11 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
       setNewSubject('');
       setNewProposalId('');
       await fetchConversations(false);
-      setActiveConversationId(conv.id);
+      selectConversation(conv.id);
     } catch (err: any) {
-      alert(err?.message || 'Erro ao criar atendimento.');
+      toastService.error('Falha ao criar atendimento', err?.message || 'Tente novamente.');
+    } finally {
+      setIsCreatingConversation(false);
     }
   };
 
@@ -188,6 +232,14 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
               <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
               <span className="text-[11px] text-slate-400">Carregando conversas...</span>
             </div>
+          ) : error ? (
+            <div className="p-6 text-center space-y-3">
+              <AlertCircle className="h-6 w-6 text-rose-500 mx-auto" />
+              <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
+              <button type="button" onClick={() => fetchConversations(true)} className="mx-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <RefreshCw className="h-3 w-3" /> Tentar novamente
+              </button>
+            </div>
           ) : conversations.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400 space-y-2">
               <MessageSquare className="h-6 w-6 text-slate-300 dark:text-slate-600 mx-auto" />
@@ -200,7 +252,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
               return (
                 <div
                   key={c.id}
-                  onClick={() => setActiveConversationId(c.id)}
+                  onClick={() => selectConversation(c.id)}
                   className={`p-3 transition-colors cursor-pointer text-xs space-y-1 ${
                     isActive
                       ? 'bg-blue-500/10 dark:bg-blue-500/15 border-l-3 border-blue-600'
@@ -258,8 +310,9 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
 
       {/* Coluna da Direita: Janela de Chat */}
       <div className="flex-1 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-        {activeConversationData ? (
+        {activeConversationId ? (
           <>
+            {activeConversationData ? <>
             {/* Chat Top Bar */}
             <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between shrink-0">
               <div className="space-y-0.5 min-w-0">
@@ -299,6 +352,14 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
               {isLoadingMessages ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              ) : messagesError ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                  <AlertCircle className="h-6 w-6 text-rose-500" />
+                  <p className="text-xs text-rose-600 dark:text-rose-400">{messagesError}</p>
+                  <button type="button" onClick={() => fetchMessages(activeConversationId)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <RefreshCw className="h-3 w-3" /> Tentar novamente
+                  </button>
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center py-12 text-xs text-slate-400">
@@ -342,12 +403,13 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                disabled={!activeConversationData || activeConversationData.id !== activeConversationId || isLoadingMessages}
                 placeholder="Digite sua mensagem para o suporte..."
                 className="flex-1 h-9.5 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
               />
               <button
                 type="submit"
-                disabled={!inputText.trim() || isSending}
+                disabled={!inputText.trim() || isSending || !activeConversationData || activeConversationData.id !== activeConversationId || isLoadingMessages}
                 className="h-9.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 {isSending ? (
@@ -360,6 +422,11 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                 )}
               </button>
             </form>
+            </> : (
+              <div className="flex-1 flex items-center justify-center">
+                {isLoadingMessages ? <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" /> : <p className="text-xs text-slate-500">Carregando atendimento...</p>}
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-slate-400 space-y-2">
@@ -416,9 +483,10 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                 </button>
                 <button
                   type="submit"
+                  disabled={isCreatingConversation}
                   className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold"
                 >
-                  Iniciar Atendimento
+                  {isCreatingConversation ? 'Criando...' : 'Iniciar Atendimento'}
                 </button>
               </div>
             </form>

@@ -28,6 +28,8 @@ import {
   HappySyncHistoryItem,
   HappyWebhookEventItem,
 } from '../../types';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
 
 async function safeFetchJson<T = any>(
   url: string,
@@ -72,6 +74,16 @@ async function safeFetchJson<T = any>(
 }
 
 export const HappyIntegrationTab: React.FC = () => {
+  const activeUser = StorageService.getActiveUser();
+  const canManageConfig = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(activeUser?.role || '') ||
+    hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canSync = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') ||
+    hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canDiagnose = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.diagnose') ||
+    hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canViewLogs = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.logs') ||
+    hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+
   // Config state
   const [config, setConfig] = useState<HappyConfigState>({
     ambiente: 'staging',
@@ -160,6 +172,7 @@ export const HappyIntegrationTab: React.FC = () => {
 
   // Load recent sync logs
   const fetchRecentLogs = async () => {
+    if (!canViewLogs) return;
     setIsLoadingLogs(true);
     try {
       const { ok, data } = await safeFetchJson<HappySyncHistoryItem[]>('/api/integrations/happy/recent-logs?limit=30');
@@ -175,6 +188,7 @@ export const HappyIntegrationTab: React.FC = () => {
 
   // Load unmatched webhooks
   const fetchUnmatchedWebhooks = async () => {
+    if (!canViewLogs) return;
     setIsLoadingWebhooks(true);
     try {
       const { ok, data } = await safeFetchJson<HappyWebhookEventItem[]>('/api/integrations/happy/unmatched-webhooks?limit=30');
@@ -190,9 +204,11 @@ export const HappyIntegrationTab: React.FC = () => {
 
   useEffect(() => {
     fetchConfigAndStatus();
-    fetchRecentLogs();
-    fetchUnmatchedWebhooks();
-  }, []);
+    if (canViewLogs) {
+      fetchRecentLogs();
+      fetchUnmatchedWebhooks();
+    }
+  }, [canViewLogs]);
 
   // Update base URL automatically when environment changes if user hasn't typed custom
   const handleEnvironmentChange = (env: 'staging' | 'production') => {
@@ -215,6 +231,7 @@ export const HappyIntegrationTab: React.FC = () => {
   // Save config
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageConfig) return;
     setIsSaving(true);
     setSaveSuccessMsg(null);
     setErrorMessage(null);
@@ -260,6 +277,7 @@ export const HappyIntegrationTab: React.FC = () => {
 
   // Test live connection & token acquisition
   const handleTestConnection = async () => {
+    if (!canDiagnose) return;
     setIsTesting(true);
     setTestResult(null);
 
@@ -292,6 +310,7 @@ export const HappyIntegrationTab: React.FC = () => {
 
   // Trigger batch reconciliation of active proposals
   const handleRunReconciliation = async () => {
+    if (!canSync) return;
     setIsSyncing(true);
     setSyncResultMsg(null);
 
@@ -317,6 +336,7 @@ export const HappyIntegrationTab: React.FC = () => {
   // Test contract query directly
   const handleConsultContract = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canDiagnose) return;
     if (!consultCpf.trim() && !consultContractId.trim()) {
       alert('Informe ao menos o CPF ou o ID do Contrato para consulta.');
       return;
@@ -398,7 +418,7 @@ export const HappyIntegrationTab: React.FC = () => {
             id="happy-btn-reconcile"
             type="button"
             onClick={handleRunReconciliation}
-            disabled={isSyncing || !config.isConfigured}
+            disabled={isSyncing || !config.isConfigured || !canSync}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs disabled:opacity-50 transition-all shadow-xs cursor-pointer"
           >
             <Play className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -546,11 +566,17 @@ export const HappyIntegrationTab: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Coluna 1: Formulário de Configurações Seguras (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
+          {!canManageConfig && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+              Você pode consultar a integração, mas precisa de permissão de gestão para alterar as credenciais.
+            </div>
+          )}
           <form
             id="happy-config-form"
             onSubmit={handleSaveConfig}
             className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4"
           >
+            <fieldset disabled={!canManageConfig} className="contents">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-pink-600" />
@@ -562,7 +588,7 @@ export const HappyIntegrationTab: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              As credenciais são armazenadas de forma criptografada e isolada por tenant no banco de dados. Nunca expostas em respostas públicas.
+              Senhas e segredos não são devolvidos pela API de configuração; os dados operacionais ficam isolados por tenant.
             </p>
 
             {/* Seleção de Ambiente */}
@@ -777,7 +803,7 @@ export const HappyIntegrationTab: React.FC = () => {
                 id="happy-btn-test-connection"
                 type="button"
                 onClick={handleTestConnection}
-                disabled={isTesting}
+                disabled={isTesting || !canDiagnose}
                 className="px-4 py-2 rounded-lg border border-pink-300 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/40 text-pink-800 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 font-bold text-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Zap className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
@@ -820,6 +846,7 @@ export const HappyIntegrationTab: React.FC = () => {
                 )}
               </div>
             )}
+            </fieldset>
           </form>
         </div>
 
@@ -907,6 +934,7 @@ export const HappyIntegrationTab: React.FC = () => {
             </p>
 
             <form onSubmit={handleConsultContract} className="space-y-3">
+              <fieldset disabled={!canDiagnose} className="contents">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
@@ -947,13 +975,14 @@ export const HappyIntegrationTab: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={isConsulting}
+                  disabled={isConsulting || !canDiagnose}
                   className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <Search className={`h-3 w-3 ${isConsulting ? 'animate-spin' : ''}`} />
                   <span>{isConsulting ? 'Consultando...' : 'Consultar na Happy'}</span>
                 </button>
               </div>
+              </fieldset>
             </form>
 
             {/* Resultado da Consulta Diagnóstica */}
@@ -971,7 +1000,7 @@ export const HappyIntegrationTab: React.FC = () => {
       </div>
 
       {/* Sub-abas de Auditoria e Logs */}
-      <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
+      {canViewLogs && <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-pink-600" />
@@ -1202,7 +1231,7 @@ export const HappyIntegrationTab: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Modal / Visualizador de Payload Bruto */}
       {selectedLogPayload && (

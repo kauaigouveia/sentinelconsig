@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileSpreadsheet,
   Search,
@@ -15,11 +15,17 @@ import { PartnerProposalDetailModal } from './PartnerProposalDetailModal';
 
 interface PartnerProposalsViewProps {
   initialStatusCategory?: string;
+  initialWaitingReturnOnly?: boolean;
+  initialProposalId?: string | null;
+  onInitialProposalHandled?: () => void;
   onOpenChatForProposal: (proposalId: string, proposalNumber: string) => void;
 }
 
 export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
   initialStatusCategory,
+  initialWaitingReturnOnly = false,
+  initialProposalId,
+  onInitialProposalHandled,
   onOpenChatForProposal,
 }) => {
   const [proposals, setProposals] = useState<PartnerProposalListItem[]>([]);
@@ -29,42 +35,63 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [standardCategory, setStandardCategory] = useState<string>(initialStatusCategory || 'ALL');
+  const [waitingReturnOnly, setWaitingReturnOnly] = useState(initialWaitingReturnOnly);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   // Selected proposal for modal
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const proposalRequestRef = useRef(0);
 
-  const fetchProposals = async (page = 1) => {
+  const fetchProposals = async (page = 1, search = appliedSearchTerm) => {
+    const requestId = ++proposalRequestRef.current;
     setIsLoading(true);
     setError(null);
     try {
       const res = await PartnerPortalClient.getProposals({
-        search: searchTerm.trim() || undefined,
+        search: search.trim() || undefined,
         standardCategory: standardCategory !== 'ALL' ? standardCategory : undefined,
+        waitingReturnOnly: waitingReturnOnly || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         page,
         limit: 20,
       });
 
+      if (requestId !== proposalRequestRef.current) return;
       setProposals(res.items);
       setPagination(res.pagination);
     } catch (err: any) {
-      setError(err?.message || 'Erro ao carregar propostas.');
+      if (requestId === proposalRequestRef.current) setError(err?.message || 'Erro ao carregar propostas.');
     } finally {
-      setIsLoading(false);
+      if (requestId === proposalRequestRef.current) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProposals(1);
-  }, [standardCategory, startDate, endDate]);
+    fetchProposals(1, appliedSearchTerm);
+  }, [standardCategory, waitingReturnOnly, startDate, endDate, appliedSearchTerm]);
+
+  useEffect(() => () => {
+    proposalRequestRef.current += 1;
+  }, []);
+
+  useEffect(() => {
+    if (!initialProposalId) return;
+    setSelectedProposalId(initialProposalId);
+    onInitialProposalHandled?.();
+  }, [initialProposalId, onInitialProposalHandled]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchProposals(1);
+    const search = searchTerm.trim();
+    if (search === appliedSearchTerm) {
+      void fetchProposals(1, search);
+    } else {
+      setAppliedSearchTerm(search);
+    }
   };
 
   return (
@@ -104,7 +131,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => fetchProposals(pagination.page)}
+              onClick={() => fetchProposals(pagination.page, appliedSearchTerm)}
               className="h-8.5 w-8.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
               title="Atualizar"
             >
@@ -126,7 +153,10 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             ].map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setStandardCategory(cat.id)}
+                onClick={() => {
+                  setStandardCategory(cat.id);
+                  setWaitingReturnOnly(false);
+                }}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   standardCategory === cat.id
                     ? 'bg-blue-600 text-white shadow-2xs'
@@ -138,19 +168,29 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             ))}
           </div>
 
+          {waitingReturnOnly && (
+            <span className="rounded-lg bg-purple-100 px-2.5 py-1 text-[11px] font-bold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+              Filtrando: Aguardando CIP ou retorno
+            </span>
+          )}
+
           <div className="flex items-center gap-2 text-xs">
             <span className="text-slate-400 text-[11px] font-semibold hidden sm:inline">Período:</span>
             <input
               type="date"
               value={startDate}
+              max={endDate || undefined}
               onChange={(e) => setStartDate(e.target.value)}
+              aria-label="Data inicial das propostas"
               className="h-7.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
             />
             <span className="text-slate-400">até</span>
             <input
               type="date"
               value={endDate}
+              min={startDate || undefined}
               onChange={(e) => setEndDate(e.target.value)}
+              aria-label="Data final das propostas"
               className="h-7.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
             />
           </div>
@@ -258,14 +298,14 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             <div className="flex items-center gap-1">
               <button
                 disabled={pagination.page <= 1}
-                onClick={() => fetchProposals(pagination.page - 1)}
+                onClick={() => fetchProposals(pagination.page - 1, appliedSearchTerm)}
                 className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 disabled={pagination.page >= pagination.totalPages}
-                onClick={() => fetchProposals(pagination.page + 1)}
+                onClick={() => fetchProposals(pagination.page + 1, appliedSearchTerm)}
                 className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <ChevronRight className="h-4 w-4" />

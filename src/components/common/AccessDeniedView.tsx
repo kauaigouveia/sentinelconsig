@@ -5,6 +5,7 @@ import { getRoleLabel } from '../../lib/roleLabels';
 
 interface AccessDeniedViewProps {
   requiredPermission?: string | string[];
+  requiredRoles?: Role[];
   userRole?: Role;
   tenantName?: string;
   onNavigateHome: () => void;
@@ -12,6 +13,7 @@ interface AccessDeniedViewProps {
 
 export const AccessDeniedView: React.FC<AccessDeniedViewProps> = ({
   requiredPermission,
+  requiredRoles,
   userRole,
   tenantName,
   onNavigateHome,
@@ -42,7 +44,7 @@ export const AccessDeniedView: React.FC<AccessDeniedViewProps> = ({
       </h1>
 
       <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
-        Seu usuário não possui as permissões necessárias para acessar este módulo do Sentinel Consig. Caso necessite de acesso, solicite a um administrador do seu tenant.
+        Seu usuário não atende aos requisitos de acesso deste módulo do Sentinel Consig. Caso necessite de acesso, solicite a um administrador do seu tenant.
       </p>
 
       {/* Detalhes de Segurança e Contexto */}
@@ -78,6 +80,14 @@ export const AccessDeniedView: React.FC<AccessDeniedViewProps> = ({
                   </code>
                 ))}
               </div>
+            </div>
+          )}
+          {requiredRoles && requiredRoles.length > 0 && (
+            <div className="flex items-start justify-between gap-4 py-1">
+              <span className="shrink-0 text-slate-500">Perfis permitidos:</span>
+              <span className="text-right font-semibold text-slate-800 dark:text-slate-200">
+                {requiredRoles.map(getRoleLabel).join(', ')}
+              </span>
             </div>
           )}
         </div>

@@ -33,8 +33,6 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   partners,
   onSuccess,
 }) => {
-  if (!isOpen) return null;
-
   const [step, setStep] = useState<CltStep>('CLIENTE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +64,8 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
 
   // Resultado
   const [simulationResult, setSimulationResult] = useState<any>(null);
+
+  if (!isOpen) return null;
 
   const cleanCpf = normalizeCpf(cpf);
 

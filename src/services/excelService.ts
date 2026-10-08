@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import { StorageService } from './storageService';
 import {
   extractPartnerCode,
@@ -10,6 +9,63 @@ import {
   formatCurrency,
 } from '../lib/utils';
 import { Proposal } from '../types';
+
+export const parseCsvText = (source: string): string[][] => {
+  const text = source.replace(/^\uFEFF/, '');
+  const firstLine = text.split(/\r?\n/, 1)[0] || '';
+  const countSeparators = (line: string, delimiter: string) => {
+    let quoted = false;
+    let count = 0;
+    for (let index = 0; index < line.length; index += 1) {
+      if (line[index] === '"') {
+        if (quoted && line[index + 1] === '"') index += 1;
+        else quoted = !quoted;
+      } else if (!quoted && line[index] === delimiter) count += 1;
+    }
+    return count;
+  };
+  const delimiter = [';', ',', '\t'].sort((a, b) => countSeparators(firstLine, b) - countSeparators(firstLine, a))[0];
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (quoted && text[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (!quoted && char === delimiter) {
+      row.push(field.trim());
+      field = '';
+    } else if (!quoted && (char === '\n' || char === '\r')) {
+      if (char === '\r' && text[index + 1] === '\n') index += 1;
+      row.push(field.trim());
+      if (row.some(cell => cell !== '')) rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += char;
+    }
+  }
+
+  if (quoted) throw new Error('O arquivo CSV contém aspas sem fechamento. Corrija o arquivo e tente novamente.');
+  if (field.length > 0 || row.length > 0) {
+    row.push(field.trim());
+    if (row.some(cell => cell !== '')) rows.push(row);
+  }
+  return rows;
+};
+
+const sanitizeCsvCell = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value;
+  // Prevent spreadsheet formula execution from user-controlled text fields.
+  return /^[\u0000-\u0020]*[=+\-@]/.test(value) ? `'${value}` : value;
+};
 
 export interface ImportPreviewRow {
   rowNumber: number;
@@ -58,6 +114,7 @@ export interface ImportAnalysisResult {
 
 export class ExcelService {
   public static readonly MAX_IMPORT_ROWS = 50000;
+  private static readonly MAX_PROPOSAL_AMOUNT = 9_999_999_999.99;
 
   /**
    * Parses uploaded Excel/CSV file and analyzes rows with smart column detection
@@ -70,42 +127,44 @@ export class ExcelService {
 
     let rawRows: any[][] = [];
 
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(data);
-      const worksheet = workbook.worksheets[0];
-      if (worksheet) {
-        worksheet.eachRow({ includeEmpty: true }, (row) => {
-          const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
-          rawRows.push(
-            rowValues.map(v => {
-              if (v === null || v === undefined) return '';
-              if (typeof v === 'object') {
-                if ('result' in v && v.result !== undefined) return v.result;
-                if ('text' in v && v.text !== undefined) return v.text;
-                if ('hyperlink' in v && 'text' in v) return v.text;
-                if (v instanceof Date) return v.toISOString();
-              }
-              return v;
-            })
-          );
-        });
-      }
-    } catch (excelErr) {
-      console.warn('Erro ao processar XLSX no ExcelService, tentando leitor de texto:', excelErr);
-    }
-
-    if (!rawRows || rawRows.length < 2) {
+    if (file.name.toLowerCase().endsWith('.csv')) {
       try {
-        const text = await file.text();
-        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-        if (lines.length >= 2) {
-          const sep = lines[0].includes(';') ? ';' : (lines[0].includes('\t') ? '\t' : ',');
-          rawRows = lines.map(line => line.split(sep).map(col => col.replace(/^["']|["']$/g, '').trim()));
-        }
+        rawRows = parseCsvText(await file.text());
       } catch (textErr) {
         console.warn('Erro ao ler arquivo de texto no ExcelService:', textErr);
+        throw new Error(textErr instanceof Error
+          ? `Não foi possível ler o CSV: ${textErr.message}`
+          : 'Não foi possível ler o arquivo CSV. Verifique o formato e tente novamente.');
+      }
+    } else {
+      try {
+        const { default: ExcelJS } = await import('exceljs');
+        const data = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(data);
+        const worksheet = workbook.worksheets[0];
+        if (worksheet) {
+          worksheet.eachRow({ includeEmpty: true }, (row) => {
+            const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+            rawRows.push(
+              rowValues.map(v => {
+                if (v === null || v === undefined) return '';
+                if (typeof v === 'object') {
+                  if ('result' in v && v.result !== undefined) return v.result;
+                  if ('text' in v && v.text !== undefined) return v.text;
+                  if ('hyperlink' in v && 'text' in v) return v.text;
+                  if (v instanceof Date) return v.toISOString();
+                }
+                return v;
+              })
+            );
+          });
+        }
+      } catch (excelErr) {
+        console.warn('Erro ao processar XLSX no ExcelService:', excelErr);
+        throw new Error(excelErr instanceof Error
+          ? `Não foi possível abrir o arquivo XLSX: ${excelErr.message}`
+          : 'Não foi possível abrir o arquivo XLSX. Verifique se ele está íntegro e tente novamente.');
       }
     }
 
@@ -113,7 +172,7 @@ export class ExcelService {
       throw new Error('A planilha está vazia ou não contém dados suficientes.');
     }
 
-    if (rawRows.length > ExcelService.MAX_IMPORT_ROWS) {
+    if (rawRows.length - 1 > ExcelService.MAX_IMPORT_ROWS) {
       throw new Error(`O arquivo excede o limite máximo permitido de ${ExcelService.MAX_IMPORT_ROWS.toLocaleString('pt-BR')} registros para importação.`);
     }
 
@@ -125,6 +184,7 @@ export class ExcelService {
     const banks = StorageService.getBanks();
     const promoters = StorageService.getPromoters();
     const existingProposals = StorageService.getProposals();
+    const clientCpfById = new Map(StorageService.getClients().map(client => [client.id, client.cpf]));
 
     const previewRows: ImportPreviewRow[] = [];
     const seenAdesInFile = new Set<string>();
@@ -140,8 +200,12 @@ export class ExcelService {
       const rawProduct = columnMap.product >= 0 ? String(row[columnMap.product]).trim() : '';
       let rawBank = columnMap.bank >= 0 ? String(row[columnMap.bank]).trim() : '';
       let rawPromoter = columnMap.promoter >= 0 ? String(row[columnMap.promoter]).trim() : '';
-      const rawDisbursed = columnMap.disbursed >= 0 ? String(row[columnMap.disbursed]).trim() : '';
-      const rawContractBalance = columnMap.contractBalance >= 0 ? String(row[columnMap.contractBalance]).trim() : '';
+      const rawDisbursed = columnMap.disbursed >= 0 && row[columnMap.disbursed] != null
+        ? String(row[columnMap.disbursed]).trim()
+        : '';
+      const rawContractBalance = columnMap.contractBalance >= 0 && row[columnMap.contractBalance] != null
+        ? String(row[columnMap.contractBalance]).trim()
+        : '';
 
       const disbursedValue = rawDisbursed ? parseCurrency(rawDisbursed) : undefined;
       const contractBalance = rawContractBalance ? parseCurrency(rawContractBalance) : undefined;
@@ -172,9 +236,17 @@ export class ExcelService {
       }
 
       // CPF check
-      const normalizedCpf = normalizeCpf(rawCpf);
-      if (normalizedCpf.length !== 11) {
-        errors.push('CPF inválido ou incompleto (deve conter 11 dígitos).');
+      const cpfDigits = rawCpf.replace(/\D/g, '');
+      const normalizedCpf = cpfDigits.length === 10 ? `0${cpfDigits}` : normalizeCpf(rawCpf);
+      if (!isValidCpf(normalizedCpf)) {
+        errors.push('CPF inválido ou incompleto. Confira os 11 dígitos e os dígitos verificadores.');
+      }
+
+      if (rawDisbursed && (disbursedValue === undefined || !Number.isFinite(disbursedValue) || disbursedValue < 0 || disbursedValue > this.MAX_PROPOSAL_AMOUNT)) {
+        errors.push('Valor liberado inválido. Informe um valor entre 0 e R$ 9.999.999.999,99.');
+      }
+      if (rawContractBalance && (contractBalance === undefined || !Number.isFinite(contractBalance) || contractBalance < 0 || contractBalance > this.MAX_PROPOSAL_AMOUNT)) {
+        errors.push('Saldo do contrato inválido. Informe um valor entre 0 e R$ 9.999.999.999,99.');
       }
 
       // ADE check
@@ -203,30 +275,37 @@ export class ExcelService {
           isExistingProposal = true;
           existingProposalId = dbDup.id;
 
-          // Check if spreadsheet contains financial values that differ from current proposal in DB
-          const hasFinancialsInRow = disbursedValue !== undefined || contractBalance !== undefined;
-          const disbursedDiff = disbursedValue !== undefined && disbursedValue !== dbDup.disbursedValue;
-          const contractDiff = contractBalance !== undefined && contractBalance !== dbDup.contractBalance;
-
-          if (hasFinancialsInRow && (disbursedDiff || contractDiff)) {
-            financialDifferenceDetected = true;
-            const diffParts: string[] = [];
-            if (disbursedDiff) {
-              diffParts.push(
-                `Liberado: ${dbDup.disbursedValue !== undefined ? formatCurrency(dbDup.disbursedValue) : 'Não informado'} -> ${formatCurrency(disbursedValue)}`
-              );
-            }
-            if (contractDiff) {
-              diffParts.push(
-                `Saldo: ${dbDup.contractBalance !== undefined ? formatCurrency(dbDup.contractBalance) : 'Não informado'} -> ${formatCurrency(contractBalance)}`
-              );
-            }
-            financialDiffDetails = `Proposta existente com atualização de valores (${diffParts.join(' | ')})`;
-            // Not a blocking fatal duplicate: It can be updated!
-            isDuplicate = false;
+          const existingClientCpf = clientCpfById.get(dbDup.clientId) || dbDup.client?.cpf || dbDup.clientCpf;
+          if (!existingClientCpf) {
+            errors.push(`Não foi possível confirmar o CPF da ADE ${rawAde}. Atualize os dados e analise a planilha novamente.`);
+          } else if (normalizeCpf(existingClientCpf) !== normalizedCpf) {
+            errors.push(`A ADE ${rawAde} já está vinculada a outro CPF. Confira a linha antes de importar.`);
           } else {
-            isDuplicate = true;
-            errors.push(`Esta proposta já está cadastrada no sistema (ADE ${rawAde}) com os mesmos valores.`);
+            // Check if spreadsheet contains financial values that differ from current proposal in DB
+            const hasFinancialsInRow = disbursedValue !== undefined || contractBalance !== undefined;
+            const disbursedDiff = disbursedValue !== undefined && disbursedValue !== dbDup.disbursedValue;
+            const contractDiff = contractBalance !== undefined && contractBalance !== dbDup.contractBalance;
+
+            if (hasFinancialsInRow && (disbursedDiff || contractDiff)) {
+              financialDifferenceDetected = true;
+              const diffParts: string[] = [];
+              if (disbursedDiff) {
+                diffParts.push(
+                  `Liberado: ${dbDup.disbursedValue !== undefined ? formatCurrency(dbDup.disbursedValue) : 'Não informado'} -> ${formatCurrency(disbursedValue)}`
+                );
+              }
+              if (contractDiff) {
+                diffParts.push(
+                  `Saldo: ${dbDup.contractBalance !== undefined ? formatCurrency(dbDup.contractBalance) : 'Não informado'} -> ${formatCurrency(contractBalance)}`
+                );
+              }
+              financialDiffDetails = `Proposta existente com atualização de valores (${diffParts.join(' | ')})`;
+              // Not a blocking fatal duplicate: It can be updated!
+              isDuplicate = false;
+            } else {
+              isDuplicate = true;
+              errors.push(`Esta proposta já está cadastrada no sistema (ADE ${rawAde}) com os mesmos valores.`);
+            }
           }
         }
       }
@@ -238,7 +317,10 @@ export class ExcelService {
 
       if (rawPartner) {
         const partnerClean = rawPartner.toUpperCase();
-        const found = partners.find(p => p.login.toUpperCase() === partnerClean);
+        const partnerCode = extractPartnerCode(rawPartner).toUpperCase();
+        const found = partners.find(p => p.login?.toUpperCase() === partnerClean || p.code?.toUpperCase() === partnerClean) ||
+          partners.find(p => p.code?.toUpperCase() === partnerCode) ||
+          partners.find(p => p.fullName?.toUpperCase() === partnerClean);
         if (found) {
           matchedPartnerId = found.id;
           matchedPartnerLogin = found.login;
@@ -279,8 +361,12 @@ export class ExcelService {
       } else {
         // Fallback default
         const defaultProd = products[0];
-        matchedProductId = defaultProd.id;
-        matchedProductName = defaultProd.name;
+        if (defaultProd) {
+          matchedProductId = defaultProd.id;
+          matchedProductName = defaultProd.name;
+        } else {
+          errors.push('Nenhum produto ativo está cadastrado para associar a esta proposta.');
+        }
       }
 
       // Bank matching
@@ -424,7 +510,7 @@ export class ExcelService {
   /**
    * Executes the batch import of valid rows
    */
-  public static executeImport(validRows: ImportPreviewRow[], fileName?: string): { importedCount: number; errors: string[] } {
+  public static async executeImport(validRows: ImportPreviewRow[], fileName?: string): Promise<{ importedCount: number; errors: string[] }> {
     const errors: string[] = [];
     let importedCount = 0;
     const activeUser = StorageService.getActiveUser();
@@ -435,14 +521,14 @@ export class ExcelService {
       try {
         // If this is an existing proposal with updated financial values, update its financials!
         if (row.isExistingProposal && row.existingProposalId) {
-          StorageService.updateProposalFinancials(
+          await StorageService.updateProposalAsync(
             row.existingProposalId,
             {
               disbursedValue: row.disbursedValue,
               contractBalance: row.contractBalance,
             },
-            'IMPORTACAO',
-            fileName
+            `Atualização via importação${fileName ? ` (${fileName})` : ''}`,
+            'IMPORTACAO'
           );
           successfulAdes.push(row.proposalNumber);
           importedCount++;
@@ -549,7 +635,7 @@ export class ExcelService {
       if (clean === 'CPF' || clean.includes('CPF DO CLIENTE') || clean.includes('CPF')) {
         if (map.cpf === -1) map.cpf = idx;
       }
-      if (clean === 'NOME' || clean.includes('NOME DO CLIENTE') || clean.includes('CLIENTE')) {
+      if (clean === 'NOME' || clean.includes('NOME DO CLIENTE') || (clean.includes('CLIENTE') && !clean.includes('CPF'))) {
         if (map.name === -1) map.name = idx;
       }
       if (
@@ -634,6 +720,7 @@ export class ExcelService {
       };
     });
 
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Propostas');
 
@@ -698,14 +785,17 @@ export class ExcelService {
       const row: Record<string, any> = {};
 
       if (selectedColumns.includes('ADE')) row['ADE / PROPOSTA'] = p.proposalNumber;
-      if (selectedColumns.includes('CPF')) row['CPF'] = normalizeCpf(client?.cpf || '');
-      if (selectedColumns.includes('CPF_FORMATADO')) row['CPF FORMATADO'] = client?.cpf ? formatCpf(client.cpf) : '';
+      if (selectedColumns.includes('CPF')) row['CPF FORMATADO'] = client?.cpf ? formatCpf(client.cpf) : '';
+      if (selectedColumns.includes('CPF_RAW')) row['CPF (APENAS DÍGITOS)'] = normalizeCpf(client?.cpf || '');
       if (selectedColumns.includes('NOME')) row['NOME DO CLIENTE'] = client?.fullName || '';
       if (selectedColumns.includes('TELEFONE')) row['TELEFONE'] = client?.phone || '';
       if (selectedColumns.includes('EMAIL')) row['E-MAIL'] = client?.email || '';
       if (selectedColumns.includes('PRODUTO')) row['PRODUTO'] = product?.name || '';
       if (selectedColumns.includes('VALOR_LIBERADO')) row['VALOR LIBERADO'] = p.disbursedValue !== undefined ? formatCurrency(p.disbursedValue) : '';
       if (selectedColumns.includes('SALDO_CONTRATO')) row['SALDO DO CONTRATO'] = p.contractBalance !== undefined ? formatCurrency(p.contractBalance) : '';
+      if (selectedColumns.includes('VALOR_CONTRATO')) row['VALOR DO CONTRATO'] = p.contractValue !== undefined ? formatCurrency(p.contractValue) : '';
+      if (selectedColumns.includes('VALOR_PARCELA')) row['VALOR DA PARCELA'] = p.installmentValue !== undefined ? formatCurrency(p.installmentValue) : '';
+      if (selectedColumns.includes('PRAZO')) row['PRAZO (PARCELAS)'] = p.installmentsCount ?? '';
       if (selectedColumns.includes('BANCO')) row['BANCO'] = bank?.name || '';
       if (selectedColumns.includes('PROMOTORA')) row['PROMOTORA'] = promoter?.name || '';
       if (selectedColumns.includes('PARCEIRO')) row['PARCEIRO'] = partner?.fullName || '';
@@ -715,19 +805,26 @@ export class ExcelService {
       if (selectedColumns.includes('ALCADA')) row['ALÇADA RESPONSÁVEL'] = status?.responsibleGroup || status?.responsible || p.currentResponsible || 'NOSSA EQUIPE';
       if (selectedColumns.includes('DATA')) row['DATA DE CADASTRO'] = formatDateOnly(p.createdAt);
       if (selectedColumns.includes('DATA_ATUALIZACAO')) row['ÚLTIMA ATUALIZAÇÃO'] = formatDateOnly(p.updatedAt);
-      if (selectedColumns.includes('DIGITADOR')) row['OPERADOR / DIGITADOR'] = digitizer?.name || '';
+      if (selectedColumns.includes('DIGITADOR')) row['DIGITADOR RESPONSÁVEL'] = digitizer?.name || '';
       if (selectedColumns.includes('OBSERVACOES')) row['OBSERVAÇÕES'] = p.notes || '';
 
       return row;
     });
 
+    const exportRows = format === 'CSV'
+      ? dataRows.map(row => Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, sanitizeCsvCell(value)])
+        ))
+      : dataRows;
+
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Relatório');
 
-    if (dataRows.length > 0) {
-      const headers = Object.keys(dataRows[0]);
+    if (exportRows.length > 0) {
+      const headers = Object.keys(exportRows[0]);
       worksheet.addRow(headers);
-      dataRows.forEach(item => {
+      exportRows.forEach(item => {
         worksheet.addRow(headers.map(h => item[h]));
       });
     }

@@ -341,20 +341,46 @@ export class PartnerPortalService {
   public static async changePassword(
     accessId: string,
     newPassword: string,
-    prisma: PrismaClient
+    currentSessionId: string,
+    prisma: PrismaClient,
+    currentPassword?: string
   ) {
     const clean = String(newPassword || '').trim();
     if (clean.length < 6) {
       return { success: false, statusCode: 400, message: 'A nova senha deve ter no mínimo 6 caracteres.' };
     }
 
-    const passwordHash = await hashPassword(clean);
-    await prisma.partnerPortalAccess.update({
+    const access = await prisma.partnerPortalAccess.findUnique({
       where: { id: accessId },
-      data: {
-        passwordHash,
-        mustChangePassword: false,
-      },
+      select: { passwordHash: true, mustChangePassword: true },
+    });
+    if (!access) return { success: false, statusCode: 404, message: 'Acesso do parceiro não encontrado.' };
+
+    if (!access.mustChangePassword) {
+      if (typeof currentPassword !== 'string' || !currentPassword) {
+        return { success: false, statusCode: 400, message: 'Informe sua senha atual.' };
+      }
+      const current = await verifyPassword(currentPassword, access.passwordHash);
+      if (!current.valid) return { success: false, statusCode: 400, message: 'A senha atual está incorreta.' };
+      const sameAsCurrent = await verifyPassword(clean, access.passwordHash);
+      if (sameAsCurrent.valid) return { success: false, statusCode: 400, message: 'Escolha uma senha diferente da atual.' };
+    }
+
+    const passwordHash = await hashPassword(clean);
+    await prisma.$transaction(async (tx) => {
+      await tx.partnerPortalAccess.update({
+        where: { id: accessId },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        },
+      });
+      await tx.partnerPortalSession.deleteMany({
+        where: {
+          partnerPortalAccessId: accessId,
+          id: { not: currentSessionId },
+        },
+      });
     });
 
     return { success: true, statusCode: 200, message: 'Senha atualizada com sucesso.' };
@@ -422,12 +448,7 @@ export class PartnerPortalService {
         totalDisbursed += released;
       } else if (cat === 'PENDENTE' || code.includes('PENDENCIA')) {
         pendingCount++;
-      } else if (
-        p.type === 'PORTABILIDADE' ||
-        p.type === 'REFIN_PORTABILIDADE' ||
-        code.includes('CIP') ||
-        code.includes('RETORNO')
-      ) {
+      } else if (code.toUpperCase().includes('CIP') || code.toUpperCase().includes('RETORNO')) {
         waitingReturnCount++;
         inProgressCount++;
       } else if (cat === 'ESTEIRA' || cat === 'ANDAMENTO') {
@@ -477,6 +498,7 @@ export class PartnerPortalService {
       search?: string;
       statusId?: string;
       standardCategory?: string;
+      waitingReturnOnly?: boolean;
       startDate?: string;
       endDate?: string;
       page?: number;
@@ -493,31 +515,64 @@ export class PartnerPortalService {
       tenantId,
       deletedAt: null,
     };
+    const queryFilters: any[] = [];
 
     if (options.statusId) {
       where.statusId = options.statusId;
     }
 
     if (options.standardCategory) {
-      where.standardCategory = options.standardCategory;
+      queryFilters.push({
+        OR: [
+          { standardCategory: options.standardCategory },
+          { status: { is: { standardCategory: options.standardCategory } } },
+        ],
+      });
+    }
+
+    if (options.waitingReturnOnly) {
+      queryFilters.push({
+        status: {
+          is: {
+            OR: [
+              { code: { contains: 'CIP', mode: 'insensitive' } },
+              { code: { contains: 'RETORNO', mode: 'insensitive' } },
+            ],
+          },
+        },
+      });
     }
 
     if (options.startDate || options.endDate) {
       where.createdAt = {};
-      if (options.startDate) where.createdAt.gte = new Date(options.startDate);
-      if (options.endDate) where.createdAt.lte = new Date(options.endDate);
+      if (options.startDate) {
+        const startDate = new Date(`${options.startDate.slice(0, 10)}T00:00:00`);
+        if (!Number.isNaN(startDate.getTime())) where.createdAt.gte = startDate;
+      }
+      if (options.endDate) {
+        const endDate = new Date(`${options.endDate.slice(0, 10)}T00:00:00`);
+        if (!Number.isNaN(endDate.getTime())) {
+          endDate.setDate(endDate.getDate() + 1);
+          where.createdAt.lt = endDate;
+        }
+      }
+      if (Object.keys(where.createdAt).length === 0) delete where.createdAt;
     }
 
     if (options.search) {
       const term = options.search.trim();
       const rawCpf = term.replace(/\D/g, '');
 
-      where.OR = [
-        { proposalNumber: { contains: term, mode: 'insensitive' } },
-        { client: { name: { contains: term, mode: 'insensitive' } } },
-        ...(rawCpf.length >= 3 ? [{ client: { cpf: { contains: rawCpf } } }] : []),
-      ];
+      queryFilters.push({
+        OR: [
+          { proposalNumber: { contains: term, mode: 'insensitive' } },
+          { client: { fullName: { contains: term, mode: 'insensitive' } } },
+          ...(rawCpf.length >= 3 ? [{ client: { cpf: { contains: rawCpf } } }] : []),
+        ],
+      });
     }
+
+    if (queryFilters.length > 0) where.AND = queryFilters;
 
     const [total, proposals] = await Promise.all([
       prisma.proposal.count({ where }),

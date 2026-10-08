@@ -110,6 +110,7 @@ interface OverviewData {
 }
 
 export function CommandCenterView() {
+  const [realtimeStatus, setRealtimeStatus] = useState(() => realtimeHub.getStatus());
   const [activeTab, setActiveTab] = useState<'VISAO_GERAL' | 'INCIDENTES' | 'TIMELINE_UNIFICADA' | 'SLA_MATRIZ'>('VISAO_GERAL');
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -161,6 +162,8 @@ export function CommandCenterView() {
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => realtimeHub.onStatusChange((status) => setRealtimeStatus(status)), []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -417,9 +420,9 @@ export function CommandCenterView() {
               <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                 SENTINEL CONSIG — COMMAND CENTER
               </h1>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                AO VIVO
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${realtimeStatus === 'CONNECTED' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20'}`}>
+                <span className={`h-2 w-2 rounded-full ${realtimeStatus === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                {realtimeStatus === 'CONNECTED' ? 'AO VIVO' : realtimeStatus === 'CONNECTING' ? 'CONECTANDO' : 'SEM TEMPO REAL'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">

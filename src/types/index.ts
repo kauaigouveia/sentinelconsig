@@ -195,11 +195,11 @@ export interface Client {
 export type DocumentType =
   | 'RG'
   | 'CNH'
-  | 'CONTRACHEQUE'
-  | 'EXTRATO'
-  | 'PROCURACAO'
   | 'COMPROVANTE_RESIDENCIA'
-  | 'TERMO_ADESAO'
+  | 'COMPROVANTE_RENDA'
+  | 'EXTRATO_INSS'
+  | 'CONTRATO_ASSINADO'
+  | 'PROCURACAO'
   | 'OUTROS';
 
 export interface DocumentItem {
@@ -258,9 +258,14 @@ export type TaskCategory =
   | 'CLIENTE'
   | 'PARCEIRO'
   | 'INTERNA'
-  | 'OUTRO';
+  | 'OUTRO'
+  | 'DOCUMENTACAO'
+  | 'FORMALIZACAO'
+  | 'AVERBACAO'
+  | 'OUTROS'
+  | 'OPERACIONAL';
 
-export type TaskPriority = 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export interface OperationalTask {
   id: string;
@@ -419,6 +424,7 @@ export interface Proposal {
   status?: any;
   currentResponsible: Alcada;
   disbursedValue?: number; // Valor liberado para o cliente / troco (R$)
+  contractValue?: number; // Valor bruto do contrato (R$)
   contractBalance?: number; // Valor do saldo do contrato / saldo devedor / quitação em portabilidade (R$)
   installmentValue?: number; // Valor da parcela (R$)
   installmentsCount?: number; // Prazo / Quantidade de parcelas

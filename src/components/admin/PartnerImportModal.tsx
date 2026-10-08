@@ -12,7 +12,6 @@ import {
   FileText,
   Loader2,
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { StorageService } from '../../services/storageService';
 import { extractPartnerCode } from '../../lib/utils';
 import { Partner, Promoter } from '../../types';
@@ -222,6 +221,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           throw new Error('Não foi possível ler o arquivo.');
         }
 
+        const { default: ExcelJS } = await import('exceljs');
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(buffer);
         const worksheet = workbook.worksheets[0];
@@ -290,6 +290,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
   // Download Example CSV Template
   const handleDownloadTemplate = async () => {
+    const { default: ExcelJS } = await import('exceljs');
     const templateData = [
       { 'NOME COMPLETO': 'KAUAI AMORIM GOUVEIA', 'LOGIN': 'KAUAI@16740', 'PROMOTORA': 'DG' },
       { 'NOME COMPLETO': 'FRANCISCO DA SILVA', 'LOGIN': 'FRANCO@16690', 'PROMOTORA': 'DG' },

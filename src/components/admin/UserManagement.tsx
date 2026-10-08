@@ -1,5 +1,5 @@
 import { UserDetailsModal } from './UserDetailsModal';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   Plus,
@@ -45,8 +45,14 @@ import { MetricCard } from '../common/MetricCard';
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const activeUser = StorageService.getActiveUser();
   const isPlatformMaster = activeUser.role === 'PLATFORM_MASTER';
+  const canViewUsers = isPlatformMaster || hasPermission(activeUser.role, activeUser.customPermissions, 'users.view');
+  const canCreateUsers = isPlatformMaster || hasPermission(activeUser.role, activeUser.customPermissions, 'users.create');
+  const canUpdateUsers = isPlatformMaster || hasPermission(activeUser.role, activeUser.customPermissions, 'users.update');
+  const canDeleteUsers = isPlatformMaster || hasPermission(activeUser.role, activeUser.customPermissions, 'users.delete');
+  const canResetPasswords = isPlatformMaster || hasPermission(activeUser.role, activeUser.customPermissions, 'users.reset_password');
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [name, setName] = useState('');
@@ -82,9 +88,11 @@ export const UserManagement: React.FC = () => {
   } | null>(null);
 
   const fetchUsers = async () => {
+    if (!canViewUsers) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/api/users', { credentials: 'include' });
       if (!res.ok) throw new Error('Falha ao carregar usuários.');
       const data = await res.json();
       if (Array.isArray(data)) {
@@ -92,7 +100,7 @@ export const UserManagement: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setMessage(err.message || 'Erro ao carregar usuários do servidor.');
+      setLoadError(err.message || 'Erro ao carregar usuários do servidor.');
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +108,13 @@ export const UserManagement: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [canViewUsers]);
+
+  useEffect(() => {
+    const handleTenantChange = () => void fetchUsers();
+    window.addEventListener('tenantUpdated', handleTenantChange);
+    return () => window.removeEventListener('tenantUpdated', handleTenantChange);
+  }, [canViewUsers]);
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
@@ -122,7 +136,13 @@ export const UserManagement: React.FC = () => {
   const distinctRolesCount = new Set(users.map(u => u.role)).size;
 
   // Multi-selection calculations
-  const visibleUserIds = useMemo(() => filteredUsers.map(u => u.id), [filteredUsers]);
+  const canSelectUserForDeletion = useCallback((user: User) =>
+    user.id !== activeUser.id && (isPlatformMaster || user.role !== 'PLATFORM_MASTER'),
+  [activeUser.id, isPlatformMaster]);
+  const visibleUserIds = useMemo(
+    () => filteredUsers.filter(canSelectUserForDeletion).map(u => u.id),
+    [filteredUsers, canSelectUserForDeletion]
+  );
   const isAllVisibleSelected =
     visibleUserIds.length > 0 && visibleUserIds.every(id => selectedUserIds.has(id));
   const isSomeVisibleSelected =
@@ -141,6 +161,8 @@ export const UserManagement: React.FC = () => {
   };
 
   const handleToggleSelectUser = (id: string) => {
+    const user = users.find(item => item.id === id);
+    if (!user || !canSelectUserForDeletion(user)) return;
     const next = new Set(selectedUserIds);
     if (next.has(id)) {
       next.delete(id);
@@ -159,8 +181,16 @@ export const UserManagement: React.FC = () => {
     [users, selectedUserIds]
   );
 
+  useEffect(() => {
+    const selectableIds = new Set(users.filter(canSelectUserForDeletion).map(user => user.id));
+    setSelectedUserIds(current => {
+      const next = new Set([...current].filter(id => selectableIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [users, canSelectUserForDeletion]);
+
   const containsSelf = selectedUsers.some(u => u.id === activeUser.id);
-  const containsPlatformMaster = selectedUsers.some(u => u.role === 'PLATFORM_MASTER');
+  const containsPlatformMaster = !isPlatformMaster && selectedUsers.some(u => u.role === 'PLATFORM_MASTER');
   const containsProtectedRoot = false; // Não existe usuário root. Apenas PLATFORM_MASTER.
   const isBulkDeleteBlocked = containsSelf || containsPlatformMaster;
 
@@ -273,7 +303,9 @@ export const UserManagement: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const randomPassword = 'Mudar@' + Math.random().toString(36).slice(-8);
+      const passwordAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      const passwordBytes = crypto.getRandomValues(new Uint8Array(12));
+      const randomPassword = `Mudar@${Array.from(passwordBytes, byte => passwordAlphabet[byte % passwordAlphabet.length]).join('')}`;
 
       const allMemberships = [
         ...(selectedTenantId
@@ -478,7 +510,7 @@ export const UserManagement: React.FC = () => {
         title="Usuários & Permissões de Acesso"
         subtitle="Gerenciamento de operadores, perfis de acesso e permissões por módulo do sistema"
         badge={`${users.length} Operadores`}
-        actions={
+        actions={canCreateUsers ? (
           <button
             type="button"
             onClick={() => setShowCreateCard(!showCreateCard)}
@@ -487,7 +519,7 @@ export const UserManagement: React.FC = () => {
             {showCreateCard ? <X className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
             <span>{showCreateCard ? 'Fechar Cadastro' : 'Novo Operador'}</span>
           </button>
-        }
+        ) : undefined}
       />
 
       {/* KPI Metrics Cards */}
@@ -524,8 +556,17 @@ export const UserManagement: React.FC = () => {
         </div>
       )}
 
+      {loadError && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
+          <span>{loadError}</span>
+          <button type="button" onClick={() => void fetchUsers()} disabled={isLoading} className="shrink-0 font-bold underline underline-offset-2 disabled:opacity-50">
+            {isLoading ? 'Carregando...' : 'Tentar novamente'}
+          </button>
+        </div>
+      )}
+
       {/* User Creation Card (Toggleable or Expandable) */}
-      {showCreateCard && (
+      {showCreateCard && canCreateUsers && (
         <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/20 dark:bg-blue-950/20 p-5 shadow-2xs space-y-4 animate-in fade-in duration-150">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -870,7 +911,7 @@ export const UserManagement: React.FC = () => {
         </div>
 
         {/* Multi-selection Contextual Action Bar */}
-        {selectedUserIds.size > 0 && (
+        {canDeleteUsers && selectedUserIds.size > 0 && (
           <div className="px-4 py-2.5 bg-indigo-50/90 dark:bg-indigo-950/60 border-b border-indigo-200 dark:border-indigo-800/80 flex items-center justify-between gap-3 animate-in fade-in duration-100">
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse" />
@@ -906,9 +947,11 @@ export const UserManagement: React.FC = () => {
             <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="px-3 py-3 w-10 text-center">
-                  <input
+                  {canDeleteUsers && (
+              <input
                     type="checkbox"
                     checked={isAllVisibleSelected}
+                    disabled={visibleUserIds.length === 0}
                     ref={el => {
                       if (el) el.indeterminate = isSomeVisibleSelected;
                     }}
@@ -916,6 +959,7 @@ export const UserManagement: React.FC = () => {
                     className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
                     title={isAllVisibleSelected ? 'Desmarcar todos' : 'Selecionar todos visíveis'}
                   />
+                  )}
                 </th>
                 <th className="px-4 py-3">Nome / Usuário</th>
                 <th className="px-4 py-3">E-mail</th>
@@ -927,7 +971,14 @@ export const UserManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-              {filteredUsers.length === 0 ? (
+              {isLoading && users.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-xs">
+                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
+                    Carregando usuários...
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                     Nenhum operador encontrado com os filtros selecionados.
@@ -949,12 +1000,16 @@ export const UserManagement: React.FC = () => {
                       }`}
                     >
                       <td className="px-3 py-3 text-center">
+                        {canDeleteUsers && (
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectUser(u.id)}
-                          className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                          disabled={!canSelectUserForDeletion(u)}
+                          title={u.id === activeUser.id ? 'Não é possível excluir seu próprio usuário.' : u.role === 'PLATFORM_MASTER' && !isPlatformMaster ? 'Somente um PLATFORM_MASTER pode excluir este usuário.' : undefined}
+                          className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                         />
+                        )}
                       </td>
                       <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
                         <div className="flex items-center gap-1.5">
@@ -1070,23 +1125,23 @@ export const UserManagement: React.FC = () => {
                             <Building2 className="h-4 w-4" />
                           </button>
 
-                          <button
+                          {canUpdateUsers && <button
                             onClick={() => handleOpenEditModal(u)}
                             className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
                             title="Editar Usuário e Permissões"
                           >
                             <Edit2 className="h-4 w-4" />
-                          </button>
+                          </button>}
 
-                          <button
+                          {canResetPasswords && <button
                             onClick={() => handleResetPassword(u)}
                             className="p-1.5 text-slate-400 hover:text-amber-600 rounded hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
                             title="Redefinir Senha Temporária"
                           >
                             <KeyRound className="h-4 w-4" />
-                          </button>
+                          </button>}
 
-                          {!isActive && (
+                          {!isActive && canDeleteUsers && (
                             <button
                               onClick={() => handleDeleteUser(u)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
@@ -1107,7 +1162,7 @@ export const UserManagement: React.FC = () => {
       </div>
 
       {/* EDIT USER & PERMISSIONS MODAL */}
-      {editingUser && (
+      {editingUser && canUpdateUsers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="w-full max-w-3xl rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -1245,7 +1300,7 @@ export const UserManagement: React.FC = () => {
       )}
 
       {/* BULK DELETE CONFIRMATION MODAL */}
-      {isBulkDeleteModalOpen && (
+      {isBulkDeleteModalOpen && canDeleteUsers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="w-full max-w-xl rounded-2xl border border-rose-300 dark:border-rose-900/80 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 my-8 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-start gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
