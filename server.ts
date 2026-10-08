@@ -108,6 +108,7 @@ import { FactaBankService } from './server/services/factaBankService.js';
 import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
 import { HappySimulationService } from './server/services/happySimulationService.js';
+import { FinantoService } from './server/services/finantoService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
 import {
   ensureDefaultPromotersForTenant,
@@ -14328,6 +14329,92 @@ async function auditAndEnsureMasterUser() {
       res.json({ success: true, proposal: updated });
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Erro ao vincular identificador C6.' });
+    }
+  });
+
+  // FINANTO / JoinBank integration. API credentials stay server-side and are encrypted per tenant.
+  app.get('/api/integrations/finanto/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) {
+        return res.status(403).json({ error: 'Acesso negado.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      res.json(await FinantoService.getConfig(prisma, tenantId));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao carregar configuração FINANTO.' });
+    }
+  });
+
+  app.post('/api/integrations/finanto/config', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const canManage = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(session.user.role) ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage');
+      if (!canManage) return res.status(403).json({ error: 'Sem permissão para configurar integrações.' });
+      if (req.body?.apiKey !== undefined && typeof req.body.apiKey !== 'string') {
+        return res.status(400).json({ error: 'A chave da API deve ser um texto.' });
+      }
+      const config = await FinantoService.saveConfig(prisma, tenantId, req.body?.apiKey, req.body?.enabled);
+      res.json({ success: true, config });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Erro ao salvar configuração FINANTO.' });
+    }
+  });
+
+  app.post('/api/integrations/finanto/test-connection', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.diagnose') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage')) {
+        return res.status(403).json({ error: 'Sem permissão para testar integrações.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      res.json(await FinantoService.testConnection(prisma, tenantId));
+    } catch (err: any) {
+      res.status(502).json({ success: false, error: err.message || 'Falha ao testar a FINANTO.' });
+    }
+  });
+
+  // A single server-side gateway supports the documented JoinBank endpoints; callers cannot select a host.
+  app.post('/api/integrations/finanto/request', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (typeof req.body?.endpoint !== 'string' || typeof req.body?.method !== 'string') {
+        return res.status(400).json({ error: 'Informe endpoint e method.' });
+      }
+      const method = req.body.method.toUpperCase();
+      const endpoint = req.body.endpoint;
+      const isRemoteAdmin = /^\/v3\/(users|accounts|partners|stores|brokers)(\/|$)/.test(endpoint);
+      const canManageIntegration = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(session.user.role) ||
+        hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.manage');
+      if (isRemoteAdmin && !canManageIntegration) {
+        return res.status(403).json({ error: 'Cadastros administrativos FINANTO exigem integrations.manage.' });
+      }
+      const canUseIntegration = canManageIntegration || ['integrations.view', 'simulations.view', 'simulations.create', 'proposals.view', 'proposals.create', 'proposals.update']
+        .some(permission => hasPermission(session.user.role as Role, session.user.customPermissions, permission as Permission));
+      if (!canUseIntegration) return res.status(403).json({ error: 'Sem permissão para usar a integração FINANTO.' });
+      const isReadOnlyRequest = method === 'GET' || endpoint.endsWith('/search/basic') || endpoint === '/v3/about';
+      if (!isReadOnlyRequest && !canManageIntegration &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.create') &&
+          !hasPermission(session.user.role as Role, session.user.customPermissions, 'proposals.update')) {
+        return res.status(403).json({ error: 'A operação FINANTO exige permissão de criação ou atualização.' });
+      }
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const result = await FinantoService.request(prisma, tenantId, req.body.method, req.body.endpoint, req.body.body);
+      res.status(result.status).json(result.data);
+    } catch (err: any) {
+      res.status(502).json({ error: err.message || 'Falha na chamada FINANTO.' });
     }
   });
 

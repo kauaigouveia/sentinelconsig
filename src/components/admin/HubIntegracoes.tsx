@@ -27,10 +27,12 @@ import {
   Sliders,
   FileText,
   Lock,
+  Plug,
 } from 'lucide-react';
 import { BankIntegrationsView } from '../integrations/BankIntegrationsView';
+import { FinantoIntegrationTab } from '../integrations/FinantoIntegrationTab';
 
-export type HubTab = 'overview' | 'c6' | 'facta' | 'bmg' | 'happy' | 'health' | 'incidents' | 'logs';
+export type HubTab = 'overview' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'health' | 'incidents' | 'logs';
 
 export interface IntegrationDefinition {
   id: string;
@@ -399,6 +401,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
     { id: 'facta', label: 'FACTA', icon: Server },
     { id: 'bmg', label: 'BMG', icon: ShieldCheck },
     { id: 'happy', label: 'Happy', icon: Radio },
+    { id: 'finanto', label: 'FINANTO', icon: Plug },
     { id: 'health', label: 'Saúde das APIs', icon: Activity },
     { id: 'incidents', label: 'Incidentes', icon: AlertTriangle },
     { id: 'logs', label: 'Logs & Auditoria', icon: History },
@@ -732,6 +735,9 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
       {/* ABA 5: HAPPY */}
       {activeTab === 'happy' && <BankIntegrationsView initialTab="happy" />}
+
+      {/* ABA FINANTO / JOINBANK */}
+      {activeTab === 'finanto' && <FinantoIntegrationTab />}
 
       {/* ABA 6: SAÚDE DAS APIS */}
       {activeTab === 'health' && (
