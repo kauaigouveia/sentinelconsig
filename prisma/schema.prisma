@@ -1428,6 +1428,8 @@ model SimulationRequest {
 
   simulationType  String  @default("MANUAL") @map("simulation_type") // MANUAL, HAPPY_INSS, HAPPY_CLT
   operationType   String? @map("operation_type") // MARGEM_LIVRE, PORTABILIDADE_REFIN, CONSIGNADO_PRIVADO_CLT, FINANTO_NOVO
+  selectedCondition Json? @map("selected_condition")
+  customerData Json? @map("customer_data")
 
   // Happy / BYX Capital specific attributes
   happyClientId         String?   @map("happy_client_id")

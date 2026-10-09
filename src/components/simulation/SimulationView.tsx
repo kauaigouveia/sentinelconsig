@@ -90,6 +90,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const [finantoOperationCode, setFinantoOperationCode] = useState<'1' | '2' | '3' | '4'>('1');
   const [finantoEnabled, setFinantoEnabled] = useState(false);
   const [nossaFintechEnabled, setNossaFintechEnabled] = useState(false);
+  const [inssInitialDraft, setInssInitialDraft] = useState<React.ComponentProps<typeof FinantoInssSimulationModal>['initialDraft']>();
   const [isNossaFintechPortRefinOpen, setIsNossaFintechPortRefinOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [newCpf, setNewCpf] = useState('');
@@ -1110,7 +1111,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <option value="MANUAL">Manual</option>
                   <option value="HAPPY_INSS">Happy INSS</option>
                   <option value="HAPPY_CLT">Happy CLT</option>
-                  <option value="FINANTO_INSS">FINANTO INSS</option>
+                  <option value="INSS_MULTI">INSS · simulação</option>
+                  <option value="FINANTO_INSS">INSS · enviado à instituição</option>
                 </select>
               </div>
 
@@ -1357,7 +1359,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
                           {/* Tipo / Fluxo */}
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {sim.simulationType === 'FINANTO_INSS' ? (
+                            {sim.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS</span> : sim.simulationType === 'FINANTO_INSS' ? (
                               <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">FINANTO INSS</span>
                             ) : sim.simulationType === 'HAPPY_INSS' ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -2399,7 +2401,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <div>
                   <span className="text-slate-400 block text-[10px]">TIPO / FLUXO</span>
                   <span className="font-bold text-xs">
-                    {detailTarget.simulationType === 'FINANTO_INSS' ? (
+                    {detailTarget.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS · {({ NEW: 'Novo', PORT: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + Refinanciamento' } as Record<string, string>)[detailTarget.operationType || ''] || 'Simulação'}</span> : detailTarget.simulationType === 'FINANTO_INSS' ? (
                       <span className="text-violet-600 dark:text-violet-400">FINANTO INSS · Contrato novo</span>
                     ) : detailTarget.simulationType === 'HAPPY_INSS' ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Happy INSS</span>
@@ -2467,6 +2469,25 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   </div>
                 </div>
               )}
+
+              {detailTarget.selectedCondition && <section className="space-y-3 rounded-xl border border-violet-200 p-4 dark:border-violet-800">
+                <h4 className="font-bold">Condição selecionada</h4>
+                <p className="text-sm">{detailTarget.selectedCondition.tableName} · {detailTarget.selectedCondition.provider} · tabela {detailTarget.selectedCondition.tableId}</p>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  <div><dt className="text-slate-500">Valor liberado / contrato</dt><dd>R$ {detailTarget.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</dd></div>
+                  <div><dt className="text-slate-500">Parcela</dt><dd>R$ {detailTarget.selectedCondition.installment?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'Não informada'}</dd></div>
+                  <div><dt className="text-slate-500">Prazo / taxa mensal</dt><dd>{detailTarget.selectedCondition.term} meses · {detailTarget.selectedCondition.rate != null ? `${detailTarget.selectedCondition.rate}%` : 'Não informada'}</dd></div>
+                  <div><dt className="text-slate-500">Benefício / espécie</dt><dd>{detailTarget.customerData?.benefitNumber} · {detailTarget.customerData?.benefitType}</dd></div>
+                  <div><dt className="text-slate-500">Cliente</dt><dd>{detailTarget.customerData?.name || 'Não informado'}</dd></div>
+                  <div><dt className="text-slate-500">Nascimento</dt><dd>{detailTarget.customerData?.birthDate?.split('-').reverse().join('/')}</dd></div>
+                </dl>
+                {detailTarget.customerData && ['originContract', 'refinancing', 'address', 'document', 'creditBankAccount'].map(key => {
+                  const value = detailTarget.customerData?.[key as 'address'];
+                  const labels: Record<string, string> = { originContract: 'Contrato de origem', refinancing: 'Refinanciamento adicional', rate: 'Taxa mensal', additionalInstallment: 'Parcela adicional', key: 'Referência do contrato', address: 'Endereço', document: 'Documento', creditBankAccount: 'Conta para crédito', lenderCode: 'Banco de origem', contractNumber: 'Contrato', term: 'Prazo original', installmentsRemaining: 'Parcelas restantes', installmentValue: 'Parcela atual', dueBalanceValue: 'Saldo devedor', street: 'Logradouro', number: 'Número', complement: 'Complemento', district: 'Bairro', city: 'Cidade', state: 'UF', zipCode: 'CEP', type: 'Tipo', issuingDate: 'Emissão', issuingEntity: 'Órgão emissor', issuingState: 'UF emissora', bank: 'Banco', branch: 'Agência', digit: 'Dígito' };
+                  return value && Object.values(value).some(Boolean) ? <div key={key}><h5 className="font-semibold">{labels[key]}</h5><dl className="grid grid-cols-2 gap-2 text-sm">{Object.entries(value).filter(([, text]) => text).map(([field, text]) => <div key={field}><dt className="text-xs text-slate-500">{labels[field] || field}</dt><dd>{text}</dd></div>)}</dl></div> : null;
+                })}
+                {detailTarget.customerData?.phone && <p className="text-sm">Telefone: {detailTarget.customerData.phone} · E-mail: {detailTarget.customerData.email || 'Não informado'} · Renda: {detailTarget.customerData.income || 'Não informada'}</p>}
+              </section>}
 
               {detailTarget.simulationType === 'FINANTO_INSS' && (
                 <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-800/60 dark:bg-violet-950/30">
@@ -2600,6 +2621,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           } else if (flow === 'HAPPY_CLT') {
             setIsHappyCltModalOpen(true);
           } else if (flow === 'FINANTO_INSS' || flow === 'FINANTO_INSS_PORTABILIDADE' || flow === 'FINANTO_INSS_REFIN' || flow === 'FINANTO_INSS_PORTABILIDADE_REFIN') {
+            setInssInitialDraft(undefined);
             setFinantoOperationCode(flow === 'FINANTO_INSS' ? '1' : flow === 'FINANTO_INSS_PORTABILIDADE' ? '2' : flow === 'FINANTO_INSS_REFIN' ? '3' : '4');
             setIsFinantoInssModalOpen(true);
           } else if (flow === 'NOSSA_FINTECH_PORTABILIDADE_REFIN') {
@@ -2632,6 +2654,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       <FinantoInssSimulationModal
         isOpen={isFinantoInssModalOpen}
+        initialDraft={inssInitialDraft}
         operationCode={finantoOperationCode}
         onClose={() => setIsFinantoInssModalOpen(false)}
         partners={partners}
@@ -2640,6 +2663,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       <NossaFintechPortRefinSimulationModal
         isOpen={isNossaFintechPortRefinOpen}
+        partners={partners}
+        onSuccess={async () => { await loadData(); }}
+        onContinue={draft => { setIsNossaFintechPortRefinOpen(false); setInssInitialDraft(draft); setFinantoOperationCode('4'); setIsFinantoInssModalOpen(true); }}
         onClose={() => setIsNossaFintechPortRefinOpen(false)}
       />
     </div>

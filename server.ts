@@ -106,6 +106,7 @@ import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './se
 import { C6BankService } from './server/services/c6BankService.js';
 import { C6SyncWorker } from './server/services/c6SyncWorker.js';
 import { FactaBankService } from './server/services/factaBankService.js';
+import { inssSimulationDraft } from './server/services/inssSimulationDraft.js';
 import { FactaSimulationService } from './server/services/factaSimulationService.js';
 import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
@@ -2162,6 +2163,11 @@ async function auditAndEnsureMasterUser() {
         happyRawResult,
       } = req.body;
 
+      let draft: ReturnType<typeof inssSimulationDraft> | undefined;
+      if (simulationType === 'INSS_MULTI') {
+        if (!partnerId) return res.status(400).json({ error: 'Selecione o parceiro responsável.' });
+        try { draft = inssSimulationDraft(req.body); } catch (error: any) { return res.status(400).json({ error: error.message }); }
+      }
       const allowedInitialStatuses = ['SIMULAÇÃO ENVIADA', 'NÃO PASSÍVEL DE CONTRATAÇÃO'];
       if (!allowedInitialStatuses.includes(initialStatus)) {
         return res.status(400).json({ error: 'Status inicial da simulação inválido.' });
@@ -2233,7 +2239,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       // Check duplicate pending simulation (for manual simulation with partner)
-      if (simulationType === 'MANUAL' && partnerId) {
+      if ((simulationType === 'MANUAL' || simulationType === 'INSS_MULTI') && partnerId) {
         const existing = await SimulationService.checkExistingPendingSimulation(
           prisma,
           tenantId,
@@ -2262,6 +2268,7 @@ async function auditAndEnsureMasterUser() {
             : null,
           simulationType,
           operationType: operationType || null,
+          ...(draft ? { selectedCondition: draft.selectedCondition, customerData: draft.customerData } : {}),
           happyClientId: happyClientId ? String(happyClientId) : null,
           happySimulationId: happySimulationId ? String(happySimulationId) : null,
           happyApplicationKey: happyApplicationKey || null,
@@ -14387,6 +14394,35 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       res.status(502).json({ success: false, error: err.message || 'Falha ao testar a FINANTO.' });
     }
+  });
+
+  app.get('/api/address/cep/:cep', async (req, res) => {
+    const session = await getAuthSession(req);
+    if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+    if (!/^\d{8}$/.test(req.params.cep)) return res.status(400).json({ error: 'Informe um CEP com 8 dígitos.' });
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${req.params.cep}/json/`, { signal: AbortSignal.timeout(8000) });
+      if (!response.ok) throw new Error('Consulta de CEP indisponível.');
+      const data = await response.json();
+      if (data.erro) return res.status(404).json({ error: 'CEP não encontrado. Preencha o endereço manualmente.' });
+      return res.json({ street: data.logradouro || '', district: data.bairro || '', city: data.localidade || '', state: data.uf || '' });
+    } catch { return res.status(502).json({ error: 'Não foi possível consultar o CEP. Preencha o endereço manualmente.' }); }
+  });
+
+  app.post('/api/integrations/finanto/inss/documents/:action', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Sem permissão para enviar documentos.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const config = await FinantoService.getConfig(prisma, tenantId);
+      if (!config.enabled || !config.isConfigured) return res.status(400).json({ error: 'Integração indisponível.' });
+      if (req.params.action === 'prepare') return res.json(FinantoService.prepareDocument(tenantId, req.body));
+      if (req.params.action !== 'chunk') return res.status(404).json({ error: 'Operação inválida.' });
+      await FinantoService.uploadDocumentChunk(tenantId, req.body);
+      return res.json({ success: true });
+    } catch (error: any) { return res.status(400).json({ error: error.message || 'Falha no envio do documento.' }); }
   });
 
   app.post('/api/integrations/finanto/inss/simulations', async (req, res) => {

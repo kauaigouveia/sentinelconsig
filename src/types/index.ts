@@ -885,9 +885,9 @@ export interface ExecutiveWidgetConfig {
   minimized?: boolean;
 }
 
-export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT' | 'FINANTO_INSS';
+export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT' | 'FINANTO_INSS' | 'INSS_MULTI';
 
-export type SimulationOperationType = 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN' | 'CONSIGNADO_PRIVADO_CLT' | 'FINANTO_NOVO';
+export type SimulationOperationType = 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN' | 'CONSIGNADO_PRIVADO_CLT' | 'FINANTO_NOVO' | 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN';
 
 export type SimulationStatus =
   | 'SIMULAÇÃO ENVIADA'
@@ -896,6 +896,8 @@ export type SimulationStatus =
   | 'PERDIDA (NÃO DIGITADA)';
 
 export interface SimulationRequest {
+  selectedCondition?: { provider: string; tableId: string; tableName: string; amount: number; installment: number | null; term: number; rate: number | null; portabilityCode?: string };
+  customerData?: { birthDate: string; benefitNumber: string; benefitType: number; name?: string; hasInsurance?: boolean; legalRepresentative?: boolean; refinancing?: Record<string, string>; originContract?: Record<string, string>; phone?: string; email?: string; income?: string; benefitState?: string; benefitStartDate?: string; address?: Record<string, string>; document?: Record<string, string>; creditBankAccount?: Record<string, string> };
   id: string;
   cpf: string; // 11 raw digits normalized
   partnerId?: string;

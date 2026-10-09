@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, AlertCircle, LoaderCircle, X } from 'lucide-react';
+import { Partner, SimulationRequest } from '../../types';
+import { readJsonResponse } from '../../lib/httpJson';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
-import { ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS, INSS_REFINANCING_RATES } from '../../lib/inssEligibility';
+import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS, INSS_REFINANCING_RATES } from '../../lib/inssEligibility';
 
 type SimulationRow = { provider: string; table?: any; success: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
-type Props = { isOpen: boolean; onClose: () => void };
+type Props = { isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
 const currency = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-950';
 const labelClass = 'text-xs font-semibold text-slate-600 dark:text-slate-300';
 const itemsOf = (data: any) => Array.isArray(data?.items) ? data.items : Array.isArray(data?.data?.items) ? data.data.items : [];
 const messagesOf = (data: any) => Array.isArray(data?.messages) ? data.messages.map((item: any) => item?.text).filter(Boolean).join(' ') : '';
 
-export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onClose }) => {
+export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onClose, partners = [], onSuccess, onContinue }) => {
   const [form, setForm] = useState({
     cpf: '', birthDate: '', benefitNumber: '', benefitType: '',
     originLenderCode: '', originContractNumber: '', originalTerm: '',
@@ -23,15 +25,19 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [providerNotes, setProviderNotes] = useState<string[]>([]);
+  const [selected, setSelected] = useState<SimulationRow | null>(null);
+  const [partnerId, setPartnerId] = useState('');
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { if (isOpen) { setSelected(null); setSaved(false); } }, [isOpen]);
   if (!isOpen) return null;
 
-  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setProviderNotes([]); setError(''); };
+  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null); setProviderNotes([]); setError(''); };
   const calculateNossaFintech = async (): Promise<SimulationRow[]> => {
     const response = await fetch('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lastDueBalance: Number(form.lastDueBalance), installmentFaceValue: Number(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? Number(form.refinancingRate) : undefined }),
     });
-    const result = await response.json();
+    const result = await readJsonResponse(response);
     if (!response.ok || result.success === false) throw new Error(result.error || result.data?.message || `Nossa Fintech respondeu com HTTP ${result.status || response.status}.`);
     if (!result.data?.results?.length && !result.data?.excludedTables?.length) throw new Error('Nossa Fintech não retornou tabelas compatíveis com a taxa, o prazo e o saldo escolhidos.');
     return [
@@ -42,7 +48,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const calculateFacta = async (): Promise<SimulationRow[]> => {
     const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: Number(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? Number(form.refinancingRate) : undefined, debt: Number(form.lastDueBalance), originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: Number(form.installmentFaceValue) }) });
-    const result = await response.json();
+    const result = await readJsonResponse(response);
     if (!response.ok) throw new Error(result.error || 'Falha ao consultar FACTA.');
     if (result.message) throw new Error(result.message);
     return (result.offers || []).map((offer: any) => ({ provider: 'FACTA', table: { name: offer.name, cod_tabela: offer.code, amount: offer.rate }, success: Boolean(offer.amount), term: offer.term, troco: offer.amount, data: offer, error: offer.amount ? undefined : 'O banco não informou troco nesta condição.' }));
@@ -75,7 +81,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       const choices = finantoRefinancingChoices(rule, Number(form.numberOfInstallments), form.refinancingRate ? Number(form.refinancingRate) : undefined);
       const reason = finantoBenefitError(rule.name || '', form.benefitType) || finantoInstallmentError(rule.name || '', Number(form.installmentFaceValue));
       if (reason || !choices.length) {
-        results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id }, term: Number(form.numberOfInstallments), success: false, skipped: true, error: reason || 'A tabela não atende à taxa e ao prazo escolhidos.' });
+        results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, id: rule.id, cod_tabela: rule.code || rule.id }, term: Number(form.numberOfInstallments), success: false, skipped: true, error: reason || 'A tabela não atende à taxa e ao prazo escolhidos.' });
         return [];
       }
       return choices.map(({ item, rate }) => ({ rule, item, rate }));
@@ -94,9 +100,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             refinancing: { term: Number(form.numberOfInstallments), rate: selectedRate, installmentValue: Number(form.installmentFaceValue) },
           });
           const cashOutError = finantoCashOutError(rule.name || '', response);
-          results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id, amount: selectedRate }, lender: response.lender?.name || response.fund?.name, term: Number(form.numberOfInstallments), success: !cashOutError, skipped: Boolean(cashOutError), error: cashOutError || undefined, data: response, troco: finantoCashOut(response) });
+          results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, id: rule.id, cod_tabela: rule.code || rule.id, amount: selectedRate }, lender: response.lender?.name || response.fund?.name, term: Number(form.numberOfInstallments), success: !cashOutError, skipped: Boolean(cashOutError), error: cashOutError || undefined, data: response, troco: finantoCashOut(response) });
         } catch (err: any) {
-          results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id, amount: selectedRate }, term: Number(form.numberOfInstallments), success: false, error: err.message || 'Falha nesta tabela FINANTO.' });
+          results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, id: rule.id, cod_tabela: rule.code || rule.id, amount: selectedRate }, term: Number(form.numberOfInstallments), success: false, error: err.message || 'Falha nesta tabela FINANTO.' });
         }
       }
     };
@@ -105,7 +111,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   };
 
   const calculate = async (event: React.FormEvent) => {
-    event.preventDefault(); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
+    event.preventDefault(); setSelected(null); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
     if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false); return; }
     if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false); return; }
     try {
@@ -121,6 +127,18 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       setProviderNotes(notes);
       if (!combined.length) setError(notes.join(' · ') || 'Nenhum banco retornou tabelas para os dados informados.');
     } finally { setLoading(false); }
+  };
+
+  const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || Number(form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : row.provider === 'FACTA' ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
+  const draftValues = () => ({ ...Object.fromEntries(Object.entries(form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
+  const save = async () => {
+    if (!selected || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
+    setLoading(true); setError('');
+    try {
+      const response = await fetch('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance } } }) });
+      const data = await readJsonResponse(response); if (!response.ok) throw new Error(data.error);
+      setSaved(true); onSuccess?.(data);
+    } catch (error: any) { setError(error.message); } finally { setLoading(false); }
   };
 
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
@@ -149,7 +167,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         <button type="submit" disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Activity className="h-4 w-4" />{loading ? <><LoaderCircle className="h-4 w-4 animate-spin" />Calculando…</> : 'Simular nas integrações disponíveis'}</button>
       </form>
       {providerNotes.length > 0 && <div className="mt-4 space-y-1 rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{providerNotes.map(note => <p key={note}>{note}</p>)}</div>}
-      {rows.some(row => !row.skipped) && <section className="mt-6"><h3 className="mb-3 text-sm font-bold">Resultados por integração e tabela</h3><div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-100 text-xs dark:bg-slate-800"><tr><th className="p-3">Integração / instituição</th><th className="p-3">Tabela</th><th className="p-3">Taxa refin.</th><th className="p-3">Prazo</th><th className="p-3">Troco retornado</th><th className="p-3">Estado</th></tr></thead><tbody>{rows.filter(row => !row.skipped).map((row, index) => <tr key={`${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`} className="border-t border-slate-200 dark:border-slate-800"><td className="p-3">{row.provider}{row.lender && <span className="block text-xs text-slate-500">{row.lender}</span>}</td><td className="p-3 font-medium">{row.table?.name || row.table?.cod_tabela || 'Tabela Port/Refin'}<span className="block text-xs font-normal text-slate-500">Código: {row.table?.cod_tabela || '—'}{row.table?.originalName ? ` · API: ${row.table.originalName}` : ''}</span></td><td className="p-3">{row.provider === 'FINANTO' ? `${Number(row.table?.amount).toLocaleString('pt-BR')}%` : row.table?.name?.match(/([12][.,]\d+)\s*%/)?.[0] || '—'}</td><td className="p-3">{row.term} meses</td><td className="p-3 font-semibold">{row.success && row.troco !== null && row.troco !== undefined ? currency(row.troco) : '—'}</td><td className="p-3">{row.success ? <span className="text-emerald-600">Calculada</span> : <span className="text-rose-600">Indisponível · {row.error || `HTTP ${row.status}`}</span>}</td></tr>)}</tbody></table></div></section>}
+      {rows.some(row => !row.skipped) && <section className="mt-6"><h3 className="mb-3 text-sm font-bold">Resultados por integração e tabela</h3><div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-100 text-xs dark:bg-slate-800"><tr><th className="p-3">Integração / instituição</th><th className="p-3">Tabela</th><th className="p-3">Taxa refin.</th><th className="p-3">Prazo</th><th className="p-3">Troco retornado</th><th className="p-3">Estado / seleção</th></tr></thead><tbody>{rows.filter(row => !row.skipped).map((row, index) => <tr key={`${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`} className="border-t border-slate-200 dark:border-slate-800"><td className="p-3">{row.provider}{row.lender && <span className="block text-xs text-slate-500">{row.lender}</span>}</td><td className="p-3 font-medium">{row.table?.name || row.table?.cod_tabela || 'Tabela Port/Refin'}<span className="block text-xs font-normal text-slate-500">Código: {row.table?.cod_tabela || '—'}{row.table?.originalName ? ` · API: ${row.table.originalName}` : ''}</span></td><td className="p-3">{row.provider === 'FINANTO' ? `${Number(row.table?.amount).toLocaleString('pt-BR')}%` : row.table?.name?.match(/([12][.,]\d+)\s*%/)?.[0] || '—'}</td><td className="p-3">{row.term} meses</td><td className="p-3 font-semibold">{row.success && row.troco !== null && row.troco !== undefined ? currency(row.troco) : '—'}</td><td className="p-3">{row.success ? <button type="button" disabled={!(Number(row.troco) > 0)} onClick={() => { setSelected(row); setSaved(false); }} className="rounded-lg border px-3 py-2 text-emerald-600">{selected === row ? 'Selecionada' : 'Selecionar'}</button> : <span className="text-rose-600">Indisponível · {row.error || `HTTP ${row.status}`}</span>}</td></tr>)}</tbody></table></div></section>}
+      {selected && <section className="mt-4 space-y-3 rounded-xl border p-4"><p className="font-semibold">Oferta selecionada: {selected.table?.name} · {selected.provider}</p><label className={labelClass}>Parceiro responsável<select className={inputClass} value={partnerId} onChange={e => setPartnerId(e.target.value)}><option value="">Selecione</option>{partners.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.name || p.fullName}</option>)}</select></label>{saved ? <p role="status" className="text-emerald-600">Simulação salva na esteira, aguardando digitação pela mesa.</p> : <div className="flex gap-3"><button type="button" disabled={loading} onClick={save} className="rounded-lg border px-4 py-2">{loading ? 'Salvando...' : 'Salvar simulação'}</button>{onContinue && <button type="button" disabled={loading} onClick={() => { if (!partnerId) { setError('Selecione o parceiro responsável.'); return; } onContinue({ condition: conditionFor(selected), values: draftValues(), calculation: selected.provider === 'FINANTO' ? selected.data : undefined }); }} className="rounded-lg bg-violet-700 px-4 py-2 text-white">Seguir para digitação</button>}</div>}</section>}
       {rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-amber-200 p-4 text-sm dark:border-amber-900"><summary className="cursor-pointer font-semibold">Tabelas não elegíveis ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <p key={`${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><span className="block text-xs text-slate-500">{row.error}</span></p>)}</div></details>}
       </div>
     </div>
