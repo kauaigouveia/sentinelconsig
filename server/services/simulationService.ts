@@ -9,7 +9,7 @@ export class SimulationService {
   public static canDeleteSimulationRequest(
     user: { id: string; role: string; tenantId?: string | null },
     effectiveTenantId: string,
-    simulation: { tenantId: string; createdById: string; status: string }
+    simulation: { tenantId: string; createdById: string | null; status: string }
   ): boolean {
     if (!user || !effectiveTenantId || !simulation) return false;
 
@@ -91,7 +91,7 @@ export class SimulationService {
     },
     digitizerName?: string
   ): Promise<number> {
-    if (!proposal || !proposal.tenantId) return 0;
+    if (!proposal || !proposal.tenantId || !proposal.partnerId) return 0;
 
     let clientCpf = proposal.client?.cpf;
     if (!clientCpf && proposal.clientId) {
@@ -112,6 +112,7 @@ export class SimulationService {
         cpf: cleanCpf,
         ...(proposal.partnerId ? { partnerId: proposal.partnerId } : {}),
         status: 'SIMULAÇÃO ENVIADA',
+        simulationType: { not: 'PARTNER_AUTO' },
         deletedAt: null,
       },
     });

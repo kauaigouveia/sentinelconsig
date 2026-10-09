@@ -20,7 +20,7 @@ const positive = (value: unknown) => value !== null && value !== '' && Number.is
 const safeLink = (value: unknown) => typeof value === 'string' && /^https:\/\//i.test(value) ? value : undefined;
 
 export class ProductSimulationService {
-  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput) {
+  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput, onRows?: (rows: ProductSimulationRow[]) => Promise<void>) {
     const factaInput = input;
     // FACTA can return an eight-digit employer registration. Other providers
     // require a full CNPJ, so discover their employment records automatically.
@@ -192,7 +192,7 @@ export class ProductSimulationService {
       configured = true;
       rows.push(...await FactaSimulationService.product(prisma, tenantId, product, action, factaInput));
     };
-    await Promise.all([nossa().catch(error => failure('Nossa Fintech', product, error)), finanto().catch(error => failure('FINANTO', product, error)), facta().catch(error => failure('FACTA', product, error))]);
+    await Promise.all([nossa().catch(error => failure('Nossa Fintech', product, error)).then(async () => { if (onRows) await onRows([...rows]); }), finanto().catch(error => failure('FINANTO', product, error)).then(async () => { if (onRows) await onRows([...rows]); }), facta().catch(error => failure('FACTA', product, error)).then(async () => { if (onRows) await onRows([...rows]); })]);
     return { rows, message: rows.length ? undefined : configured ? 'Nenhuma condição elegível retornada para os dados informados.' : 'Nenhuma integração habilitada e configurada para este produto.' };
   }
 }

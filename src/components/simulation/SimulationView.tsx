@@ -37,6 +37,7 @@ import { StorageService } from '../../services/storageService';
 import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { SimulationImportModal } from './SimulationImportModal';
+import { PartnerSimulationMonthlyReport } from './PartnerSimulationMonthlyReport';
 import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
 import { ProductSimulationModal } from './ProductSimulationModal';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
@@ -711,7 +712,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   }, [simulations]);
 
   // Helpers for elapsed time and SLA aging (72h Max)
-  const getElapsedTimeInfo = (createdAt: string, matchedAt?: string, status?: string) => {
+  const getElapsedTimeInfo = (createdAt: string, matchedAt?: string, status?: string, expiresAt?: string) => {
     const startTime = new Date(createdAt).getTime();
     const endTime = matchedAt ? new Date(matchedAt).getTime() : Date.now();
     const diffMs = Math.max(0, endTime - startTime);
@@ -725,12 +726,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
     }
 
     // SLA Maximum: 72 hours (4320 mins)
-    const MAX_SLA_MINS = 72 * 60;
+    const MAX_SLA_MINS = expiresAt ? Math.max(0, (new Date(expiresAt).getTime() - startTime) / 60000) : 72 * 60;
     const remainingMins = Math.max(0, MAX_SLA_MINS - diffMins);
 
     let remainingText = '';
     if (status === 'PERDIDA (NÃO DIGITADA)' || diffMins >= MAX_SLA_MINS) {
-      remainingText = 'Expirado (72h)';
+      remainingText = expiresAt ? 'Prazo de 5 dias úteis encerrado' : 'Expirado (72h)';
     } else {
       const remH = Math.floor(remainingMins / 60);
       const remM = remainingMins % 60;
@@ -820,24 +821,26 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       'DIGITADOR',
       'DATA_HORA_DIGITACAO',
       'TEMPO_ATE_DIGITACAO',
+      'CODIGO_PARCEIRO_ORIGINAL', 'ORIGEM', 'MODALIDADE', 'VALOR_LIBERADO', 'PRAZO_DIGITACAO', 'DIGITADA_APOS_PRAZO',
     ];
 
     const rows = dataToExport.map(s => {
       const partner = partners.find(p => p.id === s.partnerId);
       const creator = users.find(u => u.id === s.createdById);
-      const elapsed = getElapsedTimeInfo(s.createdAt, s.matchedAt);
+      const elapsed = getElapsedTimeInfo(s.createdAt, s.matchedAt, s.status, s.offerExpiresAt);
 
       return [
         `"${formatCpf(s.cpf)}"`,
         `"${partner?.login || ''}"`,
         `"${partner?.fullName || ''}"`,
-        `"${creator?.name || ''}"`,
+        `"${creator?.name || s.portalAccessName || ''}"`,
         `"${new Date(s.createdAt).toLocaleString('pt-BR')}"`,
         `"${s.status}"`,
         `"${s.matchedProposalNumber || ''}"`,
         `"${s.matchedDigitizerName || ''}"`,
         `"${s.matchedAt ? new Date(s.matchedAt).toLocaleString('pt-BR') : ''}"`,
         `"${elapsed.text}"`,
+        `"${s.partnerCodeSnapshot || partner?.login || ''}"`, `"${s.simulationType || ''}"`, `"${s.operationType || ''}"`, `"${s.selectedCondition?.amount || ''}"`, `"${s.offerExpiresAt ? new Date(s.offerExpiresAt).toLocaleString('pt-BR') : ''}"`, `"${s.matchedAfterDeadline ? 'SIM' : 'NAO'}"`,
       ].join(';');
     });
 
@@ -996,7 +999,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{metrics.enviadas}</span>
                 <span className="text-[10px] text-slate-500">na fila</span>
               </div>
-              <div className="mt-1 text-[10px] text-amber-600/80 font-medium">Prazo até 72h</div>
+              <div className="mt-1 text-[10px] text-amber-600/80 font-medium">Portal: 5 dias úteis · manual: 72h</div>
             </div>
 
             {/* Card 3: Digitadas pela Mesa */}
@@ -1039,7 +1042,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  Perdidas (72h)
+                  Ofertas perdidas
                 </span>
                 <div className="h-6 w-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
                   <AlertTriangle className="h-3 w-3 text-rose-500" />
@@ -1049,7 +1052,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <span className="text-xl font-bold text-slate-700 dark:text-slate-300">{metrics.perdidas}</span>
                 <span className="text-[10px] text-slate-500">expiradas</span>
               </div>
-              <div className="mt-1 text-[10px] text-slate-500 font-medium">Sem digitação em 72h</div>
+              <div className="mt-1 text-[10px] text-slate-500 font-medium">Prazo de digitação encerrado</div>
             </div>
 
             {/* Card 6: Taxa de Conversão */}
@@ -1112,6 +1115,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <option value="HAPPY_INSS">Happy INSS</option>
                   <option value="HAPPY_CLT">Happy CLT</option>
                   <option value="INSS_MULTI">INSS · simulação</option>
+                  <option value="PARTNER_AUTO">Portal do parceiro · automáticas</option>
                   <option value="FINANTO_INSS">INSS · enviado à instituição</option>
                 </select>
               </div>
@@ -1300,7 +1304,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       const creator = users.find(u => u.id === sim.createdById);
                       const isCopied = copiedId === sim.id;
                       const isSelected = selectedIds.includes(sim.id);
-                      const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt);
+                      const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status, sim.offerExpiresAt);
 
                       return (
                         <tr
@@ -1359,7 +1363,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
                           {/* Tipo / Fluxo */}
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {sim.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS</span> : sim.simulationType === 'FINANTO_INSS' ? (
+                            {sim.simulationType === 'PARTNER_AUTO' ? <span className="text-violet-600">Portal · {sim.operationType}</span> : sim.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS</span> : sim.simulationType === 'FINANTO_INSS' ? (
                               <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">FINANTO INSS</span>
                             ) : sim.simulationType === 'HAPPY_INSS' ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -1380,7 +1384,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                                {partner?.login || 'DESCONHECIDO'}
+                                {sim.partnerCodeSnapshot || partner?.login || 'DESCONHECIDO'}
                               </span>
                               <span className="text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={partner?.fullName}>
                                 {partner?.fullName}
@@ -1392,7 +1396,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                             <div className="flex items-center gap-1.5">
                               <User className="h-3.5 w-3.5 text-slate-400" />
-                              <span>{creator?.name || 'Sistema'}</span>
+                              <span>{creator?.name || sim.portalAccessName || 'Sistema'}</span>
                             </div>
                           </td>
 
@@ -1566,10 +1570,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             <div className="flex items-center gap-2.5">
               <Clock className="h-5 w-5 text-amber-600 shrink-0" />
               <div>
-                <h3 className="font-bold text-sm">Fila de Acompanhamento da Mesa (Prazo 72h)</h3>
+                <h3 className="font-bold text-sm">Fila de Acompanhamento da Mesa</h3>
                 <p className="text-[11px] text-amber-800 dark:text-amber-300">
                   Exibindo exclusivamente simulações pendentes (SIMULAÇÃO ENVIADA), ordenadas pela mais antiga primeiro.
-                  Após <strong>72 horas sem digitação</strong>, o status muda automaticamente para <strong>PERDIDA (NÃO DIGITADA)</strong>.
+                  Ofertas do portal têm prazo de <strong>5 dias úteis sem digitação</strong>; os registros manuais mantêm o prazo de 72 horas.
                 </p>
               </div>
             </div>
@@ -1588,7 +1592,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <th className="px-4 py-3">RESPONSÁVEL</th>
                   <th className="px-4 py-3">DATA/HORA SOLICITAÇÃO</th>
                   <th className="px-4 py-3">TEMPO DECORRIDO</th>
-                  <th className="px-4 py-3">TEMPO RESTANTE (SLA 72H)</th>
+                  <th className="px-4 py-3">PRAZO RESTANTE</th>
                   <th className="px-4 py-3 text-right">AÇÕES</th>
                 </tr>
               </thead>
@@ -1605,7 +1609,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   pendingQueueSimulations.map((sim, index) => {
                     const partner = partners.find(p => p.id === sim.partnerId);
                     const creator = users.find(u => u.id === sim.createdById);
-                    const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status);
+                    const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status, sim.offerExpiresAt);
 
                     return (
                       <tr key={sim.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
@@ -1663,6 +1667,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       {/* TAB 3: DASHBOARD & ANÁLISES */}
       {activeTab === 'DASHBOARD_ANALISES' && (
         <div className="space-y-6 animate-in fade-in">
+          <PartnerSimulationMonthlyReport simulations={simulations} partners={partners} />
           {/* Top Summary Banner */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
@@ -1707,7 +1712,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     <th className="px-4 py-3 text-center">AGUARDANDO</th>
                     <th className="px-4 py-3 text-center text-emerald-600">DIGITADAS</th>
                     <th className="px-4 py-3 text-center text-rose-600">NÃO PASSÍVEIS</th>
-                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS (72H)</th>
+                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS</th>
                     <th className="px-4 py-3 text-right">TAXA CONVERSÃO (%)</th>
                   </tr>
                 </thead>
@@ -1760,7 +1765,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     <th className="px-4 py-3 text-center">CADASTRADAS</th>
                     <th className="px-4 py-3 text-center text-emerald-600">DIGITADAS</th>
                     <th className="px-4 py-3 text-center text-rose-600">NÃO PASSÍVEIS</th>
-                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS (72H)</th>
+                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS</th>
                     <th className="px-4 py-3 text-right">TAXA CONVERSÃO (%)</th>
                   </tr>
                 </thead>
@@ -2470,8 +2475,16 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 </div>
               )}
 
+              {detailTarget.simulationType === 'PARTNER_AUTO' && <section className="rounded-xl border p-4 text-sm dark:border-slate-700">
+                <h4 className="font-bold">Consulta do parceiro · {detailTarget.partnerCodeSnapshot}</h4>
+                <p>Prazo: {detailTarget.offerExpiresAt ? new Date(detailTarget.offerExpiresAt).toLocaleString('pt-BR') : '—'}</p>
+                {detailTarget.matchedAfterDeadline && <p className="text-amber-600">Digitada após o prazo de 5 dias úteis.</p>}
+                <p className="mt-2">Cliente: {detailTarget.customerData?.name || 'Não informado'} · CPF: {formatCpf(detailTarget.cpf)}</p>
+                {(detailTarget.customerData as any)?.originalContract && <p>Contrato de origem: {(detailTarget.customerData as any).originalContract} · banco {(detailTarget.customerData as any).originalBank} · saldo R$ {Number((detailTarget.customerData as any).debt).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>}
+                <details className="mt-3"><summary className="cursor-pointer font-semibold">Todas as ofertas retornadas</summary><div className="mt-2 space-y-2">{((detailTarget.customerData as any)?.offers || []).map((offer: any, index: number) => <article key={index} className="rounded-lg border p-2 dark:border-slate-700"><strong>{offer.name || offer.table || offer.institution}</strong><p>{offer.provider} · {offer.institution}</p><p>Liberado: R$ {Number(offer.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · parcela: {offer.installment ? `R$ ${Number(offer.installment).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informada'} · {offer.term || '—'} meses · taxa {offer.rate ?? '—'}%</p></article>)}</div></details>
+              </section>}
               {detailTarget.selectedCondition && <section className="space-y-3 rounded-xl border border-violet-200 p-4 dark:border-violet-800">
-                <h4 className="font-bold">Condição selecionada</h4>
+                <h4 className="font-bold">{detailTarget.simulationType === 'PARTNER_AUTO' ? 'Oferta de referência (maior valor liberado)' : 'Condição selecionada'}</h4>
                 <p className="text-sm">{detailTarget.selectedCondition.tableName} · {detailTarget.selectedCondition.provider} · tabela {detailTarget.selectedCondition.tableId}</p>
                 <dl className="grid grid-cols-2 gap-3 text-sm">
                   <div><dt className="text-slate-500">Valor liberado / contrato</dt><dd>R$ {detailTarget.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</dd></div>

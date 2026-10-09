@@ -1420,8 +1420,15 @@ model SimulationRequest {
   partnerId String?  @map("partner_id")
   partner   Partner? @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
-  createdById String @map("created_by_id")
-  createdBy   User   @relation("CreatedSimulationRequests", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("CreatedSimulationRequests", fields: [createdById], references: [id], onDelete: SetNull)
+
+  portalAttemptKey String? @unique @map("portal_attempt_key")
+  partnerCodeSnapshot String? @map("partner_code_snapshot")
+  portalAccessName String? @map("portal_access_name")
+  offerExpiresAt DateTime? @map("offer_expires_at")
+  offerLostAt DateTime? @map("offer_lost_at")
+  matchedAfterDeadline Boolean @default(false) @map("matched_after_deadline")
 
   status          String  @default("SIMULAÇÃO ENVIADA")
   rejectionReason String? @map("rejection_reason")
@@ -1478,6 +1485,7 @@ model SimulationRequest {
   @@index([tenantId, partnerId])
   @@index([tenantId, createdById])
   @@index([createdAt])
+  @@index([offerExpiresAt])
   @@map("simulation_requests")
 }
 

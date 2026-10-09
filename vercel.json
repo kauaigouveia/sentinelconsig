@@ -10,6 +10,7 @@
       "destination": "/index.html"
     }
   ],
+  "crons": [{ "path": "/api/cron/partner-simulations", "schedule": "0 3 * * *" }],
   "functions": {
     "api/index.js": {
       "memory": 1024,

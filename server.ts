@@ -101,6 +101,8 @@ import { AuditLogService, computeDelta, maskCPF } from './server/services/auditL
 import { PendencyService, PendencyStatus } from './server/services/pendencyService.js';
 import { AutomationEngine, AVAILABLE_TRIGGERS, AVAILABLE_ACTIONS, AUTOMATION_TEMPLATES, FORBIDDEN_ACTION_TYPES } from './server/services/automationEngine.js';
 import { SimulationService } from './server/services/simulationService.js';
+import { PartnerSimulationService } from './server/services/partnerSimulationService.js';
+import { PartnerSimulationTracking } from './server/services/partnerSimulationTracking.js';
 import { hashPassword, verifyPassword, dummyVerify, isArgon2Hash } from './server/services/passwordService.js';
 import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './server/utils/csrf.js';
 import { C6BankService } from './server/services/c6BankService.js';
@@ -2071,6 +2073,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Sessão e Tenant ativos são necessários.' });
       }
 
+      await PartnerSimulationTracking.reconcile(prisma, tenantId);
       const simulations = await prisma.simulationRequest.findMany({
         where: { tenantId, deletedAt: null },
         orderBy: { createdAt: 'desc' },
@@ -2393,7 +2396,7 @@ async function auditAndEnsureMasterUser() {
 
       if (matchedProposalId) {
         const proposal = await prisma.proposal.findFirst({
-          where: { id: matchedProposalId, tenantId, client: { cpf: existing.cpf } },
+          where: { id: matchedProposalId, tenantId, client: { cpf: existing.cpf }, ...(existing.simulationType === 'PARTNER_AUTO' ? { partnerId: existing.partnerId, deletedAt: null } : {}) },
           select: { id: true, proposalNumber: true },
         });
         if (!proposal) {
@@ -2410,6 +2413,7 @@ async function auditAndEnsureMasterUser() {
             tenantId,
             proposalNumber: linkedProposalNumber,
             client: { cpf: existing.cpf },
+            ...(existing.simulationType === 'PARTNER_AUTO' ? { partnerId: existing.partnerId, deletedAt: null } : {}),
           },
           select: { id: true },
           take: 2,
@@ -2431,6 +2435,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       const isDigitized = nextStatus === 'DIGITADA PELA MESA';
+      if (existing.simulationType === 'PARTNER_AUTO' && isDigitized && !linkedProposalId) return res.status(400).json({ error: 'Selecione uma ADE cadastrada para este cliente e parceiro.' });
 
       const updated = await prisma.simulationRequest.update({
         where: { id },
@@ -2444,6 +2449,7 @@ async function auditAndEnsureMasterUser() {
           matchedDigitizerId: isDigitized ? linkedDigitizerId : null,
           matchedDigitizerName: isDigitized ? linkedDigitizerName : null,
           matchedAt: isDigitized ? (parsedMatchedAt || existing.matchedAt || new Date()) : null,
+          ...(existing.simulationType === 'PARTNER_AUTO' ? { matchedAfterDeadline: isDigitized && !!existing.offerExpiresAt && (parsedMatchedAt || existing.matchedAt || new Date()) > existing.offerExpiresAt } : {}),
         },
         include: {
           partner: true,
@@ -3298,6 +3304,7 @@ async function auditAndEnsureMasterUser() {
         include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
       });
 
+      await PartnerSimulationTracking.reconcile(prisma, tenantId).catch(error => logger.error({ error: error.message, tenantId }, 'Falha ao vincular simulação; nova tentativa na leitura da lista.'));
       // Emissão pós-commit de PROPOSAL_CREATED estritamente para o tenant da sessão
       sseRegistry.broadcastToTenant(tenantId, {
         type: 'PROPOSAL_CREATED',
@@ -3819,6 +3826,7 @@ async function auditAndEnsureMasterUser() {
         }
       }
 
+      await PartnerSimulationTracking.reconcile(prisma, tenantId).catch(error => logger.error({ error: error.message, tenantId }, 'Falha ao vincular simulação; nova tentativa na leitura da lista.'));
       return res.json(result.updated);
     } catch (err) {
       console.error('[API PROPOSALS PATCH ERROR]', err);
@@ -13309,6 +13317,22 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // FASE 4.2-B: PROTECTED OPERATIONAL RULES CRON ENDPOINT
   // -------------------------------------------------------------
+  app.get('/api/cron/partner-simulations', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const secret = process.env.CRON_SECRET?.trim();
+    if (!secret) return res.status(503).json({ error: 'CRON_SECRET não configurado.' });
+    const supplied = Buffer.from(String(req.headers.authorization || ''));
+    const expected = Buffer.from(`Bearer ${secret}`);
+    if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return res.status(401).json({ error: 'Não autorizado.' });
+    try {
+      for (const tenant of await prisma.tenant.findMany({ select: { id: true } })) await PartnerSimulationTracking.reconcile(prisma, tenant.id);
+      return res.json({ status: 'ok' });
+    } catch (error) {
+      logger.error({ error }, 'Falha ao atualizar simulações dos parceiros');
+      return res.status(500).json({ error: 'Não foi possível atualizar as simulações.' });
+    }
+  });
+
   app.post('/api/cron/operational-rules', async (req, res) => {
     const startedAt = new Date();
     const requestId = req.requestId || (req as any).requestId || crypto.randomUUID();
@@ -13350,6 +13374,7 @@ async function auditAndEnsureMasterUser() {
 
       // 2. Execução multi-tenant isolada através do RuleEngineService (P0 desativadas na Fase 4.2-B)
       const summary = await RuleEngineService.runAllTenants(prisma, { batchSize: 20 });
+      for (const tenant of await prisma.tenant.findMany({ select: { id: true } })) await PartnerSimulationTracking.reconcile(prisma, tenant.id);
 
       logger.info(
         {
@@ -18024,6 +18049,64 @@ async function auditAndEnsureMasterUser() {
     legacyHeaders: false,
     statusCode: 429,
     message: { error: 'Muitas tentativas de login no Portal do Parceiro. Aguarde 15 minutos.' },
+  });
+
+  const partnerSimulationRateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Muitas consultas de simulação. Aguarde alguns minutos.' } });
+  app.get('/api/partner-portal/simulations', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const context = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!context) return res.status(401).json({ error: 'Sessão do parceiro expirada.' });
+      await PartnerSimulationTracking.reconcile(prisma, context.tenant.id);
+      const rows = await prisma.simulationRequest.findMany({ where: { tenantId: context.tenant.id, partnerId: context.partner.id, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 200 });
+      return res.json({ rows: rows.map(row => ({ id: row.id, cpf: row.cpf, partnerCode: row.partnerCodeSnapshot || context.partner.code, status: row.status, createdAt: row.createdAt, offerExpiresAt: row.offerExpiresAt, matchedProposalNumber: row.matchedProposalNumber, matchedAt: row.matchedAt, matchedAfterDeadline: row.matchedAfterDeadline, operationType: row.operationType, selectedCondition: row.selectedCondition, offers: (row.customerData as any)?.offers || [] })) });
+    } catch (error: any) { return res.status(500).json({ error: 'Não foi possível carregar as simulações.' }); }
+  });
+
+  app.post('/api/partner-portal/simulations/:action', partnerSimulationRateLimiter, async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const context = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!context) return res.status(401).json({ error: 'Sessão do parceiro expirada.' });
+      const action = req.params.action.toUpperCase();
+      if (!['SIMULATE', 'REFRESH', 'AUTHORIZE', 'CONTRACTS'].includes(action)) return res.status(400).json({ error: 'Ação inválida.' });
+      const raw = req.body || {};
+      if (action === 'CONTRACTS' && raw.product !== 'INSS') return res.status(400).json({ error: 'Consulta de contratos disponível somente para INSS.' });
+      const input = { product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
+      if (!isValidCpf(input.cpf) || !['INSS', 'CLT', 'FGTS'].includes(input.product) || !['Payment', 'Liquid'].includes(input.mode) || !Number.isInteger(input.term) || input.term < (input.product === 'CLT' ? 0 : 1) || input.term > 120) return res.status(400).json({ error: 'Informe CPF, produto e prazo válidos.' });
+      if (action === 'SIMULATE' && input.product !== 'FGTS' && (!Number.isFinite(input.value) || input.value <= 0)) return res.status(400).json({ error: 'Informe um valor positivo para simular.' });
+      if (input.product === 'CLT' && (!input.name || !/^\d{10,11}$/.test(input.phone) || (input.employerDocument && ![8, 14].includes(input.employerDocument.length)))) return res.status(400).json({ error: 'Informe nome, telefone e inscrição do empregador válidos.' });
+      if (input.product === 'FGTS' && action !== 'SIMULATE') return res.status(400).json({ error: 'Ação não disponível para FGTS.' });
+      if (input.product !== 'INSS') input.operation = 'NEW';
+      if (input.product === 'INSS') {
+        if (['PORT', 'PORT_REFIN'].includes(input.operation)) input.mode = 'Payment';
+        if (!['NEW', 'PORT', 'REFIN', 'PORT_REFIN'].includes(input.operation) || ageAt(input.birthDate) === null || !input.benefitNumber || !Number.isInteger(input.benefitType) || input.benefitType <= 0 || (input.rate !== undefined && (!Number.isFinite(input.rate) || input.rate <= 0))) return res.status(400).json({ error: 'Informe nascimento, benefício, espécie e modalidade válidos.' });
+        if (action === 'CONTRACTS') return res.json({ contracts: await FactaSimulationService.contracts(prisma, context.tenant.id, input.cpf, input.benefitNumber) });
+        if (action === 'AUTHORIZE' && (!input.name || !/^\d{10,11}$/.test(input.phone))) return res.status(400).json({ error: 'Informe nome e telefone para solicitar autorização.' });
+        if (action === 'SIMULATE' && ['PORT', 'PORT_REFIN'].includes(input.operation) && (!/^\d{1,3}$/.test(input.originalBank) || !input.originalContract || ![input.debt, input.originalInstallment].every(value => Number.isFinite(value) && value > 0) || ![input.originalTerm, input.remainingTerm].every(value => Number.isInteger(value) && value > 0 && value <= 120) || input.remainingTerm > input.originalTerm)) return res.status(400).json({ error: 'Revise os dados do contrato de origem.' });
+      }
+      const attemptKey = String(raw.attemptKey || '');
+      if (action === 'SIMULATE' && !/^[a-zA-Z0-9-]{16,80}$/.test(attemptKey)) return res.status(400).json({ error: 'Identificador da simulação inválido. Atualize a página.' });
+      if (action === 'SIMULATE') {
+        const existing = await prisma.simulationRequest.findUnique({ where: { portalAttemptKey: `${context.tenant.id}:${context.partner.id}:${attemptKey}` } });
+        if (existing) {
+          const saved = existing.customerData as any;
+          if (['cpf', 'product', 'operation', 'mode', 'term', 'value', 'benefitNumber', 'employerDocument'].some(key => saved?.[key] !== (input as any)[key])) return res.status(409).json({ error: 'Identificador já utilizado para outra simulação. Faça uma nova consulta.' });
+          return res.json({ rows: saved?.offers || [], simulationId: existing.id, message: 'Simulação já registrada.' });
+        }
+      }
+      let persistence = Promise.resolve();
+      const trackingContext = { tenantId: context.tenant.id, partnerId: context.partner.id, partnerCode: context.partner.code, accessName: context.access.name };
+      const persistOffers = action === 'SIMULATE' ? async (rows: any[]) => {
+        const snapshot = rows.filter(row => row.state === 'OFFER');
+        persistence = persistence.then(async () => { await PartnerSimulationTracking.record(prisma, trackingContext, attemptKey, input, snapshot); });
+        await persistence;
+      } : undefined;
+      const result = await PartnerSimulationService.run(prisma, context.tenant.id, input, action as any, persistOffers);
+      const simulation = action === 'SIMULATE' ? await PartnerSimulationTracking.record(prisma, { tenantId: context.tenant.id, partnerId: context.partner.id, partnerCode: context.partner.code, accessName: context.access.name }, attemptKey, input, result.rows.filter(row => row.state === 'OFFER')) : null;
+      if (simulation) sseRegistry.broadcastToTenant(context.tenant.id, { type: 'SIMULATION_CREATED', entity: 'SimulationRequest', entityId: simulation.id });
+      return res.json({ ...result, simulationId: simulation?.id });
+    } catch (error: any) { return res.status(502).json({ error: error.message || 'Não foi possível concluir e registrar a simulação.' }); }
   });
 
   // 1. POST /api/partner-portal/auth/login

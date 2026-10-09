@@ -26,6 +26,7 @@ import { PartnerPortalDashboard } from './PartnerPortalDashboard';
 import { PartnerProposalsView } from './PartnerProposalsView';
 import { PartnerSupportView } from './PartnerSupportView';
 import { PartnerProfileView } from './PartnerProfileView';
+import { PartnerSimulationsView } from './PartnerSimulationsView';
 
 interface PartnerPortalLayoutProps {
   initialTab?: 'dashboard' | 'propostas' | 'atendimento' | 'perfil';
@@ -42,7 +43,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
   const [partner, setPartner] = useState<PartnerInfo | null>(null);
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'propostas' | 'atendimento' | 'perfil'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'propostas' | 'atendimento' | 'perfil' | 'simulacoes'>(initialTab);
   const [proposalFilters, setProposalFilters] = useState<{ standardCategory?: string; waitingReturnOnly?: boolean }>({});
   const [dashboardProposalId, setDashboardProposalId] = useState<string | null>(null);
   const [unreadSupportCount, setUnreadSupportCount] = useState<number>(0);
@@ -147,6 +148,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
 
         {/* Center Navigation Tabs */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-900/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+          <button onClick={() => setActiveTab('simulacoes')} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${activeTab === 'simulacoes' ? 'bg-violet-600 text-white' : ''}`}>Simulações</button>
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -265,6 +267,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
 
       {/* Mobile Navigation Tabs */}
       <div className="md:hidden flex items-center justify-around bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 py-1.5 text-xs">
+        <button onClick={() => setActiveTab('simulacoes')} className={`rounded-lg px-2 py-1 font-bold ${activeTab === 'simulacoes' ? 'bg-violet-600 text-white' : ''}`}>Simulações</button>
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`flex items-center gap-1 py-1 px-2.5 rounded-lg font-bold ${
@@ -316,6 +319,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0">
+        {activeTab === 'simulacoes' && <PartnerSimulationsView />}
         {activeTab === 'dashboard' && (
           <PartnerPortalDashboard
             onNavigate={(tab, params) => {
