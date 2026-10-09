@@ -7,7 +7,7 @@ export type ProductSimulationInput = {
   term: number; value: number; mode: 'Payment' | 'Liquid'; eligibility: boolean;
 };
 export type ProductSimulationRow = {
-  provider: string; institution: string; table?: string; state: 'OFFER' | 'PENDING' | 'ERROR';
+  provider: string; institution: string; table?: string; state: 'OFFER' | 'PENDING' | 'ERROR' | 'DATA';
   message?: string; link?: string; amount?: number; installment?: number; term?: number; rate?: number;
   simulationId?: string; data?: unknown;
 };
@@ -17,7 +17,7 @@ const positive = (value: unknown) => value !== null && value !== '' && Number.is
 const safeLink = (value: unknown) => typeof value === 'string' && /^https:\/\//i.test(value) ? value : undefined;
 
 export class ProductSimulationService {
-  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE', input: ProductSimulationInput) {
+  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput) {
     const rows: ProductSimulationRow[] = [];
     let configured = false;
     const failure = (provider: string, institution: string, error: any) => rows.push({ provider, institution, state: 'ERROR', message: error?.message || 'Não foi possível consultar esta instituição.' });
@@ -79,7 +79,13 @@ export class ProductSimulationService {
           for (const employer of employers) {
             const cnpj = String(employer.employer_cnpj || '').replace(/\D/g, '');
             if (cnpj.length !== 14) continue;
-            const margin = await nossaCall('POST', '/clt-loan/v1/get-margin', { ...identity, employer_document: cnpj });
+            let margin: any;
+            try { margin = await nossaCall('POST', '/clt-loan/v1/get-margin', { ...identity, employer_document: cnpj }); }
+            catch (error) { failure('Nossa Fintech', service, error); continue; }
+            if (action === 'REFRESH') {
+              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'DATA', message: margin?.can_continue === false ? 'Dados atualizados. Vínculo com restrições para continuar.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin } });
+              continue;
+            }
             if (margin?.can_continue === false || !margin?.margin_key) {
               rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: `Sem margem elegível para o vínculo ${cnpj}.` }); continue;
             }
@@ -118,6 +124,10 @@ export class ProductSimulationService {
       await Promise.all([{ code: 950002, name: 'QI Tech' }, { code: 950703, name: '321 Bank' }].map(async provider => {
         try {
           const simulation = await finantoCall(`/v3/loan-private-payroll-simulations/providers/${provider.code}`, { borrower: { name: input.name, identity: input.cpf, phone: input.phone }, step: { code: 1, name: 'Simulação de Proposta' }, originCode: 3 });
+          if (action === 'REFRESH') {
+            rows.push({ provider: 'FINANTO', institution: provider.name, state: 'DATA', simulationId: simulation.id, message: 'Dados e condições disponíveis atualizados.', data: { borrower: simulation.borrower, items: simulation.items, eligible: simulation.eligible, messages: simulation.messages } });
+            return;
+          }
           const items = array(simulation.items).filter(item => (!input.term || Number(item.term) === input.term) && (!input.employerDocument || item.employerDocument === input.employerDocument));
           if (!items.length) rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', message: 'Nenhuma condição elegível. Confira autorização, vínculo e prazo.' });
           for (const item of items) {

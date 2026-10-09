@@ -13,6 +13,19 @@ function configs() {
   vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: false, isConfigured: false } as any);
 }
 describe('Simulações CLT e FGTS na central', () => {
+  it('atualiza vínculos e margem sem exigir valor nem disparar simulação ou novo SMS', async () => {
+    configs();
+    const margin = { margin_key: 'margin', name: 'Nome retornado', available_balance: 500, utilizable_balance: 400, employer: { document: '12345678000100', name: 'Empresa retornada' }, can_continue: true, birth_date: '1980-01-01', restrictions: [], base_margin_value: 4500 };
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => {
+      const data = endpoint.includes('banking') ? ['QITECH'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' }
+        : endpoint.includes('check-employee') ? [{ employer_cnpj: '12345678000100', employer_name: 'Empresa retornada', work_registration: 'registration' }] : margin;
+      return { success: true, status: 200, data: { success: true, data } };
+    });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', { ...input, term: 0, value: 0 });
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({ state: 'DATA', data: { margin, employment: { employer_cnpj: '12345678000100' }, authorization: { status: 'AUTHORIZED' } } });
+    expect(request.mock.calls.some(call => /simulate-loan|list-rebates|request-authorization/.test(call[3]))).toBe(false);
+  });
   it('exibe um cartão CLT e um FGTS sem banco no título', () => {
     const html = renderToStaticMarkup(<SimulationFlowSelectorModal isOpen onClose={() => {}} onSelectFlow={() => {}} happySimulationAccessEnabled />);
     expect(html.match(/id="btn-flow-clt_multi"/g)).toHaveLength(1);
