@@ -170,12 +170,7 @@ export class FactaSyncWorker {
         standardCategory: {
           notIn: ['PAGO', 'CANCELADO', 'RECUSADO'],
         },
-        OR: [
-          { bank: { name: { contains: 'FACTA', mode: 'insensitive' } } },
-          { bank: { code: '149' } },
-          { factaProposalNumber: { not: null } },
-          { factaAfCode: { not: null } },
-        ],
+        bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] },
         AND: [
           {
             OR: [

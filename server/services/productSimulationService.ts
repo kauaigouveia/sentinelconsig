@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import { NossaFintechService } from './nossaFintechService';
 import { FinantoService } from './finantoService';
+import { FactaBankService } from './factaBankService';
+import { FactaSimulationService } from './factaSimulationService';
 import { cltResponseReasons } from '../../src/lib/cltRestrictions';
 
 export type ProductSimulationInput = {
@@ -180,7 +182,13 @@ export class ProductSimulationService {
         } catch (error) { failure('FINANTO', provider.name, error); }
       }));
     };
-    await Promise.all([nossa().catch(error => failure('Nossa Fintech', product, error)), finanto().catch(error => failure('FINANTO', product, error))]);
+    const facta = async () => {
+      const config = await FactaBankService.getTenantConfig(prisma, tenantId);
+      if (!config.isConfigured || !config.simulationEnabled) return;
+      configured = true;
+      rows.push(...await FactaSimulationService.product(prisma, tenantId, product, action, input));
+    };
+    await Promise.all([nossa().catch(error => failure('Nossa Fintech', product, error)), finanto().catch(error => failure('FINANTO', product, error)), facta().catch(error => failure('FACTA', product, error))]);
     return { rows, message: rows.length ? undefined : configured ? 'Nenhuma condição elegível retornada para os dados informados.' : 'Nenhuma integração habilitada e configurada para este produto.' };
   }
 }

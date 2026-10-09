@@ -11,6 +11,7 @@ export interface FactaTenantConfig {
   password?: string;
   baseUrl: string;
   autoSyncEnabled: boolean;
+  simulationEnabled?: boolean;
   syncIntervalMinutes: number;
   pageSize: number;
   dateQueryType: 'data_movimento' | 'data_alteracao';

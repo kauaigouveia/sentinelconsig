@@ -559,6 +559,7 @@ export interface C6ConfigState {
 }
 
 export interface FactaConfigState {
+  simulationEnabled?: boolean;
   environment: 'homologation' | 'production';
   username: string;
   baseUrl: string;

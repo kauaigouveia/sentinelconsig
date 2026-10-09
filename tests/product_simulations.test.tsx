@@ -1,12 +1,14 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { ProductSimulationService } from '../server/services/productSimulationService';
 import { NossaFintechService } from '../server/services/nossaFintechService';
+import { FactaBankService } from '../server/services/factaBankService';
 import { FinantoService } from '../server/services/finantoService';
 import { SimulationFlowSelectorModal } from '../src/components/simulation/SimulationFlowSelectorModal';
 
 const input = { cpf: 'fixture', name: 'Cliente', phone: '11999999999', term: 4, value: 500, mode: 'Payment' as const, eligibility: true };
+beforeEach(() => vi.spyOn(FactaBankService, 'getTenantConfig').mockResolvedValue({ simulationEnabled: false, isConfigured: false } as any));
 afterEach(() => vi.restoreAllMocks());
 function configs() {
   vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);

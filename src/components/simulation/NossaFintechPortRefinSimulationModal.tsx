@@ -40,6 +40,14 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     ];
   };
 
+  const calculateFacta = async (): Promise<SimulationRow[]> => {
+    const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: Number(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? Number(form.refinancingRate) : undefined, debt: Number(form.lastDueBalance), originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: Number(form.installmentFaceValue) }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Falha ao consultar FACTA.');
+    if (result.message) throw new Error(result.message);
+    return (result.offers || []).map((offer: any) => ({ provider: 'FACTA', table: { name: offer.name, cod_tabela: offer.code, amount: offer.rate }, success: Boolean(offer.amount), term: offer.term, troco: offer.amount, data: offer, error: offer.amount ? undefined : 'O banco não informou troco nesta condição.' }));
+  };
+
   const calculateFinanto = async (): Promise<SimulationRow[]> => {
     const ageError = finantoAgeError(form.birthDate, Number(form.numberOfInstallments));
     if (ageError) throw new Error(ageError);
@@ -101,11 +109,11 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false); return; }
     if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false); return; }
     try {
-      const calls = await Promise.allSettled([calculateNossaFintech(), calculateFinanto()]);
+      const calls = await Promise.allSettled([calculateNossaFintech(), calculateFinanto(), calculateFacta()]);
       const combined: SimulationRow[] = [];
       const notes: string[] = [];
       calls.forEach((result, index) => {
-        const provider = index === 0 ? 'Nossa Fintech' : 'FINANTO';
+        const provider = ['Nossa Fintech', 'FINANTO', 'FACTA'][index];
         if (result.status === 'fulfilled') combined.push(...result.value);
         else notes.push(`${provider}: ${result.reason?.message || 'não foi possível simular'}`);
       });

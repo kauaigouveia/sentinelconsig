@@ -44,7 +44,7 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkProposalNum, setLinkProposalNum] = useState(proposal.factaProposalNumber || '');
   const [linkAfCode, setLinkAfCode] = useState(
-    proposal.factaAfCode || proposal.c6OperationNumber || proposal.proposalNumber || ''
+    proposal.factaAfCode || ''
   );
   const [linkContractNum, setLinkContractNum] = useState(proposal.factaContractNumber || '');
   const [isLinking, setIsLinking] = useState(false);
@@ -327,7 +327,7 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
             Código AF FACTA
           </span>
           <span className="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 truncate block">
-            {proposal.factaAfCode || proposal.c6OperationNumber || '—'}
+            {proposal.factaAfCode || '—'}
           </span>
         </div>
 

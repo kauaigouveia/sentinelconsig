@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, LoaderCircle, ShieldCheck, X } from 'lucide-
 import { Partner, SimulationRequest } from '../../types';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
 import { getNossaFintechNovoAmount } from '../../lib/nossaFintech';
+import { FactaSimulationResults, type FactaComparisonOffer } from './FactaSimulationResults';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { ageAt, finantoAgeError, finantoBenefitError, finantoCashOutError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, finantoTableRateError } from '../../lib/inssEligibility';
 
@@ -44,6 +45,11 @@ const OPERATION_LABELS: Record<Props['operationCode'], string> = {
 const API_OPERATION_CODES: Record<Props['operationCode'], number> = { '1': 1, '2': 3, '3': 2, '4': 4 };
 
 export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationCode, onClose, partners, onSuccess }) => {
+  const [factaOffers, setFactaOffers] = useState<FactaComparisonOffer[]>([]);
+  const [factaMessage, setFactaMessage] = useState('');
+  const [factaContract, setFactaContract] = useState('');
+  const [factaContracts, setFactaContracts] = useState<{ code: string; installment?: number; debt?: number }[]>([]);
+  const [loadingFactaContracts, setLoadingFactaContracts] = useState(false);
   const [rules, setRules] = useState<ApiItem[]>([]);
   const [ruleId, setRuleId] = useState('');
   const [loadingRules, setLoadingRules] = useState(false);
@@ -104,12 +110,12 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   const [back, setBack] = useState<File | null>(null);
 
   const availablePartners = useMemo(() => partners.filter(partner => partner.active), [partners]);
-  const availableRates = useMemo(() => [...new Set(rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.rate)).filter((value: number) => Number.isFinite(value) && value > 0)))].sort((a, b) => b - a), [rules]);
-  const availableTerms = useMemo(() => [...new Set(rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.term || item.maxTerm)).filter((value: number) => Number.isInteger(value) && value > 0)))].sort((a, b) => b - a), [rules]);
+  const availableRates = useMemo(() => [...new Set([...rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.rate)).filter((value: number) => Number.isFinite(value) && value > 0)), 1.85, 1.83, 1.8, 1.78, 1.75, 1.72, 1.7, 1.65, 1.6])].sort((a, b) => b - a), [rules]);
+  const availableTerms = useMemo(() => [...new Set([...rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.term || item.maxTerm)).filter((value: number) => Number.isInteger(value) && value > 0)), 108, 96, 84, 72, 60, 48])].sort((a, b) => b - a), [rules]);
 
   const loadRules = async () => {
     if (operationCode === '2' || operationCode === '4') setHasInsurance(false);
-    setLoadingRules(true); setRules([]); setRuleId(''); setRate(''); setTerm(''); setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); setNossaFintechError(''); setError('');
+    setLoadingRules(true); setRules([]); setRuleId(''); setRate('1.85'); setTerm('108'); setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); setNossaFintechError(''); setError('');
     try {
       const productsResponse = await fetch('/api/integrations/finanto/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -135,10 +141,10 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
       setRules(allRules);
       setRuleId(allRules[0]?.id ? String(allRules[0].id) : '');
       const defaultItem = allRules[0]?.items?.find((item: any) => item.default) || allRules[0]?.items?.[0];
-      setRate(defaultItem?.rate != null ? String(defaultItem.rate) : '');
-      setTerm(defaultItem?.term != null ? String(defaultItem.term) : defaultItem?.maxTerm != null ? String(defaultItem.maxTerm) : '');
+      setRate(defaultItem?.rate != null ? String(defaultItem.rate) : '1.85');
+      setTerm(defaultItem?.term != null ? String(defaultItem.term) : defaultItem?.maxTerm != null ? String(defaultItem.maxTerm) : '108');
       setRefinanceRate(defaultItem?.rate != null ? String(defaultItem.rate) : '');
-      setRefinanceTerm(defaultItem?.term != null ? String(defaultItem.term) : defaultItem?.maxTerm != null ? String(defaultItem.maxTerm) : '');
+      setRefinanceTerm(defaultItem?.term != null ? String(defaultItem.term) : defaultItem?.maxTerm != null ? String(defaultItem.maxTerm) : '108');
       if (!allRules.length) setError('Não há tabelas INSS disponíveis para esta modalidade.');
     } catch (err: any) { setError(err.message || 'Falha ao carregar tabelas.'); }
     finally { setLoadingRules(false); }
@@ -147,6 +153,8 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   useEffect(() => { if (isOpen) void loadRules(); }, [isOpen, operationCode]);
   useEffect(() => { setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); }, [cpf, birthDate, benefit, benefitType]);
   useEffect(() => { setNossaFintechQuotes([]); setNossaFintechError(''); }, [newSimulationMode, loanValue, installmentValue, term, rate, hasInsurance, nossaFintechLegalRepresentative]);
+  useEffect(() => { setFactaOffers([]); setFactaMessage(''); }, [cpf, birthDate, benefit, benefitType, term, rate, loanValue, installmentValue, income, factaContract, originDueBalanceValue, originInstallmentValue, originTerm, originInstallmentsRemaining]);
+  useEffect(() => { setFactaContracts([]); setFactaContract(''); }, [cpf, benefit]);
   if (!isOpen) return null;
 
   const parseAmount = (value: string) => Number(value.replace(',', '.'));
@@ -159,10 +167,9 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
     : operationCode === '2' ? originDataReady
       : operationCode === '3' ? refinanceIdentityReady
         : originDataReady && refinancingDataReady;
-  const canCalculate = (rules.length > 0 || operationCode === '1') && Number(rate) > 0 && Number.isInteger(Number(term)) && Number(term) > 0 && operationDataReady && borrowerSimulationDataReady;
+  const canCalculate = Number(rate) > 0 && Number.isInteger(Number(term)) && Number(term) > 0 && operationDataReady && borrowerSimulationDataReady;
   const handleCalculate = async () => {
     setError(''); setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); setNossaFintechError('');
-    if (!rules.length && operationCode !== '1') return setError('Não há tabelas INSS disponíveis para comparar.');
     if (!borrowerSimulationDataReady) return setError('Antes de simular, informe CPF válido, data de nascimento, número do benefício e espécie do benefício.');
     const originContract = operationCode === '2' || operationCode === '4' ? {
       lenderCode: Number(originLenderCode), contractNumber: originContractNumber.trim(), term: Number(originTerm),
@@ -179,7 +186,17 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
     if (operationCode === '4' && (!originDataReady || !refinancingDataReady)) return setError('Preencha os dados do contrato atual e do refinanciamento adicional antes de calcular.');
     if (!Number(rate) || !Number.isInteger(Number(term))) return setError('Selecione uma taxa e um prazo válidos nas opções disponíveis.');
     setLoading(true);
+    setFactaOffers([]); setFactaMessage('');
     try {
+      const factaPromise = (async () => {
+        try {
+          const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, benefitType: Number(benefitType), operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], mode: operationCode === '1' ? newSimulationMode : 'INSTALLMENT', value: operationCode === '1' ? newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment : originContract?.installmentValue || enteredInstallment || factaContracts.find(item => item.code === factaContract)?.installment, term: Number(term), rate: Number(rate), debt: originContract?.dueBalanceValue, originalTerm: originContract?.term, remainingTerm: originContract?.installmentsRemaining, originalInstallment: originContract?.installmentValue, income: parseAmount(income), contract: factaContract }) });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Falha na consulta.');
+          setFactaOffers(result.offers || []); setFactaMessage(result.message || '');
+          return result.offers?.length || 0;
+        } catch (error: any) { setFactaMessage(error.message); return 0; }
+      })();
       const nossaFintechPromise = operationCode === '1'
         ? (async () => {
             try {
@@ -257,15 +274,15 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
         }
       };
       await Promise.all(Array.from({ length: Math.min(3, rules.length) }, () => worker()));
-      const nossaFintechResult = await nossaFintechPromise;
+      const [nossaFintechResult, factaCount] = await Promise.all([nossaFintechPromise, factaPromise]);
       if (nossaFintechResult) {
         setNossaFintechQuotes(nossaFintechResult.quotes);
         setNossaFintechError(nossaFintechResult.error || (!nossaFintechResult.quotes.length ? 'Nossa Fintech não retornou tabelas compatíveis com o prazo escolhido.' : ''));
       }
       setQuotes(results);
       const successful = results.filter(result => result.calculation);
-      if (!successful.length && operationCode !== '1') setError('A FINANTO não calculou condições nas tabelas encontradas. Confira os dados do contrato e tente novamente.');
-      if (!successful.length && operationCode === '1' && !nossaFintechResult?.quotes.length) setError(`Nenhuma integração calculou condições. ${nossaFintechResult?.error || 'Revise a configuração das APIs e os dados da simulação.'}`);
+      if (!successful.length && !factaCount && operationCode !== '1') setError('A FINANTO não calculou condições nas tabelas encontradas. Confira os dados do contrato e tente novamente.');
+      if (!successful.length && !factaCount && operationCode === '1' && !nossaFintechResult?.quotes.length) setError(`Nenhuma integração calculou condições. ${nossaFintechResult?.error || 'Revise a configuração das APIs e os dados da simulação.'}`);
     } catch (err: any) { setError(err.message || 'Falha no cálculo.'); }
     finally { setLoading(false); }
   };
@@ -338,6 +355,16 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
           {operationCode === '4' && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-3 text-sm font-bold">Parâmetros do refinanciamento adicional</h4><div className="grid gap-3 sm:grid-cols-3">{selectField('Prazo do refinanciamento (meses)', refinanceTerm, setRefinanceTerm, availableTerms, 'Selecione o prazo')}{selectField('Taxa mensal do refinanciamento (%)', refinanceRate, setRefinanceRate, availableRates, 'Selecione a taxa')}{field('Parcela adicional (R$; 0 para manter a parcela atual)', refinanceInstallmentValue, setRefinanceInstallmentValue, 'number')}</div></div>}
           {operationCode === '1' && <div className="space-y-3"><div className="inline-flex rounded-lg border border-slate-200 p-1 dark:border-slate-700"><button type="button" onClick={() => { setNewSimulationMode('INSTALLMENT'); setCalculation(null); setQuotes([]); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${newSimulationMode === 'INSTALLMENT' ? 'bg-violet-600 text-white' : 'text-slate-600 dark:text-slate-300'}`}>Simular por parcela</button><button type="button" onClick={() => { setNewSimulationMode('AMOUNT'); setCalculation(null); setQuotes([]); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${newSimulationMode === 'AMOUNT' ? 'bg-violet-600 text-white' : 'text-slate-600 dark:text-slate-300'}`}>Simular por valor liberado</button></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{newSimulationMode === 'AMOUNT' ? field('Valor liberado desejado (R$)', loanValue, value => { setLoanValue(value); setCalculation(null); setQuotes([]); }, 'number') : field('Valor da parcela desejado (R$)', installmentValue, value => { setInstallmentValue(value); setCalculation(null); setQuotes([]); }, 'number')}<label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-slate-200 p-3 dark:border-slate-700`}><input type="checkbox" checked={hasInsurance} onChange={e => { setHasInsurance(e.target.checked); setCalculation(null); setQuotes([]); }} />Incluir seguro</label><label className={`${labelClass} flex items-center gap-2 self-end rounded-lg border border-slate-200 p-3 dark:border-slate-700`}><input type="checkbox" checked={nossaFintechLegalRepresentative} onChange={e => setNossaFintechLegalRepresentative(e.target.checked)} />Possui representante legal</label></div></div>}
           <div className="grid gap-3 sm:grid-cols-2">{selectField('Taxa mensal (%)', rate, value => { setRate(value); setCalculation(null); setQuotes([]); }, availableRates, 'Selecione a taxa')}{selectField('Prazo (meses)', term, value => { setTerm(value); setCalculation(null); setQuotes([]); }, availableTerms, 'Selecione o prazo')}</div>
+          {operationCode === '3' && <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <label className={labelClass}>Renda para refinanciamento (R$)<input type="number" min="0.01" step="0.01" value={income} onChange={e => setIncome(e.target.value)} className={inputClass} /></label>
+            <button type="button" disabled={loadingFactaContracts || !borrowerSimulationDataReady} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50" onClick={async () => {
+              setLoadingFactaContracts(true); setFactaMessage('');
+              try { const response = await fetch('/api/integrations/facta/inss/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(cpf), benefitNumber: benefit }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); setFactaContracts(result.contracts || []); if (!result.contracts?.length) setFactaMessage('Nenhum contrato elegível neste benefício.'); }
+              catch (error: any) { setFactaMessage(error.message); } finally { setLoadingFactaContracts(false); }
+            }}>{loadingFactaContracts ? 'Consultando...' : 'Consultar contratos para refinanciamento'}</button>
+            {factaContracts.length > 0 && <label className={labelClass}>Contrato retornado pela FACTA<select value={factaContract} onChange={e => setFactaContract(e.target.value)} className={inputClass}><option value="">Selecione o contrato</option>{factaContracts.map(item => <option key={item.code} value={item.code}>{item.code} · parcela R$ {item.installment?.toLocaleString('pt-BR')} · saldo R$ {item.debt?.toLocaleString('pt-BR')}</option>)}</select></label>}
+          </div>}
+          <FactaSimulationResults offers={factaOffers} message={factaMessage} />
           {!canCalculate && <p className="text-xs text-slate-500">Informe os dados obrigatorios do cliente acima e selecione os campos desta modalidade, taxa e prazo.</p>}<button type="button" onClick={handleCalculate} disabled={loading || loadingRules || !canCalculate} className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300">{loading ? 'Calculando...' : 'Calcular simulação'}</button>{quotes.length > 0 && <div className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><h4 className="text-sm font-bold">Ofertas disponíveis - selecione uma para continuar</h4>{quotes.map(quote => { const selected = String(ruleId) === String(quote.rule.id) && Boolean(calculation); const tableName = finantoTableLabel(quote.rule); const lenderName = quote.calculation?.lender?.name || quote.calculation?.fund?.name || quote.rule.lender?.name || quote.rule.lenderName || 'Instituicao nao identificada'; return <button type="button" key={String(quote.rule.id)} aria-pressed={selected} disabled={!quote.calculation} onClick={() => selectQuote(quote)} className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm ${selected ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-slate-200 dark:border-slate-700'} disabled:cursor-not-allowed disabled:opacity-60`}><span><strong className="block">{tableName}</strong><span className="block text-xs text-slate-500">Integração: FINANTO · {lenderName} · tabela {quote.rule.code || quote.rule.id}</span>{quote.originContract && <span className="block text-xs text-slate-500">Contrato {quote.originContract.contractNumber} - saldo R$ {Number(quote.originContract.dueBalanceValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}{quote.error && <span className="block text-xs text-rose-600">{quote.error}</span>}{selected && <span className="block text-xs font-semibold text-violet-700 dark:text-violet-300">Oferta selecionada</span>}</span>{quote.calculation ? <span className="whitespace-nowrap text-right">{quote.calculation.loanValue != null ? `R$ ${Number(quote.calculation.loanValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Oferta valida'}{quote.calculation.installmentValue != null ? <span className="block text-xs">Parcela R$ {Number(quote.calculation.installmentValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span> : null}</span> : <span className="text-xs text-slate-500">Indisponivel</span>}</button>})}</div>}{operationCode === '1' && (nossaFintechQuotes.length > 0 || nossaFintechError) && <div className="space-y-2 rounded-xl border border-emerald-200 p-3 dark:border-emerald-900"><h4 className="text-sm font-bold">Outras ofertas disponíveis</h4><p className="text-xs text-slate-500">Compare as condições retornadas pelas demais integrações.</p>{nossaFintechError && <p role="status" className="text-xs text-rose-600">{nossaFintechError}</p>}{nossaFintechQuotes.map((quote, index) => { const amount = getNossaFintechNovoAmount(quote.data); const tableName = quote.table?.nome_tabela || quote.table?.name || quote.table?.descricao || quote.table?.description || `Produto ${quote.table?.cod_produto ?? index + 1}`; return <div key={`${quote.table?.cod_produto ?? 'produto'}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"><span><strong className="block">{tableName}</strong><span className="text-xs text-slate-500">Nossa Fintech - codigo {quote.table?.cod_produto ?? '-'}{quote.status ? ` - HTTP ${quote.status}` : ''}</span>{quote.error && <span className="block text-xs text-rose-600">{quote.error}</span>}</span><span className="text-right">{quote.success && amount != null ? `R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : quote.success ? 'Simulacao sem valor liberado no retorno' : 'Indisponivel'}{amount != null && <span className="block text-xs text-slate-500">Valor liberado</span>}</span></div>})}</div>}{calculation && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Oferta selecionada: {calculation.loanValue != null ? `crédito R$ ${Number(calculation.loanValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'cálculo validado'}{calculation.installmentValue != null ? ` · parcela R$ ${Number(calculation.installmentValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}{calculation.rate != null ? ` · taxa ${calculation.rate}%` : ''}{calculation.term != null ? ` · ${calculation.term} meses` : ''}</div>}</section>
 
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">3. Dados adicionais do cliente</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('Nome completo', name, setName)}{field('Início do benefício', benefitStartDate, setBenefitStartDate, 'date')}{field('UF do benefício', benefitState, setBenefitState, 'text', true, 2)}{field('Renda mensal (R$)', income, setIncome, 'number')}{field('Telefone com DDD', phone, setPhone)}{field('E-mail', email, setEmail, 'email')}</div></section>

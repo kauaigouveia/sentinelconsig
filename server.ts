@@ -20,7 +20,7 @@ import { backupStorageService } from './server/services/backupStorageService.js'
 import { ALL_PERMISSIONS, getEffectivePermissions, getPermissionsForRole, hasPermission, Permission } from './src/lib/permissions.js';
 import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
 import { isValidCpf } from './src/lib/utils.js';
-import { finantoAgeError, finantoBenefitError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
+import { ageAt, finantoAgeError, finantoBenefitError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
 import { Role } from './src/types/index.js';
 
 function dispatchImportWorker(task: () => Promise<unknown>, label: string): void {
@@ -106,6 +106,7 @@ import { createCsrfMiddleware, createCorsMiddleware, isRequestHttps } from './se
 import { C6BankService } from './server/services/c6BankService.js';
 import { C6SyncWorker } from './server/services/c6SyncWorker.js';
 import { FactaBankService } from './server/services/factaBankService.js';
+import { FactaSimulationService } from './server/services/factaSimulationService.js';
 import { FactaSyncWorker } from './server/services/factaSyncWorker.js';
 import { HappyBankService } from './server/services/happyBankService.js';
 import { HappySimulationService } from './server/services/happySimulationService.js';
@@ -14692,6 +14693,23 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  app.post('/api/integrations/facta/inss/:action', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Sem permissão para criar simulações.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const input = req.body || {};
+      const cpf = String(input.cpf || '').replace(/\D/g, '');
+      const benefitNumber = String(input.benefitNumber || '').replace(/\D/g, '');
+      if (!isValidCpf(cpf) || !benefitNumber) return res.status(400).json({ error: 'Informe CPF válido e número do benefício.' });
+      if (req.params.action === 'contracts') return res.json({ contracts: await FactaSimulationService.contracts(prisma, tenantId, cpf, benefitNumber) });
+      if (req.params.action !== 'simulate' || !['NEW', 'PORT', 'REFIN', 'PORT_REFIN'].includes(input.operation) || !['AMOUNT', 'INSTALLMENT'].includes(input.mode) || ageAt(String(input.birthDate)) === null || !Number.isInteger(input.benefitType) || input.benefitType < 1 || !Number.isInteger(input.term) || input.term < 1 || input.term > 120 || !Number.isFinite(input.value) || input.value <= 0 || (input.rate !== undefined && (!Number.isFinite(input.rate) || input.rate <= 0))) return res.status(400).json({ error: 'Revise os dados obrigatórios, prazo e valor da simulação.' });
+      return res.json(await FactaSimulationService.inss(prisma, tenantId, { ...input, cpf, benefitNumber }));
+    } catch (error: any) { return res.status(502).json({ error: error.message || 'Falha na consulta FACTA.' }); }
+  });
+
   app.post('/api/simulations/products/:product/:action', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -15241,6 +15259,7 @@ async function auditAndEnsureMasterUser() {
         username: config.username,
         baseUrl: config.baseUrl,
         autoSyncEnabled: config.autoSyncEnabled,
+        simulationEnabled: config.simulationEnabled,
         syncIntervalMinutes: config.syncIntervalMinutes,
         pageSize: config.pageSize,
         dateQueryType: config.dateQueryType,
@@ -15277,6 +15296,7 @@ async function auditAndEnsureMasterUser() {
         password,
         baseUrl,
         autoSyncEnabled,
+        simulationEnabled,
         syncIntervalMinutes,
         pageSize,
         dateQueryType,
@@ -15293,6 +15313,7 @@ async function auditAndEnsureMasterUser() {
         password,
         baseUrl,
         autoSyncEnabled,
+        simulationEnabled,
         syncIntervalMinutes,
         pageSize,
         dateQueryType,
@@ -15315,6 +15336,7 @@ async function auditAndEnsureMasterUser() {
           username: saved.username,
           baseUrl: saved.baseUrl,
           autoSyncEnabled: saved.autoSyncEnabled,
+          simulationEnabled: saved.simulationEnabled,
           syncIntervalMinutes: saved.syncIntervalMinutes,
           passwordUpdated: Boolean(password),
         },
@@ -15329,6 +15351,7 @@ async function auditAndEnsureMasterUser() {
           username: saved.username,
           baseUrl: saved.baseUrl,
           autoSyncEnabled: saved.autoSyncEnabled,
+          simulationEnabled: saved.simulationEnabled,
           syncIntervalMinutes: saved.syncIntervalMinutes,
           pageSize: saved.pageSize,
           dateQueryType: saved.dateQueryType,

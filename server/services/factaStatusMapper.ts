@@ -64,7 +64,6 @@ const factaStatusDictionary: Record<string, string> = {
   'PAGO': 'PAGO',
   'PAGA': 'PAGO',
   'PAGO AO CLIENTE': 'PAGO',
-  'COMISSAO PAGA': 'PAGO',
   'LIQUIDADO': 'PAGO',
   'LIQUIDADA': 'PAGO',
   'EFETUADO': 'PAGO',
@@ -113,7 +112,7 @@ const factaStatusDictionary: Record<string, string> = {
  * Função de fallback por substring caso a chave exata não esteja no dicionário.
  */
 function resolveFallbackStatusCode(key: string): string | undefined {
-  if (!key) return undefined;
+  if (!key || /SUSPENSAO|DESAVERBAD|AGUARD.*PAGAMENTO|COMISSAO|SOLICITADO CANCELAMENTO/.test(key)) return undefined;
   if (key.includes('REPROV') || key.includes('RECUS') || key.includes('NEGAD') || key.includes('INDEFER') || key.includes('960')) {
     return 'REPROVADO';
   }
@@ -149,19 +148,12 @@ export function mapFactaStatusToInternal(item: {
 }): FactaStatusMappingResult {
   const rawProp = item.status_proposta ? String(item.status_proposta) : '';
   const rawCrivo = item.status_crivo ? String(item.status_crivo) : '';
-  const rawAf = item.codigo_af != null ? String(item.codigo_af) : '';
 
   const propKey = normalizeFactaStatusKey(rawProp);
   const crivoKey = normalizeFactaStatusKey(rawCrivo);
-  const afKey = normalizeFactaStatusKey(rawAf);
 
   let mappedPropCode = propKey ? factaStatusDictionary[propKey] || resolveFallbackStatusCode(propKey) : undefined;
   let mappedCrivoCode = crivoKey ? factaStatusDictionary[crivoKey] || resolveFallbackStatusCode(crivoKey) : undefined;
-
-  // Checagem se o código AF retornado é um código numérico de reprovação / cancelamento (ex: 960)
-  if (!mappedPropCode && afKey && (afKey === '960' || afKey.includes('960'))) {
-    mappedPropCode = 'REPROVADO';
-  }
 
   // Verificar divergência explícita (ex: um diz PAGO e o outro diz REPROVADO)
   if (mappedPropCode && mappedCrivoCode && mappedPropCode !== mappedCrivoCode) {

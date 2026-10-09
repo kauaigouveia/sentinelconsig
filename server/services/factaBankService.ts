@@ -46,6 +46,7 @@ export class FactaBankService {
             'facta_password',
             'facta_base_url',
             'facta_auto_sync_enabled',
+            'facta_simulation_enabled',
             'facta_sync_interval_minutes',
             'facta_page_size',
             'facta_date_query_type',
@@ -77,9 +78,9 @@ export class FactaBankService {
     const username = (configMap.get('facta_username') || process.env.FACTA_USERNAME || '').trim();
     const password = (configMap.get('facta_password') || process.env.FACTA_PASSWORD || '').trim();
 
-    const autoSyncEnabled =
-      configMap.get('facta_auto_sync_enabled') === 'true' ||
-      process.env.FACTA_AUTO_SYNC_ENABLED === 'true';
+    const autoSyncEnabled = configMap.has('facta_auto_sync_enabled')
+      ? configMap.get('facta_auto_sync_enabled') === 'true'
+      : process.env.FACTA_AUTO_SYNC_ENABLED === 'true';
 
     const rawInterval = configMap.get('facta_sync_interval_minutes') || process.env.FACTA_SYNC_INTERVAL_MINUTES;
     const syncIntervalMinutes = Math.max(5, rawInterval ? parseInt(rawInterval, 10) || 15 : 15);
@@ -97,6 +98,7 @@ export class FactaBankService {
       password,
       baseUrl,
       autoSyncEnabled,
+      simulationEnabled: configMap.get('facta_simulation_enabled') === 'true',
       syncIntervalMinutes,
       pageSize,
       dateQueryType,
@@ -122,6 +124,7 @@ export class FactaBankService {
       password?: string;
       baseUrl?: string;
       autoSyncEnabled?: boolean;
+      simulationEnabled?: boolean;
       syncIntervalMinutes?: number;
       pageSize?: number;
       dateQueryType?: 'data_movimento' | 'data_alteracao';
@@ -177,6 +180,9 @@ export class FactaBankService {
 
     if (data.autoSyncEnabled !== undefined) {
       await upsertConfig('facta_auto_sync_enabled', data.autoSyncEnabled ? 'true' : 'false', false);
+    }
+    if (typeof data.simulationEnabled === 'boolean') {
+      await upsertConfig('facta_simulation_enabled', String(data.simulationEnabled));
     }
 
     if (data.syncIntervalMinutes !== undefined) {
@@ -291,6 +297,7 @@ export class FactaBankService {
         }
 
         const data: any = await response.json();
+        if (data?.erro === true || data?.erro === 'true') throw new Error(data.mensagem || 'FACTA recusou a autenticação.');
         
         // Extrair o token da resposta
         let tokenStr = '';
@@ -483,6 +490,7 @@ export class FactaBankService {
       }
 
       const resJson: any = await response.json();
+      if (resJson?.erro === true || resJson?.erro === 'true') throw new Error(resJson.mensagem || 'FACTA recusou a consulta de propostas.');
 
       let items: FactaProposalItem[] = [];
       if (Array.isArray(resJson)) {
@@ -519,7 +527,8 @@ export class FactaBankService {
     const clone = JSON.parse(JSON.stringify(data));
     const maskField = (obj: any, key: string) => {
       if (obj && typeof obj[key] === 'string') {
-        obj[key] = obj[key].replace(/^(\d{3})\d{5}(\d{2})$/, '$1*****$2');
+        const cpf = obj[key].replace(/\D/g, '');
+        if (cpf.length === 11) obj[key] = `${cpf.slice(0, 3)}******${cpf.slice(-2)}`;
       }
     };
     if (Array.isArray(clone)) {
@@ -548,98 +557,23 @@ export class FactaBankService {
     const itemContractRefin = item.numero_contrato_refin != null ? String(item.numero_contrato_refin).trim() : '';
     const itemCpf = item.cpf ? String(item.cpf).replace(/\D/g, '') : '';
 
-    // 1. Procurar por vínculo prévio explícito FACTA no banco
-    if (itemProposalNum || itemAfCode || itemContract) {
-      const existingByFacta = await prisma.proposal.findFirst({
-        where: {
-          tenantId,
-          deletedAt: null,
-          OR: [
-            ...(itemProposalNum ? [{ factaProposalNumber: itemProposalNum }] : []),
-            ...(itemAfCode ? [{ factaAfCode: itemAfCode }] : []),
-            ...(itemContract ? [{ factaContractNumber: itemContract }] : []),
-          ],
-        },
-        include: { status: true },
-      });
-
-      if (existingByFacta) {
-        return { proposal: existingByFacta, matchType: 'EXACT', reason: 'Vínculo prévio FACTA no Sentinel' };
-      }
+    const identifiers = [
+      ...(itemProposalNum ? [{ factaProposalNumber: itemProposalNum }, { proposalNumber: itemProposalNum }] : []),
+      ...(itemAfCode ? [{ factaAfCode: itemAfCode }, { proposalNumber: itemAfCode }] : []),
+      ...(itemContract ? [{ factaContractNumber: itemContract }, { proposalNumber: itemContract }] : []),
+    ];
+    if (!identifiers.length) return { proposal: null, matchType: 'NOT_FOUND', reason: 'FACTA não informou identificador. Vincule o código AF da proposta.' };
+    const matches = await prisma.proposal.findMany({
+      where: { tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, OR: identifiers },
+      include: { status: true, client: true },
+    });
+    if (matches.length > 1) return { proposal: null, matchType: 'MULTIPLE_MATCHES', reason: 'Identificador FACTA vinculado a mais de uma proposta.' };
+    if (matches.length === 1) {
+      const cpf = String(matches[0].client?.cpf || '').replace(/\D/g, '');
+      if (itemCpf && cpf && itemCpf !== cpf) return { proposal: null, matchType: 'NOT_FOUND', reason: 'CPF retornado não corresponde ao cliente da proposta.' };
+      return { proposal: matches[0], matchType: 'EXACT', reason: 'Banco e identificador FACTA correspondentes.' };
     }
-
-    // 2. Procurar por Código AF nas colunas c6OperationNumber, proposalNumber ou cipNumber
-    if (itemAfCode) {
-      const matchByAf = await prisma.proposal.findMany({
-        where: {
-          tenantId,
-          deletedAt: null,
-          OR: [
-            { c6OperationNumber: itemAfCode },
-            { proposalNumber: itemAfCode },
-            { cipNumber: itemAfCode },
-          ],
-        },
-        include: { status: true },
-      });
-
-      if (matchByAf.length === 1) {
-        return { proposal: matchByAf[0], matchType: 'EXACT', reason: `Código AF match: ${itemAfCode}` };
-      } else if (matchByAf.length > 1) {
-        return {
-          proposal: null,
-          matchType: 'MULTIPLE_MATCHES',
-          reason: `Múltiplas propostas encontradas no Sentinel para o Código AF: ${itemAfCode}`,
-        };
-      }
-    }
-
-    // 3. Procurar por Número de Proposta ou Contrato no Sentinel (proposalNumber)
-    const targetNumbers = [itemProposalNum, itemContract, itemContractRefin].filter(Boolean);
-    if (targetNumbers.length > 0) {
-      const matchByNumber = await prisma.proposal.findMany({
-        where: {
-          tenantId,
-          deletedAt: null,
-          proposalNumber: { in: targetNumbers },
-        },
-        include: { status: true },
-      });
-
-      if (matchByNumber.length === 1) {
-        return { proposal: matchByNumber[0], matchType: 'EXACT', reason: `Número de proposta/contrato match` };
-      } else if (matchByNumber.length > 1) {
-        return {
-          proposal: null,
-          matchType: 'MULTIPLE_MATCHES',
-          reason: `Múltiplas propostas encontradas no Sentinel para os números: ${targetNumbers.join(', ')}`,
-        };
-      }
-    }
-
-    // 4. Procurar por CPF do cliente e banco FACTA
-    if (itemCpf && itemCpf.length === 11) {
-      const proposalsByCpf = await prisma.proposal.findMany({
-        where: {
-          tenantId,
-          deletedAt: null,
-          client: { cpf: itemCpf },
-        },
-        include: { status: true },
-      });
-
-      if (proposalsByCpf.length === 1) {
-        return { proposal: proposalsByCpf[0], matchType: 'EXACT', reason: `CPF match único (${itemCpf})` };
-      } else if (proposalsByCpf.length > 1) {
-        return {
-          proposal: null,
-          matchType: 'MULTIPLE_MATCHES',
-          reason: `Múltiplas propostas encontradas para o CPF ${itemCpf}. Vincule manualmente o código AF ou número da proposta.`,
-        };
-      }
-    }
-
-    return { proposal: null, matchType: 'NOT_FOUND', reason: 'Nenhuma proposta correspondente encontrada no Sentinel.' };
+    return { proposal: null, matchType: 'NOT_FOUND', reason: 'Vincule o AF ou número da proposta FACTA no Sentinel.' };
   }
 
   /**
@@ -663,6 +597,7 @@ export class FactaBankService {
         where: {
           tenantId,
           deletedAt: null,
+          bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] },
           OR: [
             { id: proposalId },
             { proposalNumber: proposalId },
@@ -670,7 +605,7 @@ export class FactaBankService {
             { factaAfCode: proposalId },
           ],
         },
-        include: { status: true },
+        include: { status: true, client: true },
       });
 
       if (!proposal) {
@@ -686,7 +621,7 @@ export class FactaBankService {
         previousInternalStatusName = 'AGUARDAR FORMALIZAÇÃO';
       }
 
-      const targetAfCode = options.forceAfCode || proposal.factaAfCode || proposal.c6OperationNumber || proposal.proposalNumber;
+      const targetAfCode = options.forceAfCode || proposal.factaAfCode;
 
       if (!targetAfCode) {
         await prisma.proposal.update({
@@ -760,7 +695,12 @@ export class FactaBankService {
         };
       }
 
-      const item = queryResult.data[0];
+      const candidates = queryResult.data.filter(record => String(record.codigo_af || '').trim() === String(targetAfCode).trim());
+      if (candidates.length !== 1) throw new Error('FACTA retornou identificador divergente ou múltiplos registros para o AF consultado.');
+      const item = candidates[0];
+      const returnedCpf = String(item.cpf || '').replace(/\D/g, '');
+      const clientCpf = String(proposal.client?.cpf || '').replace(/\D/g, '');
+      if (returnedCpf && clientCpf && returnedCpf !== clientCpf) throw new Error('CPF retornado pela FACTA diverge do cliente da proposta.');
       const sanitizedRaw = this.sanitizeFactaResponse(item);
       const mapping = mapFactaStatusToInternal(item);
 
@@ -832,6 +772,7 @@ export class FactaBankService {
             ...(targetStatusRecord
               ? {
                   statusId: targetStatusRecord.id,
+                  standardCategory: targetStatusRecord.standardCategory,
                   retentionDeadline: targetStatusRecord.code === 'AGUARDAR_RETORNO_CIP'
                     ? (proposal.retentionDeadline ? undefined : new Date())
                     : null,
@@ -920,7 +861,7 @@ export class FactaBankService {
       throw new Error('Integração FACTA não configurada para este tenant.');
     }
 
-    const daysBack = Math.min(30, Math.max(1, options.daysBack || 30));
+    const daysBack = Math.min(config.consultaSub === 'S' ? 10 : 30, Math.max(1, options.daysBack || 30));
     const now = new Date();
     const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
@@ -945,6 +886,7 @@ export class FactaBankService {
     let unlinkedCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
+    const visited = new Set<string>();
 
     let currentPage = 1;
     let hasMorePages = true;
@@ -991,6 +933,7 @@ export class FactaBankService {
             continue;
           }
 
+          visited.add(matchResult.proposal.id);
           const syncRes = await this.syncProposalStatus(prisma, matchResult.proposal.id, tenantId, {
             queriedBy: options.queriedBy || 'AUTO_WORKER',
             forceAfCode: item.codigo_af != null ? String(item.codigo_af) : undefined,
@@ -1013,6 +956,29 @@ export class FactaBankService {
       } else {
         currentPage++;
       }
+    }
+
+    // The date window is for discovery. Linked pending proposals must continue
+    // to be followed even when their original movement is older than 30 days.
+    let cursor: string | undefined;
+    while (true) {
+      const linked = await prisma.proposal.findMany({
+        where: { tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, factaAfCode: { not: null }, standardCategory: { notIn: ['PAGO', 'CANCELADO', 'RECUSADO'] } },
+        select: { id: true, factaAfCode: true }, orderBy: { id: 'asc' }, take: 100,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      if (!linked.length) break;
+      for (const proposal of linked) {
+        if (visited.has(proposal.id) || !proposal.factaAfCode?.trim()) continue;
+        processedCount++;
+        try {
+          const result = await this.syncProposalStatus(prisma, proposal.id, tenantId, { queriedBy: options.queriedBy || 'AUTO_WORKER' });
+          if (result.success) { if (result.hasChanged) updatedCount++; }
+          else { failedCount++; if (result.error) errors.push(result.error); }
+        } catch (error: any) { failedCount++; errors.push(error.message || 'Falha ao consultar proposta FACTA.'); }
+      }
+      cursor = linked[linked.length - 1].id;
+      if (linked.length < 100) break;
     }
 
     return {
@@ -1038,11 +1004,21 @@ export class FactaBankService {
     }
   ) {
     const proposal = await prisma.proposal.findFirst({
-      where: { id: proposalId, tenantId, deletedAt: null },
+      where: { id: proposalId, tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] } },
     });
 
     if (!proposal) {
       throw new Error('Proposta não encontrada.');
+    }
+
+    const identifiers = [
+      ...(data.factaAfCode?.trim() ? [{ factaAfCode: data.factaAfCode.trim() }] : []),
+      ...(data.factaProposalNumber?.trim() ? [{ factaProposalNumber: data.factaProposalNumber.trim() }] : []),
+      ...(data.factaContractNumber?.trim() ? [{ factaContractNumber: data.factaContractNumber.trim() }] : []),
+    ];
+    if (identifiers.length) {
+      const duplicate = await prisma.proposal.findFirst({ where: { tenantId, deletedAt: null, id: { not: proposal.id }, OR: identifiers } });
+      if (duplicate) throw new Error('Identificador FACTA já vinculado a outra proposta nesta empresa.');
     }
 
     const updated = await prisma.proposal.update({

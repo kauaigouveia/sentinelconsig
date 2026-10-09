@@ -340,6 +340,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
           password: factaPassword ? factaPassword : undefined,
           baseUrl: factaConfig.baseUrl,
           autoSyncEnabled: factaConfig.autoSyncEnabled,
+          simulationEnabled: Boolean(factaConfig.simulationEnabled),
           syncIntervalMinutes: factaConfig.syncIntervalMinutes,
           pageSize: factaConfig.pageSize,
           dateQueryType: factaConfig.dateQueryType,
@@ -1375,6 +1376,10 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
 
                 {/* Opções de Automação */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                  <label className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <input type="checkbox" checked={Boolean(factaConfig.simulationEnabled)} onChange={e => setFactaConfig({ ...factaConfig, simulationEnabled: e.target.checked })} />
+                    <span><strong className="block">Habilitar nas simulações</strong><span className="text-xs text-slate-500">Consultar condições de INSS, CLT e FGTS junto às demais integrações.</span></span>
+                  </label>
                   <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-900/60">
                     <div>
                       <span className="font-bold text-slate-900 dark:text-slate-100 block">
