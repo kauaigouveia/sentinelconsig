@@ -279,7 +279,7 @@ export class PartnerPortalClient {
   }
 
   public static async getConversationMessages(id: string): Promise<{ conversation: any; messages: PartnerSupportMessage[] }> {
-    const res = await fetch(`/api/partner-portal/support/conversations/${encodeURIComponent(id)}/messages`);
+    const res = await fetch(`/api/partner-portal/support/conversations/${encodeURIComponent(id)}/messages`, { cache: 'no-store' });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Erro ao carregar mensagens.');

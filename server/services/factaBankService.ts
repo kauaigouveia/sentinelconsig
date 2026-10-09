@@ -622,7 +622,7 @@ export class FactaBankService {
         previousInternalStatusName = 'AGUARDAR FORMALIZAÇÃO';
       }
 
-      const targetAfCode = options.forceAfCode || proposal.factaAfCode;
+      const targetAfCode = options.forceAfCode || proposal.factaAfCode || proposal.factaProposalNumber || proposal.proposalNumber;
 
       if (!targetAfCode) {
         await prisma.proposal.update({
@@ -696,7 +696,7 @@ export class FactaBankService {
         };
       }
 
-      const candidates = queryResult.data.filter(record => String(record.codigo_af || '').trim() === String(targetAfCode).trim());
+      const candidates = queryResult.data.filter(record => String(record.codigo_af || '').trim() === String(targetAfCode).trim() || (!options.forceAfCode && !proposal.factaAfCode && String(record.proposta || '').trim() === String(targetAfCode).trim()));
       if (candidates.length !== 1) throw new Error('FACTA retornou identificador divergente ou múltiplos registros para o AF consultado.');
       const item = candidates[0];
       const returnedCpf = String(item.cpf || '').replace(/\D/g, '');
@@ -964,7 +964,7 @@ export class FactaBankService {
     let cursor: string | undefined;
     while (true) {
       const linked = await prisma.proposal.findMany({
-        where: { tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, factaAfCode: { not: null }, standardCategory: { notIn: ['PAGO', 'CANCELADO', 'RECUSADO'] } },
+        where: { tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, standardCategory: { notIn: ['PAGO', 'CANCELADO', 'RECUSADO'] } },
         select: { id: true, factaAfCode: true }, orderBy: { id: 'asc' }, take: 100,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });

@@ -18393,6 +18393,7 @@ async function auditAndEnsureMasterUser() {
 
   // 10. GET /api/partner-portal/support/conversations/:id/messages
   app.get('/api/partner-portal/support/conversations/:id/messages', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
       if (!sessionContext) {

@@ -54,14 +54,11 @@ export class PartnerSimulationTracking {
         const isFgts = /FGTS/.test(productName);
         if (data?.product === 'CLT' ? !isClt : data?.product === 'FGTS' ? !isFgts : isClt || isFgts) return false;
         const expected = ({ NEW: 'NOVO', PORT: 'PORTABILIDADE', PORT_REFIN: 'REFIN_PORTABILIDADE', REFIN: 'REFIN' } as Record<string, string>)[data?.operation || 'NEW'];
-        if (proposal.type !== expected) return false;
+        if (proposal.type !== expected && !(data?.operation === 'PORT_REFIN' && /PORT.*REFIN|REFIN.*PORT/.test(productName))) return false;
         const bank = String(proposal.bank?.name || '').toUpperCase();
         return (data?.offers || []).some((offer: any) => {
           const institution = String(offer.institution || offer.provider || '').trim().toUpperCase();
-          return bank && institution && (institution.includes(bank) || bank.includes(institution))
-            && Number(offer.term) === proposal.installmentsCount
-            && (data.product === 'FGTS' || (Number(offer.installment) > 0 && Math.abs(Number(offer.installment) - Number(proposal.installmentValue)) <= 0.05))
-            && Math.abs(Number(offer.amount) - Number(proposal.releasedValue)) <= 1;
+          return bank && institution && (institution.includes(bank) || bank.includes(institution));
         });
       });
       // Latest eligible simulation is credited once; repeated attempts remain

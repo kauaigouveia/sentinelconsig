@@ -260,7 +260,7 @@ export const FactaProposalCard: React.FC<FactaProposalCardProps> = ({
             title="Vincular ou alterar código AF/Proposta da FACTA"
           >
             <LinkIcon className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Vincular AF / Proposta</span>
+            <span className="hidden sm:inline">Corrigir AF / ADE</span>
           </button>}
 
           {canSync && <button

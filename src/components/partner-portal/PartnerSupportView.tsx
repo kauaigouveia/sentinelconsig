@@ -69,9 +69,9 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchConversations = async (autoSelectFirst = true) => {
+  const fetchConversations = async (autoSelectFirst = true, quiet = false) => {
     const requestId = ++listRequestRef.current;
-    setIsLoadingList(true);
+    if (!quiet) setIsLoadingList(true);
     setError(null);
     try {
       const list = await PartnerPortalClient.getConversations();
@@ -89,16 +89,18 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
     }
   };
 
-  const fetchMessages = async (convId: string) => {
+  const fetchMessages = async (convId: string, quiet = false) => {
     const requestId = ++messageRequestRef.current;
-    setIsLoadingMessages(true);
+    if (!quiet) setIsLoadingMessages(true);
     setMessagesError(null);
     try {
       const res = await PartnerPortalClient.getConversationMessages(convId);
       if (requestId !== messageRequestRef.current || activeConversationIdRef.current !== convId) return;
       setActiveConversationData(res.conversation);
-      setMessages(res.messages);
-      setTimeout(scrollToBottom, 100);
+      setMessages(previous => {
+        if (previous.length !== res.messages.length || previous.some((message, index) => message.id !== res.messages[index]?.id)) setTimeout(scrollToBottom, 100);
+        return res.messages;
+      });
     } catch (err: any) {
       if (requestId !== messageRequestRef.current || activeConversationIdRef.current !== convId) return;
       console.error('[PartnerSupportView] Erro ao carregar mensagens:', err);
@@ -126,6 +128,29 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
     });
 
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    let running = false;
+    const refresh = async () => {
+      if (disposed || running || document.visibilityState === 'hidden') return;
+      running = true;
+      try {
+        const conversationId = activeConversationIdRef.current;
+        await Promise.all([fetchConversations(false, true), conversationId ? fetchMessages(conversationId, true) : Promise.resolve()]);
+      } finally { running = false; }
+    };
+    const timer = window.setInterval(() => { void refresh(); }, 5000);
+    const onVisible = () => { void refresh(); };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   useEffect(() => {

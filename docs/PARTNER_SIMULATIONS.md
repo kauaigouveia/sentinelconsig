@@ -7,8 +7,8 @@
 - Código do parceiro e operador do portal são obtidos da sessão. O parceiro acessa somente seu histórico.
 - Cada consulta possui um identificador para evitar duplicação por reenvio. Consultas novas são novos registros, inclusive para o mesmo cliente.
 - O prazo é de cinco dias úteis, de segunda a sexta, no mesmo horário em America/Bahia. Feriados não são descontados nesta versão.
-- A associação automática exige mesmo tenant, parceiro, CPF, produto, modalidade, banco, prazo e condições financeiras. Tolerâncias: R$ 0,05 na parcela e R$ 1 no valor liberado. FGTS não exige parcela mensal. Uma ADE converte apenas uma consulta, a mais recente compatível.
-- Se as condições digitadas mudarem, a mesa pode vincular manualmente uma ADE cadastrada para o mesmo cliente e parceiro.
+- A associação automática exige mesmo tenant, parceiro, CPF, produto/modalidade e banco. Mudanças de valor, prazo e parcela na digitação não impedem a conversão. O produto Port/Refin também identifica a modalidade quando o cadastro do tipo divergir. Uma ADE converte apenas uma consulta, a mais recente compatível, mesmo que existam consultas repetidas.
+- A mesa também pode vincular manualmente uma ADE cadastrada para o mesmo cliente e parceiro, quando necessário.
 - A simulação convertida exibe DIGITADA e o número da ADE. Após o prazo sem digitação, passa para OFERTA PERDIDA. Digitação posterior converte a oferta e preserva o indicador de atraso.
 - O relatório em Simulações / Análises agrupa consultas pelo mês de criação e parceiro. Inclui digitadas, perdidas, aguardando, atraso, conversão e exportação CSV. Digitação posterior atualiza o mês original da consulta.
 

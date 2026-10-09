@@ -22,6 +22,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('[Sentinel Error Boundary] Capturou erro não tratado:', error, errorInfo);
+    // A tab opened before deployment may reference a chunk that no longer exists.
+    // Recover once; persistent network failures keep the manual recovery screen.
+    if (/Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk .* failed/i.test(error.message) && navigator.onLine) {
+      try {
+        const key = 'sentinel:chunk-recovery-at';
+        const last = Number(sessionStorage.getItem(key) || 0);
+        if (Date.now() - last > 5 * 60 * 1000) {
+          sessionStorage.setItem(key, String(Date.now()));
+          window.location.reload();
+        }
+      } catch { /* Keep manual reload available if storage is unavailable. */ }
+    }
   }
 
   private handleReload = (): void => {
