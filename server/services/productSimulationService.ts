@@ -21,6 +21,10 @@ const safeLink = (value: unknown) => typeof value === 'string' && /^https:\/\//i
 
 export class ProductSimulationService {
   static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput) {
+    const factaInput = input;
+    // FACTA can return an eight-digit employer registration. Other providers
+    // require a full CNPJ, so discover their employment records automatically.
+    if (product === 'CLT' && input.employerDocument?.length === 8) input = { ...input, employerDocument: undefined };
     const rows: ProductSimulationRow[] = [];
     let configured = false;
     const failure = (provider: string, institution: string, error: any) => {
@@ -186,7 +190,7 @@ export class ProductSimulationService {
       const config = await FactaBankService.getTenantConfig(prisma, tenantId);
       if (!config.isConfigured || !config.simulationEnabled) return;
       configured = true;
-      rows.push(...await FactaSimulationService.product(prisma, tenantId, product, action, input));
+      rows.push(...await FactaSimulationService.product(prisma, tenantId, product, action, factaInput));
     };
     await Promise.all([nossa().catch(error => failure('Nossa Fintech', product, error)), finanto().catch(error => failure('FINANTO', product, error)), facta().catch(error => failure('FACTA', product, error))]);
     return { rows, message: rows.length ? undefined : configured ? 'Nenhuma condição elegível retornada para os dados informados.' : 'Nenhuma integração habilitada e configurada para este produto.' };

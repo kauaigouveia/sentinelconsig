@@ -14766,7 +14766,7 @@ async function auditAndEnsureMasterUser() {
       const eligibility = req.body?.eligibility;
       if (!isValidCpf(cpf) || !Number.isInteger(term) || term < 0 || term > 120 || (product === 'FGTS' && term < 1) ||
           !['Payment', 'Liquid'].includes(mode) || typeof eligibility !== 'boolean' ||
-          (product === 'CLT' && (!name || !/^\d{10,11}$/.test(phone) || (employerDocument && employerDocument.length !== 14) || (action === 'SIMULATE' && (!Number.isFinite(value) || value <= 0))))) {
+          (product === 'CLT' && (!name || !/^\d{10,11}$/.test(phone) || (employerDocument && ![8, 14].includes(employerDocument.length)) || (action === 'SIMULATE' && (!Number.isFinite(value) || value <= 0))))) {
         return res.status(400).json({ error: 'Revise CPF, dados do cliente, prazo e valor da simulação.' });
       }
       const result = await ProductSimulationService.run(prisma, tenantId, product as 'CLT' | 'FGTS', action as 'AUTHORIZE' | 'SIMULATE' | 'REFRESH', { cpf, name, phone, employerDocument, term, value, mode, eligibility });
