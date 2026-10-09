@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { NossaFintechService } from './nossaFintechService';
 import { FinantoService } from './finantoService';
+import { cltResponseReasons } from '../../src/lib/cltRestrictions';
 
 export type ProductSimulationInput = {
   cpf: string; name: string; phone: string; employerDocument?: string;
@@ -30,13 +31,19 @@ export class ProductSimulationService {
     const nossaCall = async (method: string, endpoint: string, body?: unknown) => {
       const result = await NossaFintechService.request(prisma, tenantId, method, endpoint, body);
       const payload = result.data as any;
-      if (!result.success || payload?.success === false || payload?.error) throw new Error(payload?.message || (typeof payload?.error === 'string' ? payload.error : null) || `Consulta indisponível (${result.status}).`);
-      return unwrap(payload);
+      if (!result.success || payload?.success === false || payload?.error) throw new Error([...new Set([payload?.message, ...cltResponseReasons(payload), typeof payload?.error === 'string' ? payload.error : null].filter(value => typeof value === 'string' && value.trim()))].join(' · ') || `Consulta indisponível (${result.status}).`);
+      const data = unwrap(payload);
+      if (endpoint === '/clt-loan/v1/get-margin' && data?.can_continue === false) {
+        const reasons = cltResponseReasons(payload);
+        if (!reasons.length && typeof payload?.message === 'string' && !/sucesso/i.test(payload.message)) reasons.push(payload.message);
+        if (reasons.length) return { ...data, restrictions: reasons };
+      }
+      return data;
     };
     const finantoCall = async (endpoint: string, body: unknown) => {
       const result = await FinantoService.request(prisma, tenantId, 'POST', endpoint, body);
       const payload = result.data as any;
-      if (!result.success || payload?.messages?.length) throw new Error(payload?.messages?.map((item: any) => item.text).join(' ') || 'FINANTO não concluiu a consulta.');
+      if (!result.success || payload?.messages?.length) throw new Error(cltResponseReasons(payload).join(' · ') || payload?.message || 'FINANTO não concluiu a consulta.');
       return payload;
     };
     const nossa = async () => {
@@ -105,11 +112,12 @@ export class ProductSimulationService {
             }
             catch (error) { failure('Nossa Fintech', service, error); continue; }
             if (action === 'REFRESH') {
-              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'DATA', message: margin?.can_continue === false ? 'Dados atualizados. Vínculo com restrições para continuar.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin } });
+              const restrictions = cltResponseReasons(margin);
+              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'DATA', message: margin?.can_continue === false ? restrictions.join(' · ') || 'Vínculo não elegível. O banco não informou o motivo da restrição.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin, restrictions } });
               continue;
             }
-            if (margin?.can_continue === false || !margin?.margin_key) {
-              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: `Sem margem elegível para o vínculo ${cnpj}.` }); continue;
+            if (margin?.can_continue === false || cltResponseReasons(margin).length > 0 || !margin?.margin_key) {
+              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: cltResponseReasons(margin).join(' · ') || `Sem margem elegível para o vínculo ${cnpj}. O banco não informou o motivo.` }); continue;
             }
             const tables = array(await nossaCall('GET', `/clt-loan/v1/list-rebates?service_type=${encodeURIComponent(service)}&margin_key=${encodeURIComponent(margin.margin_key)}`));
             const seen = new Set<string>();
@@ -147,7 +155,13 @@ export class ProductSimulationService {
         try {
           const simulation = await finantoCall(`/v3/loan-private-payroll-simulations/providers/${provider.code}`, { borrower: { name: input.name, identity: input.cpf, phone: input.phone }, step: { code: 1, name: 'Simulação de Proposta' }, originCode: 3 });
           if (action === 'REFRESH') {
-            rows.push({ provider: 'FINANTO', institution: provider.name, state: 'DATA', simulationId: simulation.id, message: 'Dados e condições disponíveis atualizados.', data: { borrower: simulation.borrower, items: simulation.items, eligible: simulation.eligible, messages: simulation.messages } });
+            const restrictions = cltResponseReasons(simulation);
+            const hasItems = array(simulation.items).length > 0;
+            rows.push({ provider: 'FINANTO', institution: provider.name, state: 'DATA', simulationId: simulation.id, message: restrictions.join(' · ') || (simulation.eligible === false ? 'Cliente não elegível. O banco não informou o motivo da restrição.' : hasItems ? 'Dados e condições disponíveis atualizados.' : 'Nenhuma condição de crédito retornada. O banco não informou o motivo.'), data: { borrower: simulation.borrower, items: simulation.items, eligible: simulation.eligible, messages: simulation.messages, restrictions } });
+            return;
+          }
+          if (simulation.eligible === false || cltResponseReasons(simulation).length > 0) {
+            rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', message: cltResponseReasons(simulation).join(' · ') || 'Cliente não elegível. O banco não informou o motivo da restrição.' });
             return;
           }
           const items = array(simulation.items).filter(item => (!input.term || Number(item.term) === input.term) && (!input.employerDocument || item.employerDocument === input.employerDocument));

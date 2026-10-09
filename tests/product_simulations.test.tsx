@@ -13,6 +13,44 @@ function configs() {
   vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: false, isConfigured: false } as any);
 }
 describe('Simulações CLT e FGTS na central', () => {
+  it.each(['REFRESH', 'SIMULATE'] as const)('preserva motivo CNAE da Nossa Fintech na ação %s', async action => {
+    configs();
+    const reason = 'CNAE 4712100 restrito para este tipo de operação';
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: { success: true, data: endpoint.includes('banking') ? ['QITECH'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' } : { margin_key: 'margin', can_continue: false, restrictions: [{ code: 'CNAE', description: reason }] } } }));
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', action, { ...input, employerDocument: '12345678000100' });
+    expect(result.rows[0].message).toContain(reason);
+    expect(result.rows[0].state).toBe(action === 'REFRESH' ? 'DATA' : 'PENDING');
+    expect(request.mock.calls.some(call => /simulate-loan|list-rebates/.test(call[3]))).toBe(false);
+  });
+  it('preserva a justificativa dentro de uma resposta de erro da Nossa Fintech', async () => {
+    configs();
+    vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => endpoint.includes('banking') ? { success: true, status: 200, data: { success: true, data: ['QITECH'] } } : { success: false, status: 422, data: { success: false, message: 'Não elegível', data: { restrictions: ['CNAE restrito'] } } });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', input);
+    expect(result.rows[0].message).toContain('CNAE restrito');
+  });
+  it('preserva o motivo retornado na mensagem externa da consulta de margem', async () => {
+    configs();
+    vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: endpoint.includes('banking') ? { success: true, data: ['QITECH'] } : endpoint.includes('check-authorization') ? { success: true, data: { status: 'AUTHORIZED' } } : { success: true, message: 'CNAE restrito', data: { can_continue: false, restrictions: [] } } }));
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', { ...input, employerDocument: '12345678000100' });
+    expect(result.rows[0].message).toBe('CNAE restrito');
+  });
+  it('não apresenta FINANTO sem ofertas como consulta com condições disponíveis', async () => {
+    configs();
+    vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
+    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
+    vi.spyOn(FinantoService, 'request').mockResolvedValue({ success: true, status: 200, data: { id: 'simulation', borrower: { name: 'Cliente' }, items: [], eligible: false } });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', input);
+    expect(result.rows.every(row => row.message?.includes('não informou o motivo'))).toBe(true);
+    expect(result.rows.every(row => !row.message?.includes('disponíveis atualizados'))).toBe(true);
+  });
+  it('deduplica os motivos FINANTO em vez de repeti-los', async () => {
+    configs();
+    vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
+    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
+    vi.spyOn(FinantoService, 'request').mockResolvedValue({ success: true, status: 200, data: { messages: [{ text: 'CNAE restrito' }, { text: 'CNAE restrito' }] } });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', input);
+    expect(result.rows.every(row => row.message === 'CNAE restrito')).toBe(true);
+  });
   it.each([
     { margin_key: 'margin', document: '98765432100', employer: { document: '12345678000100' } },
     { margin_key: 'margin', document: '12345678900', employer: { document: '98765432000100' } },
