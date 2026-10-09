@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { BlobSASPermissions, StorageSharedKeyCredential, generateBlobSASQueryParameters } from '@azure/storage-blob';
 import { getAzureContainerClient } from './azureBlobStorage';
+import { finantoCalculationBody } from './finantoCalculation';
 
 const CONFIG_KEY = 'finanto_api_key';
 const API_BASE = 'https://integration.ajin.io';
@@ -145,7 +146,7 @@ export class FinantoService {
     const response = await fetch(url, {
       method: normalizedMethod,
       headers: { apikey: apiKey, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: JSON.stringify(finantoCalculationBody(endpoint, body)) }),
       signal: AbortSignal.timeout(30_000),
     });
     const contentType = response.headers.get('content-type') || '';

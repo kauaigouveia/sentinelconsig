@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
+import { nossaFintechAgeError, nossaFintechBalanceError } from '../../src/lib/inssEligibility';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
 const CONFIG_KEYS = {
@@ -145,19 +146,27 @@ export class NossaFintechService {
 
   static async simulatePortabilityAcrossTables(prisma: PrismaClient, tenantId: string, input: {
     lastDueBalance: number; installmentFaceValue: number; openedInstallmentNumber: number;
-    numberOfInstallments: number; legalRepresentative: boolean;
+    numberOfInstallments: number; legalRepresentative: boolean; birthDate: string;
   }) {
+    const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
+    if (ageError) throw new Error(ageError);
     const tableResult = await this.request(prisma, tenantId, 'GET', `/inss/v1/rebates_parceiro?op_type=PORT-REFIN&legal_rep=${input.legalRepresentative}`);
     if (!tableResult.success) return { success: false, status: tableResult.status, data: tableResult.data };
     const tableData = tableResult.data as any;
     const tables = Array.isArray(tableData) ? tableData
       : tableData?.tabela_rebates || tableData?.table_rebates || tableData?.items ||
         tableData?.data?.tabela_rebates || tableData?.data?.items || tableData?.data || [];
-    const candidates = (Array.isArray(tables) ? tables : []).filter((table: any) => {
+    const termCandidates = (Array.isArray(tables) ? tables : []).filter((table: any) => {
       const installments = Array.isArray(table.number_of_installments) ? table.number_of_installments.map(Number) : [];
       return table.cod_tabela && (!installments.length || installments.includes(input.numberOfInstallments));
     });
-    if (!candidates.length) return { success: true, status: 200, data: { tables: [], results: [], message: 'Nenhuma tabela compatível com o prazo informado.' } };
+    const excludedTables: Array<{ table: any; reason: string }> = [];
+    const candidates = termCandidates.filter((table: any) => {
+      const reason = nossaFintechBalanceError(table, input.lastDueBalance);
+      if (reason) excludedTables.push({ table, reason });
+      return !reason;
+    });
+    if (!candidates.length) return { success: true, status: 200, data: { tables: [], results: [], excludedTables, message: 'Nenhuma tabela elegível para o prazo e saldo informados.' } };
 
     const results: Array<{ table: any; success: boolean; status: number; data?: unknown; error?: string }> = [];
     for (let index = 0; index < candidates.length; index += 4) {
@@ -177,12 +186,14 @@ export class NossaFintechService {
       }));
       results.push(...batchResults);
     }
-    return { success: true, status: 200, data: { tables: candidates, results } };
+    return { success: true, status: 200, data: { tables: candidates, results, excludedTables } };
   }
 
   static async simulateInssNovoAcrossTables(prisma: PrismaClient, tenantId: string, input: {
-    numberOfInstallments: number; mode: 'INSTALLMENT' | 'AMOUNT'; value: number; legalRepresentative: boolean;
+    numberOfInstallments: number; mode: 'INSTALLMENT' | 'AMOUNT'; value: number; legalRepresentative: boolean; birthDate: string;
   }) {
+    const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
+    if (ageError) throw new Error(ageError);
     const tableResult = await this.request(prisma, tenantId, 'GET', `/inss/v1/rebates_parceiro?op_type=NOVO&legal_rep=${input.legalRepresentative}`);
     if (!tableResult.success) return { success: false, status: tableResult.status, data: tableResult.data };
     const tableData = tableResult.data as any;
