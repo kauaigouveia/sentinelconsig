@@ -57,3 +57,19 @@ export function getNossaFintechTroco(payload: unknown): number | null {
   }
   return null;
 }
+
+/** Novo returns several options for one product. Resolve commercial table names
+ * from the actual returned amount when the option omits cod_tabela. */
+export function matchNossaFintechNovoTable(tables: Record<string, any>[], option: Record<string, any>, requestedTerm: number): Record<string, any> | null {
+  const term = Number(option.number_of_installments ?? requestedTerm);
+  const eligible = tables.filter(table => !Array.isArray(table.number_of_installments) || !table.number_of_installments.length || table.number_of_installments.map(Number).includes(term));
+  if (option.cod_tabela != null) return eligible.find(table => String(table.cod_tabela) === String(option.cod_tabela)) || null;
+  const amount = Number(option.disbursed_issue_amount);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const matching = eligible.filter(table => {
+    const minimum = table.start == null ? 0 : Number(table.start);
+    const maximum = table.end == null ? Infinity : Number(table.end);
+    return Number.isFinite(minimum) && !Number.isNaN(maximum) && amount >= minimum && amount <= maximum;
+  });
+  return matching.length === 1 ? matching[0] : null;
+}

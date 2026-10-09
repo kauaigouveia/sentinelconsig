@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate, nossaFintechBenefitError } from '../../src/lib/inssEligibility';
-import { getNossaFintechNovoOptions } from '../../src/lib/nossaFintech';
+import { matchNossaFintechNovoTable, getNossaFintechNovoOptions } from '../../src/lib/nossaFintech';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
 const CONFIG_KEYS = {
@@ -238,7 +238,7 @@ export class NossaFintechService {
             return [{ table, success: false, status: response.status, data: response.data, error: detail || 'A Nossa Fintech não retornou uma opção com valor liberado válido para este produto.' }];
           }
           return options.map(option => ({
-            table: productTables.find((candidate: any) => option.cod_tabela != null && String(candidate.cod_tabela) === String(option.cod_tabela)) || table,
+            table: matchNossaFintechNovoTable(productTables, option, input.numberOfInstallments) || { ...table, name: `Tabela não identificada · produto ${product}`, cod_tabela: undefined },
             success: true, status: response.status, data: { ...(response.data as Record<string, unknown>), disbursement_options: [option] },
           }));
         } catch (error: any) {
