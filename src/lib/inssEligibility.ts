@@ -91,9 +91,28 @@ export function finantoRuleItem(rule: any, term: number, rate?: number): any | n
     const termMatches = Number(item.maxTerm) > 0 ? term >= min && term <= max : Number(item.term) === term;
     const rateMatches = rate === undefined || (Number(item.maxRate) > 0
       ? rate >= (Number(item.minRate) || 0) && rate <= Number(item.maxRate)
-      : Math.abs(Number(item.rate) - rate) < 0.00001);
+      : /ESSENCIAL|SELECT|PRIME/i.test(rule.name || '')
+        ? !finantoTableRateError(rule.name || '', rate)
+        : Math.abs(Number(item.rate) - rate) < 0.00001);
     return termMatches && rateMatches && !finantoTableRateError(rule.name || '', rate ?? Number(item.rate));
   }) || null;
+}
+
+export const INSS_REFINANCING_RATES = Array.from({ length: 26 }, (_, index) => (185 - index) / 100);
+
+export function finantoRefinancingChoices(rule: any, term: number, selectedRate?: number) {
+  const rates = selectedRate === undefined ? INSS_REFINANCING_RATES : [selectedRate];
+  return rates.flatMap(rate => {
+    const item = finantoRuleItem(rule, term, rate);
+    return item ? [{ item, rate }] : [];
+  });
+}
+
+export function nossaFintechTableRate(table: any): number | null {
+  const name = String(table.name || table.nome_tabela || table.description || '');
+  const match = /([12][.,]\d+)\s*%/.exec(name);
+  const value = match ? Number(match[1].replace(',', '.')) : Number(table.monthly_rate ?? table.rate ?? table.taxa);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export function nossaFintechBalanceError(table: any, balance: number): string | null {

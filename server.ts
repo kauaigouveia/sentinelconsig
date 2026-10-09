@@ -14761,7 +14761,10 @@ async function auditAndEnsureMasterUser() {
       if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.create.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
-      const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, birthDate, legalRepresentative = false } = req.body || {};
+      const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, birthDate, refinancingRate, legalRepresentative = false } = req.body || {};
+      if (refinancingRate !== undefined && (!Number.isFinite(Number(refinancingRate)) || Number(refinancingRate) < 1.6 || Number(refinancingRate) > 1.85)) {
+        return res.status(400).json({ error: 'Informe uma taxa de refinanciamento entre 1,60% e 1,85%.' });
+      }
       if (![lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments].every(value => Number.isFinite(Number(value)) && Number(value) > 0) ||
           !Number.isInteger(Number(openedInstallmentNumber)) || !Number.isInteger(Number(numberOfInstallments)) || typeof legalRepresentative !== 'boolean') {
         return res.status(400).json({ error: 'Informe saldo devedor, valor da parcela, parcelas em aberto, prazo de refinanciamento e representante legal válidos.' });
@@ -14771,6 +14774,7 @@ async function auditAndEnsureMasterUser() {
       const result = await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, {
         lastDueBalance: Number(lastDueBalance), installmentFaceValue: Number(installmentFaceValue),
         openedInstallmentNumber: Number(openedInstallmentNumber), numberOfInstallments: Number(numberOfInstallments), legalRepresentative, birthDate,
+        refinancingRate: refinancingRate === undefined ? undefined : Number(refinancingRate),
       });
       return res.status(result.success ? 200 : 502).json(result);
     } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao simular Portabilidade/Refinanciamento.' }); }

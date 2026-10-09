@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import { nossaFintechAgeError, nossaFintechBalanceError } from '../../src/lib/inssEligibility';
+import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate } from '../../src/lib/inssEligibility';
 import { getNossaFintechNovoOptions } from '../../src/lib/nossaFintech';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
@@ -147,7 +147,7 @@ export class NossaFintechService {
 
   static async simulatePortabilityAcrossTables(prisma: PrismaClient, tenantId: string, input: {
     lastDueBalance: number; installmentFaceValue: number; openedInstallmentNumber: number;
-    numberOfInstallments: number; legalRepresentative: boolean; birthDate: string;
+    numberOfInstallments: number; legalRepresentative: boolean; birthDate: string; refinancingRate?: number;
   }) {
     const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
     if (ageError) throw new Error(ageError);
@@ -163,6 +163,7 @@ export class NossaFintechService {
     });
     const excludedTables: Array<{ table: any; reason: string }> = [];
     const candidates = termCandidates.filter((table: any) => {
+      if (input.refinancingRate !== undefined && Math.abs((nossaFintechTableRate(table) ?? 0) - input.refinancingRate) > 0.00001) return false;
       const reason = nossaFintechBalanceError(table, input.lastDueBalance);
       if (reason) excludedTables.push({ table, reason });
       return !reason;
