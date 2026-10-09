@@ -109,7 +109,10 @@ export class FactaSimulationService {
     const rateMatches = compatible.filter(rateEligible);
     const termMatches = rateMatches.filter(termEligible);
     const formatValues = (values: number[], suffix: string) => [...new Set(values)].sort((a, b) => a - b).map(value => `${value.toLocaleString('pt-BR')}${suffix}`).join(', ');
-    if (!returned.length) return { offers, message: 'A FACTA não retornou tabelas para esta operação e os dados informados.' };
+    if (!returned.length) {
+      const bankMessage = [result.mensagem, result.msg, result.message].find(value => typeof value === 'string' && value.trim());
+      return { offers, message: `A FACTA não retornou tabelas para esta operação e os dados informados.${bankMessage ? ` Retorno do banco: ${bankMessage.trim()}` : ''}` };
+    }
     if (!compatible.length) return { offers, message: 'As tabelas retornadas pela FACTA têm restrições incompatíveis com a espécie do benefício selecionada.' };
     if (!rateMatches.length) {
       const rates = compatible.filter(termEligible).map(table => factaNumber(table.taxa)).filter((value): value is number => value != null);

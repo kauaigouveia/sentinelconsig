@@ -150,6 +150,23 @@ describe('FACTA transporte e vínculo de propostas', () => {
   it('mascara CPF com onze dígitos nos registros de sincronização', () => {
     expect(FactaBankService.sanitizeFactaResponse({ cpf: '123.456.789-01' }).cpf).toBe('123******01');
   });
+  it('preserva a mensagem do banco quando a consulta não retorna tabelas', async () => {
+    vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ erro: false, mensagem: 'Prestação acima do máximo permitido.', tabelas_portabilidade: [], tabelas_refin_portabilidade: [] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', debt: 5000, originalTerm: 84, remainingTerm: 51, originalInstallment: 500 });
+    expect(result.offers).toEqual([]);
+    expect(result.message).toContain('Prestação acima do máximo permitido.');
+  });
+  it('combina o exemplo do manual CIP com taxas e prazos distintos nas duas etapas', async () => {
+    vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ erro: false,
+      tabelas_portabilidade: [{ codigoTabela: 108645, tabela: 'INSS PORT CIP FLEX 1 PN-P', taxa: 1.7, prazo: 36, contrato: 1500, parcela: 57.21, grupos: 'GRUPO 3' }],
+      tabelas_refin_portabilidade: [
+        { codigoTabela: 106966, tabela: 'GOLD', taxa: 1.7, prazo: 84, contrato: 2762.36, parcela: 72, valor_liquido: 1262.36, grupos: 'GRUPO 2' },
+        { codigoTabela: 108582, tabela: 'REFIN', taxa: 1.45, prazo: 84, contrato: 2949.34, parcela: 72, valor_liquido: 1449.34, grupos: 'GRUPO 3' },
+      ] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', term: 84, value: 72, debt: 1500, originalTerm: 84, remainingTerm: 36, originalInstallment: 120 });
+    expect(result.offers).toHaveLength(1);
+    expect(result.offers[0]).toMatchObject({ code: '108582', portabilityCode: '108645', rate: 1.45, term: 84, amount: 1449.34, contractAmount: 2949.34, installment: 72 });
+  });
   it('mantém períodos zerados e rejeita cálculo FGTS de tabela diferente', async () => {
     const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => path === '/fgts/saldo' ? { retorno: { dataRepasse_1: '01/03/2027', valor_1: 0, dataRepasse_2: '01/03/2028', valor_2: 200 } } : path === '/comercial/tabelas-coeficientes' ? { dados: [{ CD_TABELA_FF: '1' }] } : { permitido: 'SIM', tabela: '2 - OUTRA', valor_liquido: 90 });
     const rows = await FactaSimulationService.product(prisma, 'tenant', 'FGTS', 'SIMULATE', productInput);
