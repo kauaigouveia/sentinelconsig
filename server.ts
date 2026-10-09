@@ -14753,6 +14753,24 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao simular Portabilidade/Refinanciamento.' }); }
   });
 
+  app.post('/api/integrations/nossa-fintech/inss/novo/simulate-all', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.create.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const { numberOfInstallments, mode, value, legalRepresentative = false } = req.body || {};
+      if (!Number.isInteger(Number(numberOfInstallments)) || Number(numberOfInstallments) < 1 || !['INSTALLMENT', 'AMOUNT'].includes(mode) || !Number.isFinite(Number(value)) || Number(value) <= 0 || typeof legalRepresentative !== 'boolean') {
+        return res.status(400).json({ error: 'Informe forma de simulação, prazo, valor desejado e representante legal válidos.' });
+      }
+      const result = await NossaFintechService.simulateInssNovoAcrossTables(prisma, tenantId, {
+        numberOfInstallments: Number(numberOfInstallments), mode, value: Number(value), legalRepresentative,
+      });
+      return res.status(result.success ? 200 : 502).json(result);
+    } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao simular INSS Novo na Nossa Fintech.' }); }
+  });
+
   // Link a provider operation to an existing Sentinel proposal and refresh its provider fields on demand.
   app.post('/api/proposals/:id/nossa-fintech-link', async (req, res) => {
     try {

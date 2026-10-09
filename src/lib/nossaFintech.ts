@@ -3,6 +3,8 @@ const DISBURSEMENT_KEYS = new Set([
   'final_disbursed_amount',
   'disbursement_amount',
   'net_disbursed_amount',
+  'disbursed_issue_amount',
+  'disbursed_amount',
 ]);
 
 /** Extract the client cash-out from the documented response and common API envelopes. */

@@ -179,4 +179,40 @@ export class NossaFintechService {
     }
     return { success: true, status: 200, data: { tables: candidates, results } };
   }
+
+  static async simulateInssNovoAcrossTables(prisma: PrismaClient, tenantId: string, input: {
+    numberOfInstallments: number; mode: 'INSTALLMENT' | 'AMOUNT'; value: number; legalRepresentative: boolean;
+  }) {
+    const tableResult = await this.request(prisma, tenantId, 'GET', `/inss/v1/rebates_parceiro?op_type=NOVO&legal_rep=${input.legalRepresentative}`);
+    if (!tableResult.success) return { success: false, status: tableResult.status, data: tableResult.data };
+    const tableData = tableResult.data as any;
+    const tables = Array.isArray(tableData) ? tableData
+      : tableData?.tabela_rebates || tableData?.table_rebates || tableData?.items ||
+        tableData?.data?.tabela_rebates || tableData?.data?.items || tableData?.data || [];
+    const candidates = (Array.isArray(tables) ? tables : []).filter((table: any) => {
+      const terms = Array.isArray(table.number_of_installments) ? table.number_of_installments.map(Number) : [];
+      return table.cod_produto != null && (!terms.length || terms.includes(input.numberOfInstallments));
+    });
+    if (!candidates.length) return { success: true, status: 200, data: { results: [], message: 'Nossa Fintech não retornou tabelas para o prazo selecionado.' } };
+
+    const results: Array<{ table: any; success: boolean; status: number; data?: unknown; error?: string }> = [];
+    for (let index = 0; index < candidates.length; index += 4) {
+      const batch = candidates.slice(index, index + 4);
+      const batchResults = await Promise.all(batch.map(async (table: any) => {
+        try {
+          const body = {
+            number_of_installments: input.numberOfInstallments,
+            cod_produto: Number(table.cod_produto),
+            ...(input.mode === 'INSTALLMENT' ? { installment_face_value: input.value } : { disbursed_amount: input.value }),
+          };
+          const response = await this.request(prisma, tenantId, 'POST', '/inss/v1/simulation', body);
+          return { table, success: response.success, status: response.status, data: response.data };
+        } catch (error: any) {
+          return { table, success: false, status: 0, error: error.message || 'Falha nesta tabela Nossa Fintech.' };
+        }
+      }));
+      results.push(...batchResults);
+    }
+    return { success: true, status: 200, data: { tables: candidates, results } };
+  }
 }
