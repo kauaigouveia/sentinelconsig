@@ -38,7 +38,11 @@ sudo bash status-micro.sh
 
 **Sempre usar os dois arquivos `-f` no perfil Micro.** `docker compose up -d` sem eles aplicaria os limites maiores do perfil padrão. A API para após três falhas no perfil experimental; depois de corrigir, iniciar novamente com o mesmo comando. Se houver OOM, ciclos de reinício ou swap contínuo com lentidão, interromper a tentativa com `sudo docker compose -f compose.yaml -f compose.micro.yaml stop` e aguardar A1; não promover uma conexão instável para atendimento.
 
-Antes de conectar o número, confirmar API iniciada e estável. Depois acompanhar memória/reinícios durante conexão QR, recepção de mensagens, anexos e resposta da mesa. A única validação possível aqui no Windows é configuração/sintaxe; a instalação real aguarda execução dos comandos na nova VPS.
+Antes de conectar o número, confirmar API iniciada e estável. Depois acompanhar memória/reinícios durante conexão QR, recepção de mensagens, anexos e resposta da mesa.
+
+Em 09/10/2026, a composição Micro foi instalada por SSH via Tailscale na instância `sentinel-api-whatsapp` (`10.0.0.113`, público `150.230.94.155`). Docker, swap de 2 GB, PostgreSQL, Redis, Nginx e certificado HTTPS foram configurados. O firewall padrão do Ubuntu tinha uma regra INPUT de rejeição: foram acrescentadas somente as portas TCP 80/443, inclusive em `/etc/iptables/rules.v4`, preservando SSH e Tailscale. A conexão real do WhatsApp e a estabilidade sob atendimento ainda dependem da leitura do QR e validação com parceiros.
+
+Usar `CORS_ORIGIN=*` e `CORS_CREDENTIALS=false`: a versão instalada rejeita chamadas sem cabeçalho Origin quando a lista de origens é restrita, incluindo chamadas servidor a servidor. As operações continuam autenticadas pelo cabeçalho `apikey`; CORS não substitui essa autenticação.
 
 DNS `whatsapp.sentinelconsig.com.br` deve apontar para `150.230.94.155`, preservando `gateway.sentinelconsig.com.br`. A mesma sub-rede OCI já possui entrada TCP 80/443; confirmar firewall no novo Ubuntu. Não publicar 8081, 5432 ou 6379.
 
@@ -98,6 +102,6 @@ A chave e o segredo do webhook são criptografados no SystemConfig do tenant. `P
 
 ## Validação ainda necessária com o número conectado
 
-Percorrer os quatro convênios, anexar contracheque e confirmar resposta da mesa recebida no WhatsApp. Confirmar isolamento de parceiros e reconexão. A compilação local não comprova entrega pelo provedor. Nenhuma instalação remota foi executada nesta etapa.
+Percorrer os quatro convênios, anexar contracheque e confirmar resposta da mesa recebida no WhatsApp. Confirmar isolamento de parceiros e reconexão. A instalação e a resposta HTTP da API não comprovam entrega pelo provedor.
 
 Referências da implementação: compose e schemas oficiais no repositório https://github.com/EvolutionAPI/evolution-api .
