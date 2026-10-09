@@ -1,0 +1,52 @@
+import React from 'react';
+
+export const INSS_BENEFIT_TYPES = [
+  [1, 'Pensão por Morte de Trabalhador Rural'], [2, 'Pensão por Morte por Acidente de Trabalho do Trabalhador Rural'],
+  [3, 'Pensão por Morte do Empregador Rural'], [4, 'Aposentadoria por Invalidez do Trabalhador Rural'],
+  [5, 'Aposentadoria por Invalidez por Acidente de Trabalho do Trabalhador Rural'], [6, 'Aposentadoria por Invalidez do Empregador Rural'],
+  [7, 'Aposentadoria por Idade do Trabalhador Rural'], [8, 'Aposentadoria por Idade do Empregador Rural'],
+  [11, 'Amparo Previdenciário por Invalidez do Trabalhador Rural'], [12, 'Amparo Previdenciário por Idade do Trabalhador Rural'],
+  [18, 'Auxílio Inclusão'], [19, 'Pensão de Estudante (Lei 7.004/82)'], [20, 'Pensão por Morte de Ex-Diplomata'],
+  [21, 'Pensão por Morte Previdenciária'], [22, 'Pensão por Morte Estatutária'], [23, 'Pensão por Morte de Ex-Combatente'],
+  [24, 'Pensão Especial (Ato Institucional)'], [26, 'Pensão por Morte Especial'], [27, 'Pensão por Morte Servidor Público Federal'],
+  [28, 'Pensão por Morte Regime Geral'], [29, 'Pensão por Morte ex-Combatente Marítimo'], [30, 'Renda Mensal Vitalícia por Incapacidade'],
+  [32, 'Aposentadoria Invalidez Previdenciária'], [33, 'Aposentadoria Invalidez Aeronauta'], [34, 'Aposentadoria Invalidez Ex-Combatente Marítimo'],
+  [37, 'Aposentadoria Extranumerário Capin'], [38, 'Aposentadoria Extranumerário Funcionário Público'], [40, 'Renda Mensal Vitalícia por Idade'],
+  [41, 'Aposentadoria por Idade'], [42, 'Aposentadoria por Tempo de Contribuição'], [43, 'Aposentadoria por Tempo Serviço Ex-Combatente'],
+  [44, 'Aposentadoria Especial de Aeronauta'], [45, 'Aposentadoria por Tempo de Serviço Jornalista'], [46, 'Aposentadoria Especial'],
+  [49, 'Aposentadoria Ordinária'], [51, 'Aposentadoria Invalidez Extinto Plano Básico'], [52, 'Aposentadoria Idade Extinto Plano Básico'],
+  [54, 'Pensão Especial Vitalícia (Lei 9.793/99)'], [55, 'Pensão por Morte Extinto Plano Básico'], [56, 'Pensão Vitalícia Síndrome Talidomida'],
+  [57, 'Aposentadoria Tempo de Serviço de Professor'], [58, 'Aposentadoria de Anistiados'], [59, 'Pensão por Morte de Anistiados'],
+  [60, 'Pensão Especial Portador de SIDA'], [72, 'Aposentadoria Tempo Serviço - Lei de Guerra'], [78, 'Aposentadoria idade - Lei de Guerra'],
+  [81, 'Aposentadoria Compulsória Ex-Sasse'], [82, 'Aposentadoria Tempo de Serviço Ex-Sasse'], [83, 'Aposentadoria por Invalidez Ex-Sasse'],
+  [84, 'Pensão por Morte Ex-Sasse'], [87, 'Amparo Social Pessoa Portadora de Deficiência'], [88, 'Amparo Social ao Idoso'],
+  [89, 'Pensão Especial Vítimas Hemodiálise - Caruaru'], [92, 'Aposentadoria Invalidez Acidente de Trabalho'],
+  [93, 'Pensão por Morte Acidente do Trabalho'], [96, 'Pensão Especial para Pessoas Atingidas pela Hanseníase (Lei 11.520/07)'],
+] as const;
+
+type Props = { value: string; onChange: (code: string) => void; className?: string; required?: boolean };
+
+export const InssBenefitTypeSelect: React.FC<Props> = ({ value, onChange, className = '', required }) => {
+  const selected = INSS_BENEFIT_TYPES.find(([code]) => String(code) === value);
+  const [query, setQuery] = React.useState(selected ? `${selected[0]} - ${selected[1]}` : value);
+  const options = React.useMemo(() => INSS_BENEFIT_TYPES.filter(([code, name]) => {
+    const normalized = query.trim().toLocaleLowerCase('pt-BR');
+    return !normalized || String(code).includes(normalized) || name.toLocaleLowerCase('pt-BR').includes(normalized);
+  }), [query]);
+
+  React.useEffect(() => {
+    const current = INSS_BENEFIT_TYPES.find(([code]) => String(code) === value);
+    setQuery(current ? `${current[0]} - ${current[1]}` : value);
+  }, [value]);
+
+  const choose = (text: string) => {
+    setQuery(text);
+    const code = Number(text.match(/^\s*(\d+)/)?.[1]);
+    if (INSS_BENEFIT_TYPES.some(([candidate]) => candidate === code)) onChange(String(code));
+  };
+
+  return <label className={className}>Espécie do benefício (pesquise por código ou nome)
+    <input list="inss-benefit-type-options" required={required} value={query} onChange={event => choose(event.target.value)} placeholder="Ex.: 32 ou invalidez" className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+    <datalist id="inss-benefit-type-options">{options.map(([code, name]) => <option key={code} value={`${code} - ${name}`} />)}</datalist>
+  </label>;
+};

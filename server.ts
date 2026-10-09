@@ -14420,7 +14420,9 @@ async function auditAndEnsureMasterUser() {
           ['bank', 'branch', 'number', 'digit'].some(field => !String(creditBankAccount[field] || '').trim())) {
         return res.status(400).json({ error: 'Complete os dados da conta, endereço, documento e parceiro.' });
       }
-      const creditValuesValid = operation === '2'
+      const creditValuesValid = operation === '1'
+        ? (Number(loanValue) > 0 || Number(installmentValue) > 0) && [loanValue, installmentValue].every(value => value === undefined || value === null || Number.isFinite(Number(value)) && Number(value) >= 0) && Number(rate) > 0 && Number(term) > 0
+        : operation === '2'
         ? Number.isFinite(Number(loanValue)) && Number(loanValue) >= 0 && Number.isFinite(Number(installmentValue)) && Number(installmentValue) >= 0 && Number(rate) > 0 && Number(term) > 0
         : [loanValue, installmentValue, rate, term].every(value => Number.isFinite(Number(value)) && Number(value) > 0);
       if (!creditValuesValid || !Number.isInteger(Number(term)) || !Number.isInteger(Number(borrower.benefitType)) || typeof hasInsurance !== 'boolean') {
