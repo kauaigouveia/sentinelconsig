@@ -150,6 +150,21 @@ describe('FACTA transporte e vínculo de propostas', () => {
   it('mascara CPF com onze dígitos nos registros de sincronização', () => {
     expect(FactaBankService.sanitizeFactaResponse({ cpf: '123.456.789-01' }).cpf).toBe('123******01');
   });
+  it('distingue portabilidade ausente, benefício incompatível e grupos diferentes', async () => {
+    const request = vi.spyOn(FactaSimulationService, 'request');
+    const data = { ...input, operation: 'PORT_REFIN' as const, debt: 5000, originalTerm: 84, remainingTerm: 51, originalInstallment: 500 };
+    const refin = [{ ...table, grupos: 'GRUPO 3' }];
+    request.mockResolvedValue({ tabelas_refin_portabilidade: refin, tabelas_portabilidade: [] });
+    expect((await FactaSimulationService.inss(prisma, 'tenant', data)).message).toContain('lista de portabilidade veio vazia');
+    request.mockResolvedValue({ tabelas_refin_portabilidade: refin, tabelas_portabilidade: [{ ...table, tabela: 'LOAS', grupos: 'GRUPO LOAS 3' }] });
+    expect((await FactaSimulationService.inss(prisma, 'tenant', data)).message).toContain('descartadas por restrições');
+    request.mockResolvedValue({ tabelas_refin_portabilidade: refin, tabelas_portabilidade: [{ ...table, grupos: 'GRUPO 2' }] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', data);
+    expect(result.offers).toEqual([]);
+    expect(result.message).toContain('grupos compatíveis: GRUPO 2');
+    expect(result.message).toContain('grupos: GRUPO 3');
+    expect(result.message).not.toContain(input.cpf);
+  });
   it('preserva a mensagem do banco quando a consulta não retorna tabelas', async () => {
     vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ erro: false, mensagem: 'Prestação acima do máximo permitido.', tabelas_portabilidade: [], tabelas_refin_portabilidade: [] });
     const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', debt: 5000, originalTerm: 84, remainingTerm: 51, originalInstallment: 500 });

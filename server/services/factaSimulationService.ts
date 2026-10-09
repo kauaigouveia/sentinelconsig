@@ -122,7 +122,15 @@ export class FactaSimulationService {
       const terms = rateMatches.map(table => factaNumber(table.prazo)).filter((value): value is number => value != null);
       return { offers, message: `A FACTA retornou tabelas, mas nenhuma com prazo de ${targetTerm} meses.${terms.length ? ` Prazos retornados: ${formatValues(terms, ' meses')}.` : ''}` };
     }
-    return { offers, message: 'A FACTA retornou tabelas de refinanciamento, mas não uma tabela de portabilidade do mesmo grupo compatível com o benefício. Não foi possível combinar as condições.' };
+    const returnedPorts = list(result.tabelas_portabilidade);
+    const compatiblePorts = returnedPorts.filter(benefitEligible);
+    const describeGroups = (tables: any[]) => [...new Set(tables.map(table => groupOf(table) || '(não informado)'))].join(', ') || '(nenhum)';
+    const reason = !returnedPorts.length
+      ? 'A FACTA retornou refinanciamento, mas a lista de portabilidade veio vazia.'
+      : !compatiblePorts.length
+        ? 'As tabelas de portabilidade retornadas foram descartadas por restrições de espécie do benefício.'
+        : 'A FACTA retornou tabelas de refinanciamento, mas não uma tabela de portabilidade do mesmo grupo compatível com o benefício. Não foi possível combinar as condições.';
+    return { offers, message: `${reason} Portabilidade: ${returnedPorts.length} tabelas retornadas, ${compatiblePorts.length} compatíveis com o benefício; grupos compatíveis: ${describeGroups(compatiblePorts)}. Refinanciamento no prazo e taxa solicitados: ${termMatches.length} tabelas; grupos: ${describeGroups(termMatches)}.` };
   }
 
   static async contracts(prisma: PrismaClient, tenantId: string, cpf: string, benefit: string) {
