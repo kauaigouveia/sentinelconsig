@@ -150,6 +150,23 @@ describe('FACTA transporte e vínculo de propostas', () => {
   it('mascara CPF com onze dígitos nos registros de sincronização', () => {
     expect(FactaBankService.sanitizeFactaResponse({ cpf: '123.456.789-01' }).cpf).toBe('123******01');
   });
+  it('combina os grupos múltiplos retornados em produção sem duplicar pares ou aceitar nomes parciais', async () => {
+    const productionGroups = 'GP_MAIOR 12 PAGAS 2, GP_MAIOR 12 PAGAS 90, GRUPO 12 PGS 90D';
+    vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({
+      tabelas_portabilidade: [{ ...table, codigoTabela: 'port', grupos: productionGroups, prazo: 51 }],
+      tabelas_refin_portabilidade: [
+        { ...table, codigoTabela: 'refin2', grupos: ' gp_maior  12 pagas 2 ' },
+        { ...table, codigoTabela: 'refin90', grupos: 'GP_MAIOR 12 PAGAS 90' },
+        { ...table, codigoTabela: 'refinBoth', grupos: 'GP_MAIOR 12 PAGAS 2, GP_MAIOR 12 PAGAS 90' },
+        { ...table, codigoTabela: 'partial', grupos: 'GP_MAIOR 12 PAGAS' },
+        { ...table, codigoTabela: 'empty', grupos: ', , ' },
+      ],
+    });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', debt: 5000, originalTerm: 84, remainingTerm: 51, originalInstallment: 500 });
+    expect(result.offers.map(offer => offer.code)).toEqual(['refin2', 'refin90', 'refinBoth']);
+    expect(result.offers.every(offer => offer.portabilityCode === 'port')).toBe(true);
+    expect(result.message).toBeUndefined();
+  });
   it('distingue portabilidade ausente, benefício incompatível e grupos diferentes', async () => {
     const request = vi.spyOn(FactaSimulationService, 'request');
     const data = { ...input, operation: 'PORT_REFIN' as const, debt: 5000, originalTerm: 84, remainingTerm: 51, originalInstallment: 500 };

@@ -92,13 +92,14 @@ export class FactaSimulationService {
     const targetTerm = input.operation === 'PORT' ? input.remainingTerm : input.term;
     const termEligible = (table: any) => !targetTerm || factaNumber(table.prazo) === targetTerm;
     const eligible = (table: any) => benefitEligible(table) && rateEligible(table) && termEligible(table);
-    const groupOf = (table: any) => String(table.grupos || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    // Production responses can assign several comma-separated groups to one table.
+    const groupsOf = (table: any): string[] => [...new Set(String(table.grupos || '').split(',').map(group => group.trim().replace(/\s+/g, ' ').toUpperCase()).filter(Boolean))];
     let offers: FactaOffer[];
     if (input.operation === 'PORT_REFIN') {
       const ports = list(result.tabelas_portabilidade).filter(benefitEligible);
       offers = list(result.tabelas_refin_portabilidade).filter(eligible).flatMap(table => {
-        const group = groupOf(table);
-        return ports.filter(port => group && groupOf(port) === group).map(port => ({ ...this.offer(table), portabilityCode: String(port.codigoTabela), name: `${table.tabela} · portabilidade ${port.tabela}` }));
+        const groups = new Set(groupsOf(table));
+        return ports.filter(port => groupsOf(port).some(group => groups.has(group))).map(port => ({ ...this.offer(table), portabilityCode: String(port.codigoTabela), name: `${table.tabela} · portabilidade ${port.tabela}` }));
       });
     } else if (input.operation === 'PORT') {
       offers = list(result.tabelas_portabilidade).filter(eligible).map(table => this.offer(table));
@@ -124,7 +125,7 @@ export class FactaSimulationService {
     }
     const returnedPorts = list(result.tabelas_portabilidade);
     const compatiblePorts = returnedPorts.filter(benefitEligible);
-    const describeGroups = (tables: any[]) => [...new Set(tables.map(table => groupOf(table) || '(não informado)'))].join(', ') || '(nenhum)';
+    const describeGroups = (tables: any[]) => [...new Set(tables.flatMap(table => groupsOf(table).length ? groupsOf(table) : ['(não informado)']))].join(', ') || '(nenhum)';
     const reason = !returnedPorts.length
       ? 'A FACTA retornou refinanciamento, mas a lista de portabilidade veio vazia.'
       : !compatiblePorts.length
