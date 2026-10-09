@@ -9978,34 +9978,29 @@ async function auditAndEnsureMasterUser() {
 
         // STEP 15: registrar AuditLog individual por tenant dentro da mesma transação
         currentStep = 'STEP 15: registrar AuditLog individual por tenant';
-        for (const t of toDelete) {
-          processingTenantId = t.id;
-          await AuditLogService.record(tx as any, {
-            tx: tx as any,
-            tenantId: t.id,
-            userId: actorId,
-            userName: actorName,
-            action: 'tenant.bulk_deleted',
-            entity: 'Tenant',
-            entityId: t.id,
-            newData: {
-              deletedAt: now,
-              deletedBy: actorId,
-              status: 'CANCELLED',
-              operation: 'BULK_DELETE',
-              tenantName: t.name,
-              tenantSlug: t.slug,
-            },
-            req,
-          });
-        }
+        const individualAuditEntries = toDelete.map(t => ({
+          tenantId: t.id,
+          userId: actorId,
+          userName: actorName,
+          action: 'tenant.bulk_deleted',
+          entity: 'Tenant',
+          entityId: t.id,
+          newData: {
+            deletedAt: now,
+            deletedBy: actorId,
+            status: 'CANCELLED',
+            operation: 'BULK_DELETE',
+            tenantName: t.name,
+            tenantSlug: t.slug,
+          },
+          req,
+        }));
         processingTenantId = null;
 
         // STEP 16: registrar AuditLog em lote (batch) dentro da mesma transação
         currentStep = 'STEP 16: registrar AuditLog em lote';
         const primaryRootTenantId = rootTenants[0]?.id || null;
-        await AuditLogService.record(tx as any, {
-          tx: tx as any,
+        await AuditLogService.recordBatch(tx, [...individualAuditEntries, {
           tenantId: primaryRootTenantId || toDelete[0]?.id || null,
           userId: actorId,
           userName: actorName,
@@ -10021,7 +10016,7 @@ async function auditAndEnsureMasterUser() {
             actorRole,
           },
           req,
-        });
+        }]);
 
         // STEP 17: commit da transaction ou rollback para dryRun
         currentStep = 'STEP 17: commit da transaction';

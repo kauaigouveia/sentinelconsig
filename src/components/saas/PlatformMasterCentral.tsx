@@ -1789,7 +1789,7 @@ export const PlatformMasterCentral: React.FC = () => {
             </div>
 
             {/* List of Selected Tenants (first 10 preview) */}
-            <div className="flex-1 overflow-y-auto mb-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-850 p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto mb-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 p-3 space-y-2">
               <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                 Empresas Selecionadas para Cancelamento ({selectedTenantsList.length})
               </div>

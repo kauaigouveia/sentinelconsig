@@ -332,6 +332,57 @@ export class AuditLogService {
     this.failedQueue = [];
   }
 
+  /** Append a batch inside the caller's transaction with a constant number of DB round trips. */
+  public static async recordBatch(tx: Prisma.TransactionClient, entries: AuditLogEntryParams[]) {
+    if (!entries.length) return { count: 0 };
+    const tenantIds = [...new Set(entries.map(entry => entry.tenantId || null))];
+    const lockKeys = tenantIds.map(id => `audit_chain_${id || 'GLOBAL'}`).sort();
+    // Use the same distributed locks as record(), acquired in a deterministic order.
+    // Do not wait in TenantChainQueue while already holding the caller's transaction.
+    await tx.$executeRaw(Prisma.sql`
+      SELECT pg_advisory_xact_lock(hashtext(locks.key))
+      FROM (SELECT unnest(ARRAY[${Prisma.join(lockKeys)}]::text[]) AS key ORDER BY key) locks
+    `);
+    const ids = tenantIds.filter((id): id is string => id !== null);
+    const scope = Prisma.join([
+      ...(ids.length ? [Prisma.sql`tenant_id IN (${Prisma.join(ids)})`] : []),
+      ...(tenantIds.includes(null) ? [Prisma.sql`tenant_id IS NULL`] : []),
+    ], ' OR ');
+    const heads = await tx.$queryRaw<Array<{ tenantId: string | null; recordHash: string | null; createdAt: Date }>>(Prisma.sql`
+      SELECT DISTINCT ON (tenant_id) tenant_id AS "tenantId", record_hash AS "recordHash", created_at AS "createdAt"
+      FROM audit_logs WHERE ${scope}
+      ORDER BY tenant_id, created_at DESC, id DESC
+    `);
+    const previous = new Map(heads.map(head => [head.tenantId, head]));
+    const records: Prisma.AuditLogCreateManyInput[] = entries.map(entry => {
+      const tenantId = entry.tenantId || null;
+      const head = previous.get(tenantId);
+      const resolvedOld = entry.oldData !== undefined ? entry.oldData : entry.previousData;
+      const snapshot = (value: any) => value === undefined || value === null ? null : typeof value === 'string' ? value : JSON.stringify(sanitizeAuditData(value));
+      // Equal timestamps with random IDs would put the hash chain out of chronological order.
+      const createdAt = new Date(Math.max((entry.createdAt || new Date()).valueOf(), head ? head.createdAt.valueOf() + 1 : 0));
+      const record = {
+        id: `audit_${crypto.randomBytes(12).toString('hex')}`,
+        tenantId,
+        userId: entry.userId || null,
+        userName: entry.userName || (entry.userId ? 'Usuário' : 'Sistema'),
+        action: entry.action,
+        entity: entry.entity,
+        entityId: entry.entityId ? String(entry.entityId) : null,
+        oldData: snapshot(resolvedOld),
+        newData: snapshot(entry.newData),
+        ipAddress: entry.ipAddress || extractClientIp(entry.req),
+        previousHash: head?.recordHash || null,
+        createdAt,
+      };
+      const recordHash = computeCanonicalRecordHash(record);
+      previous.set(tenantId, { tenantId, recordHash, createdAt });
+      return { ...record, recordHash };
+    });
+    // Let errors propagate so the tenant changes and all audit records roll back together.
+    return tx.auditLog.createMany({ data: records });
+  }
+
   /**
    * Centralized method to record an audit log with cryptographic hash chain
    * using PostgreSQL transactional advisory locks per tenant for distributed concurrency
