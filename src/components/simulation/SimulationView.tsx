@@ -2375,30 +2375,31 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal: Detalhes da Solicitação */}
       {detailTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+          <div role="dialog" aria-modal="true" aria-labelledby="simulation-detail-title" className="relative flex w-full max-w-4xl max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5">
+            <div className="flex shrink-0 items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
                   <Info className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h3 id="simulation-detail-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
                     Detalhes da Simulação
                   </h3>
-                  <p className="text-xs text-slate-500 font-mono">ID: {detailTarget.id}</p>
+                  <p className="break-all text-xs text-slate-500 font-mono">ID: {detailTarget.id}</p>
                 </div>
               </div>
               <button
                 onClick={() => setDetailTarget(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                aria-label="Fechar detalhes da simulação"
+                className="shrink-0 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <XCircle className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="mt-3 min-h-0 overflow-y-auto overscroll-contain space-y-3 pr-1 text-xs [overflow-wrap:anywhere]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700">
                 <div>
                   <span className="text-slate-400 block text-[10px]">CPF DO CLIENTE</span>
                   <span className="font-mono font-bold text-sm">{formatCpf(detailTarget.cpf)}</span>
@@ -2406,7 +2407,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <div>
                   <span className="text-slate-400 block text-[10px]">TIPO / FLUXO</span>
                   <span className="font-bold text-xs">
-                    {detailTarget.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS · {({ NEW: 'Novo', PORT: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + Refinanciamento' } as Record<string, string>)[detailTarget.operationType || ''] || 'Simulação'}</span> : detailTarget.simulationType === 'FINANTO_INSS' ? (
+                    {detailTarget.simulationType === 'PARTNER_AUTO' ? <span className="text-violet-600">Portal do parceiro</span> : detailTarget.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS · {({ NEW: 'Novo', PORT: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + Refinanciamento' } as Record<string, string>)[detailTarget.operationType || ''] || 'Simulação'}</span> : detailTarget.simulationType === 'FINANTO_INSS' ? (
                       <span className="text-violet-600 dark:text-violet-400">FINANTO INSS · Contrato novo</span>
                     ) : detailTarget.simulationType === 'HAPPY_INSS' ? (
                       <span className="text-emerald-600 dark:text-emerald-400">Happy INSS</span>
@@ -2420,12 +2421,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <div>
                   <span className="text-slate-400 block text-[10px]">PARCEIRO</span>
                   <span className="font-mono font-bold text-xs">
-                    {partners.find(p => p.id === detailTarget.partnerId)?.login}
+                    {detailTarget.partnerCodeSnapshot || partners.find(p => p.id === detailTarget.partnerId)?.login}
                   </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">RESPONSÁVEL</span>
-                  <span className="font-semibold">{users.find(u => u.id === detailTarget.createdById)?.name}</span>
+                  <span className="font-semibold">{detailTarget.portalAccessName || users.find(u => u.id === detailTarget.createdById)?.name || 'Não informado'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">DATA SOLICITAÇÃO</span>
@@ -2486,7 +2487,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
               {detailTarget.selectedCondition && <section className="space-y-3 rounded-xl border border-violet-200 p-4 dark:border-violet-800">
                 <h4 className="font-bold">{detailTarget.simulationType === 'PARTNER_AUTO' ? 'Oferta de referência (maior valor liberado)' : 'Condição selecionada'}</h4>
                 <p className="text-sm">{detailTarget.selectedCondition.tableName} · {detailTarget.selectedCondition.provider} · tabela {detailTarget.selectedCondition.tableId}</p>
-                <dl className="grid grid-cols-2 gap-3 text-sm">
+                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   <div><dt className="text-slate-500">Valor liberado / contrato</dt><dd>R$ {detailTarget.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</dd></div>
                   <div><dt className="text-slate-500">Parcela</dt><dd>R$ {detailTarget.selectedCondition.installment?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'Não informada'}</dd></div>
                   <div><dt className="text-slate-500">Prazo / taxa mensal</dt><dd>{detailTarget.selectedCondition.term} meses · {detailTarget.selectedCondition.rate != null ? `${detailTarget.selectedCondition.rate}%` : 'Não informada'}</dd></div>
@@ -2527,7 +2528,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     <div className="font-bold text-slate-900 dark:text-slate-100">SIMULAÇÃO ENVIADA</div>
                     <div className="text-[11px] text-slate-500">
                       Cadastrado em {new Date(detailTarget.createdAt).toLocaleString('pt-BR')} por{' '}
-                      {users.find(u => u.id === detailTarget.createdById)?.name}
+                      {detailTarget.portalAccessName || users.find(u => u.id === detailTarget.createdById)?.name || 'Não informado'}
                     </div>
                   </div>
 
@@ -2576,11 +2577,11 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                         <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                           PERDIDA (NÃO DIGITADA)
                           <span className="px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold rounded-xs">
-                            EXPIRAÇÃO AUTOMÁTICA 72H
+                            {detailTarget.simulationType === 'PARTNER_AUTO' ? 'EXPIRAÇÃO EM 5 DIAS ÚTEIS' : 'EXPIRAÇÃO AUTOMÁTICA 72H'}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          Prazo máximo de 72 horas excedido sem digitação da proposta. Expirado em {new Date(detailTarget.updatedAt).toLocaleString('pt-BR')}
+                          Prazo máximo de {detailTarget.simulationType === 'PARTNER_AUTO' ? '5 dias úteis' : '72 horas'} excedido sem digitação da proposta. Expirado em {new Date(detailTarget.offerLostAt || detailTarget.updatedAt).toLocaleString('pt-BR')}
                         </div>
                       </>
                     ) : (
