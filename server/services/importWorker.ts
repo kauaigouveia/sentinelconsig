@@ -4,6 +4,9 @@ import { sseRegistry } from '../realtime.js';
 import { logger } from '../logger';
 import { AuditLogService } from './auditLogService.js';
 import { extractPartnerCode, isValidCpf } from '../../src/lib/utils.js';
+import { randomBytes } from 'node:crypto';
+import { hashPassword } from './passwordService.js';
+import { ImportedAccess, sealImportCredentials } from './partnerImportCredentials.js';
 
 export interface ImportProposalRow {
   sourceLine?: number;
@@ -974,6 +977,7 @@ export class ImportWorkerService {
     parsedRows: ImportPartnerRow[]
   ): Promise<void> {
     const startTime = Date.now();
+    const credentials: ImportedAccess[] = [];
     activeCancellationFlags.delete(jobId);
 
     try {
@@ -1044,8 +1048,9 @@ export class ImportWorkerService {
           try {
             const cleanName = String(item.name || '').trim();
             const cleanCode = String(item.code || cleanName).trim().toUpperCase();
+            const email = String(item.email || '').trim().toLowerCase();
 
-            if (!cleanName || !cleanCode) {
+            if (!cleanName || !cleanCode || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
               invalidCount++;
               continue;
             }
@@ -1066,32 +1071,45 @@ export class ImportWorkerService {
               },
             });
 
+            if (existingPartner?.deletedAt) { invalidCount++; continue; }
+            const existingAccess = await prisma.partnerPortalAccess.findFirst({ where: { tenantId, email: { equals: email, mode: 'insensitive' } } });
+            if (existingAccess && existingAccess.partnerId !== existingPartner?.id) { invalidCount++; continue; }
+            const password = existingAccess ? '' : `Sc!${randomBytes(12).toString('base64url')}`;
+            const passwordHash = password ? await hashPassword(password) : null;
+            const resultRow = { name: cleanName, code: cleanCode, email, password, status: existingAccess ? 'Acesso existente; senha preservada' : 'Novo acesso; trocar senha no primeiro login' };
+            await prisma.$transaction(async tx => {
+            let partner;
             if (existingPartner) {
-              await prisma.partner.update({
+              partner = await tx.partner.update({
                 where: { id: existingPartner.id },
                 data: {
                   name: this.sanitizeFormula(cleanName),
                   promoterId: promoterId || existingPartner.promoterId,
-                  email: item.email ? this.sanitizeFormula(item.email) : existingPartner.email,
+                  email,
                   phone: item.phone ? this.sanitizeFormula(item.phone) : existingPartner.phone,
                   status: item.active === false ? 'INATIVO' : 'ATIVO',
                 },
               });
-              updatedCount++;
             } else {
-              await prisma.partner.create({
+              partner = await tx.partner.create({
                 data: {
                   tenantId,
                   name: this.sanitizeFormula(cleanName),
                   code: cleanCode,
                   promoterId: promoterId || undefined,
-                  email: item.email ? this.sanitizeFormula(item.email) : undefined,
+                  email,
                   phone: item.phone ? this.sanitizeFormula(item.phone) : undefined,
                   status: item.active === false ? 'INATIVO' : 'ATIVO',
                 },
               });
-              createdCount++;
             }
+            if (passwordHash) await tx.partnerPortalAccess.create({ data: { tenantId, partnerId: partner.id, name: cleanName, email, passwordHash, mustChangePassword: true, active: item.active !== false } });
+            const job = await tx.importJob.findUniqueOrThrow({ where: { id: jobId }, select: { metadata: true } });
+            const metadata = job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata) ? job.metadata : {};
+            await tx.importJob.update({ where: { id: jobId }, data: { metadata: { ...metadata, credentials: sealImportCredentials([...credentials, resultRow]), credentialsExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } } });
+            }, { timeout: 15000 });
+            credentials.push(resultRow);
+            if (existingPartner) updatedCount++; else createdCount++;
           } catch (rowErr) {
             failedCount++;
           } finally {

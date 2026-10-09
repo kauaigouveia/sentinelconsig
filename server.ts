@@ -134,6 +134,7 @@ import { ImpactAnalysisService } from './server/services/commandCenter/impactAna
 import { PartnerPortalService } from './server/services/partnerPortalService.js';
 import { SupportService } from './server/services/supportService.js';
 import { EvolutionService } from './server/services/evolutionService.js';
+import { openImportCredentials } from './server/services/partnerImportCredentials.js';
 import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
 let isShuttingDown = false;
@@ -11484,6 +11485,9 @@ async function auditAndEnsureMasterUser() {
       if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'partners.create')) {
         return res.status(403).json({ error: 'Você não tem permissão para cadastrar parceiros.' });
       }
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'partners.update') && !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.crm.admin')) {
+        return res.status(403).json({ error: 'Permissão insuficiente para gerar acessos ao portal no lote.' });
+      }
 
       const userId = session.user.id;
 
@@ -11496,6 +11500,10 @@ async function auditAndEnsureMasterUser() {
 
       if (!rows || !Array.isArray(rows) || rows.length === 0) {
         return res.status(400).json({ error: 'Nenhum registro de parceiro fornecido.' });
+      }
+      const normalizedRows = rows.map(row => ({ ...row, name: String(row.name || row.fullName || '').trim(), code: String(row.code || row.login || '').trim().toUpperCase(), email: String(row.email || '').trim().toLowerCase() }));
+      if (normalizedRows.some(row => !row.name || !row.code || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email))) {
+        return res.status(400).json({ error: 'Informe nome, código e e-mail válido em todas as linhas para gerar os acessos ao portal.' });
       }
 
       const MAX_IMPORT_ROWS = 50000;
@@ -11531,7 +11539,7 @@ async function auditAndEnsureMasterUser() {
       });
 
       dispatchImportWorker(
-        () => ImportWorkerService.processPartnersJob(prisma, job.id, tenantId, userId, rows),
+        () => ImportWorkerService.processPartnersJob(prisma, job.id, tenantId, userId, normalizedRows),
         `[BACKGROUND PARTNER IMPORT ERROR] Job ${job.id} failed`
       );
 
@@ -11546,6 +11554,20 @@ async function auditAndEnsureMasterUser() {
       console.error('[IMPORT PARTNERS ERROR]', err);
       return res.status(500).json({ error: 'Erro ao inicializar importação de parceiros.' });
     }
+  });
+
+  app.get('/api/import/:id/partner-credentials', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.effectiveTenantId || !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.create') || (!hasPermission(session.activeRole as Role, session.activePermissions, 'partners.update') && !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.crm.admin'))) return res.status(403).json({ error: 'Não autorizado.' });
+      const job = await prisma.importJob.findFirst({ where: { id: req.params.id, tenantId: session.effectiveTenantId, userId: session.user.id, type: 'PARTNERS' } });
+      if (!job) return res.status(404).json({ error: 'Importação não encontrada.' });
+      const metadata = job.metadata as Record<string, any> | null;
+      if (!metadata?.credentials || new Date(metadata.credentialsExpiresAt).getTime() <= Date.now()) return res.status(410).json({ error: 'Planilha de acessos indisponível ou expirada (24 horas).' });
+      const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: job.tenantId }, select: { slug: true } });
+      return res.json({ rows: openImportCredentials(metadata.credentials), portalUrl: `https://${tenant.slug}.sentinelconsig.com.br/parceiro/login` });
+    } catch { return res.status(500).json({ error: 'Não foi possível baixar os acessos.' }); }
   });
 
   // 4. GET /api/import/:id - Retrieve job status with tenant isolation
@@ -11578,6 +11600,7 @@ async function auditAndEnsureMasterUser() {
 
       return res.json({
         ...job,
+        metadata: job.type === 'PARTNERS' && job.metadata ? { credentialsAvailable: Boolean((job.metadata as any).credentials), credentialsExpiresAt: (job.metadata as any).credentialsExpiresAt } : job.metadata,
         percent,
       });
     } catch (err) {

@@ -27,6 +27,7 @@ interface ParsedPartnerRow {
   rowIndex: number;
   fullName: string;
   login: string;
+  email: string;
   promoterName: string;
   promoterId: string;
   extractedCode: string;
@@ -52,6 +53,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   const [importing, setImporting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [importId, setImportId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -112,6 +114,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
     const results: ParsedPartnerRow[] = [];
     const seenLoginsInFile = new Set<string>();
+    const seenEmailsInFile = new Set<string>();
 
     rowsData.forEach((row, idx) => {
       // Auto-detect columns
@@ -121,7 +124,8 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         for (const pattern of keyPatterns) {
           const matchKey = rowKeys.find(k => k.toLowerCase().includes(pattern));
           if (matchKey && row[matchKey] !== undefined && row[matchKey] !== null) {
-            return String(row[matchKey]).trim();
+            const value = row[matchKey];
+            return String(typeof value === 'object' ? value.text || value.result || '' : value).trim();
           }
         }
         return '';
@@ -130,6 +134,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       const rawFullName = findVal(['nome', 'parceiro', 'razao', 'full', 'completo']) || (Array.isArray(row) ? String(row[0] || '') : '');
       let rawLogin = findVal(['login', 'codigo', 'código', 'code', 'id', 'user']) || (Array.isArray(row) ? String(row[1] || '') : '');
       const rawPromoter = findVal(['promotora', 'vinculo', 'vínculo', 'promoter']) || (Array.isArray(row) ? String(row[2] || '') : '');
+      const email = findVal(['email', 'e-mail']).toLowerCase();
 
       let fullName = String(rawFullName ?? '').trim().toUpperCase();
       let login = String(rawLogin ?? '').trim().toUpperCase();
@@ -153,7 +158,10 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           statusMessage = `Login ajustado automaticamente de '${previousLogin}' para '${login}'`;
         }
 
-        if (existingLoginsSet.has(login)) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          status = 'INVALID';
+          statusMessage = 'E-mail válido é obrigatório para o acesso ao portal.';
+        } else if (existingLoginsSet.has(login)) {
           status = 'INVALID';
           statusMessage = `O login '${login}' já está cadastrado no sistema.`;
         } else if (seenLoginsInFile.has(login)) {
@@ -179,11 +187,14 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       }
 
       const extractedCode = login;
+      if (seenEmailsInFile.has(email)) { status = 'INVALID'; statusMessage = 'E-mail duplicado no arquivo.'; }
+      if (email) seenEmailsInFile.add(email);
 
       results.push({
         rowIndex: idx + 1,
         fullName,
         login,
+        email,
         promoterName: targetPromoterName,
         promoterId: targetPromoterId,
         extractedCode,
@@ -207,6 +218,27 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
     setErrorMsg(null);
     setSuccessMsg(null);
+    setImportId(null);
+
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      void file.text().then(text => {
+        const delimiter = text.split(/\r?\n/)[0].includes(';') ? ';' : ',';
+        const records: string[][] = []; let record: string[] = []; let cell = ''; let quoted = false;
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          if (char === '"') { if (quoted && text[i + 1] === '"') { cell += '"'; i++; } else quoted = !quoted; }
+          else if (!quoted && char === delimiter) { record.push(cell); cell = ''; }
+          else if (!quoted && char === '\n') { record.push(cell.replace(/\r$/, '')); records.push(record); record = []; cell = ''; }
+          else cell += char;
+        }
+        if (cell || record.length) { record.push(cell.replace(/\r$/, '')); records.push(record); }
+        const headers = records.shift()?.map(header => header.replace(/^\uFEFF/, '').trim()) || [];
+        const rows = records.filter(row => row.some(value => value.trim())).map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ''])));
+        if (!rows.length || rows.length > 50000) throw new Error('Arquivo vazio ou acima de 50.000 registros.');
+        processRawData(rows);
+      }).catch(error => setErrorMsg(`Erro ao ler CSV: ${error.message}`));
+      return;
+    }
 
     if (file.name.toLowerCase().endsWith('.xls')) {
       setErrorMsg('Formato .xls não suportado. Converta o arquivo para .xlsx ou .csv.');
@@ -274,6 +306,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
     setErrorMsg(null);
     setSuccessMsg(null);
+    setImportId(null);
 
     const lines = pastedText.trim().split('\n').filter(l => l.trim().length > 0);
     const rowsJson = lines.map(line => {
@@ -282,6 +315,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         fullName: parts[0] || '',
         login: parts[1] || '',
         promoterName: parts[2] || '',
+        email: parts[3] || '',
       };
     });
 
@@ -292,9 +326,9 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   const handleDownloadTemplate = async () => {
     const { default: ExcelJS } = await import('exceljs');
     const templateData = [
-      { 'NOME COMPLETO': 'KAUAI AMORIM GOUVEIA', 'LOGIN': 'KAUAI@16740', 'PROMOTORA': 'DG' },
-      { 'NOME COMPLETO': 'FRANCISCO DA SILVA', 'LOGIN': 'FRANCO@16690', 'PROMOTORA': 'DG' },
-      { 'NOME COMPLETO': 'FOX AGENTE FINANCEIRO', 'LOGIN': 'FOX@16715', 'PROMOTORA': 'PROSPECTA' },
+      { 'NOME COMPLETO': 'KAUAI AMORIM GOUVEIA', 'LOGIN': 'KAUAI@16740', 'PROMOTORA': 'DG', 'EMAIL': 'kauai@example.com' },
+      { 'NOME COMPLETO': 'FRANCISCO DA SILVA', 'LOGIN': 'FRANCO@16690', 'PROMOTORA': 'DG', 'EMAIL': 'francisco@example.com' },
+      { 'NOME COMPLETO': 'FOX AGENTE FINANCEIRO', 'LOGIN': 'FOX@16715', 'PROMOTORA': 'PROSPECTA', 'EMAIL': 'fox@example.com' },
     ];
 
     const workbook = new ExcelJS.Workbook();
@@ -315,6 +349,24 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const downloadCredentials = async (jobId: string) => {
+    const response = await fetch(`/api/import/${encodeURIComponent(jobId)}/partner-credentials`, { cache: 'no-store' });
+    const report = await response.json();
+    if (!response.ok) throw new Error(report.error || 'Não foi possível baixar os acessos.');
+    const { default: ExcelJS } = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Acessos ao portal');
+    sheet.addRow(['Nome', 'Código do parceiro', 'Usuário (e-mail)', 'Senha inicial', 'Link do portal', 'Resultado']);
+    for (const row of report.rows) sheet.addRow([row.name, row.code, row.email, row.password, report.portalUrl, row.status]);
+    sheet.columns.forEach(column => { column.width = 32; });
+    sheet.getRow(1).font = { bold: true };
+    const buffer = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = `ACESSOS_PARCEIROS_${jobId}.xlsx`; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   // Confirm Import
   const handleConfirmImport = async () => {
     if (loadingPartners) return;
@@ -327,6 +379,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       .map(r => ({
         fullName: r.fullName,
         login: r.login,
+        email: r.email,
         promoterName: r.promoterName,
       }));
 
@@ -354,11 +407,25 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         throw new Error(data.error || 'Falha ao processar importação de parceiros.');
       }
 
-      setSuccessMsg(`Importação enfileirada com sucesso no servidor! ${validItems.length} parceiros em processamento.`);
-      setTimeout(() => {
-        onImportCompleted();
-        onClose();
-      }, 1500);
+      setImportId(data.importId);
+      setSuccessMsg(`Importação em processamento. Aguarde nesta tela para baixar a planilha de acessos automaticamente.`);
+      let completed = false;
+      for (let attempt = 0; attempt < 300; attempt++) {
+        await new Promise(resolve => window.setTimeout(resolve, 2000));
+        const progressResponse = await fetch(`/api/import/${encodeURIComponent(data.importId)}`, { cache: 'no-store' });
+        if (!progressResponse.ok) throw new Error('Não foi possível acompanhar a importação. Não reenvie o lote; consulte o histórico.');
+        const job = await progressResponse.json();
+        setSuccessMsg(`Processando ${job.processedRecords}/${job.totalRecords} parceiros.`);
+        if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status)) {
+          completed = true;
+          onImportCompleted();
+          setSuccessMsg(`Lote ${job.status === 'COMPLETED' ? 'concluído' : 'interrompido'}: ${job.createdRecords} criados, ${job.updatedRecords} atualizados, ${job.invalidRecords} inválidos e ${job.failedRecords} falhas.`);
+          if (job.metadata?.credentialsAvailable) await downloadCredentials(data.importId);
+          else setErrorMsg('Nenhum acesso foi gerado. Confira as linhas do lote.');
+          break;
+        }
+      }
+      if (!completed) setErrorMsg('O lote continua em processamento. Não reenvie; acompanhe pelo histórico de importações.');
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao importar parceiros em lote.');
     } finally {
@@ -459,14 +526,14 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
             {/* Paste Raw Data */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                Ou cole os dados (Nome [Tab] Login [Tab] Promotora):
+                Ou cole os dados (Nome [Tab] Login [Tab] Promotora [Tab] E-mail):
               </label>
               <textarea
                 rows={3}
                 value={pastedText}
                 onChange={e => setPastedText(e.target.value)}
                 disabled={loadingPartners || partnersLoadFailed}
-                placeholder="Exemplo:&#10;KAUAI AMORIM	KAUAI@16740	DG&#10;FOX AGENTE	FOX@16715	PROSPECTA"
+                placeholder="Nome [Tab] Login/Código [Tab] Promotora [Tab] E-mail"
                 className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-100 focus:outline-hidden disabled:opacity-50"
               />
               <button
@@ -506,6 +573,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
               <span>{successMsg}</span>
             </div>
           )}
+          {importId && !importing && <button type="button" className="mx-6 mb-3 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white" onClick={() => void downloadCredentials(importId).catch(error => setErrorMsg(error.message))}>Baixar planilha de acessos (disponível por 24 horas)</button>}
 
           {/* Section 3: Parsed Preview Table */}
           {parsedRows.length > 0 && (
@@ -534,6 +602,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                       <th className="px-3 py-2">Linha</th>
                       <th className="px-3 py-2">Nome Completo</th>
                       <th className="px-3 py-2">Login Informado</th>
+                      <th className="px-3 py-2">E-mail do portal</th>
                       <th className="px-3 py-2">Código Extraído</th>
                       <th className="px-3 py-2">Promotora</th>
                       <th className="px-3 py-2">Validação</th>
@@ -558,6 +627,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                         <td className="px-3 py-2 font-mono font-bold text-slate-900 dark:text-slate-100">
                           {row.login || '-'}
                         </td>
+                        <td className="px-3 py-2">{row.email || '-'}</td>
                         <td className="px-3 py-2 font-mono font-bold text-blue-600">
                           {row.extractedCode || '-'}
                         </td>
@@ -604,7 +674,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           <button
             type="button"
             onClick={handleConfirmImport}
-            disabled={loadingPartners || partnersLoadFailed || importing || validCount === 0}
+            disabled={loadingPartners || partnersLoadFailed || importing || !!importId || validCount === 0}
             className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-40 flex items-center gap-1.5"
           >
             {loadingPartners ? (
