@@ -143,16 +143,16 @@ export const CentralAtendimentoView: React.FC = () => {
     }
   };
 
-  const fetchMessages = async (convId: string) => {
+  const fetchMessages = async (convId: string, quiet = false) => {
     const requestId = ++messageRequestIdRef.current;
-    setIsLoadingMessages(true);
+    if (!quiet) setIsLoadingMessages(true);
     setMessagesError(null);
     if (activeConversationData?.id !== convId) {
       setActiveConversationData(null);
       setMessages([]);
     }
     try {
-      const res = await fetch(`/api/support/conversations/${encodeURIComponent(convId)}`);
+      const res = await fetch(`/api/support/conversations/${encodeURIComponent(convId)}`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Não foi possível carregar as mensagens deste atendimento.');
@@ -160,8 +160,11 @@ export const CentralAtendimentoView: React.FC = () => {
       const data = await res.json();
       if (requestId !== messageRequestIdRef.current || activeConversationIdRef.current !== convId) return;
       setActiveConversationData(data.conversation);
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-      setTimeout(scrollToBottom, 100);
+      const next = Array.isArray(data.messages) ? data.messages : [];
+      setMessages(previous => {
+        if (previous.length !== next.length || previous.some((message, index) => message.id !== next[index]?.id)) setTimeout(scrollToBottom, 100);
+        return next;
+      });
     } catch (err) {
       console.error('[CentralAtendimentoView] Erro ao carregar mensagens:', err);
       if (requestId === messageRequestIdRef.current && activeConversationIdRef.current === convId) {
@@ -176,6 +179,26 @@ export const CentralAtendimentoView: React.FC = () => {
   fetchConversationsRef.current = fetchConversations;
   const fetchMessagesRef = useRef(fetchMessages);
   fetchMessagesRef.current = fetchMessages;
+
+  useEffect(() => {
+    let running = false;
+    const refresh = async () => {
+      const id = activeConversationIdRef.current;
+      if (!id || running || document.visibilityState === 'hidden') return;
+      running = true;
+      try { await fetchMessagesRef.current(id, true); }
+      finally { running = false; }
+    };
+    const timer = window.setInterval(() => { void refresh(); }, 3000);
+    const onVisible = () => { void refresh(); };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void fetchConversations(true), 250);

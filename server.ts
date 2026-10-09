@@ -18348,6 +18348,7 @@ async function auditAndEnsureMasterUser() {
 
   // 8. GET /api/partner-portal/support/conversations
   app.get('/api/partner-portal/support/conversations', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const sessionContext = await PartnerPortalService.getPartnerSession(req, prisma);
       if (!sessionContext) {
@@ -18513,6 +18514,7 @@ async function auditAndEnsureMasterUser() {
 
   // 14. GET /api/support/conversations/:id
   app.get('/api/support/conversations/:id', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const session = await getAuthSession(req);
       if (!session || !session.effectiveTenantId) {

@@ -51,8 +51,8 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
   const activeConversationIdRef = useRef<string | null>(activeConversationId);
   const messageRequestRef = useRef(0);
   const listRequestRef = useRef(0);
-  const fetchConversationsRef = useRef<(autoSelectFirst?: boolean) => Promise<void>>(async () => {});
-  const fetchMessagesRef = useRef<(convId: string) => Promise<void>>(async () => {});
+  const fetchConversationsRef = useRef<(autoSelectFirst?: boolean, quiet?: boolean) => Promise<void>>(async () => {});
+  const fetchMessagesRef = useRef<(convId: string, quiet?: boolean) => Promise<void>>(async () => {});
 
   activeConversationIdRef.current = activeConversationId;
 
@@ -138,16 +138,18 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
       running = true;
       try {
         const conversationId = activeConversationIdRef.current;
-        await Promise.all([fetchConversations(false, true), conversationId ? fetchMessages(conversationId, true) : Promise.resolve()]);
+        if (conversationId) await fetchMessagesRef.current(conversationId, true);
       } finally { running = false; }
     };
-    const timer = window.setInterval(() => { void refresh(); }, 5000);
+    const timer = window.setInterval(() => { void refresh(); }, 3000);
+    const listTimer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void fetchConversationsRef.current(false, true); }, 30000);
     const onVisible = () => { void refresh(); };
     window.addEventListener('focus', onVisible);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       disposed = true;
       window.clearInterval(timer);
+      window.clearInterval(listTimer);
       window.removeEventListener('focus', onVisible);
       document.removeEventListener('visibilitychange', onVisible);
     };

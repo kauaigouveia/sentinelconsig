@@ -257,7 +257,7 @@ export class PartnerPortalClient {
   }
 
   public static async getConversations(): Promise<PartnerSupportConversation[]> {
-    const res = await fetch('/api/partner-portal/support/conversations');
+    const res = await fetch('/api/partner-portal/support/conversations', { cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Erro ao listar conversas.');
@@ -279,7 +279,7 @@ export class PartnerPortalClient {
   }
 
   public static async getConversationMessages(id: string): Promise<{ conversation: any; messages: PartnerSupportMessage[] }> {
-    const res = await fetch(`/api/partner-portal/support/conversations/${encodeURIComponent(id)}/messages`, { cache: 'no-store' });
+    const res = await fetch(`/api/partner-portal/support/conversations/${encodeURIComponent(id)}/messages`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Erro ao carregar mensagens.');
