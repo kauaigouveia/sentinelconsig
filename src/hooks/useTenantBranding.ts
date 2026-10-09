@@ -41,15 +41,18 @@ export function useTenantBranding() {
     const tenantName = b.companyName || SYSTEM_IDENTITY.name;
     document.title = `${tenantName} | Sentinel Consig`;
 
-    // 2. Update Favicon if provided
-    if (b.faviconUrl) {
+    // Use the company's logo when no separate favicon was registered.
+    const tenantDomain = b.domainType === 'PLATFORM_SUBDOMAIN' || b.domainType === 'CUSTOM_DOMAIN';
+    const favicon = tenantDomain ? b.faviconUrl || b.logoUrl : b.faviconUrl;
+    {
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) {
         link = document.createElement('link');
         link.rel = 'icon';
         document.head.appendChild(link);
       }
-      link.href = b.faviconUrl;
+      link.removeAttribute('type');
+      link.href = favicon || '/branding/sentinel-consig-favicon.png';
     }
 
     // 3. Inject CSS Variables for Dynamic Color Theming

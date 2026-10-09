@@ -884,6 +884,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   alt={effectiveBranding.tenantName}
                   className="max-h-full max-w-full object-contain rounded-sm"
                   referrerPolicy="no-referrer"
+                  onError={event => { const image = event.currentTarget; if (!image.src.endsWith(SYSTEM_IDENTITY.defaultLogo)) image.src = SYSTEM_IDENTITY.defaultLogo; }}
                 />
               </div>
               <div
