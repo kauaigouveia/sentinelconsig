@@ -4,7 +4,7 @@ import { Partner, SimulationRequest } from '../../types';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
-import { ageAt, finantoAgeError, finantoInstallmentError, finantoRuleItem, finantoTableLabel } from '../../lib/inssEligibility';
+import { ageAt, finantoAgeError, finantoCashOutError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, finantoTableRateError } from '../../lib/inssEligibility';
 
 type ApiItem = Record<string, any>;
 type FileUpload = { name: string; type: string; content: string };
@@ -108,6 +108,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   const availableTerms = useMemo(() => [...new Set(rules.flatMap(rule => (rule.items || []).map((item: any) => Number(item.term || item.maxTerm)).filter((value: number) => Number.isInteger(value) && value > 0)))].sort((a, b) => b - a), [rules]);
 
   const loadRules = async () => {
+    if (operationCode === '2' || operationCode === '4') setHasInsurance(false);
     setLoadingRules(true); setRules([]); setRuleId(''); setRate(''); setTerm(''); setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); setNossaFintechError(''); setError('');
     try {
       const productsResponse = await fetch('/api/integrations/finanto/request', {
@@ -204,7 +205,8 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
             const ageError = finantoAgeError(birthDate, requestedTerm);
             const installmentError = operationCode === '2' || operationCode === '4' ? finantoInstallmentError(rule.name || '', parseAmount(originInstallmentValue)) : null;
             const defaultItem = finantoRuleItem(rule, requestedTerm, Number(refinancing?.rate || rate));
-            const eligibilityError = ageError || installmentError || (!defaultItem ? 'A tabela não atende à taxa e ao prazo escolhidos.' : null);
+            const rateError = finantoTableRateError(rule.name || '', Number(refinancing?.rate || rate));
+            const eligibilityError = ageError || installmentError || rateError || (!defaultItem ? 'A tabela não atende à taxa e ao prazo escolhidos.' : null);
             if (eligibilityError) { results[index] = { rule, skipped: true, error: eligibilityError }; continue; }
             let originContracts: ApiItem[] | undefined;
             if (operationCode === '3') {
@@ -242,6 +244,10 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
             const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-inss-simulations/calculation', body: payload, clientBirthDate: birthDate }) });
             const data = await response.json();
             if (!response.ok || readMessages(data)) throw new Error(data.error || readMessages(data) || 'A FINANTO não calculou esta tabela.');
+            if (operationCode === '4') {
+              const cashOutError = finantoCashOutError(rule.name || '', data);
+              if (cashOutError) { results[index] = { rule, skipped: true, error: cashOutError }; continue; }
+            }
             results[index] = { ...(results[index] || { rule }), rule, calculation: data, ...(originContracts ? { originContracts } : {}) };
           } catch (err: any) {
             results[index] = { ...(results[index] || {}), rule, error: err.message || 'Falha no cálculo.' };

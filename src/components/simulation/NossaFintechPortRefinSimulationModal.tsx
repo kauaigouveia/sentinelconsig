@@ -3,7 +3,7 @@ import { Activity, AlertCircle, LoaderCircle, X } from 'lucide-react';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
-import { ageAt, finantoAgeError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
+import { ageAt, finantoAgeError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, finantoTableRateError, INSS_TERMS } from '../../lib/inssEligibility';
 
 type SimulationRow = { provider: string; table?: any; success: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
 type Props = { isOpen: boolean; onClose: () => void };
@@ -12,11 +12,6 @@ const inputClass = 'mt-1 block w-full rounded-lg border border-slate-300 bg-whit
 const labelClass = 'text-xs font-semibold text-slate-600 dark:text-slate-300';
 const itemsOf = (data: any) => Array.isArray(data?.items) ? data.items : Array.isArray(data?.data?.items) ? data.data.items : [];
 const messagesOf = (data: any) => Array.isArray(data?.messages) ? data.messages.map((item: any) => item?.text).filter(Boolean).join(' ') : '';
-const finantoCashOut = (data: any): number | null => {
-  const candidates = [data?.refinancing?.netValue, data?.refinancing?.additionalValue, data?.additionalValue, data?.netValue, data?.finalDisbursedAmount];
-  const value = candidates.find(item => item !== null && item !== undefined && item !== '' && Number.isFinite(Number(item)));
-  return value === undefined ? null : Number(value);
-};
 
 export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [form, setForm] = useState({
@@ -68,8 +63,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     }
     const results: SimulationRow[] = [];
     const eligible = allRules.flatMap(rule => {
-      const reason = finantoInstallmentError(rule.name || '', Number(form.installmentFaceValue));
       const termItem = finantoRuleItem(rule, Number(form.numberOfInstallments));
+      const reason = finantoInstallmentError(rule.name || '', Number(form.installmentFaceValue)) || (termItem ? finantoTableRateError(rule.name || '', Number(termItem.rate)) : null);
       if (reason || !termItem || !(Number(termItem.rate) > 0)) {
         results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id }, term: Number(form.numberOfInstallments), success: false, skipped: true, error: reason || 'A tabela não atende ao prazo escolhido.' });
         return [];
@@ -89,7 +84,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
             originContract: { lenderCode: Number(form.originLenderCode), contractNumber: form.originContractNumber.trim(), term: Number(form.originalTerm), installmentsRemaining: Number(form.openedInstallmentNumber), installmentValue: Number(form.installmentFaceValue), dueBalanceValue: Number(form.lastDueBalance) },
             refinancing: { term: Number(form.numberOfInstallments), rate: Number(item.rate), installmentValue: Number(form.installmentFaceValue) },
           });
-          results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id, amount: item.rate }, lender: response.lender?.name || response.fund?.name, term: Number(form.numberOfInstallments), success: true, data: response, troco: finantoCashOut(response) });
+          const cashOutError = finantoCashOutError(rule.name || '', response);
+          results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id, amount: item.rate }, lender: response.lender?.name || response.fund?.name, term: Number(form.numberOfInstallments), success: !cashOutError, skipped: Boolean(cashOutError), error: cashOutError || undefined, data: response, troco: finantoCashOut(response) });
         } catch (err: any) {
           results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id, amount: item.rate }, term: Number(form.numberOfInstallments), success: false, error: err.message || 'Falha nesta tabela FINANTO.' });
         }

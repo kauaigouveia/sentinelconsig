@@ -1,5 +1,5 @@
 // Regras operacionais informadas pelo responsável pela integração em 08/10/2026.
-// ESSENCIAL <= 50 foi confirmado explicitamente, apesar do nome >= 50 na API.
+// Faixas atualizadas pelo roteiro operacional enviado após a orientação inicial.
 export const INSS_TERMS = [108, 96, 84, 72, 60, 48];
 
 function contractDate(): Date {
@@ -42,19 +42,38 @@ export function nossaFintechAgeError(birthDate: string, term: number, today = co
 
 export function finantoInstallmentError(name: string, installment: number): string | null {
   if (!Number.isFinite(installment) || installment <= 0) return 'Informe uma parcela atual maior que zero.';
-  if (/ESSENCIAL/i.test(name)) return installment <= 50 ? null : 'ESSENCIAL: parcela atual de até R$ 50,00.';
-  if (/SELECT/i.test(name)) return installment >= 100 ? null : 'SELECT: parcela atual a partir de R$ 100,00.';
-  if (/PRIME/i.test(name)) return installment >= 300 ? null : 'PRIME: parcela atual a partir de R$ 300,00.';
+  if (/ESSENCIAL/i.test(name)) return installment >= 50 && installment <= 100 ? null : 'ESSENCIAL: parcela atual de R$ 50,00 a R$ 100,00.';
+  if (/SELECT/i.test(name)) return installment >= 101 && installment <= 299 ? null : 'SELECT: parcela atual de R$ 101,00 a R$ 299,00.';
+  if (/PRIME/i.test(name)) return installment > 300 ? null : 'PRIME: parcela atual acima de R$ 300,00.';
   return null;
 }
 
 export function finantoTableLabel(rule: { name?: string; code?: string | number; id?: string }): string {
   const name = rule.name || `Tabela ${rule.code || rule.id || ''}`;
   const grace = /90\s*D/i.test(name) ? ' · carência de 90 dias' : '';
-  if (/ESSENCIAL/i.test(name)) return `ESSENCIAL · parcela até R$ 50,00${grace}`;
-  if (/SELECT/i.test(name)) return `SELECT · parcela a partir de R$ 100,00${grace}`;
-  if (/PRIME/i.test(name)) return `PRIME · parcela a partir de R$ 300,00${grace}`;
+  if (/ESSENCIAL/i.test(name)) return `ESSENCIAL · parcela R$ 50,00 a R$ 100,00 · taxa 1,75% a 1,85%${grace}`;
+  if (/SELECT/i.test(name)) return `SELECT · parcela R$ 101,00 a R$ 299,00 · taxa 1,68% a 1,85%${grace}`;
+  if (/PRIME/i.test(name)) return `PRIME · parcela acima de R$ 300,00 · taxa 1,60% a 1,85%${grace}`;
   return name;
+}
+
+export function finantoTableRateError(name: string, rate: number): string | null {
+  const min = /ESSENCIAL/i.test(name) ? 1.75 : /SELECT/i.test(name) ? 1.68 : /PRIME/i.test(name) ? 1.6 : null;
+  if (min === null) return null;
+  return Number.isFinite(rate) && rate >= min && rate <= 1.85 ? null : `Taxa permitida nesta tabela: ${min.toLocaleString('pt-BR')}% a 1,85%.`;
+}
+
+export function finantoCashOut(data: any): number | null {
+  const value = [data?.refinancing?.netValue, data?.refinancing?.additionalValue, data?.additionalValue, data?.netValue, data?.finalDisbursedAmount]
+    .find(item => item !== null && item !== undefined && item !== '' && Number.isFinite(Number(item)));
+  return value === undefined ? null : Number(value);
+}
+
+export function finantoCashOutError(name: string, data: any): string | null {
+  if (!/ESSENCIAL|SELECT|PRIME/i.test(name)) return null;
+  const amount = finantoCashOut(data);
+  if (amount === null) return 'A API não informou o troco para conferir o mínimo de R$ 100,00.';
+  return amount < 100 ? 'Troco abaixo do mínimo de R$ 100,00 previsto no roteiro.' : null;
 }
 
 export function finantoRuleItem(rule: any, term: number, rate?: number): any | null {
@@ -65,7 +84,7 @@ export function finantoRuleItem(rule: any, term: number, rate?: number): any | n
     const rateMatches = rate === undefined || (Number(item.maxRate) > 0
       ? rate >= (Number(item.minRate) || 0) && rate <= Number(item.maxRate)
       : Math.abs(Number(item.rate) - rate) < 0.00001);
-    return termMatches && rateMatches;
+    return termMatches && rateMatches && !finantoTableRateError(rule.name || '', rate ?? Number(item.rate));
   }) || null;
 }
 

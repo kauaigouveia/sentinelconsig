@@ -20,7 +20,7 @@ import { backupStorageService } from './server/services/backupStorageService.js'
 import { ALL_PERMISSIONS, getEffectivePermissions, getPermissionsForRole, hasPermission, Permission } from './src/lib/permissions.js';
 import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
 import { isValidCpf } from './src/lib/utils.js';
-import { finantoAgeError, finantoInstallmentError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
+import { finantoAgeError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
 import { Role } from './src/types/index.js';
 
 function dispatchImportWorker(task: () => Promise<unknown>, label: string): void {
@@ -14474,6 +14474,9 @@ async function auditAndEnsureMasterUser() {
         if (selectedRule && (operation === '3' || operation === '4')) {
           const installmentError = finantoInstallmentError(selectedRule.name || '', Number(originContract.installmentValue));
           if (installmentError) return res.status(422).json({ error: installmentError });
+          const rateError = finantoTableRateError(selectedRule.name || '', Number(operation === '4' ? refinancing?.rate : rate));
+          if (rateError) return res.status(422).json({ error: rateError });
+          if (hasInsurance) return res.status(422).json({ error: 'Este roteiro de portabilidade FINANTO não permite seguro.' });
         }
         if (ruleItems.length < 20) break;
       }

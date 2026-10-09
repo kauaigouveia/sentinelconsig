@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageAt, finantoAgeError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, nossaFintechAgeError, nossaFintechBalanceError } from '../src/lib/inssEligibility';
+import { ageAt, finantoAgeError, finantoCashOutError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, finantoTableRateError, nossaFintechAgeError, nossaFintechBalanceError } from '../src/lib/inssEligibility';
 
 const today = new Date(2026, 9, 8, 12);
 
@@ -37,15 +37,36 @@ describe('Regras operacionais INSS', () => {
   it('aplica os limites de parcela nas tabelas normais e com carência', () => {
     for (const grace of ['', ' +90D']) {
       expect(finantoInstallmentError(`ESSENCIAL ≥ 50${grace}`, 50)).toBeNull();
-      expect(finantoInstallmentError(`ESSENCIAL ≥ 50${grace}`, 50.01)).not.toBeNull();
-      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 99.99)).not.toBeNull();
-      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 100)).toBeNull();
-      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 300)).toBeNull();
-      expect(finantoInstallmentError(`PRIME ≥ 300${grace}`, 299.99)).not.toBeNull();
-      expect(finantoInstallmentError(`PRIME ≥ 300${grace}`, 300)).toBeNull();
+      expect(finantoInstallmentError(`ESSENCIAL ≥ 50${grace}`, 49.99)).not.toBeNull();
+      expect(finantoInstallmentError(`ESSENCIAL ≥ 50${grace}`, 100)).toBeNull();
+      expect(finantoInstallmentError(`ESSENCIAL ≥ 50${grace}`, 100.01)).not.toBeNull();
+      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 100)).not.toBeNull();
+      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 101)).toBeNull();
+      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 299)).toBeNull();
+      expect(finantoInstallmentError(`SELECT ≥ 100${grace}`, 299.01)).not.toBeNull();
+      expect(finantoInstallmentError(`PRIME ≥ 300${grace}`, 300)).not.toBeNull();
+      expect(finantoInstallmentError(`PRIME ≥ 300${grace}`, 300.01)).toBeNull();
     }
-    expect(finantoTableLabel({ name: 'ESSENCIAL ≥ 50 +90D' })).toContain('parcela até R$ 50,00');
+    expect(finantoTableLabel({ name: 'ESSENCIAL ≥ 50 +90D' })).toContain('parcela R$ 50,00 a R$ 100,00');
     expect(finantoTableLabel({ name: 'ESSENCIAL ≥ 50 +90D' })).toContain('90 dias');
+  });
+
+  it.each([['ESSENCIAL', 1.75], ['SELECT', 1.68], ['PRIME', 1.6]])('aplica a taxa do roteiro da tabela %s', (name, minimum) => {
+    expect(finantoTableRateError(name, minimum)).toBeNull();
+    expect(finantoTableRateError(name, 1.85)).toBeNull();
+    expect(finantoTableRateError(name, minimum - 0.01)).not.toBeNull();
+    expect(finantoTableRateError(name, 1.86)).not.toBeNull();
+  });
+
+  it('só libera oferta Port/Refin com troco de pelo menos R$ 100', () => {
+    expect(finantoCashOutError('PRIME', { refinancing: { netValue: 100 } })).toBeNull();
+    expect(finantoCashOutError('SELECT', { refinancing: { netValue: 99.99 } })).not.toBeNull();
+    expect(finantoCashOutError('ESSENCIAL', { refinancing: { netValue: 0 } })).not.toBeNull();
+    expect(finantoCashOutError('ESSENCIAL', {})).not.toBeNull();
+  });
+
+  it('usa um item com taxa operacional válida em vez do primeiro item inválido', () => {
+    expect(finantoRuleItem({ name: 'SELECT', items: [{ term: 108, rate: 1.6 }, { term: 108, rate: 1.7 }] }, 108)?.rate).toBe(1.7);
   });
 
   it('não troca um prazo inexistente pelo item padrão da tabela', () => {
