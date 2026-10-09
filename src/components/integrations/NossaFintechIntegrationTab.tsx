@@ -107,12 +107,12 @@ export const NossaFintechIntegrationTab: React.FC = () => {
 
   const runRequest = async () => {
     setBusy(true); setResult(null); setNotice('');
-    let parsed: unknown;
-    try { parsed = body.trim() ? JSON.parse(body) : undefined; } catch { setNotice('O corpo da requisição não é um JSON válido.'); setBusy(false); return; }
     const method = endpointOptions[endpointIndex][0];
+    let parsed: unknown;
+    try { parsed = method !== 'GET' && body.trim() ? JSON.parse(body) : undefined; } catch { setNotice('O corpo da requisição não é um JSON válido.'); setBusy(false); return; }
     if (method !== 'GET' && !window.confirm('Esta chamada pode criar, alterar ou cancelar uma autorização, proposta ou operação real. Deseja continuar?')) { setBusy(false); return; }
     try {
-      const response = await fetch('/api/integrations/nossa-fintech/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, endpoint: path, body: parsed }) });
+      const response = await fetch('/api/integrations/nossa-fintech/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, endpoint: path, ...(method !== 'GET' && parsed !== undefined ? { body: parsed } : {}) }) });
       const data = await response.json(); setResult(data); if (!response.ok) setNotice(data.error || `A API respondeu com HTTP ${data.status || response.status}.`);
     } catch (error: any) { setNotice(error.message || 'Falha na chamada.'); } finally { setBusy(false); }
   };

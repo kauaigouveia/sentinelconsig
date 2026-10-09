@@ -120,11 +120,12 @@ export class NossaFintechService {
     const normalizedMethod = method.toUpperCase();
     if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod)) throw new Error('Método HTTP não permitido.');
     this.validateEndpoint(endpoint);
+    const hasBody = normalizedMethod !== 'GET' && body !== undefined;
     const send = async (token: string) => {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: normalizedMethod,
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(hasBody ? { 'Content-Type': 'application/json' } : {}) },
+        ...(hasBody ? { body: JSON.stringify(body) } : {}),
         signal: AbortSignal.timeout(30_000),
       });
       return { response, data: await this.readResponse(response) };
