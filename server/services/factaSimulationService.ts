@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { FactaBankService } from './factaBankService';
+import { factaFetch } from './factaTransport.js';
 import type { ProductSimulationInput, ProductSimulationRow } from './productSimulationService';
 
 export type FactaInssInput = {
@@ -37,7 +38,7 @@ export class FactaSimulationService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30000);
     try {
-      const response = await fetch(url, {
+      const response = await factaFetch(url, {
         method: body === undefined ? 'GET' : 'POST', signal: controller.signal,
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json' }) },
         body: body === undefined ? undefined : form ? new URLSearchParams(body as Record<string, string>).toString() : JSON.stringify(body),

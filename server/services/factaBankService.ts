@@ -8,6 +8,7 @@ import {
   FactaSyncResult,
 } from './factaBankTypes.js';
 import { mapFactaStatusToInternal } from './factaStatusMapper.js';
+import { factaFetch } from './factaTransport.js';
 
 interface TokenCacheEntry {
   token: string;
@@ -250,7 +251,7 @@ export class FactaBankService {
       throw new Error('Credenciais da FACTA Financeira (usuário e senha) não configuradas.');
     }
 
-    const cacheKey = `${tenantId}:${username}:${baseUrl}`;
+    const cacheKey = `${tenantId}:${username}:${baseUrl}:${process.env.FACTA_GATEWAY_URL || 'direct'}`;
     const now = Date.now();
     const cached = this.tokenCache.get(cacheKey);
 
@@ -272,7 +273,7 @@ export class FactaBankService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT_MS);
 
-        const response = await fetch(tokenEndpoint, {
+        const response = await factaFetch(tokenEndpoint, {
           method: 'GET',
           headers: {
             Authorization: authHeader,
@@ -464,7 +465,7 @@ export class FactaBankService {
     const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await factaFetch(endpoint, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
