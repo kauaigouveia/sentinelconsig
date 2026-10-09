@@ -2,7 +2,7 @@
 
 ## Infraestrutura pendente
 
-A Oracle informada tem 951 MiB de RAM, sem swap e 41 GB de disco livre. Não instalar a composição nessa configuração. O orçamento inicial deste arquivo é uma instância de pelo menos 4 GB; monitorar consumo após conectar o número.
+A Oracle do gateway tem 951 MiB de RAM, sem swap e 41 GB de disco livre. Não instalar a composição nesse servidor. O perfil padrão tem orçamento inicial de pelo menos 4 GB. O usuário autorizou uma tentativa experimental em outra Micro dedicada de 1 GB, descrita abaixo; estabilidade nessa memória ainda não está comprovada.
 
 A shape VM.Standard.E2.1.Micro não pode ser redimensionada. Confirmar a shape no painel antes de planejar ampliação. Se for Micro, criar outra instância para a Evolution; o gateway bancário pode continuar no IP atual. Não mover o gateway sem planejar a liberação do novo IP pelos bancos.
 
@@ -12,11 +12,37 @@ Fonte: https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/resizinginstance
 
 O print confirmou `VM.Standard.E2.1.Micro`. Manter o gateway nessa instância e criar a Evolution separadamente em `VM.Standard.A1.Flex` Always Free, Ubuntu ARM64, inicialmente 1 OCPU e 6 GB de RAM, disco de boot 50 GB, na região principal da conta. A imagem oficial da Evolution `latest` oferece linux/arm64 (manifest consultado em 09/10/2026).
 
-Antes de criar, conferir a cota já usada e o custo estimado zero no painel. Não usar shape paga, upgrade de conta nem créditos temporários como substitutos de Always Free. Se faltar capacidade, aguardar disponibilidade de A1 na região principal.
+Antes de criar, conferir a cota já usada e o custo estimado zero no painel. Não usar shape paga, upgrade de conta nem créditos temporários como substitutos de Always Free. A A1 não tinha capacidade disponível. O usuário criou uma segunda Micro como tentativa experimental.
 
 Na documentação consultada em 09/10/2026, A1 oferece 1.500 OCPU-horas e 9.000 GB-horas gratuitos por mês (equivalentes a 2 OCPUs e 12 GB nas contas Always Free); boot e block volumes somados têm limite de 200 GB por conta. Os recursos existentes contam nessa cota. Não prometer custo zero fora das cotas ou se o fornecedor mudar as condições.
 
 Fonte: https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm
+
+## Tentativa experimental: segunda Micro de 1 GB
+
+Instância criada em 09/10/2026: `sentinel-api-whatsapp`, Ubuntu 22.04, Always Free, IP público `150.230.94.155`, privado `10.0.0.113`. Gateway bancário continua em `150.230.86.123`. A Oracle permite até duas Micro dentro das cotas. Confirmar a cota total de discos e custo zero; não aumentar recursos para uma shape paga.
+
+Usar somente um número de WhatsApp. Os limites abaixo são um orçamento experimental, não requisitos oficiais nem evidência de funcionamento: API 512 MiB (heap Node 320 MiB), PostgreSQL 128 MiB e Redis 64 MiB, somados a 2 GiB de swap em disco para picos. O sistema operacional usa memória adicional. Swap não dá o desempenho de RAM.
+
+Os scripts recusam executar quando identificam `/etc/sentinel-gateway` ou a unidade `sentinel-gateway.service`. Copiar esta pasta para `~/sentinel-evolution` no terminal da nova instância. Não copiar um `.env` de outro servidor; gerar chaves próprias.
+
+```bash
+cd ~/sentinel-evolution
+sudo bash install-dependencies.sh
+sudo bash prepare-micro.sh
+sudo docker compose -f compose.yaml -f compose.micro.yaml up -d
+sudo bash status-micro.sh
+```
+
+`install-dependencies.sh` prepara swap e instala Docker pelo repositório oficial assinado, Nginx e Certbot. Não executa containers de demonstração. `prepare-micro.sh` gera segredos e fixa a imagem oficial pelo digest; não inicia containers. `status-micro.sh` mostra RAM, swap, estado, reinícios, OOM e HTTP local, sem imprimir segredos ou mensagens.
+
+**Sempre usar os dois arquivos `-f` no perfil Micro.** `docker compose up -d` sem eles aplicaria os limites maiores do perfil padrão. A API para após três falhas no perfil experimental; depois de corrigir, iniciar novamente com o mesmo comando. Se houver OOM, ciclos de reinício ou swap contínuo com lentidão, interromper a tentativa com `sudo docker compose -f compose.yaml -f compose.micro.yaml stop` e aguardar A1; não promover uma conexão instável para atendimento.
+
+Antes de conectar o número, confirmar API iniciada e estável. Depois acompanhar memória/reinícios durante conexão QR, recepção de mensagens, anexos e resposta da mesa. A única validação possível aqui no Windows é configuração/sintaxe; a instalação real aguarda execução dos comandos na nova VPS.
+
+DNS `whatsapp.sentinelconsig.com.br` deve apontar para `150.230.94.155`, preservando `gateway.sentinelconsig.com.br`. A mesma sub-rede OCI já possui entrada TCP 80/443; confirmar firewall no novo Ubuntu. Não publicar 8081, 5432 ou 6379.
+
+Fonte Docker: https://docs.docker.com/engine/install/ubuntu/ e https://docs.docker.com/engine/containers/resource_constraints/ .
 
 ## Instalação no Ubuntu com pelo menos 4 GB
 

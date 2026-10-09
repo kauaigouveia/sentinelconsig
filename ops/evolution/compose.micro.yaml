@@ -1,0 +1,50 @@
+# Experimental, one WhatsApp number, on a separate 1 GB VM.
+# Always combine this file with compose.yaml.
+services:
+  api:
+    restart: "on-failure:3"
+    mem_limit: 512m
+    memswap_limit: 1024m
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=320"
+      DATABASE_CONNECTION_URI: postgresql://evolution:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=evolution_api&connection_limit=3
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      DATABASE_SAVE_IS_ON_WHATSAPP: "false"
+      CHATWOOT_ENABLED: "false"
+      TYPEBOT_ENABLED: "false"
+      RABBITMQ_ENABLED: "false"
+      SQS_ENABLED: "false"
+      KAFKA_ENABLED: "false"
+      WEBSOCKET_ENABLED: "false"
+      PUSHER_ENABLED: "false"
+  postgres:
+    mem_limit: 128m
+    memswap_limit: 256m
+    command:
+      - postgres
+      - -c
+      - shared_buffers=16MB
+      - -c
+      - work_mem=1MB
+      - -c
+      - maintenance_work_mem=16MB
+      - -c
+      - max_connections=15
+      - -c
+      - max_parallel_workers=0
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+  redis:
+    mem_limit: 64m
+    memswap_limit: 128m
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "32mb", "--maxmemory-policy", "noeviction"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

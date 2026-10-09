@@ -2,14 +2,24 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 memory_kb=$(awk '/MemTotal:/ {print $2}' /proc/meminfo)
-if (( memory_kb < 3500000 )); then
+if [[ "${SENTINEL_EVOLUTION_PROFILE:-standard}" == micro ]]; then
+  if (( memory_kb < 850000 )) || [[ -d /etc/sentinel-gateway ]] || systemctl cat sentinel-gateway.service >/dev/null 2>&1; then
+    echo 'Perfil Micro permitido somente em instância dedicada com pelo menos 850 MB de RAM.' >&2
+    exit 1
+  fi
+  swap_kb=$(awk '/SwapTotal:/ {print $2}' /proc/meminfo)
+  if (( swap_kb < 1900000 )); then
+    echo 'Execute prepare-micro.sh para preparar pelo menos 2 GB de swap antes de continuar.' >&2
+    exit 1
+  fi
+elif (( memory_kb < 3500000 )); then
   echo 'A instalação exige pelo menos 4 GB de RAM nesta configuração. Amplie a instância ou use outro servidor.' >&2
   exit 1
 fi
 command -v docker >/dev/null || { echo 'Instale Docker e o plugin Compose antes de continuar.' >&2; exit 1; }
 docker compose version >/dev/null
 if [[ -e .env ]]; then
-  echo 'O arquivo .env já existe. Ele foi preservado. Use docker compose up -d para iniciar.'
+  echo 'O arquivo .env já existe e foi preservado. Use a composição correspondente ao perfil escolhido.'
   exit 0
 fi
 umask 077
@@ -23,4 +33,4 @@ sed -e "s|^EVOLUTION_IMAGE=.*|EVOLUTION_IMAGE=$image_digest|" \
     -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$db_password|" .env.example > .env
 chmod 600 .env
 echo 'Configuração criada. As chaves ficaram apenas no arquivo .env protegido.'
-echo 'Confira SERVER_URL no arquivo antes de iniciar com docker compose up -d.'
+echo 'Confira SERVER_URL no arquivo antes de iniciar a composição correspondente ao perfil escolhido.'
