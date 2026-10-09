@@ -9180,20 +9180,20 @@ async function auditAndEnsureMasterUser() {
 
       // Validação de duplicidade
       const existingSlug = await prisma.tenant.findUnique({ where: { slug } });
-      if (existingSlug) {
+      if (existingSlug && !existingSlug.deletedAt) {
         return res.status(400).json({ error: `O slug '${slug}' já está em uso por outro tenant.` });
       }
 
       if (customDomain) {
         const existingDomain = await prisma.tenant.findUnique({ where: { customDomain } });
-        if (existingDomain) {
+        if (existingDomain && !existingDomain.deletedAt) {
           return res.status(400).json({ error: `O domínio personalizado '${customDomain}' já está em uso.` });
         }
       }
 
       if (cleanCnpj) {
         const existingCnpj = await prisma.tenant.findUnique({ where: { cnpj: cleanCnpj } });
-        if (existingCnpj) {
+        if (existingCnpj && !existingCnpj.deletedAt) {
           return res.status(400).json({ error: `O CNPJ '${cleanCnpj}' já está cadastrado.` });
         }
       }
@@ -9213,9 +9213,44 @@ async function auditAndEnsureMasterUser() {
       ];
 
       const initialModules = Array.isArray(enabledModules) ? enabledModules : defaultModules;
+      const cleanAdminEmail = adminEmail && adminName ? String(adminEmail).trim().toLowerCase() : null;
+      if (cleanAdminEmail) {
+        const existingAdmin = await prisma.user.findUnique({ where: { email: cleanAdminEmail }, select: { deletedAt: true, isMasterProtected: true, role: true } });
+        if (existingAdmin && (!existingAdmin.deletedAt || existingAdmin.isMasterProtected || existingAdmin.role === 'PLATFORM_MASTER')) {
+          return res.status(400).json({ error: 'O e-mail do administrador pertence a um usuário existente. Informe outro e-mail.' });
+        }
+      }
+      const initialHashedPassword = cleanAdminEmail ? await hashPassword('Mudar@123') : null;
 
       // Criação transacional do Tenant + WhiteLabel padrão
       const tenant = await prisma.$transaction(async (tx) => {
+        // Retain deleted records and audit history, releasing only requested unique identifiers.
+        const archivedTenants = await tx.tenant.findMany({ where: { deletedAt: { not: null }, OR: [
+          { slug }, ...(customDomain ? [{ customDomain }] : []), ...(cleanCnpj ? [{ cnpj: cleanCnpj }] : []),
+        ] } });
+        const releaseAudits = [];
+        for (const archived of archivedTenants) {
+          const changes = {
+            ...(archived.slug === slug ? { slug: `deleted-${archived.id}-${crypto.randomBytes(4).toString('hex')}` } : {}),
+            ...(customDomain && archived.customDomain === customDomain ? { customDomain: null } : {}),
+            ...(cleanCnpj && archived.cnpj === cleanCnpj ? { cnpj: null } : {}),
+          };
+          await tx.tenant.update({ where: { id: archived.id }, data: changes });
+          if (customDomain) {
+            await tx.tenantDomain.updateMany({ where: { tenantId: archived.id, domain: customDomain, status: 'DISABLED' }, data: { domain: `deleted-${archived.id}-${crypto.randomBytes(4).toString('hex')}.invalid` } });
+          }
+          releaseAudits.push({ tenantId: archived.id, userId: session.user.id, userName: session.user.name, action: 'tenant.deleted_identifiers_released', entity: 'Tenant', entityId: archived.id, oldData: { slug: archived.slug, customDomain: archived.customDomain, cnpj: archived.cnpj }, newData: changes, req });
+        }
+        if (cleanAdminEmail) {
+          const archivedAdmin = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
+          if (archivedAdmin) {
+            if (!archivedAdmin.deletedAt || archivedAdmin.isMasterProtected || archivedAdmin.role === 'PLATFORM_MASTER') throw new Error('O e-mail do administrador está em uso. Informe outro e-mail.');
+            await tx.user.update({ where: { id: archivedAdmin.id }, data: { email: `deleted-${archivedAdmin.id}-${crypto.randomBytes(4).toString('hex')}@archived.invalid` } });
+            await tx.session.deleteMany({ where: { userId: archivedAdmin.id } });
+            releaseAudits.push({ tenantId: archivedAdmin.tenantId, userId: session.user.id, userName: session.user.name, action: 'user.deleted_email_released', entity: 'User', entityId: archivedAdmin.id, oldData: { email: cleanAdminEmail }, newData: { reason: 'Novo cadastro de administrador; usuário anterior permanece excluído.' }, req });
+          }
+        }
+        await AuditLogService.recordBatch(tx, releaseAudits);
         const newTenant = await tx.tenant.create({
           data: {
             name: String(name).trim(),
@@ -9247,11 +9282,7 @@ async function auditAndEnsureMasterUser() {
         });
 
         // Se fornecido e-mail do admin do tenant, cria o usuário MASTER inicial
-        if (adminEmail && adminName) {
-          const cleanAdminEmail = String(adminEmail).trim().toLowerCase();
-          const existingUser = await tx.user.findUnique({ where: { email: cleanAdminEmail } });
-          if (!existingUser) {
-            const initialHashedPassword = await hashPassword('Mudar@123');
+        if (cleanAdminEmail && initialHashedPassword) {
             await tx.user.create({
               data: {
                 tenantId: newTenant.id,
@@ -9263,11 +9294,10 @@ async function auditAndEnsureMasterUser() {
                 mustChangePassword: true,
               },
             });
-          }
         }
 
         return newTenant;
-      });
+      }, { timeout: 30000, maxWait: 10000 });
 
       // Invalidação de cache de resolução de domínios
       TenantResolver.invalidateCache(slug + '.sentinelconsig.com.br');
