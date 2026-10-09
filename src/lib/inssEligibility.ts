@@ -56,6 +56,14 @@ export function finantoBenefitError(name: string, benefitType: string | number):
   return Number(benefitType) === required ? null : `Esta tabela FINANTO atende somente à espécie ${required} do benefício.`;
 }
 
+export function nossaFintechBenefitError(name: string, benefitType: string | number): string | null {
+  const disability = [4, 5, 6, 11, 32, 33, 34, 51, 83, 92].includes(Number(benefitType));
+  const disabilityTable = /\bINVALIDEZ\b/i.test(name);
+  return disability === disabilityTable ? null : disability
+    ? 'Esta espécie requer uma tabela de invalidez.'
+    : 'Esta tabela atende benefícios por invalidez.';
+}
+
 export function finantoTableLabel(rule: { name?: string; code?: string | number; id?: string }): string {
   const name = rule.name || `Tabela ${rule.code || rule.id || ''}`;
   const grace = /90\s*D/i.test(name) ? ' · carência de 90 dias' : '';

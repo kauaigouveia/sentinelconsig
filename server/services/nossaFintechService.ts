@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate } from '../../src/lib/inssEligibility';
+import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate, nossaFintechBenefitError } from '../../src/lib/inssEligibility';
 import { getNossaFintechNovoOptions } from '../../src/lib/nossaFintech';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
@@ -147,7 +147,7 @@ export class NossaFintechService {
 
   static async simulatePortabilityAcrossTables(prisma: PrismaClient, tenantId: string, input: {
     lastDueBalance: number; installmentFaceValue: number; openedInstallmentNumber: number;
-    numberOfInstallments: number; legalRepresentative: boolean; birthDate: string; refinancingRate?: number;
+    numberOfInstallments: number; legalRepresentative: boolean; birthDate: string; refinancingRate?: number; benefitType?: number;
   }) {
     const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
     if (ageError) throw new Error(ageError);
@@ -163,6 +163,7 @@ export class NossaFintechService {
     });
     const excludedTables: Array<{ table: any; reason: string }> = [];
     const candidates = termCandidates.filter((table: any) => {
+      if (input.benefitType && nossaFintechBenefitError(table.name || table.nome_tabela || '', input.benefitType)) return false;
       if (input.refinancingRate !== undefined && Math.abs((nossaFintechTableRate(table) ?? 0) - input.refinancingRate) > 0.00001) return false;
       const reason = nossaFintechBalanceError(table, input.lastDueBalance);
       if (reason) excludedTables.push({ table, reason });
@@ -192,7 +193,7 @@ export class NossaFintechService {
   }
 
   static async simulateInssNovoAcrossTables(prisma: PrismaClient, tenantId: string, input: {
-    numberOfInstallments: number; mode: 'INSTALLMENT' | 'AMOUNT'; value: number; legalRepresentative: boolean; birthDate: string;
+    numberOfInstallments: number; mode: 'INSTALLMENT' | 'AMOUNT'; value: number; legalRepresentative: boolean; birthDate: string; benefitType?: number;
   }) {
     const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
     if (ageError) throw new Error(ageError);
@@ -204,9 +205,10 @@ export class NossaFintechService {
         tableData?.data?.tabela_rebates || tableData?.data?.items || tableData?.data || [];
     const candidates = (Array.isArray(tables) ? tables : []).filter((table: any) => {
       const terms = Array.isArray(table.number_of_installments) ? table.number_of_installments.map(Number) : [];
+      if (input.benefitType && nossaFintechBenefitError(table.name || table.nome_tabela || table.description || '', input.benefitType)) return false;
       return Number.isInteger(Number(table.cod_produto)) && Number(table.cod_produto) > 0 && (!terms.length || terms.includes(input.numberOfInstallments));
     });
-    if (!candidates.length) return { success: true, status: 200, data: { results: [], message: 'Nossa Fintech não retornou tabelas para o prazo selecionado.' } };
+    if (!candidates.length) return { success: true, status: 200, data: { results: [], message: input.benefitType ? `Nenhuma tabela compatível com a espécie ${input.benefitType} e o prazo de ${input.numberOfInstallments} meses foi retornada pela Nossa Fintech.` : 'Nossa Fintech não retornou tabelas para o prazo selecionado.' } };
 
     // Novo accepts cod_produto, so commercial tables sharing a product must not
     // cause identical requests or be presented as distinct simulated offers.
@@ -216,7 +218,8 @@ export class NossaFintechService {
       const batch = products.slice(index, index + 4);
       const batchResults = await Promise.all(batch.map(async (product) => {
         const productTables = candidates.filter((table: any) => Number(table.cod_produto) === product);
-        const table = productTables.length === 1 ? productTables[0] : { cod_produto: product, name: `INSS Novo · produto ${product}`, availableTables: productTables };
+        const names = [...new Set<string>(productTables.map((item: any) => item.name || item.nome_tabela).filter(Boolean))];
+        const table = productTables.length === 1 ? productTables[0] : { cod_produto: product, name: names.length === 1 ? names[0] : `INSS Novo${input.benefitType && [4, 5, 6, 11, 32, 33, 34, 51, 83, 92].includes(input.benefitType) ? ' · Invalidez' : ''} · produto ${product}`, availableTables: productTables };
         try {
           const body = {
             number_of_installments: input.numberOfInstallments,
@@ -224,7 +227,10 @@ export class NossaFintechService {
             ...(input.mode === 'INSTALLMENT' ? { installment_face_value: input.value } : { disbursed_amount: input.value }),
           };
           const response = await this.request(prisma, tenantId, 'POST', '/inss/v1/simulation', body);
-          const options = response.success ? getNossaFintechNovoOptions(response.data) : [];
+          const options = response.success ? getNossaFintechNovoOptions(response.data).filter(option => {
+            const returnedTable = (Array.isArray(tables) ? tables : []).find((candidate: any) => option.cod_tabela != null && String(candidate.cod_tabela) === String(option.cod_tabela));
+            return !input.benefitType || !returnedTable || !nossaFintechBenefitError(returnedTable.name || returnedTable.nome_tabela || '', input.benefitType);
+          }) : [];
           if (!options.length) {
             const payload = response.data as any;
             const detail = [payload?.message, payload?.detail, payload?.error].find(value => typeof value === 'string');

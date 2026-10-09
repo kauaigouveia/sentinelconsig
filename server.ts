@@ -14790,7 +14790,7 @@ async function auditAndEnsureMasterUser() {
       if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.create.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
-      const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, birthDate, refinancingRate, legalRepresentative = false } = req.body || {};
+      const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, birthDate, benefitType, refinancingRate, legalRepresentative = false } = req.body || {};
       if (refinancingRate !== undefined && (!Number.isFinite(Number(refinancingRate)) || Number(refinancingRate) < 1.6 || Number(refinancingRate) > 1.85)) {
         return res.status(400).json({ error: 'Informe uma taxa de refinanciamento entre 1,60% e 1,85%.' });
       }
@@ -14803,7 +14803,7 @@ async function auditAndEnsureMasterUser() {
       const result = await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, {
         lastDueBalance: Number(lastDueBalance), installmentFaceValue: Number(installmentFaceValue),
         openedInstallmentNumber: Number(openedInstallmentNumber), numberOfInstallments: Number(numberOfInstallments), legalRepresentative, birthDate,
-        refinancingRate: refinancingRate === undefined ? undefined : Number(refinancingRate),
+        refinancingRate: refinancingRate === undefined ? undefined : Number(refinancingRate), benefitType: benefitType === undefined ? undefined : Number(benefitType),
       });
       return res.status(result.success ? 200 : 502).json(result);
     } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao simular Portabilidade/Refinanciamento.' }); }
@@ -14816,14 +14816,15 @@ async function auditAndEnsureMasterUser() {
       if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Acesso negado. Requer permissão simulations.create.' });
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
-      const { numberOfInstallments, mode, value, birthDate, legalRepresentative = false } = req.body || {};
+      const { numberOfInstallments, mode, value, birthDate, benefitType, legalRepresentative = false } = req.body || {};
+      if (!Number.isInteger(Number(benefitType)) || Number(benefitType) <= 0) return res.status(400).json({ error: 'Informe a espécie do benefício para consultar as tabelas compatíveis.' });
       if (!Number.isInteger(Number(numberOfInstallments)) || Number(numberOfInstallments) < 1 || !['INSTALLMENT', 'AMOUNT'].includes(mode) || !Number.isFinite(Number(value)) || Number(value) <= 0 || typeof legalRepresentative !== 'boolean') {
         return res.status(400).json({ error: 'Informe forma de simulação, prazo, valor desejado e representante legal válidos.' });
       }
       const ageError = nossaFintechAgeError(birthDate, Number(numberOfInstallments));
       if (ageError) return res.status(422).json({ error: ageError });
       const result = await NossaFintechService.simulateInssNovoAcrossTables(prisma, tenantId, {
-        numberOfInstallments: Number(numberOfInstallments), mode, value: Number(value), legalRepresentative, birthDate,
+        numberOfInstallments: Number(numberOfInstallments), mode, value: Number(value), legalRepresentative, birthDate, benefitType: Number(benefitType),
       });
       return res.status(result.success ? 200 : 502).json(result);
     } catch (err: any) { return res.status(502).json({ success: false, error: err.message || 'Falha ao simular INSS Novo na Nossa Fintech.' }); }

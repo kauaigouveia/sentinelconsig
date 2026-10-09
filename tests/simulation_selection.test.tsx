@@ -5,10 +5,19 @@ import { SimulationFlowSelectorModal } from '../src/components/simulation/Simula
 import { filterInssBenefitTypes, InssBenefitTypeSelect } from '../src/components/simulation/InssBenefitTypeSelect';
 import { HappyBankService } from '../server/services/happyBankService';
 import { HappyTokenManager } from '../server/services/happyTokenManager';
+import { FinantoInssSimulationModal } from '../src/components/simulation/FinantoInssSimulationModal';
 
 afterEach(() => vi.restoreAllMocks());
 
 describe('Seleção de simulação e espécie', () => {
+  it('usa cabeçalho do produto e botão de cálculo sem bancos ou contagem', () => {
+    const html = renderToStaticMarkup(<FinantoInssSimulationModal isOpen operationCode="1" onClose={() => {}} partners={[]} onSuccess={() => {}} />);
+    expect(html).toMatch(/<h2[^>]*>INSS Novo<\/h2>/);
+    expect(html).toContain('Calcular simulação');
+    expect(html).not.toContain('Calcular em');
+    expect(html).not.toContain('enviados diretamente à FINANTO');
+    expect(html).not.toContain('Criar simulação FINANTO');
+  });
   it.each([[true, true], [true, false], [false, true]])('exibe um único Port/Refin e nomes genéricos com integrações %s/%s', (finantoEnabled, nossaFintechEnabled) => {
     const html = renderToStaticMarkup(<SimulationFlowSelectorModal isOpen onClose={() => {}} onSelectFlow={() => {}} finantoEnabled={finantoEnabled} nossaFintechEnabled={nossaFintechEnabled} happySimulationAccessEnabled={false} />);
     expect(html.match(/INSS Portabilidade \+ Refinanciamento/g)).toHaveLength(1);

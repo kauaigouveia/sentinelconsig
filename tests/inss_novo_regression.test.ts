@@ -1,11 +1,31 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { finantoBenefitError } from '../src/lib/inssEligibility';
+import { finantoBenefitError, nossaFintechBenefitError } from '../src/lib/inssEligibility';
 import { getNossaFintechNovoAmount, getNossaFintechNovoOptions, getNossaFintechTroco } from '../src/lib/nossaFintech';
 import { NossaFintechService } from '../server/services/nossaFintechService';
 
 afterEach(() => vi.restoreAllMocks());
 
 describe('Espécie FINANTO e retorno Novo Nossa Fintech', () => {
+  it('separa tabelas de invalidez dos demais benefícios da Nossa Fintech', () => {
+    expect(nossaFintechBenefitError('INSS NOVO INVALIDEZ', 32)).toBeNull();
+    expect(nossaFintechBenefitError('INSS NOVO', 32)).toBeTruthy();
+    expect(nossaFintechBenefitError('INSS NOVO INVALIDEZ', 41)).toBeTruthy();
+    expect(nossaFintechBenefitError('INSS NOVO', 41)).toBeNull();
+    expect(nossaFintechBenefitError('INSS NOVO INVALIDEZ', 92)).toBeNull();
+  });
+  it.each([32, 41])('simula somente os produtos compatíveis com a espécie %s', async benefitType => {
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_prisma, _tenant, method, _endpoint, body: any) => method === 'GET'
+      ? { success: true, status: 200, data: [
+        { cod_produto: 200, cod_tabela: 'normal', name: 'INSS NOVO', number_of_installments: [108] },
+        { cod_produto: 204, cod_tabela: 'inv', name: 'INSS NOVO INVALIDEZ', number_of_installments: [108] },
+      ] }
+      : { success: true, status: 201, data: { disbursement_options: [{ cod_tabela: body.cod_produto === 204 ? 'inv' : 'normal', disbursed_issue_amount: 20000 }] } });
+    const result = await NossaFintechService.simulateInssNovoAcrossTables({} as any, 'tenant', { birthDate: '1980-01-01', numberOfInstallments: 108, mode: 'INSTALLMENT', value: 500, legalRepresentative: false, benefitType });
+    const calls = request.mock.calls.filter(call => call[2] === 'POST');
+    expect(calls).toHaveLength(1);
+    expect(calls[0][4]).toMatchObject({ cod_produto: benefitType === 32 ? 204 : 200 });
+    expect((result.data as any).results[0].table.name).toBe(benefitType === 32 ? 'INSS NOVO INVALIDEZ' : 'INSS NOVO');
+  });
   it('bloqueia BNF 32 para espécie 41 e permite para 32', () => {
     expect(finantoBenefitError('NORMAL- Tx 1,85 BNF 32', '41')).toContain('espécie 32');
     expect(finantoBenefitError('NORMAL- Tx 1,85 BNF 32', '32')).toBeNull();
