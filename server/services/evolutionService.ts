@@ -4,10 +4,13 @@ import { isValidCpf } from '../../src/lib/utils.js';
 import { eventBus } from './eventBus.js';
 
 const CONFIG_KEY = 'EVOLUTION_SIMULATION';
-const MENU = 'Olá bem vindo ao canal de simulação\n\nEscolha abaixo o convenio desejado para simulação:\n\n1 - INSS\n2 - CONVENIOS PUBLICOS\n3 - FGTS\n4 - CLT';
+const MENU = 'Escolha abaixo o convenio desejado para simulação:\n\n1 - INSS\n2 - CONVENIOS PUBLICOS\n3 - FGTS\n4 - CLT';
 const OPTIONS = ['INSS', 'CONVENIOS PUBLICOS', 'FGTS', 'CLT'];
-const IDENTIFY = 'Olá bem vindo ao canal de simulação\n\nPara começar, envie seu código de parceiro cadastrado no Sentinel Consig.';
-type Config = { baseUrl: string; instance: string; apiKey: string; webhookSecret: string; enabled: boolean; activatedAt?: number };
+function identificationGreeting(companyName?: string) {
+  const name = String(companyName || 'sua empresa').replace(/[*\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) || 'sua empresa';
+  return `Olá, seja bem vindo ao canal de simulação\n\nPara começar, envie seu código de parceiro cadastrado no *${name}*`;
+}
+type Config = { baseUrl: string; instance: string; apiKey: string; webhookSecret: string; enabled: boolean; activatedAt?: number; companyName?: string };
 type Intake = { partnerCode?: string; convenio?: string; cpf?: string; phone?: string; admissionDate?: string; payslipMessageId?: string };
 
 function encryptionKey() {
@@ -87,11 +90,12 @@ export class EvolutionService {
     return this.api(c, '/instance/connectionState');
   }
   static async authenticate(tenantId: string, supplied: string, prisma: PrismaClient) {
-    if (!await prisma.tenant.findFirst({ where: { id: tenantId, status: 'ACTIVE', deletedAt: null }, select: { id: true } })) return null;
+    const tenant = await prisma.tenant.findFirst({ where: { id: tenantId, status: 'ACTIVE', deletedAt: null }, select: { id: true, name: true, tradeName: true } });
+    if (!tenant) return null;
     const c = await this.config(tenantId, prisma);
     const a = Buffer.from(supplied || '');
     const b = Buffer.from(c?.webhookSecret || '');
-    return c?.enabled && a.length === b.length && b.length > 0 && timingSafeEqual(a, b) ? c : null;
+    return c?.enabled && a.length === b.length && b.length > 0 && timingSafeEqual(a, b) ? { ...c, companyName: tenant.tradeName?.trim() || tenant.name } : null;
   }
   static async deliver(messageId: string, tenantId: string, prisma: PrismaClient) {
     const claimed = await prisma.supportMessage.updateMany({ where: { id: messageId, tenantId, OR: [{ deliveryStatus: { in: ['PENDING', 'FAILED'] } }, { deliveryStatus: 'SENDING', deliveryAttemptAt: { lt: new Date(Date.now() - 60000) } }] }, data: { deliveryStatus: 'SENDING', deliveryAttemptAt: new Date() } });
@@ -204,7 +208,7 @@ export class EvolutionService {
         conversationId: conversation?.id || null,
         verifiedMessageId: partner ? messageId : null,
         seenMessageIds: [...(session?.seenMessageIds || []), messageId].slice(-256),
-        replyText: partner ? null : fresh ? IDENTIFY : 'Não encontrei esse código entre os parceiros ativos. Confira e envie novamente seu código de parceiro.',
+        replyText: partner ? null : fresh ? identificationGreeting(c.companyName) : 'Não encontrei esse código entre os parceiros ativos. Confira e envie novamente seu código de parceiro.',
         replyMessageId: messageId,
         replyStatus: 'PENDING',
         deliveryAttemptAt: null,
