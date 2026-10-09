@@ -78,29 +78,48 @@ export class FactaSimulationService {
       delete query.valor;
     } else query.tipo_operacao = 13;
     const result = await this.request(prisma, tenantId, '/proposta/operacoes-disponiveis', query);
-    const eligible = (table: any) => {
+    const benefitEligible = (table: any) => {
       const name = String(table.tabela || '').toUpperCase();
       const species = name.match(/(?:ESP(?:ECIE|ÉCIE)?|BNF|BENEF[IÍ]CIO)\s*[:\-]?\s*(\d{1,2})(?!\d)/);
       if (species && Number(species[1]) !== input.benefitType) return false;
       const disability = [4, 5, 6, 11, 32, 33, 34, 51, 83, 92].includes(input.benefitType);
       if (/INVALIDEZ|INCAPACIDADE/.test(name) && !disability) return false;
       if (/LOAS|BPC/.test(name + ' ' + (table.grupos || '')) && ![87, 88].includes(input.benefitType)) return false;
-      return (!input.rate || Math.abs((factaNumber(table.taxa) || 0) - input.rate) < 0.0001) && (!input.term || Number(table.prazo) === (input.operation === 'PORT' ? input.remainingTerm : input.term));
+      return true;
     };
+    // The selected refinancing rate is not the rate of the debt being ported.
+    const rateEligible = (table: any) => input.operation === 'PORT' || !input.rate || Math.abs((factaNumber(table.taxa) || 0) - input.rate) < 0.0001;
+    const targetTerm = input.operation === 'PORT' ? input.remainingTerm : input.term;
+    const termEligible = (table: any) => !targetTerm || factaNumber(table.prazo) === targetTerm;
+    const eligible = (table: any) => benefitEligible(table) && rateEligible(table) && termEligible(table);
+    const groupOf = (table: any) => String(table.grupos || '').trim().replace(/\s+/g, ' ').toUpperCase();
     let offers: FactaOffer[];
     if (input.operation === 'PORT_REFIN') {
-      const ports = list(result.tabelas_portabilidade).filter(table => {
-        const name = String(table.grupos || '') + ' ' + String(table.tabela || '');
-        return !/LOAS|BPC/i.test(name) || [87, 88].includes(input.benefitType);
-      });
+      const ports = list(result.tabelas_portabilidade).filter(benefitEligible);
       offers = list(result.tabelas_refin_portabilidade).filter(eligible).flatMap(table => {
-        const group = String(table.grupos || '').trim();
-        return ports.filter(port => group && String(port.grupos || '').trim() === group).map(port => ({ ...this.offer(table), portabilityCode: String(port.codigoTabela), name: `${table.tabela} · portabilidade ${port.tabela}` }));
+        const group = groupOf(table);
+        return ports.filter(port => group && groupOf(port) === group).map(port => ({ ...this.offer(table), portabilityCode: String(port.codigoTabela), name: `${table.tabela} · portabilidade ${port.tabela}` }));
       });
     } else if (input.operation === 'PORT') {
       offers = list(result.tabelas_portabilidade).filter(eligible).map(table => this.offer(table));
     } else offers = list(result.tabelas).filter(eligible).map(table => this.offer(table));
-    return { offers, message: offers.length ? undefined : 'Nenhuma tabela FACTA compatível retornada para os dados, taxa e prazo informados.' };
+    if (offers.length) return { offers };
+    const returned = list(input.operation === 'PORT_REFIN' ? result.tabelas_refin_portabilidade : input.operation === 'PORT' ? result.tabelas_portabilidade : result.tabelas);
+    const compatible = returned.filter(benefitEligible);
+    const rateMatches = compatible.filter(rateEligible);
+    const termMatches = rateMatches.filter(termEligible);
+    const formatValues = (values: number[], suffix: string) => [...new Set(values)].sort((a, b) => a - b).map(value => `${value.toLocaleString('pt-BR')}${suffix}`).join(', ');
+    if (!returned.length) return { offers, message: 'A FACTA não retornou tabelas para esta operação e os dados informados.' };
+    if (!compatible.length) return { offers, message: 'As tabelas retornadas pela FACTA têm restrições incompatíveis com a espécie do benefício selecionada.' };
+    if (!rateMatches.length) {
+      const rates = compatible.filter(termEligible).map(table => factaNumber(table.taxa)).filter((value): value is number => value != null);
+      return { offers, message: `A FACTA retornou tabelas, mas nenhuma na taxa de ${input.rate?.toLocaleString('pt-BR')}% selecionada.${rates.length ? ` Taxas retornadas para ${targetTerm} meses: ${formatValues(rates, '%')}.` : ''}` };
+    }
+    if (!termMatches.length) {
+      const terms = rateMatches.map(table => factaNumber(table.prazo)).filter((value): value is number => value != null);
+      return { offers, message: `A FACTA retornou tabelas, mas nenhuma com prazo de ${targetTerm} meses.${terms.length ? ` Prazos retornados: ${formatValues(terms, ' meses')}.` : ''}` };
+    }
+    return { offers, message: 'A FACTA retornou tabelas de refinanciamento, mas não uma tabela de portabilidade do mesmo grupo compatível com o benefício. Não foi possível combinar as condições.' };
   }
 
   static async contracts(prisma: PrismaClient, tenantId: string, cpf: string, benefit: string) {

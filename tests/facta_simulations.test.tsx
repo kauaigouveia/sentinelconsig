@@ -63,6 +63,38 @@ describe('FACTA simulações conforme manuais oficiais', () => {
     vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas_portabilidade: [{ ...table, prazo: 15 }] });
     expect((await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT', debt: 5000, originalTerm: 84, remainingTerm: 15, originalInstallment: 500 })).offers).toHaveLength(1);
   });
+  it('não aplica taxa do refinanciamento à tabela de portabilidade isolada', async () => {
+    vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas_portabilidade: [{ ...table, taxa: 1.7, prazo: 15 }] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT', rate: 1.85, debt: 5000, originalTerm: 84, remainingTerm: 15, originalInstallment: 500 });
+    expect(result.offers[0]).toMatchObject({ rate: 1.7, term: 15 });
+  });
+  it('combina grupos com diferenças de caixa e espaços sem misturar taxas da portabilidade e refin', async () => {
+    const request = vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas_portabilidade: [{ ...table, codigoTabela: 'p1', taxa: 1.7, prazo: 15, grupos: ' grupo   3 ' }], tabelas_refin_portabilidade: [{ ...table, grupos: 'GRUPO 3', valor_liquido: 1500 }] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', rate: 1.85, debt: 5000, originalTerm: 84, remainingTerm: 15, originalInstallment: 500 });
+    expect(result.offers[0]).toMatchObject({ rate: 1.85, term: 108, portabilityCode: 'p1' });
+    expect(request.mock.calls[0][3]).toMatchObject({ prazo: 108, valor_parcela: 500, valor_parcela_original: 500 });
+  });
+  it('informa taxas realmente retornadas no prazo selecionado em vez de uma ausência genérica', async () => {
+    vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas_portabilidade: [{ ...table, codigoTabela: 'p1', grupos: 'GRUPO 3', prazo: 15 }], tabelas_refin_portabilidade: [{ ...table, grupos: 'GRUPO 3', taxa: 1.8 }, { ...table, grupos: 'GRUPO 3', taxa: 1.79, prazo: 84 }] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', rate: 1.85, debt: 5000, originalTerm: 84, remainingTerm: 15, originalInstallment: 500 });
+    expect(result.offers).toEqual([]);
+    expect(result.message).toContain('Taxas retornadas para 108 meses: 1,8%');
+    expect(result.message).not.toContain('1,79%');
+  });
+  it('distingue prazo indisponível de ausência de grupos compatíveis', async () => {
+    const request = vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas_portabilidade: [{ ...table, grupos: 'GRUPO 3', prazo: 15 }], tabelas_refin_portabilidade: [{ ...table, grupos: 'GRUPO 3', prazo: 84 }] });
+    const data = { ...input, operation: 'PORT_REFIN' as const, rate: 1.85, debt: 5000, originalTerm: 84, remainingTerm: 15, originalInstallment: 500 };
+    expect((await FactaSimulationService.inss(prisma, 'tenant', data)).message).toContain('Prazos retornados: 84 meses');
+    request.mockResolvedValue({ tabelas_portabilidade: [{ ...table, grupos: 'GRUPO 2', prazo: 15 }], tabelas_refin_portabilidade: [{ ...table, grupos: 'GRUPO 3' }] });
+    expect((await FactaSimulationService.inss(prisma, 'tenant', data)).message).toContain('mesmo grupo');
+  });
+  it('com todas as taxas disponíveis não descarta refin por taxa e identifica prazo diferente de 108 meses', async () => {
+    const request = vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ tabelas_portabilidade: [{ ...table, codigoTabela: 'p1', grupos: 'GRUPO 3', prazo: 51, taxa: 1.7 }], tabelas_refin_portabilidade: [{ ...table, grupos: 'GRUPO 3', prazo: 96, taxa: 1.8 }] });
+    const result = await FactaSimulationService.inss(prisma, 'tenant', { ...input, operation: 'PORT_REFIN', debt: 5000, originalTerm: 84, remainingTerm: 51, originalInstallment: 500 });
+    expect(request.mock.calls[0][3]).toMatchObject({ prazo: 108, prazo_restante: 51, prazo_original: 84, valor_parcela: 500, valor_parcela_original: 500 });
+    expect(result.message).toContain('Prazos retornados: 96 meses');
+    expect(result.message).not.toContain('taxa de');
+  });
   it('contratos refin só aparecem no benefício consultado', async () => {
     vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ lista_contratos_refin: { c1: { matricula: input.benefitNumber, saldo_devedor: '3.046,08', valor_parcela: '97,00' }, c2: { matricula: 'outro' } } });
     expect(await FactaSimulationService.contracts(prisma, 'tenant', input.cpf, input.benefitNumber)).toEqual([{ code: 'c1', debt: 3046.08, installment: 97 }]);
