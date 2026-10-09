@@ -1,0 +1,78 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ProductSimulationService } from '../server/services/productSimulationService';
+import { NossaFintechService } from '../server/services/nossaFintechService';
+import { FinantoService } from '../server/services/finantoService';
+import { SimulationFlowSelectorModal } from '../src/components/simulation/SimulationFlowSelectorModal';
+
+const input = { cpf: 'fixture', name: 'Cliente', phone: '11999999999', term: 4, value: 500, mode: 'Payment' as const, eligibility: true };
+afterEach(() => vi.restoreAllMocks());
+function configs() {
+  vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
+  vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: false, isConfigured: false } as any);
+}
+describe('Simulações CLT e FGTS na central', () => {
+  it('exibe um cartão CLT e um FGTS sem banco no título', () => {
+    const html = renderToStaticMarkup(<SimulationFlowSelectorModal isOpen onClose={() => {}} onSelectFlow={() => {}} happySimulationAccessEnabled />);
+    expect(html.match(/id="btn-flow-clt_multi"/g)).toHaveLength(1);
+    expect(html.match(/id="btn-flow-fgts_multi"/g)).toHaveLength(1);
+    expect(html).not.toContain('btn-flow-happy-clt');
+  });
+  it('FGTS consulta três instituições, usa a chave real e não lê períodos como ofertas', async () => {
+    configs();
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint, body: any) => {
+      if (endpoint === '/nossa/v1/balance') return { success: true, status: 200, data: { key: `${body.service_type}-balance`, status: 'completed', eligible: true, data: { periods: [] } } };
+      if (endpoint === '/nossa/v2/simulation') return { success: true, status: 200, data: [{ cod_produto: 200, cod_tabela: 'a', name: 'Tabela A' }, { cod_produto: 200, cod_tabela: 'b', name: 'Tabela B' }] };
+      return { success: true, status: 200, data: { key: 'simulation-key', cod_tabela: 'b', disbursed_issue_amount: 2000, number_of_valid_installments: 4 } };
+    });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'FGTS', 'SIMULATE', input);
+    expect(result.rows).toHaveLength(3);
+    expect(result.rows.every(row => row.state === 'OFFER' && row.amount === 2000 && row.table === 'Tabela B')).toBe(true);
+    expect(request.mock.calls.filter(call => call[3] === '/nossa/v1/simulation')).toHaveLength(3);
+    for (const call of request.mock.calls.filter(call => call[3] === '/nossa/v1/simulation')) expect(call[4]).toMatchObject({ key: `${(call[4] as any).service_type}-balance`, eligibility: true, number_of_installments: 4 });
+  });
+  it('saldo FGTS pendente não dispara simulação', async () => {
+    configs();
+    const request = vi.spyOn(NossaFintechService, 'request').mockResolvedValue({ success: true, status: 200, data: { status: 'pending', key: 'pending' } });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'FGTS', 'SIMULATE', input);
+    expect(result.rows.every(row => row.state === 'PENDING' && row.amount === undefined)).toBe(true);
+    expect(request.mock.calls.every(call => call[3] === '/nossa/v1/balance')).toBe(true);
+  });
+  it('CLT bloqueia consulta de margem antes da autorização e não envia SMS automaticamente', async () => {
+    configs();
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: { success: true, data: endpoint.includes('banking') ? ['QITECH', 'UY3'] : { status: 'PENDING', authorization_link: 'https://example.com/authorization' } } }));
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'SIMULATE', { ...input, term: 0 });
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.every(row => row.state === 'PENDING')).toBe(true);
+    expect(request.mock.calls.some(call => call[3].includes('request-authorization') || call[3].includes('get-margin'))).toBe(false);
+  });
+  it('CLT autorizado consulta todas as bancarizadoras e não duplica códigos de tabelas', async () => {
+    configs();
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => {
+      const data = endpoint.includes('banking') ? ['QITECH', 'UY3'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' }
+        : endpoint.includes('get-margin') ? { margin_key: 'margin', can_continue: true }
+          : endpoint.includes('list-rebates') ? [{ cod_tabela: 'a', name: 'Tabela A', number_of_installments: 24 }, { cod_tabela: 'a', number_of_installments: 12 }]
+            : { simulation_key: 'simulation', disbursement_amount: 5000, num_periods: 24, schedule: [{ payment: 500 }], interest_rate: 0.02 };
+      return { success: true, status: 200, data: { success: true, data } };
+    });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'SIMULATE', { ...input, term: 0, employerDocument: '12345678000100' });
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.every(row => row.state === 'OFFER' && row.amount === 5000 && row.rate === 2)).toBe(true);
+    expect(request.mock.calls.filter(call => call[3].includes('simulate-loan'))).toHaveLength(2);
+  });
+  it('FINANTO consulta os dois provedores CLT e envia somente o valor do modo escolhido', async () => {
+    configs();
+    vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
+    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
+    const request = vi.spyOn(FinantoService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: endpoint.includes('/providers/')
+      ? { id: 'simulation', items: [{ term: 24, rate: 2, rule: { id: 'rule', name: 'CLT' } }] }
+      : { netValue: 5000, installmentValue: 500, term: 24, rate: 2 } }));
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'SIMULATE', { ...input, term: 24, mode: 'Liquid' });
+    expect(result.rows).toHaveLength(2);
+    const calls = request.mock.calls.filter(call => call[3].endsWith('/calculation'));
+    expect(calls).toHaveLength(2);
+    expect(calls[0][4]).toMatchObject({ type: 2, disbursementValue: 500 });
+    expect(calls[0][4]).not.toHaveProperty('installmentValue');
+  });
+});

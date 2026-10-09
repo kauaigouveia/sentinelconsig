@@ -38,6 +38,7 @@ import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as U
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { SimulationImportModal } from './SimulationImportModal';
 import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
+import { ProductSimulationModal } from './ProductSimulationModal';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { HappyCltSimulationModal } from './HappyCltSimulationModal';
 import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
@@ -81,6 +82,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
   // Modals state
   const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
+  const [multiProduct, setMultiProduct] = useState<'CLT' | 'FGTS' | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isHappyInssModalOpen, setIsHappyInssModalOpen] = useState(false);
   const [isHappyCltModalOpen, setIsHappyCltModalOpen] = useState(false);
@@ -2587,6 +2589,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         nossaFintechEnabled={nossaFintechEnabled}
         onSelectFlow={(flow) => {
           setIsFlowSelectorOpen(false);
+          if (flow === 'CLT_MULTI' || flow === 'FGTS_MULTI') {
+            setMultiProduct(flow === 'CLT_MULTI' ? 'CLT' : 'FGTS');
+            return;
+          }
           if (flow === 'MANUAL') {
             handleOpenManualModal();
           } else if (flow === 'HAPPY_INSS') {
@@ -2601,6 +2607,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           }
         }}
       />
+
+      {multiProduct && <ProductSimulationModal key={multiProduct} product={multiProduct} isOpen onClose={() => setMultiProduct(null)} onHappyClt={happySimulationAccessEnabled ? () => { setMultiProduct(null); setIsHappyCltModalOpen(true); } : undefined} />}
 
       {/* Modal Simulação Happy INSS */}
       <HappyInssSimulationModal

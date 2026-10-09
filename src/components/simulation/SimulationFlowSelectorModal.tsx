@@ -16,7 +16,7 @@ import { SimulationType } from '../../types';
 interface SimulationFlowSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectFlow: (flow: SimulationType | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN') => void;
+  onSelectFlow: (flow: SimulationType | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN' | 'CLT_MULTI' | 'FGTS_MULTI') => void;
   happySimulationAccessEnabled?: boolean;
   finantoEnabled?: boolean;
   nossaFintechEnabled?: boolean;
@@ -150,39 +150,12 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
             </button>
           )))}
 
-          {/* CARD 3: HAPPY CLT (Oculto se Happy estiver bloqueado) */}
-          {happySimulationAccessEnabled && (
-            <button
-              type="button"
-              id="btn-flow-happy-clt"
-              onClick={() => onSelectFlow('HAPPY_CLT')}
-              className="group relative flex flex-col justify-between p-5 rounded-xl border-2 border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 text-left transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="h-9 w-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5" />
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                    CLT
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    CLT (Privado)
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
-                    Consignado Privado para CLT. Integração <strong>Dataprev</strong>, motor de aprovação e simulação de contrato.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 pt-3 border-t border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                <span>Iniciar CLT</span>
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </button>
-          )}
+          {([
+            { flow: 'CLT_MULTI' as const, title: 'CLT · Crédito do trabalhador', description: 'Consulte os vínculos, a margem e as condições disponíveis nas instituições.' },
+            { flow: 'FGTS_MULTI' as const, title: 'FGTS · Antecipação', description: 'Consulte o saldo e compare as tabelas de antecipação do saque-aniversário.' },
+          ]).map(({ flow, title, description }) => <button type="button" key={flow} id={`btn-flow-${flow.toLowerCase()}`} onClick={() => onSelectFlow(flow)} className="group flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left transition-all hover:border-indigo-500 dark:border-slate-800 dark:bg-slate-800/40">
+            <div className="space-y-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"><Briefcase className="h-5 w-5" /></div><h4 className="text-sm font-bold">{title}</h4><p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{description}</p></div><div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-3 text-xs font-semibold text-indigo-600 dark:border-slate-700 dark:text-indigo-400"><span>Iniciar simulação</span><ArrowRight className="h-4 w-4" /></div>
+          </button>)}
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">

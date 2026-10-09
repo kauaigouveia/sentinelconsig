@@ -111,6 +111,7 @@ import { HappyBankService } from './server/services/happyBankService.js';
 import { HappySimulationService } from './server/services/happySimulationService.js';
 import { FinantoService } from './server/services/finantoService.js';
 import { NossaFintechService } from './server/services/nossaFintechService.js';
+import { ProductSimulationService } from './server/services/productSimulationService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
 import {
   ensureDefaultPromotersForTenant,
@@ -14689,6 +14690,34 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       res.status(502).json({ error: err.message || 'Falha na chamada FINANTO.' });
     }
+  });
+
+  app.post('/api/simulations/products/:product/:action', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'simulations.create')) return res.status(403).json({ error: 'Sem permissão para criar simulações.' });
+      const tenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
+      const product = req.params.product.toUpperCase();
+      const action = req.params.action.toUpperCase();
+      if (!['CLT', 'FGTS'].includes(product) || !['AUTHORIZE', 'SIMULATE'].includes(action) || (product === 'FGTS' && action !== 'SIMULATE')) return res.status(400).json({ error: 'Produto ou ação inválida.' });
+      const cpf = String(req.body?.cpf || '').replace(/\D/g, '');
+      const name = String(req.body?.name || '').trim();
+      const phone = String(req.body?.phone || '').replace(/\D/g, '');
+      const employerDocument = String(req.body?.employerDocument || '').replace(/\D/g, '');
+      const term = Number(req.body?.term);
+      const value = Number(req.body?.value);
+      const mode = req.body?.mode;
+      const eligibility = req.body?.eligibility;
+      if (!isValidCpf(cpf) || !Number.isInteger(term) || term < 0 || term > 120 || (product === 'FGTS' && term < 1) ||
+          !['Payment', 'Liquid'].includes(mode) || typeof eligibility !== 'boolean' ||
+          (product === 'CLT' && (!name || !/^\d{10,11}$/.test(phone) || (employerDocument && employerDocument.length !== 14) || (action === 'SIMULATE' && (!Number.isFinite(value) || value <= 0))))) {
+        return res.status(400).json({ error: 'Revise CPF, dados do cliente, prazo e valor da simulação.' });
+      }
+      const result = await ProductSimulationService.run(prisma, tenantId, product as 'CLT' | 'FGTS', action as 'AUTHORIZE' | 'SIMULATE', { cpf, name, phone, employerDocument, term, value, mode, eligibility });
+      return res.json(result);
+    } catch (error: any) { return res.status(502).json({ error: error.message || 'Falha ao consultar as integrações.' }); }
   });
 
   // Nossa Fintech API: credentials are encrypted per tenant and requests remain server-side.
