@@ -6,8 +6,9 @@ import { eventBus } from './eventBus.js';
 const CONFIG_KEY = 'EVOLUTION_SIMULATION';
 const MENU = 'Olá bem vindo ao canal de simulação\n\nEscolha abaixo o convenio desejado para simulação:\n\n1 - INSS\n2 - CONVENIOS PUBLICOS\n3 - FGTS\n4 - CLT';
 const OPTIONS = ['INSS', 'CONVENIOS PUBLICOS', 'FGTS', 'CLT'];
+const IDENTIFY = 'Olá bem vindo ao canal de simulação\n\nPara começar, envie seu código de parceiro cadastrado no Sentinel Consig.';
 type Config = { baseUrl: string; instance: string; apiKey: string; webhookSecret: string; enabled: boolean; activatedAt?: number };
-type Intake = { convenio?: string; cpf?: string; phone?: string; admissionDate?: string; payslipMessageId?: string };
+type Intake = { partnerCode?: string; convenio?: string; cpf?: string; phone?: string; admissionDate?: string; payslipMessageId?: string };
 
 function encryptionKey() {
   const secret = process.env.JWT_SECRET || process.env.AUTH_SECRET;
@@ -30,13 +31,6 @@ function phone(value: string) {
   let digits = String(value || '').replace(/\D/g, '');
   if (digits.length === 10 || digits.length === 11) digits = `55${digits}`;
   return digits;
-}
-function samePhone(a: string, b: string) {
-  const normalize = (value: string) => {
-    const p = phone(value);
-    return p.startsWith('55') && p.length === 13 && p[4] === '9' ? p.slice(0, 4) + p.slice(5) : p;
-  };
-  return normalize(a) === normalize(b);
 }
 function date(value: string) {
   const match = value.match(/\b(\d{2})[/-](\d{2})[/-](\d{4})\b/);
@@ -118,18 +112,24 @@ export class EvolutionService {
     if (payload.instance !== c.instance || String(payload.event || '').toUpperCase().replace(/\./g, '_') !== 'MESSAGES_UPSERT') return { status: 'ignored' };
     const data = payload.data;
     if (!data?.key?.id || data.key.fromMe) return { status: 'ignored' };
+    // Check the actual chat before considering alternate sender identifiers.
+    // Group participantAlt may contain a personal number but must never trigger the bot.
+    if (typeof data.key.remoteJid !== 'string' || /@(g\.us|broadcast|newsletter)$/.test(data.key.remoteJid)) return { status: 'group_or_broadcast_ignored' };
     const timestamp = Number(data.messageTimestamp?.low ?? data.messageTimestamp);
     if (Number.isFinite(timestamp) && timestamp > 0 && c.activatedAt && timestamp < c.activatedAt) return { status: 'historical_message_ignored' };
     const jid = [data.key.remoteJidAlt, data.key.remoteJid].find(value => typeof value === 'string' && /^\d+@s\.whatsapp\.net$/.test(value));
     if (!jid) return { status: 'ignored' };
     const sender = phone(jid.split('@')[0]);
-    const partners = await prisma.partner.findMany({ where: { tenantId, deletedAt: null, status: 'ATIVO', phone: { not: null } }, select: { id: true, name: true, phone: true } });
-    const matches = partners.filter(p => samePhone(p.phone || '', sender));
-    if (matches.length !== 1) return { status: 'partner_not_identified' };
-    const partner = matches[0];
     const content = data.message?.ephemeralMessage?.message || data.message?.viewOnceMessage?.message || data.message || {};
     const media = content.documentMessage || content.imageMessage;
     const text = String(content.conversation || content.extendedTextMessage?.text || media?.caption || '').slice(0, 12000);
+    if (!text && !media) return { status: 'ignored' };
+    const identification = await this.identify(tenantId, c, sender, String(data.key.id), text, prisma);
+    if (!identification.conversation) {
+      await this.deliverIdentification(identification.id, tenantId, c, prisma);
+      return { status: 'awaiting_partner_code' };
+    }
+    const partner = identification.conversation.partner;
     let attachment: { bytes: Buffer; mime: string; name: string } | undefined;
     if (media && ['application/pdf', 'image/jpeg', 'image/png'].includes(media.mimetype)) {
       let base64 = content.base64 || data.base64;
@@ -149,14 +149,13 @@ export class EvolutionService {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}:${c.instance}:${sender}`}))`;
       const existing = await tx.supportMessage.findUnique({ where: { idempotencyKey: key } });
       if (existing) return { conversationId: existing.conversationId, duplicate: true };
-      let conv = await tx.supportConversation.findFirst({ where: { tenantId, partnerId: partner.id, channel: 'WHATSAPP', whatsappInstance: c.instance, whatsappPhone: sender, status: { in: ['OPEN', 'IN_PROGRESS'] } }, orderBy: { createdAt: 'desc' } });
-      const fresh = !conv;
-      if (!conv) conv = await tx.supportConversation.create({ data: { tenantId, partnerId: partner.id, channel: 'WHATSAPP', department: 'SIMULATION', whatsappPhone: sender, whatsappInstance: c.instance, simulationStage: 'MENU', subject: 'Simulação pelo WhatsApp' } });
+      const conv = await tx.supportConversation.findFirst({ where: { id: identification.conversation!.id, tenantId, partnerId: partner.id, status: { in: ['OPEN', 'IN_PROGRESS'] } } });
+      if (!conv) throw new Error('Atendimento concluído durante o recebimento. Tente novamente.');
       const incoming = await tx.supportMessage.create({ data: { tenantId, conversationId: conv.id, senderType: 'PARTNER', senderName: partner.name, message: text || (attachment ? 'Contracheque anexado' : 'Anexo não aceito. Envie PDF, JPG ou PNG de até 6 MB.'), channel: 'WHATSAPP', externalMessageId: data.key.id, idempotencyKey: key, attachmentData: attachment ? new Uint8Array(attachment.bytes) : undefined, attachmentName: attachment?.name, attachmentMime: attachment?.mime } });
       let stage = conv.simulationStage || 'MENU';
       const intake: Intake = (conv.simulationData as Intake) || {};
       let reply: string | undefined;
-      if (fresh) reply = MENU;
+      if (identification.verifiedMessageId === String(data.key.id)) reply = `Código de parceiro validado: *${partner.code}*.\n\n${MENU}`;
       else if (stage === 'MENU') {
         const answer = text.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
         const chosen = /^[1-4]$/.test(answer) ? OPTIONS[Number(answer) - 1] : OPTIONS.find(option => option === answer);
@@ -186,5 +185,48 @@ export class EvolutionService {
     const pending = await prisma.supportMessage.findMany({ where: { tenantId, conversationId: result.conversationId, senderType: 'SYSTEM', deliveryStatus: { in: ['PENDING', 'FAILED', 'SENDING'] } }, orderBy: { createdAt: 'asc' }, select: { id: true }, take: 2 });
     for (const message of pending) await this.deliver(message.id, tenantId, prisma);
     return { status: result.duplicate ? 'duplicate' : 'processed' };
+  }
+
+  private static async identify(tenantId: string, c: Config, sender: string, messageId: string, text: string, prisma: PrismaClient) {
+    return prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}:${c.instance}:${sender}`}))`;
+      const scope = { tenantId_instance_sender: { tenantId, instance: c.instance, sender } };
+      let session = await tx.whatsAppIdentification.findUnique({ where: scope, include: { conversation: { include: { partner: { select: { id: true, name: true, code: true, status: true, deletedAt: true } } } } } });
+      const ongoing = session?.conversation;
+      if (ongoing && ongoing.tenantId === tenantId && ['OPEN', 'IN_PROGRESS'].includes(ongoing.status) && ongoing.partner.status === 'ATIVO' && !ongoing.partner.deletedAt) return session!;
+      if (session?.seenMessageIds.includes(messageId)) return { ...session, conversation: null };
+      const fresh = !session || !!session.conversationId || session.expiresAt < new Date();
+      const code = text.trim().normalize('NFKC').replace(/^(?:c[oó]digo(?: do parceiro)?|parceiro)\s*[:#-]?\s*/i, '').trim();
+      const matches = !fresh && code.length > 0 && code.length <= 80 ? await tx.partner.findMany({ where: { tenantId, deletedAt: null, status: 'ATIVO', code: { equals: code, mode: 'insensitive' } }, select: { id: true, name: true, code: true }, take: 2 }) : [];
+      const partner = matches.length === 1 ? matches[0] : null;
+      const conversation = partner ? await tx.supportConversation.create({ data: { tenantId, partnerId: partner.id, channel: 'WHATSAPP', department: 'SIMULATION', whatsappPhone: sender, whatsappInstance: c.instance, simulationStage: 'MENU', simulationData: { partnerCode: partner.code }, subject: 'Simulação pelo WhatsApp' } }) : null;
+      const values = {
+        conversationId: conversation?.id || null,
+        verifiedMessageId: partner ? messageId : null,
+        seenMessageIds: [...(session?.seenMessageIds || []), messageId].slice(-256),
+        replyText: partner ? null : fresh ? IDENTIFY : 'Não encontrei esse código entre os parceiros ativos. Confira e envie novamente seu código de parceiro.',
+        replyMessageId: messageId,
+        replyStatus: 'PENDING',
+        deliveryAttemptAt: null,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      };
+      session = await tx.whatsAppIdentification.upsert({ where: scope, create: { tenantId, instance: c.instance, sender, ...values }, update: values, include: { conversation: { include: { partner: { select: { id: true, name: true, code: true, status: true, deletedAt: true } } } } } });
+      return session;
+    });
+  }
+
+  private static async deliverIdentification(id: string, tenantId: string, c: Config, prisma: PrismaClient) {
+    const session = await prisma.whatsAppIdentification.findFirst({ where: { id, tenantId, instance: c.instance, conversationId: null } });
+    if (!session?.replyText) return;
+    const scope = { id, tenantId, conversationId: null, replyMessageId: session.replyMessageId };
+    const claimed = await prisma.whatsAppIdentification.updateMany({ where: { ...scope, OR: [{ replyStatus: { in: ['PENDING', 'FAILED'] } }, { replyStatus: 'SENDING', deliveryAttemptAt: { lt: new Date(Date.now() - 60000) } }] }, data: { replyStatus: 'SENDING', deliveryAttemptAt: new Date() } });
+    if (!claimed.count) return;
+    try {
+      await this.api(c, '/message/sendText', { number: session.sender, text: session.replyText });
+      await prisma.whatsAppIdentification.updateMany({ where: scope, data: { replyStatus: 'SENT' } });
+    } catch (error) {
+      await prisma.whatsAppIdentification.updateMany({ where: scope, data: { replyStatus: 'FAILED' } });
+      throw error;
+    }
   }
 }

@@ -18,6 +18,7 @@ import {
 } from './server/services/azureBlobStorage.js';
 import { backupStorageService } from './server/services/backupStorageService.js';
 import { ALL_PERMISSIONS, getEffectivePermissions, getPermissionsForRole, hasPermission, Permission } from './src/lib/permissions.js';
+import { canAccessSimulationSupport, supportDepartmentScope } from './src/lib/supportAccess.js';
 import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
 import { isValidCpf } from './src/lib/utils.js';
 import { ageAt, finantoAgeError, finantoBenefitError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
@@ -18503,6 +18504,7 @@ async function auditAndEnsureMasterUser() {
           assignedUserId: assignedUserId ? String(assignedUserId) : undefined,
           channel: channel ? String(channel) : undefined,
           department: department ? String(department) : undefined,
+          adminRole: session.activeRole,
           search: search ? String(search) : undefined,
         },
         prisma
@@ -18533,6 +18535,7 @@ async function auditAndEnsureMasterUser() {
         {
           tenantId: session.effectiveTenantId,
           isPartner: false,
+          adminRole: session.activeRole,
         },
         prisma
       );
@@ -18613,7 +18616,8 @@ async function auditAndEnsureMasterUser() {
         session.user.name,
         message,
         prisma,
-        centralEventBus
+        centralEventBus,
+        session.activeRole
       );
 
       return res.status(201).json(created);
@@ -18641,7 +18645,8 @@ async function auditAndEnsureMasterUser() {
         session.effectiveTenantId,
         { status, assignedUserId },
         prisma,
-        centralEventBus
+        centralEventBus,
+        session.activeRole
       );
 
       return res.json(updated);
@@ -18663,7 +18668,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Permissão insuficiente.' });
       }
 
-      const metrics = await SupportService.getMetrics(session.effectiveTenantId, prisma);
+      const metrics = await SupportService.getMetrics(session.effectiveTenantId, prisma, session.activeRole);
       return res.json(metrics);
     } catch (err: any) {
       logger.error({ error: err?.message }, '[GET /api/support/metrics ERROR]');
@@ -19125,6 +19130,7 @@ async function auditAndEnsureMasterUser() {
         const session = await getAuthSession(req);
         if (!session?.effectiveTenantId) return res.status(401).json({ error: 'Não autorizado.' });
         if (!hasPermission(session.activeRole as Role, session.activePermissions, 'integrations.manage')) return res.status(403).json({ error: 'Permissão insuficiente para configurar integrações.' });
+        if (!canAccessSimulationSupport(session.activeRole)) return res.status(403).json({ error: 'Este perfil não tem acesso ao canal de simulação.' });
         const tenantId = session.effectiveTenantId;
         const data = operation === 'config' ? (req.method === 'GET' ? await EvolutionService.metadata(tenantId, prisma) : await EvolutionService.save(tenantId, req.body, prisma)) : operation === 'connect' ? await EvolutionService.connect(tenantId, prisma) : await EvolutionService.state(tenantId, prisma);
         return res.json(data);
@@ -19140,7 +19146,7 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session?.effectiveTenantId) return res.status(401).json({ error: 'Não autorizado.' });
       if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.reply')) return res.status(403).json({ error: 'Permissão insuficiente.' });
-      const message = await prisma.supportMessage.findFirst({ where: { id: req.params.id, tenantId: session.effectiveTenantId, channel: 'WHATSAPP', senderType: { in: ['SUPPORT', 'SYSTEM'] } }, select: { id: true } });
+      const message = await prisma.supportMessage.findFirst({ where: { id: req.params.id, tenantId: session.effectiveTenantId, channel: 'WHATSAPP', senderType: { in: ['SUPPORT', 'SYSTEM'] }, conversation: supportDepartmentScope(session.activeRole) }, select: { id: true } });
       if (!message) return res.status(404).json({ error: 'Mensagem não encontrada.' });
       await EvolutionService.deliver(message.id, session.effectiveTenantId, prisma);
       return res.json({ success: true });
@@ -19157,7 +19163,7 @@ async function auditAndEnsureMasterUser() {
         const tenantId = partnerSession?.tenant.id || session?.effectiveTenantId;
         if (!tenantId) return res.status(401).json({ error: 'Não autorizado.' });
         if (!isPartner && !hasPermission(session!.activeRole as Role, session!.activePermissions, 'support.view')) return res.status(403).json({ error: 'Permissão insuficiente.' });
-        const message = await prisma.supportMessage.findFirst({ where: { id: req.params.id, tenantId, ...(isPartner ? { conversation: { partnerId: partnerSession!.partner.id } } : {}) }, select: { attachmentData: true, attachmentMime: true, attachmentName: true } });
+        const message = await prisma.supportMessage.findFirst({ where: { id: req.params.id, tenantId, conversation: isPartner ? { partnerId: partnerSession!.partner.id } : supportDepartmentScope(session!.activeRole) }, select: { attachmentData: true, attachmentMime: true, attachmentName: true } });
         if (!message?.attachmentData) return res.status(404).json({ error: 'Anexo não encontrado.' });
         res.setHeader('Content-Type', message.attachmentMime || 'application/octet-stream');
         res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -19172,9 +19178,10 @@ async function auditAndEnsureMasterUser() {
       const config = await EvolutionService.authenticate(req.params.tenantId, String(req.headers['x-sentinel-webhook-secret'] || ''), prisma);
       if (!config) return res.status(403).json({ error: 'Webhook não autorizado.' });
       const result = await EvolutionService.receive(req.params.tenantId, config, req.body, prisma);
+      logger.info({ tenantId: req.params.tenantId, outcome: result.status }, '[EVOLUTION WEBHOOK] Evento recebido');
       return res.json({ success: true, ...result });
-    } catch {
-      logger.error('[EVOLUTION WEBHOOK] Falha no processamento ou envio.');
+    } catch (error: any) {
+      logger.error({ category: error instanceof Error ? error.name : 'UnknownError', code: typeof error?.code === 'string' && /^P\d{4}$/.test(error.code) ? error.code : undefined }, '[EVOLUTION WEBHOOK] Falha no processamento ou envio.');
       return res.status(503).json({ error: 'Não foi possível processar o evento. Tente novamente.' });
     }
   });

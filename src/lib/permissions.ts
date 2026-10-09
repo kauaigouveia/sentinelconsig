@@ -417,6 +417,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'clients.view',
     'proposals.view', 'proposals.create',
     'simulations.view', 'simulations.create', 'simulations.update',
+    'support.view', 'support.reply', 'support.manage',
   ],
 };
 

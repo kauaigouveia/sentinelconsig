@@ -129,7 +129,8 @@ export class CentralEventBus extends EventEmitter {
         entity: event.entity || 'EVENT',
         entityId: event.entityId || '',
         userId: event.userId || undefined,
-        data: event.data,
+        // Support content must be fetched through the role/partner scoped endpoints.
+        data: event.entity === 'SUPPORT' ? undefined : event.data,
       });
     } catch (err: any) {
       logger.error(

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { eventBus, CentralEventBus } from './eventBus.js';
 import { EvolutionService } from './evolutionService.js';
+import { canAccessSimulationSupport, supportDepartmentScope } from '../../src/lib/supportAccess.js';
 
 const messageSelect = { id: true, conversationId: true, senderType: true, senderId: true, senderName: true, message: true, channel: true, externalMessageId: true, readAt: true, createdAt: true, deliveryStatus: true, attachmentName: true, attachmentMime: true } as const;
 
@@ -176,12 +177,14 @@ export class SupportService {
       partnerId?: string;
       tenantId: string;
       isPartner: boolean;
+      adminRole?: string;
     },
     prisma: PrismaClient
   ) {
     const convWhere: any = {
       id: conversationId,
       tenantId: options.tenantId,
+      ...(!options.isPartner ? supportDepartmentScope(options.adminRole) : {}),
     };
     if (options.partnerId) {
       convWhere.partnerId = options.partnerId;
@@ -361,7 +364,8 @@ export class SupportService {
     userName: string,
     messageText: string,
     prisma: PrismaClient,
-    eventBus?: EventBus
+    eventBus?: EventBus,
+    adminRole?: string
   ) {
     const cleanText = String(messageText || '').trim();
     if (!cleanText) {
@@ -378,6 +382,8 @@ export class SupportService {
     if (!conversation) {
       throw new Error('Conversa não encontrada.');
     }
+
+    if (conversation.department === 'SIMULATION' && !canAccessSimulationSupport(adminRole)) throw new Error('Acesso à mesa de simulação não permitido para este perfil.');
 
     const message = await prisma.supportMessage.create({
       data: {
@@ -439,6 +445,7 @@ export class SupportService {
       channel?: string;
       department?: string;
       search?: string;
+      adminRole?: string;
     },
     prisma: PrismaClient
   ) {
@@ -462,6 +469,8 @@ export class SupportService {
       where.channel = filters.channel;
     }
     if (filters.department && filters.department !== 'ALL') where.department = filters.department;
+    // Keep role restrictions independent from user-supplied filters.
+    if (!canAccessSimulationSupport(filters.adminRole)) where.AND = [supportDepartmentScope(filters.adminRole)];
 
     if (filters.search) {
       const term = filters.search.trim();
@@ -557,7 +566,8 @@ export class SupportService {
       assignedUserId?: string | null;
     },
     prisma: PrismaClient,
-    eventBus?: EventBus
+    eventBus?: EventBus,
+    adminRole?: string
   ) {
     const conversation = await prisma.supportConversation.findFirst({
       where: { id: conversationId, tenantId },
@@ -565,6 +575,12 @@ export class SupportService {
 
     if (!conversation) {
       throw new Error('Conversa não encontrada.');
+    }
+
+    if (conversation.department === 'SIMULATION' && !canAccessSimulationSupport(adminRole)) throw new Error('Acesso à mesa de simulação não permitido para este perfil.');
+    if (conversation.department === 'SIMULATION' && data.assignedUserId) {
+      const assignee = await prisma.user.findFirst({ where: { id: data.assignedUserId, tenantId, active: true }, select: { role: true } });
+      if (!assignee || !canAccessSimulationSupport(assignee.role)) throw new Error('Escolha um responsável com perfil de acesso à mesa de simulação.');
     }
 
     const updated = await prisma.supportConversation.update({
@@ -591,20 +607,22 @@ export class SupportService {
   /**
    * Métricas operacionais da Central de Atendimento
    */
-  public static async getMetrics(tenantId: string, prisma: PrismaClient) {
+  public static async getMetrics(tenantId: string, prisma: PrismaClient, adminRole?: string) {
+    const scope = supportDepartmentScope(adminRole);
     const [openCount, inProgressCount, resolvedCount, totalMessagesToday] = await Promise.all([
       prisma.supportConversation.count({
-        where: { tenantId, status: 'OPEN' },
+        where: { tenantId, status: 'OPEN', ...scope },
       }),
       prisma.supportConversation.count({
-        where: { tenantId, status: 'IN_PROGRESS' },
+        where: { tenantId, status: 'IN_PROGRESS', ...scope },
       }),
       prisma.supportConversation.count({
-        where: { tenantId, status: 'RESOLVED' },
+        where: { tenantId, status: 'RESOLVED', ...scope },
       }),
       prisma.supportMessage.count({
         where: {
           tenantId,
+          conversation: scope,
           createdAt: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
           },

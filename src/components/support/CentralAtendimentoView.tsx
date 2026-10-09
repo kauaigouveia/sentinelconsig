@@ -25,6 +25,7 @@ import { toastService } from '../ui/toastService';
 import { realtimeHub } from '../../services/realtimeService';
 import { StorageService } from '../../services/storageService';
 import { hasPermission } from '../../lib/permissions';
+import { canAccessSimulationSupport } from '../../lib/supportAccess';
 
 interface SupportConversationAdmin {
   id: string;
@@ -73,7 +74,8 @@ export const CentralAtendimentoView: React.FC = () => {
   const activeUser = StorageService.getActiveUser();
   const canReply = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.reply');
   const canManage = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.manage');
-  const canConfigure = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
+  const canViewSimulation = canAccessSimulationSupport(activeUser?.role);
+  const canConfigure = canViewSimulation && hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
   const [conversations, setConversations] = useState<SupportConversationAdmin[]>([]);
   const [metrics, setMetrics] = useState({
     openCount: 0,
@@ -401,7 +403,7 @@ export const CentralAtendimentoView: React.FC = () => {
 
             {/* Status Tabs */}
             <select aria-label="Fila de atendimento" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-800">
-              <option value="ALL">Todas as filas</option><option value="SIMULATION">Mesa de simulação</option><option value="SUPPORT">Atendimento ao parceiro</option>
+              <option value="ALL">Todas as filas</option>{canViewSimulation && <option value="SIMULATION">Mesa de simulação</option>}<option value="SUPPORT">Atendimento ao parceiro</option>
             </select>
             <div className="flex items-center gap-1">
               {[
