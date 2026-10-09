@@ -3,7 +3,7 @@ import { Activity, AlertCircle, LoaderCircle, X } from 'lucide-react';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
-import { ageAt, finantoAgeError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, finantoTableRateError, INSS_TERMS } from '../../lib/inssEligibility';
+import { ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRuleItem, finantoTableLabel, finantoTableRateError, INSS_TERMS } from '../../lib/inssEligibility';
 
 type SimulationRow = { provider: string; table?: any; success: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
 type Props = { isOpen: boolean; onClose: () => void };
@@ -64,7 +64,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     const results: SimulationRow[] = [];
     const eligible = allRules.flatMap(rule => {
       const termItem = finantoRuleItem(rule, Number(form.numberOfInstallments));
-      const reason = finantoInstallmentError(rule.name || '', Number(form.installmentFaceValue)) || (termItem ? finantoTableRateError(rule.name || '', Number(termItem.rate)) : null);
+      const reason = finantoBenefitError(rule.name || '', form.benefitType) || finantoInstallmentError(rule.name || '', Number(form.installmentFaceValue)) || (termItem ? finantoTableRateError(rule.name || '', Number(termItem.rate)) : null);
       if (reason || !termItem || !(Number(termItem.rate) > 0)) {
         results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule), originalName: rule.name, cod_tabela: rule.code || rule.id }, term: Number(form.numberOfInstallments), success: false, skipped: true, error: reason || 'A tabela não atende ao prazo escolhido.' });
         return [];

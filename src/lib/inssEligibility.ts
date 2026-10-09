@@ -48,6 +48,14 @@ export function finantoInstallmentError(name: string, installment: number): stri
   return null;
 }
 
+/** Only explicit species restrictions are inferred from a table name. */
+export function finantoBenefitError(name: string, benefitType: string | number): string | null {
+  const restriction = /\b(?:BNF|ESP(?:[ÉE]CIE)?)\s*[.:#-]?\s*(\d{1,2})\b/i.exec(name);
+  if (!restriction) return null;
+  const required = Number(restriction[1]);
+  return Number(benefitType) === required ? null : `Esta tabela FINANTO atende somente à espécie ${required} do benefício.`;
+}
+
 export function finantoTableLabel(rule: { name?: string; code?: string | number; id?: string }): string {
   const name = rule.name || `Tabela ${rule.code || rule.id || ''}`;
   const grace = /90\s*D/i.test(name) ? ' · carência de 90 dias' : '';

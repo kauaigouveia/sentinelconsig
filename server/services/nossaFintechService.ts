@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { nossaFintechAgeError, nossaFintechBalanceError } from '../../src/lib/inssEligibility';
+import { getNossaFintechNovoOptions } from '../../src/lib/nossaFintech';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
 const CONFIG_KEYS = {
@@ -202,27 +203,41 @@ export class NossaFintechService {
         tableData?.data?.tabela_rebates || tableData?.data?.items || tableData?.data || [];
     const candidates = (Array.isArray(tables) ? tables : []).filter((table: any) => {
       const terms = Array.isArray(table.number_of_installments) ? table.number_of_installments.map(Number) : [];
-      return table.cod_produto != null && (!terms.length || terms.includes(input.numberOfInstallments));
+      return Number.isInteger(Number(table.cod_produto)) && Number(table.cod_produto) > 0 && (!terms.length || terms.includes(input.numberOfInstallments));
     });
     if (!candidates.length) return { success: true, status: 200, data: { results: [], message: 'Nossa Fintech não retornou tabelas para o prazo selecionado.' } };
 
+    // Novo accepts cod_produto, so commercial tables sharing a product must not
+    // cause identical requests or be presented as distinct simulated offers.
+    const products = Array.from(new Set<number>(candidates.map((table: any) => Number(table.cod_produto))));
     const results: Array<{ table: any; success: boolean; status: number; data?: unknown; error?: string }> = [];
-    for (let index = 0; index < candidates.length; index += 4) {
-      const batch = candidates.slice(index, index + 4);
-      const batchResults = await Promise.all(batch.map(async (table: any) => {
+    for (let index = 0; index < products.length; index += 4) {
+      const batch = products.slice(index, index + 4);
+      const batchResults = await Promise.all(batch.map(async (product) => {
+        const productTables = candidates.filter((table: any) => Number(table.cod_produto) === product);
+        const table = productTables.length === 1 ? productTables[0] : { cod_produto: product, name: `INSS Novo · produto ${product}`, availableTables: productTables };
         try {
           const body = {
             number_of_installments: input.numberOfInstallments,
-            cod_produto: Number(table.cod_produto),
+            cod_produto: product,
             ...(input.mode === 'INSTALLMENT' ? { installment_face_value: input.value } : { disbursed_amount: input.value }),
           };
           const response = await this.request(prisma, tenantId, 'POST', '/inss/v1/simulation', body);
-          return { table, success: response.success, status: response.status, data: response.data };
+          const options = response.success ? getNossaFintechNovoOptions(response.data) : [];
+          if (!options.length) {
+            const payload = response.data as any;
+            const detail = [payload?.message, payload?.detail, payload?.error].find(value => typeof value === 'string');
+            return [{ table, success: false, status: response.status, data: response.data, error: detail || 'A Nossa Fintech não retornou uma opção com valor liberado válido para este produto.' }];
+          }
+          return options.map(option => ({
+            table: productTables.find((candidate: any) => option.cod_tabela != null && String(candidate.cod_tabela) === String(option.cod_tabela)) || table,
+            success: true, status: response.status, data: { ...(response.data as Record<string, unknown>), disbursement_options: [option] },
+          }));
         } catch (error: any) {
-          return { table, success: false, status: 0, error: error.message || 'Falha nesta tabela Nossa Fintech.' };
+          return [{ table, success: false, status: 0, error: error.message || 'Falha neste produto Nossa Fintech.' }];
         }
       }));
-      results.push(...batchResults);
+      results.push(...batchResults.flat());
     }
     return { success: true, status: 200, data: { tables: candidates, results } };
   }

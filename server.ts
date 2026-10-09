@@ -20,7 +20,7 @@ import { backupStorageService } from './server/services/backupStorageService.js'
 import { ALL_PERMISSIONS, getEffectivePermissions, getPermissionsForRole, hasPermission, Permission } from './src/lib/permissions.js';
 import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
 import { isValidCpf } from './src/lib/utils.js';
-import { finantoAgeError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
+import { finantoAgeError, finantoBenefitError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
 import { Role } from './src/types/index.js';
 
 function dispatchImportWorker(task: () => Promise<unknown>, label: string): void {
@@ -14471,6 +14471,10 @@ async function auditAndEnsureMasterUser() {
         const ruleItems = Array.isArray(ruleData?.items) ? ruleData.items : ruleData?.data?.items || [];
         const selectedRule = ruleItems.find((rule: any) => String(rule.id) === String(ruleId) && inssProductIds.includes(String(rule.product?.id)));
         validRule = Boolean(selectedRule);
+        if (selectedRule) {
+          const benefitError = finantoBenefitError(selectedRule.name || '', borrower.benefitType);
+          if (benefitError) return res.status(422).json({ error: benefitError });
+        }
         if (selectedRule && (operation === '3' || operation === '4')) {
           const installmentError = finantoInstallmentError(selectedRule.name || '', Number(originContract.installmentValue));
           if (installmentError) return res.status(422).json({ error: installmentError });
