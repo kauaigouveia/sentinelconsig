@@ -20,7 +20,13 @@ export class ProductSimulationService {
   static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput) {
     const rows: ProductSimulationRow[] = [];
     let configured = false;
-    const failure = (provider: string, institution: string, error: any) => rows.push({ provider, institution, state: 'ERROR', message: error?.message || 'Não foi possível consultar esta instituição.' });
+    const failure = (provider: string, institution: string, error: any) => {
+      const detail = error?.message || 'Não foi possível consultar esta instituição.';
+      const j17Timeout = provider === 'Nossa Fintech' && institution === 'J17' && /curl error 28|connection timed out|timeout|timedout/i.test(detail);
+      rows.push({ provider, institution, state: 'ERROR', message: j17Timeout
+        ? 'J17 não respondeu à Nossa Fintech dentro do prazo. Tente novamente mais tarde. As demais instituições continuam disponíveis.'
+        : detail });
+    };
     const nossaCall = async (method: string, endpoint: string, body?: unknown) => {
       const result = await NossaFintechService.request(prisma, tenantId, method, endpoint, body);
       const payload = result.data as any;
@@ -80,7 +86,23 @@ export class ProductSimulationService {
             const cnpj = String(employer.employer_cnpj || '').replace(/\D/g, '');
             if (cnpj.length !== 14) continue;
             let margin: any;
-            try { margin = await nossaCall('POST', '/clt-loan/v1/get-margin', { ...identity, employer_document: cnpj }); }
+            try {
+              margin = await nossaCall('POST', '/clt-loan/v1/get-margin', { ...identity, employer_document: cnpj });
+              if (!margin || typeof margin !== 'object' || Array.isArray(margin) || !['margin_key', 'available_balance', 'utilizable_balance', 'base_margin_value', 'can_continue'].some(key => Object.prototype.hasOwnProperty.call(margin, key))) {
+                throw new Error('A Nossa Fintech retornou uma resposta incompatível com a consulta de margem CLT. A resposta não foi utilizada. Contate o suporte da integração.');
+              }
+              // Compare only identifiers actually returned by the API. Some documented
+              // responses contain a shortened employer document, not a complete CNPJ.
+              const requestedCpf = input.cpf.replace(/\D/g, '');
+              const returnedCpf = String(margin?.document || '').replace(/\D/g, '');
+              const returnedEmployer = String(margin?.employer?.document || '').replace(/\D/g, '');
+              if (requestedCpf.length === 11 && returnedCpf && returnedCpf !== requestedCpf) {
+                throw new Error('A Nossa Fintech retornou dados de um CPF diferente do consultado. A resposta não foi utilizada. Consulte novamente e, se persistir, contate o suporte da integração.');
+              }
+              if (returnedEmployer.length === 14 && returnedEmployer !== cnpj) {
+                throw new Error('A Nossa Fintech retornou margem de outro vínculo empregatício. A resposta não foi utilizada. Consulte novamente e, se persistir, contate o suporte da integração.');
+              }
+            }
             catch (error) { failure('Nossa Fintech', service, error); continue; }
             if (action === 'REFRESH') {
               rows.push({ provider: 'Nossa Fintech', institution: service, state: 'DATA', message: margin?.can_continue === false ? 'Dados atualizados. Vínculo com restrições para continuar.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin } });

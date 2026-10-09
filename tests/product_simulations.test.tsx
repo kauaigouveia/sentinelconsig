@@ -13,6 +13,45 @@ function configs() {
   vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: false, isConfigured: false } as any);
 }
 describe('Simulações CLT e FGTS na central', () => {
+  it.each([
+    { margin_key: 'margin', document: '98765432100', employer: { document: '12345678000100' } },
+    { margin_key: 'margin', document: '12345678900', employer: { document: '98765432000100' } },
+    { beneficio: '123', especie: 41, nome: 'Cliente' },
+  ])('não utiliza margem CLT de outro CPF/vínculo ou com formato de INSS', async margin => {
+    configs();
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: { success: true, data: endpoint.includes('banking') ? ['QITECH'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' } : margin } }));
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', { ...input, cpf: '12345678900', employerDocument: '12345678000100' });
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].state).toBe('ERROR');
+    expect(result.rows[0].message).toContain('não foi utilizada');
+    expect(result.rows[0].data).toBeUndefined();
+    expect(request.mock.calls.every(call => call[3].startsWith('/clt-loan/v1/'))).toBe(true);
+    expect(request.mock.calls.some(call => /simulate-loan|list-rebates/.test(call[3]))).toBe(false);
+  });
+  it('aceita o documento abreviado do empregador conforme exemplo CLT documentado', async () => {
+    configs();
+    const margin = { margin_key: 'margin', document: '12345678900', employer: { document: '89412850' }, available_balance: 500, utilizable_balance: 400, base_margin_value: 4500, total_gross_salary: null };
+    vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: { success: true, data: endpoint.includes('banking') ? ['QITECH'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' } : margin } }));
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', { ...input, cpf: '12345678900', employerDocument: '00000089412850' });
+    expect(result.rows[0]).toMatchObject({ state: 'DATA', data: { margin, employment: { employer_cnpj: '00000089412850' } } });
+  });
+  it('timeout interno do J17 não impede as ofertas FGTS dos demais bancos', async () => {
+    configs();
+    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint, body: any) => {
+      if (body.service_type === 'j17') return { success: false, status: 500, data: { message: 'cURL error 28: Connection timed out after 10002 milliseconds for https://zitadel.dev.j17bank.com.br/oauth/v2/token' } };
+      if (endpoint.endsWith('/balance')) return { success: true, status: 200, data: { key: 'balance', status: 'completed', eligible: true } };
+      if (endpoint === '/nossa/v2/simulation') return { success: true, status: 200, data: [{ cod_produto: 200, cod_tabela: 'a', name: 'Tabela' }] };
+      return { success: true, status: 200, data: { key: 'simulation', disbursed_issue_amount: 2000, number_of_valid_installments: 4 } };
+    });
+    const result = await ProductSimulationService.run({} as any, 'tenant', 'FGTS', 'SIMULATE', input);
+    expect(result.rows.filter(row => row.state === 'OFFER')).toHaveLength(2);
+    const j17 = result.rows.find(row => row.institution === 'J17');
+    expect(j17).toMatchObject({ state: 'ERROR' });
+    expect(j17?.message).toContain('J17 não respondeu à Nossa Fintech');
+    expect(j17?.message).not.toContain('https://');
+    expect(j17?.amount).toBeUndefined();
+    expect(request.mock.calls.filter(call => (call[4] as any).service_type === 'j17')).toHaveLength(1);
+  });
   it('atualiza vínculos e margem sem exigir valor nem disparar simulação ou novo SMS', async () => {
     configs();
     const margin = { margin_key: 'margin', name: 'Nome retornado', available_balance: 500, utilizable_balance: 400, employer: { document: '12345678000100', name: 'Empresa retornada' }, can_continue: true, birth_date: '1980-01-01', restrictions: [], base_margin_value: 4500 };

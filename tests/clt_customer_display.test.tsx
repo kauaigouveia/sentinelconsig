@@ -16,7 +16,9 @@ describe('Dados CLT legíveis', () => {
     expect(html).not.toContain('internal-secret-id');
   });
   it('preserva margem zero e distingue valores ausentes na Nossa Fintech', () => {
-    const html = renderToStaticMarkup(<CltCustomerDataCard selectedEmployer="" onSelectEmployer={() => {}} row={{ institution: 'QITECH', provider: 'Nossa Fintech', data: { margin: { name: 'Cliente', available_balance: 0, utilizable_balance: null, employer: { name: 'Empresa' } } } }} />);
+    const html = renderToStaticMarkup(<CltCustomerDataCard selectedEmployer="" onSelectEmployer={() => {}} row={{ institution: 'QITECH', provider: 'Nossa Fintech', data: { margin: { name: 'Cliente', document: '12345678900', available_balance: 0, utilizable_balance: null, employer: { name: 'Empresa' } } } }} />);
+    expect(html).toContain('CPF retornado');
+    expect(html).toContain('123.456.789-00');
     expect(html).toContain('Margem disponível');
     expect(html).toContain('0,00');
     expect(html).toContain('Não informado');
