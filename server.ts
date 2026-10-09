@@ -18546,6 +18546,51 @@ async function auditAndEnsureMasterUser() {
   });
 
   // 15. POST /api/support/conversations/:id/messages
+  app.all(['/api/support/reply-templates', '/api/support/reply-templates/:id'], async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.user || !session.effectiveTenantId) return res.status(401).json({ error: 'Autenticação necessária.' });
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.reply')) return res.status(403).json({ error: 'Permissão insuficiente.' });
+      const scope = { tenantId: session.effectiveTenantId, createdById: session.user.id };
+      if (req.method === 'GET' && !req.params.id) return res.json(await prisma.supportReplyTemplate.findMany({ where: scope, orderBy: { title: 'asc' } }));
+      if (req.method === 'DELETE' && req.params.id) {
+        const result = await prisma.supportReplyTemplate.deleteMany({ where: { ...scope, id: req.params.id } });
+        return result.count ? res.json({ success: true }) : res.status(404).json({ error: 'Modelo não encontrado.' });
+      }
+      if (!['POST', 'PATCH'].includes(req.method) || (req.method === 'PATCH' && !req.params.id) || (req.method === 'POST' && req.params.id)) return res.status(405).json({ error: 'Método não permitido.' });
+      const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+      const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+      if (!title || title.length > 120 || !message || message.length > 5000) return res.status(400).json({ error: 'Informe título de até 120 caracteres e mensagem de até 5.000 caracteres.' });
+      if (req.method === 'POST') return res.status(201).json(await prisma.supportReplyTemplate.create({ data: { ...scope, title, message } }));
+      const result = await prisma.supportReplyTemplate.updateMany({ where: { ...scope, id: req.params.id }, data: { title, message } });
+      return result.count ? res.json({ success: true }) : res.status(404).json({ error: 'Modelo não encontrado.' });
+    } catch (error) {
+      logger.error({ error }, 'Falha ao salvar modelos de atendimento');
+      return res.status(500).json({ error: 'Não foi possível acessar os modelos.' });
+    }
+  });
+
+  app.post('/api/partner-portal/support/conversations/:id/rating', async (req, res) => {
+    try {
+      const context = await PartnerPortalService.getPartnerSession(req, prisma);
+      if (!context) return res.status(401).json({ error: 'Autenticação necessária.' });
+      const rating = req.body?.rating;
+      const ratingComment = typeof req.body?.comment === 'string' ? req.body.comment.trim() : '';
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5 || ratingComment.length > 1000) return res.status(400).json({ error: 'Escolha uma nota de 1 a 5 e comentário de até 1.000 caracteres.' });
+      const scope = { id: req.params.id, tenantId: context.tenant.id, partnerId: context.partner.id };
+      const conversation = await prisma.supportConversation.findFirst({ where: scope });
+      if (!conversation) return res.status(404).json({ error: 'Atendimento não encontrado.' });
+      if (!['RESOLVED', 'CLOSED'].includes(conversation.status)) return res.status(409).json({ error: 'A avaliação fica disponível ao concluir o atendimento.' });
+      const result = await prisma.supportConversation.updateMany({ where: { ...scope, status: { in: ['RESOLVED', 'CLOSED'] }, rating: null }, data: { rating, ratingComment: ratingComment || null, ratedAt: new Date(), ratedByAccessId: context.access.id } });
+      if (!result.count) return res.status(409).json({ error: 'Este atendimento já foi avaliado ou reaberto. Atualize a conversa.' });
+      return res.json({ success: true });
+    } catch (error) {
+      logger.error({ error }, 'Falha ao registrar avaliação do parceiro');
+      return res.status(500).json({ error: 'Não foi possível registrar a avaliação.' });
+    }
+  });
+
   app.post('/api/support/conversations/:id/messages', async (req, res) => {
     try {
       const session = await getAuthSession(req);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SupportReplyTemplates } from './SupportReplyTemplates';
 import {
   Headphones,
   MessageSquare,
@@ -307,6 +308,7 @@ export const CentralAtendimentoView: React.FC = () => {
       />
 
       {/* KPI Cards */}
+      {canReply && <SupportReplyTemplates canInsert={!!activeConversationId && activeConversationData?.id === activeConversationId} onInsert={text => setReplyText(current => current.trim() ? `${current}\n${text}` : text)} />}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div
           onClick={() => setStatusFilter('OPEN')}
@@ -602,13 +604,15 @@ export const CentralAtendimentoView: React.FC = () => {
               </div>
 
               {/* Reply Input Form */}
+              {activeConversationData?.rating && <div className="shrink-0 border-t border-slate-200 p-3 text-xs dark:border-slate-800"><strong>Avaliação do parceiro: {'★'.repeat(activeConversationData.rating)} ({activeConversationData.rating}/5)</strong>{activeConversationData.ratingComment && <p className="mt-1 whitespace-pre-wrap break-words">{activeConversationData.ratingComment}</p>}</div>}
               {canReply ? <form onSubmit={handleSendReply} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
+                  aria-label="Resposta para o parceiro"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Digite sua resposta para o parceiro..."
-                  className="flex-1 h-9.5 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  className="min-w-0 flex-1 max-h-32 resize-y px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                 />
                 <button
                   type="submit"

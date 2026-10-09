@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SupportRating } from './SupportRating';
 import {
   MessageSquare,
   Send,
@@ -354,7 +355,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                         : 'bg-blue-500/10 text-blue-500'
                     }`}
                   >
-                    {activeConversationData.status === 'RESOLVED' ? 'Resolvido' : 'Em Atendimento'}
+                    {['RESOLVED', 'CLOSED'].includes(activeConversationData.status) ? 'Concluído' : 'Em Atendimento'}
                   </span>
                 </div>
                 {activeConversationData.proposalNumber && (
@@ -425,6 +426,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
             </div>
 
             {/* Message Input Form */}
+            {activeConversationData?.id === activeConversationId && <SupportRating key={activeConversationId} conversation={activeConversationData} onRated={() => { if (activeConversationId) void fetchMessages(activeConversationId, true); }} />}
             <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
               <input
                 type="text"

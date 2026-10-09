@@ -217,6 +217,7 @@ model Tenant {
   partnerPortalSessions PartnerPortalSession[]
   supportConversations SupportConversation[]
   supportMessages      SupportMessage[]
+  supportReplyTemplates SupportReplyTemplate[]
 
   @@index([slug])
   @@index([customDomain])
@@ -575,6 +576,11 @@ model SupportConversation {
 
   lastMessageAt DateTime @default(now()) @map("last_message_at")
 
+  rating Int?
+  ratingComment String? @map("rating_comment")
+  ratedAt DateTime? @map("rated_at")
+  ratedByAccessId String? @map("rated_by_access_id")
+
   messages SupportMessage[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -586,6 +592,19 @@ model SupportConversation {
   @@index([status])
   @@index([lastMessageAt])
   @@map("support_conversations")
+}
+
+model SupportReplyTemplate {
+  id String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById String @map("created_by_id")
+  title String
+  message String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([tenantId, createdById])
+  @@map("support_reply_templates")
 }
 
 model SupportMessage {
