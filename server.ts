@@ -132,6 +132,7 @@ import { IncidentSlaService } from './server/services/commandCenter/incidentSlaS
 import { ImpactAnalysisService } from './server/services/commandCenter/impactAnalysisService.js';
 import { PartnerPortalService } from './server/services/partnerPortalService.js';
 import { SupportService } from './server/services/supportService.js';
+import { EvolutionService } from './server/services/evolutionService.js';
 import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
 let isShuttingDown = false;
@@ -18376,11 +18377,11 @@ async function auditAndEnsureMasterUser() {
         return res.status(401).json({ error: 'Autenticação necessária.' });
       }
 
-      const { proposalId, subject, channel } = req.body || {};
+      const { proposalId, subject } = req.body || {};
       const conversation = await SupportService.getOrCreateConversation(
         sessionContext.partner.id,
         sessionContext.tenant.id,
-        { proposalId, subject, channel },
+        { proposalId, subject, channel: 'PORTAL' },
         prisma,
         centralEventBus
       );
@@ -18481,6 +18482,7 @@ async function auditAndEnsureMasterUser() {
 
   // 13. GET /api/support/conversations
   app.get('/api/support/conversations', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const session = await getAuthSession(req);
       if (!session || !session.effectiveTenantId) {
@@ -18491,7 +18493,7 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Permissão insuficiente para visualizar a Central de Atendimento.' });
       }
 
-      const { status, partnerId, assignedUserId, channel, search } = req.query;
+      const { status, partnerId, assignedUserId, channel, department, search } = req.query;
 
       const list = await SupportService.listAdminConversations(
         session.effectiveTenantId,
@@ -18500,6 +18502,7 @@ async function auditAndEnsureMasterUser() {
           partnerId: partnerId ? String(partnerId) : undefined,
           assignedUserId: assignedUserId ? String(assignedUserId) : undefined,
           channel: channel ? String(channel) : undefined,
+          department: department ? String(department) : undefined,
           search: search ? String(search) : undefined,
         },
         prisma
@@ -19115,15 +19118,76 @@ async function auditAndEnsureMasterUser() {
   // WEBHOOK OFICIAL DO WHATSAPP (IDEMPOTÊNCIA & ASSINATURA SEGURA)
   // =============================================================
 
+  for (const operation of ['config', 'connect', 'state'] as const) {
+    const handler = async (req: express.Request, res: express.Response) => {
+      res.setHeader('Cache-Control', 'no-store');
+      try {
+        const session = await getAuthSession(req);
+        if (!session?.effectiveTenantId) return res.status(401).json({ error: 'Não autorizado.' });
+        if (!hasPermission(session.activeRole as Role, session.activePermissions, 'integrations.manage')) return res.status(403).json({ error: 'Permissão insuficiente para configurar integrações.' });
+        const tenantId = session.effectiveTenantId;
+        const data = operation === 'config' ? (req.method === 'GET' ? await EvolutionService.metadata(tenantId, prisma) : await EvolutionService.save(tenantId, req.body, prisma)) : operation === 'connect' ? await EvolutionService.connect(tenantId, prisma) : await EvolutionService.state(tenantId, prisma);
+        return res.json(data);
+      } catch (error: any) { return res.status(400).json({ error: error?.message || 'Não foi possível configurar o WhatsApp.' }); }
+    };
+    if (operation === 'config') { app.get('/api/support/whatsapp/config', handler); app.put('/api/support/whatsapp/config', handler); }
+    if (operation === 'state') app.get('/api/support/whatsapp/state', handler);
+    if (operation === 'connect') app.post('/api/support/whatsapp/connect', handler);
+  }
+
+  app.post('/api/support/messages/:id/retry', async (req, res) => {
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.effectiveTenantId) return res.status(401).json({ error: 'Não autorizado.' });
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'support.reply')) return res.status(403).json({ error: 'Permissão insuficiente.' });
+      const message = await prisma.supportMessage.findFirst({ where: { id: req.params.id, tenantId: session.effectiveTenantId, channel: 'WHATSAPP', senderType: { in: ['SUPPORT', 'SYSTEM'] } }, select: { id: true } });
+      if (!message) return res.status(404).json({ error: 'Mensagem não encontrada.' });
+      await EvolutionService.deliver(message.id, session.effectiveTenantId, prisma);
+      return res.json({ success: true });
+    } catch { return res.status(502).json({ error: 'Não foi possível enviar ao WhatsApp. Tente novamente.' }); }
+  });
+
+  for (const prefix of ['/api/support', '/api/partner-portal/support']) {
+    app.get(`${prefix}/messages/:id/attachment`, async (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      try {
+        const isPartner = prefix.includes('partner-portal');
+        const partnerSession = isPartner ? await PartnerPortalService.getPartnerSession(req, prisma) : null;
+        const session = !isPartner ? await getAuthSession(req) : null;
+        const tenantId = partnerSession?.tenant.id || session?.effectiveTenantId;
+        if (!tenantId) return res.status(401).json({ error: 'Não autorizado.' });
+        if (!isPartner && !hasPermission(session!.activeRole as Role, session!.activePermissions, 'support.view')) return res.status(403).json({ error: 'Permissão insuficiente.' });
+        const message = await prisma.supportMessage.findFirst({ where: { id: req.params.id, tenantId, ...(isPartner ? { conversation: { partnerId: partnerSession!.partner.id } } : {}) }, select: { attachmentData: true, attachmentMime: true, attachmentName: true } });
+        if (!message?.attachmentData) return res.status(404).json({ error: 'Anexo não encontrado.' });
+        res.setHeader('Content-Type', message.attachmentMime || 'application/octet-stream');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(message.attachmentName || 'anexo')}`);
+        return res.send(Buffer.from(message.attachmentData));
+      } catch { return res.status(500).json({ error: 'Não foi possível carregar o anexo.' }); }
+    });
+  }
+
+  app.post('/api/webhooks/evolution/:tenantId', async (req, res) => {
+    try {
+      const config = await EvolutionService.authenticate(req.params.tenantId, String(req.headers['x-sentinel-webhook-secret'] || ''), prisma);
+      if (!config) return res.status(403).json({ error: 'Webhook não autorizado.' });
+      const result = await EvolutionService.receive(req.params.tenantId, config, req.body, prisma);
+      return res.json({ success: true, ...result });
+    } catch {
+      logger.error('[EVOLUTION WEBHOOK] Falha no processamento ou envio.');
+      return res.status(503).json({ error: 'Não foi possível processar o evento. Tente novamente.' });
+    }
+  });
+
   // 21. GET /api/webhooks/whatsapp (Verificação de Assinatura do Webhook Meta / Provedor Oficial)
   app.get('/api/webhooks/whatsapp', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN || 'sentinel_wa_secret_token';
+    const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN;
 
-    if (mode === 'subscribe' && token === expectedToken) {
+    if (expectedToken && mode === 'subscribe' && token === expectedToken) {
       logger.info('[WHATSAPP WEBHOOK] Webhook verificado com sucesso');
       return res.status(200).send(challenge);
     }
@@ -19133,49 +19197,8 @@ async function auditAndEnsureMasterUser() {
 
   // 22. POST /api/webhooks/whatsapp (Recepção Segura & Idempotente)
   app.post('/api/webhooks/whatsapp', async (req, res) => {
-    try {
-      const { tenantId, externalMessageId, senderPhone, senderName, message } = req.body || {};
-
-      if (!externalMessageId || !message || !senderPhone) {
-        return res.status(400).json({ error: 'Payload incompleto para webhook.' });
-      }
-
-      // Resolve tenant (via payload ou primeiro tenant ativo)
-      let resolvedTenantId = tenantId;
-      if (!resolvedTenantId) {
-        const defaultTenant = await prisma.tenant.findFirst({ where: { status: 'ACTIVE', deletedAt: null } });
-        resolvedTenantId = defaultTenant?.id;
-      }
-
-      if (!resolvedTenantId) {
-        return res.status(400).json({ error: 'Tenant não localizado.' });
-      }
-
-      const result = await SupportService.processWhatsAppWebhook(
-        resolvedTenantId,
-        {
-          externalMessageId: String(externalMessageId),
-          senderPhone: String(senderPhone),
-          senderName: senderName ? String(senderName) : undefined,
-          message: String(message),
-        },
-        prisma,
-        centralEventBus
-      );
-
-      // Log sanitizado sem expor segredos
-      logger.info({
-        action: 'WHATSAPP_WEBHOOK_PROCESSED',
-        tenantId: resolvedTenantId,
-        externalMessageId,
-        status: result.status,
-      }, '[WHATSAPP WEBHOOK]');
-
-      return res.json({ success: true, ...result });
-    } catch (err: any) {
-      logger.error({ error: err?.message }, '[POST /api/webhooks/whatsapp ERROR]');
-      return res.status(500).json({ error: 'Erro no processamento do webhook.' });
-    }
+    // Legacy payloads are disabled; Evolution uses its authenticated tenant-specific route.
+    return res.status(410).json({ error: 'Configure o webhook da Evolution pelo canal de simulação.' });
   });
 
   // 404 Handler para rotas /api/* não mapeadas - assegura que requisições de API sempre retornem JSON

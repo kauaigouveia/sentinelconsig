@@ -148,6 +148,7 @@ export interface PartnerSupportConversation {
 }
 
 export interface PartnerSupportMessage {
+  attachmentName?: string | null;
   id: string;
   conversationId: string;
   senderType: 'PARTNER' | 'SUPPORT' | 'SYSTEM';

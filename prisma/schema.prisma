@@ -569,6 +569,11 @@ model SupportConversation {
 
   subject  String
   channel  String @default("PORTAL") // PORTAL, WHATSAPP
+  department String @default("SUPPORT")
+  whatsappPhone String? @map("whatsapp_phone")
+  whatsappInstance String? @map("whatsapp_instance")
+  simulationStage String? @map("simulation_stage")
+  simulationData Json? @map("simulation_data")
   status   String @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
 
   assignedUserId String? @map("assigned_user_id")
@@ -591,6 +596,7 @@ model SupportConversation {
   @@index([proposalId])
   @@index([status])
   @@index([lastMessageAt])
+  @@index([tenantId, department, status])
   @@map("support_conversations")
 }
 
@@ -623,6 +629,12 @@ model SupportMessage {
   message           String
   channel           String    @default("PORTAL") // PORTAL, WHATSAPP
   externalMessageId String?   @map("external_message_id")
+  idempotencyKey String? @unique @map("idempotency_key")
+  deliveryStatus String @default("RECEIVED") @map("delivery_status")
+  deliveryAttemptAt DateTime? @map("delivery_attempt_at")
+  attachmentData Bytes? @map("attachment_data")
+  attachmentName String? @map("attachment_name")
+  attachmentMime String? @map("attachment_mime")
   readAt            DateTime? @map("read_at")
 
   createdAt DateTime @default(now()) @map("created_at")

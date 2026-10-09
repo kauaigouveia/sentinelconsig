@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { eventBus, CentralEventBus } from './eventBus.js';
+import { EvolutionService } from './evolutionService.js';
+
+const messageSelect = { id: true, conversationId: true, senderType: true, senderId: true, senderName: true, message: true, channel: true, externalMessageId: true, readAt: true, createdAt: true, deliveryStatus: true, attachmentName: true, attachmentMime: true } as const;
 
 export type EventBus = CentralEventBus;
 
@@ -41,6 +44,7 @@ export class SupportService {
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
+          select: messageSelect,
         },
       },
       orderBy: { lastMessageAt: 'desc' },
@@ -231,6 +235,7 @@ export class SupportService {
         tenantId: options.tenantId,
       },
       orderBy: { createdAt: 'asc' },
+      select: messageSelect,
     });
 
     return {
@@ -248,6 +253,9 @@ export class SupportService {
         ratingComment: conversation.ratingComment,
         ratedAt: conversation.ratedAt,
         channel: conversation.channel,
+        department: conversation.department,
+        simulationStage: conversation.simulationStage,
+        simulationData: conversation.simulationData,
         status: conversation.status,
         subject: conversation.subject,
         lastMessageAt: conversation.lastMessageAt,
@@ -262,6 +270,9 @@ export class SupportService {
         message: m.message,
         channel: m.channel as 'PORTAL' | 'WHATSAPP',
         externalMessageId: m.externalMessageId,
+        deliveryStatus: m.deliveryStatus,
+        attachmentName: m.attachmentName,
+        attachmentMime: m.attachmentMime,
         readAt: m.readAt,
         createdAt: m.createdAt,
       })),
@@ -297,6 +308,7 @@ export class SupportService {
     if (!conversation) {
       throw new Error('Conversa de atendimento não encontrada ou sem permissão.');
     }
+    if (conversation.channel === 'WHATSAPP') throw new Error('Continue esta conversa pelo WhatsApp do canal de simulação.');
 
     const message = await prisma.supportMessage.create({
       data: {
@@ -376,6 +388,7 @@ export class SupportService {
         senderName: userName,
         message: cleanText,
         channel: conversation.channel,
+        deliveryStatus: conversation.channel === 'WHATSAPP' ? 'PENDING' : 'RECEIVED',
       },
     });
 
@@ -385,6 +398,7 @@ export class SupportService {
         lastMessageAt: new Date(),
         status: conversation.status === 'OPEN' ? 'IN_PROGRESS' : conversation.status,
         assignedUserId: conversation.assignedUserId || userId,
+        simulationStage: conversation.department === 'SIMULATION' ? 'ATTENDING' : undefined,
       },
     });
 
@@ -405,6 +419,11 @@ export class SupportService {
       });
     }
 
+    if (conversation.channel === 'WHATSAPP') {
+      try { await EvolutionService.deliver(message.id, tenantId, prisma); }
+      catch { /* The persisted FAILED status is visible in the conversation and can be retried. */ }
+      return prisma.supportMessage.findUnique({ where: { id: message.id }, select: messageSelect });
+    }
     return message;
   }
 
@@ -418,6 +437,7 @@ export class SupportService {
       partnerId?: string;
       assignedUserId?: string;
       channel?: string;
+      department?: string;
       search?: string;
     },
     prisma: PrismaClient
@@ -441,6 +461,7 @@ export class SupportService {
     if (filters.channel && filters.channel !== 'ALL') {
       where.channel = filters.channel;
     }
+    if (filters.department && filters.department !== 'ALL') where.department = filters.department;
 
     if (filters.search) {
       const term = filters.search.trim();
@@ -472,6 +493,7 @@ export class SupportService {
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
+          select: messageSelect,
         },
       },
       orderBy: { lastMessageAt: 'desc' },
@@ -502,6 +524,8 @@ export class SupportService {
       proposalNumber: c.proposal?.proposalNumber || null,
       proposalClientName: c.proposal?.client?.fullName || null,
       bankName: c.proposal?.bank?.name || null,
+      department: c.department,
+      simulationStage: c.simulationStage,
       assignedUserId: c.assignedUserId,
       assignedUserName: c.assignedUser?.name || null,
       channel: c.channel,

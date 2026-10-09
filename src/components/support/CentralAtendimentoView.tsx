@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SupportReplyTemplates } from './SupportReplyTemplates';
+import { SimulationWhatsAppConnection } from './SimulationWhatsAppConnection';
 import {
   Headphones,
   MessageSquare,
@@ -37,6 +38,8 @@ interface SupportConversationAdmin {
   assignedUserId?: string | null;
   assignedUserName?: string | null;
   channel: 'PORTAL' | 'WHATSAPP';
+  department?: string;
+  simulationStage?: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
   subject?: string | null;
   lastMessageAt: string;
@@ -52,6 +55,8 @@ interface SupportConversationAdmin {
 }
 
 interface SupportMessageAdmin {
+  deliveryStatus?: string;
+  attachmentName?: string | null;
   id: string;
   conversationId: string;
   senderType: 'PARTNER' | 'SUPPORT' | 'SYSTEM';
@@ -68,6 +73,7 @@ export const CentralAtendimentoView: React.FC = () => {
   const activeUser = StorageService.getActiveUser();
   const canReply = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.reply');
   const canManage = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.manage');
+  const canConfigure = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
   const [conversations, setConversations] = useState<SupportConversationAdmin[]>([]);
   const [metrics, setMetrics] = useState({
     openCount: 0,
@@ -83,6 +89,7 @@ export const CentralAtendimentoView: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [channelFilter, setChannelFilter] = useState<string>('ALL');
+  const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
   const [replyText, setReplyText] = useState('');
@@ -103,19 +110,20 @@ export const CentralAtendimentoView: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchConversations = async (autoSelectFirst = false) => {
+  const fetchConversations = async (autoSelectFirst = false, quiet = false) => {
     const requestId = ++conversationRequestIdRef.current;
-    setIsLoadingList(true);
+    if (!quiet) setIsLoadingList(true);
     setConversationError(null);
     try {
       const q = new URLSearchParams();
       if (statusFilter !== 'ALL') q.set('status', statusFilter);
       if (channelFilter !== 'ALL') q.set('channel', channelFilter);
+      if (departmentFilter !== 'ALL') q.set('department', departmentFilter);
       if (searchTerm.trim()) q.set('search', searchTerm.trim());
 
       const [resConv, resMetrics] = await Promise.all([
-        fetch(`/api/support/conversations?${q.toString()}`),
-        fetch('/api/support/metrics'),
+        fetch(`/api/support/conversations?${q.toString()}`, { cache: 'no-store', signal: AbortSignal.timeout(15000) }),
+        fetch('/api/support/metrics', { cache: 'no-store', signal: AbortSignal.timeout(15000) }),
       ]);
 
       if (!resConv.ok) {
@@ -182,20 +190,31 @@ export const CentralAtendimentoView: React.FC = () => {
   fetchMessagesRef.current = fetchMessages;
 
   useEffect(() => {
+    let disposed = false;
     let running = false;
     const refresh = async () => {
       const id = activeConversationIdRef.current;
-      if (!id || running || document.visibilityState === 'hidden') return;
+      if (disposed || !id || running || document.visibilityState === 'hidden') return;
       running = true;
       try { await fetchMessagesRef.current(id, true); }
       finally { running = false; }
     };
-    const timer = window.setInterval(() => { void refresh(); }, 3000);
-    const onVisible = () => { void refresh(); };
+    const timer = window.setInterval(() => { void refresh(); }, 2000);
+    let refreshingList = false;
+    const refreshList = async () => {
+      if (disposed || refreshingList || document.visibilityState === 'hidden') return;
+      refreshingList = true;
+      try { await fetchConversationsRef.current(false, true); }
+      finally { refreshingList = false; }
+    };
+    const listTimer = window.setInterval(() => { void refreshList(); }, 2000);
+    const onVisible = () => { void refresh(); void refreshList(); };
     window.addEventListener('focus', onVisible);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
+      disposed = true;
       window.clearInterval(timer);
+      window.clearInterval(listTimer);
       window.removeEventListener('focus', onVisible);
       document.removeEventListener('visibilitychange', onVisible);
     };
@@ -204,11 +223,11 @@ export const CentralAtendimentoView: React.FC = () => {
   useEffect(() => {
     const timeout = window.setTimeout(() => void fetchConversations(true), 250);
     return () => window.clearTimeout(timeout);
-  }, [statusFilter, channelFilter, searchTerm]);
+  }, [statusFilter, channelFilter, departmentFilter, searchTerm]);
 
   useEffect(() => {
     const unsub = realtimeHub.subscribe('*', (event) => {
-      if (event?.type === 'SUPPORT_MESSAGE_RECEIVED' || event?.type === 'SUPPORT_CONVERSATION_CREATED') {
+      if (event?.type === 'SUPPORT_MESSAGE_RECEIVED' || event?.type === 'SUPPORT_CONVERSATION_CREATED' || event?.type === 'SUPPORT_CONVERSATION_STATUS_CHANGED') {
         const activeId = activeConversationIdRef.current;
         if (event?.data?.conversationId === activeId && activeId) {
           void fetchMessagesRef.current(activeId);
@@ -308,6 +327,7 @@ export const CentralAtendimentoView: React.FC = () => {
       />
 
       {/* KPI Cards */}
+      {canConfigure && <SimulationWhatsAppConnection />}
       {canReply && <SupportReplyTemplates canInsert={!!activeConversationId && activeConversationData?.id === activeConversationId} onInsert={text => setReplyText(current => current.trim() ? `${current}\n${text}` : text)} />}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div
@@ -380,6 +400,9 @@ export const CentralAtendimentoView: React.FC = () => {
             </div>
 
             {/* Status Tabs */}
+            <select aria-label="Fila de atendimento" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+              <option value="ALL">Todas as filas</option><option value="SIMULATION">Mesa de simulação</option><option value="SUPPORT">Atendimento ao parceiro</option>
+            </select>
             <div className="flex items-center gap-1">
               {[
                 { id: 'ALL', label: 'Todos' },
@@ -486,6 +509,7 @@ export const CentralAtendimentoView: React.FC = () => {
                         <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
                           {c.channel}
                         </span>
+                        {c.department === 'SIMULATION' && <span className="text-[9px] text-violet-500">{c.simulationStage === 'WAITING' ? 'Aguardando mesa' : c.simulationStage === 'ATTENDING' ? 'Em simulação' : 'Coletando dados'}</span>}
                       </div>
 
                       {c.unreadCount > 0 && (
@@ -571,7 +595,7 @@ export const CentralAtendimentoView: React.FC = () => {
                   </div>
                 ) : (
                   messages.map((m) => {
-                    const isStaff = m.senderType === 'SUPPORT';
+                    const isStaff = m.senderType !== 'PARTNER';
                     return (
                       <div
                         key={m.id}
@@ -579,7 +603,7 @@ export const CentralAtendimentoView: React.FC = () => {
                       >
                         <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-400">
                           <span className="font-bold text-slate-600 dark:text-slate-300">
-                            {isStaff ? `${m.senderName || 'Suporte'} (Você)` : `${m.senderName || 'Parceiro'}`}
+                            {m.senderType === 'SYSTEM' ? 'Canal de simulação (Automático)' : isStaff ? `${m.senderName || 'Suporte'}` : `${m.senderName || 'Parceiro'}`}
                           </span>
                           <span>•</span>
                           <span>
@@ -595,6 +619,9 @@ export const CentralAtendimentoView: React.FC = () => {
                           }`}
                         >
                           <p className="whitespace-pre-wrap break-words">{m.message}</p>
+                          {m.attachmentName && <a href={`/api/support/messages/${encodeURIComponent(m.id)}/attachment`} className="mt-2 block underline">Baixar {m.attachmentName}</a>}
+                          {m.deliveryStatus === 'FAILED' && <div className="mt-2"><span>Falha no envio ao WhatsApp. </span>{canReply && <button type="button" className="underline" onClick={async () => { try { const response = await fetch(`/api/support/messages/${encodeURIComponent(m.id)}/retry`, { method: 'POST' }); if (!response.ok) throw new Error('Falha ao reenviar.'); if (activeConversationId) await fetchMessages(activeConversationId, true); } catch { toastService.error('Mensagem não enviada', 'Verifique a conexão do WhatsApp e tente novamente.'); } }}>Reenviar</button>}</div>}
+                          {m.deliveryStatus === 'SENDING' && <p className="mt-1 opacity-70">Enviando ao WhatsApp...</p>}
                         </div>
                       </div>
                     );
@@ -603,6 +630,7 @@ export const CentralAtendimentoView: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
+              {activeConversationData.department === 'SIMULATION' && activeConversationData.simulationData && <div className="shrink-0 border-t border-slate-200 px-3 py-2 text-xs dark:border-slate-800"><strong>Dados para simulação: {activeConversationData.simulationData.convenio || 'Aguardando escolha'}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1"><span>CPF: {activeConversationData.simulationData.cpf || 'Aguardando'}</span>{activeConversationData.simulationData.phone && <span>Telefone: {activeConversationData.simulationData.phone}</span>}{activeConversationData.simulationData.admissionDate && <span>Admissão: {activeConversationData.simulationData.admissionDate}</span>}{activeConversationData.simulationData.payslipMessageId && <a className="underline" href={`/api/support/messages/${encodeURIComponent(activeConversationData.simulationData.payslipMessageId)}/attachment`}>Baixar contracheque</a>}</div></div>}
               {/* Reply Input Form */}
               {activeConversationData?.rating && <div className="shrink-0 border-t border-slate-200 p-3 text-xs dark:border-slate-800"><strong>Avaliação do parceiro: {'★'.repeat(activeConversationData.rating)} ({activeConversationData.rating}/5)</strong>{activeConversationData.ratingComment && <p className="mt-1 whitespace-pre-wrap break-words">{activeConversationData.ratingComment}</p>}</div>}
               {canReply ? <form onSubmit={handleSendReply} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">

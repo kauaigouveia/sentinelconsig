@@ -119,7 +119,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
 
     // Realtime Listener
     const unsub = realtimeHub.subscribe('*', (event) => {
-      if (event?.type === 'SUPPORT_MESSAGE_RECEIVED') {
+      if (['SUPPORT_MESSAGE_RECEIVED', 'SUPPORT_CONVERSATION_CREATED', 'SUPPORT_CONVERSATION_STATUS_CHANGED'].includes(event?.type || '')) {
         const conversationId = activeConversationIdRef.current;
         if (event?.data?.conversationId === conversationId && conversationId) {
           fetchMessagesRef.current(conversationId);
@@ -142,9 +142,16 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
         if (conversationId) await fetchMessagesRef.current(conversationId, true);
       } finally { running = false; }
     };
-    const timer = window.setInterval(() => { void refresh(); }, 3000);
-    const listTimer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void fetchConversationsRef.current(false, true); }, 30000);
-    const onVisible = () => { void refresh(); };
+    const timer = window.setInterval(() => { void refresh(); }, 2000);
+    let refreshingList = false;
+    const refreshList = async () => {
+      if (disposed || refreshingList || document.visibilityState === 'hidden') return;
+      refreshingList = true;
+      try { await fetchConversationsRef.current(false, true); }
+      finally { refreshingList = false; }
+    };
+    const listTimer = window.setInterval(() => { void refreshList(); }, 2000);
+    const onVisible = () => { void refresh(); void refreshList(); };
     window.addEventListener('focus', onVisible);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -416,7 +423,8 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                             : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-xs'
                         }`}
                       >
-                        <p className="whitespace-pre-wrap break-words">{m.message}</p>
+                          <p className="whitespace-pre-wrap break-words">{m.message}</p>
+                          {m.attachmentName && <a className="mt-2 block underline" href={`/api/partner-portal/support/messages/${encodeURIComponent(m.id)}/attachment`}>Baixar {m.attachmentName}</a>}
                       </div>
                     </div>
                   );
@@ -427,7 +435,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
 
             {/* Message Input Form */}
             {activeConversationData?.id === activeConversationId && <SupportRating key={activeConversationId} conversation={activeConversationData} onRated={() => { if (activeConversationId) void fetchMessages(activeConversationId, true); }} />}
-            <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
+            {activeConversationData?.channel === 'WHATSAPP' ? <p className="border-t border-slate-200 p-3 text-xs dark:border-slate-800">Continue esta conversa pelo WhatsApp do canal de simulação.</p> : <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
               <input
                 type="text"
                 value={inputText}
@@ -450,7 +458,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                   </>
                 )}
               </button>
-            </form>
+            </form>}
             </> : (
               <div className="flex-1 flex items-center justify-center">
                 {isLoadingMessages ? <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" /> : <p className="text-xs text-slate-500">Carregando atendimento...</p>}
