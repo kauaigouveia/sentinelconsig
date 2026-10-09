@@ -1126,7 +1126,17 @@ async function auditAndEnsureMasterUser() {
     // Context switch support for PLATFORM_MASTER (PostgreSQL as authoritative persistent store)
     let adminContext: any = null;
 
-    if (session.user.role === 'PLATFORM_MASTER') {
+    if (isPlatformMaster && domainResolution.tenant &&
+        (domainResolution.type === 'CUSTOM_DOMAIN' || domainResolution.type === 'PLATFORM_SUBDOMAIN')) {
+      // The hostname is the tenant boundary, even when a shared master session
+      // has an inspection context saved for a different company.
+      adminContext = {
+        targetTenantId: domainResolution.tenant.id,
+        targetTenantName: domainResolution.tenant.name,
+        switchedAt: session.createdAt,
+        expiresAt: session.expiresAt,
+      };
+    } else if (session.user.role === 'PLATFORM_MASTER') {
       // 1. Primary: PostgreSQL persistent session columns
       if (session.adminTargetTenantId && session.adminContextExpiresAt) {
         if (new Date(session.adminContextExpiresAt) > new Date()) {

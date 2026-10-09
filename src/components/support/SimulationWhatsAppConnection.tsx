@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 export function SimulationWhatsAppConnection() {
-  const [config, setConfig] = useState({ baseUrl: '', instance: 'sentinel-simulacao', enabled: false, hasApiKey: false });
+  const [config, setConfig] = useState({ baseUrl: '', instance: '', enabled: false, hasApiKey: false, companyName: '' });
   const [apiKey, setApiKey] = useState('');
   const [qr, setQr] = useState('');
   const [status, setStatus] = useState('');
@@ -27,6 +27,8 @@ export function SimulationWhatsAppConnection() {
   return <details className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
     <summary className="cursor-pointer text-sm font-bold">WhatsApp do canal de simulação</summary>
     <div className="mt-3 space-y-3 text-xs">
+      {config.companyName && <p className="font-bold text-blue-600 dark:text-blue-400">Conexão da empresa: {config.companyName}</p>}
+      <p>Alterar o nome da instância não troca a empresa. Esta conexão e os atendimentos pertencem ao ambiente atual.</p>
       <p>Nas conversas individuais, o parceiro informa seu código cadastrado no Sentinel antes de escolher o convênio. Grupos não recebem respostas automáticas.</p>
       <div className="grid gap-2 sm:grid-cols-3">
         <label className="flex flex-col gap-1">URL da Evolution API<input type="url" className={inputClass} value={config.baseUrl} placeholder="https://whatsapp.sentinelconsig.com.br" onChange={e => setConfig({ ...config, baseUrl: e.target.value })} /></label>

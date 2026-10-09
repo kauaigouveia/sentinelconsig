@@ -50,7 +50,8 @@ export class EvolutionService {
   }
   static async metadata(tenantId: string, prisma: PrismaClient) {
     const c = await this.config(tenantId, prisma);
-    return c ? { baseUrl: c.baseUrl, instance: c.instance, enabled: c.enabled, hasApiKey: !!c.apiKey } : { baseUrl: '', instance: 'sentinel-simulacao', enabled: false, hasApiKey: false };
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, slug: true } });
+    return { tenantId, companyName: tenant?.name || '', ...(c ? { baseUrl: c.baseUrl, instance: c.instance, enabled: c.enabled, hasApiKey: !!c.apiKey } : { baseUrl: '', instance: `${tenant?.slug || 'sentinel'}-simulacao`, enabled: false, hasApiKey: false }) };
   }
   static async save(tenantId: string, input: any, prisma: PrismaClient) {
     const existing = await this.config(tenantId, prisma);
