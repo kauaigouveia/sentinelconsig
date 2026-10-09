@@ -14399,7 +14399,7 @@ async function auditAndEnsureMasterUser() {
       if (!finantoConfig.isConfigured || !finantoConfig.enabled) {
         return res.status(409).json({ error: 'Configure e ative a integração FINANTO no Hub de Integrações antes de criar simulações.' });
       }
-      const { borrower, partnerId, ruleId, loanValue, installmentValue, rate, term, hasInsurance, creditBankAccount, files, operationCode, originContract, originContracts, refinancing, proposalId } = req.body || {};
+      const { borrower, partnerId, ruleId, loanValue, issueAmount, installmentValue, rate, term, hasInsurance, creditBankAccount, files, operationCode, originContract, originContracts, refinancing, proposalId } = req.body || {};
       const operation = String(operationCode || '1');
       const operationTypes: Record<string, string> = { '1': 'FINANTO_NOVO', '2': 'FINANTO_REFIN', '3': 'FINANTO_PORTABILIDADE', '4': 'FINANTO_PORTABILIDADE_REFIN' };
       if (!operationTypes[operation]) return res.status(400).json({ error: 'Modalidade INSS inválida.' });
@@ -14434,6 +14434,9 @@ async function auditAndEnsureMasterUser() {
       }
       if (operation === '4' && (!refinancing || !Number.isInteger(Number(refinancing.term)) || Number(refinancing.rate) <= 0 || Number(refinancing.installmentValue) < 0)) {
         return res.status(400).json({ error: 'Informe prazo e taxa válidos para a parte de refinanciamento.' });
+      }
+      if (operation === '4' && (!Number.isFinite(Number(issueAmount)) || Number(issueAmount) <= 0)) {
+        return res.status(400).json({ error: 'Informe o valor de emissão para a portabilidade com refinanciamento.' });
       }
       if (!files?.front || !files?.back) return res.status(400).json({ error: 'Anexe frente e verso do documento.' });
       const partner = await prisma.partner.findFirst({ where: { id: partnerId, tenantId, deletedAt: null, status: 'ATIVO' }, select: { id: true } });
@@ -14476,7 +14479,7 @@ async function auditAndEnsureMasterUser() {
           income: Number(borrower.income),
           benefitType: Number(borrower.benefitType),
         },
-        items: [{ ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term), ...(operation === '3' || operation === '4' ? { originContract } : {}), ...(operation === '2' ? { originContracts } : {}), ...(operation === '4' ? { refinancing } : {}) }],
+        items: [{ ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), ...(operation === '4' ? { issueAmount: Number(issueAmount) } : {}), rate: Number(rate), term: Number(term), ...(operation === '3' || operation === '4' ? { originContract } : {}), ...(operation === '2' ? { originContracts } : {}), ...(operation === '4' ? { refinancing } : {}) }],
         creditBankAccount,
         step: { code: 0, name: null },
         files: [{ id: uploadedFront.id, type: 'doc_front' }, { id: uploadedBack.id, type: 'doc_back' }],
@@ -14489,7 +14492,7 @@ async function auditAndEnsureMasterUser() {
       }
       externalSimulationId = String(externalId);
 
-      const selectedCondition = { operationCode: operation, ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), rate: Number(rate), term: Number(term), ...(originContract ? { originContract } : {}), ...(originContracts ? { originContracts: originContracts.map((contract: any) => ({ contractNumber: contract.contractNumber })) } : {}), ...(refinancing ? { refinancing } : {}) };
+      const selectedCondition = { operationCode: operation, ruleId, hasInsurance, installmentValue: Number(installmentValue), loanValue: Number(loanValue), ...(operation === '4' ? { issueAmount: Number(issueAmount) } : {}), rate: Number(rate), term: Number(term), ...(originContract ? { originContract } : {}), ...(originContracts ? { originContracts: originContracts.map((contract: any) => ({ contractNumber: contract.contractNumber })) } : {}), ...(refinancing ? { refinancing } : {}) };
       const simulation = await prisma.simulationRequest.create({
         data: {
           tenantId, cpf: borrower.identity.replace(/\D/g, ''), partnerId, createdById: session.user.id,

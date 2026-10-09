@@ -153,9 +153,9 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
             </button>
           )))}
 
-          {nossaFintechEnabled && <button type="button" id="btn-flow-nossa-fintech-port-refin" onClick={() => onSelectFlow('NOSSA_FINTECH_PORTABILIDADE_REFIN')} className="group relative flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left shadow-xs transition-all hover:border-indigo-500 hover:bg-indigo-50/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
+          <button type="button" id="btn-flow-nossa-fintech-port-refin" onClick={() => onSelectFlow('NOSSA_FINTECH_PORTABILIDADE_REFIN')} className="group relative flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left shadow-xs transition-all hover:border-indigo-500 hover:bg-indigo-50/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
             <div className="space-y-3"><div className="flex items-center justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"><Landmark className="h-5 w-5" /></div><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">Nossa Fintech</span></div><div><h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">INSS · Portabilidade + Refin</h4><p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Informe os dados do contrato e compare o troco estimado nas tabelas elegíveis da Nossa Fintech.</p></div></div><div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-indigo-600 dark:border-slate-700/60 dark:text-indigo-400"><span>Simular Port/Refin</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
-          </button>}
+          </button>
 
           {/* CARD 3: HAPPY CLT (Oculto se Happy estiver bloqueado) */}
           {happySimulationAccessEnabled && (
