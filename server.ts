@@ -2677,7 +2677,8 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Tenant não encontrado.' });
       }
 
-      const isHappyEnabled = tenant.happySimulationAccessEnabled !== false;
+      const happyConfig = await HappyBankService.getTenantConfig(prisma, tenant.id);
+      const isHappyEnabled = tenant.happySimulationAccessEnabled !== false && happyConfig.ativo && happyConfig.isConfigured;
 
       return res.json({
         tenantId: tenant.id,

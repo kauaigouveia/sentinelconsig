@@ -265,6 +265,7 @@ export const HappyIntegrationTab: React.FC = () => {
       }
 
       setSaveSuccessMsg('Configurações da Happy / BYX Capital salvas com sucesso!');
+      window.dispatchEvent(new Event('tenantUpdated'));
       setSecretInput('');
       setSenhaInput('');
       await fetchConfigAndStatus();
@@ -792,7 +793,7 @@ export const HappyIntegrationTab: React.FC = () => {
                   className="h-4 w-4 rounded-sm border-slate-300 text-pink-600 focus:ring-pink-500"
                 />
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Habilitar integração ativa da Happy / BYX Capital neste tenant
+                  Habilitar integração Happy / BYX Capital e novas simulações nesta empresa
                 </span>
               </label>
             </div>

@@ -32,8 +32,6 @@ import {
   Users,
   Hourglass,
   FileSpreadsheet,
-  Lock,
-  Unlock,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
 import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
@@ -137,11 +135,6 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
   // Simulation Access Control State (Específico para integrações Happy)
   const [happySimulationAccessEnabled, setHappySimulationAccessEnabled] = useState<boolean>(true);
-  const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
-  const [accessUpdateSuccessMsg, setAccessUpdateSuccessMsg] = useState<string | null>(null);
-
-  const isAdmin = activeUser?.role === 'PLATFORM_MASTER' || activeUser?.role === 'MASTER' || activeUser?.role === 'TENANT_ADMIN';
-
   const fetchSimulationAccess = async () => {
     try {
       const res = await fetch('/api/settings/simulation-access', { credentials: 'same-origin' });
@@ -163,53 +156,6 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       if (currentTenant && currentTenant.happySimulationAccessEnabled !== undefined) {
         setHappySimulationAccessEnabled(currentTenant.happySimulationAccessEnabled);
       }
-    }
-  };
-
-  const handleToggleSimulationAccess = async () => {
-    if (!isAdmin || isUpdatingAccess) return;
-    const newStatus = !happySimulationAccessEnabled;
-    const confirmText = newStatus
-      ? 'Deseja LIBERAR as simulações Happy para todos os usuários autorizados deste tenant?'
-      : 'ATENÇÃO: Deseja BLOQUEAR as simulações Happy?\n\nOs usuários NÃO poderão criar novas simulações Happy INSS ou Happy CLT.\n\nA Simulação Manual continuará disponível normalmente.\nAs propostas já existentes continuarão operando normalmente.';
-    
-    if (!window.confirm(confirmText)) return;
-
-    setIsUpdatingAccess(true);
-    setAccessUpdateSuccessMsg(null);
-    try {
-      const res = await fetch('/api/settings/simulation-access', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          happySimulationAccessEnabled: newStatus,
-          simulationAccessEnabled: newStatus,
-          reason: newStatus ? 'Simulações Happy liberadas pelo administrador' : 'Simulações Happy bloqueadas pelo administrador',
-        }),
-      });
-
-      if (res.ok) {
-        setHappySimulationAccessEnabled(newStatus);
-        // Atualiza cache local do tenant
-        const curr = StorageService.getCurrentTenant();
-        if (curr) {
-          StorageService.updateTenant({ ...curr, happySimulationAccessEnabled: newStatus, simulationAccessEnabled: newStatus });
-        }
-        setAccessUpdateSuccessMsg(
-          newStatus
-            ? 'Simulações Happy LIBERADAS com sucesso!'
-            : 'Simulações Happy BLOQUEADAS com sucesso!'
-        );
-        setTimeout(() => setAccessUpdateSuccessMsg(null), 4000);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        toastService.error('Erro ao alterar permissão', errData.error || 'Não foi possível alterar o acesso às Simulações Happy.');
-      }
-    } catch (err) {
-      toastService.error('Erro de conexão', 'Não foi possível alterar o acesso às Simulações Happy.');
-    } finally {
-      setIsUpdatingAccess(false);
     }
   };
 
@@ -936,38 +882,6 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {/* Controle Administrativo de Acesso às Simulações Happy (Apenas Administradores) */}
-          {isAdmin && (
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 px-1.5 flex items-center gap-1">
-                {happySimulationAccessEnabled ? (
-                  <Unlock className="h-3.5 w-3.5 text-emerald-600" />
-                ) : (
-                  <Lock className="h-3.5 w-3.5 text-rose-600" />
-                )}
-                <span>Happy:</span>
-              </span>
-              <button
-                type="button"
-                id="btn-toggle-simulation-access"
-                disabled={isUpdatingAccess}
-                onClick={handleToggleSimulationAccess}
-                className={`px-2.5 py-1 text-[11px] font-extrabold uppercase rounded-md transition-all cursor-pointer flex items-center gap-1 shadow-2xs ${
-                  happySimulationAccessEnabled
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-rose-600 hover:bg-rose-700 text-white'
-                }`}
-                title={
-                  happySimulationAccessEnabled
-                    ? 'Clique para BLOQUEAR as simulações Happy (INSS e CLT) neste tenant'
-                    : 'Clique para LIBERAR as simulações Happy (INSS e CLT) neste tenant'
-                }
-              >
-                {happySimulationAccessEnabled ? 'LIBERADA' : 'BLOQUEADA'}
-              </button>
-            </div>
-          )}
-
           <button
             onClick={handleExportCsv}
             className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
@@ -995,63 +909,6 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           </button>
         </div>
       </div>
-
-      {/* Feedback de Alteração de Acesso */}
-      {accessUpdateSuccessMsg && (
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span>{accessUpdateSuccessMsg}</span>
-          </div>
-          <button
-            onClick={() => setAccessUpdateSuccessMsg(null)}
-            className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 cursor-pointer"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {/* Banner Informativo quando as Simulações Happy estiverem Bloqueadas */}
-      {!happySimulationAccessEnabled && (
-        <div
-          id="banner-simulacao-bloqueada"
-          className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in"
-        >
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Lock className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                  Simulações Happy Bloqueadas
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-200 dark:bg-amber-900/80 text-amber-800 dark:text-amber-200 rounded-md">
-                  INTEGRAÇÃO HAPPY SUSPENSA
-                </span>
-              </div>
-              <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5">
-                As simulações integradas Happy (INSS e CLT) estão temporariamente bloqueadas pela administração.
-                <strong className="block sm:inline sm:ml-1 font-semibold text-amber-950 dark:text-amber-100">
-                  A Simulação Manual e as propostas existentes continuam funcionando normalmente.
-                </strong>
-              </p>
-            </div>
-          </div>
-
-          {isAdmin && (
-            <button
-              onClick={handleToggleSimulationAccess}
-              disabled={isUpdatingAccess}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
-            >
-              <Unlock className="h-4 w-4" />
-              <span>Liberar Happy Agora</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 text-xs font-medium">

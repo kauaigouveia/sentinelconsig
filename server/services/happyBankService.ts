@@ -139,6 +139,14 @@ export class HappyBankService {
       });
     }
 
+    // The integration checkbox is also the control for new Happy simulations.
+    if (typeof data.ativo === 'boolean') {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { happySimulationAccessEnabled: data.ativo, simulationAccessEnabled: data.ativo },
+      });
+    }
+
     // Invalida cache de token após alteração de credenciais
     HappyTokenManager.invalidateToken(tenantId);
 

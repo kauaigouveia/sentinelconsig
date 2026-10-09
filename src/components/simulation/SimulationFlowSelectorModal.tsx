@@ -45,9 +45,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
                 Central de Simulações
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {happySimulationAccessEnabled
-                  ? 'Selecione o fluxo desejado para iniciar a simulação'
-                  : 'Inicie uma nova simulação manual'}
+                Selecione o produto para iniciar a simulação
               </p>
             </div>
           </div>
@@ -106,12 +104,12 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
                     <Building2 className="h-5 w-5" />
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                    Happy INSS
+                    INSS
                   </span>
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    Happy INSS
+                    INSS
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
                     Consignado Público INSS. Esteira completa com <strong>IN100</strong>, autorização digital, margem livre e refin.
@@ -126,11 +124,11 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
             </button>
           )}
 
-          {finantoEnabled && ([
-            { flow: 'FINANTO_INSS' as const, title: 'INSS Novo', description: 'Simule um novo contrato INSS nas tabelas disponíveis da FINANTO.' },
+          {(finantoEnabled || nossaFintechEnabled) && ([
+            { flow: 'FINANTO_INSS' as const, title: 'INSS Novo', description: 'Compare as condições disponíveis para um novo contrato.' },
             { flow: 'FINANTO_INSS_PORTABILIDADE' as const, title: 'INSS Portabilidade', description: 'Informe saldo devedor, parcela atual e parcelas restantes do contrato.' },
-            { flow: 'FINANTO_INSS_REFIN' as const, title: 'INSS Refinanciamento', description: 'Consulte contratos elegíveis para refinanciamento na FINANTO.' },
-            { flow: 'FINANTO_INSS_PORTABILIDADE_REFIN' as const, title: 'INSS Portabilidade + Refinanciamento', description: 'Transfira o contrato e consulte condição com valor adicional.' },
+            { flow: 'FINANTO_INSS_REFIN' as const, title: 'INSS Refinanciamento', description: 'Consulte contratos elegíveis para refinanciamento.' },
+            { flow: 'NOSSA_FINTECH_PORTABILIDADE_REFIN' as const, title: 'INSS Portabilidade + Refinanciamento', description: 'Compare as condições disponíveis para transferir e refinanciar o contrato.' },
           ].map(({ flow, title, description }) => (
             <button
               type="button"
@@ -142,7 +140,6 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"><Landmark className="h-5 w-5" /></div>
-                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:bg-violet-900/60 dark:text-violet-300">FINANTO</span>
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-violet-600 dark:text-slate-100 dark:group-hover:text-violet-400">{title}</h4>
@@ -152,10 +149,6 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
               <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-violet-600 dark:border-slate-700/60 dark:text-violet-400"><span>Iniciar simulação</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
             </button>
           )))}
-
-          <button type="button" id="btn-flow-nossa-fintech-port-refin" onClick={() => onSelectFlow('NOSSA_FINTECH_PORTABILIDADE_REFIN')} className="group relative flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left shadow-xs transition-all hover:border-indigo-500 hover:bg-indigo-50/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20">
-            <div className="space-y-3"><div className="flex items-center justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"><Landmark className="h-5 w-5" /></div><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">Nossa Fintech + FINANTO</span></div><div><h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">INSS · Portabilidade + Refin</h4><p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Informe cliente e contrato para comparar as tabelas retornadas pelas integrações Nossa Fintech e FINANTO.</p></div></div><div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3 text-xs font-semibold text-indigo-600 dark:border-slate-700/60 dark:text-indigo-400"><span>Simular Port/Refin</span><ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></div>
-          </button>
 
           {/* CARD 3: HAPPY CLT (Oculto se Happy estiver bloqueado) */}
           {happySimulationAccessEnabled && (
@@ -171,12 +164,12 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
                     <Briefcase className="h-5 w-5" />
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                    Happy CLT
+                    CLT
                   </span>
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    Happy CLT (Privado)
+                    CLT (Privado)
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
                     Consignado Privado para CLT. Integração <strong>Dataprev</strong>, motor de aprovação e simulação de contrato.
