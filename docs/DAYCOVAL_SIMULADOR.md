@@ -2,11 +2,11 @@
 
 ## Acesso
 
-- Mesa: Simulações → Daycoval · planilha, ou Nova simulação → Daycoval.
-- Parceiro: Portal → Simulações → Daycoval · INSS por planilha.
-- Importação: usuários com permissão de configurações/administração da empresa e acesso às simulações.
+- Mesa: Simulações → PORT + REFIN · Planilhas → Daycoval.
+- Parceiro: Portal → Simulações → PORT + REFIN · Planilhas → Daycoval.
+- Importação/ativação: somente MASTER da empresa (ou PLATFORM_MASTER no contexto autorizado da empresa), em Integrações Bancárias → PORT + REFIN · Planilhas. GESTOR/GERENTE e permissões personalizadas não concedem esse acesso.
 
-O gestor importa o XLSX completo em **Importar / atualizar planilha semanal**, informa a data da versão e clica em **Ativar planilha**. A configuração é exclusiva da empresa ativa. O parceiro utiliza essa versão e não pode alterá-la. Não existe API bancária Daycoval nem digitação automática neste fluxo.
+O gestor importa o XLSX completo em **Integrações Bancárias → PORT + REFIN · Planilhas → Daycoval**, informa a data da versão e clica em **Importar e ativar**. A configuração é exclusiva da empresa ativa. O parceiro utiliza essa versão e não pode alterá-la. Não existe API bancária Daycoval nem digitação automática neste fluxo.
 
 ## Escopo
 

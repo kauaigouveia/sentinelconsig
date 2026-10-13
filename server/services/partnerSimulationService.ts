@@ -2,6 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 import { FactaSimulationService, type FactaInssInput } from './factaSimulationService.js';
 import { FactaBankService } from './factaBankService.js';
 import { C6SimulationService } from './c6SimulationService.js';
+import { decodeDaycoval } from './daycovalWorkbook.js';
+import { SPREADSHEET_MODELS, calculatePortRefin, type SpreadsheetBank } from './portRefinWorkbooks.js';
 import { BmgBankService } from './bmgBankService.js';
 import { ProductSimulationService } from './productSimulationService.js';
 import { NossaFintechService } from './nossaFintechService.js';
@@ -38,7 +40,16 @@ export class PartnerSimulationService {
         offers.push(...result.offers.map(offer => ({ ...offer, provider: 'FACTA', institution: 'FACTA', state: offer.amount ? 'OFFER' : 'PENDING' })));
         if (result.message) notes.push(`FACTA: ${result.message}`);
       }),
-      collect('C6', async () => { offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
+      collect('C6', async () => { if (['PORT','PORT_REFIN'].includes(input.operation)) return; offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
+      ...(Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]).map(bank => collect(SPREADSHEET_MODELS[bank].label, async () => {
+        if (input.operation !== 'PORT_REFIN') return;
+        const config = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: SPREADSHEET_MODELS[bank].key } } });
+        if (!config) return;
+        const book = decodeDaycoval(config.configValue); if (book.enabled === false) return;
+        const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const result = calculatePortRefin(bank, book, { birthDate: input.birthDate, benefitType: input.benefitType, simulationDate: date, term: bank === 'C6' ? 108 : input.term, refinanceRate: input.rate, contracts: [{ balance: input.debt, installment: input.originalInstallment, remaining: input.remainingTerm }], additionalMargin: Math.max(0, Number(input.value) - Number(input.originalInstallment)) });
+        offers.push(...result.offers.filter(offer => offer.eligible && offer.amount > 0).map(offer => ({ ...offer, name: offer.tableName, code: offer.tableId, institution: bank, state: 'OFFER', spreadsheetVersion: result.version, spreadsheet: { bank, ...result } })));
+      })),
       collect('BMG', async () => { if (input.bmgActorId) offers.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, input)); }),
       collect('Nossa Fintech', async () => {
         const config = await NossaFintechService.getConfig(prisma, tenantId);

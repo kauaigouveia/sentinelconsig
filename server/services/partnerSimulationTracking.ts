@@ -35,7 +35,7 @@ export class PartnerSimulationTracking {
   // a browser being open or a continuously running process on Vercel.
   static async reconcile(prisma: PrismaClient, tenantId: string, now = new Date()) {
     const simulations = await prisma.simulationRequest.findMany({
-      where: { tenantId, simulationType: { in: ['PARTNER_AUTO', 'DAYCOVAL_INSS'] }, deletedAt: null, matchedProposalId: null, status: { in: ['SIMULAÇÃO ENVIADA', 'PERDIDA (NÃO DIGITADA)'] } },
+      where: { tenantId, simulationType: { in: ['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'] }, deletedAt: null, matchedProposalId: null, status: { in: ['SIMULAÇÃO ENVIADA', 'PERDIDA (NÃO DIGITADA)'] } },
       orderBy: { createdAt: 'desc' },
     });
     if (!simulations.length) return;
@@ -55,9 +55,9 @@ export class PartnerSimulationTracking {
         if (data?.product === 'CLT' ? !isClt : data?.product === 'FGTS' ? !isFgts : isClt || isFgts) return false;
         const expected = ({ NEW: 'NOVO', PORT: 'PORTABILIDADE', PORT_REFIN: 'REFIN_PORTABILIDADE', REFIN: 'REFIN' } as Record<string, string>)[data?.operation || 'NEW'];
         if (proposal.type !== expected && !(data?.operation === 'PORT_REFIN' && /PORT.*REFIN|REFIN.*PORT/.test(productName))) return false;
-        const bank = String(proposal.bank?.name || '').toUpperCase();
+        const bank = String(proposal.bank?.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
         return (data?.offers || []).some((offer: any) => {
-          const institution = String(offer.institution || offer.provider || '').trim().toUpperCase();
+          const institution = String(offer.institution || offer.provider || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
           return bank && institution && (institution.includes(bank) || bank.includes(institution));
         });
       });
@@ -73,7 +73,7 @@ export class PartnerSimulationTracking {
       if (updated.count) used.add(sim.id);
     }
     await prisma.simulationRequest.updateMany({
-      where: { tenantId, simulationType: { in: ['PARTNER_AUTO', 'DAYCOVAL_INSS'] }, deletedAt: null, matchedProposalId: null, status: 'SIMULAÇÃO ENVIADA', offerExpiresAt: { lte: now } },
+      where: { tenantId, simulationType: { in: ['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'] }, deletedAt: null, matchedProposalId: null, status: 'SIMULAÇÃO ENVIADA', offerExpiresAt: { lte: now } },
       data: { status: 'PERDIDA (NÃO DIGITADA)', offerLostAt: now },
     });
   }

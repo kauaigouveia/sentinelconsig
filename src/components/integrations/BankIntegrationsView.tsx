@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SimulationBankOrderSettings } from './SimulationBankOrderSettings';
 import { BmgIntegrationTab } from './BmgIntegrationTab';
+import { PortRefinWorkbookSettings } from './DaycovalWorkbookSettings';
 import {
   Server,
   Zap,
@@ -37,7 +38,7 @@ import { StorageService } from '../../services/storageService';
 import { hasPermission } from '../../lib/permissions';
 import { toastService } from '../ui/toastService';
 
-type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros';
+type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros' | 'daycoval';
 
 interface BankMeta {
   id: BankTab;
@@ -49,6 +50,7 @@ interface BankMeta {
 }
 
 const BANKS_META: BankMeta[] = [
+  { id: 'daycoval', name: 'PORT + REFIN · Planilhas', code: 'XLS', tagline: 'Simulador por planilha', status: 'configured', products: ['INSS Portabilidade + Refinanciamento'] },
   {
     id: 'c6',
     name: 'C6 Bank',
@@ -674,7 +676,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                 </span>
               ) : (
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  {b.id === 'bmg' ? 'Configurar' : 'Em breve'}
+                  {b.id === 'daycoval' ? 'Planilha INSS' : b.id === 'bmg' ? 'Configurar' : 'Em breve'}
                 </span>
               )}
             </button>
@@ -684,6 +686,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
 
       {/* CONTEÚDO DA ABA ATIVA */}
       {canManageConfig && <SimulationBankOrderSettings />}
+      {activeTab === 'daycoval' && <PortRefinWorkbookSettings />}
 
       {/* ABA C6 BANK: Integração Completa */}
       {activeTab === 'c6' && (

@@ -2417,7 +2417,7 @@ async function auditAndEnsureMasterUser() {
 
       if (matchedProposalId) {
         const proposal = await prisma.proposal.findFirst({
-          where: { id: matchedProposalId, tenantId, client: { cpf: existing.cpf }, ...(['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(existing.simulationType || '') ? { partnerId: existing.partnerId, deletedAt: null } : {}) },
+          where: { id: matchedProposalId, tenantId, client: { cpf: existing.cpf }, ...(['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(existing.simulationType || '') ? { partnerId: existing.partnerId, deletedAt: null } : {}) },
           select: { id: true, proposalNumber: true },
         });
         if (!proposal) {
@@ -2434,7 +2434,7 @@ async function auditAndEnsureMasterUser() {
             tenantId,
             proposalNumber: linkedProposalNumber,
             client: { cpf: existing.cpf },
-            ...(['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(existing.simulationType || '') ? { partnerId: existing.partnerId, deletedAt: null } : {}),
+            ...(['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(existing.simulationType || '') ? { partnerId: existing.partnerId, deletedAt: null } : {}),
           },
           select: { id: true },
           take: 2,
@@ -2456,7 +2456,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       const isDigitized = nextStatus === 'DIGITADA PELA MESA';
-      if (['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(existing.simulationType || '') && isDigitized && !linkedProposalId) return res.status(400).json({ error: 'Selecione uma ADE cadastrada para este cliente e parceiro.' });
+      if (['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(existing.simulationType || '') && isDigitized && !linkedProposalId) return res.status(400).json({ error: 'Selecione uma ADE cadastrada para este cliente e parceiro.' });
 
       const updated = await prisma.simulationRequest.update({
         where: { id },
@@ -2470,7 +2470,7 @@ async function auditAndEnsureMasterUser() {
           matchedDigitizerId: isDigitized ? linkedDigitizerId : null,
           matchedDigitizerName: isDigitized ? linkedDigitizerName : null,
           matchedAt: isDigitized ? (parsedMatchedAt || existing.matchedAt || new Date()) : null,
-          ...(['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(existing.simulationType || '') ? { matchedAfterDeadline: isDigitized && !!existing.offerExpiresAt && (parsedMatchedAt || existing.matchedAt || new Date()) > existing.offerExpiresAt } : {}),
+          ...(['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(existing.simulationType || '') ? { matchedAfterDeadline: isDigitized && !!existing.offerExpiresAt && (parsedMatchedAt || existing.matchedAt || new Date()) > existing.offerExpiresAt } : {}),
         },
         include: {
           partner: true,

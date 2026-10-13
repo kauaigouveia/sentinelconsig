@@ -4,6 +4,7 @@ import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
 
 export class C6SimulationService {
   static async inss(prisma: PrismaClient, tenantId: string, input: any) {
+    if (['PORT', 'PORT_REFIN'].includes(input.operation)) throw new Error('Portabilidade C6 é calculada na aba PORT + REFIN · Planilhas, com o arquivo ativado pelo MASTER.');
     const config = await C6BankService.getTenantConfig(prisma, tenantId);
     if (!config.isConfigured) throw new Error('Cadastre as credenciais C6 desta empresa em Integrações Bancárias.');
     const settings = await prisma.systemConfig.findMany({ where: { tenantId, configKey: { in: ['c6_bank_promoter_code', 'c6_bank_simulation_enabled'] } } });

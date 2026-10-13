@@ -5190,7 +5190,7 @@ export class StorageService {
 
     let matchedCount = 0;
     const updatedRequests = requests.map(sim => {
-      if (sim.status !== 'SIMULAÇÃO ENVIADA' || ['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(sim.simulationType || '')) return sim;
+      if (sim.status !== 'SIMULAÇÃO ENVIADA' || ['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(sim.simulationType || '')) return sim;
 
       const simCpf = normalizeCpf(sim.cpf);
       if (!simCpf) return sim;
@@ -5234,7 +5234,7 @@ export class StorageService {
 
     let modified = false;
     const updatedRequests = requests.map(sim => {
-      if (sim.status === 'SIMULAÇÃO ENVIADA' && !['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(sim.simulationType || '')) {
+      if (sim.status === 'SIMULAÇÃO ENVIADA' && !['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(sim.simulationType || '')) {
         const createdMs = new Date(sim.createdAt).getTime();
         if (nowMs - createdMs >= MAX_PENDING_MS) {
           modified = true;
@@ -5731,7 +5731,7 @@ export class StorageService {
     // Find all matching pending requests (status = 'SIMULAÇÃO ENVIADA' and normalized CPF matches)
     const pendingMatches = requests
       .filter(sim => {
-        if (sim.status !== 'SIMULAÇÃO ENVIADA' || ['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(sim.simulationType || '')) return false;
+        if (sim.status !== 'SIMULAÇÃO ENVIADA' || ['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(sim.simulationType || '')) return false;
         const simCpf = normalizeCpf(sim.cpf);
         if (simCpf !== normalizedProposalCpf) return false;
 

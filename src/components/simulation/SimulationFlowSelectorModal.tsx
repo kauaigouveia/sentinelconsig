@@ -16,7 +16,7 @@ import { SimulationType } from '../../types';
 interface SimulationFlowSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectFlow: (flow: SimulationType | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN' | 'CLT_MULTI' | 'FGTS_MULTI') => void;
+  onSelectFlow: (flow: SimulationType | 'PORT_REFIN_PLANILHAS' | 'FINANTO_INSS_PORTABILIDADE' | 'FINANTO_INSS_REFIN' | 'FINANTO_INSS_PORTABILIDADE_REFIN' | 'NOSSA_FINTECH_PORTABILIDADE_REFIN' | 'CLT_MULTI' | 'FGTS_MULTI') => void;
   happySimulationAccessEnabled?: boolean;
   finantoEnabled?: boolean;
   nossaFintechEnabled?: boolean;
@@ -150,7 +150,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
             </button>
           )))}
 
-          <button type="button" onClick={() => onSelectFlow('DAYCOVAL_INSS')} className="group flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-800/40"><div className="space-y-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"><Calculator className="h-5 w-5" /></div><h4 className="text-sm font-bold">Daycoval · INSS por planilha</h4><p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">Portabilidade + refinanciamento com saldo devedor. Utilize a versão semanal da planilha.</p></div><div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-3 text-xs font-semibold text-blue-600 dark:border-slate-700 dark:text-blue-400"><span>Abrir simulador Daycoval</span><ArrowRight className="h-4 w-4" /></div></button>
+          <button type="button" onClick={() => onSelectFlow('PORT_REFIN_PLANILHAS')} className="group flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-800/40"><div className="space-y-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"><Calculator className="h-5 w-5" /></div><h4 className="text-sm font-bold">PORT + REFIN · Planilhas</h4><p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">Daycoval, C6 e Paraná com saldo devedor. Utilize as planilhas ativadas pelo MASTER.</p></div><div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-3 text-xs font-semibold text-blue-600 dark:border-slate-700 dark:text-blue-400"><span>Abrir simuladores por planilha</span><ArrowRight className="h-4 w-4" /></div></button>
           {([
             { flow: 'CLT_MULTI' as const, title: 'CLT · Crédito do trabalhador', description: 'Consulte os vínculos, a margem e as condições disponíveis nas instituições.' },
             { flow: 'FGTS_MULTI' as const, title: 'FGTS · Antecipação', description: 'Consulte o saldo e compare as tabelas de antecipação do saque-aniversário.' },

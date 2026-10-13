@@ -1,5 +1,5 @@
-export const SIMULATION_BANKS = ['C6', 'FACTA', 'FINANTO', 'NOSSA_FINTECH', 'HAPPY', 'BMG'] as const;
-export const BANK_LABELS: Record<string, string> = { C6: 'C6 Bank', FACTA: 'FACTA', FINANTO: 'FINANTO', NOSSA_FINTECH: 'Nossa Fintech', HAPPY: 'HAPPY / BYX', BMG: 'Banco BMG' };
+export const SIMULATION_BANKS = ['C6', 'FACTA', 'FINANTO', 'NOSSA_FINTECH', 'HAPPY', 'BMG', 'DAYCOVAL', 'PARANA'] as const;
+export const BANK_LABELS: Record<string, string> = { C6: 'C6 Bank', FACTA: 'FACTA', FINANTO: 'FINANTO', NOSSA_FINTECH: 'Nossa Fintech', HAPPY: 'HAPPY / BYX', BMG: 'Banco BMG', DAYCOVAL: 'Daycoval · planilha', PARANA: 'Paraná · planilha' };
 export const OPERATIONS = { NEW: 'Novo', PORT: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + Refinanciamento' };
 export type SimulationBankOrders = Record<keyof typeof OPERATIONS, string[]>;
 export function bankKey(provider: string) { return provider.toUpperCase().replace(/\s+/g, '_'); }

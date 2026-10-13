@@ -889,7 +889,7 @@ export interface ExecutiveWidgetConfig {
   minimized?: boolean;
 }
 
-export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT' | 'FINANTO_INSS' | 'INSS_MULTI' | 'PARTNER_AUTO' | 'DAYCOVAL_INSS';
+export type SimulationType = 'MANUAL' | 'HAPPY_INSS' | 'HAPPY_CLT' | 'FINANTO_INSS' | 'INSS_MULTI' | 'PARTNER_AUTO' | 'DAYCOVAL_INSS' | 'SPREADSHEET_INSS';
 
 export type SimulationOperationType = 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN' | 'CONSIGNADO_PRIVADO_CLT' | 'FINANTO_NOVO' | 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN' | `${'INSS' | 'CLT' | 'FGTS'}:${'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'}`;
 
