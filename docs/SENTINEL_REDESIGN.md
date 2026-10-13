@@ -80,3 +80,31 @@ O acesso operacional foi conferido visualmente nos temas claro e escuro, e o
 acesso do parceiro foi conferido na prévia local. As capturas estão em
 `docs/branding/`. A revisão visual completa das telas autenticadas depende de
 uma sessão de usuário; compilação e checagem de tipos não substituem essa revisão.
+
+
+## Revisão estrutural após feedback do usuário
+
+O usuário rejeitou a primeira versão por manter a disposição das telas e reduzir
+as cores dos ícones. A nova revisão altera a composição:
+
+- Navegação em duas etapas: barra de áreas com ícones coloridos e painel contextual.
+- Nome interno completo **Sentinel Consig**, com remoção de “Consig · Workspace”.
+- Área central em uma superfície independente, com bordas arredondadas.
+- Simulações e propostas usam cartões de operação por padrão, mantendo a lista
+  como alternativa para consulta densa e ações existentes.
+- Filtros passam para uma coluna própria; indicadores ficam em um painel separado.
+- Fila da mesa também passa a oferecer cartões, na ordem cronológica existente.
+- Atendimento passa a ter fila, conversa e contexto do parceiro em três colunas,
+  quando houver largura suficiente.
+- Módulos de gestão, administração, financeiro e integrações recebem um painel de
+  ferramentas relacionadas, respeitando as permissões do perfil.
+- Propostas no portal usam o mesmo padrão de cartões e filtros.
+- Contraste escuro, textos e ícones voltam a ter destaque, com azul e violeta nas
+  ações e cores semânticas para status e áreas.
+
+`layout-preview.html` e `src/layout-preview.tsx` são uma prévia local independente
+com dados explicitamente ilustrativos. Não fazem autenticação, chamadas de banco
+ou envio de propostas e não fazem parte da entrada de produção do Vite.
+As capturas de revisão em `docs/branding/` são da prévia estrutural, não de uma
+sessão autenticada com dados reais. O sistema usa os mesmos componentes de
+cartões, filtros e indicadores, ligados aos registros autorizados do ambiente.

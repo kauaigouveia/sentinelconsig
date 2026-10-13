@@ -5,6 +5,7 @@ import { realtimeHub } from './services/realtimeService';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { WorkspaceToolbar } from './components/layout/WorkspaceToolbar';
+import { RouteContextPanel } from './components/layout/RouteContextPanel';
 import { useWorkspacePreferences, workspaceKey } from './hooks/useWorkspacePreferences';
 import { useTenantBranding } from './hooks/useTenantBranding';
 import { getRoleLabel } from './lib/roleLabels';
@@ -560,6 +561,8 @@ function AppMainContent() {
     );
   }
 
+  const showRouteContext = !!activeRoute && !['torre-controle', 'home-digitador', 'producao', 'simulacoes', 'central-atendimento', 'tv-monitor'].includes(effectiveView);
+
   // RBAC route access verification
   const hasRouteAccess = activeRoute
     ? canAccessRoute(activeRoute, activeUser?.role, activeUser?.customPermissions || [])
@@ -593,7 +596,7 @@ function AppMainContent() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+      <div className="sentinel-stage flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Top Header or Sleek Focus Mode Floating Bar */}
         {!isFocusMode ? (
           <Header
@@ -668,6 +671,7 @@ function AppMainContent() {
 
         {/* Dynamic Page Views */}
         <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
+          <div className={showRouteContext && hasRouteAccess ? 'sentinel-view-frame' : ''}><div className="sentinel-view-body">
           {is404 ? (
             <NotFoundView
               pathname={pathname}
@@ -803,6 +807,7 @@ function AppMainContent() {
             </>
             </React.Suspense>
           )}
+          </div>{showRouteContext && hasRouteAccess && activeRoute && activeUser && <RouteContextPanel route={activeRoute} user={activeUser} onNavigate={handleNavigate} />}</div>
         </main>
 
         {/* Bottom Operational Status Bar */}

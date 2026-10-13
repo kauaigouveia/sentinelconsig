@@ -41,6 +41,7 @@ import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { StatusBadge } from '../ui/StatusBadge';
 import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { ActionBar } from '../ui/ActionBar';
+import { RecordWorkspace, OperationCard, operationLabel, type RecordPresentation } from '../ui/RecordWorkspace';
 import { SavedFilterViews } from '../ui/SavedFilterViews';
 import { useWorkspacePreferences, workspaceKey } from '../../hooks/useWorkspacePreferences';
 import { EmptyState } from '../ui/EmptyState';
@@ -73,6 +74,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   isFocusMode = false,
   initialFilter,
 }) => {
+  const [presentation, setPresentation] = useState<RecordPresentation>('cards');
   const [proposals, setProposals] = useState<Proposal[]>(() => StorageService.getProposals());
   const clients = StorageService.getClients();
   const products = StorageService.getProducts();
@@ -466,11 +468,166 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
   const cellPadding = tableDensity === 'COMPACTA' ? 'py-2 px-3' : 'py-3.5 px-3';
 
+  const proposalFilters = <>
+      {/* Filter Bar */}
+      <div className="bg-white dark:bg-[#0c1220] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-2xs space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          {/* Quick Search */}
+          <div className="relative col-span-1 sm:col-span-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Buscar CPF, Nome, ADE ou Parceiro..."
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:outline-hidden transition-colors"
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todos os Status</option>
+              {statuses.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Alçada */}
+          <div>
+            <select
+              value={filterAlçada}
+              onChange={e => setFilterAlçada(e.target.value as any)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todas as Alçadas</option>
+              <option value="CLIENTE">CLIENTE</option>
+              <option value="PARCEIRO">PARCEIRO</option>
+              <option value="BANCO">BANCO</option>
+              <option value="NOSSA EQUIPE">NOSSA EQUIPE</option>
+              <option value="SISTEMA">SISTEMA</option>
+            </select>
+          </div>
+
+          {/* Banco */}
+          <div>
+            <select
+              value={filterBank}
+              onChange={e => setFilterBank(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todos os Bancos</option>
+              {banks.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Promotora */}
+          <div>
+            <select
+              value={filterPromoter}
+              onChange={e => setFilterPromoter(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todas Promotoras</option>
+              {promoters.map(pr => (
+                <option key={pr.id} value={pr.id}>
+                  {pr.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Digitador */}
+          <div>
+            <select
+              value={filterDigitizer}
+              onChange={e => setFilterDigitizer(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todos os Digitadores</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Produto */}
+          <div>
+            <select
+              value={filterProduct}
+              onChange={e => setFilterProduct(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="">Todos os Produtos</option>
+              {products.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Parceiro */}
+          <div>
+            <PartnerSearchSelect
+              partners={partners}
+              selectedPartnerId={filterPartner}
+              onSelectPartner={setFilterPartner}
+              label=""
+              placeholder="Filtrar por Agente..."
+              allowAll
+              allLabel="Todos os Parceiros"
+            />
+          </div>
+
+          {/* SLA Portabilidade */}
+          <div>
+            <select
+              value={filterSla}
+              onChange={e => setFilterSla(e.target.value as any)}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+            >
+              <option value="TODOS">SLA: Todas</option>
+              <option value="NO_PRAZO">SLA: No Prazo</option>
+              <option value="5_DIA">SLA: No Dia Limite</option>
+              <option value="ATRASADO">SLA: Atrasadas</option>
+            </select>
+          </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <div className="flex items-center">
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 font-bold px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-colors cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Limpar Filtros</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+  </>;
+  const proposalSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Valor liberado na seleção</span><strong className="!text-xl">{totalDisbursedFiltered}</strong><p>{filteredProposals.length} propostas encontradas</p></div>{statuses.filter(status => filteredProposals.some(proposal => proposal.statusId === status.id)).slice(0, 7).map(status => <div className="record-stat-row" key={status.id}><span className="record-stat-dot" style={{ background: status.color || '#5c8dff' }} /><span>{status.name}</span><strong>{filteredProposals.filter(proposal => proposal.statusId === status.id).length}</strong></div>)}</div>;
+
   return (
     <div className="space-y-3.5">
       {/* Contextual Action Bar */}
       <ActionBar
-        title="Todas as Propostas"
+        title="Operações de crédito"
         count={filteredProposals.length}
         financialTotal={totalDisbursedFiltered}
         rightActions={
@@ -724,157 +881,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white dark:bg-[#0c1220] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-          {/* Quick Search */}
-          <div className="relative col-span-1 sm:col-span-2">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Buscar CPF, Nome, ADE ou Parceiro..."
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:outline-hidden transition-colors"
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="">Todos os Status</option>
-              {statuses.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Alçada */}
-          <div>
-            <select
-              value={filterAlçada}
-              onChange={e => setFilterAlçada(e.target.value as any)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="">Todas as Alçadas</option>
-              <option value="CLIENTE">CLIENTE</option>
-              <option value="PARCEIRO">PARCEIRO</option>
-              <option value="BANCO">BANCO</option>
-              <option value="NOSSA EQUIPE">NOSSA EQUIPE</option>
-              <option value="SISTEMA">SISTEMA</option>
-            </select>
-          </div>
-
-          {/* Banco */}
-          <div>
-            <select
-              value={filterBank}
-              onChange={e => setFilterBank(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="">Todos os Bancos</option>
-              {banks.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Promotora */}
-          <div>
-            <select
-              value={filterPromoter}
-              onChange={e => setFilterPromoter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="">Todas Promotoras</option>
-              {promoters.map(pr => (
-                <option key={pr.id} value={pr.id}>
-                  {pr.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Digitador */}
-          <div>
-            <select
-              value={filterDigitizer}
-              onChange={e => setFilterDigitizer(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="">Todos os Digitadores</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Produto */}
-          <div>
-            <select
-              value={filterProduct}
-              onChange={e => setFilterProduct(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="">Todos os Produtos</option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Parceiro */}
-          <div>
-            <PartnerSearchSelect
-              partners={partners}
-              selectedPartnerId={filterPartner}
-              onSelectPartner={setFilterPartner}
-              label=""
-              placeholder="Filtrar por Agente..."
-              allowAll
-              allLabel="Todos os Parceiros"
-            />
-          </div>
-
-          {/* SLA Portabilidade */}
-          <div>
-            <select
-              value={filterSla}
-              onChange={e => setFilterSla(e.target.value as any)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
-            >
-              <option value="TODOS">SLA: Todas</option>
-              <option value="NO_PRAZO">SLA: No Prazo</option>
-              <option value="5_DIA">SLA: No Dia Limite</option>
-              <option value="ATRASADO">SLA: Atrasadas</option>
-            </select>
-          </div>
-
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
-            <div className="flex items-center">
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 font-bold px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-colors cursor-pointer"
-              >
-                <X className="h-3.5 w-3.5" />
-                <span>Limpar Filtros</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
+      <RecordWorkspace filters={proposalFilters} summary={proposalSummary} count={filteredProposals.length} mode={presentation} onMode={setPresentation}>
       {/* Batch Action Floating / Sticky Bar */}
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between rounded-xl bg-slate-900 dark:bg-[#070c17] text-white p-3 px-5 shadow-xl border border-blue-500/30 animate-in fade-in slide-in-from-top-2">
@@ -914,6 +921,11 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         </div>
       )}
 
+      {presentation === 'cards' && <div className="operation-card-grid">{filteredProposals.map(proposal => {
+        const client = getProposalClientInfo(proposal), status = getEffectiveStatus(proposal);
+        return <OperationCard key={proposal.id} eyebrow={`${proposal.bankName || banks.find(bank => bank.id === proposal.bankId)?.name || 'Banco'} · ${operationLabel(proposal.type)}`} title={client.fullName || `ADE ${proposal.proposalNumber}`} status={status?.name || 'Sem status'} statusColor={status?.color} amount={formatCurrency(proposal.disbursedValue || 0)} fields={[{ label: 'ADE', value: proposal.proposalNumber }, { label: 'CPF', value: formatCpf(client.cpf || '') }, { label: 'Parceiro', value: proposal.partnerName || partners.find(partner => partner.id === proposal.partnerId)?.fullName || '—' }, { label: 'Produto', value: proposal.productName || products.find(product => product.id === proposal.productId)?.name || '—' }, { label: 'Parcela / prazo', value: `${formatCurrency(proposal.installmentValue || 0)} · ${proposal.installmentsCount || '—'} meses` }, { label: 'Alçada', value: proposal.currentResponsible || '—' }]} onOpen={() => setDetailProposalId(proposal.id)} selected={selectedIds.includes(proposal.id)} onSelect={canUpdateProposals || canDeleteProposals ? () => toggleSelect(proposal.id) : undefined} actions={<button type="button" className="operation-card-action" onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}>Copiar ADE</button>} />;
+      })}{!filteredProposals.length && <EmptyState title="Nenhuma proposta nesta visualização" description="Ajuste os filtros ou cadastre uma nova proposta para continuar." actionLabel={onOpenNewProduction ? 'Nova proposta' : undefined} onAction={onOpenNewProduction} />}</div>}
+      {presentation === 'list' && <>
       {/* Empty State vs Main Proposals Table */}
       {proposals.length === 0 ? (
         <EmptyState
@@ -1178,6 +1190,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           </div>
         </div>
       )}
+
+      </>}
+      </RecordWorkspace>
 
       {/* Modals */}
       {bulkModalOpen && (

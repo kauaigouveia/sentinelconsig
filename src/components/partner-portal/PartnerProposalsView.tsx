@@ -12,6 +12,7 @@ import {
 import { PartnerPortalClient, PartnerProposalListItem } from '../../services/partnerPortalClient';
 import { formatCurrency } from '../../lib/utils';
 import { PartnerProposalDetailModal } from './PartnerProposalDetailModal';
+import { OperationCard, RecordWorkspace, type RecordPresentation } from '../ui/RecordWorkspace';
 
 interface PartnerProposalsViewProps {
   initialStatusCategory?: string;
@@ -28,6 +29,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
   onInitialProposalHandled,
   onOpenChatForProposal,
 }) => {
+  const [presentation, setPresentation] = useState<RecordPresentation>('cards');
   const [proposals, setProposals] = useState<PartnerProposalListItem[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
   const [isLoading, setIsLoading] = useState(true);
@@ -94,8 +96,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
     }
   };
 
-  return (
-    <div className="space-y-4 select-none">
+  const portalFilters = <>
       {/* Top Filter & Search Bar */}
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -197,6 +198,10 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
         </div>
       </div>
 
+  </>;
+  return (
+    <div className="space-y-4 select-none">
+      <RecordWorkspace filters={portalFilters} count={pagination.total} mode={presentation} onMode={setPresentation}>
       {/* Proposals Table */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
         {isLoading ? (
@@ -212,7 +217,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             <p className="font-bold text-slate-600 dark:text-slate-300">Nenhuma proposta encontrada</p>
             <p className="text-[11px]">Tente alterar os filtros ou termo de busca.</p>
           </div>
-        ) : (
+        ) : presentation === 'cards' ? <div className="operation-card-grid p-3">{proposals.map(proposal => <OperationCard key={proposal.id} title={proposal.clientName || `ADE ${proposal.proposalNumber}`} eyebrow={proposal.bankName} status={proposal.statusName} statusColor={proposal.statusColor} amount={formatCurrency(proposal.releasedValue)} fields={[{ label: 'ADE', value: proposal.proposalNumber }, { label: 'CPF', value: proposal.clientCpfMasked }, { label: 'Produto', value: proposal.productName }, { label: 'Prazo', value: `${proposal.installmentsCount} meses` }]} onOpen={() => setSelectedProposalId(proposal.id)} actions={<button type="button" className="operation-card-action" onClick={() => onOpenChatForProposal(proposal.id, proposal.proposalNumber)}>Falar com a mesa</button>} />)}</div> : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] border-b border-slate-100 dark:border-slate-800">
@@ -315,6 +320,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
         )}
       </div>
 
+      </RecordWorkspace>
       {/* Modal de Detalhes da Proposta */}
       {selectedProposalId && (
         <PartnerProposalDetailModal

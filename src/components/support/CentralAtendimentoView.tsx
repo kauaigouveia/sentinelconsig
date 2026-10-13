@@ -670,6 +670,7 @@ export const CentralAtendimentoView: React.FC = () => {
             </div>
           )}
         </div>
+        <aside className="support-context-panel"><div className="record-summary-heading"><span>CONTEXTO DA CONVERSA</span><h2>Atendimento</h2></div>{activeConversationData ? <><div className="support-context-avatar">{activeConversationData.partnerName?.charAt(0) || 'P'}</div><h3>{activeConversationData.partnerName}</h3><p>{activeConversationData.partnerCode}</p><dl><div><dt>Canal</dt><dd>{activeConversationData.channel || 'Portal'}</dd></div><div><dt>Fila</dt><dd>{activeConversationData.department === 'SIMULATION' ? 'Simulação' : 'Atendimento ao parceiro'}</dd></div><div><dt>Proposta</dt><dd>{activeConversationData.proposalNumber || 'Sem proposta vinculada'}</dd></div><div><dt>Status</dt><dd>{activeConversationData.status === 'RESOLVED' ? 'Resolvido' : activeConversationData.status === 'IN_PROGRESS' ? 'Em atendimento' : 'Aberto'}</dd></div></dl></> : <p className="mt-6 text-xs text-slate-500">Selecione uma conversa para visualizar parceiro, canal e proposta vinculada.</p>}</aside>
       </div>
     </div>
   );

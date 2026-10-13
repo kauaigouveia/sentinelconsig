@@ -604,122 +604,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleItems = navGroups.filter(group => group.visible).flatMap(group => group.items.filter(item => item.visible !== false));
   const favoriteItems = workspace.favorites.map(path => visibleItems.find(item => item.to === path || (path === '/' && item.to === '/dashboard'))).filter((item): item is NavItemConfig => !!item);
   const matchesSearch = (item: NavItemConfig) => item.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(navSearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+  const areaIcons: Record<string, React.ElementType> = { inicio: LayoutDashboard, operacao: Calculator, relacionamento: Headphones, rotina: Workflow, financeiro: CircleDollarSign, integracoes: Zap, gestao: BarChart3, administracao: Shield, plataforma: Layers };
+  const areaColors: Record<string, string> = { inicio: '#5c8dff', operacao: '#ad7bff', relacionamento: '#30bfe7', rotina: '#ffbc52', financeiro: '#32d9a4', integracoes: '#ff9561', gestao: '#f078ba', administracao: '#91a4ff', plataforma: '#bc83f7' };
+  const itemColors: Record<SemanticColor, string> = { blue: '#5c8dff', cyan: '#30bfe7', violet: '#ad7bff', amber: '#ffbc52', purple: '#bc83f7', yellow: '#edc944', emerald: '#32d9a4', indigo: '#91a4ff', sky: '#49b7ff', orange: '#ff9561', rose: '#fb7b97', fuchsia: '#f078ba', slate: '#a6b3ce' };
+  const availableGroups = navGroups.filter(group => group.visible && group.items.some(item => item.visible !== false));
+  const [selectedArea, setSelectedArea] = useState(() => availableGroups.find(group => group.items.some(item => isViewActive(item)))?.id || availableGroups[0]?.id || 'inicio');
+  useEffect(() => {
+    const group = availableGroups.find(group => group.items.some(item => isViewActive(item)));
+    if (group) setSelectedArea(group.id);
+  }, [currentPath, currentView]);
+  const area = availableGroups.find(group => group.id === selectedArea) || availableGroups[0];
+  const shownItems = navSearch ? visibleItems.filter(matchesSearch) : selectedArea === 'favorites' ? favoriteItems : area?.items.filter(item => item.visible !== false) || [];
   const renderNavItem = (item: NavItemConfig) => {
-    if (item.visible === false || (navSearch && !matchesSearch(item))) return null;
-    const isActive = isViewActive(item), Icon = item.icon;
-    return <a key={item.id} id={`nav-${item.id}`} href={item.to} title={item.label} aria-current={isActive ? 'page' : undefined} className={`sentinel-nav-item ${isCollapsed ? 'justify-center !px-0' : ''}`} onClick={event => {
+    const Icon = item.icon;
+    return <a key={item.id} id={`nav-${item.id}`} href={item.to} title={item.label} aria-current={isViewActive(item) ? 'page' : undefined} className="sentinel-nav-item" onClick={event => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
       event.preventDefault(); onNavigate(item.to); onCloseMobile?.();
-    }}><Icon aria-hidden="true" />{!isCollapsed && <><span className="flex-1 truncate">{item.label}</span>{item.badge && <span className="sentinel-nav-badge">{item.badge.text}</span>}</>}</a>;
+    }}><span className="sentinel-nav-icon" style={{ color: itemColors[item.color], background: `${itemColors[item.color]}18` }}><Icon aria-hidden="true" /></span><span className="flex-1 truncate">{item.label}</span>{item.badge && <span className="sentinel-nav-badge">{item.badge.text}</span>}</a>;
   };
-
-  return (
-    <aside
-      id="app-sidebar"
-      data-collapsed={isCollapsed}
-      role={isMobileOpen ? 'dialog' : undefined}
-      aria-modal={isMobileOpen || undefined}
-      aria-label="Menu principal"
-      tabIndex={isMobileOpen ? -1 : undefined}
-      className={`sentinel-sidebar border-r border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#080d18] flex flex-col shrink-0 transition-all duration-200 ease-in-out select-none ${
-        isMobileOpen
-          ? 'fixed inset-y-0 left-0 z-50 w-[min(82vw,280px)] shadow-2xl md:static md:z-auto md:shadow-none'
-          : 'hidden md:flex'
-      } md:flex ${
-        isCollapsed ? 'md:w-[68px]' : 'md:w-[248px]'
-      }`}
-    >
-      {/* ==================================================
-          BLOCO DE IDENTIDADE & MARCA: SENTINEL CONSIG + TENANT
-      ================================================== */}
-      <div className={`sentinel-sidebar-brand ${isCollapsed ? '!px-3 !py-6' : ''}`}>
-        <button type="button" className="sentinel-brand-line" onClick={() => onNavigate(role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle')} title="Ir para o início"><img src={SYSTEM_IDENTITY.defaultLogo} alt={SYSTEM_IDENTITY.name} />{!isCollapsed && <div className="text-left"><div className="sentinel-brand-name">sentinel<span className="font-normal text-[#64d3b9]">.</span></div><div className="sentinel-brand-subtitle">Consig · Workspace</div></div>}</button>
-        {!isCollapsed && <div className="sentinel-company"><img src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo} alt="" referrerPolicy="no-referrer" onError={event => { const image = event.currentTarget; if (!image.src.endsWith(SYSTEM_IDENTITY.defaultLogo)) image.src = SYSTEM_IDENTITY.defaultLogo; }} /><div className="min-w-0"><small>{isGlobalPlatformContext ? 'Plataforma' : isInspectionMode ? 'Em inspeção' : 'Sua empresa'}</small><strong title={displayCompanyName}>{displayCompanyName}</strong></div></div>}
-      </div>
-      {!isCollapsed && <div className="sentinel-nav-search"><Search size={14} /><input type="search" aria-label="Encontrar uma tela no menu" placeholder="Encontrar uma tela..." value={navSearch} onChange={event => setNavSearch(event.target.value)} /></div>}
-
-      {/* ==================================================
-          ÁRVORE DE NAVEGAÇÃO REORGANIZADA (6 GRUPOS)
-      ================================================== */}
-      <nav aria-label="Navegação principal" className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 space-y-2">
-        {!navSearch && !isCollapsed && favoriteItems.length > 0 && <div><div className="sentinel-group-heading flex items-center gap-2"><Star size={11} />Favoritos</div>{favoriteItems.map(item => <div key={`favorite-${item.id}`}>{renderNavItem({ ...item, id: `favorite-${item.id}` })}</div>)}</div>}
-        {navSearch && !visibleItems.some(matchesSearch) && <p className="sentinel-nav-empty">Nenhuma tela encontrada.</p>}
-        {navGroups
-          .filter((g) => g.visible && g.items.some(item => item.visible !== false && (!navSearch || matchesSearch(item))))
-          .map((group) => {
-            const isExpanded = !!navSearch || (expandedGroups[group.id] ?? true);
-            const hasActiveItem = group.items.some((item) => item.visible !== false && isViewActive(item));
-
-            return (
-              <div key={group.id} className="space-y-0.5">
-                {isCollapsed ? (
-                  // Divisor sutil no modo recolhido
-                  <div className="my-1.5 border-t border-slate-200/60 dark:border-slate-800/80" />
-                ) : (
-                  // Cabeçalho Expansível do Grupo
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.id)}
-                    aria-expanded={isExpanded}
-                    aria-controls={`nav-group-${group.id}`}
-                    className="sentinel-group-heading w-full px-2.5 pt-2 pb-1 flex items-center justify-between text-slate-400 hover:text-slate-200 transition-colors cursor-pointer group select-none"
-                    title={`Recolher/Expandir ${group.title}`}
-                  >
-                    <div className="flex items-center gap-1.5 truncate">
-                      <span className="text-[11px] font-semibold tracking-wide text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
-                        {group.title}
-                      </span>
-                      {hasActiveItem && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                      )}
-                    </div>
-                    <div className="p-0.5 rounded text-slate-500 group-hover:text-slate-300">
-                      {isExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      )}
-                    </div>
-                  </button>
-                )}
-
-                {/* Subitens do Grupo */}
-                <div
-                  id={`nav-group-${group.id}`}
-                  className="space-y-0.5"
-                  hidden={!isCollapsed && !isExpanded}
-                >
-                  {group.items.map(renderNavItem)}
-                </div>
-              </div>
-            );
-          })}
-      </nav>
-
-      {/* ==================================================
-          RODAPÉ / BOTÃO DE EXPANDIR OU RECOLHER
-      ================================================== */}
-      <div className="sentinel-sidebar-footer p-2 border-t border-slate-200/80 dark:border-slate-800/80 shrink-0 bg-slate-50/50 dark:bg-slate-900/40">
-        <button
-          onClick={toggleCollapse}
-          className="flex items-center justify-center w-full h-8 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
-          title={isCollapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <div className="flex items-center justify-between w-full px-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <ChevronLeft className="h-4 w-4" />
-                <span>Recolher</span>
-              </span>
-              <kbd className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-500">
-                Alt+B
-              </kbd>
-            </div>
-          )}
-        </button>
-      </div>
-    </aside>
-  );
+  return <aside id="app-sidebar" data-collapsed={isCollapsed} role={isMobileOpen ? 'dialog' : undefined} aria-modal={isMobileOpen || undefined} aria-label="Navegação do Sentinel Consig" tabIndex={isMobileOpen ? -1 : undefined} className={`sentinel-sidebar sentinel-navigation ${isMobileOpen ? 'sentinel-navigation-mobile' : 'hidden md:flex'}`}>
+    <div className="sentinel-area-rail"><button type="button" className="sentinel-rail-brand" title="Sentinel Consig — início" onClick={() => onNavigate(role === 'DIGITADOR' ? 'home-digitador' : 'torre-controle')}><img src={SYSTEM_IDENTITY.defaultLogo} alt="Sentinel Consig" /></button><nav aria-label="Áreas do sistema" className="sentinel-rail-links">{availableGroups.map(group => { const Icon = areaIcons[group.id] || Layers; return <button key={group.id} type="button" aria-pressed={selectedArea === group.id} title={group.title} style={{ '--area-color': areaColors[group.id] || '#5c8dff' } as React.CSSProperties} onClick={() => { setSelectedArea(group.id); setNavSearch(''); if (isCollapsed) toggleCollapse(); }}><Icon size={21} /><span>{group.title === 'Relacionamento' ? 'Clientes' : group.title === 'Administração' ? 'Admin' : group.title === 'Inteligência' ? 'Gestão' : group.title}</span></button>; })}<button type="button" aria-pressed={selectedArea === 'favorites'} style={{ '--area-color': '#ffbc52' } as React.CSSProperties} title="Favoritos" onClick={() => { setSelectedArea('favorites'); setNavSearch(''); if (isCollapsed) toggleCollapse(); }}><Star size={20} /><span>Favoritos</span></button></nav><button type="button" className="sentinel-rail-toggle" onClick={toggleCollapse} aria-label={isCollapsed ? 'Expandir menu da área' : 'Recolher menu da área'}>{isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button></div>
+    {!isCollapsed && <div className="sentinel-context-navigation"><div className="sentinel-context-brand"><strong>Sentinel Consig</strong><span>{isInspectionMode ? 'Inspeção da empresa' : isGlobalPlatformContext ? 'Administração da plataforma' : 'Plataforma de crédito'}</span></div><div className="sentinel-context-company"><img src={effectiveBranding.logoUrl || SYSTEM_IDENTITY.defaultLogo} alt="" referrerPolicy="no-referrer" onError={event => { if (!event.currentTarget.src.endsWith(SYSTEM_IDENTITY.defaultLogo)) event.currentTarget.src = SYSTEM_IDENTITY.defaultLogo; }} /><div><small>Empresa atual</small><strong title={displayCompanyName}>{displayCompanyName}</strong></div></div><div className="sentinel-context-section"><span style={{ color: areaColors[area?.id || 'inicio'] }}>{selectedArea === 'favorites' ? 'SEUS ATALHOS' : 'ÁREA DE TRABALHO'}</span><h2>{navSearch ? 'Resultados da busca' : selectedArea === 'favorites' ? 'Favoritos' : area?.title}</h2></div><div className="sentinel-nav-search"><Search size={14} /><input type="search" aria-label="Encontrar uma tela no menu" placeholder="Buscar uma tela" value={navSearch} onChange={event => setNavSearch(event.target.value)} /></div><nav aria-label="Telas da área" className="sentinel-context-links">{shownItems.map(renderNavItem)}{!shownItems.length && <p className="sentinel-nav-empty">{selectedArea === 'favorites' ? 'Use Favoritar na tela que deseja guardar aqui.' : 'Nenhuma tela encontrada.'}</p>}</nav><div className="sentinel-context-footer"><span className="sentinel-context-avatar">{activeUser?.name?.charAt(0) || 'S'}</span><div><strong>{activeUser?.name || 'Sentinel Consig'}</strong><small>Seu ambiente de operação</small></div></div></div>}
+  </aside>;
 };

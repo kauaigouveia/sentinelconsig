@@ -34,6 +34,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
+import { RecordWorkspace, OperationCard, operationLabel, type RecordPresentation } from '../ui/RecordWorkspace';
 import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
 import { SimulationImportModal } from './SimulationImportModal';
@@ -63,6 +64,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const activeUser = StorageService.getActiveUser();
   const canSetInitialStatus = hasPermission(activeUser?.role, activeUser?.customPermissions, 'simulations.update');
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
+  const [presentation, setPresentation] = useState<RecordPresentation>('cards');
   const [simulations, setSimulations] = useState<SimulationRequest[]>([]);
   const [simulationsLoadError, setSimulationsLoadError] = useState<string | null>(null);
   const [isLoadingSimulations, setIsLoadingSimulations] = useState(true);
@@ -867,219 +869,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
     }).catch(() => {});
   };
 
-  return (
-    <div className="sentinel-simulation-page space-y-6 pb-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <Calculator className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                Central de Simulações
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Controle de solicitações por CPF + Parceiro e identificação automática de propostas digitadas pela mesa
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            onClick={handleExportCsv}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>Exportar CSV</span>
-          </button>
-
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all border bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 cursor-pointer"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            <span>Importar em Lote</span>
-          </button>
-
-          <button
-            id="btn-nova-simulacao"
-            onClick={handleOpenNewModal}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-all shrink-0 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-            title="Iniciar nova simulação (Manual, Happy INSS ou Happy CLT)"
-          >
-            <Plus className="h-4 w-4" />
-            <span>+ NOVA SIMULAÇÃO</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 text-xs font-medium">
-        <button
-          onClick={() => setActiveTab('VISAO_GERAL')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'VISAO_GERAL'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <ListFilter className="h-4 w-4" />
-          <span>Visão Geral & Solicitações</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 font-semibold">
-            {simulations.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'AGUARDANDO_DIGITACAO'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Clock className="h-4 w-4 text-amber-500" />
-          <span>Fila da Mesa (Aguardando Digitação)</span>
-          {metrics.enviadas > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
-              {metrics.enviadas}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('DASHBOARD_ANALISES')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'DASHBOARD_ANALISES'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <BarChart2 className="h-4 w-4" />
-          <span>Dashboard & Análise por Parceiro/Usuário</span>
-        </button>
-      </div>
-
-      {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
-      {activeTab === 'VISAO_GERAL' && (
-        <div className="space-y-6 animate-in fade-in">
-          {/* Metric / KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-            {/* Card 1: Simulações Enviadas */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Cadastradas
-                </span>
-                <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                  <Send className="h-3 w-3" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{metrics.total}</span>
-                <span className="text-[10px] text-slate-500">total</span>
-              </div>
-              <div className="mt-1 text-[10px] text-slate-400 font-medium">Cadastradas no sistema</div>
-            </div>
-
-            {/* Card 2: Aguardando Digitação */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  Aguardando
-                </span>
-                <div className="h-6 w-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <Clock className="h-3 w-3" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{metrics.enviadas}</span>
-                <span className="text-[10px] text-slate-500">na fila</span>
-              </div>
-              <div className="mt-1 text-[10px] text-amber-600/80 font-medium">Portal: 5 dias úteis · manual: 72h</div>
-            </div>
-
-            {/* Card 3: Digitadas pela Mesa */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Digitadas
-                </span>
-                <div className="h-6 w-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <Sparkles className="h-3 w-3" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{metrics.digitadas}</span>
-                <span className="text-[10px] text-slate-500">convertidas</span>
-              </div>
-              <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                Vínculo automático ADE
-              </div>
-            </div>
-
-            {/* Card 4: Não Passíveis */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                  Não Passíveis
-                </span>
-                <div className="h-6 w-6 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                  <XCircle className="h-3 w-3" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{metrics.naoPassivel}</span>
-                <span className="text-[10px] text-slate-500">inviáveis</span>
-              </div>
-              <div className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 font-medium">Sem margem / política</div>
-            </div>
-
-            {/* Card 5: Perdidas (Não Digitadas em 72h) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  Ofertas perdidas
-                </span>
-                <div className="h-6 w-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-                  <AlertTriangle className="h-3 w-3 text-rose-500" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl font-bold text-slate-700 dark:text-slate-300">{metrics.perdidas}</span>
-                <span className="text-[10px] text-slate-500">expiradas</span>
-              </div>
-              <div className="mt-1 text-[10px] text-slate-500 font-medium">Prazo de digitação encerrado</div>
-            </div>
-
-            {/* Card 6: Taxa de Conversão */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                  Conversão
-                </span>
-                <div className="h-6 w-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                  <TrendingUp className="h-3 w-3" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{metrics.taxaConversao}%</span>
-                <span className="text-[10px] text-slate-500">
-                  ({metrics.digitadas}/{metrics.total})
-                </span>
-              </div>
-              <div className="mt-1.5 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                <div
-                  className="bg-indigo-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Number(metrics.taxaConversao))}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
+  const simulationFilters = <>
           {/* Filter Toolbar */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
@@ -1214,6 +1004,111 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             )}
           </div>
 
+  </>;
+  const simulationSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Conversão em digitação</span><strong>{metrics.taxaConversao}%</strong><p>{metrics.digitadas} de {metrics.total} simulações</p></div>{[{ label: 'Cadastradas', value: metrics.total, color: '#5c8dff' }, { label: 'Na fila da mesa', value: metrics.enviadas, color: '#ffbc52' }, { label: 'Digitadas', value: metrics.digitadas, color: '#32d9a4' }, { label: 'Ofertas perdidas', value: metrics.perdidas, color: '#fb7b97' }, { label: 'Não passíveis', value: metrics.naoPassivel, color: '#ad7bff' }].map(item => <div className="record-stat-row" key={item.label}><span className="record-stat-dot" style={{ background: item.color }} /><span>{item.label}</span><strong>{item.value}</strong></div>)}<div className="record-stat-note">As ofertas do portal têm prazo de 5 dias úteis para digitação.</div></div>;
+
+  return (
+    <div className="sentinel-simulation-page space-y-6 pb-6">
+      {/* Page Header */}
+      <div className="module-command-header">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <Calculator className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                Simulações de crédito
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Ofertas e digitação, do parceiro à mesa de crédito.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            onClick={handleExportCsv}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Exportar CSV</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all border bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 cursor-pointer"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Importar em Lote</span>
+          </button>
+
+          <button
+            id="btn-nova-simulacao"
+            onClick={handleOpenNewModal}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-all shrink-0 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+            title="Iniciar uma simulação de crédito"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Nova simulação</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="module-process-strip"><span>01 · Solicitar simulação</span><ArrowRight size={13} /><span>02 · Comparar ofertas</span><ArrowRight size={13} /><span>03 · Acompanhar digitação</span></div>
+      {presentation === 'cards' && simulationsLoadError && <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">{simulationsLoadError}<button type="button" className="ml-4 underline" onClick={() => void loadData()}>Tentar novamente</button></div>}
+      {/* Navigation Sub-Tabs */}
+      <div className="module-mode-tabs">
+        <button
+          onClick={() => setActiveTab('VISAO_GERAL')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'VISAO_GERAL'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <ListFilter className="h-4 w-4" />
+          <span>Solicitações</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 font-semibold">
+            {simulations.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'AGUARDANDO_DIGITACAO'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Clock className="h-4 w-4 text-amber-500" />
+          <span>Fila de digitação</span>
+          {metrics.enviadas > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
+              {metrics.enviadas}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('DASHBOARD_ANALISES')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'DASHBOARD_ANALISES'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <BarChart2 className="h-4 w-4" />
+          <span>Resultados e parceiros</span>
+        </button>
+      </div>
+
+      {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
+      {activeTab === 'VISAO_GERAL' && (
+        <div className="space-y-6 animate-in fade-in">
+          <RecordWorkspace filters={simulationFilters} summary={simulationSummary} count={filteredSimulations.length} mode={presentation} onMode={setPresentation}>
           {/* Bulk Actions Bar */}
           {selectedIds.length > 0 && (
             <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center justify-between animate-in fade-in">
@@ -1245,6 +1140,11 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             </div>
           )}
 
+          {presentation === 'cards' && <div className="operation-card-grid">{(isLoadingSimulations || simulationsLoadError ? [] : filteredSimulations).map(sim => {
+            const partner = partners.find(item => item.id === sim.partnerId);
+            return <OperationCard key={sim.id} eyebrow={operationLabel(sim.operationType || sim.productName || sim.simulationType)} title={formatCpf(sim.cpf)} status={sim.status} amountLabel="Valor da oferta" statusColor={sim.status === 'DIGITADA PELA MESA' ? '#22c99a' : sim.status === 'PERDIDA (NÃO DIGITADA)' ? '#fb7185' : '#9581ff'} amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'ADE / Proposta', value: sim.matchedProposalNumber || 'Aguardando digitação' }, { label: 'Responsável', value: users.find(user => user.id === sim.createdById)?.name || '—' }]} onOpen={() => setDetailTarget(sim)} selected={selectedIds.includes(sim.id)} onSelect={canDeleteSimulationUI(activeUser, sim) ? () => handleToggleSelectRow(sim.id) : undefined} actions={<>{sim.matchedProposalId && onOpenProposalDetail && <button type="button" className="operation-card-action" onClick={() => onOpenProposalDetail(sim.matchedProposalId!)}>Ver ADE</button>}{canChangeStatusUI(activeUser, sim) && <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus(sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? sim.status : 'DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(sim.rejectionReason || ''); }}>Definir status</button>}</>} />;
+          })}{!isLoadingSimulations && !simulationsLoadError && !filteredSimulations.length && <div className="record-empty">Nenhuma simulação encontrada. Ajuste os filtros ou inicie uma nova simulação.</div>}{isLoadingSimulations && <div className="record-empty">Carregando simulações...</div>}</div>}
+          {presentation === 'list' && <>
           {/* Main Table */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
@@ -1295,7 +1195,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       <td colSpan={11} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
                         <Calculator className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         <p className="font-medium text-sm">Nenhuma solicitação de simulação encontrada.</p>
-                        <p className="text-xs mt-1">Clique no botão "+ NOVA SIMULAÇÃO" para cadastrar.</p>
+                        <p className="text-xs mt-1">Clique no botão "Nova simulação" para cadastrar.</p>
                       </td>
                     </tr>
                   ) : (
@@ -1560,6 +1460,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
               </table>
             </div>
           </div>
+          </>}
+          </RecordWorkspace>
         </div>
       )}
 
@@ -1582,6 +1484,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             </span>
           </div>
 
+          <div className="record-results-toolbar"><span>{pendingQueueSimulations.length} operações na fila · mais antigas primeiro</span><div className="record-view-switch"><button type="button" aria-pressed={presentation === 'cards'} onClick={() => setPresentation('cards')}>Cartões</button><button type="button" aria-pressed={presentation === 'list'} onClick={() => setPresentation('list')}>Lista</button></div></div>
+          {presentation === 'cards' && <div className="operation-card-grid">{pendingQueueSimulations.map((sim, index) => {
+            const partner = partners.find(item => item.id === sim.partnerId), elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status, sim.offerExpiresAt);
+            return <OperationCard key={sim.id} title={formatCpf(sim.cpf)} eyebrow={`POSIÇÃO ${index + 1} · ${operationLabel(sim.operationType || sim.simulationType)}`} status="Aguardando digitação" amountLabel="Valor da oferta" statusColor="#ffbc52" amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'Tempo na fila', value: elapsed.text }, { label: 'Próximo passo', value: 'Digitação pela mesa' }]} onOpen={() => setDetailTarget(sim)} actions={canChangeStatusUI(activeUser, sim) ? <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus('DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(''); }}>Definir status</button> : undefined} />;
+          })}{!pendingQueueSimulations.length && <div className="record-empty">Fila zerada. Nenhuma simulação aguardando digitação.</div>}</div>}
+          {presentation === 'list' && <>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
@@ -1661,6 +1569,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
               </tbody>
             </table>
           </div>
+          </>}
         </div>
       )}
 
