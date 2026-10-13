@@ -332,7 +332,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isHealthChecking = serverHealth === null;
 
   return (
-    <header className="h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-2 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 transition-colors select-none">
+    <header className="sentinel-header h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-2 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 transition-colors select-none">
       {onOpenNavigation && (
         <button
           type="button"
@@ -351,10 +351,11 @@ export const Header: React.FC<HeaderProps> = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
             id="global-search-input"
+            aria-label="Buscar cliente, CPF, ADE, proposta ou parceiro"
             type="text"
             value={searchTerm}
             onChange={e => onGlobalSearch(e.target.value)}
-            placeholder="Buscar por cliente, CPF, ADE, proposta, digitador ou parceiro..."
+            placeholder="Buscar cliente, CPF, ADE ou parceiro..."
             className="w-full h-8.5 pl-9 pr-20 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all shadow-2xs"
           />
           <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-0.5 text-[9.5px] font-mono font-bold text-slate-400 dark:text-slate-400 shadow-2xs">

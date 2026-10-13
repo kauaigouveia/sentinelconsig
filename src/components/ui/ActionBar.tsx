@@ -32,7 +32,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm transition-colors ${className}`}
+      className={`sentinel-action-bar flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900 px-4 py-3.5 shadow-sm transition-colors ${className}`}
     >
       {/* Left side: Context / Title / Counts or Filter items */}
       <div className="flex min-w-0 flex-wrap items-center gap-3">

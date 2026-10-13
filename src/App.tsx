@@ -4,6 +4,8 @@ import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { WorkspaceToolbar } from './components/layout/WorkspaceToolbar';
+import { useWorkspacePreferences, workspaceKey } from './hooks/useWorkspacePreferences';
 import { useTenantBranding } from './hooks/useTenantBranding';
 import { getRoleLabel } from './lib/roleLabels';
 
@@ -95,6 +97,12 @@ function AppMainContent() {
     redirectTarget,
     setRedirectTarget,
   } = useRouter();
+
+  const preferenceKey = workspaceKey(adminContext?.targetTenantId || StorageService.getCurrentTenantId() || activeUser?.tenantId, activeUser?.id);
+  const workspace = useWorkspacePreferences(preferenceKey);
+  useEffect(() => {
+    if (isAuthenticated && activeUser && activeRoute && !activeRoute.isDynamic && canAccessRoute(activeRoute, activeUser.role, activeUser.customPermissions || [])) workspace.recordRoute(activeRoute.path);
+  }, [isAuthenticated, activeRoute?.path, activeUser?.id, preferenceKey, workspace.recordRoute]);
 
   // Validate server-side session as the ultimate authority via HttpOnly cookies
   const verifyServerSession = useCallback(async () => {
@@ -558,7 +566,8 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased transition-colors">
+    <div className="sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-colors" data-density={workspace.density}>
+      <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
       {/* Sidebar (Hidden in Focus Mode) */}
       {!isFocusMode && (
         <>
@@ -573,6 +582,8 @@ function AppMainContent() {
           <Sidebar
             currentView={effectiveView}
             currentPath={pathname}
+            preferenceKey={preferenceKey}
+            activeUser={activeUser}
             onNavigate={handleNavigate}
             branding={branding}
             isMobileOpen={isMobileNavigationOpen}
@@ -652,13 +663,11 @@ function AppMainContent() {
 
         {/* Breadcrumb Navigation Bar */}
         {!isFocusMode && effectiveView !== 'tv-monitor' && (
-          <div className="px-4 py-1.5 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
-            <Breadcrumbs currentView={effectiveView} onNavigate={handleNavigate} />
-          </div>
+          <WorkspaceToolbar route={hasRouteAccess ? activeRoute : null} user={activeUser} preferenceKey={preferenceKey} onNavigate={handleNavigate} />
         )}
 
         {/* Dynamic Page Views */}
-        <main className={`flex-1 overflow-y-auto p-3.5 md:p-4 min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
+        <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
           {is404 ? (
             <NotFoundView
               pathname={pathname}
@@ -677,6 +686,7 @@ function AppMainContent() {
             <>
               {effectiveView === 'torre-controle' && (
                 <ControlTower
+                  onNavigate={handleNavigate}
                   onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
                 />
               )}
@@ -797,7 +807,7 @@ function AppMainContent() {
 
         {/* Bottom Operational Status Bar */}
         {!isFocusMode && effectiveView !== 'tv-monitor' && (
-          <footer className="h-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none shrink-0">
+          <footer className="sentinel-status-footer h-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none shrink-0">
             <div className="flex items-center gap-2.5">
               <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />

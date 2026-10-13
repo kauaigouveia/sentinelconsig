@@ -29,7 +29,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   const srcMap = {
     full: '/branding/sentinel-consig-logo.png',
     transparent: '/branding/sentinel-consig-logo-transparent.png',
-    symbol: '/branding/sentinel-consig-symbol.png',
+    symbol: '/branding/sentinel-mark-v2.svg',
   };
 
   const src = srcMap[variant] || srcMap.transparent;

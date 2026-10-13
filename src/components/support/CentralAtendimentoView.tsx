@@ -308,7 +308,7 @@ export const CentralAtendimentoView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 select-none animate-in fade-in duration-200">
+    <div className="sentinel-support space-y-4 animate-in fade-in duration-200">
       {/* Top Action Bar */}
       <ActionBar
         title="Central de Atendimento & Suporte ao Parceiro"
@@ -385,9 +385,9 @@ export const CentralAtendimentoView: React.FC = () => {
       </div>
 
       {/* Main Two-Column Layout */}
-      <div className="h-[calc(100vh-290px)] min-h-[500px] flex flex-col md:flex-row gap-4">
+      <div className="sentinel-inbox flex flex-col md:flex-row gap-4">
         {/* Left Side: Conversation Queue & Filters */}
-        <div className="w-full md:w-88 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden shrink-0">
+        <div className="sentinel-inbox-queue w-full md:w-[310px] flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden shrink-0">
           {/* Filters Bar */}
           <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2 shrink-0">
             <div className="relative">

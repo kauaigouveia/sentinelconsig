@@ -52,7 +52,7 @@ export function useTenantBranding() {
         document.head.appendChild(link);
       }
       link.removeAttribute('type');
-      link.href = favicon || '/branding/sentinel-consig-favicon.png';
+      link.href = !favicon || favicon.includes('/branding/sentinel-consig-') ? SYSTEM_IDENTITY.defaultLogo : favicon;
     }
 
     // 3. Inject CSS Variables for Dynamic Color Theming
@@ -82,6 +82,7 @@ export function useTenantBranding() {
       }
 
       const data: TenantBranding = await response.json();
+      if (data.logoUrl?.startsWith('/branding/sentinel-consig-')) data.logoUrl = SYSTEM_IDENTITY.defaultLogo;
       setBranding(data);
       applyBrandingToDOM(data);
     } catch (err: any) {

@@ -868,7 +868,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="sentinel-simulation-page space-y-6 pb-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>

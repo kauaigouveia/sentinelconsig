@@ -41,6 +41,8 @@ import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { StatusBadge } from '../ui/StatusBadge';
 import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { ActionBar } from '../ui/ActionBar';
+import { SavedFilterViews } from '../ui/SavedFilterViews';
+import { useWorkspacePreferences, workspaceKey } from '../../hooks/useWorkspacePreferences';
 import { EmptyState } from '../ui/EmptyState';
 import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
@@ -94,10 +96,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     return statuses.find(s => s.id === p.statusId || s.code === (p as any).status?.code) || null;
   }, [statuses]);
 
+  const preferenceKey = workspaceKey(StorageService.getCurrentTenantId(), activeUser?.id);
+  const workspace = useWorkspacePreferences(preferenceKey);
+  const filterStorageKey = `${preferenceKey}:proposal-filters`;
+
   // Load initial filters from sessionStorage if available
   const savedFilters = useMemo(() => {
     try {
-      const item = sessionStorage.getItem('cg_production_filters');
+      const item = sessionStorage.getItem(filterStorageKey);
       return item ? JSON.parse(item) : null;
     } catch {
       return null;
@@ -129,22 +135,8 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     setFilterDigitizer(initialFilter.digitizerId || '');
   }, [initialFilter]);
 
-  // Table Density: 'COMPACTA' | 'CONFORTAVEL'
-  const [tableDensity, setTableDensity] = useState<'COMPACTA' | 'CONFORTAVEL'>(() => {
-    try {
-      return (sessionStorage.getItem('cg_table_density') as 'COMPACTA' | 'CONFORTAVEL') || 'COMPACTA';
-    } catch {
-      return 'COMPACTA';
-    }
-  });
-
-  const toggleDensity = () => {
-    const next = tableDensity === 'COMPACTA' ? 'CONFORTAVEL' : 'COMPACTA';
-    setTableDensity(next);
-    try {
-      sessionStorage.setItem('cg_table_density', next);
-    } catch {}
-  };
+  const tableDensity = workspace.density === 'compact' ? 'COMPACTA' : 'CONFORTAVEL';
+  const toggleDensity = workspace.toggleDensity;
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -163,7 +155,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   useEffect(() => {
     try {
       sessionStorage.setItem(
-        'cg_production_filters',
+        filterStorageKey,
         JSON.stringify({
           searchTerm,
           filterProduct,
@@ -544,6 +536,20 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           </>
         }
       />
+
+      <SavedFilterViews storageKey={`${preferenceKey}:proposal-views`} filters={{ filterProduct, filterBank, filterPromoter, filterPartner, filterDigitizer, filterStatus, filterAlcada: filterAlçada, filterSla, sortField, sortDirection }} onApply={view => {
+        setSearchTerm('');
+        setFilterProduct(products.some(item => item.id === view.filterProduct) ? view.filterProduct : '');
+        setFilterBank(banks.some(item => item.id === view.filterBank) ? view.filterBank : '');
+        setFilterPromoter(promoters.some(item => item.id === view.filterPromoter) ? view.filterPromoter : '');
+        setFilterPartner(partners.some(item => item.id === view.filterPartner) ? view.filterPartner : '');
+        setFilterDigitizer(users.some(item => item.id === view.filterDigitizer) ? view.filterDigitizer : '');
+        setFilterStatus(statuses.some(item => item.id === view.filterStatus) ? view.filterStatus : '');
+        setFilterAlçada(['', 'CLIENTE', 'BANCO', 'SISTEMA', 'NOSSA EQUIPE', 'PARCEIRO'].includes(view.filterAlcada) ? view.filterAlcada as ResponsibleAlçada | '' : '');
+        setFilterSla(['TODOS', 'NO_PRAZO', '5_DIA', 'ATRASADO'].includes(view.filterSla) ? view.filterSla as typeof filterSla : 'TODOS');
+        setSortField(['proposalNumber', 'clientName', 'cpf', 'bank', 'disbursedValue', 'createdAt'].includes(view.sortField) ? view.sortField as SortField : 'createdAt');
+        setSortDirection(view.sortDirection === 'asc' ? 'asc' : 'desc');
+      }} />
 
       {/* Horizontal Scrollable Filter Chips Bar */}
       <div className="bg-white dark:bg-[#0c1220] rounded-xl border border-slate-200 dark:border-slate-800/80 p-3 shadow-2xs space-y-2">
