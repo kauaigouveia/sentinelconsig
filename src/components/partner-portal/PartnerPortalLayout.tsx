@@ -113,8 +113,8 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
     'Organização';
 
   const effectiveTenantLogo =
-    tenant.whiteLabel?.logoUrl ||
     branding.logoUrl ||
+    tenant.whiteLabel?.logoUrl ||
     SYSTEM_IDENTITY.defaultLogo;
 
   return (
@@ -129,6 +129,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
               alt={effectiveTenantName}
               className="h-full w-full object-contain rounded-lg"
               referrerPolicy="no-referrer"
+              onError={event => { const image = event.currentTarget; if (!image.src.endsWith(SYSTEM_IDENTITY.defaultLogo)) image.src = SYSTEM_IDENTITY.defaultLogo; }}
             />
           </div>
           <div className="min-w-0">

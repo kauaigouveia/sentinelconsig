@@ -36,8 +36,8 @@ export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
       : (resolvedCompanyName || propTenantName || 'Organização');
 
   const effectiveLogoUrl =
-    propLogoUrl ||
     branding?.logoUrl ||
+    propLogoUrl ||
     null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +88,7 @@ export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
                 alt={effectiveTenantName}
                 className="h-full w-full object-contain rounded-xl"
                 referrerPolicy="no-referrer"
+                onError={event => { const image = event.currentTarget; if (!image.src.endsWith(SYSTEM_IDENTITY.defaultLogo)) image.src = SYSTEM_IDENTITY.defaultLogo; }}
               />
             </div>
 
