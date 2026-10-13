@@ -22,7 +22,7 @@ export const parseDate = (s: unknown): Date => {
   if (!Number.isFinite(d.getTime()) || d.toISOString().slice(0, 10) !== s) throw new CalculationError('Informe uma data válida.');
   return d;
 };
-const addMonths = (d: Date, months: number) => {
+export const addMonths = (d: Date, months: number) => {
   const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + Math.trunc(months), 1));
   const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
   target.setUTCDate(Math.min(d.getUTCDate(), last));

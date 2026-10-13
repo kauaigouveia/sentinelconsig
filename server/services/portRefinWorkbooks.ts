@@ -1,5 +1,7 @@
-import { importDaycoval, simulateDaycoval, DaycovalCalculator, type DaycovalWorkbook, serial, parseDate } from './daycovalWorkbook.js';
+import { importDaycoval, simulateDaycoval, DaycovalCalculator, type DaycovalWorkbook, serial, parseDate, addMonths } from './daycovalWorkbook.js';
 import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
+import { INSS_BENEFIT_TYPES } from '../../src/lib/inssBenefitTypes.js';
+import { selectablePortRefinRates, type RatePolicy } from '../../src/lib/portRefinRates.js';
 export type SpreadsheetBank = 'DAYCOVAL' | 'C6' | 'PARANA';
 export const SPREADSHEET_MODELS = {
   DAYCOVAL: { key: 'DAYCOVAL_INSS_WORKBOOK_V1', label: 'Daycoval', extensions: ['.xlsx'], hash: '6e0eacd03bb614e7a257cae03b8c7844f4f1436abd14cad78124369427dfb1af', sheets: undefined },
@@ -19,6 +21,15 @@ export async function importPortRefin(bank: SpreadsheetBank, buffer: Buffer, nam
     book.terms=Array.from({length:maximum-minimum+1},(_,i)=>maximum-i);
   }
   book.enabled=true;return book;
+}
+export function portRefinRatePolicies(bank: SpreadsheetBank, book: DaycovalWorkbook): RatePolicy[] {
+  if (bank !== 'PARANA') return [];
+  const cells=book.sheets['Premissas Convênios'].cells, policies:RatePolicy[]=[];
+  for(let row=21;row<=40;row++)if(cells[`A${row}`]==='INSS') {
+    const policy={minTerm:Number(cells[`B${row}`]),maxTerm:Number(cells[`C${row}`]),minInstallment:Number(cells[`D${row}`]),maxInstallment:Number(cells[`E${row}`]),minRate:Number(cells[`F${row}`])*100,maxRate:Number(cells[`G${row}`])*100};
+    if(Object.values(policy).every(Number.isFinite))policies.push(policy);
+  }
+  return policies;
 }
 export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {
   if(bank==='DAYCOVAL')return simulateDaycoval(book,input);
@@ -44,9 +55,23 @@ export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook
   }
   const rate=Number(input.refinanceRate)/100,extra=Number(input.additionalMargin||0);
   if(!Number.isFinite(rate)||rate<=0||!Number.isFinite(extra)||extra<0)throw new Error('Informe taxa do refinanciamento e margem adicional válidas.');
-  const calculator=new DaycovalCalculator(book,{H4:'INSS',J4:serial(date),K4:'NÃO',B9:remaining,D9:installment,D12:balance,H9:term,J9:installment+extra,L9:rate},'Simulador Portabilidade e Refin');
+  const age=date.getUTCFullYear()-birth.getUTCFullYear()-(date.getUTCMonth()<birth.getUTCMonth()||date.getUTCMonth()===birth.getUTCMonth()&&date.getUTCDate()<birth.getUTCDate()?1:0);
+  if(age<18)throw new Error('Paraná: idade mínima de 18 anos.');
+  const species=Number(input.benefitType);
+  if(!INSS_BENEFIT_TYPES.some(([code])=>code===species))throw new Error('Selecione uma espécie do benefício cadastrada no sistema.');
+  const count=Number(input.benefitContractCount);
+  if(!Number.isInteger(count)||count<1||count>13)throw new Error('Paraná: informe de 1 a 13 contratos no benefício.');
+  const minimumInstallment=[32,92].includes(species)?15:120;
+  const portInstallment=input.negativeMargin===true?Number(input.portInstallment):installment;
+  if(!Number.isFinite(portInstallment)||portInstallment<minimumInstallment||portInstallment>installment)throw new Error(`Paraná: parcela da portabilidade a partir de R$ ${minimumInstallment.toFixed(2)}, sem agregar margem na portabilidade.`);
+  const refinInstallment=portInstallment+extra;
+  const rates=selectablePortRefinRates(portRefinRatePolicies(bank,book),term,refinInstallment,[32,92].includes(species)?15:undefined);
+  if(!rates.some(value=>Math.abs(value-rate*100)<1e-8))throw new Error('Selecione uma taxa disponível para o prazo e a parcela na planilha ativa, até 1,85% a.m.');
+  const calculator=new DaycovalCalculator(book,{H4:'INSS',J4:serial(date),K4:'NÃO',B9:remaining,D9:portInstallment,D12:balance,H9:term,J9:refinInstallment,L9:rate,'Build Up!B22':minimumInstallment},'Simulador Portabilidade e Refin');
   const amount=Number(calculator.cell('F17')),contractAmount=Number(calculator.cell('J12')),status=String(calculator.cell('D20')),first=Number(calculator.cell('L12'));
   if(!status||!Number.isFinite(amount)||!Number.isFinite(contractAmount))throw new Error('A planilha Paraná não conseguiu calcular a condição.');
-  const offer={provider:'PARANA',tableId:`INSS:${term}:${rate}`,tableName:'INSS · condição da planilha Paraná',amount,contractAmount,balance,installment:installment+extra,term,rate:rate*100,coefficient:(installment+extra)/contractAmount,iof:Number(calculator.cell('G15')),insurance:Number(calculator.cell('H15')),status,eligible:status.startsWith('✅')&&amount>0};
-  return {offers:[offer],contracts:[{returnRate:Number(calculator.cell('F9'))*100,newInstallment:installment}],firstDue:new Date(Date.UTC(1899,11,30)+first*86400000).toISOString().slice(0,10),weightedRate:rate*100,version};
+  const firstDate=new Date(Date.UTC(1899,11,30)+first*86400000),lastDue=addMonths(firstDate,term-1),maximumAge=addMonths(birth,77*12+11);maximumAge.setUTCDate(maximumAge.getUTCDate()+29);
+  if(lastDue>maximumAge)throw new Error('Paraná: idade no término do contrato excede 77 anos, 11 meses e 29 dias.');
+  const offer={provider:'PARANA',tableId:`INSS:${term}:${rate}`,tableName:'INSS · condição da planilha Paraná',amount,contractAmount,balance,installment:refinInstallment,term,rate:rate*100,coefficient:refinInstallment/contractAmount,iof:Number(calculator.cell('G15')),insurance:Number(calculator.cell('H15')),status:amount<100?'Paraná: troco mínimo de R$ 100,00 em portabilidade + refinanciamento.':status,eligible:status.startsWith('✅')&&amount>=100};
+  return {offers:[offer],contracts:[{returnRate:Number(calculator.cell('F9'))*100,newInstallment:portInstallment}],firstDue:new Date(Date.UTC(1899,11,30)+first*86400000).toISOString().slice(0,10),weightedRate:rate*100,version};
 }

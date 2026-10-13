@@ -11,7 +11,7 @@ import { AuditLogService } from './auditLogService.js';
 import { eventBus } from './pusherService.js';
 import { decodeDaycoval, encodeDaycoval } from './daycovalWorkbook.js';
 
-import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, type SpreadsheetBank } from './portRefinWorkbooks.js';
+import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRatePolicies, type SpreadsheetBank } from './portRefinWorkbooks.js';
 export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSession: (req: Request) => Promise<any>) {
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3500000, files: 1, fields: 2 } }).single('workbook');
   const limiter = rateLimit({ windowMs: 60000, limit: 12, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Aguarde um momento antes de simular novamente.' } });
@@ -38,7 +38,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
       try {
         const ctx = await context(req, portal, 'simulations.view'); if (!ctx) return res.status(403).json({ error: 'Sessão e acesso às simulações são necessários.' });
         const book = await read(ctx.tenantId, bank);
-        return res.json({ configured: !!book, enabled: !!book && book.enabled !== false, canImport: ctx.canImport, ...(book ? { fileName: book.fileName, hash: book.hash, uploadedAt: book.uploadedAt, terms: book.terms, versionDate: (book as any).versionDate } : {}) });
+        return res.json({ configured: !!book, enabled: !!book && book.enabled !== false, canImport: ctx.canImport, ...(book ? { fileName: book.fileName, hash: book.hash, uploadedAt: book.uploadedAt, terms: book.terms, ratePolicies: portRefinRatePolicies(bank, book), versionDate: (book as any).versionDate } : {}) });
       } catch { return res.status(500).json({ error: 'Não foi possível carregar a planilha Daycoval.' }); }
     });
     app.post(`${path}/simulate`, limiter, async (req, res) => {
@@ -55,7 +55,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
         const partner = await prisma.partner.findFirst({ where: { id: partnerId, tenantId: ctx.tenantId, deletedAt: null, status: 'ATIVO' } });
         if (!partner) return res.status(400).json({ error: 'Selecione um parceiro ativo da empresa.' });
         if (!Array.isArray(raw.contracts) || raw.contracts.length < 1 || raw.contracts.length > 17) return res.status(400).json({ error: 'Informe de 1 a 17 contratos.' });
-        const input = { cpf, name: String(raw.name || '').trim().slice(0, 200), birthDate: raw.birthDate, simulationDate: raw.simulationDate, term: Number(raw.term), refinanceRate: Number(raw.refinanceRate), benefitType: Number(raw.benefitType), additionalMargin: Number(raw.additionalMargin || 0), requestedRefinAmount: Number(raw.requestedRefinAmount || 0), contracts: raw.contracts.map((c: any) => ({ balance: Number(c?.balance), installment: Number(c?.installment), remaining: Number(c?.remaining), cipInstallment: c?.cipInstallment ? Number(c.cipInstallment) : 0 })), product: 'INSS', operation: 'PORT_REFIN' };
+        const input = { cpf, name: String(raw.name || '').trim().slice(0, 200), birthDate: raw.birthDate, simulationDate: raw.simulationDate, term: Number(raw.term), refinanceRate: Number(raw.refinanceRate), benefitType: Number(raw.benefitType), benefitContractCount: Number(raw.benefitContractCount), negativeMargin: raw.negativeMargin === true, portInstallment: Number(raw.portInstallment), additionalMargin: Number(raw.additionalMargin || 0), requestedRefinAmount: Number(raw.requestedRefinAmount || 0), contracts: raw.contracts.map((c: any) => ({ balance: Number(c?.balance), installment: Number(c?.installment), remaining: Number(c?.remaining), cipInstallment: c?.cipInstallment ? Number(c.cipInstallment) : 0 })), product: 'INSS', operation: 'PORT_REFIN' };
         const result = calculatePortRefin(bank, book, input);
         const available = result.offers.filter(o => o.eligible && o.amount > 0);
         const inputHash = createHash('sha256').update(JSON.stringify({ ...input, partnerId, version: book.hash })).digest('hex');
@@ -99,7 +99,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
         if (bank === 'DAYCOVAL' && (columns[0] !== 'EMPREGADOR' || columns[5] !== 'TAXA' || columns[6] !== 'PRAZO' || columns[19] !== 'minport_%')) throw new Error('A estrutura das tabelas Daycoval mudou. Esta versão precisa ser adaptada.');
         await prisma.systemConfig.upsert({ where: { tenantId_configKey: { tenantId: ctx.tenantId, configKey: KEY } }, create: { tenantId: ctx.tenantId, configKey: KEY, configValue: encodeDaycoval(book) }, update: { configValue: encodeDaycoval(book) } });
         await AuditLogService.record(prisma, { tenantId: ctx.tenantId, userId: ctx.userId, userName: ctx.userName, action: `${bank}_PLANILHA_IMPORTADA`, entity: 'SystemConfig', entityId: KEY, newData: { fileName: book.fileName, hash: book.hash, versionDate }, req });
-        return res.json({ configured: true, enabled: true, canImport: true, fileName: book.fileName, uploadedAt: book.uploadedAt, hash: book.hash, terms: book.terms, versionDate });
+        return res.json({ configured: true, enabled: true, canImport: true, fileName: book.fileName, uploadedAt: book.uploadedAt, hash: book.hash, terms: book.terms, ratePolicies: portRefinRatePolicies(bank, book), versionDate });
       } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível importar a planilha.' }); }
     });
     } catch { return res.status(500).json({ error: 'Não foi possível acessar a configuração Daycoval da empresa.' }); }

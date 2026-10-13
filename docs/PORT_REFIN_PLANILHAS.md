@@ -32,3 +32,11 @@ Leitura dos dois modelos e execução das suas fórmulas com exemplo de saldo R$
 - Paraná: 108 meses, taxa refin 1,85%; valor refin R$11.338,36, IOF sobre troco R$41,37, líquido R$1.296,99, vencimento 10/12/2026 e mensagem de enquadramento da política do arquivo.
 
 Conferência limitada à leitura/recálculo desses exemplos e checagem de tipos/build; não comprova todos os casos, digitação bancária ou importação autenticada em produção.
+
+## Paraná: regras complementares
+
+Taxas selecionáveis em passos de 0,01 ponto percentual dentro dos limites da planilha ativa, com teto de 1,85% a.m. Espécies do INSS reutilizam o cadastro existente. Não há validação de vigência do benefício.
+
+Para PORT + REFIN: mínimo de 18 anos, máximo de 77 anos, 11 meses e 29 dias no último vencimento, até 13 contratos por benefício e troco mínimo de R$ 100. Parcela de portabilidade mínima de R$ 120, ou R$ 15 para espécies 32/92. Margem negativa exige informar parcela enquadrada, sem aumentar a parcela da portabilidade. Margem adicional se aplica somente ao refinanciamento. Formalização exclusivamente digital.
+
+O formulário específico coleta a quantidade total de contratos; o comparador geral orienta abrir PORT + REFIN · Planilhas para Paraná. Regras de Novo e Refin isolado não representam novas modalidades disponíveis.

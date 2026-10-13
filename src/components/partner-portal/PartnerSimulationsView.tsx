@@ -4,6 +4,7 @@ import { BmgCustomerAuthorization } from '../simulation/BmgCustomerAuthorization
 import { CltCustomerDataCard } from '../simulation/CltCustomerDataCard';
 import { InssBenefitTypeSelect } from '../simulation/InssBenefitTypeSelect';
 import { SpreadsheetPortRefinWorkspace } from '../simulation/SpreadsheetPortRefinWorkspace';
+import { INSS_REFINANCING_RATES } from '../../lib/inssEligibility';
 import { formatCpf } from '../../lib/utils';
 
 const money = (value: unknown) => value == null ? 'Não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -57,7 +58,7 @@ export function PartnerSimulationsView() {
         <label className="text-xs font-semibold">Simular por<select className={control} value={form.mode} onChange={event => update('mode', event.target.value)}><option value="Payment">Valor da parcela</option>{!(form.product === 'INSS' && ['PORT', 'PORT_REFIN'].includes(form.operation)) && <option value="Liquid">Valor liberado</option>}</select></label>
         {form.product !== 'FGTS' && field(form.mode === 'Payment' ? 'Parcela desejada (R$)' : 'Valor desejado (R$)', 'value', 'number', true)}
         <label className="text-xs font-semibold">{form.product === 'FGTS' ? 'Saques a antecipar' : 'Prazo (meses)'}<select className={control} value={form.term} onChange={event => update('term', event.target.value)}>{form.product === 'CLT' && <option value="0">Todos os prazos disponíveis</option>}{(form.product === 'FGTS' ? [1, 2, 3, 4, 5] : [6, 12, 18, 24, 30, 36, 48, 60, 72, 84, 96, 108]).map(term => <option key={term} value={term}>{term}</option>)}</select></label>
-        {form.product === 'INSS' && field('Taxa mensal (opcional: todas)', 'rate', 'number')}
+        {form.product === 'INSS' && <label className="text-xs font-semibold">Taxa mensal<select className={control} value={form.rate} onChange={e => update('rate', e.target.value)}><option value="">Todas as taxas</option>{INSS_REFINANCING_RATES.map(rate => <option key={rate} value={rate}>{rate.toFixed(2).replace('.', ',')}% a.m.</option>)}</select></label>}
       </div>
       {form.product === 'INSS' && <div className="flex flex-wrap items-center gap-3"><label className="text-sm"><input type="checkbox" checked={form.legalRepresentative} onChange={event => update('legalRepresentative', event.target.checked)} /> Possui representante legal</label><label className="text-sm"><input type="checkbox" checked={form.hasInsurance} onChange={event => update('hasInsurance', event.target.checked)} /> Incluir seguro quando disponível</label><button type="button" disabled={busy} className="rounded-lg border p-2 text-sm" onClick={() => void run('authorize')}>Solicitar autorização Happy / IN100</button>{form.operation === 'PORT_REFIN' && field('Plano Happy (opcional)', 'happyPlan')}</div>}
       <BmgCustomerAuthorization input={{ ...form, cpf: form.cpf.replace(/\D/g, '') }} onRows={bmgRows => setRows(current => [...current.filter(row => row.provider !== 'BMG'), ...bmgRows])} />

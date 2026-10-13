@@ -46,6 +46,7 @@ export class PartnerSimulationService {
         const config = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: SPREADSHEET_MODELS[bank].key } } });
         if (!config) return;
         const book = decodeDaycoval(config.configValue); if (book.enabled === false) return;
+        if (bank === 'PARANA') { notes.push('Paraná: simule em PORT + REFIN · Planilhas para informar a quantidade de contratos e o enquadramento de margem.'); return; }
         const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         const result = calculatePortRefin(bank, book, { birthDate: input.birthDate, benefitType: input.benefitType, simulationDate: date, term: bank === 'C6' ? 108 : input.term, refinanceRate: input.rate, contracts: [{ balance: input.debt, installment: input.originalInstallment, remaining: input.remainingTerm }], additionalMargin: Math.max(0, Number(input.value) - Number(input.originalInstallment)) });
         offers.push(...result.offers.filter(offer => offer.eligible && offer.amount > 0).map(offer => ({ ...offer, name: offer.tableName, code: offer.tableId, institution: bank, state: 'OFFER', spreadsheetVersion: result.version, spreadsheet: { bank, ...result } })));
