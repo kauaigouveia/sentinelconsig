@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SimulationBankOrderSettings } from './SimulationBankOrderSettings';
 import {
   Server,
   Zap,
@@ -681,6 +682,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
       </div>
 
       {/* CONTEÚDO DA ABA ATIVA */}
+      {canManageConfig && <SimulationBankOrderSettings />}
 
       {/* ABA C6 BANK: Integração Completa */}
       {activeTab === 'c6' && (

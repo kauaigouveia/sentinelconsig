@@ -135,6 +135,7 @@ import { PartnerPortalService } from './server/services/partnerPortalService.js'
 import { SupportService } from './server/services/supportService.js';
 import { EvolutionService } from './server/services/evolutionService.js';
 import { C6SimulationService } from './server/services/c6SimulationService.js';
+import { registerSimulationBankOrderRoutes } from './server/services/simulationBankOrderRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
 import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
@@ -15044,6 +15045,7 @@ async function auditAndEnsureMasterUser() {
   });
 
   // GET /api/integrations/c6/config - Secure tenant configuration
+  registerSimulationBankOrderRoutes(app, prisma, getAuthSession);
   app.post('/api/integrations/c6/inss/simulate', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {

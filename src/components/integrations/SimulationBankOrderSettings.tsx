@@ -1,0 +1,16 @@
+import React, { useEffect, useState } from 'react';
+import { BANK_LABELS, OPERATIONS, normalizeBankOrders } from '../../lib/simulationBankOrder';
+export function SimulationBankOrderSettings() {
+  const [orders, setOrders] = useState(normalizeBankOrders(null));
+  const [ready, setReady] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState('');
+  useEffect(() => { const controller = new AbortController(); void fetch('/api/simulations/bank-order', { cache: 'no-store', signal: controller.signal }).then(async response => { if (!response.ok) throw new Error('Não foi possível carregar a ordem.'); setOrders(normalizeBankOrders(await response.json())); setReady(true); }).catch(error => { if (!controller.signal.aborted) setMessage(error.message); }); return () => controller.abort(); }, []);
+  function move(operation: keyof typeof orders, index: number, delta: number) {
+    setOrders(current => { const next = [...current[operation]]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; return { ...current, [operation]: next }; });
+  }
+  async function save() {
+    setBusy(true); setMessage('');
+    try { const response = await fetch('/api/simulations/bank-order', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orders) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Não foi possível salvar.'); setOrders(normalizeBankOrders(data)); setMessage('Ordem salva para esta empresa. Será aplicada nas próximas aberturas das simulações.'); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao salvar.'); } finally { setBusy(false); }
+  }
+  return <details className="my-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700"><summary className="cursor-pointer font-bold">Ordem dos bancos nas simulações INSS</summary><p className="my-3 text-xs text-slate-500">Defina a ordem de exibição por modalidade para esta empresa. Somente integrações com resultados aparecem; as consultas continuam em paralelo.</p><div className="grid gap-4 md:grid-cols-2">{Object.entries(OPERATIONS).map(([operation, label]) => <section key={operation}><h4 className="mb-2 font-semibold">{label}</h4>{orders[operation as keyof typeof orders].map((bank, index, list) => <div key={bank} className="mb-1 flex items-center justify-between rounded border border-slate-300 p-2 text-sm dark:border-slate-700"><span>{index + 1}. {BANK_LABELS[bank]}</span><span><button type="button" aria-label={`Subir ${BANK_LABELS[bank]} em ${label}`} disabled={!ready || busy || index === 0} onClick={() => move(operation as keyof typeof orders, index, -1)} className="px-2 disabled:opacity-30">↑</button><button type="button" aria-label={`Descer ${BANK_LABELS[bank]} em ${label}`} disabled={!ready || busy || index === list.length - 1} onClick={() => move(operation as keyof typeof orders, index, 1)} className="px-2 disabled:opacity-30">↓</button></span></div>)}</section>)}</div><button type="button" disabled={!ready || busy} onClick={() => void save()} className="mt-3 rounded bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-40">{busy ? 'Salvando...' : 'Salvar ordem da empresa'}</button>{message && <p role="status" className="mt-2 text-sm">{message}</p>}</details>;
+}
