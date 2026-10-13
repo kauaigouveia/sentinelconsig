@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { OrderedSimulationBanks } from '../simulation/OrderedSimulationBanks';
+import { BmgCustomerAuthorization } from '../simulation/BmgCustomerAuthorization';
 import { CltCustomerDataCard } from '../simulation/CltCustomerDataCard';
 import { InssBenefitTypeSelect } from '../simulation/InssBenefitTypeSelect';
 import { formatCpf } from '../../lib/utils';
@@ -55,6 +56,7 @@ export function PartnerSimulationsView() {
         {form.product === 'INSS' && field('Taxa mensal (opcional: todas)', 'rate', 'number')}
       </div>
       {form.product === 'INSS' && <div className="flex flex-wrap items-center gap-3"><label className="text-sm"><input type="checkbox" checked={form.legalRepresentative} onChange={event => update('legalRepresentative', event.target.checked)} /> Possui representante legal</label><label className="text-sm"><input type="checkbox" checked={form.hasInsurance} onChange={event => update('hasInsurance', event.target.checked)} /> Incluir seguro quando disponível</label><button type="button" disabled={busy} className="rounded-lg border p-2 text-sm" onClick={() => void run('authorize')}>Solicitar autorização Happy / IN100</button>{form.operation === 'PORT_REFIN' && field('Plano Happy (opcional)', 'happyPlan')}</div>}
+      <BmgCustomerAuthorization input={{ ...form, cpf: form.cpf.replace(/\D/g, '') }} onRows={bmgRows => setRows(current => [...current.filter(row => row.provider !== 'BMG'), ...bmgRows])} />
       <button disabled={busy} className="rounded-lg bg-violet-600 px-5 py-2 font-bold text-white disabled:opacity-50">{busy ? 'Consultando e registrando…' : 'Simular nos bancos disponíveis'}</button>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}{message && <p role="status" className="text-sm text-emerald-600">{message}</p>}
     </form>

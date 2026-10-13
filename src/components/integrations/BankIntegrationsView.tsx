@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SimulationBankOrderSettings } from './SimulationBankOrderSettings';
+import { BmgIntegrationTab } from './BmgIntegrationTab';
 import {
   Server,
   Zap,
@@ -673,7 +674,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                 </span>
               ) : (
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  Em breve
+                  {b.id === 'bmg' ? 'Configurar' : 'Em breve'}
                 </span>
               )}
             </button>
@@ -1571,47 +1572,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
         </div>
       )}
 
-      {/* ABA BANCO BMG */}
-      {activeTab === 'bmg' && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center space-y-4">
-          <div className="h-16 w-16 mx-auto rounded-2xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 flex items-center justify-center font-bold text-2xl">
-            318
-          </div>
-          <div className="max-w-md mx-auto space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Banco BMG (Código 318)
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-800">
-                Não configurado / Em breve
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Barramento de APIs BMG para esteira de crédito consignado, cartão de crédito consignado e cartão benefício.
-            </p>
-          </div>
-
-          <div className="max-w-lg mx-auto p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-left space-y-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-              Especificações Técnicas Futuras
-            </span>
-            <ul className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                <span>Integração BMG Consig com credenciais dedicadas de parceiro.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                <span>Consulta de ADE, reserva de margem e esteira de emissão de cartão.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                <span>Isolamento total de credenciais e auditoria de consultas.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
+      {activeTab === 'bmg' && <BmgIntegrationTab canManage={canManageConfig} />}
 
       {/* ABA HAPPY / BYX CAPITAL */}
       {activeTab === 'happy' && <HappyIntegrationTab />}

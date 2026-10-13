@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { FactaSimulationService, type FactaInssInput } from './factaSimulationService.js';
 import { FactaBankService } from './factaBankService.js';
 import { C6SimulationService } from './c6SimulationService.js';
+import { BmgBankService } from './bmgBankService.js';
 import { ProductSimulationService } from './productSimulationService.js';
 import { NossaFintechService } from './nossaFintechService.js';
 import { FinantoService } from './finantoService.js';
@@ -38,6 +39,7 @@ export class PartnerSimulationService {
         if (result.message) notes.push(`FACTA: ${result.message}`);
       }),
       collect('C6', async () => { offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
+      collect('BMG', async () => { if (input.bmgActorId) offers.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, input)); }),
       collect('Nossa Fintech', async () => {
         const config = await NossaFintechService.getConfig(prisma, tenantId);
         if (!config.enabled || !config.isConfigured) return;

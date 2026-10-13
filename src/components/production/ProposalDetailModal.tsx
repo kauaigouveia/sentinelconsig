@@ -33,6 +33,7 @@ import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { toastService } from '../ui/toastService';
 import { C6ProposalCard } from './C6ProposalCard';
 import { FactaProposalCard } from './FactaProposalCard';
+import { BmgProposalCard } from './BmgProposalCard';
 import { HappyProposalCard } from './HappyProposalCard';
 import { ProviderProposalSyncCard } from './ProviderProposalSyncCard';
 import { hasPermission } from '../../lib/permissions';
@@ -1108,6 +1109,7 @@ const ProposalDetailModalContent: React.FC<
 
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-900 min-h-[360px]">
+          {bankCode === '318' && <BmgProposalCard key={proposal.id} proposalId={proposal.id} proposalNumber={proposal.proposalNumber} />}
           {/* TAB 1: HISTÓRICO */}
           {activeTab === 'HISTORICO' && (
             <div className="space-y-4">
