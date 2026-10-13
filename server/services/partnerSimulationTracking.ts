@@ -35,7 +35,7 @@ export class PartnerSimulationTracking {
   // a browser being open or a continuously running process on Vercel.
   static async reconcile(prisma: PrismaClient, tenantId: string, now = new Date()) {
     const simulations = await prisma.simulationRequest.findMany({
-      where: { tenantId, simulationType: 'PARTNER_AUTO', deletedAt: null, matchedProposalId: null, status: { in: ['SIMULAÇÃO ENVIADA', 'PERDIDA (NÃO DIGITADA)'] } },
+      where: { tenantId, simulationType: { in: ['PARTNER_AUTO', 'DAYCOVAL_INSS'] }, deletedAt: null, matchedProposalId: null, status: { in: ['SIMULAÇÃO ENVIADA', 'PERDIDA (NÃO DIGITADA)'] } },
       orderBy: { createdAt: 'desc' },
     });
     if (!simulations.length) return;
@@ -73,7 +73,7 @@ export class PartnerSimulationTracking {
       if (updated.count) used.add(sim.id);
     }
     await prisma.simulationRequest.updateMany({
-      where: { tenantId, simulationType: 'PARTNER_AUTO', deletedAt: null, matchedProposalId: null, status: 'SIMULAÇÃO ENVIADA', offerExpiresAt: { lte: now } },
+      where: { tenantId, simulationType: { in: ['PARTNER_AUTO', 'DAYCOVAL_INSS'] }, deletedAt: null, matchedProposalId: null, status: 'SIMULAÇÃO ENVIADA', offerExpiresAt: { lte: now } },
       data: { status: 'PERDIDA (NÃO DIGITADA)', offerLostAt: now },
     });
   }

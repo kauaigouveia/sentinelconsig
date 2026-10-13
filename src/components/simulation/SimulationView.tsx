@@ -40,6 +40,7 @@ import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../l
 import { SimulationImportModal } from './SimulationImportModal';
 import { PartnerSimulationMonthlyReport } from './PartnerSimulationMonthlyReport';
 import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
+import { DaycovalSimulationModal } from './DaycovalSimulationModal';
 import { ProductSimulationModal } from './ProductSimulationModal';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { HappyCltSimulationModal } from './HappyCltSimulationModal';
@@ -85,6 +86,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
   // Modals state
   const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
+  const [isDaycovalOpen, setIsDaycovalOpen] = useState(false);
   const [multiProduct, setMultiProduct] = useState<'CLT' | 'FGTS' | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isHappyInssModalOpen, setIsHappyInssModalOpen] = useState(false);
@@ -906,6 +908,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <option value="HAPPY_CLT">Happy CLT</option>
                   <option value="INSS_MULTI">INSS · simulação</option>
                   <option value="PARTNER_AUTO">Portal do parceiro · automáticas</option>
+                  <option value="DAYCOVAL_INSS">Daycoval · planilha INSS</option>
                   <option value="FINANTO_INSS">INSS · enviado à instituição</option>
                 </select>
               </div>
@@ -1053,6 +1056,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             <Plus className="h-4 w-4" />
             <span>Nova simulação</span>
           </button>
+          <button type="button" onClick={() => setIsDaycovalOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-blue-300 px-3 py-2 text-xs font-bold text-blue-600 dark:border-blue-800 dark:text-blue-300"><FileSpreadsheet size={16} />Daycoval · planilha</button>
         </div>
       </div>
 
@@ -2385,7 +2389,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 </div>
               )}
 
-              {detailTarget.simulationType === 'PARTNER_AUTO' && <section className="rounded-xl border p-4 text-sm dark:border-slate-700">
+              {['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(detailTarget.simulationType || '') && <section className="rounded-xl border p-4 text-sm dark:border-slate-700">
+                {(detailTarget.customerData as any)?.daycoval && <div className="mb-3"><h4 className="font-bold">Daycoval · INSS por planilha</h4><p>Versão: {(detailTarget.customerData as any).daycoval.version.fileName}</p><p>Data da simulação: {(detailTarget.customerData as any).simulationDate?.split('-').reverse().join('/')}</p><details className="mt-2"><summary className="cursor-pointer">Contratos utilizados no cálculo</summary>{((detailTarget.customerData as any).contracts || []).map((contract: any, index: number) => <p key={index} className="mt-1">Contrato {index + 1} · saldo R$ {Number(contract.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · parcela R$ {Number(contract.installment).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · restantes {contract.remaining}</p>)}</details></div>}
                 <h4 className="font-bold">Consulta do parceiro · {detailTarget.partnerCodeSnapshot}</h4>
                 <p>Prazo: {detailTarget.offerExpiresAt ? new Date(detailTarget.offerExpiresAt).toLocaleString('pt-BR') : '—'}</p>
                 {detailTarget.matchedAfterDeadline && <p className="text-amber-600">Digitada após o prazo de 5 dias úteis.</p>}
@@ -2486,11 +2491,11 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                         <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                           PERDIDA (NÃO DIGITADA)
                           <span className="px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold rounded-xs">
-                            {detailTarget.simulationType === 'PARTNER_AUTO' ? 'EXPIRAÇÃO EM 5 DIAS ÚTEIS' : 'EXPIRAÇÃO AUTOMÁTICA 72H'}
+                            {['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(detailTarget.simulationType || '') ? 'EXPIRAÇÃO EM 5 DIAS ÚTEIS' : 'EXPIRAÇÃO AUTOMÁTICA 72H'}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          Prazo máximo de {detailTarget.simulationType === 'PARTNER_AUTO' ? '5 dias úteis' : '72 horas'} excedido sem digitação da proposta. Expirado em {new Date(detailTarget.offerLostAt || detailTarget.updatedAt).toLocaleString('pt-BR')}
+                          Prazo máximo de {['PARTNER_AUTO', 'DAYCOVAL_INSS'].includes(detailTarget.simulationType || '') ? '5 dias úteis' : '72 horas'} excedido sem digitação da proposta. Expirado em {new Date(detailTarget.offerLostAt || detailTarget.updatedAt).toLocaleString('pt-BR')}
                         </div>
                       </>
                     ) : (
@@ -2525,6 +2530,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       />
 
       {/* Modal Seletor de Fluxo de Simulação */}
+      {isDaycovalOpen && <DaycovalSimulationModal partners={partners} onClose={() => setIsDaycovalOpen(false)} onSuccess={() => { void loadData(); }} />}
       <SimulationFlowSelectorModal
         isOpen={isFlowSelectorOpen}
         onClose={() => setIsFlowSelectorOpen(false)}
@@ -2533,6 +2539,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         nossaFintechEnabled={nossaFintechEnabled}
         onSelectFlow={(flow) => {
           setIsFlowSelectorOpen(false);
+          if (flow === 'DAYCOVAL_INSS') { setIsDaycovalOpen(true); return; }
           if (flow === 'CLT_MULTI' || flow === 'FGTS_MULTI') {
             setMultiProduct(flow === 'CLT_MULTI' ? 'CLT' : 'FGTS');
             return;

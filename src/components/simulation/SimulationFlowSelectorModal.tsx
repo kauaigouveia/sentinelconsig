@@ -34,7 +34,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
-      <div className={`relative w-full ${happySimulationAccessEnabled || finantoEnabled || nossaFintechEnabled ? 'max-w-5xl' : 'max-w-md'} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 transition-all`}>
+      <div className={`relative max-h-[94dvh] overflow-y-auto w-full ${happySimulationAccessEnabled || finantoEnabled || nossaFintechEnabled ? 'max-w-5xl' : 'max-w-md'} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 transition-all`}>
         <div className="flex items-start justify-between pb-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
@@ -150,6 +150,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
             </button>
           )))}
 
+          <button type="button" onClick={() => onSelectFlow('DAYCOVAL_INSS')} className="group flex flex-col justify-between rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 text-left transition-all hover:border-blue-500 dark:border-slate-800 dark:bg-slate-800/40"><div className="space-y-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"><Calculator className="h-5 w-5" /></div><h4 className="text-sm font-bold">Daycoval · INSS por planilha</h4><p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">Portabilidade + refinanciamento com saldo devedor. Utilize a versão semanal da planilha.</p></div><div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-3 text-xs font-semibold text-blue-600 dark:border-slate-700 dark:text-blue-400"><span>Abrir simulador Daycoval</span><ArrowRight className="h-4 w-4" /></div></button>
           {([
             { flow: 'CLT_MULTI' as const, title: 'CLT · Crédito do trabalhador', description: 'Consulte os vínculos, a margem e as condições disponíveis nas instituições.' },
             { flow: 'FGTS_MULTI' as const, title: 'FGTS · Antecipação', description: 'Consulte o saldo e compare as tabelas de antecipação do saque-aniversário.' },

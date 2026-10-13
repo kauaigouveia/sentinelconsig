@@ -112,7 +112,7 @@ export class SimulationService {
         cpf: cleanCpf,
         ...(proposal.partnerId ? { partnerId: proposal.partnerId } : {}),
         status: 'SIMULAÇÃO ENVIADA',
-        simulationType: { not: 'PARTNER_AUTO' },
+        simulationType: { notIn: ['PARTNER_AUTO', 'DAYCOVAL_INSS'] },
         deletedAt: null,
       },
     });

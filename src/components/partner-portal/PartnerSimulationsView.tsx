@@ -3,11 +3,13 @@ import { OrderedSimulationBanks } from '../simulation/OrderedSimulationBanks';
 import { BmgCustomerAuthorization } from '../simulation/BmgCustomerAuthorization';
 import { CltCustomerDataCard } from '../simulation/CltCustomerDataCard';
 import { InssBenefitTypeSelect } from '../simulation/InssBenefitTypeSelect';
+import { DaycovalSimulationModal } from '../simulation/DaycovalSimulationModal';
 import { formatCpf } from '../../lib/utils';
 
 const money = (value: unknown) => value == null ? 'Não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-950';
 export function PartnerSimulationsView() {
+  const [daycovalOpen, setDaycovalOpen] = useState(false);
   const [form, setForm] = useState({ product: 'INSS', operation: 'NEW', cpf: '', name: '', phone: '', birthDate: '', benefitNumber: '', benefitType: '', mode: 'Payment', term: '108', value: '', rate: '', debt: '', originalTerm: '', remainingTerm: '', originalInstallment: '', originalBank: '', originalContract: '', income: '', c6Contract: '', contract: '', happyPlan: '', employerDocument: '', legalRepresentative: false, hasInsurance: false });
   const [rows, setRows] = useState<any[]>([]), [clients, setClients] = useState<any[]>([]), [history, setHistory] = useState<any[]>([]), [contracts, setContracts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
@@ -35,6 +37,8 @@ export function PartnerSimulationsView() {
   };
   const field = (label: string, key: keyof typeof form, type = 'text', required = false) => <label className="text-xs font-semibold">{label}<input className={control} type={type} step={type === 'number' ? 'any' : undefined} required={required} value={String(form[key])} onChange={event => update(key, key === 'cpf' ? formatCpf(event.target.value) : event.target.value)} /></label>;
   return <div className="mx-auto max-w-6xl space-y-6 p-4">
+    <button type="button" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white" onClick={() => setDaycovalOpen(true)}>Daycoval · INSS por planilha</button>
+    {daycovalOpen && <DaycovalSimulationModal portal onClose={() => setDaycovalOpen(false)} onSuccess={() => { void load().catch(err => setError(err.message)); }} />}
     <header><h1 className="text-xl font-bold">Simulações</h1><p className="mt-1 text-sm text-slate-500">Consulte as condições dos bancos habilitados. As consultas com valor liberado são guardadas automaticamente com seu código de parceiro.</p></header>
     <form onSubmit={event => { event.preventDefault(); void run('simulate'); }} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       <div className="grid gap-3 sm:grid-cols-3">
