@@ -134,6 +134,7 @@ import { ImpactAnalysisService } from './server/services/commandCenter/impactAna
 import { PartnerPortalService } from './server/services/partnerPortalService.js';
 import { SupportService } from './server/services/supportService.js';
 import { EvolutionService } from './server/services/evolutionService.js';
+import { C6SimulationService } from './server/services/c6SimulationService.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
 import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
@@ -15043,6 +15044,18 @@ async function auditAndEnsureMasterUser() {
   });
 
   // GET /api/integrations/c6/config - Secure tenant configuration
+  app.post('/api/integrations/c6/inss/simulate', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const session = await getAuthSession(req);
+      if (!session?.effectiveTenantId) return res.status(401).json({ error: 'Não autorizado.' });
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'simulations.create')) return res.status(403).json({ error: 'Sem permissão para simular.' });
+      const offers = await C6SimulationService.inss(prisma, session.effectiveTenantId, req.body);
+      return res.json({ offers });
+    } catch (error: any) { return res.status(400).json({ error: error.message || 'Falha na simulação C6.' }); }
+  });
+
+  // GET /api/integrations/c6/config - Secure tenant configuration
   app.get('/api/integrations/c6/config', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -15058,6 +15071,10 @@ async function auditAndEnsureMasterUser() {
       // Nunca expor a senha no retorno JSON
       res.json({
         username: config.username,
+        promoterCode: config.promoterCode,
+        typistCode: config.typistCode,
+        certifiedAgentCpf: config.certifiedAgentCpf,
+        simulationEnabled: config.simulationEnabled,
         baseUrl: config.baseUrl,
         autoSyncEnabled: config.autoSyncEnabled,
         syncIntervalMinutes: config.syncIntervalMinutes,
@@ -15087,6 +15104,10 @@ async function auditAndEnsureMasterUser() {
       const { username, password, baseUrl, autoSyncEnabled, syncIntervalMinutes } = req.body || {};
 
       const saved = await C6BankService.saveTenantConfig(prisma, tenantId, {
+        promoterCode: req.body?.promoterCode,
+        typistCode: req.body?.typistCode,
+        certifiedAgentCpf: req.body?.certifiedAgentCpf,
+        simulationEnabled: req.body?.simulationEnabled,
         username,
         password,
         baseUrl,
@@ -18132,7 +18153,7 @@ async function auditAndEnsureMasterUser() {
       if (!['SIMULATE', 'REFRESH', 'AUTHORIZE', 'CONTRACTS'].includes(action)) return res.status(400).json({ error: 'Ação inválida.' });
       const raw = req.body || {};
       if (action === 'CONTRACTS' && raw.product !== 'INSS') return res.status(400).json({ error: 'Consulta de contratos disponível somente para INSS.' });
-      const input = { product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
+      const input = { product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
       if (!isValidCpf(input.cpf) || !['INSS', 'CLT', 'FGTS'].includes(input.product) || !['Payment', 'Liquid'].includes(input.mode) || !Number.isInteger(input.term) || input.term < (input.product === 'CLT' ? 0 : 1) || input.term > 120) return res.status(400).json({ error: 'Informe CPF, produto e prazo válidos.' });
       if (action === 'SIMULATE' && input.product !== 'FGTS' && (!Number.isFinite(input.value) || input.value <= 0)) return res.status(400).json({ error: 'Informe um valor positivo para simular.' });
       if (input.product === 'CLT' && (!input.name || !/^\d{10,11}$/.test(input.phone) || (input.employerDocument && ![8, 14].includes(input.employerDocument.length)))) return res.status(400).json({ error: 'Informe nome, telefone e inscrição do empregador válidos.' });

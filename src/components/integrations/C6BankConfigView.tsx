@@ -108,6 +108,10 @@ export const C6BankConfigView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: config.username,
+          promoterCode: config.promoterCode,
+          typistCode: config.typistCode,
+          certifiedAgentCpf: config.certifiedAgentCpf,
+          simulationEnabled: config.simulationEnabled,
           password: password ? password : undefined,
           baseUrl: config.baseUrl,
           autoSyncEnabled: config.autoSyncEnabled,
@@ -411,6 +415,10 @@ export const C6BankConfigView: React.FC = () => {
         {/* Coluna 3: Formulário de Credenciais e Conexão Segura */}
         <div className="space-y-6">
           <form onSubmit={handleSaveConfig} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
+            <label className="block text-sm">Código de promotora C6<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.promoterCode || ''} onChange={e => setConfig({ ...config, promoterCode: e.target.value })} /></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.simulationEnabled} onChange={e => setConfig({ ...config, simulationEnabled: e.target.checked })} />Habilitar C6 nas simulações INSS</label>
+            <label className="block text-sm">Código do digitador C6<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.typistCode || ''} onChange={e => setConfig({ ...config, typistCode: e.target.value })} /></label>
+            <label className="block text-sm">CPF do agente certificado<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.certifiedAgentCpf || ''} onChange={e => setConfig({ ...config, certifiedAgentCpf: e.target.value })} /></label>
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
               <Lock className="h-4 w-4 text-blue-600" />
               <h2 className="font-bold text-sm text-slate-900 dark:text-slate-100">

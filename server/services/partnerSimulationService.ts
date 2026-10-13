@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { FactaSimulationService, type FactaInssInput } from './factaSimulationService.js';
 import { FactaBankService } from './factaBankService.js';
+import { C6SimulationService } from './c6SimulationService.js';
 import { ProductSimulationService } from './productSimulationService.js';
 import { NossaFintechService } from './nossaFintechService.js';
 import { FinantoService } from './finantoService.js';
@@ -36,6 +37,7 @@ export class PartnerSimulationService {
         offers.push(...result.offers.map(offer => ({ ...offer, provider: 'FACTA', institution: 'FACTA', state: offer.amount ? 'OFFER' : 'PENDING' })));
         if (result.message) notes.push(`FACTA: ${result.message}`);
       }),
+      collect('C6', async () => { offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
       collect('Nossa Fintech', async () => {
         const config = await NossaFintechService.getConfig(prisma, tenantId);
         if (!config.enabled || !config.isConfigured) return;

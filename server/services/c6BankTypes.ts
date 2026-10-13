@@ -73,6 +73,10 @@ export interface C6SyncResult {
 }
 
 export interface C6TenantConfig {
+  promoterCode?: string;
+  typistCode?: string;
+  certifiedAgentCpf?: string;
+  simulationEnabled?: boolean;
   username: string;
   password?: string;
   baseUrl: string;

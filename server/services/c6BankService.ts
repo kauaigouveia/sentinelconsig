@@ -40,6 +40,10 @@ export class C6BankService {
         configKey: {
           in: [
             'c6_bank_username',
+            'c6_bank_promoter_code',
+            'c6_bank_typist_code',
+            'c6_bank_certified_agent_cpf',
+            'c6_bank_simulation_enabled',
             'c6_bank_password',
             'c6_bank_base_url',
             'c6_bank_auto_sync_enabled',
@@ -53,12 +57,10 @@ export class C6BankService {
 
     const username =
       configMap.get('c6_bank_username') ||
-      process.env.C6_API_USERNAME ||
       '';
 
     const password =
       configMap.get('c6_bank_password') ||
-      process.env.C6_API_PASSWORD ||
       '';
 
     const baseUrl =
@@ -77,6 +79,10 @@ export class C6BankService {
     );
 
     return {
+      promoterCode: configMap.get('c6_bank_promoter_code') || '',
+      typistCode: configMap.get('c6_bank_typist_code') || '',
+      certifiedAgentCpf: configMap.get('c6_bank_certified_agent_cpf') || '',
+      simulationEnabled: configMap.get('c6_bank_simulation_enabled') === 'true',
       username: username.trim(),
       password: password.trim(),
       baseUrl: baseUrl.trim().replace(/\/+$/, ''),
@@ -95,6 +101,10 @@ export class C6BankService {
     tenantId: string,
     data: {
       username?: string;
+      promoterCode?: string;
+      typistCode?: string;
+      certifiedAgentCpf?: string;
+      simulationEnabled?: boolean;
       password?: string;
       baseUrl?: string;
       autoSyncEnabled?: boolean;
@@ -125,6 +135,10 @@ export class C6BankService {
     if (data.username !== undefined) {
       await upsertConfig('c6_bank_username', data.username.trim(), false);
     }
+    if (data.promoterCode !== undefined) await upsertConfig('c6_bank_promoter_code', String(data.promoterCode).trim());
+    if (data.typistCode !== undefined) await upsertConfig('c6_bank_typist_code', String(data.typistCode).trim());
+    if (data.certifiedAgentCpf !== undefined) await upsertConfig('c6_bank_certified_agent_cpf', String(data.certifiedAgentCpf).replace(/\D/g, ''));
+    if (data.simulationEnabled !== undefined) await upsertConfig('c6_bank_simulation_enabled', data.simulationEnabled ? 'true' : 'false');
     if (data.password !== undefined && data.password.trim() !== '') {
       await upsertConfig('c6_bank_password', data.password.trim(), true);
       // Limpar cache de token após alteração de senha

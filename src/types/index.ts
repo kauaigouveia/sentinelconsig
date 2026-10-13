@@ -550,6 +550,10 @@ export interface FactaSyncHistoryItem {
 }
 
 export interface C6ConfigState {
+  typistCode?: string;
+  certifiedAgentCpf?: string;
+  promoterCode?: string;
+  simulationEnabled?: boolean;
   username: string;
   baseUrl: string;
   autoSyncEnabled: boolean;
