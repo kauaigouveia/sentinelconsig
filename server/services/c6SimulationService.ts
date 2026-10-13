@@ -5,10 +5,10 @@ import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
 export class C6SimulationService {
   static async inss(prisma: PrismaClient, tenantId: string, input: any) {
     const config = await C6BankService.getTenantConfig(prisma, tenantId);
-    if (!config.isConfigured) return [];
+    if (!config.isConfigured) throw new Error('Cadastre as credenciais C6 desta empresa em Integrações Bancárias.');
     const settings = await prisma.systemConfig.findMany({ where: { tenantId, configKey: { in: ['c6_bank_promoter_code', 'c6_bank_simulation_enabled'] } } });
     const values = new Map(settings.map(row => [row.configKey, row.configValue]));
-    if (values.get('c6_bank_simulation_enabled') !== 'true') return [];
+    if (values.get('c6_bank_simulation_enabled') !== 'true') throw new Error('Habilite C6 nas simulações INSS na configuração de Integrações Bancárias.');
     if (!['NEW', 'REFIN'].includes(input.operation)) throw new Error('O manual C6 disponível não documenta portabilidade.');
     const promoterCode = values.get('c6_bank_promoter_code');
     if (!promoterCode) throw new Error('Cadastre o código de promotora na configuração C6.');

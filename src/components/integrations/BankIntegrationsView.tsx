@@ -438,6 +438,10 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: c6Config.username,
+          promoterCode: c6Config.promoterCode,
+          typistCode: c6Config.typistCode,
+          certifiedAgentCpf: c6Config.certifiedAgentCpf,
+          simulationEnabled: c6Config.simulationEnabled,
           password: c6Password ? c6Password : undefined,
           baseUrl: c6Config.baseUrl,
           autoSyncEnabled: c6Config.autoSyncEnabled,
@@ -923,6 +927,12 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                     Endpoint oficial: POST /auth/token & GET /marketplace/proposal
                   </span>
                 </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([['promoterCode', 'Código da promotora C6'], ['typistCode', 'Código do digitador C6'], ['certifiedAgentCpf', 'CPF do agente certificado']] as const).map(([key, label]) => <label key={key} className="text-xs font-semibold">{label}<input value={c6Config[key] || ''} onChange={event => setC6Config({ ...c6Config, [key]: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800" /></label>)}
+                </div>
+                <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={!!c6Config.simulationEnabled} onChange={event => setC6Config({ ...c6Config, simulationEnabled: event.target.checked })} />Habilitar C6 nas simulações INSS</label>
+                <p className="text-xs text-slate-500">Preencha os dados da empresa atual. A simulação requer código de promotora e renda mensal do cliente; digitador e agente certificado serão usados na inclusão de propostas.</p>
 
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex items-center gap-2.5">
