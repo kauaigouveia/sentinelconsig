@@ -2074,6 +2074,8 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // SIMULATIONS API (PostgreSQL / Prisma)
   // -------------------------------------------------------------
+  // Register static preference paths before /api/simulations/:id.
+  registerSimulationBankOrderRoutes(app, prisma, getAuthSession);
   app.get('/api/simulations', async (req, res) => {
     try {
       const session = await getAuthSession(req);
@@ -15045,7 +15047,6 @@ async function auditAndEnsureMasterUser() {
   });
 
   // GET /api/integrations/c6/config - Secure tenant configuration
-  registerSimulationBankOrderRoutes(app, prisma, getAuthSession);
   app.post('/api/integrations/c6/inss/simulate', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
