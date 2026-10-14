@@ -1,3 +1,4 @@
+import { partnerPublicResponse } from './server/services/partnerPublicResponse.js';
 import { withIntegrationPromoter, resolveBankPromoter } from './server/services/bankPromoterConfig.js';
 import 'dotenv/config';
 import express from 'express';
@@ -121,8 +122,6 @@ import { NossaFintechService } from './server/services/nossaFintechService.js';
 import { ProductSimulationService } from './server/services/productSimulationService.js';
 import { ensureDefaultStatusesForTenant, ensureDefaultStatusesForAllTenants } from './server/services/statusService.js';
 import {
-  ensureDefaultPromotersForTenant,
-  ensureDefaultPromotersForAllTenants,
   ensureDefaultBanksForTenant,
   ensureDefaultBankPromotersForTenant,
 } from './server/services/promoterService.js';
@@ -324,9 +323,8 @@ async function auditAndEnsureMasterUser() {
     // Ensure status defaults exist for all tenants
     await ensureDefaultStatusesForAllTenants(prisma);
 
-    // Ensure default promoters, banks, and matrix exist for all tenants in PostgreSQL
+    // Initialize bank references; promoter records are maintained explicitly by the company.
     try {
-      await ensureDefaultPromotersForAllTenants(prisma);
       const allBootTenants = await prisma.tenant.findMany({
         where: { deletedAt: null },
         select: { id: true },
@@ -1204,6 +1202,12 @@ async function auditAndEnsureMasterUser() {
   // Enforce first-access password changes at the API boundary as well as in the UI.
   // The session endpoint must remain available so a browser refresh can restore the
   // forced-change screen; password update and logout are the only other allowed calls.
+  // Keep operational promoter bindings out of every external partner response.
+  app.use('/api/partner-portal', (_req, res, next) => {
+    const send = res.json.bind(res);
+    res.json = body => send(partnerPublicResponse(body));
+    next();
+  });
   // Promoter scope flows through asynchronous provider calls, without changing tenant/session resolution.
   app.use('/api/integrations', (req, res, next) => {
     const promoterId = req.query.promoterId;
@@ -4410,7 +4414,8 @@ async function auditAndEnsureMasterUser() {
       }
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
-      let promoters = await ensureDefaultPromotersForTenant(prisma, tenantId);
+      res.setHeader('Cache-Control', 'no-store');
+      let promoters = await prisma.promoter.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
       if (req.query.active === 'true' || req.query.status === 'ATIVO') {
         promoters = promoters.filter(p => p.status === 'ATIVO');
       }
@@ -6593,9 +6598,10 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
       const { id } = req.params;
-      await prisma.promoter.deleteMany({
+      const removed = await prisma.promoter.deleteMany({
         where: { id, tenantId },
       });
+      if (!removed.count) return res.status(404).json({ error: 'Promotora não encontrada nesta empresa.' });
       return res.json({ success: true });
     } catch (err) {
       return res.status(500).json({ error: 'Erro ao deletar promotora.' });

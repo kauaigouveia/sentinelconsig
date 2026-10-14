@@ -410,12 +410,15 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       setImportId(data.importId);
       setSuccessMsg(`Importação em processamento. Aguarde nesta tela para baixar a planilha de acessos automaticamente.`);
       let completed = false;
+      let refreshedRecords = 0;
       for (let attempt = 0; attempt < 300; attempt++) {
         await new Promise(resolve => window.setTimeout(resolve, 2000));
         const progressResponse = await fetch(`/api/import/${encodeURIComponent(data.importId)}`, { cache: 'no-store' });
         if (!progressResponse.ok) throw new Error('Não foi possível acompanhar a importação. Não reenvie o lote; consulte o histórico.');
         const job = await progressResponse.json();
-        setSuccessMsg(`Processando ${job.processedRecords}/${job.totalRecords} parceiros.`);
+        setSuccessMsg(`Processando ${job.processedRecords}/${job.totalRecords} parceiros — ${job.createdRecords} criados, ${job.updatedRecords} atualizados, ${job.invalidRecords} inválidos e ${job.failedRecords} falhas.`);
+        const committedRecords = Number(job.createdRecords || 0) + Number(job.updatedRecords || 0);
+        if (committedRecords > refreshedRecords) { refreshedRecords = committedRecords; onImportCompleted(); }
         if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status)) {
           completed = true;
           onImportCompleted();

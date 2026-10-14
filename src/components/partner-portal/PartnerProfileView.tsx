@@ -104,14 +104,6 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
             <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Documento (CPF/CNPJ)</span>
             <p className="font-mono text-slate-700 dark:text-slate-300">{partner.document || 'Não informado'}</p>
           </div>
-
-          <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Promotora Vinculada</span>
-            <p className="font-semibold text-slate-700 dark:text-slate-300">
-              {partner.promoter?.name || 'Mesa Direta'}
-            </p>
-          </div>
-
         </div>
 
         <form onSubmit={handleUpdateContact} className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
@@ -144,7 +136,7 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
           {contactSuccess && <p role="status" className="text-emerald-600 dark:text-emerald-400">{contactSuccess}</p>}
           {contactError && <p role="alert" className="text-rose-600 dark:text-rose-400">{contactError}</p>}
           <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-1.5 text-[10px] text-slate-400"><Shield className="h-3.5 w-3.5" /> Nome, documento e promotora são gerenciados pela organização {tenant.name}.</p>
+            <p className="flex items-center gap-1.5 text-[10px] text-slate-400"><Shield className="h-3.5 w-3.5" /> Nome e documento são gerenciados pela organização {tenant.name}.</p>
             <button type="submit" disabled={isSavingContact} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50">
               <Save className="h-3.5 w-3.5" /> {isSavingContact ? 'Salvando…' : 'Salvar contatos'}
             </button>

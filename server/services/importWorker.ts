@@ -1114,6 +1114,14 @@ export class ImportWorkerService {
             failedCount++;
           } finally {
             processedCount++;
+            // Publish committed row progress immediately, even for batches smaller than 500.
+            await prisma.importJob.update({ where: { id: jobId }, data: {
+              processedRecords: processedCount, createdRecords: createdCount,
+              updatedRecords: updatedCount, invalidRecords: invalidCount, failedRecords: failedCount,
+            } });
+            sseRegistry.broadcastToTenant(tenantId, { type: 'IMPORT_PROGRESS', entity: 'ImportJob', entityId: jobId, userId,
+              data: { importId: jobId, totalRecords, processed: processedCount, created: createdCount, updated: updatedCount, invalid: invalidCount, failed: failedCount,
+                percent: Math.min(100, Math.round(processedCount / totalRecords * 100)) } });
           }
         }
 

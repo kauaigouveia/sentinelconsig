@@ -14,7 +14,6 @@ export interface PartnerInfo {
   email?: string | null;
   phone?: string | null;
   document?: string | null;
-  promoter?: { id: string; name: string } | null;
 }
 
 export interface TenantInfo {
