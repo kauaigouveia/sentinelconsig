@@ -123,7 +123,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   OUTROS: 'Outros',
 };
 
-export const CentralPendencias: React.FC = () => {
+export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const activeUser = StorageService.getActiveUser();
   const canCreate = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.create');
   const canAssign = hasPermission(activeUser?.role, activeUser?.customPermissions, 'pendencies.assign');
@@ -518,7 +518,7 @@ export const CentralPendencias: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${premium ? 'p2-live-module p2-live-pendencies' : ''}`}>
       {uiError && (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
           <span>{uiError}</span>
@@ -526,7 +526,7 @@ export const CentralPendencias: React.FC = () => {
         </div>
       )}
       {/* Top Header Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${premium ? 'p2-pendency-header' : ''}`}>
         <div className="flex items-center gap-4">
           <div className="p-3.5 bg-rose-500/15 text-rose-400 rounded-xl border border-rose-500/30">
             <ShieldAlert className="w-8 h-8" />
@@ -574,7 +574,7 @@ export const CentralPendencias: React.FC = () => {
       </div>
 
       {/* KPI Counters & SLA Health */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 ${premium ? 'p2-pendency-metrics' : ''}`}>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
             <span>Total Fila</span>
@@ -645,7 +645,7 @@ export const CentralPendencias: React.FC = () => {
       </div>
 
       {/* Advanced Filter and Search Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 ${premium ? 'p2-pendency-filters' : ''}`}>
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           {/* Status buttons */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg p-1">
@@ -799,7 +799,7 @@ export const CentralPendencias: React.FC = () => {
       </div>
 
       {/* Main List */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+      <div className={`bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm ${premium ? 'p2-pendency-list' : ''}`}>
         {isLoading ? (
           <div className="p-16 text-center text-slate-500 space-y-3">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-rose-500" />

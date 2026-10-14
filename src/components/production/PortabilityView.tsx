@@ -20,7 +20,7 @@ import { MetricCard } from '../ui/MetricCard';
 import { StatusBadge } from '../ui/StatusBadge';
 import { EmptyState } from '../ui/EmptyState';
 
-export const PortabilityView: React.FC = () => {
+export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const getPortabilityProposals = (): Proposal[] => {
     const products = StorageService.getProducts();
     const all = StorageService.getProposals();
@@ -99,7 +99,7 @@ export const PortabilityView: React.FC = () => {
       : saldoRetornado;
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${premium ? 'p2-live-module p2-live-cip' : ''}`}>
       {/* Action Bar */}
       <ActionBar
         title="Portabilidade (CIP)"
@@ -118,7 +118,7 @@ export const PortabilityView: React.FC = () => {
       />
 
       {/* Financial Summary Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${premium ? 'p2-cip-totals' : ''}`}>
         <MetricCard
           title="Saldo Total em Portabilidade"
           value={formatCurrency(totalSaldoPortabilidade)}
@@ -142,7 +142,7 @@ export const PortabilityView: React.FC = () => {
       )}
 
       {/* Metrics Filter Tabs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+      <div className={`grid grid-cols-2 md:grid-cols-5 gap-2.5 ${premium ? 'p2-cip-queues' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Filas de portabilidade' : undefined}>
         <button
           onClick={() => setActiveTab('TODAS')}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
@@ -205,7 +205,7 @@ export const PortabilityView: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+      <div className={`overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs ${premium ? 'p2-cip-results' : ''}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
             <thead className="bg-slate-50 dark:bg-slate-950/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">

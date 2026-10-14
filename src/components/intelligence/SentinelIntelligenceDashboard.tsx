@@ -260,7 +260,7 @@ export const SentinelIntelligenceDashboard: React.FC<Props> = ({ onNavigateToVie
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 p2-intelligence-workspace">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-5 rounded-2xl text-white shadow-xl border border-indigo-500/20">
         <div>
@@ -326,7 +326,7 @@ export const SentinelIntelligenceDashboard: React.FC<Props> = ({ onNavigateToVie
       )}
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 p2-analytics-tabs">
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 transition flex items-center gap-2 ${

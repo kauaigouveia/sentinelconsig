@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { LayoutGrid, List, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { PremiumRecordWorkspace } from '../redesign/PremiumRecordWorkspace';
 
 export type RecordPresentation = 'cards' | 'list';
 export function operationLabel(value?: string | null) {
   const names: Record<string, string> = { NEW: 'Novo', NOVO: 'Novo', PORT: 'Portabilidade', PORTABILIDADE: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + refinanciamento', REFIN_PORTABILIDADE: 'Portabilidade + refinanciamento', PARTNER_AUTO: 'Portal do parceiro', INSS_MULTI: 'INSS', MANUAL: 'Manual' };
   return String(value || 'Crédito').split(':').map(part => names[part] || part.replaceAll('_', ' ')).join(' · ');
 }
-export function RecordWorkspace({ filters, summary, count, mode, onMode, children }: { filters: React.ReactNode; summary?: React.ReactNode; count: number; mode: RecordPresentation; onMode: (mode: RecordPresentation) => void; children: React.ReactNode }) {
+export function RecordWorkspace({ filters, summary, count, mode, onMode, children, premium = false }: { filters: React.ReactNode; summary?: React.ReactNode; count: number; mode: RecordPresentation; onMode: (mode: RecordPresentation) => void; children: React.ReactNode; premium?: boolean }) {
   const [filtersOpen, setFiltersOpen] = useState(true);
+  if (premium) return <PremiumRecordWorkspace filters={filters} summary={summary} count={count} mode={mode} onMode={onMode}>{children}</PremiumRecordWorkspace>;
   return <div className="record-workspace"><aside className="record-filters"><button type="button" className="record-filter-heading" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}><SlidersHorizontal size={17} /><strong>Refinar resultados</strong><ChevronDown size={15} /></button><div hidden={!filtersOpen}>{filters}</div></aside><section className="record-results"><div className="record-results-toolbar"><div><span className="record-results-count">{count}</span><span> registros encontrados</span></div><div className="record-view-switch" aria-label="Apresentação dos registros"><button type="button" aria-pressed={mode === 'cards'} onClick={() => onMode('cards')}><LayoutGrid size={15} />Cartões</button><button type="button" aria-pressed={mode === 'list'} onClick={() => onMode('list')}><List size={15} />Lista</button></div></div>{children}</section>{summary && <aside className="record-summary"><div className="record-summary-heading"><span>VISÃO DO NEGÓCIO</span><h2>Em perspectiva</h2></div>{summary}</aside>}</div>;
 }
 

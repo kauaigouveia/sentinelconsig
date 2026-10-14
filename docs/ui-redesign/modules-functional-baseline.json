@@ -1,0 +1,2440 @@
+{
+  "capturedBeforeMigration": true,
+  "modules": [
+    {
+      "path": "src/components/simulation/SimulationView.tsx",
+      "controls": [
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={cpfSearch}",
+            "onChange={e => setCpfSearch(e.target.value)}",
+            "placeholder=\"Ex: 01138777498...\""
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={selectedTypeFilter}",
+            "onChange={e => setSelectedTypeFilter(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={selectedUserId}",
+            "onChange={e => setSelectedUserId(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={selectedStatus}",
+            "onChange={e => setSelectedStatus(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"date\"",
+            "value={startDate}",
+            "max={endDate || undefined}",
+            "onChange={e => setStartDate(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"date\"",
+            "value={endDate}",
+            "min={startDate || undefined}",
+            "onChange={e => setEndDate(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={clearFilters}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={handleExportCsv}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setIsImportModalOpen(true)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "id=\"btn-nova-simulacao\"",
+            "onClick={handleOpenNewModal}",
+            "title=\"Iniciar uma simulação de crédito\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => void loadData()}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('VISAO_GERAL')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('DASHBOARD_ANALISES')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setSelectedIds([])}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => {\n        setBulkDeleteError(null);\n        setBulkDeleteReason('');\n        setIsBulkDeleteModalOpen(true);\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => onOpenProposalDetail(sim.matchedProposalId!)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus(sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? sim.status : 'DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(sim.rejectionReason || ''); }}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"checkbox\"",
+            "checked={filteredSimulations.length > 0 &&\n        selectedIds.length === filteredSimulations.length}",
+            "onChange={handleSelectAll}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => void loadData()}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"checkbox\"",
+            "checked={isSelected}",
+            "disabled={!canDeleteSimulationUI(activeUser, sim)}",
+            "onChange={() => handleToggleSelectRow(sim.id)}",
+            "title={canDeleteSimulationUI(activeUser, sim)\n        ? \"Selecionar para exclusão em massa\"\n        : \"Sem permissão para excluir esta simulação\"}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "title=\"Copiar CPF\"",
+            "onClick={() => copyToClipboard(sim.cpf, sim.id)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={sim.status}",
+            "onChange={async (e) => {\n        const val = e.target.value as SimulationStatus;\n        if (val === 'DIGITADA PELA MESA' || val === 'NÃO PASSÍVEL DE CONTRATAÇÃO') {\n            setStatusModalTarget(sim);\n            setSelectedTargetStatus(val);\n            setRejectionReason(val === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'Inviabilidade de crédito / sem margem ou política de crédito' : '');\n            setSelectedAdeNumber(sim.matchedProposalNumber || '');\n        }\n        else {\n            try {\n                const res = await fetch(`/api/simulations/${sim.id}/status`, {\n                    method: 'PATCH',\n                    headers: { 'Content-Type': 'application/json' },\n                    body: JSON.stringify({ status: val }),\n                });\n                if (!res.ok) {\n                    const errData = await res.json().catch(() => ({}));\n                    throw new Error(errData.error || 'Erro ao atualizar status.');\n                }\n                loadData();\n            }\n            catch (err: any) {\n                toastService.error('Erro ao atualizar status', err.message || 'Tente novamente.');\n            }\n        }\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => {\n        if (sim.matchedProposalId && onOpenProposalDetail) {\n            onOpenProposalDetail(sim.matchedProposalId);\n        }\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "title=\"Ver Detalhes e Histórico\"",
+            "onClick={() => setDetailTarget(sim)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => {\n        setStatusModalTarget(sim);\n        setSelectedTargetStatus(sim.status === 'DIGITADA PELA MESA' || sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO'\n            ? sim.status\n            : 'DIGITADA PELA MESA');\n        setSelectedAdeNumber(sim.matchedProposalNumber || '');\n        setRejectionReason(sim.rejectionReason || '');\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "title=\"Excluir Solicitação\"",
+            "onClick={() => {\n        setDeleteModalTarget(sim);\n        setDeleteReason('');\n        setDeleteError(null);\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "aria-pressed={presentation === 'cards'}",
+            "onClick={() => setPresentation('cards')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "aria-pressed={presentation === 'list'}",
+            "onClick={() => setPresentation('list')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus('DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(''); }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => {\n        setStatusModalTarget(sim);\n        setRejectionReason('');\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setIsNewModalOpen(false)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setDuplicateWarning(null)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => executeCreateSimulation(duplicateWarning.cleanCpf, duplicateWarning.partnerId, initialStatus, initialRejectionReason)}",
+            "disabled={isCreatingSimulation}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleSubmitSimulation}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "required",
+            "autoFocus",
+            "value={newCpf}",
+            "onChange={handleCpfChange}",
+            "placeholder=\"000.000.000-00\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => {\n        setSelectedPartner(null);\n        setPartnerQuery('');\n        setIsPartnerDropdownOpen(true);\n    }}",
+            "title=\"Limpar seleção de parceiro\""
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={partnerQuery}",
+            "onChange={e => {\n        setPartnerQuery(e.target.value);\n        setIsPartnerDropdownOpen(true);\n        setModalError(null);\n    }}",
+            "onFocus={() => setIsPartnerDropdownOpen(true)}",
+            "placeholder=\"Digite o código, login ou nome do parceiro...\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "key={p.id}",
+            "onClick={() => {\n        setSelectedPartner(p);\n        setIsPartnerDropdownOpen(false);\n        setModalError(null);\n    }}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={selectedConvenioId}",
+            "onChange={e => {\n        const newConv = e.target.value;\n        setSelectedConvenioId(newConv);\n        if (newConv) {\n            const compat = StorageService.getProductsForConvenio(newConv).filter(p => p.active);\n            if (compat.length > 0 && !compat.some(p => p.id === selectedProductId)) {\n                setSelectedProductId(compat[0].id);\n            }\n        }\n    }}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={selectedProductId}",
+            "onChange={e => setSelectedProductId(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setInitialStatus('SIMULAÇÃO ENVIADA')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setInitialStatus('NÃO PASSÍVEL DE CONTRATAÇÃO')}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={initialRejectionReason}",
+            "onChange={e => setInitialRejectionReason(e.target.value)}",
+            "placeholder=\"Ex: Cliente sem margem disponível / Idade fora da política\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setIsNewModalOpen(false)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isCreatingSimulation}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setSelectedTargetStatus('DIGITADA PELA MESA')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setSelectedTargetStatus('NÃO PASSÍVEL DE CONTRATAÇÃO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setSelectedTargetStatus('SIMULAÇÃO ENVIADA')}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={selectedAdeNumber}",
+            "onChange={e => setSelectedAdeNumber(e.target.value)}",
+            "placeholder=\"Ex: 833085808\""
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "value={rejectionReason}",
+            "onChange={e => setRejectionReason(e.target.value)}",
+            "placeholder=\"Ex: Cliente sem margem consignável disponível no momento...\"",
+            "rows={2}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setStatusModalTarget(null)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={handleConfirmStatusChange}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "value={deleteReason}",
+            "onChange={e => setDeleteReason(e.target.value)}",
+            "placeholder=\"Ex: Cadastro em duplicidade / solicitação incorreta...\"",
+            "rows={2}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setDeleteModalTarget(null)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={handleConfirmDelete}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "value={bulkDeleteReason}",
+            "onChange={e => setBulkDeleteReason(e.target.value)}",
+            "placeholder=\"Ex: Limpeza de solicitações de simulação antigas / duplicadas...\"",
+            "rows={2}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setIsBulkDeleteModalOpen(false)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={handleConfirmBulkDelete}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setDetailTarget(null)}",
+            "aria-label=\"Fechar detalhes da simulação\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setDetailTarget(null)}"
+          ]
+        }
+      ],
+      "expressions": {
+        "toLocalDateKey": [
+          "a261816489e0d79f2b4a49ddd9afb6fa138f39642c8ceb3682c633e9cd637963"
+        ],
+        "date": [
+          "df9ca6edf9f4f63cc8e4d8c18c946e8e8ca18943c98fa87fa013d5dc4b16be36"
+        ],
+        "activeUser": [
+          "5ec85c455893638f1ac04967b707234d9c0d6018aa8924ef2a0d7476b211e75d",
+          "5ec85c455893638f1ac04967b707234d9c0d6018aa8924ef2a0d7476b211e75d"
+        ],
+        "canSetInitialStatus": [
+          "63d1f5bc8bb43ff95b8829e1fdd4d24b72829faa1aad62d1e6fc6af51c5f4152"
+        ],
+        "[activeTab, setActiveTab]": [
+          "7b2a8ba51185080ffd9cb76330f6b11db7d4e93d8062107f6c27b79d2cbd8992"
+        ],
+        "[presentation, setPresentation]": [
+          "f3bd333993b19ce52607b38a58cf6d67faa3e3c68df95f00e2e9fa278f269082"
+        ],
+        "[simulations, setSimulations]": [
+          "8afda945aafb6ee8835dd2c9ff635ab07585eb60e8a7af0c413402aae5d2aa24"
+        ],
+        "[simulationsLoadError, setSimulationsLoadError]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[isLoadingSimulations, setIsLoadingSimulations]": [
+          "60f1ad3dda0b658954f1e26acd7e44a273e0a70a73327db33defa24daa59ac68"
+        ],
+        "[partners, setPartners]": [
+          "956dd78c41ed11b08b87c6d544db8c028509446205e22742c8d1612265157869"
+        ],
+        "[users, setUsers]": [
+          "da5fc19ffbf4bada571f66d6678c33589749af89c70dfe1e6c6b1d3a4a770ff3"
+        ],
+        "[cpfSearch, setCpfSearch]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[selectedPartnerId, setSelectedPartnerId]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[selectedUserId, setSelectedUserId]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[selectedStatus, setSelectedStatus]": [
+          "7aefc722bfdca6e5776164ecd938dfb77a506f7db964e54f3bda84f8c2290f7d"
+        ],
+        "[selectedTypeFilter, setSelectedTypeFilter]": [
+          "7aefc722bfdca6e5776164ecd938dfb77a506f7db964e54f3bda84f8c2290f7d"
+        ],
+        "[startDate, setStartDate]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[endDate, setEndDate]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[selectedIds, setSelectedIds]": [
+          "2ef2bf03d7f56243030a8c719b15178b486c55145eeb070064bbbfc934da3157"
+        ],
+        "[isFlowSelectorOpen, setIsFlowSelectorOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[multiProduct, setMultiProduct]": [
+          "bffa951c66c42c60e79aceaad7e1e6e984191fb1452ad0b4c54bdeb70ebf726c"
+        ],
+        "[isNewModalOpen, setIsNewModalOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[isHappyInssModalOpen, setIsHappyInssModalOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[isHappyCltModalOpen, setIsHappyCltModalOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[isFinantoInssModalOpen, setIsFinantoInssModalOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[finantoOperationCode, setFinantoOperationCode]": [
+          "ffa272189196833defb5be828606efbaccaead51410d79f501deae18601ed788"
+        ],
+        "[finantoEnabled, setFinantoEnabled]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[nossaFintechEnabled, setNossaFintechEnabled]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[inssInitialDraft, setInssInitialDraft]": [
+          "48360f88883ae66dfacdaed77b405904b903ea7e015371dc655fcc96930964c0"
+        ],
+        "[isNossaFintechPortRefinOpen, setIsNossaFintechPortRefinOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[isImportModalOpen, setIsImportModalOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[newCpf, setNewCpf]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[selectedPartner, setSelectedPartner]": [
+          "653f14fb610c593519594de5b92f514c6ec6f05966432d38d40dc41147a23f05"
+        ],
+        "[partnerQuery, setPartnerQuery]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[isPartnerDropdownOpen, setIsPartnerDropdownOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[modalError, setModalError]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[initialStatus, setInitialStatus]": [
+          "a7159e57bf99924321f6f2db36e955b58fbf65a9c08bd71add5d8cc99ce79c64"
+        ],
+        "[initialRejectionReason, setInitialRejectionReason]": [
+          "83b0654693f4da3e67da0413db0d06d2b88642f5b5280d67bc6b4c9183a45319"
+        ],
+        "[isCreatingSimulation, setIsCreatingSimulation]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "isCreatingSimulationRef": [
+          "3b30cbc8e57e1511e207cb1de67cafeb085c0d4693f33afb1cc62eb2af8f66c6"
+        ],
+        "[conveniosList, setConveniosList]": [
+          "b1817cbe9cde0a7eb239f36a48a1b2cd3e7710a518f9e9415a25c72c9dcf03e9"
+        ],
+        "[productsList, setProductsList]": [
+          "ff2aff18dd52a416b9e791601a7b9618342906e17ba0c3e099d9af770583b43d"
+        ],
+        "[selectedConvenioId, setSelectedConvenioId]": [
+          "83b0654693f4da3e67da0413db0d06d2b88642f5b5280d67bc6b4c9183a45319"
+        ],
+        "[selectedProductId, setSelectedProductId]": [
+          "83b0654693f4da3e67da0413db0d06d2b88642f5b5280d67bc6b4c9183a45319"
+        ],
+        "[duplicateWarning, setDuplicateWarning]": [
+          "3e032a2f728015bd0851d3192e552ccd870825310b775c9d87fdf6815f41a197"
+        ],
+        "[statusModalTarget, setStatusModalTarget]": [
+          "46cd34c10bdb6f7954b49c1e3c0cb21d61e83f1a3c62df9de8faa3ab6d27960f"
+        ],
+        "[selectedTargetStatus, setSelectedTargetStatus]": [
+          "dc898c115ff6c37e2330b07234abb3fc91223f470afd0d1991194bad27290d99"
+        ],
+        "[selectedAdeNumber, setSelectedAdeNumber]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[rejectionReason, setRejectionReason]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[deleteModalTarget, setDeleteModalTarget]": [
+          "46cd34c10bdb6f7954b49c1e3c0cb21d61e83f1a3c62df9de8faa3ab6d27960f"
+        ],
+        "[deleteReason, setDeleteReason]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[deleteError, setDeleteError]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[isBulkDeleteModalOpen, setIsBulkDeleteModalOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[bulkDeleteReason, setBulkDeleteReason]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[bulkDeleteError, setBulkDeleteError]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[detailTarget, setDetailTarget]": [
+          "46cd34c10bdb6f7954b49c1e3c0cb21d61e83f1a3c62df9de8faa3ab6d27960f"
+        ],
+        "[copiedId, setCopiedId]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[happySimulationAccessEnabled, setHappySimulationAccessEnabled]": [
+          "7bd490bac85150c3470c812c60139b0572a2d4938ca4297aba0400a4b84b45ba"
+        ],
+        "fetchSimulationAccess": [
+          "2a6acf21a42b4a8bd5dbba06c493e6f6a4f469aa12f399495ebd46fee1603aa4"
+        ],
+        "res": [
+          "9273fe4dd731e8df58087487d1ed1c29fb3cdee3a00bd0040fd7df084ce392e0",
+          "6a6bdd2576ceb7212ee4c82fb303b0e3e070cb5f016a5bf47ab4a4b5d97199a6",
+          "78386340610bb02feea0b83e5514e5c6d0816e7e02457d157f7da3b04bc4f75d",
+          "608bff50ff7f2dbd412b7ca2e05180fefa05552968841d7b5e47ed8840f8a908",
+          "3669772741588e7ce6637660ff13d6fec7767c9e92e84d2846accdb2e891a402",
+          "d75dc8d2e74fd33e7f774fcf94772e9fa7bb67121c5982a30fe011fcbd88bad3",
+          "7fe4644c77bbf36745031936e9adc8f25a87a3399af16d9e16989d0c6d38de52"
+        ],
+        "data": [
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d"
+        ],
+        "isEnabled": [
+          "e60a1728b630089ba034df59f64ff0b758edba10ba4fd501248c64cef2544b52"
+        ],
+        "currentTenant": [
+          "dff390a8183d216d68fa87fc2e49e2983c486f10d702717455cd8acacf59339a",
+          "dff390a8183d216d68fa87fc2e49e2983c486f10d702717455cd8acacf59339a"
+        ],
+        "comboboxRef": [
+          "72d053a53c6fa1d8a8c3a9cbc25176d1742270ab8d957d053ba872068f616d1c"
+        ],
+        "loadRequestRef": [
+          "a74da398b0445099d9730a5f5094e5b226d7cc2ff6fea6faba0acc139f83881a"
+        ],
+        "loadData": [
+          "832fbe8c304c90b62a7ebeeb50ca19b789bba59a9dae2e65899ca7352abab692"
+        ],
+        "requestId": [
+          "4b9141b98a9061597f6680e772ca5dab31d31f7291dfddd96acedb7cab552896"
+        ],
+        "pRes": [
+          "5af0263fb77e8c59599b8d487a7f7c43ee242c858c99a96e951878c63f3b3226"
+        ],
+        "pData": [
+          "4def3668b95f0680cb674df99e60bbdf5ce6ce9513fc205999aa342da35061e7"
+        ],
+        "uRes": [
+          "ec4a5e00d375b056af1ac2e6696a2991bd39cb3c37d6a31bb6ef4bde635cd34a"
+        ],
+        "uData": [
+          "338ebea9a2fb6cff09adf9efad6d78ee675cbe933dba7d9b9aa870faf1209169"
+        ],
+        "cRes": [
+          "d5f2e5f6f18edeee1271c3174dab0e5591b2e9c6b716f37171f57d42e47d7e8c"
+        ],
+        "cData": [
+          "589ad9e9f65acc71ead88c2807fb349f3a9572e67c7198a87e38a23a14641e71"
+        ],
+        "prRes": [
+          "98a59bbc6e209b274ae33c806859a76fb26984b91867f7c9022d9053600e95a5"
+        ],
+        "prData": [
+          "fc376f255f205d15623e0be0cf10ceb4d1b68f4773454a2f49db5231705446a0"
+        ],
+        "handleUpdate": [
+          "e69c8961c286b459535fa30f423e756d6fcfbb06abf2e8770825bacabf2acaf0"
+        ],
+        "handleClickOutside": [
+          "8cde8756b575d467180dc43110295b881d55f001bc81df59d46bffac0970751d"
+        ],
+        "filteredPartnerOptions": [
+          "2f062240c96e2c21a756f6e6d80d90e378d0a2805649264562631b2d79d5cc9d"
+        ],
+        "query": [
+          "7ab6b7df5c206dcac8224d5a5eea9372229801d164e892c21bb5ce75cd5b9530"
+        ],
+        "loginStr": [
+          "89303b8d612be4afc12909a66c11aa08a9c8a0e14a33d344c9cac9e72e976a36"
+        ],
+        "fullNameStr": [
+          "108230e436dda9e7f0763f2276509b0e5a036963ca5d59344d4e355d500edaef"
+        ],
+        "code": [
+          "e4f28425f4404618479c7967dddc10b00b5e0ed7edfbeb3e4c096aba61e142a0"
+        ],
+        "login": [
+          "b3e63cf7a1ff2bc9e559589fc03b58ae740fe7f61ecaed67aa137aaf7236e0d5"
+        ],
+        "name": [
+          "1c75550c5c02417e722d8b5a4162a5149bcf25daf6bb9b2498fbf3061b2cdda3"
+        ],
+        "handleCpfChange": [
+          "6fe4d2c38032b16e14caa129829e2431320ced4d2f8ea5133474c7bbf1369573"
+        ],
+        "value": [
+          "fea660833e6a0dab83add938fef988200b5a0bab4514104da108a8543f1c164c",
+          "a726eb53de9d108e790ef299100c8b011207d57e54d54657ae586dd506c912bf"
+        ],
+        "handleOpenNewModal": [
+          "ff98002d38380f703afb317c25d26ee0a49ca92a572aeefac96986a67e2d910e"
+        ],
+        "handleOpenManualModal": [
+          "0a33f9110529080cda569863e17c5cb2c726a46ffa3cb6b6fa3054f35a37651b"
+        ],
+        "executeCreateSimulation": [
+          "d95ca3a71349c5a2da528a7f5f6065df26ea4e1c1756c26b25c7edd943053706"
+        ],
+        "handleSubmitSimulation": [
+          "5e53b7fa0f0e33b593b5779c04fa14830019c3f13f63fb2f761ea19486a60740"
+        ],
+        "cleanCpf": [
+          "d71de8c6c769a661d584ef442ca87e1724ac799f815da108f9e80b68ca9b65d7"
+        ],
+        "existingPending": [
+          "49e902a936bc5143aa945666babed607702fd1d426935e4bcc0dfa1afe412415"
+        ],
+        "handleConfirmStatusChange": [
+          "9cf744dd61d1de6c7c560458269fa3dfdc2b73d62b9f14af7c13c24ee2e13e0c"
+        ],
+        "handleConfirmDelete": [
+          "0a741b3f04dc056bec7238c85040745f388ff80482f2cc4f6fdbaa40d84574c4"
+        ],
+        "handleConfirmBulkDelete": [
+          "d38d01d85d897cf0627468fa1672667304dd57a8ba7326e0efb36e96f6ef64b7"
+        ],
+        "result": [
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d"
+        ],
+        "failedErrors": [
+          "e96fa7a6177942bab57fafa6ec480904444196c423089704bc5b4098392271a6"
+        ],
+        "copyToClipboard": [
+          "733b475c732bfdca0d9e6fc2be594302e901ab6fce95b6af6dbad6ae8e447e00"
+        ],
+        "metrics": [
+          "1272ece121c9f63a1aa309e8c2cc3b98c616c88ad5c0c01dea74fd96f5d96011"
+        ],
+        "total": [
+          "016f036207ea6bd0717410bce74efd5318bb21bb5f7f326b988b3ecd4569ed4b"
+        ],
+        "enviadas": [
+          "e7a922ed5879eccf8dc3e93dad525a2e8e48032c5caf21c8d5b81f214f2b1f5a"
+        ],
+        "naoPassivel": [
+          "76c90b732b7e9d1b0a726ee2d04b434ca00855b2b43462517d1bba574e346bd6"
+        ],
+        "digitadas": [
+          "0bcf66a661d0343f65db92b689e0cf2ca3187c4a99afb21cc7d1e91f69476949"
+        ],
+        "perdidas": [
+          "51b1cdc41630533d49b0c3666cb93c49a3bd65789bef17bd5cac1aa17f480a99"
+        ],
+        "taxaConversao": [
+          "1786585d06538ccaf5ca4335f88d6282047ac03b75e3a2c558e4f96c3d14efd0"
+        ],
+        "filteredSimulations": [
+          "b2c9a974089212929dbe8fec3a2391f8da3e50ea422da3a73984c1d47b756f22"
+        ],
+        "cleanSearch": [
+          "76ba6cc3704e50ef6e87c59fa5138beb376f5d370356424f41faa859669a8557"
+        ],
+        "type": [
+          "187e015e09e6a227e9f797705ea65c4b4678a02765b0f1cfacc5fa170215e7c1"
+        ],
+        "simDate": [
+          "b613521fa432924c5421bf897a1156182bf81cb8a84fc16bb5f53bd77b48dd8a"
+        ],
+        "pendingQueueSimulations": [
+          "6028c414f6a2ac1b5b7a06074d8fc15c92bea68946ccb1a0a87db5e380dc42f5"
+        ],
+        "partnerStats": [
+          "ff3713a4e038e45096e22e1644565572a7680c4bda266ca5b26c054254df9128"
+        ],
+        "map": [
+          "7403b26188de5dcebd51a411687c5b122e40bf8426b42b5c0776d5e759d647b4",
+          "ad449ca70b188ebef8cd82c79e1a86a0477338d72757590352b2477d3d4e7146"
+        ],
+        "partner": [
+          "cbbbd98fb133c221d71971e4ee9558019e10584c7600d8c939de397f703e3b42",
+          "4847616d920b33f2000d1cde8a8198e23e3bbeedc2655864cf3a0028636e9676",
+          "baeaafc429a8310793e4b6471600803cc0d4008433ddaf66d265627113f01988",
+          "cbbbd98fb133c221d71971e4ee9558019e10584c7600d8c939de397f703e3b42",
+          "baeaafc429a8310793e4b6471600803cc0d4008433ddaf66d265627113f01988",
+          "cbbbd98fb133c221d71971e4ee9558019e10584c7600d8c939de397f703e3b42"
+        ],
+        "current": [
+          "aa88df13662f411e5c1e7e2853ffe82c4ac44e7c324e7bcafa297a67d609731f",
+          "4acc0340bb4cd3bb07766ef0e9a160c4da78d0d0e3cdf5378677dfc8992ce8df"
+        ],
+        "userStats": [
+          "be4dfcc9538353bc8aa2852c63e7ab70bbcbc714718dbaa032751ea94a6fe60a"
+        ],
+        "user": [
+          "748ddf30ec52088b586ceed05f48933edc4bed5001a5b096d07d01f16f625c3f"
+        ],
+        "averageMatchTime": [
+          "fc33c0c4e8e5c80b15a5f0ce2a13197801fafed7ddf0916bf766971ae0028296"
+        ],
+        "matched": [
+          "863da4e5862a0f9adce68dea80238925bf4629e20add61478765db778eaf730e"
+        ],
+        "totalMs": [
+          "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        ],
+        "start": [
+          "cd12a2b853436663c7e222942b57dab2eb5c1c68e22312081222d8abde2dfd68"
+        ],
+        "end": [
+          "ac6fbd73701738c4b1d5baaa1aa5e224bf23938b9ea9c3962bde96bfc24f8b47"
+        ],
+        "avgMinutes": [
+          "24db013ff72c40cfe30d2c37f36fd0ec838d96436229fad14492f3e7becd55d4"
+        ],
+        "hours": [
+          "d64439e00322b33283bc94bc8df4ab31f0e10a318eaaa35452e59d435e835b98"
+        ],
+        "mins": [
+          "ef3d443c8c3ae43542b4264d2a132673c064bcb6e107a8f9e7f4db294ae43e9b"
+        ],
+        "getElapsedTimeInfo": [
+          "9413402cb40f1606acf3b15a4d1707e314c65d55a81b7eebefc789b2d2f3c9dc"
+        ],
+        "startTime": [
+          "b5dcbdd512cc86246369230d29a0d097fac7f62445ca709e52b28cd9544e3be8"
+        ],
+        "endTime": [
+          "32c0df08c8146a9de61f969b7ddb82f4d4daae5547a7f2b1f9c534e1113b648d"
+        ],
+        "diffMs": [
+          "2256a2c42160f26d8dd5189b212873b14e75c05dcfac388607f33b5a047d41c5"
+        ],
+        "diffMins": [
+          "ce8d20d923620f4cc22d6c66d01e1c0f46dda808fed2e3e883c623c64e3770b1"
+        ],
+        "text": [
+          "bb98b06753839f0db58a4163deff8976a489dd48c069116d7aa7f6503660682c"
+        ],
+        "h": [
+          "b601016c3083287714506ca7945b099c07b7a395b0017146d439727d5c6c8873"
+        ],
+        "m": [
+          "01cc6af27ba2752e390dabe747e64f03694bdef548bf280f52ff0b86c33ee4bc"
+        ],
+        "MAX_SLA_MINS": [
+          "6d7f94d9a87aea954ed416a950d61a2a953927af2ff733027fd5542fe8098c9c"
+        ],
+        "remainingMins": [
+          "50f29137e35c61296bcfbd6659ff8c9cf740026458f211c2d0eb4f6963e3fdc8"
+        ],
+        "remainingText": [
+          "6f49cdbd80e1b95d5e6427e1501fc217790daee87055fa5b4e71064288bddede"
+        ],
+        "remH": [
+          "afe6963790d2e5e7e896ea2d98af58f5af93129f202346d68ac8d7d761943a47"
+        ],
+        "remM": [
+          "664fa7c1cbc3a3425af8f9f5d0eba56fdfdfed9d52ff10fdd00bb8d9753279d8"
+        ],
+        "badgeClass": [
+          "ef1d6ae5df9d7433ccb8e65265bac9cbcf2267d3909ea2e46ea0466a9a449695"
+        ],
+        "clearFilters": [
+          "d7c890d70cd2db7f9eca2137be07a1c7d8067a3840efd32ed450d37525701dc1"
+        ],
+        "hasActiveFilters": [
+          "ec964646202e65fa7c3bfc1928293492f56aff6b64af2e2dba6d0bcfdff4126d"
+        ],
+        "canDeleteSimulationUI": [
+          "329981cfb34ef6a923f80824e9b8309de4a4c3481742e3c7b987f6c8cc184c01"
+        ],
+        "canChangeStatusUI": [
+          "6373d45411339df1d4a3e042f080b296884a74ea9a6d338a165aad6739d95e35"
+        ],
+        "handleSelectAll": [
+          "517ab27a30fb33975a287077ffee3bd8f864009e3118367df0aa67f03cc0fd55"
+        ],
+        "deletableIds": [
+          "d11d8241ed918daba069bc27e2d303958ee6e3376c0138c4a76cd026892579e1"
+        ],
+        "handleToggleSelectRow": [
+          "0e0ba2f97a58f6f24dbde9d50262784292b547eea0315d978649b82593a8a8e1"
+        ],
+        "handleExportCsv": [
+          "7a68f46b9b79d02589f83f93c0f13d0440caa5fcf2e854d2d8a73640c534bf5d"
+        ],
+        "dataToExport": [
+          "759657c43c98953ebf0bf7ceca7405e2cb7b37d8d3b7c60c416ed5a06fdae921"
+        ],
+        "headers": [
+          "883615512059dadd2441fc7f51af8e9609a10d47c373fdce4fdc517b907fa78d"
+        ],
+        "rows": [
+          "33b6caa431f19cd73b081985bb8a40bd09e157a0d5223452103cd7d858396072"
+        ],
+        "creator": [
+          "26d4bfbc34a046615e2f976738142a22d46c5f2af2a51aee8e6d9f31a17cae3c",
+          "748ddf30ec52088b586ceed05f48933edc4bed5001a5b096d07d01f16f625c3f",
+          "748ddf30ec52088b586ceed05f48933edc4bed5001a5b096d07d01f16f625c3f"
+        ],
+        "elapsed": [
+          "0fefe41656bdbbeffa290d1de768dd5f3748693cb1ff74a53f09700f31f2fd1b",
+          "40e3a570062de27a18364083b2fd8eb64d34ffe6fe4487616e376339bfe015e0",
+          "40e3a570062de27a18364083b2fd8eb64d34ffe6fe4487616e376339bfe015e0",
+          "40e3a570062de27a18364083b2fd8eb64d34ffe6fe4487616e376339bfe015e0"
+        ],
+        "csvContent": [
+          "c30e3913e80ffa59d6287bb7cc12b0e9c311f8135333689ed08bdf82907b4b4b"
+        ],
+        "blob": [
+          "73e183b4c94a729d6b947051798ad9024b5ca17171c077fa96ad058daa01046a"
+        ],
+        "url": [
+          "48131ecff6cd81a3e0713954416a38a2e9c4e0a40774e1efa0f79ef2779f4cbe"
+        ],
+        "link": [
+          "57f318c5f1ce1b5885db7cb360d21471abe42ccbb4c6fe09ab6c6a86ab5130b1"
+        ],
+        "isCopied": [
+          "a024387b4d598d0460baf19f57d11a6aca4a87a02cf4de3809f76fe2e07270fb"
+        ],
+        "isSelected": [
+          "2e58334b1c3e4abb41ce4a23615930e46dcb4f415aaf8f4e84c35bdf28470d8b"
+        ],
+        "val": [
+          "41df6d2d9679e5ccb2d7511d6affd63a39831ed2072db784936a14801df7ea53"
+        ],
+        "errData": [
+          "03ea8cff7dffb5dfd5dfe9670233baff575babc9d82795fb99b83337f0664392"
+        ],
+        "conv": [
+          "df40e865a56bb48e3061020cfc2e2c57ece1b28202d23d8e2736f1d247c3edde",
+          "df40e865a56bb48e3061020cfc2e2c57ece1b28202d23d8e2736f1d247c3edde"
+        ],
+        "newConv": [
+          "68862c732c429f61c5c4ae0eeb42cc821943847018fcff6224d7b72a6dee72c2"
+        ],
+        "compat": [
+          "0a07d78180875054dff062d79e28253b645a5688d634562021731129b675b8b4"
+        ],
+        "labels": [
+          "9789049300b65624250caa848ef3ab7ab727d05aa138807760731fa4797f8942"
+        ]
+      }
+    },
+    {
+      "path": "src/components/production/KanbanBoard.tsx",
+      "controls": [
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={searchTerm}",
+            "onChange={e => setSearchTerm(e.target.value)}",
+            "placeholder=\"Buscar ADE, CPF ou Parceiro...\""
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={productFilter}",
+            "onChange={e => setProductFilter(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={slaFilter}",
+            "onChange={e => setSlaFilter(e.target.value as any)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setSortBy('SLA_URGENCY')}",
+            "title=\"Ordenar por maior urgência de SLA\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setSortBy('RECENT')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={(e) => {\n        e.stopPropagation();\n        void handleMoveStatus(p.id, 'PREV');\n    }}",
+            "disabled={Boolean(updatingProposalId)}",
+            "title=\"Mover para etapa anterior\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={(e) => {\n        e.stopPropagation();\n        void handleMoveStatus(p.id, 'NEXT');\n    }}",
+            "disabled={Boolean(updatingProposalId)}",
+            "title=\"Avançar para próxima etapa\""
+          ]
+        }
+      ],
+      "expressions": {
+        "[proposals, setProposals]": [
+          "9312bcde58f3fc90834183fd7cae3a2196d566b027ca81bb9c9e1df18eab602f"
+        ],
+        "statuses": [
+          "1a49fa9987d9b12323af8e8f0e25615a960bcdc503cdfdfaece9642569b42030"
+        ],
+        "clients": [
+          "59d198e731def86e4e9df5c0b358e53ec2818e9991197ab977d433744cd581c7"
+        ],
+        "products": [
+          "137c3be0eb164624f1dbaedb7175a1e4e5b60820f91b2c022ec1958e5b47d1a1"
+        ],
+        "banks": [
+          "d8fbae7e3c3b0fefbc3d5cce7c652ab8bf2fd283b3c6db1024d1b9b8d826834d"
+        ],
+        "promoters": [
+          "94855475400d1b96e10760261f4293cf2f8c17651725da19d0592f0d015243f6"
+        ],
+        "partners": [
+          "743d7e5a13ff22491673e94a099af2bad7c2da64c4cd35596dac0f9af789ab75"
+        ],
+        "historyList": [
+          "2a2ec012a6385d7e38f167efb6c0f6a2b8be39c6d50a254f774caa25a1eff871"
+        ],
+        "[selectedProposalId, setSelectedProposalId]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[updatingProposalId, setUpdatingProposalId]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "activeUser": [
+          "5ec85c455893638f1ac04967b707234d9c0d6018aa8924ef2a0d7476b211e75d"
+        ],
+        "canUpdateProposals": [
+          "f7157e06b2bd73e67aef1d48f3ef56527e09696904cd909aa41911c4f9e4a1c2"
+        ],
+        "[productFilter, setProductFilter]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[slaFilter, setSlaFilter]": [
+          "f72d372d9d2ea38e9dcfd1a41ad7ef481671a415542768af501fb4d88862ab49"
+        ],
+        "[searchTerm, setSearchTerm]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[sortBy, setSortBy]": [
+          "c27c0163baef2baa3c523316a3665c6d355516c0c201b51ce1c557285192a273"
+        ],
+        "refreshData": [
+          "1e1ae146be66372b98fd519e66367e873a6e733af38c855f9ad4cf3f4f54ea18"
+        ],
+        "handleMoveStatus": [
+          "292bced7b252e1d2cfa980642b6fd7b06ef5af9f8ed3caffaff34aacfe7e0fbb"
+        ],
+        "prop": [
+          "5eec5595538a0b6d9ef4ee31d955dba4e755c1ae3ed410a1480c03562af5f5cf"
+        ],
+        "currentIdx": [
+          "d63a4811e6abef304811892b6c0f43d563297b6163727e90208390fe5d913bdc"
+        ],
+        "step": [
+          "40c9c301434662b92972fe413b8cd0c041db9af240038c56d1ac41ec7ce66052"
+        ],
+        "nextIdx": [
+          "934c07abca1f65131f789126f916afd61ca89d679d543450c2354071b73f1c17"
+        ],
+        "targetStatus": [
+          "1501e74c9ec2017ecc5df275c6b47a2ac3096d2eb5af9f4e97df0c510026b1bb"
+        ],
+        "response": [
+          "b2a37ce81df616d789d57ed157caebeb432168fefcf0f84b4b7c493b700f4c78"
+        ],
+        "error": [
+          "e068eaec97a3dc28a903aeb55468d499a0a3ad34c85ceb393d62369a8c555363"
+        ],
+        "calculateSlaMetrics": [
+          "1e20aae7553d4946c419d14fb285862a5a447ae0510a29b9284aa2c2ec4fa792"
+        ],
+        "targetHours": [
+          "43b36210866eab3287bc985665907ecd0a71081c076249f3254bda7ff62ff519"
+        ],
+        "statusHistoryEntries": [
+          "73258a2abb0d928de90cb9492151bcb1b7cbdea7922a01a999d7721c2476706d"
+        ],
+        "entryTimestamp": [
+          "8d2f12acf2a82a653570d43071af8369928c4a2f277efd9615b873967a9e699c"
+        ],
+        "entryTime": [
+          "43c2bf5406062ff7e23d47c82957706a2c3ff8276c341173ca863639db0896ef"
+        ],
+        "now": [
+          "d8171d118e19556010680eb7b3001365c6aed91869027eb5edd26dca0c6c2609"
+        ],
+        "elapsedMs": [
+          "54aa43d4e16695c3a2126dd1b102287e28c0cf84883659c6a52ca241995a4255"
+        ],
+        "elapsedHours": [
+          "80cb63a523bda1164637925e6b34597ce1743ec320f89b8f7ae65469cb302297"
+        ],
+        "progressPct": [
+          "74b8fab8d67a286edd02106caec65a780a2bbc33ef07bb651b32521f754c1e16"
+        ],
+        "rawPct": [
+          "01b876b1000a6f3e91d7bf52b26e3167e57baf7e5405ec582ef3e8ca417aff3a"
+        ],
+        "remainingHours": [
+          "a55e8484127562f5dcb751f68ddb6450964686f10a47534a40adb50136781bd4"
+        ],
+        "overdueHours": [
+          "2166d406ef38ca0d9fc3eb879e051d28863ec1f92a6e0c999ff50333348dc56b"
+        ],
+        "health": [
+          "c763169c8593c22252414dfdd7edbb069755fb9ce4a7e71ee6d0f0c0bf308e72"
+        ],
+        "filteredProposals": [
+          "6581be75babcaab6a0885ed906df1b7251a5fef98816726a3355c5a4af288159"
+        ],
+        "result": [
+          "82e7a6ec4f4c82a7595222f5154443ca0b0f210e6ded64c7d52730d5084f1936"
+        ],
+        "client": [
+          "84b57b768f8f706bb35f02ad68f91bfd53531e7b3c0bdaee7bd480af227814eb",
+          "84b57b768f8f706bb35f02ad68f91bfd53531e7b3c0bdaee7bd480af227814eb"
+        ],
+        "partner": [
+          "f3771e703879cbf7306872cc8fb17cde88fa7aac8d7ee1438e96cd2ee7706455",
+          "f3771e703879cbf7306872cc8fb17cde88fa7aac8d7ee1438e96cd2ee7706455"
+        ],
+        "partnerCode": [
+          "9fff90bd776d115176f81c5466758dd1db0e4b3031943ac4de1d7ea3d77eccfd"
+        ],
+        "term": [
+          "cf506465913032027caae8f0c0c660e76ccfb51ddf8943c6be0f968ba23d8b35"
+        ],
+        "matches": [
+          "019c98fd49ddae956bbfa96b08dbd1954f169ce6cb0d38d1ed848ec49faa5155"
+        ],
+        "st": [
+          "0e05732d4659c37853b7f6d6c90b76f0a33af1da7e8f759d5818337f6b14c7da",
+          "0e05732d4659c37853b7f6d6c90b76f0a33af1da7e8f759d5818337f6b14c7da"
+        ],
+        "sla": [
+          "7d6112e27a677d6c8b6cca0025133e3cab0ad033658f5de07899cd213e070567",
+          "7d6112e27a677d6c8b6cca0025133e3cab0ad033658f5de07899cd213e070567",
+          "e1a1847ee10408b2b4273e652a4d1613b8012edc7cd20633aa0920ae227c75db"
+        ],
+        "stA": [
+          "5e0909caa73e2ca7c524499b03c08aab062605c0e4ff68450ee2d5670891a149"
+        ],
+        "stB": [
+          "0ab0691f61965861e2e4174e40028f14f99fd2a6f78bfa0ce7c669d0328912f8"
+        ],
+        "slaA": [
+          "acae433b58d76d4f3e830b2451acfee2e44300d7f983eb7fd05e1d6383811a72"
+        ],
+        "slaB": [
+          "e56d3f3b4375421bd17617274bb75853bfda6c492c54732facf5c36ae24ca16e"
+        ],
+        "slaCounts": [
+          "7d66ffee029cc62bfab6a09041de328b8a8bbb3da92698a3cec6bdc3154369c8"
+        ],
+        "overdue": [
+          "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        ],
+        "warning": [
+          "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        ],
+        "onTrack": [
+          "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        ],
+        "alcadaColors": [
+          "947f24f8667594eede22e3e7210f0317cfe9c686c1ea7f5ca2cb5019c8ab189a"
+        ],
+        "colProps": [
+          "9c245970d6e3323e3760444fd368e30fbd524752e14e6ef2715221161bc33716"
+        ],
+        "prod": [
+          "01b751fc4760af7f8793ff82962bd6da34a19453a46bec55514bc9865dd4709c"
+        ],
+        "bank": [
+          "f2d3303c52492a03818951eb7619be169c0513c6e38ac2a54f8ac07438424e7e"
+        ],
+        "promoter": [
+          "da1bf144a8ef4cb06227be71492af77e0e00d6503454c99e7a0012b9cfceba90"
+        ]
+      }
+    },
+    {
+      "path": "src/components/clients/Client360View.tsx",
+      "controls": [
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={searchTerm}",
+            "onChange={e => setSearchTerm(e.target.value)}",
+            "placeholder=\"Buscar cliente por CPF ou Nome...\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setSearchTerm('')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "key={c.id}",
+            "onClick={() => setSelectedClientId(c.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(selectedClient.cpf, 'CPF')}",
+            "title=\"Copiar CPF\"",
+            "aria-label=\"Copiar CPF\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(selectedClient.matricula || '', 'Matrícula')}",
+            "title=\"Copiar Matrícula\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "key={tab.id}",
+            "onClick={() => setActiveTab(tab.id as TabType)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(selectedClient.cpf, 'CPF')}",
+            "title=\"Copiar CPF\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(selectedClient.phone || '', 'Telefone')}",
+            "title=\"Copiar Telefone\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(selectedClient.whatsapp || selectedClient.phone || '', 'WhatsApp')}",
+            "title=\"Copiar WhatsApp\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(selectedClient.matricula!, 'Matrícula')}",
+            "title=\"Copiar Matrícula\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => toastService.copyToClipboard(p.proposalNumber, 'ADE')}",
+            "title=\"Copiar ADE\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setDetailProposalId(p.id)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleAddDocument}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={docName}",
+            "onChange={e => setDocName(e.target.value)}",
+            "maxLength={180}",
+            "placeholder=\"Nome do Documento (Ex: RG_Frente.pdf)\"",
+            "required"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={docType}",
+            "onChange={e => setDocType(e.target.value as DocumentType)}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "ref={documentFileInputRef}",
+            "type=\"file\"",
+            "disabled={isUploadingDoc}",
+            "onChange={e => {\n        const file = e.target.files?.[0] || null;\n        setSelectedFile(file);\n        if (file && !docName) {\n            setDocName(file.name);\n        }\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isUploadingDoc}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => handleDeleteDocument(doc.id)}",
+            "title=\"Excluir\"",
+            "aria-label={`Excluir documento ${doc.name}`}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleSendCommunication}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "value={waMessage}",
+            "onChange={e => setWaMessage(e.target.value)}",
+            "placeholder=\"Digite a mensagem para o cliente...\"",
+            "rows={2}",
+            "required"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "key={t}",
+            "type=\"button\"",
+            "onClick={() => setWaMessage(`Olá ${selectedClient.fullName}! Atualização da sua proposta: ${t}. Acompanhe com a nossa mesa de crédito.`)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isSendingCommunication || (!selectedClient.phone && !selectedClient.whatsapp)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleAddNote}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "value={noteText}",
+            "onChange={e => setNoteText(e.target.value)}",
+            "placeholder=\"Adicionar nota interna sobre o cliente...\"",
+            "maxLength={5000}",
+            "rows={2}",
+            "required"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isSavingNote || !noteText.trim()}"
+          ]
+        }
+      ],
+      "expressions": {
+        "[searchTerm, setSearchTerm]": [
+          "5ff78b144b620b494b7a7d837bf74546b11b419d3e57b6b9fd9afb486f43078a"
+        ],
+        "[selectedClientId, setSelectedClientId]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[activeTab, setActiveTab]": [
+          "a5ed337e88484f1446441a5effc48c2a54dc6e7027cc6d17cfbad531a5734b24"
+        ],
+        "[detailProposalId, setDetailProposalId]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[clientDocuments, setClientDocuments]": [
+          "27c70e12cc73ef4506c8547f72576bf16c97b4ee2a4f0d8127c7f5d0df13cc53"
+        ],
+        "[docName, setDocName]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[docType, setDocType]": [
+          "db6276632a6c626bd8b24c2f1155fd260ec7916ac998ef74089cc21314c84615"
+        ],
+        "[selectedFile, setSelectedFile]": [
+          "fb1f840199811eb82b9b1c60b5d1ea5926b0828d244b5cbf778373905f27065d"
+        ],
+        "[isUploadingDoc, setIsUploadingDoc]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "documentUploadInProgressRef": [
+          "3b30cbc8e57e1511e207cb1de67cafeb085c0d4693f33afb1cc62eb2af8f66c6"
+        ],
+        "documentFileInputRef": [
+          "3f4128bf25edcecad4bef77fc684a10c7951c286667a2d6a9f6ec1c6ad34d88f"
+        ],
+        "[waMessage, setWaMessage]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[waTemplate, setWaTemplate]": [
+          "d7dcd9ea5afbd59b01306a98364d21a10f8f324fcdab15bd0271c867b140bc3c"
+        ],
+        "[isSendingCommunication, setIsSendingCommunication]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "communicationInProgressRef": [
+          "3b30cbc8e57e1511e207cb1de67cafeb085c0d4693f33afb1cc62eb2af8f66c6"
+        ],
+        "[clientCommunications, setClientCommunications]": [
+          "42707b15e9c766206cbae02f096aa531ae0eb06a36e50a03ba082a2e207266c9"
+        ],
+        "[noteText, setNoteText]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[clientNotes, setClientNotes]": [
+          "fb0b9bfd2368b495a561ca70540e7e80741e08ed10bbd74214bfc91361ae3119"
+        ],
+        "[isSavingNote, setIsSavingNote]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "noteSaveInProgressRef": [
+          "3b30cbc8e57e1511e207cb1de67cafeb085c0d4693f33afb1cc62eb2af8f66c6"
+        ],
+        "clients": [
+          "59d198e731def86e4e9df5c0b358e53ec2818e9991197ab977d433744cd581c7"
+        ],
+        "proposals": [
+          "b0509c4aef50adf5b90e2f91e07d26473420960affe8a7f7885a2f02d92c66f8"
+        ],
+        "products": [
+          "137c3be0eb164624f1dbaedb7175a1e4e5b60820f91b2c022ec1958e5b47d1a1"
+        ],
+        "banks": [
+          "d8fbae7e3c3b0fefbc3d5cce7c652ab8bf2fd283b3c6db1024d1b9b8d826834d"
+        ],
+        "promoters": [
+          "94855475400d1b96e10760261f4293cf2f8c17651725da19d0592f0d015243f6"
+        ],
+        "partners": [
+          "743d7e5a13ff22491673e94a099af2bad7c2da64c4cd35596dac0f9af789ab75"
+        ],
+        "statuses": [
+          "f0ee3523220c4d1265a7daf68e6fd5795c8b6973e79fd2c5ee87e31c9dc4d8d1"
+        ],
+        "history": [
+          "2a2ec012a6385d7e38f167efb6c0f6a2b8be39c6d50a254f774caa25a1eff871"
+        ],
+        "activeUser": [
+          "5ec85c455893638f1ac04967b707234d9c0d6018aa8924ef2a0d7476b211e75d"
+        ],
+        "canManageClientData": [
+          "05609ddefbcb0ce426c65e00425754f2fc2d2b32947d65a64c20106bc58aa08e"
+        ],
+        "canUpdateClientData": [
+          "581c37ab157ee86694abb38cdfd0d1aa40a48909e398a2cceae88c2033a9fb13"
+        ],
+        "canDeleteClientDocuments": [
+          "19fba2bd71e3d874e1e4bd83a96b7ce22f1a413e57236481b4b62039166be807"
+        ],
+        "filteredClients": [
+          "3c1beb0151fa6299c5aa7336c8ec58f84ddf6e00f08e38b6810e0c8b23dd9dbf"
+        ],
+        "term": [
+          "5a57ff4367e3795bc92ef93706b0150500e298e7015fa724a5288b0bd375ee4e"
+        ],
+        "cleanTerm": [
+          "8d519566f8ca1b176b9334dce3ab42061ff75bd3ca6d0e4931ac95f4e5d7ce7f"
+        ],
+        "selectedClient": [
+          "7924d617bba86d858f95b2625953635cb1b996aa4a050751d05d21d614087d4f"
+        ],
+        "selectedClientRef": [
+          "d34c06dd5f092a040a6f9290867ea14a25e9928c612a0cb9ce7c37bbbf45464a"
+        ],
+        "clientProposals": [
+          "1b699cdc723f3bf9071ee8a73d38bff1fca1fda3afc7ccb93c6233290f09db2e"
+        ],
+        "clientProposalIds": [
+          "68b6948bad3aa7eb5b6359805912642721eedc086a38b3cc231a33ba96977d91"
+        ],
+        "clientHistory": [
+          "e671375dbd8a696d8f1b87ffddb798e8ead150cf6cd3ccd541df66edaab43a36"
+        ],
+        "loadDocuments": [
+          "dde292b62d750758f1fb83de6974d3b2e24a41b1358593f71ff03979f1d005d5"
+        ],
+        "cancelled": [
+          "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+          "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"
+        ],
+        "loadNotes": [
+          "d1e14de73b12a4e0d34dd2940a6ba924586688ae13f1af89337da3d42e1b5dd7"
+        ],
+        "error": [
+          "03ea8cff7dffb5dfd5dfe9670233baff575babc9d82795fb99b83337f0664392",
+          "e068eaec97a3dc28a903aeb55468d499a0a3ad34c85ceb393d62369a8c555363",
+          "e068eaec97a3dc28a903aeb55468d499a0a3ad34c85ceb393d62369a8c555363",
+          "03ea8cff7dffb5dfd5dfe9670233baff575babc9d82795fb99b83337f0664392",
+          "03ea8cff7dffb5dfd5dfe9670233baff575babc9d82795fb99b83337f0664392"
+        ],
+        "unsubscribeRealtime": [
+          "c3e5da75034a09fc37279d6f511aaeaccaab187fed272366e0f7340e73beb141",
+          "fa91e3641d199d25407d6d63565d99d11391a08ca803fd913e081288fc1cb3f4"
+        ],
+        "loadCommunications": [
+          "be324429eb78682ce518697d39f385e81f49c70dce97112d0f6f3b16ba2693d9"
+        ],
+        "response": [
+          "2e7d7637668bdc9259b97e2abb3776115d12d090664ce2820c196fded5c63a04",
+          "ee8ed8639237a9a3948e55d3cecdf1c251da50a65438b1dc7619a26eaa5820c4"
+        ],
+        "data": [
+          "f1ba3ff348a6f847fa246f293aa2a25e9ec1f9bb64aa0a723d37399f060a30f8"
+        ],
+        "serverItems": [
+          "e7f852476c2cc3fca64dfde23f0a45feaa3af905b074f8deaabec12f79b94d91"
+        ],
+        "localLegacyItems": [
+          "f7f23420b8ab89f0ecc9354eb52153275e190597eda48e278c59b071bd1f2f8f"
+        ],
+        "knownIds": [
+          "a6348f8331aeb4e83d5e145c2daa1aa218bc484e9bbc94485b627685b30bdc14"
+        ],
+        "totalDisbursed": [
+          "41cfae1842c20fafffa373665a94486bcb27c243b21cd60d1740747963ad8d6f"
+        ],
+        "totalBalance": [
+          "46d9f59de7a3a75758d92abe4ce4a4e243f14221eda723b6e76d2e918f6754d8"
+        ],
+        "paidProposalsCount": [
+          "703d5436db37c42457d0e1398bbf69511d72741d39ccee0f1c9e25881e1dfb0b"
+        ],
+        "s": [
+          "15f567c99f2c108f115aafa74e9be572eb0704d98f0ba66e39d9de4612375a24"
+        ],
+        "handleAddDocument": [
+          "50264ffee13d83ff6d9d8e07b001039b6522a4deaf1c659835a5380d2b34fc62"
+        ],
+        "mimeType": [
+          "25a1d1ca44ac8616d53ca14fadf4dbfa1b0c7d2dce290f9aba49dce63600aeda"
+        ],
+        "fileSize": [
+          "e489fc8d8e76b3910234d408f2af48aaafb6a4d74beb200a5095672d2e25b0a6"
+        ],
+        "fileBase64": [
+          "1979b7a5730cba56171d3b916fcc84e7b27b8174630a124965b9bc5c4219d7a3"
+        ],
+        "reader": [
+          "880c3735a45daa48fd5aab910a63ffd8d7e9932e3b2a1570a1bda3b64b26b0b3"
+        ],
+        "result": [
+          "ee2d12fa36fc19a424e43574e577a6fe6a09011f8341c9795eba0cd20a7a1d7b"
+        ],
+        "base64Str": [
+          "6e564d6018aba96b69c68b2596b349318e21a636844cd4e3b02a3470d70be537"
+        ],
+        "res": [
+          "2a7787472e8e4e32abc24efac2b94e9d60e9e1098e91ac626828751f0757295e",
+          "8f66d26442be3a85617d0efa9aa848dfc98b1d3988ecb41d94db709f7ac54d92",
+          "85d80eda55aa51cd781bcab0824273b4de13b0142843c4c9ead019db6a7c29cb"
+        ],
+        "errJson": [
+          "789658e411759a1f5155ea4f41304177f6493d518c2e7fa4c1bbdf1e94bc6b15"
+        ],
+        "docData": [
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d"
+        ],
+        "savedDocument": [
+          "132270a324b59489c3afa650d6bd14bdc79e21714e795473fbe8191c4e73a2be"
+        ],
+        "handleSendCommunication": [
+          "c5d16fd019fe75049e97248fb6711bb44dda335a5e1a01388092934d49728b99"
+        ],
+        "clientId": [
+          "1c3ee34c896dd7cec86eb4fe23373920a0e9ab8b0017ca170a454f3e175b4602",
+          "1c3ee34c896dd7cec86eb4fe23373920a0e9ab8b0017ca170a454f3e175b4602"
+        ],
+        "message": [
+          "9890368688923970f8510bf266b11adf110046b09a132a904679e225a48c726e"
+        ],
+        "recipient": [
+          "a3c936a883fac4c8370558189b0a0c5a043b22173e10790d12e3b9267e71d117"
+        ],
+        "phoneDigits": [
+          "7b7b74899fc42a4835afb12174f9c1846e3918f01420323d0dde731a4563dd7f"
+        ],
+        "whatsappNumber": [
+          "24006d2ebd8fd500ef8c00fa02d75d67d726d503e5723d05787fdf18b92746f0"
+        ],
+        "whatsappUrl": [
+          "b16247b5316a60be9007c8b2b5b4403c564f4ce231c971febf78b81dd31eb5c9"
+        ],
+        "whatsappWindow": [
+          "32c717dd4a92e1e5d2bc6a6ad86235f22941523b8fbe6b318174f93f80a6e6ea"
+        ],
+        "created": [
+          "cbefcd4b3e55a7b5ee18e4ea535d36c30be28dbb467013d689031c27e4246128",
+          "f2521d7be3a6d41eff24ebaac8d7c7e618d8ebf8eb6bc7320d6a354d2306cca5"
+        ],
+        "handleAddNote": [
+          "90985119214c400356bc1e09dc206e7d03cfdeca0cc9fe3246f35d5d9714b1a4"
+        ],
+        "note": [
+          "3f14d444c0d44596e16366a310047b4a2e69b9f98dea9ffa7aeeae8158568cef"
+        ],
+        "handleDeleteDocument": [
+          "336e6b3be9b9804588f6dafcc368aba1d6bcaa187fc75b4259604f3b61580a6d"
+        ],
+        "document": [
+          "b7caaa12cb3070eaf644817d465eaeec92a0602a066fed44d9e90616c18ad0da"
+        ],
+        "count": [
+          "7fd56db02d963790e2989af0241b15c0bd98c2f2729e030802b2f32bf2688ab6"
+        ],
+        "isSelected": [
+          "341f492c4e50defbd605a4ed69a50b09470b9ca700b0906316da215db78fe1d6"
+        ],
+        "Icon": [
+          "5819c0ab55802285d2f888e69696a9472b2db016dd64b34e285d1756a8a1086a"
+        ],
+        "isActive": [
+          "266d64a779dd7db021779c42f8f4238df1e4124675cd9147d6ce6a97bee5252f"
+        ],
+        "prod": [
+          "01b751fc4760af7f8793ff82962bd6da34a19453a46bec55514bc9865dd4709c",
+          "01b751fc4760af7f8793ff82962bd6da34a19453a46bec55514bc9865dd4709c"
+        ],
+        "bank": [
+          "f2d3303c52492a03818951eb7619be169c0513c6e38ac2a54f8ac07438424e7e",
+          "f2d3303c52492a03818951eb7619be169c0513c6e38ac2a54f8ac07438424e7e"
+        ],
+        "promoter": [
+          "da1bf144a8ef4cb06227be71492af77e0e00d6503454c99e7a0012b9cfceba90"
+        ],
+        "partner": [
+          "f3771e703879cbf7306872cc8fb17cde88fa7aac8d7ee1438e96cd2ee7706455"
+        ],
+        "status": [
+          "413836a77ee336baadf6d953118945fd761cbf08c4cf18e9f2fa71a1bf89be64",
+          "413836a77ee336baadf6d953118945fd761cbf08c4cf18e9f2fa71a1bf89be64"
+        ],
+        "file": [
+          "64722bd11eec146d8b2f95443723f34a3e920e830314ce598ecec9424a99ead6"
+        ]
+      }
+    },
+    {
+      "path": "src/components/production/PortabilityView.tsx",
+      "controls": [
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={handleRunCron}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('TODAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('EM_PRAZO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('5_DIA')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('ATRASADAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setActiveTab('SALDO_RETORNADO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setSelectedProposalId(p.id)}",
+            "title=\"Ver detalhes\""
+          ]
+        }
+      ],
+      "expressions": {
+        "getPortabilityProposals": [
+          "7eb5b80003b1dbfe260aafea82d4ea8cb774461c6dae11fc16aa04738bf100f1"
+        ],
+        "products": [
+          "137c3be0eb164624f1dbaedb7175a1e4e5b60820f91b2c022ec1958e5b47d1a1"
+        ],
+        "all": [
+          "b0509c4aef50adf5b90e2f91e07d26473420960affe8a7f7885a2f02d92c66f8"
+        ],
+        "[proposals, setProposals]": [
+          "227f0a623539e8647e14b349e8bd31d44da091f6d9a166195cafe5350fb765e8"
+        ],
+        "clients": [
+          "59d198e731def86e4e9df5c0b358e53ec2818e9991197ab977d433744cd581c7"
+        ],
+        "banks": [
+          "d8fbae7e3c3b0fefbc3d5cce7c652ab8bf2fd283b3c6db1024d1b9b8d826834d"
+        ],
+        "promoters": [
+          "94855475400d1b96e10760261f4293cf2f8c17651725da19d0592f0d015243f6"
+        ],
+        "partners": [
+          "743d7e5a13ff22491673e94a099af2bad7c2da64c4cd35596dac0f9af789ab75"
+        ],
+        "statuses": [
+          "f0ee3523220c4d1265a7daf68e6fd5795c8b6973e79fd2c5ee87e31c9dc4d8d1"
+        ],
+        "holidays": [
+          "b270801c6ae80cb71d80b4511676657040d16e0eedd4a07dd128922ad0ed90cf"
+        ],
+        "config": [
+          "aefb1b9eadd4dfffae31097c5bbeb8f6ea62f981fd7cb9bad97a93e5a0afb2ef"
+        ],
+        "[activeTab, setActiveTab]": [
+          "77d5e235e7773883c14b3d90eef20491ceb8141503efac30eb114c883c40343d"
+        ],
+        "[selectedProposalId, setSelectedProposalId]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[cronFeedback, setCronFeedback]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "refreshData": [
+          "66fde2fd57c05b7f157cef6a53ef9105484f6d77dc93fe501da08e00c1d70e21"
+        ],
+        "handleRunCron": [
+          "7b2132bbdabeb797cfe3bfac2aca7dacdd9fcd98a5a39b4ab5b925e5ea3071f0"
+        ],
+        "res": [
+          "b88ddf6ce05e6ad11d90f1f47e3f28427cc1ec7cd44b94c5a78fff9f69166c7b"
+        ],
+        "classified": [
+          "e45b56f68d09fd92200bdc51eead86a6a5906d8b7090a8ee2ab667a14bc1d69a"
+        ],
+        "sla": [
+          "4da347561db48bd454129e92ddf5bd105f20b51234300a15e57117bba65d37b2"
+        ],
+        "status": [
+          "413836a77ee336baadf6d953118945fd761cbf08c4cf18e9f2fa71a1bf89be64"
+        ],
+        "emPrazo": [
+          "e10ef0abc5922fbe2375de664abc13fced51bc46c4c7c81c3a884181873f840a"
+        ],
+        "no5Dia": [
+          "1e23193b1739b8b33dcde86497f7d4948c2f7a22665efb62e0fd3306b452716a"
+        ],
+        "atrasadas": [
+          "044fa689871a9a818870400acd61798729c59aaf1a494a5e73a0bd44c8318153"
+        ],
+        "saldoRetornado": [
+          "08125060c77be758c0f4d909ff6dd619461ebc8e4785c89e261a030420ae15e6"
+        ],
+        "totalSaldoPortabilidade": [
+          "47a6262a95775efaa82ca4b838ebdb993cca04414f55a2beeffc87d58a7b9dff"
+        ],
+        "totalTrocoPortabilidade": [
+          "f33107cf7d9f687786c2759b2c0967fce46b50e69708f19052f08ddc57ccc388"
+        ],
+        "currentList": [
+          "ee19bd0da79ced58f1d0d4627d639844cdd61ed60fc322d342bbe87147c91a95"
+        ],
+        "client": [
+          "84b57b768f8f706bb35f02ad68f91bfd53531e7b3c0bdaee7bd480af227814eb"
+        ],
+        "bank": [
+          "f2d3303c52492a03818951eb7619be169c0513c6e38ac2a54f8ac07438424e7e"
+        ],
+        "promoter": [
+          "da1bf144a8ef4cb06227be71492af77e0e00d6503454c99e7a0012b9cfceba90"
+        ],
+        "partner": [
+          "f3771e703879cbf7306872cc8fb17cde88fa7aac8d7ee1438e96cd2ee7706455"
+        ]
+      }
+    },
+    {
+      "path": "src/components/admin/CentralPendencias.tsx",
+      "controls": [
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={handleRefresh}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => {\n        fetchSlaConfig();\n        setShowSlaConfigModal(true);\n    }}",
+            "title=\"Matriz de Prazos de SLA por Categoria\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={handleRefresh}",
+            "title=\"Atualizar lista\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setShowCreateModal(true)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "key={s.id}",
+            "onClick={() => setStatusFilter(s.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "key={sla.id}",
+            "onClick={() => setSlaFilter(sla.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "aria-pressed={mineOnly}",
+            "onClick={() => setMineOnly(current => !current)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleSearchSubmit}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"search\"",
+            "placeholder=\"Buscar contrato, cliente, CPF, título...\"",
+            "value={searchQuery}",
+            "onChange={(e) => setSearchQuery(e.target.value)}",
+            "aria-label=\"Buscar pendências por contrato, cliente, CPF ou título\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "aria-label=\"Buscar pendências\"",
+            "title=\"Buscar pendências\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => {\n        setSearchQuery('');\n        void fetchPendencies('');\n    }}",
+            "aria-label=\"Limpar busca\"",
+            "title=\"Limpar busca\""
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={priorityFilter}",
+            "onChange={(e) => setPriorityFilter(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={typeFilter}",
+            "onChange={(e) => setTypeFilter(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => {\n        setStatusFilter('ALL');\n        setSlaFilter('ALL');\n        setPriorityFilter('ALL');\n        setTypeFilter('ALL');\n        setSearchQuery('');\n        setMineOnly(false);\n    }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => handleAssignToMe(item.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setResolvingPendency(item)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => openDrawer(item)}",
+            "title=\"Histórico e Acompanhamento\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => handleReopen(item)}",
+            "title=\"Reabrir pendência\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={closeDrawer}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleAddComment}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "placeholder=\"Adicionar nota ou comentário na timeline...\"",
+            "value={newCommentText}",
+            "onChange={(e) => setNewCommentText(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isAddingComment || !newCommentText.trim()}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setCancellingPendency(selectedPendency)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setResolvingPendency(selectedPendency)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setShowCreateModal(false)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleCreate}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "required",
+            "placeholder=\"Ex: Documento de identidade divergente ou ilegível\"",
+            "value={newTitle}",
+            "onChange={(e) => setNewTitle(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "rows={3}",
+            "placeholder=\"Instruções para o correspondente, digitador ou operador...\"",
+            "value={newDescription}",
+            "onChange={(e) => setNewDescription(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={newType}",
+            "onChange={(e) => setNewType(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "attrs": [
+            "value={newPriority}",
+            "onChange={(e) => setNewPriority(e.target.value as PriorityLevel)}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"number\"",
+            "min=\"1\"",
+            "max=\"168\"",
+            "value={newSlaHours}",
+            "onChange={(e) => setNewSlaHours(e.target.value)}",
+            "placeholder=\"Padrão da Matriz\""
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"text\"",
+            "value={newProposalNumber}",
+            "onChange={(e) => setNewProposalNumber(e.target.value)}",
+            "placeholder=\"Ex: 100234\""
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setShowCreateModal(false)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isSubmitting || !newTitle.trim()}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setResolvingPendency(null)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleResolve}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "rows={3}",
+            "required",
+            "placeholder=\"Ex: Documento complementar anexado e validado com sucesso junto ao banco parceiro.\"",
+            "value={resolveNotes}",
+            "onChange={(e) => setResolveNotes(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setResolvingPendency(null)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isResolving || resolveNotes.trim().length < 3}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setCancellingPendency(null)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleCancel}"
+          ]
+        },
+        {
+          "tag": "textarea",
+          "attrs": [
+            "rows={3}",
+            "required",
+            "placeholder=\"Justificativa formal do cancelamento...\"",
+            "value={cancelReason}",
+            "onChange={(e) => setCancelReason(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setCancellingPendency(null)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isCancelling || !cancelReason.trim()}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "onClick={() => setShowSlaConfigModal(false)}"
+          ]
+        },
+        {
+          "tag": "form",
+          "attrs": [
+            "onSubmit={handleSaveSlaConfig}"
+          ]
+        },
+        {
+          "tag": "input",
+          "attrs": [
+            "type=\"number\"",
+            "min=\"1\"",
+            "max=\"720\"",
+            "value={slaMatrix[k] ?? 24}",
+            "onChange={(e) => setSlaMatrix((prev) => ({\n        ...prev,\n        [k]: parseInt(e.target.value, 10) || 24,\n    }))}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"button\"",
+            "onClick={() => setShowSlaConfigModal(false)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": [
+            "type=\"submit\"",
+            "disabled={isSavingSlaConfig}"
+          ]
+        }
+      ],
+      "expressions": {
+        "CATEGORY_LABELS": [
+          "3bc18611eb3113b5d497e4337a83d81b84aa0bb4c9d49bb8097817df9ceceff4"
+        ],
+        "activeUser": [
+          "5ec85c455893638f1ac04967b707234d9c0d6018aa8924ef2a0d7476b211e75d"
+        ],
+        "canCreate": [
+          "5201ba1c05aab89692d67cb8a70d01a820573d0a028555f0ff84bf4b375e7eef"
+        ],
+        "canAssign": [
+          "f2dd38246ff8f497a74a7c0d50e7234a310690807bb00f683a4a27af7e510855"
+        ],
+        "canUpdate": [
+          "e6e967c05588beaf210183f1df8ab48d229b8160cc2c34f6d4441e91c49e3206"
+        ],
+        "canResolve": [
+          "3eebc1f458257509a994dc23db1d3aa353b2243ba19e27f5b64d72eff147c487"
+        ],
+        "canCancel": [
+          "1667bcf7f547a6136e7e76c7c47fcd25daf7409e33b3c44de8eeb2b73c3344b3"
+        ],
+        "canReopen": [
+          "7ab04ca21f5732c1316d602badc5116c9be4aea2f7dca8129954a329f1846a13"
+        ],
+        "canManageSla": [
+          "6290b64a5df7f7d524d605ea75cf550a39bb059c079063c727e96c0db7302e8d"
+        ],
+        "[pendencies, setPendencies]": [
+          "7f12775bd559a87b558e3531baf50680b74ba9db6ee2bad62d7d291f4ac0936d"
+        ],
+        "[uiError, setUiError]": [
+          "939b89fddf40e97107bd19a6a6c073a6ebb6e1b3e74c28c976d7934290730bad"
+        ],
+        "[summary, setSummary]": [
+          "ea557663bf54619f0fadf48299dc646b7de12ba26c5ac50cedd182056ec5d095"
+        ],
+        "[totalCount, setTotalCount]": [
+          "b3d7b5909950743bb6f274ae6e9d5e17b04a03ef1146dcc86a0791ce3bfa59c5"
+        ],
+        "[isLoading, setIsLoading]": [
+          "60f1ad3dda0b658954f1e26acd7e44a273e0a70a73327db33defa24daa59ac68"
+        ],
+        "[isSummaryLoading, setIsSummaryLoading]": [
+          "60f1ad3dda0b658954f1e26acd7e44a273e0a70a73327db33defa24daa59ac68"
+        ],
+        "listRequestRef": [
+          "a74da398b0445099d9730a5f5094e5b226d7cc2ff6fea6faba0acc139f83881a"
+        ],
+        "detailRequestRef": [
+          "a74da398b0445099d9730a5f5094e5b226d7cc2ff6fea6faba0acc139f83881a"
+        ],
+        "[statusFilter, setStatusFilter]": [
+          "b05be24760380b8842fa654e05ac73d25d569f77bed0d873ebc1b2fd0ff25d1b"
+        ],
+        "[slaFilter, setSlaFilter]": [
+          "b05be24760380b8842fa654e05ac73d25d569f77bed0d873ebc1b2fd0ff25d1b"
+        ],
+        "[priorityFilter, setPriorityFilter]": [
+          "b05be24760380b8842fa654e05ac73d25d569f77bed0d873ebc1b2fd0ff25d1b"
+        ],
+        "[typeFilter, setTypeFilter]": [
+          "b05be24760380b8842fa654e05ac73d25d569f77bed0d873ebc1b2fd0ff25d1b"
+        ],
+        "[searchQuery, setSearchQuery]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[mineOnly, setMineOnly]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[selectedPendency, setSelectedPendency]": [
+          "88c50f466d8f295ef19967bc275ff7a50d2237b9605777b441ff1452de6cd24a"
+        ],
+        "[isDrawerOpen, setIsDrawerOpen]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[newCommentText, setNewCommentText]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[isAddingComment, setIsAddingComment]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[showCreateModal, setShowCreateModal]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[newTitle, setNewTitle]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[newDescription, setNewDescription]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[newType, setNewType]": [
+          "6726f17bd40d129bc8d4304655cdf5022398e207d82bca39302c50c612420fbc"
+        ],
+        "[newPriority, setNewPriority]": [
+          "f13627f4853aabf23253d3d8585031ea53bea246b451c0fe25ee436657381ce9"
+        ],
+        "[newSlaHours, setNewSlaHours]": [
+          "41246f8232c0a4f50c048be20017fc4b9a3c108c6088e38878865f09f6bffab8"
+        ],
+        "[newProposalNumber, setNewProposalNumber]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[isSubmitting, setIsSubmitting]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[resolvingPendency, setResolvingPendency]": [
+          "88c50f466d8f295ef19967bc275ff7a50d2237b9605777b441ff1452de6cd24a"
+        ],
+        "[resolveNotes, setResolveNotes]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[isResolving, setIsResolving]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[cancellingPendency, setCancellingPendency]": [
+          "88c50f466d8f295ef19967bc275ff7a50d2237b9605777b441ff1452de6cd24a"
+        ],
+        "[cancelReason, setCancelReason]": [
+          "db319677e63fea885afc649d5302677a6c427390b967a8b9445fe552db249513"
+        ],
+        "[isCancelling, setIsCancelling]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[showSlaConfigModal, setShowSlaConfigModal]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "[slaMatrix, setSlaMatrix]": [
+          "5f950e8bfe2a5b13aac522b9d56396855e4620a231571b61cfaa5765c5ab9d46"
+        ],
+        "[isSavingSlaConfig, setIsSavingSlaConfig]": [
+          "5ea0113ab315a7170a57ea08623a01709cf52b00cf942d73d97197acb39af9ca"
+        ],
+        "readResponseError": [
+          "53abf30456dacf7d278e939126e7dadee82e63bd226cb1464e1af5a55aa66c46"
+        ],
+        "payload": [
+          "083e8820ba46b6fbe51533ec7b53ab47b149e5765dcc6b3770ef2dbd53dab401"
+        ],
+        "fetchSummary": [
+          "52f13a1b106ac15fdb96032fa285cd760be53882d449a5d3f9968e61b08a82fd"
+        ],
+        "res": [
+          "f9fa365a2021f8c1f30edd0acf1dd952b5f047d08e91425088e572c9b4b47a5a",
+          "41699f956543ad3f044a210399fda6ef4dfc0a36870e76d0772a5823b1bc8c9d",
+          "8878551d3e63485301d2e90e5fd8527ddc9a2be0d519f059e4c5fd3f7b1da1a4",
+          "017315af0504d6512ace270e0a8c167eaeffe60820858ef0377399c142f430ac",
+          "0fd4cffdea1097c75c27fc3cefdd69c9a223321bb78b27d75e328b8a932858b8",
+          "b9c2182802e417476918fbd27ce192c4f8a4c15d8f2c90df9c46c0c7a6af0a9b",
+          "6aa5a831ba94241dd3fb6ad79b4b757f84a1252f673fbfcf850766c8ec77bd09",
+          "60a0695769541dd8367c529d093f8943f017e86f0bc2161359c24535ff997c2b",
+          "bdd997861d39ddfafb70b758e6594b2d521db05f25282c0a53df81231b1597d8",
+          "0e026c8611911a0d61b40d65744c36e55728bebd6b255590037bf02d8c95f276",
+          "49b44a83bcfd00e3dec2e4ce6fe4dbe769cd18648f8dbcf31157bed51147eeac"
+        ],
+        "fetchPendencies": [
+          "082bb10967f6fd86fb9a12b416e473304dd58e639e60c243875a7709fb78c090"
+        ],
+        "requestId": [
+          "5b4e51de43ee975af3bf7d679366c8fa50ec73a42e95d3df45aa838451d39ebe",
+          "3262beb3644d456f03ffc0789cad0c9e4cf5eaf0f6ac723820605cfc29c57fa5"
+        ],
+        "params": [
+          "d57f77f3582bec947a63fd8eeab67d419173f801ab890c6a6814d7b9bb246cfa"
+        ],
+        "data": [
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d",
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d"
+        ],
+        "updatedSelected": [
+          "5c9480eed70d3dbf2c6c50e06128a19e836691ad8af0d09381e58f55ecfab88d"
+        ],
+        "fetchSlaConfig": [
+          "ce12040e1f3d715b7e297e98f4f41997b4e93384b7876c4c3f7f5f39bdc6584e"
+        ],
+        "handleSearchSubmit": [
+          "bb3658c713d76205a0499e95a35270249a54221bd6012dabd11cbc5081ee4b94"
+        ],
+        "handleRefresh": [
+          "828a715999f8f05d00673039e25ee79b7ea7019b191db7ac1b78b2c92b4f3f36"
+        ],
+        "handleCreate": [
+          "acec3772793f3f48624ea898b8897bfe9e7ede6fcabce2d6f0d3ea94513389a5"
+        ],
+        "handleAssignToMe": [
+          "f557adb714b414479dd8d33e538aaa6f96b0422ca1544bf1aeb67b84c414c0ae"
+        ],
+        "handleResolve": [
+          "4ef84d855fa5555640fb681ed6b46c937bf5ded0b5dfc8778dd36c5b1539b544"
+        ],
+        "handleCancel": [
+          "fce8d11941af6ac2c392c3bc8be25b7ef11c904f2ea2d93fc50da33dc52b4e64"
+        ],
+        "handleReopen": [
+          "2977c94151679c8ad9cd9389be537e98433ee0978ad95debae9a233c79c642c6"
+        ],
+        "handleAddComment": [
+          "6aaa954027775365e474c0a822e60f90d8eac99a288ea711745664d7424807d3"
+        ],
+        "targetPendencyId": [
+          "6503e3b52905b211825341d5c22385c1b1795e0a78d04b6e3275635c52762e3f"
+        ],
+        "detailRequestId": [
+          "4e5ae02d83795100b3fd24dbd5f66cb3de76ecc230532e7dddd8a218e7006f59"
+        ],
+        "detailRes": [
+          "0349c256afe852fcf4f75b5d384db83b9db2d2392f570f3d33d9cea214790cec"
+        ],
+        "updated": [
+          "fc0345eb79370f913f8cae4d82d8f172c137f7cd44c445e4a471d05de59ce23f"
+        ],
+        "handleSaveSlaConfig": [
+          "8b415d7ed366276db1410ecd36c3b29dcdd3dee1bf191b396c04edb81dc6926c"
+        ],
+        "openDrawer": [
+          "df870cbb3d9624f84327ef7a7029a6f289d83241cbd58f414b68efc41f8021ea"
+        ],
+        "fullData": [
+          "baf3dd0a213ecae02beee80c1e92b5deb83f0c59bcda33b080d131b97fe55b6d"
+        ],
+        "closeDrawer": [
+          "6e6ec259d8eddde02ede6802d8d08ddf48cbabe472d7df427bb2201cb8954d68"
+        ],
+        "sla": [
+          "bdc040aa93f8e41295b6923de22c8ea3fc6db5cb8aa4b687d17aba31ea8757d4"
+        ]
+      }
+    }
+  ]
+}

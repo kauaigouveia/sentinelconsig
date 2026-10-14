@@ -1,0 +1,28 @@
+/* Final presentation adapters. Original controls and handlers remain mounted. */
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) { min-width: 0; gap: 16px; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace) { display: grid; grid-template-columns: 205px minmax(0,1fr); align-items: start; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace) > * { grid-column: 1 / -1; min-width: 0; margin-block: 0; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace) > .p2-analytics-tabs { grid-column: 1; flex-direction: column; align-items: stretch; overflow: visible; position: sticky; top: 8px; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace) > .p2-analytics-tabs ~ div:not(.fixed) { grid-column: 2; }
+.s2-root :is(.p2-analytics-tabs,.p2-command-tabs,.p2-platform-tabs) button { white-space: normal; text-align: left; min-height: 38px; }
+.s2-root .p2-bi-workspace > .p2-analytics-tabs button { justify-content: flex-start; }
+.s2-root .p2-command-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border: 1px solid var(--s2-border); background: var(--s2-surface); }
+.s2-root .p2-command-tabs button { border-radius: 7px; padding: 10px 14px; }
+.s2-root .p2-platform-workspace > .grid { gap: 12px; }
+.s2-root .p2-platform-workspace > .p2-platform-tabs { flex-wrap: wrap; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) table { font-variant-numeric: tabular-nums; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) th { white-space: nowrap; font-size: 11px; letter-spacing: .02em; }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) :is(input,select,textarea) { font-size: 13px; color: var(--s2-text); background: var(--s2-elevated); border-color: var(--s2-border); }
+.s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) :is(input,select,textarea,button):focus-visible { outline: 2px solid var(--s2-blue); outline-offset: 2px; }
+.s2-root :is([data-ui-family="administration"],[data-ui-family="platform"],[data-ui-family="analytics"],[data-ui-family="command"]) [class*="overflow-x-auto"] { min-width: 0; max-width: 100%; }
+.s2-root :is(.p2-live-administration,.p2-live-integrations) :is(input,select,textarea) { color: var(--s2-text); background: var(--s2-elevated); border-color: var(--s2-border); font-size: 13px; }
+.s2-root .p2-live-administration > div:last-child > main { border-top: 1px solid var(--s2-border); }
+.s2-root :is(.p2-integration-tabs,.p2-platform-tabs,.p2-command-tabs) { border-radius: 10px; }
+@media(max-width:1200px) {
+  .s2-root :is(.p2-bi-workspace,.p2-report-workspace) { grid-template-columns: minmax(0,1fr); }
+  .s2-root :is(.p2-bi-workspace,.p2-report-workspace) > .p2-analytics-tabs { position: static; flex-direction: row; flex-wrap: wrap; }
+  .s2-root :is(.p2-bi-workspace,.p2-report-workspace) > .p2-analytics-tabs ~ div:not(.fixed) { grid-column: 1; }
+}
+@media(max-width:767px) {
+  .s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) :is(input,select,textarea) { font-size: 16px; }
+}

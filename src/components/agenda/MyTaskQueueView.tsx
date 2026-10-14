@@ -295,7 +295,7 @@ export const MyTaskQueueView: React.FC<{ onNavigate: (path: string) => void }> =
           onAction={() => { setSearchTerm(''); setPriorityFilter('ALL'); }}
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 p2-task-columns">
           {totalUrgent > 0 && <p className="text-sm text-slate-600 dark:text-slate-300">Você tem <strong>{totalUrgent}</strong> tarefa(s) atrasada(s) ou com vencimento hoje.</p>}
           {renderSection('overdue', 'Atrasadas', <AlertCircle className="h-4 w-4" />, 'text-rose-600 dark:text-rose-400')}
           {renderSection('today', 'Para hoje', <CalendarClock className="h-4 w-4" />, 'text-amber-600 dark:text-amber-400')}

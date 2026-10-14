@@ -145,7 +145,7 @@ export const StatusBottleneckReport: React.FC = () => {
     : stuckProposals.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p2-report-workspace">
       <ActionBar
         title="Gargalos & Tempo de Permanência na Esteira"
         subtitle="Mapeamento de retenção de propostas por alçada, tempo de permanência e identificação de gargalos de liquidação"
@@ -193,7 +193,7 @@ export const StatusBottleneckReport: React.FC = () => {
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-bold gap-2">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-bold gap-2 p2-analytics-tabs">
         <button
           onClick={() => setActiveTab('ALCADA')}
           className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer ${

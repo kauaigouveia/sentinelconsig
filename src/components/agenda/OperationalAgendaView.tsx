@@ -313,7 +313,7 @@ export const OperationalAgendaView: React.FC = () => {
       </div>
 
       {/* Main Tasks Stream */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4 p2-agenda-stream">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />

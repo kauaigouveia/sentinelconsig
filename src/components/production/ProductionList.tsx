@@ -47,9 +47,12 @@ import { useWorkspacePreferences, workspaceKey } from '../../hooks/useWorkspaceP
 import { EmptyState } from '../ui/EmptyState';
 import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
+import { ProductionWorkspace, paginateProduction, readProductionColumns } from './ProductionWorkspace';
 import { AutomationService } from '../../services/automationService';
 
 interface ProductionListProps {
+  premium?: boolean;
+  onKanban?: () => void;
   onOpenNewProduction?: () => void;
   onOpenImportExcel?: () => void;
   onToggleFocusMode?: () => void;
@@ -72,9 +75,11 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   onOpenImportExcel,
   onToggleFocusMode,
   isFocusMode = false,
+  premium = false,
+  onKanban,
   initialFilter,
 }) => {
-  const [presentation, setPresentation] = useState<RecordPresentation>('cards');
+  const [presentation, setPresentation] = useState<RecordPresentation>(premium ? 'list' : 'cards');
   const [proposals, setProposals] = useState<Proposal[]>(() => StorageService.getProposals());
   const clients = StorageService.getClients();
   const products = StorageService.getProducts();
@@ -139,6 +144,16 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
   const tableDensity = workspace.density === 'compact' ? 'COMPACTA' : 'CONFORTAVEL';
   const toggleDensity = workspace.toggleDensity;
+
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const columnPreferenceKey = `${preferenceKey}:proposal-columns`;
+  const [hiddenColumns, setHiddenColumns] = useState<number[]>(() => readProductionColumns(columnPreferenceKey));
+  useEffect(() => {
+    if (!premium) return;
+    try { localStorage.setItem(columnPreferenceKey, JSON.stringify(hiddenColumns)); } catch {}
+  }, [columnPreferenceKey, hiddenColumns, premium]);
+  useEffect(() => { setPage(0); }, [searchTerm, filterProduct, filterBank, filterPromoter, filterPartner, filterDigitizer, filterStatus, filterAlçada, filterSla]);
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -396,6 +411,10 @@ export const ProductionList: React.FC<ProductionListProps> = ({
     sortDirection,
   ]);
 
+  const pagination = paginateProduction(filteredProposals, page, premium ? pageSize : 0);
+  const displayedProposals = pagination.rows;
+  const Workspace = premium ? ProductionWorkspace : RecordWorkspace;
+
   // Selection helpers
   const handleSelectAll = () => {
     const visibleIds = filteredProposals.map(p => p.id);
@@ -624,10 +643,11 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const proposalSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Valor liberado na seleção</span><strong className="!text-xl">{totalDisbursedFiltered}</strong><p>{filteredProposals.length} propostas encontradas</p></div>{statuses.filter(status => filteredProposals.some(proposal => proposal.statusId === status.id)).slice(0, 7).map(status => <div className="record-stat-row" key={status.id}><span className="record-stat-dot" style={{ background: status.color || '#5c8dff' }} /><span>{status.name}</span><strong>{filteredProposals.filter(proposal => proposal.statusId === status.id).length}</strong></div>)}</div>;
 
   return (
-    <div className="space-y-3.5">
+    <div className={premium ? "p2-live-production space-y-3.5" : "space-y-3.5"}>
       {/* Contextual Action Bar */}
       <ActionBar
-        title="Operações de crédito"
+        title={premium ? "Propostas" : "Operações de crédito"}
+        subtitle={premium ? 'Carteira da empresa atual · consulta e operações autorizadas' : undefined}
         count={filteredProposals.length}
         financialTotal={totalDisbursedFiltered}
         rightActions={
@@ -881,7 +901,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         </div>
       </div>
 
-      <RecordWorkspace filters={proposalFilters} summary={proposalSummary} count={filteredProposals.length} mode={presentation} onMode={setPresentation}>
+      <Workspace page={pagination.current} pages={pagination.pages} onPage={setPage} pageSize={pageSize} onPageSize={(size:number)=>{setPageSize(size);setPage(0);}} hiddenColumns={hiddenColumns} onHiddenColumns={setHiddenColumns} onKanban={onKanban} filters={proposalFilters} summary={proposalSummary} count={filteredProposals.length} mode={presentation} onMode={setPresentation}>
       {/* Batch Action Floating / Sticky Bar */}
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between rounded-xl bg-slate-900 dark:bg-[#070c17] text-white p-3 px-5 shadow-xl border border-blue-500/30 animate-in fade-in slide-in-from-top-2">
@@ -921,7 +941,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         </div>
       )}
 
-      {presentation === 'cards' && <div className="operation-card-grid">{filteredProposals.map(proposal => {
+      {presentation === 'cards' && <div className="operation-card-grid">{displayedProposals.map(proposal => {
         const client = getProposalClientInfo(proposal), status = getEffectiveStatus(proposal);
         return <OperationCard key={proposal.id} eyebrow={`${proposal.bankName || banks.find(bank => bank.id === proposal.bankId)?.name || 'Banco'} · ${operationLabel(proposal.type)}`} title={client.fullName || `ADE ${proposal.proposalNumber}`} status={status?.name || 'Sem status'} statusColor={status?.color} amount={formatCurrency(proposal.disbursedValue || 0)} fields={[{ label: 'ADE', value: proposal.proposalNumber }, { label: 'CPF', value: formatCpf(client.cpf || '') }, { label: 'Parceiro', value: proposal.partnerName || partners.find(partner => partner.id === proposal.partnerId)?.fullName || '—' }, { label: 'Produto', value: proposal.productName || products.find(product => product.id === proposal.productId)?.name || '—' }, { label: 'Parcela / prazo', value: `${formatCurrency(proposal.installmentValue || 0)} · ${proposal.installmentsCount || '—'} meses` }, { label: 'Alçada', value: proposal.currentResponsible || '—' }]} onOpen={() => setDetailProposalId(proposal.id)} selected={selectedIds.includes(proposal.id)} onSelect={canUpdateProposals || canDeleteProposals ? () => toggleSelect(proposal.id) : undefined} actions={<button type="button" className="operation-card-action" onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}>Copiar ADE</button>} />;
       })}{!filteredProposals.length && <EmptyState title="Nenhuma proposta nesta visualização" description="Ajuste os filtros ou cadastre uma nova proposta para continuar." actionLabel={onOpenNewProduction ? 'Nova proposta' : undefined} onAction={onOpenNewProduction} />}</div>}
@@ -1001,11 +1021,12 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       {getSortIcon('createdAt')}
                     </button>
                   </th>
+                  {premium && <th className="px-3 py-2.5">Parcela / prazo</th>}
                   <th className="px-3 py-2.5 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
-                {filteredProposals.map(p => {
+                {displayedProposals.map(p => {
                   const clientInfo = getProposalClientInfo(p);
                   const client = clientInfo.client;
                   const clientFullName = clientInfo.fullName;
@@ -1140,9 +1161,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                         </span>
                         <span
                           className="text-slate-400 dark:text-slate-500 text-[10px] block truncate max-w-[110px]"
-                          title={partner?.login}
+                          title={premium ? partner?.fullName || partner?.login : partner?.login}
                         >
-                          {partner?.login || '—'}
+                          {premium ? partner?.fullName || partner?.login || '—' : partner?.login || '—'}
                         </span>
                       </td>
 
@@ -1161,6 +1182,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                         {formatDate(p.createdAt)}
                       </td>
 
+                      {premium && <td className={cellPadding}><span>{p.installmentValue == null ? '—' : formatCurrency(p.installmentValue)}</span><small className="block">{p.installmentsCount || '—'} meses</small></td>}
                       {/* Action */}
                       <td className={`${cellPadding} text-center`} onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
@@ -1192,7 +1214,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       )}
 
       </>}
-      </RecordWorkspace>
+      </Workspace>
 
       {/* Modals */}
       {bulkModalOpen && (

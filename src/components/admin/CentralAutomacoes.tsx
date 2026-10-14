@@ -318,7 +318,7 @@ export const CentralAutomacoes: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p2-automation-page">
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -338,7 +338,7 @@ export const CentralAutomacoes: React.FC = () => {
       )}
 
       {/* Main Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl p2-automation-header">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-violet-600/20 text-violet-400 rounded-2xl border border-violet-500/30">
             <Bot className="w-8 h-8" />
@@ -388,7 +388,7 @@ export const CentralAutomacoes: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-800 gap-2 overflow-x-auto pb-1">
+      <div className="flex border-b border-slate-800 gap-2 overflow-x-auto pb-1 p2-automation-tabs">
         <button
           onClick={() => {
             setActiveTab('RULES');

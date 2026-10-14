@@ -91,7 +91,7 @@ export const OperationsCentral: React.FC = () => {
       </div>
 
       {/* Navegação por Abas Integradas */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto p2-operation-tabs">
         {/* Aba 1: Monitoramento de APIs */}
         <button
           onClick={() => setActiveTab('MONITORING')}

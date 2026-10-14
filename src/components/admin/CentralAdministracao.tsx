@@ -59,7 +59,7 @@ export type AdminTab =
   | 'announcements'
   | 'domains';
 
-export const CentralAdministracao: React.FC = () => {
+export const CentralAdministracao: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [overviewData, setOverviewData] = useState<any>(null);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
@@ -110,7 +110,7 @@ export const CentralAdministracao: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col ${premium ? 'p2-live-module p2-live-administration' : ''}`}>
       {/* Top Header */}
       <div className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -150,7 +150,7 @@ export const CentralAdministracao: React.FC = () => {
       {/* Main Layout: Horizontal/Sidebar Nav + Content */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Navigation Sidebar */}
-        <aside className="w-full md:w-64 bg-slate-900/60 border-r border-slate-800 p-3 space-y-1 shrink-0 overflow-y-auto max-h-[calc(100vh-80px)]">
+        <aside className="w-full md:w-64 bg-slate-900/60 border-r border-slate-800 p-3 space-y-1 shrink-0 overflow-y-auto max-h-[calc(100vh-80px)]" role={premium ? 'navigation' : undefined} aria-label={premium ? 'Seções administrativas' : undefined}>
           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2">
             Módulos Administrativos
           </div>
@@ -161,6 +161,7 @@ export const CentralAdministracao: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as AdminTab)}
+                aria-current={premium && isActive ? 'page' : undefined}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                   isActive
                     ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/20'
@@ -347,9 +348,9 @@ export const CentralAdministracao: React.FC = () => {
           {activeTab === 'rules' && <OperationalRulesManagement />}
           {activeTab === 'status' && <StatusManagement />}
           {activeTab === 'calendario' && <HolidayManagement />}
-          {activeTab === 'pendencies' && <CentralPendencias />}
+          {activeTab === 'pendencies' && <CentralPendencias premium={premium} />}
           {activeTab === 'automations' && <CentralAutomacoes />}
-          {activeTab === 'integrations' && <HubIntegracoes />}
+          {activeTab === 'integrations' && <HubIntegracoes premium={premium} />}
           {activeTab === 'audit' && <AuditLogView />}
           {activeTab === 'whitelabel' && <WhiteLabelModal isOpen={true} onClose={() => setActiveTab('overview')} />}
           {activeTab === 'announcements' && <AnnouncementsManagement />}
