@@ -9,6 +9,7 @@ import {
 } from './factaBankTypes.js';
 import { mapFactaStatusToInternal } from './factaStatusMapper.js';
 import { factaFetch } from './factaTransport.js';
+import { resolveBankPromoter, readBankPromoterConfig, bankPromoterConfigKey, currentIntegrationPromoter } from './bankPromoterConfig.js';
 
 interface TokenCacheEntry {
   token: string;
@@ -35,39 +36,18 @@ export class FactaBankService {
    */
   public static async getTenantConfig(
     prisma: PrismaClient,
-    tenantId: string
+    tenantId: string,
+    promoterId?: string
   ): Promise<FactaTenantConfig> {
-    const configs = await prisma.systemConfig.findMany({
-      where: {
-        tenantId,
-        configKey: {
-          in: [
-            'facta_environment',
-            'facta_username',
-            'facta_password',
-            'facta_base_url',
-            'facta_auto_sync_enabled',
-            'facta_simulation_enabled',
-            'facta_sync_interval_minutes',
-            'facta_page_size',
-            'facta_date_query_type',
-            'facta_convenio',
-            'facta_averbador',
-            'facta_codigo_af',
-            'facta_consulta_sub',
-            'facta_codigo_sub',
-          ],
-        },
-      },
-    });
+    const promoter = await resolveBankPromoter(prisma, tenantId, promoterId || currentIntegrationPromoter(), 'DG');
+    const { values: configMap, allowLegacy } = await readBankPromoterConfig(prisma, tenantId, 'facta', promoter.id, 'DG');
+    const legacyEnv = (key: string) => allowLegacy ? process.env[key] : undefined;
 
-    const configMap = new Map(configs.map((c) => [c.configKey, c.configValue]));
-
-    const rawEnv = (configMap.get('facta_environment') || process.env.FACTA_ENVIRONMENT || 'homologation').toLowerCase();
+    const rawEnv = (configMap.get('facta_environment') || legacyEnv('FACTA_ENVIRONMENT') || 'homologation').toLowerCase();
     const environment: 'homologation' | 'production' = rawEnv === 'production' ? 'production' : 'homologation';
 
     const defaultUrl = environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
-    let baseUrl = (configMap.get('facta_base_url') || process.env.FACTA_BASE_URL || defaultUrl)
+    let baseUrl = (configMap.get('facta_base_url') || legacyEnv('FACTA_BASE_URL') || defaultUrl)
       .trim()
       .replace(/\/+$/, '');
 
@@ -76,14 +56,14 @@ export class FactaBankService {
       baseUrl = environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
     }
 
-    const username = (configMap.get('facta_username') || process.env.FACTA_USERNAME || '').trim();
-    const password = (configMap.get('facta_password') || process.env.FACTA_PASSWORD || '').trim();
+    const username = (configMap.get('facta_username') || '').trim();
+    const password = (configMap.get('facta_password') || '').trim();
 
     const autoSyncEnabled = configMap.has('facta_auto_sync_enabled')
       ? configMap.get('facta_auto_sync_enabled') === 'true'
-      : process.env.FACTA_AUTO_SYNC_ENABLED === 'true';
+      : legacyEnv('FACTA_AUTO_SYNC_ENABLED') === 'true';
 
-    const rawInterval = configMap.get('facta_sync_interval_minutes') || process.env.FACTA_SYNC_INTERVAL_MINUTES;
+    const rawInterval = configMap.get('facta_sync_interval_minutes') || legacyEnv('FACTA_SYNC_INTERVAL_MINUTES');
     const syncIntervalMinutes = Math.max(5, rawInterval ? parseInt(rawInterval, 10) || 15 : 15);
 
     const rawPageSize = configMap.get('facta_page_size');
@@ -94,6 +74,9 @@ export class FactaBankService {
     const consultaSub = configMap.get('facta_consulta_sub') === 'S' ? 'S' : 'N';
 
     return {
+      promoterId: promoter.id,
+      promoterName: promoter.name,
+      enabled: configMap.has('facta_enabled') ? configMap.get('facta_enabled') === 'true' : allowLegacy,
       environment,
       username,
       password,
@@ -108,7 +91,7 @@ export class FactaBankService {
       codigoAf: configMap.get('facta_codigo_af') || undefined,
       consultaSub,
       codigoSub: configMap.get('facta_codigo_sub') || undefined,
-      isConfigured: Boolean(username && password),
+      isConfigured: Boolean(username && password) && (configMap.has('facta_enabled') ? configMap.get('facta_enabled') === 'true' : allowLegacy),
       hasPassword: Boolean(password),
     };
   }
@@ -116,10 +99,16 @@ export class FactaBankService {
   /**
    * Salva as configurações da FACTA para um tenant.
    */
+  public static async getPromoterConfigs(prisma: PrismaClient, tenantId: string) {
+    const promoters = await prisma.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true } });
+    return Promise.all(promoters.map(promoter => this.getTenantConfig(prisma, tenantId, promoter.id)));
+  }
+
   public static async saveTenantConfig(
     prisma: PrismaClient,
     tenantId: string,
     data: {
+      enabled?: boolean;
       environment?: 'homologation' | 'production';
       username?: string;
       password?: string;
@@ -134,9 +123,12 @@ export class FactaBankService {
       codigoAf?: string;
       consultaSub?: 'S' | 'N';
       codigoSub?: string;
-    }
+    },
+    promoterId?: string
   ): Promise<FactaTenantConfig> {
+    const promoter = await resolveBankPromoter(prisma, tenantId, promoterId || currentIntegrationPromoter(), 'DG');
     const upsertConfig = async (key: string, value: string, isSecret = false) => {
+      key = bankPromoterConfigKey('facta', promoter.id, key);
       await prisma.systemConfig.upsert({
         where: {
           tenantId_configKey: {
@@ -157,6 +149,7 @@ export class FactaBankService {
       });
     };
 
+    if (typeof data.enabled === 'boolean') await upsertConfig('facta_enabled', String(data.enabled));
     if (data.environment) {
       await upsertConfig('facta_environment', data.environment, false);
       const defaultUrl = data.environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
@@ -220,7 +213,7 @@ export class FactaBankService {
       await upsertConfig('facta_codigo_sub', data.codigoSub.trim(), false);
     }
 
-    return this.getTenantConfig(prisma, tenantId);
+    return this.getTenantConfig(prisma, tenantId, promoter.id);
   }
 
   /**
@@ -240,18 +233,20 @@ export class FactaBankService {
   public static async getToken(
     prisma: PrismaClient,
     tenantId: string,
-    overrideConfig?: { username?: string; password?: string; baseUrl?: string }
+    overrideConfig?: { username?: string; password?: string; baseUrl?: string },
+    promoterId?: string
   ): Promise<string> {
-    const config = await this.getTenantConfig(prisma, tenantId);
+    const config = await this.getTenantConfig(prisma, tenantId, promoterId);
     const username = overrideConfig?.username || config.username;
     const password = overrideConfig?.password || config.password;
     const baseUrl = overrideConfig?.baseUrl || config.baseUrl;
 
+    if (!config.enabled) throw new Error('Conexão FACTA desativada para esta promotora.');
     if (!username || !password) {
       throw new Error('Credenciais da FACTA Financeira (usuário e senha) não configuradas.');
     }
 
-    const cacheKey = `${tenantId}:${username}:${baseUrl}:${process.env.FACTA_GATEWAY_URL || 'direct'}`;
+    const cacheKey = `${tenantId}:${config.promoterId}:${username}:${baseUrl}:${process.env.FACTA_GATEWAY_URL || 'direct'}`;
     const now = Date.now();
     const cached = this.tokenCache.get(cacheKey);
 
@@ -340,16 +335,17 @@ export class FactaBankService {
   public static async testConnection(
     prisma: PrismaClient,
     tenantId: string,
-    overrideConfig?: { username?: string; password?: string; baseUrl?: string }
+    overrideConfig?: { username?: string; password?: string; baseUrl?: string },
+    promoterId?: string
   ): Promise<{ success: boolean; message: string; responseTimeMs?: number; isHomologation?: boolean }> {
     const startTime = Date.now();
     try {
       this.invalidateTokenCache(tenantId);
-      const config = await this.getTenantConfig(prisma, tenantId);
+      const config = await this.getTenantConfig(prisma, tenantId, promoterId);
       const activeBaseUrl = overrideConfig?.baseUrl || config.baseUrl;
       const isHomol = activeBaseUrl.includes('homol') || config.environment === 'homologation';
 
-      const token = await this.getToken(prisma, tenantId, overrideConfig);
+      const token = await this.getToken(prisma, tenantId, overrideConfig, promoterId);
       const responseTimeMs = Date.now() - startTime;
 
       if (token && typeof token === 'string' && token.length > 5) {
@@ -410,14 +406,14 @@ export class FactaBankService {
     prisma: PrismaClient,
     tenantId: string,
     params: FactaQueryParams = {},
-    options: { retryOn401?: boolean } = { retryOn401: true }
+    options: { retryOn401?: boolean; promoterId?: string } = { retryOn401: true }
   ): Promise<{ data: FactaProposalItem[]; totalRecords?: number }> {
-    const config = await this.getTenantConfig(prisma, tenantId);
+    const config = await this.getTenantConfig(prisma, tenantId, options.promoterId);
     if (!config.isConfigured) {
       throw new Error('Integração FACTA não configurada.');
     }
 
-    const token = await this.getToken(prisma, tenantId);
+    const token = await this.getToken(prisma, tenantId, undefined, config.promoterId);
 
     // Montagem da Query String sem parâmetros vazios
     const queryMap = new URLSearchParams();
@@ -479,7 +475,7 @@ export class FactaBankService {
       if (response.status === 401 && options.retryOn401) {
         logger.warn({ tenantId }, '[FACTA SERVICE] HTTP 401 recebido na consulta. Renovando token e tentando novamente...');
         this.invalidateTokenCache(tenantId);
-        return this.queryAndamentoPropostas(prisma, tenantId, params, { retryOn401: false });
+        return this.queryAndamentoPropostas(prisma, tenantId, params, { retryOn401: false, promoterId: config.promoterId });
       }
 
       if (!response.ok) {
@@ -546,12 +542,14 @@ export class FactaBankService {
   public static async findMatchingProposal(
     prisma: PrismaClient,
     tenantId: string,
-    item: FactaProposalItem
+    item: FactaProposalItem,
+    promoterId?: string
   ): Promise<{
     proposal: any | null;
     matchType: 'EXACT' | 'MULTIPLE_MATCHES' | 'NOT_FOUND';
     reason?: string;
   }> {
+    const promoter = await resolveBankPromoter(prisma, tenantId, promoterId || currentIntegrationPromoter(), 'DG');
     const itemProposalNum = item.proposta != null ? String(item.proposta).trim() : '';
     const itemAfCode = item.codigo_af != null ? String(item.codigo_af).trim() : '';
     const itemContract = item.numero_contrato != null ? String(item.numero_contrato).trim() : '';
@@ -565,7 +563,7 @@ export class FactaBankService {
     ];
     if (!identifiers.length) return { proposal: null, matchType: 'NOT_FOUND', reason: 'FACTA não informou identificador. Vincule o código AF da proposta.' };
     const matches = await prisma.proposal.findMany({
-      where: { tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, OR: identifiers },
+      where: { tenantId, promoterId: promoter.id, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, OR: identifiers },
       include: { status: true, client: true },
     });
     if (matches.length > 1) return { proposal: null, matchType: 'MULTIPLE_MATCHES', reason: 'Identificador FACTA vinculado a mais de uma proposta.' };
@@ -612,6 +610,8 @@ export class FactaBankService {
       if (!proposal) {
         throw new Error('Proposta não encontrada no Sentinel.');
       }
+      if (!proposal.promoterId) throw new Error('Vincule a promotora à proposta antes de consultar a FACTA.');
+      await this.getTenantConfig(prisma, tenantId, proposal.promoterId);
 
       let previousInternalStatusName = proposal.status?.name;
       if (!previousInternalStatusName && proposal.statusId) {
@@ -661,7 +661,7 @@ export class FactaBankService {
       // Executar consulta na FACTA por AF
       const queryResult = await this.queryAndamentoPropostas(prisma, tenantId, {
         af: targetAfCode,
-      });
+      }, { retryOn401: true, promoterId: proposal.promoterId });
 
       if (!queryResult.data || queryResult.data.length === 0) {
         await prisma.proposal.update({
@@ -849,7 +849,7 @@ export class FactaBankService {
   public static async processBatchProposals(
     prisma: PrismaClient,
     tenantId: string,
-    options: { daysBack?: number; queriedBy?: string } = {}
+    options: { daysBack?: number; queriedBy?: string; promoterId?: string } = {}
   ): Promise<{
     processedCount: number;
     updatedCount: number;
@@ -857,7 +857,7 @@ export class FactaBankService {
     failedCount: number;
     errors: string[];
   }> {
-    const config = await this.getTenantConfig(prisma, tenantId);
+    const config = await this.getTenantConfig(prisma, tenantId, options.promoterId);
     if (!config.isConfigured) {
       throw new Error('Integração FACTA não configurada para este tenant.');
     }
@@ -897,7 +897,7 @@ export class FactaBankService {
 
       let queryResult;
       try {
-        queryResult = await this.queryAndamentoPropostas(prisma, tenantId, queryParams);
+        queryResult = await this.queryAndamentoPropostas(prisma, tenantId, queryParams, { retryOn401: true, promoterId: config.promoterId });
       } catch (err: any) {
         failedCount++;
         errors.push(`Erro na página ${currentPage}: ${err.message}`);
@@ -913,7 +913,7 @@ export class FactaBankService {
       for (const item of items) {
         processedCount++;
         try {
-          const matchResult = await this.findMatchingProposal(prisma, tenantId, item);
+          const matchResult = await this.findMatchingProposal(prisma, tenantId, item, config.promoterId);
 
           if (!matchResult.proposal) {
             unlinkedCount++;
@@ -964,7 +964,7 @@ export class FactaBankService {
     let cursor: string | undefined;
     while (true) {
       const linked = await prisma.proposal.findMany({
-        where: { tenantId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, standardCategory: { notIn: ['PAGO', 'CANCELADO', 'RECUSADO'] } },
+        where: { tenantId, promoterId: config.promoterId, deletedAt: null, bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] }, standardCategory: { notIn: ['PAGO', 'CANCELADO', 'RECUSADO'] } },
         select: { id: true, factaAfCode: true }, orderBy: { id: 'asc' }, take: 100,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
@@ -1018,7 +1018,7 @@ export class FactaBankService {
       ...(data.factaContractNumber?.trim() ? [{ factaContractNumber: data.factaContractNumber.trim() }] : []),
     ];
     if (identifiers.length) {
-      const duplicate = await prisma.proposal.findFirst({ where: { tenantId, deletedAt: null, id: { not: proposal.id }, OR: identifiers } });
+      const duplicate = await prisma.proposal.findFirst({ where: { tenantId, promoterId: proposal.promoterId, deletedAt: null, id: { not: proposal.id }, OR: identifiers } });
       if (duplicate) throw new Error('Identificador FACTA já vinculado a outra proposta nesta empresa.');
     }
 
@@ -1057,10 +1057,12 @@ export class FactaBankService {
   public static async getRecentLogs(
     prisma: PrismaClient,
     tenantId: string,
-    limit: number = 20
+    limit: number = 20,
+    promoterId?: string
   ) {
+    const config = await this.getTenantConfig(prisma, tenantId, promoterId);
     return prisma.factaSyncHistory.findMany({
-      where: { tenantId },
+      where: { tenantId, proposal: { promoterId: config.promoterId } },
       orderBy: { queryDate: 'desc' },
       take: Math.min(limit, 100),
     });

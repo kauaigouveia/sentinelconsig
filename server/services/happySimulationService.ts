@@ -1,3 +1,4 @@
+import { integrationConfigStore } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import {
   HappyNamespace,
@@ -61,7 +62,7 @@ export class HappySimulationService {
       'happy_clt_correspondente_banqueiro',
     ];
 
-    const configs = await prisma.systemConfig.findMany({
+    const configs = await (await integrationConfigStore(prisma, tenantId, 'happy')).findMany({
       where: {
         tenantId,
         configKey: { in: configKeys },
@@ -77,27 +78,27 @@ export class HappySimulationService {
     if (namespace === 'private') {
       baseUrl =
         map.get('happy_clt_base_url') ||
-        process.env.HAPPY_CLT_BASE_URL ||
+        ((await integrationConfigStore(prisma, tenantId, 'happy')).allowLegacy ? process.env.HAPPY_CLT_BASE_URL : undefined) ||
         'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-privado';
       cpfDigitador =
         map.get('happy_clt_cpf_digitador') ||
         map.get('happy_cpf_digitador') ||
-        process.env.HAPPY_CPF_DIGITADOR ||
+        undefined ||
         '';
       correspondenteBanqueiro =
         map.get('happy_clt_correspondente_banqueiro') ||
         map.get('happy_correspondente_banqueiro') ||
-        process.env.HAPPY_CORRESPONDENTE_BANQUEIRO ||
+        undefined ||
         '';
     } else {
       baseUrl =
         map.get('happy_base_url') ||
-        process.env.HAPPY_BASE_URL ||
+        ((await integrationConfigStore(prisma, tenantId, 'happy')).allowLegacy ? process.env.HAPPY_BASE_URL : undefined) ||
         'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-publico';
-      cpfDigitador = map.get('happy_cpf_digitador') || process.env.HAPPY_CPF_DIGITADOR || '';
+      cpfDigitador = map.get('happy_cpf_digitador') || '';
       correspondenteBanqueiro =
         map.get('happy_correspondente_banqueiro') ||
-        process.env.HAPPY_CORRESPONDENTE_BANQUEIRO ||
+        undefined ||
         '';
     }
 
@@ -366,7 +367,7 @@ export class HappySimulationService {
 
     // Se ainda não tiver canalCpfAgente, tenta buscar de SystemConfig
     if (!canalCpfAgente) {
-      const cfg = await prisma.systemConfig.findUnique({
+      const cfg = await (await integrationConfigStore(prisma, tenantId, 'happy')).findUnique({
         where: { tenantId_configKey: { tenantId, configKey: 'happy_cpf_digitador' } },
       });
       if (cfg?.configValue) {

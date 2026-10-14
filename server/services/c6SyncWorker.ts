@@ -1,3 +1,4 @@
+import { currentIntegrationPromoter, withIntegrationPromoter, integrationCacheKey, resolveBankPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../logger.js';
 import { C6BankService } from './c6BankService.js';
@@ -58,26 +59,15 @@ export class C6SyncWorker {
       });
 
       for (const tenant of tenants) {
-        // Evitar processamento concorrente para o mesmo tenant
-        if (this.isProcessingTenant.has(tenant.id)) {
-          continue;
-        }
-
-        const config = await C6BankService.getTenantConfig(prisma, tenant.id);
-        if (!config.autoSyncEnabled || !config.isConfigured) {
-          continue;
-        }
-
-        const now = Date.now();
-        const lastRun = this.lastRunTimestamps.get(tenant.id) || 0;
-        const intervalMs = config.syncIntervalMinutes * 60 * 1000;
-
-        if (now - lastRun >= intervalMs) {
-          // Disparar sincronização do tenant em background
-          this.processTenantProposals(prisma, tenant.id, config.syncIntervalMinutes).catch((err) => {
-            logger.warn({ tenantId: tenant.id, err }, '[C6 WORKER] Falha ao processar tenant');
-          });
-        }
+        const promoters = await prisma.promoter.findMany({ where: { tenantId: tenant.id, status: 'ATIVO' }, select: { id: true } });
+        for (const promoter of promoters) await withIntegrationPromoter(promoter.id, async () => {
+          const config = await C6BankService.getTenantConfig(prisma, tenant.id);
+          const scopeKey = integrationCacheKey(tenant.id);
+          if (!config.autoSyncEnabled || !config.isConfigured || this.isProcessingTenant.has(scopeKey)) return;
+          if (Date.now() - (this.lastRunTimestamps.get(scopeKey) || 0) >= config.syncIntervalMinutes * 60000) {
+            await this.processTenantProposals(prisma, tenant.id, config.syncIntervalMinutes).catch(err => logger.warn({ tenantId: tenant.id, promoterId: promoter.id, err }, '[C6 WORKER] Falha na conexão da promotora'));
+          }
+        });
       }
     } catch (err) {
       logger.error({ err }, '[C6 WORKER] Erro ao listar tenants para o ciclo C6');
@@ -92,12 +82,12 @@ export class C6SyncWorker {
     tenantId: string,
     intervalMinutes = 15
   ): Promise<{ processedCount: number; successCount: number; failedCount: number }> {
-    if (this.isProcessingTenant.has(tenantId)) {
+    if (this.isProcessingTenant.has(integrationCacheKey(tenantId))) {
       throw new Error('Processamento C6 já em andamento para esta empresa.');
     }
 
-    this.isProcessingTenant.add(tenantId);
-    this.lastRunTimestamps.set(tenantId, Date.now());
+    this.isProcessingTenant.add(integrationCacheKey(tenantId));
+    this.lastRunTimestamps.set(integrationCacheKey(tenantId), Date.now());
 
     let processedCount = 0;
     let successCount = 0;
@@ -116,7 +106,8 @@ export class C6SyncWorker {
       const eligibleProposals = await prisma.proposal.findMany({
         where: {
           tenantId,
-          deletedAt: null,
+          promoterId: (await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG')).id,
+        deletedAt: null,
           standardCategory: {
             notIn: ['PAGO', 'CANCELADO', 'RECUSADO'],
           },
@@ -179,12 +170,13 @@ export class C6SyncWorker {
       const recentFailures = await prisma.c6SyncHistory.count({
         where: {
           tenantId,
-          success: false,
+          proposal: { promoterId: (await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG')).id },
+        success: false,
           queryDate: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
       });
 
-      this.workerStatuses.set(tenantId, {
+      this.workerStatuses.set(integrationCacheKey(tenantId), {
         isRunning: true,
         autoSyncEnabled: true,
         syncIntervalMinutes: intervalMinutes,
@@ -199,7 +191,7 @@ export class C6SyncWorker {
 
       return { processedCount, successCount, failedCount };
     } finally {
-      this.isProcessingTenant.delete(tenantId);
+      this.isProcessingTenant.delete(integrationCacheKey(tenantId));
     }
   }
 
@@ -213,6 +205,7 @@ export class C6SyncWorker {
     return prisma.proposal.count({
       where: {
         tenantId,
+        promoterId: (await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG')).id,
         deletedAt: null,
         standardCategory: {
           notIn: ['PAGO', 'CANCELADO', 'RECUSADO'],
@@ -242,18 +235,19 @@ export class C6SyncWorker {
     tenantId: string
   ): Promise<C6WorkerStatus> {
     const config = await C6BankService.getTenantConfig(prisma, tenantId);
-    const cachedStatus = this.workerStatuses.get(tenantId);
+    const cachedStatus = this.workerStatuses.get(integrationCacheKey(tenantId));
     const pendingCount = await this.countPendingProposals(prisma, tenantId);
 
     const recentFailures = await prisma.c6SyncHistory.count({
       where: {
         tenantId,
+        proposal: { promoterId: (await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG')).id },
         success: false,
         queryDate: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
       },
     });
 
-    const isLocked = this.isProcessingTenant.has(tenantId);
+    const isLocked = this.isProcessingTenant.has(integrationCacheKey(tenantId));
 
     return {
       isRunning: this.isRunning,

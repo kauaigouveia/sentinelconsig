@@ -1,3 +1,4 @@
+import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate, nossaFintechBenefitError } from '../../src/lib/inssEligibility';
@@ -42,7 +43,7 @@ export interface NossaFintechConfig {
 
 export class NossaFintechService {
   static async getConfig(prisma: PrismaClient, tenantId: string): Promise<NossaFintechConfig> {
-    const entries = await prisma.systemConfig.findMany({ where: { tenantId, configKey: { in: Object.values(CONFIG_KEYS) } } });
+    const entries = await (await integrationConfigStore(prisma, tenantId, 'nossa-fintech')).findMany({ where: { tenantId, configKey: { in: Object.values(CONFIG_KEYS) } } });
     const map = new Map(entries.map(entry => [entry.configKey, entry.configValue]));
     return {
       isConfigured: Boolean(map.get(CONFIG_KEYS.cpf) && map.get(CONFIG_KEYS.promoterId) && map.get(CONFIG_KEYS.password)),
@@ -58,25 +59,25 @@ export class NossaFintechService {
     ];
     for (const [configKey, value] of secrets) {
       if (!value) continue;
-      await prisma.systemConfig.upsert({
+      await (await integrationConfigStore(prisma, tenantId, 'nossa-fintech')).upsert({
         where: { tenantId_configKey: { tenantId, configKey } },
         create: { tenantId, configKey, configValue: encrypt(value), isSecret: true },
         update: { configValue: encrypt(value), isSecret: true },
       });
     }
     if (values.enabled !== undefined) {
-      await prisma.systemConfig.upsert({
+      await (await integrationConfigStore(prisma, tenantId, 'nossa-fintech')).upsert({
         where: { tenantId_configKey: { tenantId, configKey: CONFIG_KEYS.enabled } },
         create: { tenantId, configKey: CONFIG_KEYS.enabled, configValue: String(values.enabled), isSecret: false },
         update: { configValue: String(values.enabled) },
       });
     }
-    tokenCache.delete(tenantId);
+    tokenCache.delete(integrationCacheKey(tenantId));
     return this.getConfig(prisma, tenantId);
   }
 
   private static async credentials(prisma: PrismaClient, tenantId: string) {
-    const entries = await prisma.systemConfig.findMany({ where: { tenantId, configKey: { in: [CONFIG_KEYS.cpf, CONFIG_KEYS.promoterId, CONFIG_KEYS.password] } } });
+    const entries = await (await integrationConfigStore(prisma, tenantId, 'nossa-fintech')).findMany({ where: { tenantId, configKey: { in: [CONFIG_KEYS.cpf, CONFIG_KEYS.promoterId, CONFIG_KEYS.password] } } });
     const values = new Map(entries.map(entry => [entry.configKey, entry.configValue]));
     const cpf = values.get(CONFIG_KEYS.cpf);
     const promoterId = values.get(CONFIG_KEYS.promoterId);
@@ -86,7 +87,7 @@ export class NossaFintechService {
   }
 
   private static async token(prisma: PrismaClient, tenantId: string, refresh = false): Promise<string> {
-    const cached = tokenCache.get(tenantId);
+    const cached = tokenCache.get(integrationCacheKey(tenantId));
     if (!refresh && cached && cached.expiresAt > Date.now()) return cached.token;
     const credentials = await this.credentials(prisma, tenantId);
     const response = await fetch(`${API_BASE}/auth/login`, {
@@ -99,7 +100,7 @@ export class NossaFintechService {
     if (!response.ok || typeof token !== 'string' || !token) {
       throw new Error((data as any)?.message || `Falha de autenticação Nossa Fintech (HTTP ${response.status}).`);
     }
-    tokenCache.set(tenantId, { token, expiresAt: Date.now() + 4 * 60_000 });
+    tokenCache.set(integrationCacheKey(tenantId), { token, expiresAt: Date.now() + 4 * 60_000 });
     return token;
   }
 
@@ -133,7 +134,7 @@ export class NossaFintechService {
     let token = await this.token(prisma, tenantId);
     let result = await send(token);
     if (result.response.status === 401) {
-      tokenCache.delete(tenantId);
+      tokenCache.delete(integrationCacheKey(tenantId));
       token = await this.token(prisma, tenantId, true);
       result = await send(token);
     }

@@ -1,3 +1,4 @@
+import { withIntegrationPromoter, resolveBankPromoter } from './server/services/bankPromoterConfig.js';
 import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
@@ -1203,6 +1204,13 @@ async function auditAndEnsureMasterUser() {
   // Enforce first-access password changes at the API boundary as well as in the UI.
   // The session endpoint must remain available so a browser refresh can restore the
   // forced-change screen; password update and logout are the only other allowed calls.
+  // Promoter scope flows through asynchronous provider calls, without changing tenant/session resolution.
+  app.use('/api/integrations', (req, res, next) => {
+    const promoterId = req.query.promoterId;
+    if (promoterId === undefined || promoterId === '') return next();
+    if (typeof promoterId !== 'string' || promoterId.length > 100) return res.status(400).json({ error: 'Promotora inválida.' });
+    return withIntegrationPromoter(promoterId, next);
+  });
   app.use('/api', async (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
 
@@ -14726,7 +14734,9 @@ async function auditAndEnsureMasterUser() {
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
       const proposal = await prisma.proposal.findFirst({ where: { id: req.params.id, tenantId, deletedAt: null } });
       if (!proposal?.finantoSimulationId) return res.status(409).json({ error: 'Vincule uma simulação FINANTO antes de sincronizar.' });
-      const provider = await FinantoService.request(prisma, tenantId, 'GET', `/v3/loans/simulation/${encodeURIComponent(proposal.finantoSimulationId)}`);
+      if (!proposal.promoterId) return res.status(409).json({ error: 'Vincule a promotora à proposta antes de consultar a FINANTO.' });
+      await resolveBankPromoter(prisma, tenantId, proposal.promoterId);
+      const provider = await withIntegrationPromoter(proposal.promoterId, () => FinantoService.request(prisma, tenantId, 'GET', `/v3/loans/simulation/${encodeURIComponent(proposal.finantoSimulationId)}`));
       const payload = provider.data as any;
       const messages = Array.isArray(payload?.messages) ? payload.messages.map((item: any) => item?.text).filter(Boolean).join(' ') : '';
       if (!provider.success || messages) {
@@ -15015,7 +15025,9 @@ async function auditAndEnsureMasterUser() {
         FGTS: '/nossa/v1/proposal/', CLT: '/clt-loan/v1/get-operation-details/',
       };
       const route = routeByProduct[proposal.nossaFintechProduct || 'PORT_REFIN'];
-      const result = await NossaFintechService.request(prisma, tenantId, 'GET', `${route}${encodeURIComponent(proposal.nossaFintechDebtKey)}`);
+      if (!proposal.promoterId) return res.status(409).json({ error: 'Vincule a promotora à proposta antes de consultar a Nossa Fintech.' });
+      await resolveBankPromoter(prisma, tenantId, proposal.promoterId);
+      const result = await withIntegrationPromoter(proposal.promoterId, () => NossaFintechService.request(prisma, tenantId, 'GET', `${route}${encodeURIComponent(proposal.nossaFintechDebtKey)}`));
       if (!result.success) {
         await prisma.proposal.update({ where: { id: proposal.id }, data: { nossaFintechSyncError: `HTTP ${result.status}` } });
         return res.status(502).json({ error: 'A Nossa Fintech não retornou os detalhes da operação.', providerStatus: result.status, details: result.data });
@@ -15077,6 +15089,7 @@ async function auditAndEnsureMasterUser() {
 
       // Nunca expor a senha no retorno JSON
       res.json({
+        enabled: config.enabled,
         username: config.username,
         promoterCode: config.promoterCode,
         typistCode: config.typistCode,
@@ -15115,6 +15128,7 @@ async function auditAndEnsureMasterUser() {
         typistCode: req.body?.typistCode,
         certifiedAgentCpf: req.body?.certifiedAgentCpf,
         simulationEnabled: req.body?.simulationEnabled,
+        enabled: req.body?.enabled,
         username,
         password,
         baseUrl,
@@ -15389,6 +15403,18 @@ async function auditAndEnsureMasterUser() {
     }
   });
 
+  app.get(['/api/integrations/promoters', '/api/integrations/facta/promoters'], async (req, res) => {
+    const session = await getAuthSession(req);
+    if (!session?.user) return res.status(401).json({ error: 'Não autenticado.' });
+    if (!hasPermission(session.user.role as Role, session.user.customPermissions, 'integrations.view')) return res.status(403).json({ error: 'Acesso negado.' });
+    const tenantId = session.effectiveTenantId || session.user.tenantId;
+    if (!tenantId) return res.status(403).json({ error: 'Empresa não definida.' });
+    try {
+      const promoters = await prisma.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+      res.json(promoters);
+    } catch { res.status(500).json({ error: 'Não foi possível carregar as conexões por promotora.' }); }
+  });
+
   // GET /api/integrations/facta/config - Secure tenant configuration
   app.get('/api/integrations/facta/config', async (req, res) => {
     try {
@@ -15400,10 +15426,13 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const config = await FactaBankService.getTenantConfig(prisma, tenantId);
+      const config = await FactaBankService.getTenantConfig(prisma, tenantId, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
 
       // Nunca expor a senha no retorno JSON
       res.json({
+        promoterId: config.promoterId,
+        promoterName: config.promoterName,
+        enabled: config.enabled,
         environment: config.environment,
         username: config.username,
         baseUrl: config.baseUrl,
@@ -15440,6 +15469,7 @@ async function auditAndEnsureMasterUser() {
       }
 
       const {
+        enabled,
         environment,
         username,
         password,
@@ -15457,6 +15487,7 @@ async function auditAndEnsureMasterUser() {
       } = req.body || {};
 
       const saved = await FactaBankService.saveTenantConfig(prisma, tenantId, {
+        enabled,
         environment,
         username,
         password,
@@ -15471,7 +15502,7 @@ async function auditAndEnsureMasterUser() {
         codigoAf,
         consultaSub,
         codigoSub,
-      });
+      }, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
 
       await AuditLogService.record(prisma, {
         tenantId,
@@ -15479,7 +15510,7 @@ async function auditAndEnsureMasterUser() {
         userName: session.user.name,
         action: 'facta_bank.config_updated',
         entity: 'SystemConfig',
-        entityId: 'facta_bank',
+        entityId: `facta_bank:${saved.promoterId}`,
         newData: {
           environment: saved.environment,
           username: saved.username,
@@ -15533,7 +15564,7 @@ async function auditAndEnsureMasterUser() {
       const { username, password, baseUrl } = req.body || {};
       const override = (username || password || baseUrl) ? { username, password, baseUrl } : undefined;
 
-      const result = await FactaBankService.testConnection(prisma, tenantId, override);
+      const result = await FactaBankService.testConnection(prisma, tenantId, override, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Erro ao testar conexão com FACTA Financeira.' });
@@ -15551,7 +15582,7 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const status = await FactaSyncWorker.getWorkerStatus(prisma, tenantId);
+      const status = await FactaSyncWorker.getWorkerStatus(prisma, tenantId, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
       res.json(status);
     } catch (err: any) {
       res.status(500).json({ error: 'Erro ao carregar status do sincronizador FACTA.' });
@@ -15570,11 +15601,12 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const config = await FactaBankService.getTenantConfig(prisma, tenantId);
+      const config = await FactaBankService.getTenantConfig(prisma, tenantId, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
       const result = await FactaSyncWorker.processTenantProposals(
         prisma,
         tenantId,
-        config.syncIntervalMinutes
+        config.syncIntervalMinutes,
+        config.promoterId
       );
 
       res.json({
@@ -15600,7 +15632,7 @@ async function auditAndEnsureMasterUser() {
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
       const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
-      const logs = await FactaBankService.getRecentLogs(prisma, tenantId, limit);
+      const logs = await FactaBankService.getRecentLogs(prisma, tenantId, limit, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
 
       res.json(logs);
     } catch (err: any) {
@@ -16314,9 +16346,12 @@ async function auditAndEnsureMasterUser() {
       const cpf = payload?.cpf ? SimulationService.normalizeCpf(payload.cpf) : null;
       const eventName = payload?.event_name;
 
-      if (customerId || chaveProposta || cpf) {
+      if (result.processed && result.proposalId && (customerId || chaveProposta || cpf)) {
+        const origin = await prisma.proposal.findUnique({ where: { id: result.proposalId }, select: { tenantId: true } });
+        if (!origin) return res.json(result);
         const sim = await prisma.simulationRequest.findFirst({
           where: {
+            tenantId: origin.tenantId,
             OR: [
               ...(customerId ? [{ happyClientId: String(customerId) }] : []),
               ...(chaveProposta ? [{ happyProposalKey: String(chaveProposta) }] : []),

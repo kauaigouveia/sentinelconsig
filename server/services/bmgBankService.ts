@@ -1,3 +1,4 @@
+import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { isValidCpf } from '../../src/lib/utils.js';
@@ -25,7 +26,7 @@ function requestBody(value: unknown) {
 }
 export class BmgBankService {
   static async config(prisma: PrismaClient, tenantId: string): Promise<Config> {
-    const row = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: 'BMG_CONFIG' } } });
+    const row = await (await integrationConfigStore(prisma, tenantId, 'bmg')).findUnique({ where: { tenantId_configKey: { tenantId, configKey: 'BMG_CONFIG' } } });
     return row ? open(row.configValue) : { environment: 'sandbox', username: '', password: '', enabled: false, storeCode: '', channelCode: '', operatorCpf: '' };
   }
   static metadata(config: Config) { const { password, ...safe } = config; return { ...safe, hasPassword: !!password, isConfigured: !!(config.username && password) }; }
@@ -36,20 +37,20 @@ export class BmgBankService {
     if (config.enabled && (!config.username || !config.password)) throw new Error('Cadastre o usuário de integração e a senha BMG.');
     if (config.operatorCpf && !isValidCpf(config.operatorCpf)) throw new Error('CPF do operador de vendas inválido.');
     if ([config.storeCode, config.channelCode, config.entityCode].some(value => value && !/^\d+$/.test(value))) throw new Error('Loja, canal e entidade devem conter apenas números.');
-    await prisma.systemConfig.upsert({ where: { tenantId_configKey: { tenantId, configKey: 'BMG_CONFIG' } }, create: { tenantId, configKey: 'BMG_CONFIG', configValue: seal(config), isSecret: true }, update: { configValue: seal(config), isSecret: true } });
-    tokens.delete(tenantId);
-    if (previous.environment !== config.environment || previous.username !== config.username || previous.password !== config.password || !config.enabled) await prisma.systemConfig.deleteMany({ where: { tenantId, configKey: { startsWith: 'BMG_SESSION:' } } });
+    await (await integrationConfigStore(prisma, tenantId, 'bmg')).upsert({ where: { tenantId_configKey: { tenantId, configKey: 'BMG_CONFIG' } }, create: { tenantId, configKey: 'BMG_CONFIG', configValue: seal(config), isSecret: true }, update: { configValue: seal(config), isSecret: true } });
+    tokens.delete(integrationCacheKey(tenantId));
+    if (previous.environment !== config.environment || previous.username !== config.username || previous.password !== config.password || !config.enabled) await (await integrationConfigStore(prisma, tenantId, 'bmg')).deleteMany({ where: { tenantId, configKey: { startsWith: 'BMG_SESSION:' } } });
     return this.metadata(config);
   }
   static async token(prisma: PrismaClient, tenantId: string) {
     const config = await this.config(prisma, tenantId);
     if (!config.enabled || !config.username || !config.password) throw new Error('Cadastre e habilite as credenciais BMG da empresa.');
     const fingerprint = createHash('sha256').update(JSON.stringify([config.environment, config.username, config.password])).digest('hex');
-    const cached = tokens.get(tenantId); if (cached && cached.fingerprint === fingerprint && cached.expires > Date.now()) return cached.value;
+    const cached = tokens.get(integrationCacheKey(tenantId)); if (cached && cached.fingerprint === fingerprint && cached.expires > Date.now()) return cached.value;
     const response = await fetch(`${BASES[config.environment]}/v1/token`, { method: 'POST', headers: { Authorization: `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`, Accept: 'application/json' }, signal: AbortSignal.timeout(15000), redirect: 'error' });
     const data = await response.json().catch(() => null);
     if (!response.ok || !data?.access_token) throw new Error(`BMG não autenticou o usuário de integração (HTTP ${response.status}).`);
-    const expiry = Number(data.expires_in); if (Number.isFinite(expiry) && expiry > 60) tokens.set(tenantId, { value: data.access_token, expires: Date.now() + (expiry - 60) * 1000, fingerprint });
+    const expiry = Number(data.expires_in); if (Number.isFinite(expiry) && expiry > 60) tokens.set(integrationCacheKey(tenantId), { value: data.access_token, expires: Date.now() + (expiry - 60) * 1000, fingerprint });
     return String(data.access_token);
   }
   static async request(prisma: PrismaClient, tenantId: string, method: string, path: string, body?: any, headers: Record<string, string> = {}) {
@@ -63,10 +64,10 @@ export class BmgBankService {
   private static sessionKey(actorId: string, cpf: string) { return `BMG_SESSION:${createHash('sha256').update(`${actorId}:${cpf}`).digest('hex')}`; }
   private static async session(prisma: PrismaClient, tenantId: string, actorId: string, cpf: string) {
     const configKey = this.sessionKey(actorId, cpf), where = { tenantId_configKey: { tenantId, configKey } };
-    const row = await prisma.systemConfig.findUnique({ where }); return { where, configKey, data: row ? open(row.configValue) : null };
+    const row = await (await integrationConfigStore(prisma, tenantId, 'bmg')).findUnique({ where }); return { where, configKey, data: row ? open(row.configValue) : null };
   }
   private static async saveSession(prisma: PrismaClient, tenantId: string, actorId: string, cpf: string, data: any) {
-    const configKey = this.sessionKey(actorId, cpf); await prisma.systemConfig.upsert({ where: { tenantId_configKey: { tenantId, configKey } }, create: { tenantId, configKey, configValue: seal(data), isSecret: true }, update: { configValue: seal(data) } });
+    const configKey = this.sessionKey(actorId, cpf); await (await integrationConfigStore(prisma, tenantId, 'bmg')).upsert({ where: { tenantId_configKey: { tenantId, configKey } }, create: { tenantId, configKey, configValue: seal(data), isSecret: true }, update: { configValue: seal(data) } });
   }
   static async sendOtp(prisma: PrismaClient, tenantId: string, actorId: string, cpf: string, phone: string) {
     const data = await this.request(prisma, tenantId, 'POST', '/v1/sms/otp', { cpf, celular: phone });
@@ -124,14 +125,14 @@ export class BmgBankService {
   static async submission(prisma: PrismaClient, tenantId: string, simulationId: string) {
     const config = await this.config(prisma, tenantId);
     const configKey = `BMG_SUBMISSION:${createHash('sha256').update(`${config.environment}:${simulationId}`).digest('hex')}`;
-    const row = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey } } });
+    const row = await (await integrationConfigStore(prisma, tenantId, 'bmg')).findUnique({ where: { tenantId_configKey: { tenantId, configKey } } });
     return { configKey, data: row ? open(row.configValue) : null };
   }
   static async saveSubmission(prisma: PrismaClient, tenantId: string, configKey: string, data: any) {
-    await prisma.systemConfig.update({ where: { tenantId_configKey: { tenantId, configKey } }, data: { configValue: seal(data) } });
+    await (await integrationConfigStore(prisma, tenantId, 'bmg')).update({ where: { tenantId_configKey: { tenantId, configKey } }, data: { configValue: seal(data) } });
   }
   static async reserveSubmission(prisma: PrismaClient, tenantId: string, configKey: string, data: any) {
-    try { await prisma.systemConfig.create({ data: { tenantId, configKey, configValue: seal(data), isSecret: true } }); }
+    try { await (await integrationConfigStore(prisma, tenantId, 'bmg')).create({ data: { tenantId, configKey, configValue: seal(data), isSecret: true } }); }
     catch (error: any) { if (error.code === 'P2002') throw new Error('Esta simulação já foi enviada. Consulte a proposta antes de tentar novamente.'); throw error; }
   }
 }

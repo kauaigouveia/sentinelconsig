@@ -10,7 +10,7 @@ import { usePreviewData } from './components/redesign/PreviewData';
 import { useTaskSearch } from './components/redesign/useTaskSearch';
 import { operationalFamily } from './components/redesign/operationalFamilies';
 import { rememberDevelopmentPresentation } from './components/redesign/developmentPresentation';
-import { initialPresentation, canSwitchProductionPresentation } from './components/redesign/productionPresentation';
+import { initialPresentation } from './components/redesign/productionPresentation';
 import './styles/sentinel-2-preview.css';
 import './styles/sentinel-2-production.css';
 import './styles/sentinel-2-modules.css';
@@ -943,7 +943,6 @@ function AppMainContent() {
         />
       )}
       {/* Universal Search Command Palette (Ctrl+K) */}
-      {((import.meta as any).env.DEV || canSwitchProductionPresentation(isAuthenticated, activeUser?.role, (import.meta as any).env.VITE_SENTINEL_UI_MODE)) && <button className="s2-dev-switch" onClick={() => { const next=!newUI;setNewUI(next);if ((import.meta as any).env.DEV) {const url=new URL(window.location.href);url.searchParams.set('ui',next?'2':'legacy');window.history.replaceState(null,'',url);}setIsMobileNavigationOpen(false);setIsUniversalSearchOpen(false); }} title="Alternar apresentação mantendo a sessão e as rotas">{newUI ? 'Premium V2 · voltar ao legado' : 'Ativar Sentinel 2.0'}</button>}
       {isUniversalSearchOpen && newUI && <PreviewSearch tasks={taskSearch} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} rows={preview.rows} clients={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? StorageService.getClients().map(c=>({id:c.id,name:c.fullName||'Cliente não informado',cpf:c.cpf||''})) : []} openClient={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? cpf => {setGlobalSearchTerm(cpf);navigate('/clientes');} : undefined} partners={hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.view') || hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.crm.view') ? StorageService.getPartners().map(p => ({name:p.fullName,code:p.login})) : []} recent={workspace.recent} favorites={workspace.favorites} navigate={handleNavigate} openProposal={id => {setDetailProposalId(id);navigate(`/propostas/${id}`);}} close={() => setIsUniversalSearchOpen(false)} />}
       {isUniversalSearchOpen && !newUI && <UniversalCommandPalette
         isOpen={isUniversalSearchOpen}

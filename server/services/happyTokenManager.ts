@@ -1,3 +1,4 @@
+import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import { HappyTenantConfig, HappyAuthRequestBody, HappyAuthResponse, HappyNamespace } from './happyBankTypes.js';
 
@@ -27,7 +28,7 @@ export class HappyTokenManager {
   private static inFlightTokenPromises: Map<string, Promise<string>> = new Map();
 
   private static getCacheKey(tenantId: string, namespace: HappyNamespace = 'public'): string {
-    return `${tenantId}:${namespace}`;
+    return `${integrationCacheKey(tenantId)}:${namespace}`;
   }
 
   /**
@@ -60,6 +61,12 @@ export class HappyTokenManager {
     overrideCredentials?: Partial<HappyTenantConfig>,
     namespace: HappyNamespace = 'public'
   ): Promise<string> {
+    await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG');
+    if (!overrideCredentials) {
+      const store = await integrationConfigStore(prisma, tenantId, 'happy');
+      const flags = await store.findMany({ where: { tenantId, configKey: { in: ['happy_ativo'] } } });
+      if (!flags.some(row => row.configValue === 'true')) throw new Error('Ative a conexão Happy/BYX desta promotora antes de consultar.');
+    }
     const cacheKey = this.getCacheKey(tenantId, namespace);
 
     if (!forceRefresh && !overrideCredentials) {
@@ -103,7 +110,7 @@ export class HappyTokenManager {
             'happy_clt_base_url',
           ];
 
-          const configs = await prisma.systemConfig.findMany({
+          const configs = await (await integrationConfigStore(prisma, tenantId, 'happy')).findMany({
             where: {
               tenantId,
               configKey: { in: configKeys },
@@ -113,17 +120,17 @@ export class HappyTokenManager {
           const configMap = new Map(configs.map((c) => [c.configKey, c.configValue]));
 
           if (namespace === 'private') {
-            clientId = clientId || configMap.get('happy_clt_client_id') || configMap.get('happy_client_id') || process.env.HAPPY_CLT_CLIENT_ID || process.env.HAPPY_CLIENT_ID || '';
-            secret = secret || configMap.get('happy_clt_secret') || configMap.get('happy_secret') || process.env.HAPPY_CLT_SECRET || process.env.HAPPY_SECRET || '';
-            usuario = usuario || configMap.get('happy_clt_usuario') || configMap.get('happy_usuario') || process.env.HAPPY_CLT_USUARIO || process.env.HAPPY_USUARIO || '';
-            senha = senha || configMap.get('happy_clt_senha') || configMap.get('happy_senha') || process.env.HAPPY_CLT_SENHA || process.env.HAPPY_SENHA || '';
-            baseUrl = baseUrl || configMap.get('happy_clt_base_url') || process.env.HAPPY_CLT_BASE_URL || 'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-privado';
+            clientId = clientId || configMap.get('happy_clt_client_id') || configMap.get('happy_client_id') || '';
+            secret = secret || configMap.get('happy_clt_secret') || configMap.get('happy_secret') || '';
+            usuario = usuario || configMap.get('happy_clt_usuario') || configMap.get('happy_usuario') || '';
+            senha = senha || configMap.get('happy_clt_senha') || configMap.get('happy_senha') || '';
+            baseUrl = baseUrl || configMap.get('happy_clt_base_url') || ((await integrationConfigStore(prisma, tenantId, 'happy')).allowLegacy ? process.env.HAPPY_CLT_BASE_URL : undefined) || 'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-privado';
           } else {
-            clientId = clientId || configMap.get('happy_client_id') || process.env.HAPPY_CLIENT_ID || '';
-            secret = secret || configMap.get('happy_secret') || process.env.HAPPY_SECRET || '';
-            usuario = usuario || configMap.get('happy_usuario') || process.env.HAPPY_USUARIO || '';
-            senha = senha || configMap.get('happy_senha') || process.env.HAPPY_SENHA || '';
-            baseUrl = baseUrl || configMap.get('happy_base_url') || process.env.HAPPY_BASE_URL || 'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-publico';
+            clientId = clientId || configMap.get('happy_client_id') || '';
+            secret = secret || configMap.get('happy_secret') || '';
+            usuario = usuario || configMap.get('happy_usuario') || '';
+            senha = senha || configMap.get('happy_senha') || '';
+            baseUrl = baseUrl || configMap.get('happy_base_url') || ((await integrationConfigStore(prisma, tenantId, 'happy')).allowLegacy ? process.env.HAPPY_BASE_URL : undefined) || 'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-publico';
           }
         }
 

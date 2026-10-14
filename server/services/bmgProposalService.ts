@@ -1,3 +1,4 @@
+import { resolveBankPromoter, currentIntegrationPromoter } from './bankPromoterConfig.js';
 import type { PrismaClient } from '@prisma/client';
 import { BmgBankService } from './bmgBankService.js';
 import { PartnerSimulationTracking } from './partnerSimulationTracking.js';
@@ -12,6 +13,7 @@ const states = new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ
 export class BmgProposalService {
   static async createClt(prisma: PrismaClient, context: { tenantId: string; actorId: string; userId: string; partnerId: string }, raw: any) {
     const { tenantId, actorId, userId, partnerId } = context;
+    const connectionPromoter = await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG');
     const cpf = String(raw.cpf || '').replace(/\D/g, ''), simulationId = String(raw.simulationId || '');
     if (!/^\d{11}$/.test(cpf) || !/^\d{1,30}$/.test(simulationId)) throw new Error('CPF ou simulação inválidos.');
     const previous = await BmgBankService.submission(prisma, tenantId, simulationId);
@@ -40,7 +42,7 @@ export class BmgProposalService {
       const bank = await prisma.bank.upsert({ where: { tenantId_code: { tenantId, code: '318' } }, create: { tenantId, code: '318', name: 'BMG' }, update: {} });
       let product = await prisma.product.findFirst({ where: { tenantId, active: true, type: 'NOVO', name: 'CLT - Crédito do Trabalhador' } });
       if (!product) product = await prisma.product.create({ data: { tenantId, scope: 'TENANT', name: 'CLT - Crédito do Trabalhador', type: 'NOVO' } });
-      saved = { actorId, cpf, partnerId, promoterId: partner.promoterId, userId, name, quote, payload, bankId: bank.id, productId: product.id, state: 'PENDING', createdAt: new Date().toISOString() };
+      saved = { actorId, cpf, partnerId, promoterId: connectionPromoter.id, userId, name, quote, payload, bankId: bank.id, productId: product.id, state: 'PENDING', createdAt: new Date().toISOString() };
       await BmgBankService.reserveSubmission(prisma, tenantId, previous.configKey, saved);
       let result: any;
       try { result = await BmgBankService.request(prisma, tenantId, 'POST', '/v1/consignado-privado/propostas', payload); }

@@ -6,6 +6,9 @@
 export type FactaEnvironment = 'homologation' | 'production';
 
 export interface FactaTenantConfig {
+  enabled?: boolean;
+  promoterId?: string;
+  promoterName?: string;
   environment: FactaEnvironment;
   username: string;
   password?: string;

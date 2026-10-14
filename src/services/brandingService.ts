@@ -61,14 +61,16 @@ export class BrandingService {
     const tenantName = branding.companyName || SYSTEM_IDENTITY.name;
     document.title = `${tenantName} | Sentinel Consig`;
 
-    if (branding.faviconUrl) {
+    {
       let iconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!iconLink) {
         iconLink = document.createElement('link');
         iconLink.rel = 'icon';
         document.head.appendChild(iconLink);
       }
-      iconLink.href = branding.faviconUrl;
+      iconLink.removeAttribute('type');
+      const favicon = branding.faviconUrl || branding.logoUrl;
+      iconLink.href = !favicon || favicon === '/branding/sentinel-mark-v2.svg' ? '/branding/sentinel-consig-symbol.svg' : favicon;
     }
   }
 }

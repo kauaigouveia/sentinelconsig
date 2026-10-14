@@ -1,3 +1,4 @@
+import { currentIntegrationPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../logger.js';
 import { FactaBankService } from './factaBankService.js';
@@ -57,23 +58,15 @@ export class FactaSyncWorker {
       });
 
       for (const tenant of tenants) {
-        if (this.isProcessingTenant.has(tenant.id)) {
-          continue;
-        }
-
-        const config = await FactaBankService.getTenantConfig(prisma, tenant.id);
-        if (!config.autoSyncEnabled || !config.isConfigured) {
-          continue;
-        }
-
-        const now = Date.now();
-        const lastRun = this.lastRunTimestamps.get(tenant.id) || 0;
-        const intervalMs = config.syncIntervalMinutes * 60 * 1000;
-
-        if (now - lastRun >= intervalMs) {
-          this.processTenantProposals(prisma, tenant.id, config.syncIntervalMinutes).catch((err) => {
-            logger.warn({ tenantId: tenant.id, err }, '[FACTA WORKER] Falha ao processar tenant FACTA');
-          });
+        for (const config of await FactaBankService.getPromoterConfigs(prisma, tenant.id)) {
+          if (!config.autoSyncEnabled || !config.isConfigured || !config.promoterId) continue;
+          const scopeKey = `${tenant.id}:${config.promoterId}`;
+          if (this.isProcessingTenant.has(scopeKey)) continue;
+          if (Date.now() - (this.lastRunTimestamps.get(scopeKey) || 0) >= config.syncIntervalMinutes * 60000) {
+            await this.processTenantProposals(prisma, tenant.id, config.syncIntervalMinutes, config.promoterId).catch(err => {
+              logger.warn({ tenantId: tenant.id, promoterId: config.promoterId, err }, '[FACTA WORKER] Falha na conexão da promotora');
+            });
+          }
         }
       }
     } catch (err) {
@@ -87,19 +80,29 @@ export class FactaSyncWorker {
   public static async processTenantProposals(
     prisma: PrismaClient,
     tenantId: string,
-    intervalMinutes = 15
+    intervalMinutes = 15,
+    promoterId?: string
   ): Promise<{
     processedCount: number;
     updatedCount: number;
     unlinkedCount: number;
     failedCount: number;
   }> {
-    if (this.isProcessingTenant.has(tenantId)) {
-      throw new Error('Processamento FACTA já em andamento para esta empresa.');
+    promoterId ||= currentIntegrationPromoter();
+    if (!promoterId) {
+      const total = { processedCount: 0, updatedCount: 0, unlinkedCount: 0, failedCount: 0 };
+      for (const config of await FactaBankService.getPromoterConfigs(prisma, tenantId)) {
+        if (!config.isConfigured || !config.promoterId) continue;
+        const result = await this.processTenantProposals(prisma, tenantId, config.syncIntervalMinutes, config.promoterId);
+        for (const key of Object.keys(total) as (keyof typeof total)[]) total[key] += result[key];
+      }
+      return total;
     }
-
-    this.isProcessingTenant.add(tenantId);
-    this.lastRunTimestamps.set(tenantId, Date.now());
+    await FactaBankService.getTenantConfig(prisma, tenantId, promoterId);
+    const scopeKey = `${tenantId}:${promoterId}`;
+    if (this.isProcessingTenant.has(scopeKey)) throw new Error('Sincronização já em andamento para esta promotora.');
+    this.isProcessingTenant.add(scopeKey);
+    this.lastRunTimestamps.set(scopeKey, Date.now());
 
     let processedCount = 0;
     let updatedCount = 0;
@@ -111,6 +114,7 @@ export class FactaSyncWorker {
       const batchResult = await FactaBankService.processBatchProposals(prisma, tenantId, {
         daysBack: 30,
         queriedBy: 'AUTO_WORKER',
+        promoterId,
       });
 
       processedCount = batchResult.processedCount;
@@ -122,16 +126,17 @@ export class FactaSyncWorker {
         lastError = batchResult.errors[0];
       }
 
-      const pendingCount = await this.countPendingProposals(prisma, tenantId);
+      const pendingCount = await this.countPendingProposals(prisma, tenantId, promoterId);
       const recentFailures = await prisma.factaSyncHistory.count({
         where: {
           tenantId,
-          success: false,
+          proposal: { promoterId },
+        success: false,
           queryDate: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
       });
 
-      this.workerStatuses.set(tenantId, {
+      this.workerStatuses.set(scopeKey, {
         isRunning: true,
         autoSyncEnabled: true,
         syncIntervalMinutes: intervalMinutes,
@@ -152,7 +157,7 @@ export class FactaSyncWorker {
       logger.error({ tenantId, err }, '[FACTA WORKER] Erro crítico ao processar lote FACTA');
       throw err;
     } finally {
-      this.isProcessingTenant.delete(tenantId);
+      this.isProcessingTenant.delete(scopeKey);
     }
   }
 
@@ -161,11 +166,13 @@ export class FactaSyncWorker {
    */
   public static async countPendingProposals(
     prisma: PrismaClient,
-    tenantId: string
+    tenantId: string,
+    promoterId?: string
   ): Promise<number> {
     return prisma.proposal.count({
       where: {
         tenantId,
+        promoterId,
         deletedAt: null,
         standardCategory: {
           notIn: ['PAGO', 'CANCELADO', 'RECUSADO'],
@@ -190,21 +197,23 @@ export class FactaSyncWorker {
    */
   public static async getWorkerStatus(
     prisma: PrismaClient,
-    tenantId: string
+    tenantId: string,
+    promoterId?: string
   ): Promise<FactaWorkerStatus> {
-    const config = await FactaBankService.getTenantConfig(prisma, tenantId);
-    const cachedStatus = this.workerStatuses.get(tenantId);
-    const pendingCount = await this.countPendingProposals(prisma, tenantId);
+    const config = await FactaBankService.getTenantConfig(prisma, tenantId, promoterId);
+    const cachedStatus = this.workerStatuses.get(`${tenantId}:${config.promoterId}`);
+    const pendingCount = await this.countPendingProposals(prisma, tenantId, config.promoterId);
 
     const recentFailures = await prisma.factaSyncHistory.count({
       where: {
         tenantId,
+        proposal: { promoterId: config.promoterId },
         success: false,
         queryDate: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
       },
     });
 
-    const isLocked = this.isProcessingTenant.has(tenantId);
+    const isLocked = this.isProcessingTenant.has(`${tenantId}:${config.promoterId}`);
 
     return {
       isRunning: this.isRunning,

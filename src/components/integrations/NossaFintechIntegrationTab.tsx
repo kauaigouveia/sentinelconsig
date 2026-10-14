@@ -1,3 +1,4 @@
+import { BankPromoterConnection, promoterApiUrl } from './BankPromoterConnection';
 import React, { useEffect, useState } from 'react';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { INSS_TERMS } from '../../lib/inssEligibility';
@@ -63,7 +64,7 @@ const defaultBody: Record<string, string> = {
 
 const money = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export const NossaFintechIntegrationTab: React.FC = () => {
+const NossaFintechIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoterId: connectionPromoterId }) => {
   const user = StorageService.getActiveUser();
   const canManage = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(user?.role || '') || hasPermission(user?.role, user?.customPermissions, 'integrations.manage');
   const [config, setConfig] = useState<Config>({ isConfigured: false, enabled: false });
@@ -82,7 +83,7 @@ export const NossaFintechIntegrationTab: React.FC = () => {
   const [portResults, setPortResults] = useState<ApiResult | null>(null);
 
   useEffect(() => {
-    fetch('/api/integrations/nossa-fintech/config').then(async response => {
+    fetch(promoterApiUrl('/api/integrations/nossa-fintech/config', connectionPromoterId)).then(async response => {
       const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Falha ao carregar configuração.'); setConfig(data);
     }).catch(error => setNotice(error.message)).finally(() => setLoading(false));
   }, []);
@@ -90,7 +91,7 @@ export const NossaFintechIntegrationTab: React.FC = () => {
   const save = async () => {
     setBusy(true); setNotice('');
     try {
-      const response = await fetch('/api/integrations/nossa-fintech/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(cpf ? { cpf } : {}), ...(promoterId ? { promoterId } : {}), ...(password ? { password } : {}), enabled: config.enabled }) });
+      const response = await fetch(promoterApiUrl('/api/integrations/nossa-fintech/config', connectionPromoterId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(cpf ? { cpf } : {}), ...(promoterId ? { promoterId } : {}), ...(password ? { password } : {}), enabled: config.enabled }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Falha ao salvar.');
       setConfig(data.config); setCpf(''); setPromoterId(''); setPassword(''); setNotice('Configuração salva. As credenciais ficam criptografadas no servidor.');
     } catch (error: any) { setNotice(error.message || 'Erro ao salvar configuração.'); } finally { setBusy(false); }
@@ -99,7 +100,7 @@ export const NossaFintechIntegrationTab: React.FC = () => {
   const testConnection = async () => {
     setBusy(true); setNotice('');
     try {
-      const response = await fetch('/api/integrations/nossa-fintech/test-connection', { method: 'POST' }); const data = await response.json();
+      const response = await fetch(promoterApiUrl('/api/integrations/nossa-fintech/test-connection', connectionPromoterId), { method: 'POST' }); const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Falha de autenticação.');
       setNotice(`Acesso autenticado com sucesso (${data.responseTimeMs} ms).`);
     } catch (error: any) { setNotice(error.message || 'Falha na conexão.'); } finally { setBusy(false); }
@@ -112,7 +113,7 @@ export const NossaFintechIntegrationTab: React.FC = () => {
     try { parsed = method !== 'GET' && body.trim() ? JSON.parse(body) : undefined; } catch { setNotice('O corpo da requisição não é um JSON válido.'); setBusy(false); return; }
     if (method !== 'GET' && !window.confirm('Esta chamada pode criar, alterar ou cancelar uma autorização, proposta ou operação real. Deseja continuar?')) { setBusy(false); return; }
     try {
-      const response = await fetch('/api/integrations/nossa-fintech/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, endpoint: path, ...(method !== 'GET' && parsed !== undefined ? { body: parsed } : {}) }) });
+      const response = await fetch(promoterApiUrl('/api/integrations/nossa-fintech/request', connectionPromoterId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, endpoint: path, ...(method !== 'GET' && parsed !== undefined ? { body: parsed } : {}) }) });
       const data = await response.json(); setResult(data); if (!response.ok) setNotice(data.error || `A API respondeu com HTTP ${data.status || response.status}.`);
     } catch (error: any) { setNotice(error.message || 'Falha na chamada.'); } finally { setBusy(false); }
   };
@@ -120,7 +121,7 @@ export const NossaFintechIntegrationTab: React.FC = () => {
   const simulatePortRefin = async () => {
     setBusy(true); setPortResults(null); setNotice('');
     try {
-      const response = await fetch('/api/integrations/nossa-fintech/port-refin/simulate-all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portInput, lastDueBalance: Number(portInput.lastDueBalance), installmentFaceValue: Number(portInput.installmentFaceValue), openedInstallmentNumber: Number(portInput.openedInstallmentNumber), numberOfInstallments: Number(portInput.numberOfInstallments) }) });
+      const response = await fetch(promoterApiUrl('/api/integrations/nossa-fintech/port-refin/simulate-all', connectionPromoterId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portInput, lastDueBalance: Number(portInput.lastDueBalance), installmentFaceValue: Number(portInput.installmentFaceValue), openedInstallmentNumber: Number(portInput.openedInstallmentNumber), numberOfInstallments: Number(portInput.numberOfInstallments) }) });
       const data = await response.json(); setPortResults(data); if (!response.ok) throw new Error(data.error || 'Falha na simulação.');
     } catch (error: any) { setNotice(error.message || 'Falha na simulação Port/Refin.'); } finally { setBusy(false); }
   };
@@ -163,3 +164,5 @@ export const NossaFintechIntegrationTab: React.FC = () => {
     </section>
   </div>;
 };
+
+export const NossaFintechIntegrationTab: React.FC<{ promoterId?: string }> = ({ promoterId }) => promoterId ? <NossaFintechIntegrationTabContent promoterId={promoterId} /> : <BankPromoterConnection>{id => <NossaFintechIntegrationTabContent promoterId={id} />}</BankPromoterConnection>;

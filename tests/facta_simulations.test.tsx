@@ -9,7 +9,7 @@ import { FinantoService } from '../server/services/finantoService';
 import { FactaSimulationResults } from '../src/components/simulation/FactaSimulationResults';
 import { mapFactaStatusToInternal } from '../server/services/factaStatusMapper';
 
-const config = { simulationEnabled: true, isConfigured: true, baseUrl: FactaBankService.PRODUCTION_BASE_URL };
+const config = { promoterId: 'dg', enabled: true, simulationEnabled: true, isConfigured: true, baseUrl: FactaBankService.PRODUCTION_BASE_URL };
 const prisma = {} as any;
 const input = { cpf: '12345678901', birthDate: '1980-01-02', benefitNumber: '123456', benefitType: 41, operation: 'NEW' as const, term: 108, mode: 'INSTALLMENT' as const, value: 500 };
 const productInput = { cpf: input.cpf, name: 'Cliente', phone: '11999999999', term: 24, value: 500, mode: 'Payment' as const, eligibility: true };
@@ -230,14 +230,14 @@ describe('FACTA transporte e vínculo de propostas', () => {
     await expect(FactaBankService.queryAndamentoPropostas(prisma, 'tenant', {})).rejects.toThrow('Permissão negada');
   });
   it('associação exige banco FACTA e identificador, jamais CPF sozinho', async () => {
-    const findMany = vi.fn().mockResolvedValue([]); const db = { proposal: { findMany } } as any;
+    const findMany = vi.fn().mockResolvedValue([]); const db = { promoter: { findMany: vi.fn().mockResolvedValue([{ id: 'dg', name: 'DG' }]) }, proposal: { findMany } } as any;
     await FactaBankService.findMatchingProposal(db, 'tenant', { codigo_af: 'af', cpf: input.cpf });
-    expect(findMany.mock.calls[0][0].where).toMatchObject({ tenantId: 'tenant', bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] } });
+    expect(findMany.mock.calls[0][0].where).toMatchObject({ tenantId: 'tenant', promoterId: 'dg', bank: { OR: [{ name: { contains: 'FACTA', mode: 'insensitive' } }, { code: '149' }] } });
     expect(JSON.stringify(findMany.mock.calls[0])).not.toContain('c6OperationNumber');
     findMany.mockClear(); await FactaBankService.findMatchingProposal(db, 'tenant', { cpf: input.cpf }); expect(findMany).not.toHaveBeenCalled();
   });
   it('não vincula identificador duplicado ou CPF divergente', async () => {
-    const findMany = vi.fn().mockResolvedValue([{ client: { cpf: '99999999999' } }]); const db = { proposal: { findMany } } as any;
+    const findMany = vi.fn().mockResolvedValue([{ client: { cpf: '99999999999' } }]); const db = { promoter: { findMany: vi.fn().mockResolvedValue([{ id: 'dg', name: 'DG' }]) }, proposal: { findMany } } as any;
     expect((await FactaBankService.findMatchingProposal(db, 'tenant', { codigo_af: 'af', cpf: input.cpf })).proposal).toBeNull();
     findMany.mockResolvedValue([{}, {}]); expect((await FactaBankService.findMatchingProposal(db, 'tenant', { codigo_af: 'af' })).matchType).toBe('MULTIPLE_MATCHES');
   });
@@ -271,13 +271,13 @@ describe('FACTA transporte e vínculo de propostas', () => {
   it('consulta individual rejeita AF divergente sem alterar status interno', async () => {
     vi.spyOn(FactaBankService, 'queryAndamentoPropostas').mockResolvedValue({ data: [{ codigo_af: 'outro', status_proposta: 'PAGO' }], totalRecords: 1 });
     const transaction = vi.fn();
-    const db = { proposal: { findFirst: vi.fn().mockResolvedValue({ id: 'p', factaAfCode: 'af', status: { name: 'PENDENTE' }, client: { cpf: input.cpf } }), update: vi.fn() }, factaSyncHistory: { create: vi.fn() }, $transaction: transaction } as any;
+    const db = { proposal: { findFirst: vi.fn().mockResolvedValue({ id: 'p', promoterId: 'dg', factaAfCode: 'af', status: { name: 'PENDENTE' }, client: { cpf: input.cpf } }), update: vi.fn() }, factaSyncHistory: { create: vi.fn() }, $transaction: transaction } as any;
     await expect(FactaBankService.syncProposalStatus(db, 'p', 'tenant')).rejects.toThrow('divergente');
     expect(transaction).not.toHaveBeenCalled();
   });
   it('vínculo manual impede reutilizar identificador em outra proposta', async () => {
     const update = vi.fn();
-    const db = { proposal: { findFirst: vi.fn().mockResolvedValueOnce({ id: 'p' }).mockResolvedValueOnce({ id: 'duplicate' }), update } } as any;
+    const db = { proposal: { findFirst: vi.fn().mockResolvedValueOnce({ id: 'p', promoterId: 'dg' }).mockResolvedValueOnce({ id: 'duplicate' }), update } } as any;
     await expect(FactaBankService.linkFactaIdentifiers(db, 'p', 'tenant', { factaAfCode: 'af' })).rejects.toThrow('já vinculado');
     expect(update).not.toHaveBeenCalled();
   });

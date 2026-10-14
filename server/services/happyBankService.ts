@@ -1,3 +1,4 @@
+import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import {
   HappyTenantConfig,
@@ -20,7 +21,7 @@ export class HappyBankService {
     prisma: PrismaClient,
     tenantId: string
   ): Promise<HappyTenantConfig> {
-    const configs = await prisma.systemConfig.findMany({
+    const configs = await (await integrationConfigStore(prisma, tenantId, 'happy')).findMany({
       where: {
         tenantId,
         configKey: {
@@ -44,10 +45,10 @@ export class HappyBankService {
     const ambiente = (configMap.get('happy_ambiente') || 'staging') as 'staging' | 'production';
     const defaultUrl = 'https://vhagar-staging.byxcapital.com.br/api/v1/consignado-publico';
     const baseUrl = configMap.get('happy_base_url') || defaultUrl;
-    const clientId = configMap.get('happy_client_id') || process.env.HAPPY_CLIENT_ID || '';
-    const secret = configMap.get('happy_secret') || process.env.HAPPY_SECRET || '';
-    const usuario = configMap.get('happy_usuario') || process.env.HAPPY_USUARIO || '';
-    const senha = configMap.get('happy_senha') || process.env.HAPPY_SENHA || '';
+    const clientId = configMap.get('happy_client_id') || '';
+    const secret = configMap.get('happy_secret') || '';
+    const usuario = configMap.get('happy_usuario') || '';
+    const senha = configMap.get('happy_senha') || '';
     const cpfDigitador = configMap.get('happy_cpf_digitador') || '';
     const correspondenteBanqueiro = configMap.get('happy_correspondente_banqueiro') || '';
     const ativo = configMap.get('happy_ativo') === 'true';
@@ -119,7 +120,7 @@ export class HappyBankService {
     }
 
     for (const item of keysToUpsert) {
-      await prisma.systemConfig.upsert({
+      await (await integrationConfigStore(prisma, tenantId, 'happy')).upsert({
         where: {
           tenantId_configKey: {
             tenantId,
@@ -141,9 +142,12 @@ export class HappyBankService {
 
     // The integration checkbox is also the control for new Happy simulations.
     if (typeof data.ativo === 'boolean') {
+      const promoters = await prisma.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true } });
+      const connections = await Promise.all(promoters.map(promoter => withIntegrationPromoter(promoter.id, () => this.getTenantConfig(prisma, tenantId))));
+      const anyActive = connections.some(config => config.ativo && config.isConfigured);
       await prisma.tenant.update({
         where: { id: tenantId },
-        data: { happySimulationAccessEnabled: data.ativo, simulationAccessEnabled: data.ativo },
+        data: { happySimulationAccessEnabled: anyActive, simulationAccessEnabled: anyActive },
       });
     }
 
@@ -319,43 +323,58 @@ export class HappyBankService {
       },
     });
 
+    // The shared legacy callback has no verified connection identity. Once another
+    // promoter is active, preserve events for reconciliation instead of guessing.
+    const activeConnections = await prisma.systemConfig.findMany({ where: { configKey: { startsWith: 'integration:happy:', endsWith: ':happy_ativo' }, configValue: 'true' }, select: { tenantId: true, configKey: true } });
+    let unidentifiedSource = false;
+    for (const connection of activeConnections) {
+      const promoterId = connection.configKey.split(':')[2];
+      const promoter = await prisma.promoter.findFirst({ where: { id: promoterId, tenantId: connection.tenantId }, select: { name: true } });
+      if (!promoter || !['DG', 'DG PROMOTORA'].includes(promoter.name.trim().toUpperCase())) { unidentifiedSource = true; break; }
+    }
+    if (unidentifiedSource) {
+      await prisma.happyWebhookEvent.update({ where: { id: createdEvent.id }, data: { processingStatus: 'UNMATCHED', processingError: 'Webhook compartilhado sem identificação autenticada da conexão de origem.', processedAt: new Date() } });
+      return { success: true, unmatched: true, processed: false, message: 'Evento preservado; consulte a proposta pela conexão de sua promotora.' };
+    }
+
     // 2. Localização estrita da proposta
     // Prioridade 1: chave_proposta (happyProposalKey ou proposalNumber)
     let proposal: any = null;
+    let ambiguous = false;
+    const legacyWebhookMatch = async (where: any) => {
+      const matches = await prisma.proposal.findMany({ where: { ...where, deletedAt: null }, include: { status: true, client: true, promoter: true }, take: 2 });
+      if (matches.length > 1) { ambiguous = true; return null; }
+      if (matches.length !== 1 || !['DG', 'DG PROMOTORA'].includes(matches[0].promoter?.name?.trim().toUpperCase() || '')) return null;
+      return matches[0];
+    };
 
     if (proposalKey) {
-      proposal = await prisma.proposal.findFirst({
-        where: {
+      proposal = await legacyWebhookMatch({
           OR: [
             { happyProposalKey: proposalKey },
             { proposalNumber: proposalKey },
           ],
-        },
-        include: { status: true, client: true },
-      });
+        }
+      );
     }
 
     // Prioridade 2: contract_id (happyContractId)
-    if (!proposal && contractId) {
-      proposal = await prisma.proposal.findFirst({
-        where: {
+    if (!proposal && !ambiguous && contractId) {
+      proposal = await legacyWebhookMatch({
           happyContractId: contractId,
-        },
-        include: { status: true, client: true },
-      });
+        }
+      );
     }
 
     // Prioridade 3: customer_id compatível no cliente
-    if (!proposal && customerId) {
-      proposal = await prisma.proposal.findFirst({
-        where: {
+    if (!proposal && !ambiguous && customerId) {
+      proposal = await legacyWebhookMatch({
           OR: [
             { happyCustomerId: customerId },
             { client: { cpf: customerId } },
           ],
-        },
-        include: { status: true, client: true },
-      });
+        }
+      );
     }
 
     // Se nenhuma proposta for encontrada de forma inequívoca:
@@ -476,7 +495,14 @@ export class HappyBankService {
   /**
    * Sincronização manual de uma proposta específica via consulta na API Happy
    */
-  public static async syncProposal(
+  public static async syncProposal(prisma: PrismaClient, tenantId: string, proposalId: string): Promise<HappySyncResult> {
+    const proposal = await prisma.proposal.findFirst({ where: { tenantId, id: proposalId, deletedAt: null }, select: { id: true, promoterId: true } });
+    if (!proposal?.promoterId) throw new Error('Vincule a promotora à proposta antes de consultar a Happy/BYX.');
+    await resolveBankPromoter(prisma, tenantId, proposal.promoterId);
+    return withIntegrationPromoter(proposal.promoterId, () => this.syncScopedProposal(prisma, tenantId, proposalId));
+  }
+
+  private static async syncScopedProposal(
     prisma: PrismaClient,
     tenantId: string,
     proposalId: string
@@ -647,7 +673,7 @@ export class HappyBankService {
       proposalId: proposal.id,
       proposalNumber: proposal.proposalNumber,
       happyContractId: String(matchedContract.id),
-      statusName: rawStatus || undefined,
+      statusName: rawStatus,
       previousInternalStatus: proposal.status?.name,
       currentInternalStatus: targetStatusRecord?.name || proposal.status?.name,
       statusMapped: mapping.isMapped,
@@ -673,6 +699,7 @@ export class HappyBankService {
     const proposals = await prisma.proposal.findMany({
       where: {
         tenantId,
+        promoterId: (await resolveBankPromoter(prisma, tenantId, currentIntegrationPromoter(), 'DG')).id,
         deletedAt: null,
         OR: [
           { happyContractId: { not: null } },

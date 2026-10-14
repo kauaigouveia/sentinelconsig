@@ -73,6 +73,7 @@ export interface C6SyncResult {
 }
 
 export interface C6TenantConfig {
+  enabled?: boolean;
   promoterCode?: string;
   typistCode?: string;
   certifiedAgentCpf?: string;

@@ -1,3 +1,4 @@
+import { BankPromoterConnection, promoterApiUrl } from './BankPromoterConnection';
 import React, { useState, useEffect } from 'react';
 import {
   Server,
@@ -73,7 +74,7 @@ async function safeFetchJson<T = any>(
   return { ok: res.ok, status: res.status, data };
 }
 
-export const HappyIntegrationTab: React.FC = () => {
+const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoterId }) => {
   const activeUser = StorageService.getActiveUser();
   const canManageConfig = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(activeUser?.role || '') ||
     hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
@@ -156,8 +157,8 @@ export const HappyIntegrationTab: React.FC = () => {
 
     try {
       const [cfgRes, statusRes] = await Promise.all([
-        safeFetchJson<HappyConfigState>('/api/integrations/happy/config'),
-        safeFetchJson<HappyStatusState>('/api/integrations/happy/status'),
+        safeFetchJson<HappyConfigState>(promoterApiUrl('/api/integrations/happy/config', promoterId)),
+        safeFetchJson<HappyStatusState>(promoterApiUrl('/api/integrations/happy/status', promoterId)),
       ]);
 
       if (cfgRes.ok) setConfig(cfgRes.data);
@@ -175,7 +176,7 @@ export const HappyIntegrationTab: React.FC = () => {
     if (!canViewLogs) return;
     setIsLoadingLogs(true);
     try {
-      const { ok, data } = await safeFetchJson<HappySyncHistoryItem[]>('/api/integrations/happy/recent-logs?limit=30');
+      const { ok, data } = await safeFetchJson<HappySyncHistoryItem[]>(promoterApiUrl('/api/integrations/happy/recent-logs?limit=30', promoterId));
       if (ok && Array.isArray(data)) {
         setRecentLogs(data);
       }
@@ -191,7 +192,7 @@ export const HappyIntegrationTab: React.FC = () => {
     if (!canViewLogs) return;
     setIsLoadingWebhooks(true);
     try {
-      const { ok, data } = await safeFetchJson<HappyWebhookEventItem[]>('/api/integrations/happy/unmatched-webhooks?limit=30');
+      const { ok, data } = await safeFetchJson<HappyWebhookEventItem[]>(promoterApiUrl('/api/integrations/happy/unmatched-webhooks?limit=30', promoterId));
       if (ok && Array.isArray(data)) {
         setUnmatchedWebhooks(data);
       }
@@ -254,7 +255,7 @@ export const HappyIntegrationTab: React.FC = () => {
         payload.senha = senhaInput.trim();
       }
 
-      const { ok, data } = await safeFetchJson('/api/integrations/happy/config', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/happy/config', promoterId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -292,7 +293,7 @@ export const HappyIntegrationTab: React.FC = () => {
       if (secretInput.trim()) payload.secret = secretInput.trim();
       if (senhaInput.trim()) payload.senha = senhaInput.trim();
 
-      const { ok, data } = await safeFetchJson('/api/integrations/happy/test-connection', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/happy/test-connection', promoterId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -316,7 +317,7 @@ export const HappyIntegrationTab: React.FC = () => {
     setSyncResultMsg(null);
 
     try {
-      const { ok, data } = await safeFetchJson('/api/integrations/happy/run-sync', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/happy/run-sync', promoterId), {
         method: 'POST',
       });
 
@@ -347,7 +348,7 @@ export const HappyIntegrationTab: React.FC = () => {
     setConsultResult(null);
 
     try {
-      const { ok, data } = await safeFetchJson('/api/integrations/happy/consult-contract', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/happy/consult-contract', promoterId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1273,3 +1274,5 @@ export const HappyIntegrationTab: React.FC = () => {
     </div>
   );
 };
+
+export const HappyIntegrationTab: React.FC<{ promoterId?: string }> = ({ promoterId }) => promoterId ? <HappyIntegrationTabContent promoterId={promoterId} /> : <BankPromoterConnection>{id => <HappyIntegrationTabContent promoterId={id} />}</BankPromoterConnection>;

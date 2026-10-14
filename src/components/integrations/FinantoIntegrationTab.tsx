@@ -1,3 +1,4 @@
+import { BankPromoterConnection, promoterApiUrl } from './BankPromoterConnection';
 import React, { useEffect, useState } from 'react';
 import { Activity, CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, Save, ShieldCheck, XCircle } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
@@ -6,7 +7,7 @@ import { hasPermission } from '../../lib/permissions';
 type Config = { isConfigured: boolean; hasApiKey: boolean; enabled: boolean };
 type CatalogResponse = { items?: Array<Record<string, any>>; messages?: Array<{ code?: string; text?: string }> };
 
-export const FinantoIntegrationTab: React.FC = () => {
+const FinantoIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoterId }) => {
   const user = StorageService.getActiveUser();
   const canManage = ['PLATFORM_MASTER', 'MASTER', 'TENANT_ADMIN', 'GESTOR'].includes(user?.role || '') ||
     hasPermission(user?.role, user?.customPermissions, 'integrations.manage');
@@ -29,7 +30,7 @@ export const FinantoIntegrationTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/integrations/finanto/config');
+      const response = await fetch(promoterApiUrl('/api/integrations/finanto/config', promoterId));
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Não foi possível carregar a configuração.');
       setConfig(data);
@@ -43,7 +44,7 @@ export const FinantoIntegrationTab: React.FC = () => {
   const save = async () => {
     setSaving(true); setMessage(null);
     try {
-      const response = await fetch('/api/integrations/finanto/config', {
+      const response = await fetch(promoterApiUrl('/api/integrations/finanto/config', promoterId), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}), enabled: config.enabled }),
       });
@@ -58,7 +59,7 @@ export const FinantoIntegrationTab: React.FC = () => {
   const test = async () => {
     setTesting(true); setMessage(null);
     try {
-      const response = await fetch('/api/integrations/finanto/test-connection', { method: 'POST' });
+      const response = await fetch(promoterApiUrl('/api/integrations/finanto/test-connection', promoterId), { method: 'POST' });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || data.data?.message || `FINANTO respondeu HTTP ${data.status || response.status}.`);
       setMessage({ ok: true, text: `FINANTO conectada. Resposta em ${data.responseTimeMs} ms.` });
@@ -69,7 +70,7 @@ export const FinantoIntegrationTab: React.FC = () => {
   const loadCatalog = async () => {
     setCatalogLoading(true); setCatalog(null); setMessage(null);
     try {
-      const response = await fetch('/api/integrations/finanto/request', {
+      const response = await fetch(promoterApiUrl('/api/integrations/finanto/request', promoterId), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           method: 'POST', endpoint: '/v3/loan-products/search/basic',
@@ -92,7 +93,7 @@ export const FinantoIntegrationTab: React.FC = () => {
     if (requestMethod !== 'GET' && !window.confirm('Esta operação pode criar ou alterar dados na FINANTO. Deseja continuar?')) return;
     setRequestLoading(true);
     try {
-      const response = await fetch('/api/integrations/finanto/request', {
+      const response = await fetch(promoterApiUrl('/api/integrations/finanto/request', promoterId), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ method: requestMethod, endpoint: requestPath, body }),
       });
@@ -161,3 +162,5 @@ export const FinantoIntegrationTab: React.FC = () => {
     </section>
   </div>;
 };
+
+export const FinantoIntegrationTab: React.FC<{ promoterId?: string }> = ({ promoterId }) => promoterId ? <FinantoIntegrationTabContent promoterId={promoterId} /> : <BankPromoterConnection>{id => <FinantoIntegrationTabContent promoterId={id} />}</BankPromoterConnection>;

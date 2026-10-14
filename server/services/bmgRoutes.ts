@@ -1,3 +1,4 @@
+import { resolveBankPromoter, withIntegrationPromoter } from './bankPromoterConfig.js';
 import type { Express, Request } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { BmgBankService } from './bmgBankService.js';
@@ -88,11 +89,13 @@ export function registerBmgRoutes(app: Express, prisma: PrismaClient, getAuthSes
       const proposal = await prisma.proposal.findFirst({ where: { id: String(req.params.id), tenantId: session.effectiveTenantId, deletedAt: null }, include: { bank: true, client: true } });
       if (!proposal || proposal.bank?.code !== '318') return res.status(404).json({ error: 'Proposta BMG não encontrada nesta empresa.' });
       if (!/^\d{1,30}$/.test(proposal.proposalNumber)) return res.status(400).json({ error: 'O número cadastrado não está no formato BMG.' });
-      const data = await BmgBankService.request(prisma, proposal.tenantId, 'GET', `/v1/propostas/${encodeURIComponent(proposal.proposalNumber)}`);
+      if (!proposal.promoterId) return res.status(409).json({ error: 'Vincule a promotora à proposta antes de consultar o BMG.' });
+      await resolveBankPromoter(prisma, proposal.tenantId, proposal.promoterId);
+      const data = await withIntegrationPromoter(proposal.promoterId, () => BmgBankService.request(prisma, proposal.tenantId, 'GET', `/v1/propostas/${encodeURIComponent(proposal.proposalNumber)}`));
       if (String(data.numeroProposta) !== proposal.proposalNumber || String(data.cpf || '').replace(/\D/g, '') !== proposal.client.cpf.replace(/\D/g, '')) throw new Error('O BMG retornou uma proposta ou CPF diferente do cadastro.');
       let link: string | null = null;
       try {
-        const formalization = await BmgBankService.request(prisma, proposal.tenantId, 'GET', `/v1/link-formalizacao?numeroProposta=${encodeURIComponent(proposal.proposalNumber)}`);
+        const formalization = await withIntegrationPromoter(proposal.promoterId, () => BmgBankService.request(prisma, proposal.tenantId, 'GET', `/v1/link-formalizacao?numeroProposta=${encodeURIComponent(proposal.proposalNumber)}`));
         const url = new URL(String(formalization.linkFormalizacao));
         if (String(formalization.numeroProposta) === proposal.proposalNumber && url.protocol === 'https:' && !url.username && !url.password) link = url.href;
       } catch { /* Proposal status remains available when formalization is not ready. */ }

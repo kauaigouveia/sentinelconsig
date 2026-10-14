@@ -550,6 +550,7 @@ export interface FactaSyncHistoryItem {
 }
 
 export interface C6ConfigState {
+  enabled?: boolean;
   typistCode?: string;
   certifiedAgentCpf?: string;
   promoterCode?: string;
@@ -563,6 +564,9 @@ export interface C6ConfigState {
 }
 
 export interface FactaConfigState {
+  enabled?: boolean;
+  promoterId?: string;
+  promoterName?: string;
   simulationEnabled?: boolean;
   environment: 'homologation' | 'production';
   username: string;

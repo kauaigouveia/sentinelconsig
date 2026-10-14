@@ -1,3 +1,4 @@
+import { BankPromoterConnection, promoterApiUrl } from './BankPromoterConnection';
 import React, { useState, useEffect } from 'react';
 import { SimulationBankOrderSettings } from './SimulationBankOrderSettings';
 import { BmgIntegrationTab } from './BmgIntegrationTab';
@@ -168,7 +169,7 @@ export interface BankIntegrationsViewProps {
   initialTab?: BankTab;
 }
 
-export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ initialTab = 'c6' }) => {
+const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId: string }> = ({ initialTab = 'c6', promoterId }) => {
   const [activeTab, setActiveTab] = useState<BankTab>(initialTab);
   const activeUser = StorageService.getActiveUser();
   const canSync = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
@@ -214,6 +215,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   // --- Estado da FACTA Financeira ---
+  const factaUrl = (path: string) => promoterApiUrl(path, promoterId);
   const [factaConfig, setFactaConfig] = useState<FactaConfigState>({
     environment: 'homologation',
     username: '',
@@ -256,8 +258,8 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     setIsLoadingStatus(true);
     try {
       const [cfgRes, statusRes] = await Promise.all([
-        safeFetchJson<C6ConfigState>('/api/integrations/c6/config'),
-        safeFetchJson<C6WorkerStatusState>('/api/integrations/c6/status'),
+        safeFetchJson<C6ConfigState>(promoterApiUrl('/api/integrations/c6/config', promoterId)),
+        safeFetchJson<C6WorkerStatusState>(promoterApiUrl('/api/integrations/c6/status', promoterId)),
       ]);
 
       if (cfgRes.ok) setC6Config(cfgRes.data);
@@ -274,7 +276,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
   const fetchC6Logs = async () => {
     setIsLoadingLogs(true);
     try {
-      const { ok, data } = await safeFetchJson<C6SyncHistoryItem[]>('/api/integrations/c6/recent-logs?limit=15');
+      const { ok, data } = await safeFetchJson<C6SyncHistoryItem[]>(promoterApiUrl('/api/integrations/c6/recent-logs?limit=15', promoterId));
       if (ok && Array.isArray(data)) {
         setRecentLogs(data);
       }
@@ -298,8 +300,8 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     setIsLoadingFactaStatus(true);
     try {
       const [cfgRes, statusRes] = await Promise.all([
-        safeFetchJson<FactaConfigState>('/api/integrations/facta/config'),
-        safeFetchJson<FactaWorkerStatusState>('/api/integrations/facta/status'),
+        safeFetchJson<FactaConfigState>(factaUrl('/api/integrations/facta/config')),
+        safeFetchJson<FactaWorkerStatusState>(factaUrl('/api/integrations/facta/status')),
       ]);
 
       if (cfgRes.ok) setFactaConfig(cfgRes.data);
@@ -316,7 +318,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
   const fetchFactaLogs = async () => {
     setIsLoadingFactaLogs(true);
     try {
-      const { ok, data } = await safeFetchJson<FactaSyncHistoryItem[]>('/api/integrations/facta/recent-logs?limit=15');
+      const { ok, data } = await safeFetchJson<FactaSyncHistoryItem[]>(factaUrl('/api/integrations/facta/recent-logs?limit=15'));
       if (ok && Array.isArray(data)) {
         setFactaRecentLogs(data);
       }
@@ -335,10 +337,11 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     setFactaTestResult(null);
 
     try {
-      const { ok, data } = await safeFetchJson('/api/integrations/facta/config', {
+      const { ok, data } = await safeFetchJson(factaUrl('/api/integrations/facta/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          enabled: factaConfig.enabled,
           environment: factaConfig.environment,
           username: factaConfig.username,
           password: factaPassword ? factaPassword : undefined,
@@ -381,7 +384,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
       if (factaPassword?.trim()) payload.password = factaPassword.trim();
       if (factaConfig.baseUrl?.trim()) payload.baseUrl = factaConfig.baseUrl.trim();
 
-      const { ok, data } = await safeFetchJson('/api/integrations/facta/test-connection', {
+      const { ok, data } = await safeFetchJson(factaUrl('/api/integrations/facta/test-connection'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
@@ -411,7 +414,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     setFactaBatchSyncResult(null);
 
     try {
-      const { ok, data } = await safeFetchJson('/api/integrations/facta/run-sync', {
+      const { ok, data } = await safeFetchJson(factaUrl('/api/integrations/facta/run-sync'), {
         method: 'POST',
       });
 
@@ -437,10 +440,11 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     setTestResult(null);
 
     try {
-      const { ok, data } = await safeFetchJson('/api/integrations/c6/config', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/c6/config', promoterId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          enabled: c6Config.enabled,
           username: c6Config.username,
           promoterCode: c6Config.promoterCode,
           typistCode: c6Config.typistCode,
@@ -479,7 +483,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
       if (c6Password?.trim()) payload.password = c6Password.trim();
       if (c6Config.baseUrl?.trim()) payload.baseUrl = c6Config.baseUrl.trim();
 
-      const { ok, data } = await safeFetchJson('/api/integrations/c6/test-connection', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/c6/test-connection', promoterId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
@@ -509,7 +513,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     setBatchSyncResult(null);
 
     try {
-      const { ok, data } = await safeFetchJson('/api/integrations/c6/run-sync', {
+      const { ok, data } = await safeFetchJson(promoterApiUrl('/api/integrations/c6/run-sync', promoterId), {
         method: 'POST',
       });
 
@@ -872,6 +876,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
                 onSubmit={handleSaveC6Config}
                 className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4"
               >
+                <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={Boolean(c6Config.enabled)} onChange={event => setC6Config({ ...c6Config, enabled: event.target.checked })} />Ativar C6 para esta promotora</label>
                 <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <Lock className="h-4 w-4 text-blue-600" />
                   <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
@@ -1254,6 +1259,7 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
             {/* Coluna Direita: Formulário de Credenciais e Configurações */}
             <div className="lg:col-span-2">
               {canManageConfig ? <form onSubmit={handleSaveFactaConfig} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-5">
+                <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={Boolean(factaConfig.enabled)} onChange={event => setFactaConfig({ ...factaConfig, enabled: event.target.checked })} />Ativar FACTA para esta promotora</label>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <Lock className="h-4 w-4 text-orange-600" />
@@ -1575,10 +1581,10 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
         </div>
       )}
 
-      {activeTab === 'bmg' && <BmgIntegrationTab canManage={canManageConfig} />}
+      {activeTab === 'bmg' && <BmgIntegrationTab promoterId={promoterId} canManage={canManageConfig} />}
 
       {/* ABA HAPPY / BYX CAPITAL */}
-      {activeTab === 'happy' && <HappyIntegrationTab />}
+      {activeTab === 'happy' && <HappyIntegrationTab promoterId={promoterId} />}
 
       {/* ABA OUTROS BANCOS / EXPANSÃO */}
       {activeTab === 'outros' && (
@@ -1623,3 +1629,5 @@ export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = ({ init
     </div>
   );
 };
+
+export const BankIntegrationsView: React.FC<BankIntegrationsViewProps> = props => <BankPromoterConnection>{promoterId => <BankIntegrationsContent {...props} promoterId={promoterId} />}</BankPromoterConnection>;

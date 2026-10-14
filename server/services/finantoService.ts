@@ -1,3 +1,4 @@
+import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { BlobSASPermissions, StorageSharedKeyCredential, generateBlobSASQueryParameters } from '@azure/storage-blob';
@@ -63,7 +64,7 @@ export class FinantoService {
 
   static async saveAuthTermKey(prisma: PrismaClient, tenantId: string, simulationId: string, key: string) {
     const configKey = `finanto_auth_term:${simulationId}`;
-    await prisma.systemConfig.upsert({
+    await (await integrationConfigStore(prisma, tenantId, 'finanto')).upsert({
       where: { tenantId_configKey: { tenantId, configKey } },
       create: { tenantId, configKey, configValue: encrypt(key), isSecret: true },
       update: { configValue: encrypt(key), isSecret: true },
@@ -71,7 +72,7 @@ export class FinantoService {
   }
 
   static async getAuthTermKey(prisma: PrismaClient, tenantId: string, simulationId: string) {
-    const entry = await prisma.systemConfig.findUnique({
+    const entry = await (await integrationConfigStore(prisma, tenantId, 'finanto')).findUnique({
       where: { tenantId_configKey: { tenantId, configKey: `finanto_auth_term:${simulationId}` } },
     });
     return entry?.configValue ? decrypt(entry.configValue) : null;
@@ -126,7 +127,7 @@ export class FinantoService {
   }
 
   static async getConfig(prisma: PrismaClient, tenantId: string): Promise<FinantoConfig> {
-    const entries = await prisma.systemConfig.findMany({
+    const entries = await (await integrationConfigStore(prisma, tenantId, 'finanto')).findMany({
       where: { tenantId, configKey: { in: [CONFIG_KEY, 'finanto_enabled'] } },
     });
     const map = new Map(entries.map(entry => [entry.configKey, entry.configValue]));
@@ -140,14 +141,14 @@ export class FinantoService {
   static async saveConfig(prisma: PrismaClient, tenantId: string, apiKey?: string, enabled?: boolean) {
     if (apiKey?.trim()) {
       const encrypted = encrypt(apiKey.trim());
-      await prisma.systemConfig.upsert({
+      await (await integrationConfigStore(prisma, tenantId, 'finanto')).upsert({
         where: { tenantId_configKey: { tenantId, configKey: CONFIG_KEY } },
         create: { tenantId, configKey: CONFIG_KEY, configValue: encrypted, isSecret: true },
         update: { configValue: encrypted, isSecret: true },
       });
     }
     if (enabled !== undefined) {
-      await prisma.systemConfig.upsert({
+      await (await integrationConfigStore(prisma, tenantId, 'finanto')).upsert({
         where: { tenantId_configKey: { tenantId, configKey: 'finanto_enabled' } },
         create: { tenantId, configKey: 'finanto_enabled', configValue: String(enabled), isSecret: false },
         update: { configValue: String(enabled) },
@@ -157,7 +158,7 @@ export class FinantoService {
   }
 
   private static async getApiKey(prisma: PrismaClient, tenantId: string): Promise<string> {
-    const entry = await prisma.systemConfig.findUnique({
+    const entry = await (await integrationConfigStore(prisma, tenantId, 'finanto')).findUnique({
       where: { tenantId_configKey: { tenantId, configKey: CONFIG_KEY } },
     });
     if (!entry?.configValue) throw new Error('Configure a chave API da FINANTO no Hub de Integrações.');

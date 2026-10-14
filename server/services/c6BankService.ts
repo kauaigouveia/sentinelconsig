@@ -1,3 +1,4 @@
+import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../logger.js';
 import {
@@ -34,11 +35,12 @@ export class C6BankService {
     prisma: PrismaClient,
     tenantId: string
   ): Promise<C6TenantConfig> {
-    const configs = await prisma.systemConfig.findMany({
+    const configs = await (await integrationConfigStore(prisma, tenantId, 'c6')).findMany({
       where: {
         tenantId,
         configKey: {
           in: [
+            'c6_bank_enabled',
             'c6_bank_username',
             'c6_bank_promoter_code',
             'c6_bank_typist_code',
@@ -65,20 +67,22 @@ export class C6BankService {
 
     const baseUrl =
       configMap.get('c6_bank_base_url') ||
-      process.env.C6_API_BASE_URL ||
+      ((await integrationConfigStore(prisma, tenantId, 'c6')).allowLegacy ? process.env.C6_API_BASE_URL : undefined) ||
       this.DEFAULT_BASE_URL;
 
-    const autoSyncEnabled =
-      configMap.get('c6_bank_auto_sync_enabled') === 'true' ||
-      process.env.C6_AUTO_SYNC_ENABLED === 'true';
+    const autoSyncEnabled = configMap.has('c6_bank_auto_sync_enabled')
+      ? configMap.get('c6_bank_auto_sync_enabled') === 'true'
+      : (await integrationConfigStore(prisma, tenantId, 'c6')).allowLegacy && process.env.C6_AUTO_SYNC_ENABLED === 'true';
 
-    const rawInterval = configMap.get('c6_bank_sync_interval_minutes') || process.env.C6_SYNC_INTERVAL_MINUTES;
+    const rawInterval = configMap.get('c6_bank_sync_interval_minutes') || ((await integrationConfigStore(prisma, tenantId, 'c6')).allowLegacy ? process.env.C6_SYNC_INTERVAL_MINUTES : undefined);
     const syncIntervalMinutes = Math.max(
       5,
       rawInterval ? parseInt(rawInterval, 10) || 15 : 15
     );
 
+    const enabled = configMap.has('c6_bank_enabled') ? configMap.get('c6_bank_enabled') === 'true' : (await integrationConfigStore(prisma, tenantId, 'c6')).allowLegacy;
     return {
+      enabled,
       promoterCode: configMap.get('c6_bank_promoter_code') || '',
       typistCode: configMap.get('c6_bank_typist_code') || '',
       certifiedAgentCpf: configMap.get('c6_bank_certified_agent_cpf') || '',
@@ -88,7 +92,7 @@ export class C6BankService {
       baseUrl: baseUrl.trim().replace(/\/+$/, ''),
       autoSyncEnabled,
       syncIntervalMinutes,
-      isConfigured: Boolean(username.trim() && password.trim()),
+      isConfigured: enabled && Boolean(username.trim() && password.trim()),
       hasPassword: Boolean(password.trim()),
     };
   }
@@ -100,6 +104,7 @@ export class C6BankService {
     prisma: PrismaClient,
     tenantId: string,
     data: {
+      enabled?: boolean;
       username?: string;
       promoterCode?: string;
       typistCode?: string;
@@ -112,7 +117,7 @@ export class C6BankService {
     }
   ): Promise<C6TenantConfig> {
     const upsertConfig = async (key: string, value: string, isSecret = false) => {
-      await prisma.systemConfig.upsert({
+      await (await integrationConfigStore(prisma, tenantId, 'c6')).upsert({
         where: {
           tenantId_configKey: {
             tenantId,
@@ -132,6 +137,7 @@ export class C6BankService {
       });
     };
 
+    if (typeof data.enabled === 'boolean') await upsertConfig('c6_bank_enabled', String(data.enabled));
     if (data.username !== undefined) {
       await upsertConfig('c6_bank_username', data.username.trim(), false);
     }
@@ -170,8 +176,8 @@ export class C6BankService {
    * Limpa cache de token para um tenant
    */
   public static invalidateTokenCache(tenantId: string): void {
-    this.tokenCache.delete(tenantId);
-    this.inFlightTokenPromises.delete(tenantId);
+    this.tokenCache.delete(integrationCacheKey(tenantId));
+    this.inFlightTokenPromises.delete(integrationCacheKey(tenantId));
   }
 
   /**
@@ -187,17 +193,19 @@ export class C6BankService {
       baseUrl?: string;
     }
   ): Promise<string> {
+    const connection = await this.getTenantConfig(prisma, tenantId);
+    if (!connection.enabled) throw new Error('Ative a conexão C6 desta promotora antes de consultar.');
     const now = Date.now();
 
     // Se não houver credenciais temporárias de teste, utilizar cache se válido
     if (!overrideCredentials && !forceRefresh) {
-      const cached = this.tokenCache.get(tenantId);
+      const cached = this.tokenCache.get(integrationCacheKey(tenantId));
       if (cached && cached.expiresAt - now > this.EXPIRATION_BUFFER_MS) {
         return cached.token;
       }
 
       // Se já houver uma requisição de token em andamento para este tenant, reutilizar a mesma Promise
-      const inFlight = this.inFlightTokenPromises.get(tenantId);
+      const inFlight = this.inFlightTokenPromises.get(integrationCacheKey(tenantId));
       if (inFlight) {
         return inFlight;
       }
@@ -345,7 +353,7 @@ export class C6BankService {
 
         // Armazenar no cache em memória somente se for credencial persistida (não override efêmero)
         if (!overrideCredentials) {
-          this.tokenCache.set(tenantId, {
+          this.tokenCache.set(integrationCacheKey(tenantId), {
             token: data.access_token,
             expiresAt,
           });
@@ -365,10 +373,10 @@ export class C6BankService {
     })();
 
     if (!overrideCredentials) {
-      this.inFlightTokenPromises.set(tenantId, fetchPromise);
+      this.inFlightTokenPromises.set(integrationCacheKey(tenantId), fetchPromise);
       fetchPromise.catch(() => {});
       fetchPromise.finally(() => {
-        this.inFlightTokenPromises.delete(tenantId);
+        this.inFlightTokenPromises.delete(integrationCacheKey(tenantId));
       });
     }
 
@@ -566,7 +574,14 @@ export class C6BankService {
    * 4. Mapeamento estrito de status (preservando o status interno se desconhecido).
    * 5. Gravação atômica em Proposal, C6SyncHistory e StatusHistory.
    */
-  public static async syncProposalStatus(
+  public static async syncProposalStatus(prisma: PrismaClient, proposalId: string, tenantId: string, options: { queriedBy?: string; forceProposalNumber?: string } = {}): Promise<C6SyncResult> {
+    const matches = await prisma.proposal.findMany({ where: { tenantId, deletedAt: null, OR: [{ id: proposalId }, { proposalNumber: proposalId }, { c6ProposalNumber: proposalId }] }, select: { id: true, promoterId: true }, take: 2 });
+    if (matches.length !== 1 || !matches[0].promoterId) throw new Error('Identifique uma proposta e sua promotora antes de consultar o C6.');
+    await resolveBankPromoter(prisma, tenantId, matches[0].promoterId);
+    return withIntegrationPromoter(matches[0].promoterId, () => this.syncScopedProposalStatus(prisma, matches[0].id, tenantId, options));
+  }
+
+  private static async syncScopedProposalStatus(
     prisma: PrismaClient,
     proposalId: string,
     tenantId: string,
@@ -589,6 +604,7 @@ export class C6BankService {
       const proposal = await prisma.proposal.findFirst({
         where: {
           tenantId,
+          promoterId: currentIntegrationPromoter(),
           deletedAt: null,
           OR: [
             { id: proposalId },

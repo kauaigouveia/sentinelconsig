@@ -1,3 +1,4 @@
+import { integrationConfigStore } from './bankPromoterConfig.js';
 import type { PrismaClient } from '@prisma/client';
 import { C6BankService } from './c6BankService.js';
 import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
@@ -7,7 +8,7 @@ export class C6SimulationService {
     if (['PORT', 'PORT_REFIN'].includes(input.operation)) throw new Error('Portabilidade C6 é calculada na aba PORT + REFIN · Planilhas, com o arquivo ativado pelo MASTER.');
     const config = await C6BankService.getTenantConfig(prisma, tenantId);
     if (!config.isConfigured) throw new Error('Cadastre as credenciais C6 desta empresa em Integrações Bancárias.');
-    const settings = await prisma.systemConfig.findMany({ where: { tenantId, configKey: { in: ['c6_bank_promoter_code', 'c6_bank_simulation_enabled'] } } });
+    const settings = await (await integrationConfigStore(prisma, tenantId, 'c6')).findMany({ where: { tenantId, configKey: { in: ['c6_bank_promoter_code', 'c6_bank_simulation_enabled'] } } });
     const values = new Map(settings.map(row => [row.configKey, row.configValue]));
     if (values.get('c6_bank_simulation_enabled') !== 'true') throw new Error('Habilite C6 nas simulações INSS na configuração de Integrações Bancárias.');
     if (!['NEW', 'REFIN'].includes(input.operation)) throw new Error('O manual C6 disponível não documenta portabilidade.');
