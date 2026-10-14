@@ -136,3 +136,9 @@ Implementar design system e App Shell, preservando temporariamente cada tela fun
 ## Atualização — autorização limitada de 13/10/2026
 
 Usuário aprovou com ressalvas apenas Design System e preparação do shell, com dashboard e consulta demonstrativa, em branch separada e desenvolvimento. A primeira entrega visual está registrada em first-visual-delivery.md. A autorização anterior de implantação não se aplica a este redesign: nenhum push/merge/deploy é permitido sem novo consentimento. Parar para aprovação visual antes da migração dos módulos. Os itens de integração autenticada bloqueados estão em validation-results.md.
+
+## Segunda iteração Premium V2 — 13/10/2026
+
+Continua a autorização visual limitada. Dashboard de leitura evoluído; novas propostas, Kanban, Cliente 360° e Simulações são demonstrações exclusivas da galeria. Nenhum módulo operacional completo foi migrado. Relatório: `premium-v2-review.md`.
+
+A estrutura/rotas/permissões da primeira entrega permanece a base. A galeria agora usa fixtures explícitas com valores financeiros fictícios, autorizadas neste briefing; elas nunca alimentam a aplicação autenticada. Preservar legado, portal e white label. Parar após entrega visual; nenhuma autorização de push, merge, deploy ou migração posterior.

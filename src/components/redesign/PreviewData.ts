@@ -79,6 +79,8 @@ export function readPreviewRows(): PreviewRow[] {
   });
 }
 export function usePreviewData(scope: string, enabled = true) {
+  const [revision, setRevision] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<{
     scope: string;
     rows: PreviewRow[];
@@ -100,6 +102,7 @@ export function usePreviewData(scope: string, enabled = true) {
         user?.customPermissions,
         "proposals.view",
       );
+    setLoading(allowed);
     const sync = () => {
       if (alive)
         setSnapshot((current) => ({
@@ -119,6 +122,9 @@ export function usePreviewData(scope: string, enabled = true) {
               ...current,
               error: "Não foi possível consultar os indicadores de SLA.",
             }));
+        })
+        .finally(() => {
+          if (alive) setLoading(false);
         });
     const off = realtimeHub.subscribe("*", sync);
     window.addEventListener("credit_gestao_storage_update", sync);
@@ -127,8 +133,9 @@ export function usePreviewData(scope: string, enabled = true) {
       off();
       window.removeEventListener("credit_gestao_storage_update", sync);
     };
-  }, [scope, enabled]);
+  }, [scope, enabled, revision]);
+  const refresh = () => setRevision((value) => value + 1);
   return enabled && snapshot.scope === scope
-    ? snapshot
-    : { rows: [], bottlenecks: null, error: "" };
+    ? { ...snapshot, loading, refresh }
+    : { rows: [], bottlenecks: null, error: "", loading: false, refresh };
 }

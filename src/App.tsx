@@ -3,6 +3,7 @@ import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
 import { PreviewSidebar } from './components/redesign/PreviewSidebar';
+import { WorkTabs } from './components/redesign/WorkTabs';
 import { PreviewDashboard } from './components/redesign/PreviewDashboard';
 import { PreviewProposals } from './components/redesign/PreviewProposals';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
@@ -591,7 +592,7 @@ function AppMainContent() {
               onClick={() => setIsMobileNavigationOpen(false)}
             />
           )}
-          {newUI ? <PreviewSidebar key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-consig-symbol.svg'} /> : <Sidebar
+          {newUI ? <PreviewSidebar favorites={workspace.favorites} recent={workspace.recent} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-consig-symbol.svg'} /> : <Sidebar
             currentView={effectiveView}
             currentPath={pathname}
             preferenceKey={preferenceKey}
@@ -685,6 +686,7 @@ function AppMainContent() {
         )}
 
         {/* Dynamic Page Views */}
+        {newUI && !isFocusMode && <WorkTabs key={preferenceKey} path={pathname} recent={workspace.recent} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} />}
         <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
           <div className={showRouteContext && hasRouteAccess ? 'sentinel-view-frame' : ''}><div className="sentinel-view-body">
           {is404 ? (
@@ -703,7 +705,7 @@ function AppMainContent() {
           ) : (
             <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-slate-500">Carregando tela...</div>}>
             <>
-              {effectiveView === 'torre-controle' && newUI && <PreviewDashboard key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
+              {effectiveView === 'torre-controle' && newUI && <PreviewDashboard onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
               {effectiveView === 'torre-controle' && !newUI && (
                 <ControlTower
                   onNavigate={handleNavigate}

@@ -76,3 +76,12 @@ A galeria `/sentinel-2-preview.html` é separada da aplicação: mostra composi�
 ## Limite da preservação demonstrada
 
 A paridade de destinos estáticos autorizados foi verificada por testes para os oito papéis. Isso não valida CRUD, integrações, subabas autenticadas, troca real de tenant ou autorização do backend. Nenhum desses fluxos foi declarado aprovado por análise de caminhos.
+
+## Segunda iteração — equivalência adicional
+
+- URLs, aliases e APP_ROUTES permanecem iguais. Sidebar usa a mesma função de autorização; favoritos/recentes são rechecados e reaproveitam preferências existentes.
+- WorkTabs representa até seis rotas estáticas autorizadas. Não monta cópias de formulários. Fechar aba remove um atalho; dashboard permanece fixado quando autorizado. Histórico/refresh da aplicação continuam no router atual.
+- Galeria usa `sentinel-2-preview.html?view=/propostas`, `/esteira`, `/clientes`, `/simulacoes` ou `/` para manter a seleção visual no back/forward/refresh. Esses parâmetros não criam rotas operacionais ou sessões fictícias.
+- Galeria de propostas tem controles/drawer demonstrativos; a aplicação autenticada mantém PreviewProposals de leitura e ProductionList/detalhes existentes. Nenhum botão demonstrativo é anunciado como fluxo de produção migrado.
+- Novas prévias de Kanban/Cliente/Simulações não substituem seus componentes reais. Portal e Command Center de incidentes permanecem separados.
+- Fonte de permanência pode ser recarregada pelo dashboard opt-in usando a chamada existente; não há novo endpoint/contrato.

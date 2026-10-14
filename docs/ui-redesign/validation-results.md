@@ -72,3 +72,48 @@ Aguardar avaliação visual do usuário. Não avançar para migração de módul
 - 8aff959: inventário e plano.
 - 7256005: primeira prévia de desenvolvimento, sem publicação.
 - Capturas e relatório registrados em commit local separado.
+
+# Segunda iteração — Premium V2
+
+Data: 13/10/2026. Ambiente: galeria local sem sessão/API e testes estáticos isolados. A primeira seção deste documento continua sendo registro histórico da primeira versão.
+
+## Testes seguros
+
+```powershell
+npx vitest run tests/ui_redesign_preview.test.tsx tests/ui_redesign_premium.test.tsx tests/refinancing_rates.test.ts tests/inss_eligibility.test.ts tests/nossa_fintech_table_names.test.ts
+```
+
+Resultado: **5 arquivos / 56 testes aprovados**. Inclui os 49 anteriores e sete regressões novas: abas limitadas/autorizadas, ausência de fixtures no dashboard autenticado, favoritos autorizados, controles completos da galeria, múltiplas ADEs, ausência de drag com escrita, dados mascarados e estados de indicadores. Testes sem servidor global ou banco. Não são homologação de CRUD/realtime/providers.
+
+- Typecheck final `npm run lint`: **aprovado**. Executado antes do build, evitando disputa com os arquivos gerados em dist.
+- Build local final `npm run build`: **aprovado**; Vite compilou 2443 módulos e esbuild gerou a saída local. Aviso existente de chunks acima de 500 kB permanece. Nenhuma migration executada.
+- `git diff --check`: sem erros de whitespace após remover linhas vazias extras no App.
+
+## Revisão de interface renderizada
+
+| Verificação | Resultado observado |
+|---|---|
+| Dark/light | Dashboard, propostas, Kanban, cliente e simulações capturados nos dois temas |
+| 1920×1080 / 1366×768 | Viewports lógicos confirmados; sem overflow horizontal da página. Tabela completa usa scroll interno no notebook |
+| Tablet 1024×768 / mobile 390×844 | Viewports confirmados; indicadores reorganizados; mobile abre propostas em cartões |
+| Filtro de banco na galeria | C6: 8 propostas de exemplo; seleção da página habilita ações em lote |
+| Dashboard filtrado por C6 | Andamento 6, pagas 2 e produção contratada R$136.600,00 da fixture; SLA/pendências mantêm base geral explícita |
+| Tabela/cartões | Alternância renderizada; exemplos podem abrir drawer |
+| Drawer/teclado | Foco inicial no fechamento; Shift+Tab retorna à última aba; Escape fecha e devolve foco ao botão de detalhe |
+| Sidebar mobile | Abre; Shift+Tab mantém foco dentro do menu; Escape fecha e devolve foco ao acionador; sidebar fechada é inert |
+| Busca Ctrl+K | Abre e foca campo; pesquisa por ADE de exemplo; Escape fecha e retorna foco ao acionador |
+| Abas | Fechar Simulações remove atalho; back/forward e refresh preservam seleção visual de propostas/dashboard |
+| Personalização | Ocultar “Propostas pagas” deixa cinco KPIs; estado de erro mostra indisponibilidade sem exibir os valores anteriores |
+| Simulações | Tabs de planilhas, seleção Paraná, taxa entre 1,85 e 1,60 e estado “Nenhuma condição elegível” observados; nenhum cálculo/provider executado |
+| Gráfico claro | Foi observado SVG não pintado após alternância; corrigido com camada de pintura isolada e confirmado visível |
+| Console da aba revisada | Nenhum erro/warn retornado ao revisar a nova interface |
+
+Capturas em `screenshots/premium-v2/`. Relatório de alterações e limitações: `premium-v2-review.md`.
+
+## Bloqueios mantidos
+
+Não houve sessão autenticada/base isolada confirmada. Não executados: troca real A→B→A, notificações/realtime, portal por domínio/tenant, todos os 45 caminhos autenticados, CRUD/importação/documentos e operações bancárias. Não executar integração que possa criar/apagar dados de produção. Revisão de teclado não substitui leitor de tela/avaliação WCAG completa.
+
+Nenhum backend, schema, migration, regra financeira, API bancária ou infraestrutura foi modificado. Legado mantido. Nenhum push, merge ou deploy realizado. **Aguardar aprovação visual.**
+
+Revisão adicional: Propostas, Esteira, Cliente 360° e Simulações foram navegados em 390px e 1024px; os quatro retornaram `overflow: false` para a página. Grids/tabelas/abas mantêm scroll interno quando necessário. Uma interação do navegador teve timeout durante o build local; estado foi relido e a navegação seguinte concluiu, sem erro no console. Isso não foi classificado como falha funcional do produto.

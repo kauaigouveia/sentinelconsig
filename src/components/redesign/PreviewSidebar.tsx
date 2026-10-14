@@ -59,6 +59,8 @@ export function PreviewSidebar({
   closeMobile,
   brandLogo = "/branding/sentinel-consig-symbol.svg",
   brandName = "Sentinel Consig",
+  favorites = [],
+  recent = [],
 }: {
   role?: Role;
   permissions?: string[];
@@ -68,6 +70,8 @@ export function PreviewSidebar({
   closeMobile?: () => void;
   brandLogo?: string;
   brandName?: string;
+  favorites?: string[];
+  recent?: string[];
 }) {
   const [compact, setCompact] = useState(false),
     [query, setQuery] = useState(""),
@@ -168,6 +172,46 @@ export function PreviewSidebar({
           />
         </div>
         <nav>
+          {!compact &&
+            !query &&
+            [
+              ["Favoritos", favorites],
+              ["Recentes", recent.slice(0, 2)],
+            ].map(([title, paths]) => {
+              const shortcuts = (paths as string[])
+                .map((p) => items.find((r) => r.path === p))
+                .filter(Boolean);
+              return shortcuts.length ? (
+                <section className="p2-nav-shortcuts" key={title as string}>
+                  <div className="s2-group">
+                    <span>{title as string}</span>
+                    <Star size={12} />
+                  </div>
+                  {shortcuts.map(
+                    (route) =>
+                      route && (
+                        <a
+                          key={route.path}
+                          href={route.path}
+                          onClick={(e) => {
+                            if (e.ctrlKey || e.metaKey) return;
+                            e.preventDefault();
+                            navigate(route.path);
+                            closeMobile?.();
+                          }}
+                        >
+                          <Star size={14} />
+                          <span>
+                            {route.path === "/"
+                              ? "Visão da Operação"
+                              : route.title}
+                          </span>
+                        </a>
+                      ),
+                  )}
+                </section>
+              ) : null;
+            })}
           {GROUPS.map((group, index) => {
             const entries = items.filter((item) => item.group === group);
             if (!entries.length) return null;
