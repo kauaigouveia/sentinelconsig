@@ -26,3 +26,51 @@
 @media(max-width:767px) {
   .s2-root :is(.p2-bi-workspace,.p2-report-workspace,.p2-command-workspace,.p2-platform-workspace) :is(input,select,textarea) { font-size: 16px; }
 }
+
+/* Keep module layout independent of the number/order of alerts and controls.
+   Only the outer workspace changes; internal forms, cards and tables keep their grids. */
+.s2-root .sentinel-stage,
+.s2-root .sentinel-main,
+.s2-root .sentinel-view-body,
+.s2-root .sentinel-view-body > :not(.fixed) { min-width: 0; max-width: 100%; }
+.s2-root .sentinel-view-body :is(.grid,.flex) > :not(.fixed) { min-width: 0; }
+.s2-root :is(.p2-live-simulations,.p2-live-integrations,.p2-bi-workspace,.p2-report-workspace,.p2-automation-page,.p2-intelligence-workspace) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+.s2-root :is(.p2-live-simulations,.p2-live-integrations,.p2-bi-workspace,.p2-report-workspace,.p2-automation-page,.p2-intelligence-workspace) > :not(.fixed) {
+  min-width: 0;
+  margin-block: 0;
+  grid-column: auto;
+  grid-row: auto;
+}
+.s2-root :is(.p2-live-simulations > .module-mode-tabs,.p2-live-integrations > .p2-integration-tabs,.p2-bi-workspace > .p2-analytics-tabs,.p2-report-workspace > .p2-analytics-tabs,.p2-automation-page > .p2-automation-tabs,.p2-intelligence-workspace > .p2-analytics-tabs) {
+  position: static;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 6px;
+  overflow: visible;
+}
+.s2-root .sentinel-view-body :is(.module-command-header,.sentinel-action-bar) { flex-wrap: wrap; }
+.s2-root .sentinel-view-body [class*="overflow-x-auto"] { min-width: 0; max-width: 100%; }
+.s2-root .sentinel-view-body :is(.p2-live-module,.p2-live-production) > :is(.module-command-header,.sentinel-action-bar,.p2-crm-header,.p2-integration-header) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 6px 0 14px;
+}
+.s2-root .sentinel-view-body .p2-live-module { background: transparent; }
+.s2-root .sentinel-view-body[data-ui-family="administration"] .p2-live-administration { background: transparent; gap: 16px; }
+.s2-root .sentinel-view-body[data-ui-family="administration"] .p2-live-administration > div:first-child { background: transparent; padding: 6px 0 0; }
+.s2-root .p2-live-administration > div:last-child { min-width: 0; width: 100%; }
+.s2-root .p2-live-administration > div:last-child > aside { align-items: center; overflow-y: hidden; }
+.s2-root .p2-live-administration > div:last-child > main { padding-top: 20px; border-top: 0; }
+.s2-root .p2-live-administration > div:last-child > main > .space-y-6 > .grid { align-items: stretch; }
+.s2-root .p2-live-administration > div:last-child > main > .space-y-6 > .grid > button { height: 100%; text-align: left; }
+@media(max-width:767px) {
+  .s2-root .sentinel-view-body :is(.module-command-header,.sentinel-action-bar) { align-items: flex-start; gap: 12px; }
+}

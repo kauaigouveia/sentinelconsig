@@ -82,7 +82,7 @@ function LocalReview() {
       <span>Rede externa e gravações bloqueadas</span>
     </header>
     <nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid #64748b',borderRadius:8,color:dark?'#f8fafc':'#14243b',background:module===name?(dark?'#1b2e48':'#dbeafe'):'transparent'}}>{name}</button>)}</nav>
-    <div data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
+    <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
     {module==='Propostas' && <ProductionList premium={premium} onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>setModule('Kanban')} />}
     {module==='Simulações' && <SimulationView premium={premium} />}
     {module==='Kanban' && <KanbanBoard premium={premium} />}
