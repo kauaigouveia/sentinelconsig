@@ -39,4 +39,20 @@ describe('partner privacy and import progress (no database)', () => {
     expect(job).toMatchObject({ status: 'COMPLETED', processedRecords: 2, createdRecords: 2, failedRecords: 0 });
     expect(prisma.partnerPortalAccess.create).toHaveBeenCalledTimes(2);
   });
+  it('restores an explicitly reimported deleted partner and resets its revoked access', async () => {
+    const job: any = { status: 'QUEUED', metadata: {}, fileName: 'fictional.csv' };
+    const prisma: any = {
+      importJob: { findUnique: vi.fn(async () => job), findUniqueOrThrow: vi.fn(async () => job), update: vi.fn(async ({ data }) => { Object.assign(job, data); return job; }) },
+      promoter: { findMany: vi.fn(async () => []) },
+      partner: { findUnique: vi.fn(async () => ({ id: 'partner', deletedAt: new Date(), promoterId: 'dg' })), update: vi.fn(async () => ({ id: 'partner' })) },
+      partnerPortalAccess: { findFirst: vi.fn(async () => ({ id: 'access', partnerId: 'partner' })), update: vi.fn(async () => ({})) },
+      partnerPortalSession: { deleteMany: vi.fn(async () => ({ count: 1 })) },
+    };
+    prisma.$transaction = async (callback: any) => callback(prisma);
+    await ImportWorkerService.processPartnersJob(prisma, 'job-restore', 'tenant', 'user', [{ name: 'Fictício', code: 'A', email: 'a@example.test' }]);
+    expect(job).toMatchObject({ status: 'COMPLETED', updatedRecords: 1 });
+    expect(prisma.partner.update.mock.calls[0][0].data.deletedAt).toBeNull();
+    expect(prisma.partnerPortalAccess.update.mock.calls[0][0].data).toMatchObject({ active: true, mustChangePassword: true, passwordHash: 'fictional-hash' });
+    expect(prisma.partnerPortalSession.deleteMany).toHaveBeenCalledWith({ where: { partnerPortalAccessId: 'access' } });
+  });
 });

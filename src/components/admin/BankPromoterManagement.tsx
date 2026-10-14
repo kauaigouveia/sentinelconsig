@@ -18,8 +18,12 @@ import { Bank, Promoter } from '../../types';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { ActionBar } from '../ui/ActionBar';
 import { MetricCard } from '../ui/MetricCard';
+import { BankBatchImport } from './BankBatchImport';
+import { hasPermission } from '../../lib/permissions';
 
 export const BankPromoterManagement: React.FC = () => {
+  const activeUser = StorageService.getActiveUser();
+  const canCreateBanks = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'banks.create');
   const [banks, setBanks] = useState<Bank[]>(() => StorageService.getBanks());
   const [promoters, setPromoters] = useState<Promoter[]>(() => StorageService.getPromoters());
   const [bankPromoters, setBankPromoters] = useState<any[]>(() => StorageService.getBankPromoters());
@@ -316,6 +320,7 @@ export const BankPromoterManagement: React.FC = () => {
               <span>Salvar Banco</span>
             </button>
           </form>
+          {canCreateBanks && <BankBatchImport onCompleted={refresh} />}
 
           <div className="space-y-2 pt-2">
             {banks.map(bank => (

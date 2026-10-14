@@ -6411,9 +6411,10 @@ async function auditAndEnsureMasterUser() {
         return res.status(404).json({ error: 'Parceiro não encontrado.' });
       }
 
-      await prisma.partner.updateMany({
-        where: { id, tenantId },
-        data: { deletedAt: new Date() },
+      await prisma.$transaction(async tx => {
+        await tx.partner.updateMany({ where: { id, tenantId }, data: { deletedAt: new Date() } });
+        await tx.partnerPortalAccess.updateMany({ where: { partnerId: id, tenantId }, data: { active: false } });
+        await tx.partnerPortalSession.deleteMany({ where: { partnerId: id, tenantId } });
       });
 
       await AuditLogService.record(prisma, {

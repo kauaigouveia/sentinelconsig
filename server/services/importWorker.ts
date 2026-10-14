@@ -1071,12 +1071,12 @@ export class ImportWorkerService {
               },
             });
 
-            if (existingPartner?.deletedAt) { invalidCount++; continue; }
             const existingAccess = await prisma.partnerPortalAccess.findFirst({ where: { tenantId, email: { equals: email, mode: 'insensitive' } } });
             if (existingAccess && existingAccess.partnerId !== existingPartner?.id) { invalidCount++; continue; }
-            const password = existingAccess ? '' : `Sc!${randomBytes(12).toString('base64url')}`;
+            const restorePartner = Boolean(existingPartner?.deletedAt);
+            const password = existingAccess && !restorePartner ? '' : `Sc!${randomBytes(12).toString('base64url')}`;
             const passwordHash = password ? await hashPassword(password) : null;
-            const resultRow = { name: cleanName, code: cleanCode, email, password, status: existingAccess ? 'Acesso existente; senha preservada' : 'Novo acesso; trocar senha no primeiro login' };
+            const resultRow = { name: cleanName, code: cleanCode, email, password, status: password ? 'Novo acesso; trocar senha no primeiro login' : 'Acesso existente; senha preservada' };
             await prisma.$transaction(async tx => {
             let partner;
             if (existingPartner) {
@@ -1085,6 +1085,7 @@ export class ImportWorkerService {
                 data: {
                   name: this.sanitizeFormula(cleanName),
                   promoterId: promoterId || existingPartner.promoterId,
+                  deletedAt: null,
                   email,
                   phone: item.phone ? this.sanitizeFormula(item.phone) : existingPartner.phone,
                   status: item.active === false ? 'INATIVO' : 'ATIVO',
@@ -1103,7 +1104,12 @@ export class ImportWorkerService {
                 },
               });
             }
-            if (passwordHash) await tx.partnerPortalAccess.create({ data: { tenantId, partnerId: partner.id, name: cleanName, email, passwordHash, mustChangePassword: true, active: item.active !== false } });
+            if (passwordHash) {
+              if (existingAccess) {
+                await tx.partnerPortalAccess.update({ where: { id: existingAccess.id }, data: { name: cleanName, passwordHash, mustChangePassword: true, active: item.active !== false } });
+                await tx.partnerPortalSession.deleteMany({ where: { partnerPortalAccessId: existingAccess.id } });
+              } else await tx.partnerPortalAccess.create({ data: { tenantId, partnerId: partner.id, name: cleanName, email, passwordHash, mustChangePassword: true, active: item.active !== false } });
+            }
             const job = await tx.importJob.findUniqueOrThrow({ where: { id: jobId }, select: { metadata: true } });
             const metadata = job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata) ? job.metadata : {};
             await tx.importJob.update({ where: { id: jobId }, data: { metadata: { ...metadata, credentials: sealImportCredentials([...credentials, resultRow]), credentialsExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } } });

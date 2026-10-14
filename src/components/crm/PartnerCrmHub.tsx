@@ -30,10 +30,20 @@ import { PartnerFormModal } from './PartnerFormModal';
 import { PartnerImportModal } from '../admin/PartnerImportModal';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { useRouter } from '../../router';
+import { PartnerBatchActions } from './PartnerBatchActions';
+import { StorageService } from '../../services/storageService';
+import { hasPermission } from '../../lib/permissions';
 
 export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const { searchParams, navigate } = useRouter();
+  const activeUser = StorageService.getActiveUser();
+  const canDeletePartners = activeUser?.role === 'PLATFORM_MASTER' || hasPermission(activeUser?.role, activeUser?.customPermissions, 'partners.delete') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'partners.crm.admin');
+  const canResetPartners = hasPermission(activeUser?.role, activeUser?.customPermissions, 'partners.update') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'partners.crm.admin');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) => setSelectedIds(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const [partners, setPartners] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const partnersRequestRef = useRef(0);
@@ -85,6 +95,8 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
     try {
       const params = new URLSearchParams();
       params.append('crm', 'true');
+      params.append('limit', '100');
+      params.append('page', String(page));
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
       if (statusFilter !== 'ALL') params.append('status', statusFilter);
       if (promoterFilter !== 'ALL') params.append('promoterId', promoterFilter);
@@ -97,6 +109,9 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
       const json = await res.json();
       if (requestId !== partnersRequestRef.current) return;
       if (json && Array.isArray(json.data)) {
+        const availablePages = Math.max(1, Number(json.pagination?.totalPages) || 1);
+        setTotalPages(availablePages);
+        if (page > availablePages) { setPage(availablePages); return; }
         setPartners(json.data);
       } else if (Array.isArray(json)) {
         setPartners(json);
@@ -110,7 +125,9 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
     } finally {
       if (requestId === partnersRequestRef.current) setLoading(false);
     }
-  }, [searchTerm, statusFilter, promoterFilter, operationalFilter]);
+  }, [searchTerm, statusFilter, promoterFilter, operationalFilter, page]);
+
+  useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [searchTerm, statusFilter, promoterFilter, operationalFilter]);
 
   useEffect(() => {
     loadAuxData();
@@ -153,6 +170,8 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
       totalProposals,
     };
   }, [partners]);
+
+  useEffect(() => { setSelectedIds(previous => new Set([...previous].filter(id => partners.some(p => p.id === id)))); }, [partners]);
 
   const handleDeletePartner = async () => {
     if (!deletingPartner) return;
@@ -241,6 +260,9 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
           </button>
         </div>
       </div>
+
+      <PartnerBatchActions partners={partners} selected={selectedIds} onSelection={setSelectedIds} canDelete={canDeletePartners} canReset={canResetPartners} onCompleted={loadPartners} />
+      {totalPages > 1 && <nav aria-label="Páginas de parceiros" className="flex items-center justify-end gap-3 text-sm"><button disabled={loading || page === 1} onClick={() => { setSelectedIds(new Set()); setPage(p => p - 1); }}>Anterior</button><span>Página {page} de {totalPages} · até 100 parceiros por lote</span><button disabled={loading || page >= totalPages} onClick={() => { setSelectedIds(new Set()); setPage(p => p + 1); }}>Próxima</button></nav>}
 
       {/* KPI Metric Cards */}
       <div className={`grid grid-cols-2 lg:grid-cols-5 gap-3.5 ${premium ? 'p2-crm-metrics' : ''}`}>
@@ -395,6 +417,7 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between group"
             >
               <div>
+                {(canDeletePartners || canResetPartners) && <label className="mb-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelected(p.id)} />Selecionar {p.name || p.fullName}</label>}
                 {/* Card Top: Title & Badges */}
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -543,6 +566,7 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase font-semibold">
                 <tr>
+                  {(canDeletePartners || canResetPartners) && <th className="px-3 py-3">Selecionar</th>}
                   <th className="px-4 py-3">Parceiro</th>
                   <th className="px-4 py-3">Código</th>
                   <th className="px-4 py-3">Status Operacional</th>
@@ -557,6 +581,7 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {partners.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-850/60">
+                    {(canDeletePartners || canResetPartners) && <td className="px-3 py-3"><input aria-label={`Selecionar ${p.name || p.fullName}`} type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelected(p.id)} /></td>}
                     <td className="px-4 py-3">
                       <div className="font-bold text-slate-800 dark:text-slate-100 text-xs">
                         {p.name || p.fullName}
