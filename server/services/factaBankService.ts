@@ -9,6 +9,7 @@ import {
 } from './factaBankTypes.js';
 import { mapFactaStatusToInternal } from './factaStatusMapper.js';
 import { factaFetch } from './factaTransport.js';
+import { normalizeFactaBaseUrl } from './factaBaseUrl.js';
 import { resolveBankPromoter, readBankPromoterConfig, bankPromoterConfigKey, currentIntegrationPromoter } from './bankPromoterConfig.js';
 
 interface TokenCacheEntry {
@@ -47,14 +48,7 @@ export class FactaBankService {
     const environment: 'homologation' | 'production' = rawEnv === 'production' ? 'production' : 'homologation';
 
     const defaultUrl = environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
-    let baseUrl = (configMap.get('facta_base_url') || legacyEnv('FACTA_BASE_URL') || defaultUrl)
-      .trim()
-      .replace(/\/+$/, '');
-
-    // Sanitização de URLs legadas ou incorretas
-    if (baseUrl.includes('desenvolvimento.facta.com.br') || baseUrl.includes('proposta.facta.com.br')) {
-      baseUrl = environment === 'production' ? this.PRODUCTION_BASE_URL : this.HOMOLOGATION_BASE_URL;
-    }
+    const baseUrl = normalizeFactaBaseUrl(configMap.get('facta_base_url') || legacyEnv('FACTA_BASE_URL') || defaultUrl, environment);
 
     const username = (configMap.get('facta_username') || '').trim();
     const password = (configMap.get('facta_password') || '').trim();
@@ -149,6 +143,13 @@ export class FactaBankService {
       });
     };
 
+    let normalizedBaseUrl: string | undefined;
+    if (data.baseUrl?.trim()) {
+      const saved = await readBankPromoterConfig(prisma, tenantId, 'facta', promoter.id, 'DG');
+      const savedEnvironment = saved.values.get('facta_environment') || (saved.allowLegacy ? process.env.FACTA_ENVIRONMENT : undefined);
+      normalizedBaseUrl = normalizeFactaBaseUrl(data.baseUrl, data.environment || (savedEnvironment === 'production' ? 'production' : 'homologation'));
+    }
+
     if (typeof data.enabled === 'boolean') await upsertConfig('facta_enabled', String(data.enabled));
     if (data.environment) {
       await upsertConfig('facta_environment', data.environment, false);
@@ -168,7 +169,7 @@ export class FactaBankService {
     }
 
     if (data.baseUrl !== undefined && data.baseUrl.trim() !== '') {
-      await upsertConfig('facta_base_url', data.baseUrl.trim().replace(/\/+$/, ''), false);
+      await upsertConfig('facta_base_url', normalizedBaseUrl!, false);
       this.invalidateTokenCache(tenantId);
     }
 
@@ -233,13 +234,13 @@ export class FactaBankService {
   public static async getToken(
     prisma: PrismaClient,
     tenantId: string,
-    overrideConfig?: { username?: string; password?: string; baseUrl?: string },
+    overrideConfig?: { username?: string; password?: string; baseUrl?: string; environment?: 'production' | 'homologation' },
     promoterId?: string
   ): Promise<string> {
     const config = await this.getTenantConfig(prisma, tenantId, promoterId);
     const username = overrideConfig?.username || config.username;
     const password = overrideConfig?.password || config.password;
-    const baseUrl = overrideConfig?.baseUrl || config.baseUrl;
+    const baseUrl = normalizeFactaBaseUrl(overrideConfig?.baseUrl || config.baseUrl, overrideConfig?.environment || config.environment);
 
     if (!config.enabled) throw new Error('Conexão FACTA desativada para esta promotora.');
     if (!username || !password) {
@@ -335,15 +336,15 @@ export class FactaBankService {
   public static async testConnection(
     prisma: PrismaClient,
     tenantId: string,
-    overrideConfig?: { username?: string; password?: string; baseUrl?: string },
+    overrideConfig?: { username?: string; password?: string; baseUrl?: string; environment?: 'production' | 'homologation' },
     promoterId?: string
   ): Promise<{ success: boolean; message: string; responseTimeMs?: number; isHomologation?: boolean }> {
     const startTime = Date.now();
     try {
       this.invalidateTokenCache(tenantId);
       const config = await this.getTenantConfig(prisma, tenantId, promoterId);
-      const activeBaseUrl = overrideConfig?.baseUrl || config.baseUrl;
-      const isHomol = activeBaseUrl.includes('homol') || config.environment === 'homologation';
+      const activeBaseUrl = normalizeFactaBaseUrl(overrideConfig?.baseUrl || config.baseUrl, overrideConfig?.environment || config.environment);
+      const isHomol = new URL(activeBaseUrl).hostname === 'webservice-homol.facta.com.br';
 
       const token = await this.getToken(prisma, tenantId, overrideConfig, promoterId);
       const responseTimeMs = Date.now() - startTime;

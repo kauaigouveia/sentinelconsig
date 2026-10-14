@@ -379,7 +379,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
     setFactaTestResult(null);
 
     try {
-      const payload: any = {};
+      const payload: any = { environment: factaConfig.environment };
       if (factaConfig.username?.trim()) payload.username = factaConfig.username.trim();
       if (factaPassword?.trim()) payload.password = factaPassword.trim();
       if (factaConfig.baseUrl?.trim()) payload.baseUrl = factaConfig.baseUrl.trim();

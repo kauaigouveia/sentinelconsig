@@ -15571,7 +15571,9 @@ async function auditAndEnsureMasterUser() {
       const { username, password, baseUrl } = req.body || {};
       const override = (username || password || baseUrl) ? { username, password, baseUrl } : undefined;
 
-      const result = await FactaBankService.testConnection(prisma, tenantId, override, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
+      const environment = req.body?.environment;
+      if (environment !== undefined && !['production', 'homologation'].includes(environment)) return res.status(400).json({ error: 'Ambiente FACTA inválido.' });
+      const result = await FactaBankService.testConnection(prisma, tenantId, { ...override, environment }, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined);
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Erro ao testar conexão com FACTA Financeira.' });
