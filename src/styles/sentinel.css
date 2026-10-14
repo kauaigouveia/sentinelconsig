@@ -281,6 +281,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sentinel-accen
 .module-mode-tabs button { border: 0 !important; border-radius: 9px; white-space: nowrap; font-size: 11px; padding: 10px 15px; }
 .module-mode-tabs button[class*='font-bold'] { background: var(--sentinel-accent-soft); color: var(--sentinel-accent); }
 .record-workspace { display: grid; grid-template-columns: 208px minmax(0,1fr) 206px; gap: 18px; align-items: start; }
+.record-workspace.record-workspace-no-summary { grid-template-columns: minmax(208px,240px) minmax(0,1fr); }
 .record-filters { border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); padding: 15px; position: sticky; top: 0; }
 .record-filter-heading { display: flex; align-items: center; width: 100%; gap: 8px; color: var(--text-secondary); margin-bottom: 17px; font-size: 10px; }
 .record-filter-heading svg:first-child { color: #899cff; }
@@ -382,3 +383,5 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sentinel-accen
 /* Official identity on both login surfaces; custom tenant marks keep their own sizing. */
 .sentinel-auth-wordmark img.sentinel-auth-official-wordmark { width: min(300px, 100%); height: auto; object-fit: contain; }
 .sentinel-auth-tenant img.sentinel-auth-official-logo { width: min(260px, 100%); height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+@media (max-width: 1000px) { .record-workspace.record-workspace-no-summary { grid-template-columns: minmax(0,1fr); } }

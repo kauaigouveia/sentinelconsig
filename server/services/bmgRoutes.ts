@@ -1,5 +1,6 @@
 import { resolveBankPromoter, withIntegrationPromoter } from './bankPromoterConfig.js';
-import type { Express, Request } from 'express';
+import type { Express, Request, Response } from 'express';
+import { resolveMappedBankStatus, updateMappedProviderProposal } from './bankStatusMappings.js';
 import type { PrismaClient } from '@prisma/client';
 import { BmgBankService } from './bmgBankService.js';
 import { PartnerPortalService } from './partnerPortalService.js';
@@ -81,11 +82,12 @@ export function registerBmgRoutes(app: Express, prisma: PrismaClient, getAuthSes
       return res.json({ rows, simulationId: tracking?.id });
     } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível concluir a consulta BMG.' }); }
   });
-  app.get('/api/integrations/bmg/proposals/:id', async (req, res) => {
+  const consultProposal = async (req: Request, res: Response, synchronize: boolean) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
       const session = await getAuthSession(req);
       if (!session?.effectiveTenantId || !hasPermission(session.activeRole, session.activePermissions, 'proposals.view')) return res.status(403).json({ error: 'Sem permissão para consultar propostas.' });
+      if (synchronize && !hasPermission(session.activeRole, session.activePermissions, 'integrations.sync') && !hasPermission(session.activeRole, session.activePermissions, 'integrations.manage')) return res.status(403).json({ error: 'Sem permissão para sincronizar propostas.' });
       const proposal = await prisma.proposal.findFirst({ where: { id: String(req.params.id), tenantId: session.effectiveTenantId, deletedAt: null }, include: { bank: true, client: true } });
       if (!proposal || proposal.bank?.code !== '318') return res.status(404).json({ error: 'Proposta BMG não encontrada nesta empresa.' });
       if (!/^\d{1,30}$/.test(proposal.proposalNumber)) return res.status(400).json({ error: 'O número cadastrado não está no formato BMG.' });
@@ -99,7 +101,16 @@ export function registerBmgRoutes(app: Express, prisma: PrismaClient, getAuthSes
         const url = new URL(String(formalization.linkFormalizacao));
         if (String(formalization.numeroProposta) === proposal.proposalNumber && url.protocol === 'https:' && !url.username && !url.password) link = url.href;
       } catch { /* Proposal status remains available when formalization is not ready. */ }
-      return res.json({ proposalNumber: proposal.proposalNumber, status: String(data.status || ''), date: String(data.dataCriacao || ''), formalizationLink: link });
+      let mappedStatus = null;
+      if (synchronize) {
+        mappedStatus = await resolveMappedBankStatus(prisma, proposal.tenantId, proposal.promoterId, 'bmg', [data.status]);
+        if (mappedStatus) await updateMappedProviderProposal(prisma, proposal, { version: { increment: 1 } }, mappedStatus, session.user.id, 'BMG Sync');
+        await AuditLogService.record(prisma, { tenantId: proposal.tenantId, userId: session.user.id, userName: session.user.name, action: 'SINCRONIZAR_BMG_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { bankStatus: String(data.status || ''), statusId: mappedStatus?.id || null }, req });
+        sseRegistry.broadcastToTenant(proposal.tenantId, { type: 'PROPOSAL_UPDATED', entity: 'Proposal', entityId: proposal.id, data: { id: proposal.id } });
+      }
+      return res.json({ success: true, statusMapped: Boolean(mappedStatus), proposalNumber: proposal.proposalNumber, status: String(data.status || ''), date: String(data.dataCriacao || ''), formalizationLink: link });
     } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível consultar a proposta BMG.' }); }
-  });
+  };
+  app.get('/api/integrations/bmg/proposals/:id', (req, res) => consultProposal(req, res, false));
+  app.post('/api/integrations/bmg/proposals/:id/sync', (req, res) => consultProposal(req, res, true));
 }

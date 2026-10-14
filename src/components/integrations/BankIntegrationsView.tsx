@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { SimulationBankOrderSettings } from './SimulationBankOrderSettings';
 import { BmgIntegrationTab } from './BmgIntegrationTab';
 import { PortRefinWorkbookSettings } from './DaycovalWorkbookSettings';
+import { BankStatusMappingSettings } from './BankStatusMappingSettings';
 import {
   Server,
   Zap,
@@ -690,6 +691,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
 
       {/* CONTEÚDO DA ABA ATIVA */}
       {canManageConfig && <SimulationBankOrderSettings />}
+      {canManageConfig && activeTab !== 'daycoval' && activeTab !== 'outros' && <BankStatusMappingSettings key={`${activeTab}:${promoterId}`} promoterId={promoterId} initialProvider={activeTab} />}
       {activeTab === 'daycoval' && <PortRefinWorkbookSettings />}
 
       {/* ABA C6 BANK: Integração Completa */}

@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Activity, CheckCircle2, Link2, LoaderCircle, RefreshCw } from 'lucide-react';
 import type { Proposal } from '../../types';
 
-type Props = { proposal: Proposal; onProposalUpdated: (proposal: Proposal) => void };
+type Props = { proposal: Proposal; onProposalUpdated: (proposal: Proposal) => void; showFinanto?: boolean; showNossa?: boolean };
 type Provider = 'finanto' | 'nossa-fintech';
 
-export const ProviderProposalSyncCard: React.FC<Props> = ({ proposal, onProposalUpdated }) => {
+export const ProviderProposalSyncCard: React.FC<Props> = ({ proposal, onProposalUpdated, showFinanto = true, showNossa = true }) => {
   const [finantoId, setFinantoId] = useState('');
   const [debtKey, setDebtKey] = useState('');
   const [product, setProduct] = useState<NonNullable<Proposal['nossaFintechProduct']>>(proposal.nossaFintechProduct || 'PORT_REFIN');
@@ -38,19 +38,19 @@ export const ProviderProposalSyncCard: React.FC<Props> = ({ proposal, onProposal
 
   return <div className="space-y-4">
     <p className="text-sm text-slate-500">Vincule uma operação já criada no provedor. A sincronização atualiza na proposta os dados financeiros e o status retornados pela API.</p>
-    <section className={cardClass}>
+    {showFinanto && <section className={cardClass}>
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-bold">FINANTO / JoinBank</h4><p className="mt-1 text-xs text-slate-500">{proposal.finantoSimulationId ? `ID ${proposal.finantoSimulationId} · ${proposal.finantoStatus || 'Sem status retornado'}` : 'Nenhuma simulação FINANTO vinculada.'}</p><p className="mt-1 text-[11px] text-slate-500">Última atualização: {date(proposal.finantoLastSyncAt)}</p></div>{proposal.finantoSimulationId && <button type="button" onClick={() => void run('finanto', 'sync')} disabled={busy !== null} className={buttonClass}><RefreshCw className={`h-3.5 w-3.5 ${busy === 'finanto' ? 'animate-spin' : ''}`} />Sincronizar agora</button>}</div>
       <div className="mt-3 flex flex-wrap gap-2"><input value={finantoId} onChange={e => setFinantoId(e.target.value)} placeholder="ID local ou ID FINANTO da simulação" className={inputClass} /><button type="button" onClick={() => void run('finanto', 'link')} disabled={busy !== null || !finantoId.trim()} className={buttonClass}><Link2 className="h-3.5 w-3.5" />Vincular</button></div>
       {proposal.finantoSyncError && <p className="mt-2 text-xs text-rose-600">Último erro: {proposal.finantoSyncError}</p>}
       {notice?.provider === 'finanto' && <p role="status" className={`mt-2 text-xs ${notice.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{notice.message}</p>}
-    </section>
-    <section className={cardClass}>
+    </section>}
+    {showNossa && <section className={cardClass}>
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-bold">Nossa Fintech</h4><p className="mt-1 text-xs text-slate-500">{proposal.nossaFintechDebtKey ? `Operação ${proposal.nossaFintechDebtKey} · ${proposal.nossaFintechStatus || 'Sem status retornado'}` : 'Nenhuma operação Nossa Fintech vinculada.'}</p><p className="mt-1 text-[11px] text-slate-500">Última atualização: {date(proposal.nossaFintechLastSyncAt)}</p></div>{proposal.nossaFintechDebtKey && <button type="button" onClick={() => void run('nossa-fintech', 'sync')} disabled={busy !== null} className={buttonClass}><RefreshCw className={`h-3.5 w-3.5 ${busy === 'nossa-fintech' ? 'animate-spin' : ''}`} />Sincronizar agora</button>}</div>
       <div className="mt-3 flex flex-wrap gap-2"><input value={debtKey} onChange={e => setDebtKey(e.target.value)} placeholder="debt_key da operação Nossa Fintech" className={inputClass} /><select value={product} onChange={e => setProduct(e.target.value as typeof product)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"><option value="PORT_REFIN">Portabilidade + Refin</option><option value="INSS">INSS</option><option value="FGTS">FGTS</option><option value="CLT">CLT</option></select><button type="button" onClick={() => void run('nossa-fintech', 'link')} disabled={busy !== null || !debtKey.trim()} className={buttonClass}><Link2 className="h-3.5 w-3.5" />Vincular</button></div>
       {proposal.nossaFintechSyncError && <p className="mt-2 text-xs text-rose-600">Último erro: {proposal.nossaFintechSyncError}</p>}
       {proposal.nossaFintechStatusDescription && <p className="mt-2 text-xs text-slate-500">{proposal.nossaFintechStatusDescription}</p>}
       {notice?.provider === 'nossa-fintech' && <p role="status" className={`mt-2 text-xs ${notice.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{notice.message}</p>}
-    </section>
+    </section>}
     {busy && <p className="inline-flex items-center gap-2 text-xs text-slate-500"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /><Activity className="h-3.5 w-3.5" />Consultando a API…</p>}
     {notice?.ok && <CheckCircle2 className="hidden" aria-hidden="true" />}
   </div>;

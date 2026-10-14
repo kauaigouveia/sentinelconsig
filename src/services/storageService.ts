@@ -3636,6 +3636,8 @@ export class StorageService {
       relatedPortabilityId?: string;
       c6ProposalNumber?: string;
       c6OperationNumber?: string;
+      installmentValue?: number;
+      installmentsCount?: number;
     },
     origin: 'MANUAL' | 'IMPORTACAO' = 'MANUAL'
   ): Promise<Proposal> {
@@ -3708,6 +3710,8 @@ export class StorageService {
             type: resolvedType,
             relatedPortabilityId: data.relatedPortabilityId || undefined,
             releasedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : 0,
+            installmentValue: data.installmentValue,
+            installmentsCount: data.installmentsCount,
             contractValue: data.contractBalance !== undefined ? Number(data.contractBalance) : 0,
             debtBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
             notes: data.notes,
@@ -3746,6 +3750,8 @@ export class StorageService {
       statusId: statusId,
       currentResponsible: statusObj.responsibleGroup,
       disbursedValue: data.disbursedValue !== undefined ? Number(data.disbursedValue) : undefined,
+      installmentValue: data.installmentValue,
+      installmentsCount: data.installmentsCount,
       contractBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
       debtBalance: data.contractBalance !== undefined ? Number(data.contractBalance) : undefined,
       notes: data.notes,

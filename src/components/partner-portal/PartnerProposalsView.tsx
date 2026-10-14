@@ -175,26 +175,29 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
             </span>
           )}
 
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 text-[11px] font-semibold hidden sm:inline">Período:</span>
+          <fieldset className="w-full min-w-0 space-y-2 text-xs">
+            <legend className="text-slate-400 font-semibold">Período</legend>
+            <label className="block space-y-1">De
             <input
               type="date"
               value={startDate}
               max={endDate || undefined}
               onChange={(e) => setStartDate(e.target.value)}
               aria-label="Data inicial das propostas"
-              className="h-7.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+              className="block w-full min-w-0 h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
             />
-            <span className="text-slate-400">até</span>
+            </label>
+            <label className="block space-y-1">Até
             <input
               type="date"
               value={endDate}
               min={startDate || undefined}
               onChange={(e) => setEndDate(e.target.value)}
               aria-label="Data final das propostas"
-              className="h-7.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+              className="block w-full min-w-0 h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
             />
-          </div>
+            </label>
+          </fieldset>
         </div>
       </div>
 

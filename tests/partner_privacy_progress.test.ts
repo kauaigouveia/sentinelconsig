@@ -30,6 +30,7 @@ describe('partner privacy and import progress (no database)', () => {
       partner: { findUnique: vi.fn(async () => { observed.push(job.processedRecords || 0); return null; }), create: vi.fn(async () => ({ id: 'fictional-partner' })) },
       partnerPortalAccess: { findFirst: vi.fn(async () => null), create: vi.fn(async () => ({})) },
     };
+    prisma.importJob.updateMany = vi.fn(async ({ data }: any) => { Object.assign(job, data); return { count: 1 }; });
     prisma.$transaction = async (callback: any) => callback(prisma);
     await ImportWorkerService.processPartnersJob(prisma, 'job', 'tenant', 'user', [
       { name: 'Teste A', code: 'A', email: 'a@example.test', promoterName: 'DG' },
@@ -48,6 +49,7 @@ describe('partner privacy and import progress (no database)', () => {
       partnerPortalAccess: { findFirst: vi.fn(async () => ({ id: 'access', partnerId: 'partner' })), update: vi.fn(async () => ({})) },
       partnerPortalSession: { deleteMany: vi.fn(async () => ({ count: 1 })) },
     };
+    prisma.importJob.updateMany = vi.fn(async ({ data }: any) => { Object.assign(job, data); return { count: 1 }; });
     prisma.$transaction = async (callback: any) => callback(prisma);
     await ImportWorkerService.processPartnersJob(prisma, 'job-restore', 'tenant', 'user', [{ name: 'Fictício', code: 'A', email: 'a@example.test' }]);
     expect(job).toMatchObject({ status: 'COMPLETED', updatedRecords: 1 });

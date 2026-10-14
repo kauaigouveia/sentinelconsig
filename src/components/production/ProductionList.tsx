@@ -35,6 +35,7 @@ import { StorageService } from '../../services/storageService';
 import { normalizeCpf, formatCpf, formatDate, extractPartnerCode, formatCurrency, isPrimaryPortabilityProposal } from '../../lib/utils';
 import { Proposal, ProposalStatus, ResponsibleAlçada } from '../../types';
 import { BulkStatusModal } from './BulkStatusModal';
+import { ProposalBatchSyncButton } from './ProposalBatchSyncButton';
 import { ExcelExportModal } from './ExcelExportModal';
 import { ProposalDetailModal } from './ProposalDetailModal';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
@@ -92,6 +93,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   const canCreateProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.create');
   const canUpdateProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.update');
   const canDeleteProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'proposals.delete');
+  const canSyncProposals = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
 
   useEffect(() => {
     StorageService.fetchAndSyncStatuses().then(setStatuses).catch(() => {});
@@ -652,6 +654,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         financialTotal={totalDisbursedFiltered}
         rightActions={
           <>
+            {canSyncProposals && <ProposalBatchSyncButton proposals={proposals} banks={banks} onCompleted={async () => { await StorageService.syncSpecificEntity('Proposal'); refreshData(); }} />}
             {/* Table Density Switcher */}
             <button
               onClick={toggleDensity}

@@ -8,6 +8,7 @@ import {
   C6TenantConfig,
 } from './c6BankTypes.js';
 import { mapC6StatusToInternal } from './c6StatusMapper.js';
+import { resolveMappedBankStatus } from './bankStatusMappings.js';
 
 interface TokenCacheEntry {
   token: string;
@@ -770,8 +771,14 @@ export class C6BankService {
       let newInternalStatusId: string | null = null;
       let newStandardCategory: any = undefined;
       let targetStatusRecord: any = null;
+      const configuredStatus = await resolveMappedBankStatus(prisma, tenantId, proposal.promoterId, 'c6', [returnedActivityDesc, returnedActivity, returnedSituation]);
+      if (configuredStatus && (configuredStatus.standardCategory !== 'PAGO' || mapping.targetStatusCode === 'PAGO')) {
+        targetStatusRecord = configuredStatus; mapping.isMapped = true; mapping.targetStatusCode = configuredStatus.code;
+        mapping.notes = 'Mapeamento C6 configurado pela empresa.';
+        if (configuredStatus.id !== proposal.statusId) { newInternalStatusId = configuredStatus.id; newStandardCategory = configuredStatus.standardCategory; }
+      }
 
-      if (mapping.isMapped && mapping.targetStatusCode) {
+      if (!targetStatusRecord && mapping.isMapped && mapping.targetStatusCode) {
         const targetCode = mapping.targetStatusCode;
         // Search by tenant first
         targetStatusRecord = await prisma.proposalStatus.findFirst({

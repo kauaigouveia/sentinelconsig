@@ -12,6 +12,7 @@ import {
 } from './happyBankTypes.js';
 import { HappyTokenManager } from './happyTokenManager.js';
 import { mapHappyStatusToInternal } from './happyStatusMapper.js';
+import { resolveMappedBankStatus } from './bankStatusMappings.js';
 
 export class HappyBankService {
   /**
@@ -399,11 +400,13 @@ export class HappyBankService {
 
     // 3. Mapeamento de status
     const mapping = mapHappyStatusToInternal(statusCode, statusName, statusDescription);
+    const configuredStatus = await resolveMappedBankStatus(prisma, tenantId, proposal.promoterId, 'happy', [statusName, statusCode, statusDescription]);
+    if (configuredStatus) { mapping.isMapped = true; mapping.targetStatusCode = configuredStatus.code; mapping.notes = 'Mapeamento Happy configurado pela empresa.'; }
 
     let internalStatusChanged = false;
-    let targetStatusRecord: any = null;
+    let targetStatusRecord: any = configuredStatus;
 
-    if (mapping.isMapped && mapping.targetStatusCode) {
+    if (!targetStatusRecord && mapping.isMapped && mapping.targetStatusCode) {
       targetStatusRecord = await prisma.proposalStatus.findFirst({
         where: {
           tenantId,
@@ -416,6 +419,7 @@ export class HappyBankService {
       }
     }
 
+    internalStatusChanged = Boolean(targetStatusRecord && targetStatusRecord.id !== proposal.statusId);
     // 4. Atualizar a proposta e registrar histórico em transação
     await prisma.$transaction(async (tx) => {
       // Atualizar proposta com dados brutos da Happy
@@ -435,6 +439,7 @@ export class HappyBankService {
           ...(internalStatusChanged && targetStatusRecord
             ? {
                 statusId: targetStatusRecord.id,
+                standardCategory: targetStatusRecord.standardCategory,
                 retentionDeadline: targetStatusRecord.code === 'AGUARDAR_RETORNO_CIP'
                   ? (proposal.retentionDeadline ? undefined : new Date())
                   : null,
@@ -601,11 +606,13 @@ export class HappyBankService {
 
     const rawStatus = matchedContract.status;
     const mapping = mapHappyStatusToInternal(null, rawStatus, null);
+    const configuredStatus = await resolveMappedBankStatus(prisma, tenantId, proposal.promoterId, 'happy', [rawStatus]);
+    if (configuredStatus) { mapping.isMapped = true; mapping.targetStatusCode = configuredStatus.code; mapping.notes = 'Mapeamento Happy configurado pela empresa.'; }
 
     let internalStatusChanged = false;
-    let targetStatusRecord: any = null;
+    let targetStatusRecord: any = configuredStatus;
 
-    if (mapping.isMapped && mapping.targetStatusCode) {
+    if (!targetStatusRecord && mapping.isMapped && mapping.targetStatusCode) {
       targetStatusRecord = await prisma.proposalStatus.findFirst({
         where: { tenantId, code: mapping.targetStatusCode },
       });
@@ -615,6 +622,7 @@ export class HappyBankService {
       }
     }
 
+    internalStatusChanged = Boolean(targetStatusRecord && targetStatusRecord.id !== proposal.statusId);
     await prisma.$transaction(async (tx) => {
       await tx.proposal.update({
         where: { id: proposal.id },
@@ -632,6 +640,7 @@ export class HappyBankService {
           ...(internalStatusChanged && targetStatusRecord
             ? {
                 statusId: targetStatusRecord.id,
+                standardCategory: targetStatusRecord.standardCategory,
                 retentionDeadline: targetStatusRecord.code === 'AGUARDAR_RETORNO_CIP'
                   ? (proposal.retentionDeadline ? undefined : new Date())
                   : null,

@@ -27,6 +27,8 @@ interface AdeRow {
   promoterId: string;
   disbursedValue?: string | number; // Valor liberado cliente
   contractBalance?: string | number; // Saldo do contrato (portabilidade)
+  installmentsCount?: string;
+  installmentValue?: string;
   notes?: string;
   linkWithPortabilityIndex?: number; // link to another row in this batch
 }
@@ -164,6 +166,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           {
             id: 'row-1',
             proposalNumber: '',
+            installmentsCount: '84',
             convenioId: defaultConv?.id || '',
             productId: defaultProd.id,
             bankId: defaultBank.id,
@@ -259,6 +262,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       {
         id: `row-${Date.now()}-${prev.length + 1}`,
         proposalNumber: '',
+        installmentsCount: '84',
         convenioId: defaultConv?.id || '',
         productId: defaultProduct.id,
         bankId: defaultBank.id,
@@ -398,11 +402,20 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       }
 
       // Operational rules validation
+      const term = Number(row.installmentsCount);
+      if (!Number.isInteger(term) || term <= 0) {
+        setErrorMsg(`Linha ${i + 1}: informe um prazo inteiro maior que zero.`); setIsSaving(false); return;
+      }
+      const installment = row.installmentValue?.trim() ? parseCurrency(row.installmentValue) : undefined;
+      if (row.installmentValue?.trim() && (installment === undefined || !Number.isFinite(installment) || installment < 0)) {
+        setErrorMsg(`Linha ${i + 1}: informe um valor de parcela válido.`); setIsSaving(false); return;
+      }
       const ruleCheck = StorageService.validateProposalAgainstRules({
         productId: row.productId,
         convenioId: row.convenioId,
         contractValue: row.disbursedValue ? parseCurrency(row.disbursedValue) : undefined,
         contractBalance: row.contractBalance ? parseCurrency(row.contractBalance) : undefined,
+        installmentsCount: term,
       });
       if (!ruleCheck.valid) {
         setErrorMsg(`Linha ${i + 1}: ${ruleCheck.errors.join('; ')}`);
@@ -487,6 +500,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             bankId: row.bankId,
             promoterId: row.promoterId,
             partnerId: selectedPartnerId,
+            installmentsCount: Number(row.installmentsCount),
+            installmentValue: row.installmentValue?.trim() ? parseCurrency(row.installmentValue) : undefined,
             disbursedValue:
               row.disbursedValue !== undefined && row.disbursedValue !== ''
                 ? parseCurrency(row.disbursedValue)
@@ -538,6 +553,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             bankId: row.bankId,
             promoterId: row.promoterId,
             partnerId: selectedPartnerId,
+            installmentsCount: Number(row.installmentsCount),
+            installmentValue: row.installmentValue?.trim() ? parseCurrency(row.installmentValue) : undefined,
             disbursedValue:
               row.disbursedValue !== undefined && row.disbursedValue !== ''
                 ? parseCurrency(row.disbursedValue)
@@ -817,6 +834,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                     <th className="px-3 py-2.5 min-w-[160px]">ADE / Nº Proposta *</th>
                     <th className="px-3 py-2.5 min-w-[150px]">Convênio</th>
                     <th className="px-3 py-2.5 min-w-[180px]">Produto *</th>
+                    <th className="px-3 py-2.5 min-w-[120px]">Prazo (meses) *</th>
+                    <th className="px-3 py-2.5 min-w-[145px]">Parcela (R$)</th>
                     <th className="px-3 py-2.5 min-w-[210px]">Banco *</th>
                     <th className="px-3 py-2.5 min-w-[200px]">Promotora Habilitada *</th>
                     <th className="px-3 py-2.5 min-w-[140px]">Valor Liberado (R$)</th>
@@ -879,6 +898,12 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                               </option>
                             ))}
                           </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input aria-label={`Prazo da proposta ${idx + 1} (meses)`} type="number" min="1" step="1" value={row.installmentsCount ?? '84'} onChange={e => handleUpdateRow(idx, 'installmentsCount', e.target.value)} className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs" />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input aria-label={`Valor da parcela da proposta ${idx + 1}`} type="text" inputMode="decimal" value={row.installmentValue ?? ''} placeholder="0,00" onChange={e => handleUpdateRow(idx, 'installmentValue', e.target.value)} className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs" />
                         </td>
                         <td className="px-3 py-2">
                           <select

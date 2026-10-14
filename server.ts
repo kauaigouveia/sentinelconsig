@@ -139,6 +139,8 @@ import { C6SimulationService } from './server/services/c6SimulationService.js';
 import { registerSimulationBankOrderRoutes } from './server/services/simulationBankOrderRoutes.js';
 import { registerBmgRoutes } from './server/services/bmgRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
+import { createOrResumePartnerImport, continuePartnerImport, cancelPartnerImport } from './server/services/partnerImportContinuation.js';
+import { STATUS_MAPPING_BANKS, getBankStatusMappings, saveBankStatusMappings, resolveMappedBankStatus, updateMappedProviderProposal } from './server/services/bankStatusMappings.js';
 import { CommandAlertEngine } from './server/services/commandCenter/commandAlertEngine.js';
 
 let isShuttingDown = false;
@@ -11524,7 +11526,7 @@ async function auditAndEnsureMasterUser() {
       if (!rows || !Array.isArray(rows) || rows.length === 0) {
         return res.status(400).json({ error: 'Nenhum registro de parceiro fornecido.' });
       }
-      const normalizedRows = rows.map(row => ({ ...row, name: String(row.name || row.fullName || '').trim(), code: String(row.code || row.login || '').trim().toUpperCase(), email: String(row.email || '').trim().toLowerCase() }));
+      const normalizedRows = rows.map(row => ({ name: String(row.name || row.fullName || '').trim(), code: String(row.code || row.login || '').trim().toUpperCase(), email: String(row.email || '').trim().toLowerCase(), promoterName: String(row.promoterName || '').trim(), phone: String(row.phone || '').trim(), active: row.active !== false }));
       if (normalizedRows.some(row => !row.name || !row.code || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email))) {
         return res.status(400).json({ error: 'Informe nome, código e e-mail válido em todas as linhas para gerar os acessos ao portal.' });
       }
@@ -11549,22 +11551,7 @@ async function auditAndEnsureMasterUser() {
 
       const numFileSize = Number(fileSize) || 0;
 
-      const job = await prisma.importJob.create({
-        data: {
-          tenantId,
-          userId,
-          type: 'PARTNERS',
-          fileName: cleanFileName,
-          fileSize: numFileSize,
-          status: 'QUEUED',
-          totalRecords: rows.length,
-        },
-      });
-
-      dispatchImportWorker(
-        () => ImportWorkerService.processPartnersJob(prisma, job.id, tenantId, userId, normalizedRows),
-        `[BACKGROUND PARTNER IMPORT ERROR] Job ${job.id} failed`
-      );
+      const job = await createOrResumePartnerImport(prisma, tenantId, userId, normalizedRows, cleanFileName, numFileSize);
 
       return res.status(202).json({
         success: true,
@@ -11576,6 +11563,19 @@ async function auditAndEnsureMasterUser() {
     } catch (err: any) {
       console.error('[IMPORT PARTNERS ERROR]', err);
       return res.status(500).json({ error: 'Erro ao inicializar importação de parceiros.' });
+    }
+  });
+
+  app.post('/api/import/:id/partner-step', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session?.user || !tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      if (!hasPermission(session.activeRole as Role, session.activePermissions, 'partners.create') || (!hasPermission(session.activeRole as Role, session.activePermissions, 'partners.update') && !hasPermission(session.activeRole as Role, session.activePermissions, 'partners.crm.admin'))) return res.status(403).json({ error: 'Sem permissão para continuar esta importação.' });
+      return res.json(await continuePartnerImport(prisma, req.params.id, tenantId, session.user.id));
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : 'Não foi possível continuar o lote. O progresso salvo será preservado.' });
     }
   });
 
@@ -11670,6 +11670,11 @@ async function auditAndEnsureMasterUser() {
 
       // Persist the cancellation request so workers on other Vercel instances can observe it.
       ImportWorkerService.requestCancellation(id);
+      if (job.type === 'PARTNERS') {
+        if (!await cancelPartnerImport(prisma, id, job.tenantId)) return res.status(409).json({ error: 'O lote mudou durante a solicitação. Confira o progresso e tente cancelar novamente.' });
+        sseRegistry.broadcastToTenant(job.tenantId, { type: 'IMPORT_CANCELLED', entity: 'ImportJob', entityId: id, userId: session.user.id, data: { importId: id } });
+        return res.json({ success: true, message: 'Solicitação de cancelamento enviada com progresso e acessos preservados.' });
+      }
       const currentMetadata = job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata)
         ? job.metadata as Record<string, unknown>
         : {};
@@ -14753,14 +14758,16 @@ async function auditAndEnsureMasterUser() {
       const item = payload?.items?.[0] || payload?.loan?.items?.[0] || payload?.simulation?.items?.[0] || payload?.loan || payload?.simulation || payload;
       const status = payload?.status?.name || payload?.statusName || payload?.situation || payload?.status || proposal.finantoStatus;
       const amount = (...values: unknown[]) => { for (const value of values) { const number = Number(value); if (value != null && value !== '' && Number.isFinite(number) && number >= 0) return number; } return undefined; };
-      const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: {
-        finantoStatus: typeof status === 'object' ? status.name || status.description || JSON.stringify(status) : String(status),
+      const finantoStatus = typeof status === 'object' ? status.name || status.description || JSON.stringify(status) : String(status);
+      const mappedStatus = await resolveMappedBankStatus(prisma, tenantId, proposal.promoterId, 'finanto', [finantoStatus]);
+      const updated = await updateMappedProviderProposal(prisma, proposal, {
+        finantoStatus,
         finantoLastSyncAt: new Date(), finantoSyncError: null, finantoRawData: payload as Prisma.InputJsonValue,
         releasedValue: amount(item?.loanValue, item?.releasedValue, item?.finalDisbursedAmount) ?? undefined,
         installmentValue: amount(item?.installmentValue, item?.installment_value) ?? undefined,
         installmentsCount: amount(item?.term, item?.numberOfInstallments) ?? undefined,
         version: { increment: 1 },
-      }, include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true } });
+      }, mappedStatus, session.user.id, 'FINANTO Sync');
       if (sseRegistry) sseRegistry.broadcastToTenant(tenantId, { type: 'PROPOSAL_UPDATED', entity: 'Proposal', entityId: proposal.id, data: { id: proposal.id, finantoStatus: updated.finantoStatus, finantoLastSyncAt: updated.finantoLastSyncAt } });
       await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'SINCRONIZAR_FINANTO_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { finantoStatus: updated.finantoStatus, finantoLastSyncAt: updated.finantoLastSyncAt }, req });
       return res.json({ success: true, proposal: updated });
@@ -15044,12 +15051,13 @@ async function auditAndEnsureMasterUser() {
       const rawStatus = operation?.dsc_situacao_emprestimo ?? operation?.status_name ?? operation?.status?.name ?? operation?.status ?? operation?.situation ?? null;
       const statusText = typeof rawStatus === 'object' ? (rawStatus?.name ?? rawStatus?.description ?? JSON.stringify(rawStatus)) : rawStatus;
       const normalizedStatus = String(statusText || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const mappedStatus = await resolveMappedBankStatus(prisma, tenantId, proposal.promoterId, 'nossa-fintech', [statusText]);
       let standardCategory: StandardStatusCategory | undefined;
       if (/cancel|reprov|rejeit|negad|expirad|recusad|perdido|erro/.test(normalizedStatus)) standardCategory = /cancel/.test(normalizedStatus) ? StandardStatusCategory.CANCELADO : StandardStatusCategory.RECUSADO;
       else if (/desembols|pago|quitad|averbad|concluid|integrado|efetivad/.test(normalizedStatus)) standardCategory = StandardStatusCategory.PAGO;
       else if (/aguard|penden|analise|process|waiting|signature|em.andamento/.test(normalizedStatus)) standardCategory = StandardStatusCategory.ANDAMENTO;
       const numeric = (...values: unknown[]) => { for (const value of values) { const n = Number(value); if (value !== null && value !== undefined && value !== '' && Number.isFinite(n) && n >= 0) return n; } return undefined; };
-      const updated = await prisma.proposal.update({ where: { id: proposal.id }, data: {
+      const updated = await updateMappedProviderProposal(prisma, proposal, {
         nossaFintechStatus: statusText == null ? proposal.nossaFintechStatus : String(statusText),
         nossaFintechStatusDescription: operation?.status_description ?? operation?.dsc_situacao_emprestimo ?? undefined,
         nossaFintechLastSyncAt: new Date(), nossaFintechSyncError: null,
@@ -15061,7 +15069,7 @@ async function auditAndEnsureMasterUser() {
         installmentsCount: numeric(operation?.qtd_parcela, operation?.number_of_installments) ?? undefined,
         debtBalance: numeric(operation?.last_due_balance, operation?.saldo_devedor) ?? undefined,
         version: { increment: 1 },
-      }, include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true } });
+      }, mappedStatus, session.user.id, 'Nossa Fintech Sync');
       eventBus.publishToTenant(tenantId, { type: 'proposal_status_changed', entity: 'Proposal', entityId: proposal.id, data: { proposalId: proposal.id, statusName: updated.nossaFintechStatus || 'Nossa Fintech sincronizada', updatedBy: 'Nossa Fintech' } });
       if (sseRegistry) sseRegistry.broadcastToTenant(tenantId, { type: 'PROPOSAL_UPDATED', entity: 'Proposal', entityId: proposal.id, data: { id: proposal.id, nossaFintechStatus: updated.nossaFintechStatus, nossaFintechLastSyncAt: updated.nossaFintechLastSyncAt } });
       await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'SINCRONIZAR_NOSSA_FINTECH_PROPOSTA', entity: 'Proposal', entityId: proposal.id, newData: { status: updated.nossaFintechStatus, lastSyncAt: updated.nossaFintechLastSyncAt }, req });
@@ -15555,6 +15563,32 @@ async function auditAndEnsureMasterUser() {
       res.status(500).json({ error: err.message || 'Erro ao salvar configurações da FACTA Financeira.' });
     }
   });
+
+  const bankStatusMappingsHandler = (write: boolean) => async (req: express.Request, res: express.Response) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const session = await getAuthSession(req);
+      const tenantId = session?.effectiveTenantId || session?.user?.tenantId;
+      if (!session?.user || !tenantId) return res.status(401).json({ error: 'Não autenticado.' });
+      const canManage = hasPermission(session.activeRole as Role, session.activePermissions, 'integrations.manage');
+      if (!canManage && (write || !hasPermission(session.activeRole as Role, session.activePermissions, 'integrations.view'))) return res.status(403).json({ error: 'Sem permissão para configurar mapeamentos.' });
+      const provider = String(req.params.provider);
+      if (!(STATUS_MAPPING_BANKS as readonly string[]).includes(provider)) return res.status(404).json({ error: 'Integração não encontrada.' });
+      const promoter = await resolveBankPromoter(prisma, tenantId, typeof req.query.promoterId === 'string' ? req.query.promoterId : undefined, 'DG');
+      if (write) {
+        const mappings = await saveBankStatusMappings(prisma, tenantId, promoter.id, provider, req.body?.mappings);
+        await AuditLogService.record(prisma, { tenantId, userId: session.user.id, userName: session.user.name, action: 'BANK_STATUS_MAPPING_UPDATED', entity: 'SystemConfig', entityId: `${provider}:${promoter.id}`, newData: { provider, promoterId: promoter.id, mappings }, req });
+        return res.json({ mappings });
+      }
+      const [mappings, statuses] = await Promise.all([
+        getBankStatusMappings(prisma, tenantId, promoter.id, provider),
+        prisma.proposalStatus.findMany({ where: { tenantId, active: true }, select: { id: true, name: true, code: true, automaticChangeAllowed: true }, orderBy: { order: 'asc' } }),
+      ]);
+      return res.json({ mappings, statuses });
+    } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível configurar os status bancários.' }); }
+  };
+  app.get('/api/integrations/:provider/status-mappings', bankStatusMappingsHandler(false));
+  app.post('/api/integrations/:provider/status-mappings', bankStatusMappingsHandler(true));
 
   // POST /api/integrations/facta/test-connection - Test credentials against live FACTA /gera-token endpoint
   app.post('/api/integrations/facta/test-connection', async (req, res) => {

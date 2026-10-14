@@ -54,6 +54,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [importId, setImportId] = useState<string | null>(null);
+  const [canResume, setCanResume] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -389,6 +390,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
     }
 
     setImporting(true);
+    setCanResume(false);
     setErrorMsg(null);
     try {
       const res = await fetch('/api/import/partners', {
@@ -411,8 +413,11 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       setSuccessMsg(`Importação em processamento. Aguarde nesta tela para baixar a planilha de acessos automaticamente.`);
       let completed = false;
       let refreshedRecords = 0;
+      let runningStep: Promise<void> | null = null;
+      let stepFailure: string | null = null;
       for (let attempt = 0; attempt < 300; attempt++) {
         await new Promise(resolve => window.setTimeout(resolve, 2000));
+        if (stepFailure) throw new Error(stepFailure);
         const progressResponse = await fetch(`/api/import/${encodeURIComponent(data.importId)}`, { cache: 'no-store' });
         if (!progressResponse.ok) throw new Error('Não foi possível acompanhar a importação. Não reenvie o lote; consulte o histórico.');
         const job = await progressResponse.json();
@@ -421,15 +426,28 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         if (committedRecords > refreshedRecords) { refreshedRecords = committedRecords; onImportCompleted(); }
         if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status)) {
           completed = true;
+          setCanResume(job.status === 'FAILED');
           onImportCompleted();
           setSuccessMsg(`Lote ${job.status === 'COMPLETED' ? 'concluído' : 'interrompido'}: ${job.createdRecords} criados, ${job.updatedRecords} atualizados, ${job.invalidRecords} inválidos e ${job.failedRecords} falhas.`);
           if (job.metadata?.credentialsAvailable) await downloadCredentials(data.importId);
           else setErrorMsg('Nenhum acesso foi gerado. Confira as linhas do lote.');
           break;
         }
+        // Keep polling committed progress while one bounded step runs; never overlap steps.
+        if (!runningStep) {
+          runningStep = fetch(`/api/import/${encodeURIComponent(data.importId)}/partner-step`, { method: 'POST', credentials: 'include' })
+            .then(async response => {
+              if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.error || 'Etapa interrompida. Clique em Retomar importação para continuar o progresso salvo.');
+              }
+            }).catch(error => { stepFailure = error.message || 'Não foi possível continuar esta etapa.'; })
+            .finally(() => { runningStep = null; });
+        }
       }
-      if (!completed) setErrorMsg('O lote continua em processamento. Não reenvie; acompanhe pelo histórico de importações.');
+      if (!completed) { setCanResume(true); setErrorMsg('O progresso foi salvo. Clique em Retomar importação para continuar.'); }
     } catch (err: any) {
+      setCanResume(true);
       setErrorMsg(err.message || 'Erro ao importar parceiros em lote.');
     } finally {
       setImporting(false);
@@ -677,7 +695,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           <button
             type="button"
             onClick={handleConfirmImport}
-            disabled={loadingPartners || partnersLoadFailed || importing || !!importId || validCount === 0}
+            disabled={loadingPartners || partnersLoadFailed || importing || (!!importId && !canResume) || validCount === 0}
             className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-40 flex items-center gap-1.5"
           >
             {loadingPartners ? (
@@ -692,6 +710,8 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                 ? 'Carregamento de parceiros falhou'
                 : importing
                 ? 'Importando...'
+                : canResume
+                ? 'Retomar importação'
                 : `Confirmar e Cadastrar ${validCount} Parceiro(s)`}
             </span>
           </button>

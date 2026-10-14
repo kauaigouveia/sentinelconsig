@@ -36,6 +36,7 @@ import { FactaProposalCard } from './FactaProposalCard';
 import { BmgProposalCard } from './BmgProposalCard';
 import { HappyProposalCard } from './HappyProposalCard';
 import { ProviderProposalSyncCard } from './ProviderProposalSyncCard';
+import { proposalProviderVisibility } from '../../lib/proposalProviders';
 import { hasPermission } from '../../lib/permissions';
 
 interface ProposalDetailModalProps {
@@ -142,6 +143,8 @@ const ProposalDetailModalContent: React.FC<
   const isC6Bank = bankCode === '336' || bankName.includes('C6');
 
   const isFactaBank = bankCode === '149' || bankName.includes('FACTA');
+  const providerVisibility = proposalProviderVisibility(proposal, bank);
+  const hasProviderIntegration = providerVisibility.finanto || providerVisibility.nossa;
 
   const isHappyBank =
     bankCode === 'HAPPY' ||
@@ -1046,7 +1049,7 @@ const ProposalDetailModalContent: React.FC<
             <span>Cliente 360 ({otherClientProposals.length} outras)</span>
           </button>
 
-          <button
+          {hasProviderIntegration && <button
             onClick={() => setActiveTab('INTEGRACOES')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'INTEGRACOES'
@@ -1055,8 +1058,8 @@ const ProposalDetailModalContent: React.FC<
             }`}
           >
             <Link2 className="h-3.5 w-3.5" />
-            <span>APIs FINANTO / Nossa Fintech</span>
-          </button>
+            <span>{providerVisibility.finanto && providerVisibility.nossa ? 'APIs FINANTO / Nossa Fintech' : providerVisibility.finanto ? 'API FINANTO' : 'API Nossa Fintech'}</span>
+          </button>}
 
           {isC6Bank && (
             <button
@@ -1535,8 +1538,10 @@ const ProposalDetailModalContent: React.FC<
             </div>
           )}
 
-          {activeTab === 'INTEGRACOES' && (
+          {activeTab === 'INTEGRACOES' && hasProviderIntegration && (
             <ProviderProposalSyncCard
+              showFinanto={providerVisibility.finanto}
+              showNossa={providerVisibility.nossa}
               proposal={proposal}
               onProposalUpdated={(updated) => {
                 setLiveProposal(updated);

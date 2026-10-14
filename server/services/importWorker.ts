@@ -1,4 +1,4 @@
-import { PrismaClient, ImportJobStatus, ImportJobType } from '@prisma/client';
+import { Prisma, PrismaClient, ImportJobStatus, ImportJobType } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import { sseRegistry } from '../realtime.js';
 import { logger } from '../logger';
@@ -6,7 +6,7 @@ import { AuditLogService } from './auditLogService.js';
 import { extractPartnerCode, isValidCpf } from '../../src/lib/utils.js';
 import { randomBytes } from 'node:crypto';
 import { hashPassword } from './passwordService.js';
-import { ImportedAccess, sealImportCredentials } from './partnerImportCredentials.js';
+import { ImportedAccess, sealImportCredentials, openImportCredentials } from './partnerImportCredentials.js';
 
 export interface ImportProposalRow {
   sourceLine?: number;
@@ -974,7 +974,8 @@ export class ImportWorkerService {
     jobId: string,
     tenantId: string,
     userId: string,
-    parsedRows: ImportPartnerRow[]
+    parsedRows: ImportPartnerRow[],
+    options: { resume?: boolean; maxRecords?: number; maxDurationMs?: number } = {}
   ): Promise<void> {
     const startTime = Date.now();
     const credentials: ImportedAccess[] = [];
@@ -982,6 +983,10 @@ export class ImportWorkerService {
 
     try {
       if (await this.isCancellationRequestedPersisted(prisma, jobId)) return;
+      const previous = options.resume ? await prisma.importJob.findUniqueOrThrow({ where: { id: jobId } }) : null;
+      if (previous && ['COMPLETED', 'FAILED', 'CANCELLED'].includes(previous.status)) return;
+      const previousMetadata = previous?.metadata as Record<string, any> | null;
+      if (previousMetadata?.credentials) credentials.push(...openImportCredentials(previousMetadata.credentials));
       const totalRecords = parsedRows.length;
       const totalChunks = Math.ceil(totalRecords / this.CHUNK_SIZE) || 1;
 
@@ -989,7 +994,7 @@ export class ImportWorkerService {
         where: { id: jobId },
         data: {
           status: ImportJobStatus.PROCESSING,
-          startedAt: new Date(),
+          startedAt: previous?.startedAt || new Date(),
           totalRecords,
           totalChunks,
         },
@@ -1009,13 +1014,16 @@ export class ImportWorkerService {
 
       const promoters = await prisma.promoter.findMany({ where: { tenantId } });
 
-      let createdCount = 0;
-      let updatedCount = 0;
-      let invalidCount = 0;
-      let failedCount = 0;
-      let processedCount = 0;
+      let createdCount = previous?.createdRecords || 0;
+      let updatedCount = previous?.updatedRecords || 0;
+      let invalidCount = previous?.invalidRecords || 0;
+      let failedCount = previous?.failedRecords || 0;
+      let processedCount = previous?.processedRecords || 0;
+      const initialOffset = processedCount;
+      const runRows = parsedRows.slice(initialOffset, initialOffset + (options.maxRecords || parsedRows.length));
+      const runChunks = Math.ceil(runRows.length / this.CHUNK_SIZE);
 
-      for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+      for (let chunkIdx = 0; chunkIdx < runChunks; chunkIdx++) {
         if (await this.isCancellationRequestedPersisted(prisma, jobId)) {
           await prisma.importJob.update({
             where: { id: jobId },
@@ -1041,10 +1049,13 @@ export class ImportWorkerService {
         }
 
         const start = chunkIdx * this.CHUNK_SIZE;
-        const end = Math.min(start + this.CHUNK_SIZE, totalRecords);
-        const chunk = parsedRows.slice(start, end);
+        const end = Math.min(start + this.CHUNK_SIZE, runRows.length);
+        const chunk = runRows.slice(start, end);
 
         for (const item of chunk) {
+          if (options.maxDurationMs && processedCount > initialOffset && Date.now() - startTime >= options.maxDurationMs) return;
+          if (await this.finalizeCancellation(prisma, jobId, tenantId, userId)) return;
+          let committed = false;
           try {
             const cleanName = String(item.name || '').trim();
             const cleanCode = String(item.code || cleanName).trim().toUpperCase();
@@ -1112,8 +1123,18 @@ export class ImportWorkerService {
             }
             const job = await tx.importJob.findUniqueOrThrow({ where: { id: jobId }, select: { metadata: true } });
             const metadata = job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata) ? job.metadata : {};
-            await tx.importJob.update({ where: { id: jobId }, data: { metadata: { ...metadata, credentials: sealImportCredentials([...credentials, resultRow]), credentialsExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } } });
+            // Cursor, counters, credentials and partner/access mutations commit together.
+            const progressCommit = await tx.importJob.updateMany({ where: {
+              id: jobId, processedRecords: processedCount, status: { in: ['QUEUED', 'PROCESSING'] },
+              metadata: { equals: job.metadata === null ? Prisma.DbNull : job.metadata as Prisma.InputJsonValue },
+            }, data: {
+              processedRecords: processedCount + 1, createdRecords: createdCount + (existingPartner ? 0 : 1),
+              updatedRecords: updatedCount + (existingPartner ? 1 : 0), invalidRecords: invalidCount, failedRecords: failedCount,
+              metadata: { ...metadata, credentials: sealImportCredentials([...credentials, resultRow]), credentialsExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+            } });
+            if (progressCommit.count !== 1) throw new Error('O estado da importação mudou durante esta linha.');
             }, { timeout: 15000 });
+            committed = true;
             credentials.push(resultRow);
             if (existingPartner) updatedCount++; else createdCount++;
           } catch (rowErr) {
@@ -1121,7 +1142,7 @@ export class ImportWorkerService {
           } finally {
             processedCount++;
             // Publish committed row progress immediately, even for batches smaller than 500.
-            await prisma.importJob.update({ where: { id: jobId }, data: {
+            if (!committed) await prisma.importJob.update({ where: { id: jobId }, data: {
               processedRecords: processedCount, createdRecords: createdCount,
               updatedRecords: updatedCount, invalidRecords: invalidCount, failedRecords: failedCount,
             } });
@@ -1165,6 +1186,7 @@ export class ImportWorkerService {
         });
       }
 
+      if (processedCount < totalRecords) return;
       if (await this.finalizeCancellation(prisma, jobId, tenantId, userId)) return;
       const durationMs = Date.now() - startTime;
       await prisma.importJob.update({

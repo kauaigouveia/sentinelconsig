@@ -10,6 +10,7 @@ import {
 import { mapFactaStatusToInternal } from './factaStatusMapper.js';
 import { factaFetch } from './factaTransport.js';
 import { normalizeFactaBaseUrl } from './factaBaseUrl.js';
+import { resolveMappedBankStatus } from './bankStatusMappings.js';
 import { resolveBankPromoter, readBankPromoterConfig, bankPromoterConfigKey, currentIntegrationPromoter } from './bankPromoterConfig.js';
 
 interface TokenCacheEntry {
@@ -705,6 +706,8 @@ export class FactaBankService {
       if (returnedCpf && clientCpf && returnedCpf !== clientCpf) throw new Error('CPF retornado pela FACTA diverge do cliente da proposta.');
       const sanitizedRaw = this.sanitizeFactaResponse(item);
       const mapping = mapFactaStatusToInternal(item);
+      const configuredStatus = mapping.divergenceDetected ? null : await resolveMappedBankStatus(prisma, tenantId, proposal.promoterId, 'facta', [item.status_proposta]);
+      if (configuredStatus) { mapping.isMapped = true; mapping.targetStatusCode = configuredStatus.code; mapping.notes = 'Mapeamento FACTA configurado pela empresa.'; }
 
       const returnedProposalNum = item.proposta != null ? String(item.proposta).trim() : (proposal.factaProposalNumber || null);
       const returnedAfCode = item.codigo_af != null ? String(item.codigo_af).trim() : targetAfCode;
@@ -726,8 +729,8 @@ export class FactaBankService {
       const rawStatusChanged = proposal.factaRawStatus !== returnedRawStatus;
       const crivoStatusChanged = proposal.factaCrivoStatus !== returnedCrivoStatus;
 
-      let targetStatusRecord: any = null;
-      if (mapping.isMapped && mapping.targetStatusCode) {
+      let targetStatusRecord: any = configuredStatus;
+      if (!targetStatusRecord && mapping.isMapped && mapping.targetStatusCode) {
         targetStatusRecord = await prisma.proposalStatus.findFirst({
           where: {
             tenantId,
