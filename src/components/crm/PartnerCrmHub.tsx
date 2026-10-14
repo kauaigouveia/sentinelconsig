@@ -261,9 +261,6 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
         </div>
       </div>
 
-      <PartnerBatchActions partners={partners} selected={selectedIds} onSelection={setSelectedIds} canDelete={canDeletePartners} canReset={canResetPartners} onCompleted={loadPartners} />
-      {totalPages > 1 && <nav aria-label="Páginas de parceiros" className="flex items-center justify-end gap-3 text-sm"><button disabled={loading || page === 1} onClick={() => { setSelectedIds(new Set()); setPage(p => p - 1); }}>Anterior</button><span>Página {page} de {totalPages} · até 100 parceiros por lote</span><button disabled={loading || page >= totalPages} onClick={() => { setSelectedIds(new Set()); setPage(p => p + 1); }}>Próxima</button></nav>}
-
       {/* KPI Metric Cards */}
       <div className={`grid grid-cols-2 lg:grid-cols-5 gap-3.5 ${premium ? 'p2-crm-metrics' : ''}`}>
         <MetricCard
@@ -392,6 +389,9 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
           </div>
         </div>
       </div>
+
+      <PartnerBatchActions partners={partners} selected={selectedIds} onSelection={setSelectedIds} canDelete={canDeletePartners} canReset={canResetPartners} onCompleted={loadPartners} />
+      {totalPages > 1 && <nav aria-label="Páginas de parceiros" className="flex items-center justify-end gap-3 text-sm"><button disabled={loading || page === 1} onClick={() => { setSelectedIds(new Set()); setPage(p => p - 1); }}>Anterior</button><span>Página {page} de {totalPages} · até 100 parceiros por lote</span><button disabled={loading || page >= totalPages} onClick={() => { setSelectedIds(new Set()); setPage(p => p + 1); }}>Próxima</button></nav>}
 
       {/* Main Partners Display */}
       {loading ? (

@@ -233,6 +233,7 @@ export const BankPromoterManagement: React.FC = () => {
         subtitle="Instituições financeiras integradas e habilitação de promotoras por banco na esteira"
         badgeText="ESTRUTURA BANCÁRIA"
         badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        rightActions={canCreateBanks ? <BankBatchImport onCompleted={refresh} /> : undefined}
       />
 
       {/* Metrics */}
@@ -320,7 +321,6 @@ export const BankPromoterManagement: React.FC = () => {
               <span>Salvar Banco</span>
             </button>
           </form>
-          {canCreateBanks && <BankBatchImport onCompleted={refresh} />}
 
           <div className="space-y-2 pt-2">
             {banks.map(bank => (

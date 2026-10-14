@@ -148,14 +148,17 @@
 .s2-root .p2-finance-results thead { background: var(--s2-elevated); }
 .s2-root .p2-finance-results :is(th,td) { padding: 12px; border-color: var(--s2-border); }
 .s2-root .p2-finance-results [class*="text-slate-900"] { color: var(--s2-text); }
-.s2-root .p2-live-crm { display: grid; grid-template-columns: 245px minmax(0,1fr); gap: 16px; align-items: start; }
+.s2-root .p2-live-crm { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+.s2-root .p2-live-crm > :not(.fixed) { min-width: 0; margin: 0; }
 .s2-root .p2-crm-header,.s2-root .p2-crm-metrics { grid-column: 1 / -1; margin: 0; }
 .s2-root .p2-crm-header { background: none; box-shadow: none; border: 0; padding: 6px 0 14px; }
 .s2-root .p2-crm-header h1 { font-size: 28px; letter-spacing: -.8px; color: var(--s2-text); }
 .s2-root .p2-live-crm > div:not(.p2-crm-header):not(.p2-crm-metrics):not(.p2-crm-filters):not(.fixed) { grid-column: 2; min-width: 0; margin: 0; }
-.s2-root .p2-crm-filters { grid-column: 1; grid-row: 3; background: var(--s2-surface); border-color: var(--s2-border); margin: 0; position: sticky; top: 0; }
-.s2-root .p2-crm-filters > div { flex-direction: column; align-items: stretch; }
+.s2-root .p2-crm-filters { background: var(--s2-surface); border-color: var(--s2-border); margin: 0; position: static; }
+.s2-root .p2-crm-filters > div { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.s2-root .p2-crm-filters > div > .relative { flex: 1 1 280px; }
 .s2-root .p2-crm-filters :is(input,select) { background: var(--s2-elevated); color: var(--s2-text); border-color: var(--s2-border); width: 100%; }
+.s2-root .p2-crm-filters select { width: auto; min-width: 155px; flex: 1; }
 .s2-root .p2-crm-metrics > div { background: var(--s2-surface); border-color: var(--s2-border); }
 .s2-root .p2-live-crm > .grid:not(.p2-crm-metrics) { grid-template-columns: repeat(auto-fit,minmax(min(100%,270px),1fr)); }
 .s2-root .p2-live-crm > .grid:not(.p2-crm-metrics) > div { background: var(--s2-surface); border-color: var(--s2-border); border-radius: 9px; }
