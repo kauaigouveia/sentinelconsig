@@ -20,6 +20,7 @@ import {
   Layers,
   Sparkles,
   Radio,
+  Star,
   Sliders,
   Maximize2,
   Menu,
@@ -48,6 +49,12 @@ interface HeaderProps {
   onNavigate: (view: string) => void;
   onOpenNavigation?: () => void;
   isNavigationOpen?: boolean;
+  redesignPreview?: boolean;
+  onOpenSearch?: () => void;
+  onToggleFavorite?: () => void;
+  isFavorite?: boolean;
+  onToggleDensity?: () => void;
+  density?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -63,6 +70,12 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   onOpenNavigation,
   isNavigationOpen = false,
+  redesignPreview = false,
+  onOpenSearch,
+  onToggleFavorite,
+  isFavorite=false,
+  onToggleDensity,
+  density,
 }) => {
   const activeUser = StorageService.getActiveUser();
   const allUsers = StorageService.getUsers();
@@ -345,9 +358,14 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="h-4 w-4" />
         </button>
       )}
+      {redesignPreview && <label className="s2-company-selector"><span>EMPRESA ATUAL</span><select aria-label="Selecionar empresa" value={activeUser?.role === 'PLATFORM_MASTER' ? adminContext?.context?.targetTenantId || 'PLATFORM' : StorageService.getCurrentTenantId()} onChange={e => handleCompanySwitch(e.target.value)}>
+        {activeUser?.role === 'PLATFORM_MASTER' && <option value="PLATFORM">Plataforma</option>}
+        {(activeUser?.role === 'PLATFORM_MASTER' ? tenants : (activeUser?.availableMemberships || activeUser?.memberships || []).filter((m:any)=>m.active!==false).map((m:any)=>({id:m.tenantId,name:m.tenantName||m.tenant?.name||'Empresa'}))).map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
+        {activeUser?.role !== 'PLATFORM_MASTER' && !(activeUser?.availableMemberships || activeUser?.memberships || []).some((m:any)=>m.tenantId===StorageService.getCurrentTenantId()) && <option value={StorageService.getCurrentTenantId()}>{StorageService.getCurrentTenant().name}</option>}
+      </select></label>}
       {/* CENTRO: Busca Global */}
       <div className="flex-1 min-w-0 max-w-xl">
-        <div className="relative">
+        {redesignPreview ? <button className="s2-global-search" aria-label="Abrir busca universal" onClick={onOpenSearch}><Search size={17}/><span>Buscar páginas, cliente, CPF ou ADE</span><kbd>Ctrl K</kbd></button> : <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
             id="global-search-input"
@@ -361,11 +379,12 @@ export const Header: React.FC<HeaderProps> = ({
           <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-0.5 text-[9.5px] font-mono font-bold text-slate-400 dark:text-slate-400 shadow-2xs">
             Ctrl + K
           </kbd>
-        </div>
+        </div>}
       </div>
 
       {/* DIREITA: Status do Sistema, Notificações, Tema, Usuário */}
       <div className="flex items-center gap-1.5 shrink-0">
+        {redesignPreview && <div className="hidden md:flex items-center gap-1">{onToggleFavorite && <button className="s2-button" aria-label={isFavorite?'Remover página dos favoritos':'Adicionar página aos favoritos'} aria-pressed={isFavorite} onClick={onToggleFavorite}><Star size={15} fill={isFavorite?'currentColor':'none'}/></button>}{onToggleDensity && <button className="s2-button" aria-label={`Densidade ${density==='compact'?'compacta':'confortável'}; alternar`} onClick={onToggleDensity}><Sliders size={15}/></button>}</div>}
         {/* Status do Sistema (Consolidated Popover) */}
         <div className="relative" ref={systemStatusRef}>
           <button
@@ -519,7 +538,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               {/* Context Selector for PLATFORM_MASTER */}
-              {activeUser?.role === 'PLATFORM_MASTER' && (
+              {activeUser?.role === 'PLATFORM_MASTER' && !redesignPreview && (
                 <div className="px-2 py-1.5 mb-2 border-b border-slate-100 dark:border-slate-800">
                   <label className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">
                     Selecionar Empresa
@@ -551,6 +570,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
 
+              {redesignPreview && <div className="px-2 pb-2 border-b border-slate-200 dark:border-slate-800 mb-2">{onToggleFavorite && <button className="s2-text-button w-full py-2" onClick={onToggleFavorite}><Star size={14}/>{isFavorite?'Remover favorito':'Favoritar esta página'}</button>}{onToggleDensity && <button className="s2-text-button w-full py-2" onClick={onToggleDensity}><Sliders size={14}/>Densidade: {density==='compact'?'compacta':'confortável'}</button>}</div>}
               {/* Quick Actions */}
               <div className="space-y-0.5">
                 {onOpenBackupModal && (

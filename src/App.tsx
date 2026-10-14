@@ -2,6 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
 import { realtimeHub } from './services/realtimeService';
+import { PreviewSidebar } from './components/redesign/PreviewSidebar';
+import { PreviewDashboard } from './components/redesign/PreviewDashboard';
+import { PreviewProposals } from './components/redesign/PreviewProposals';
+import { PreviewSearch } from './components/redesign/PreviewSearch';
+import { usePreviewData } from './components/redesign/PreviewData';
+import './styles/sentinel-2-preview.css';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { WorkspaceToolbar } from './components/layout/WorkspaceToolbar';
@@ -79,6 +85,8 @@ const TenantSelectionView = lazyNamed(() => import('./components/auth/TenantSele
 const ForcePasswordChangeModal = lazyNamed(() => import('./components/auth/ForcePasswordChangeModal'), 'ForcePasswordChangeModal');
 
 function AppMainContent() {
+  const [newUI, setNewUI] = useState(() => (import.meta as any).env.DEV && new URLSearchParams(window.location.search).get('ui') === '2');
+  const [fullProposals, setFullProposals] = useState(false);
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
@@ -101,6 +109,7 @@ function AppMainContent() {
 
   const preferenceKey = workspaceKey(adminContext?.targetTenantId || StorageService.getCurrentTenantId() || activeUser?.tenantId, activeUser?.id);
   const workspace = useWorkspacePreferences(preferenceKey);
+  const preview = usePreviewData(`${preferenceKey}:${activeUser?.role}:${(activeUser?.customPermissions || []).join(',')}`, newUI && isAuthenticated && !pathname.startsWith('/parceiro'));
   useEffect(() => {
     if (isAuthenticated && activeUser && activeRoute && !activeRoute.isDynamic && canAccessRoute(activeRoute, activeUser.role, activeUser.customPermissions || [])) workspace.recordRoute(activeRoute.path);
   }, [isAuthenticated, activeRoute?.path, activeUser?.id, preferenceKey, workspace.recordRoute]);
@@ -561,7 +570,7 @@ function AppMainContent() {
     );
   }
 
-  const showRouteContext = !!activeRoute && !['torre-controle', 'home-digitador', 'producao', 'simulacoes', 'central-atendimento', 'tv-monitor'].includes(effectiveView);
+  const showRouteContext = !newUI && !!activeRoute && !['torre-controle', 'home-digitador', 'producao', 'simulacoes', 'central-atendimento', 'tv-monitor'].includes(effectiveView);
 
   // RBAC route access verification
   const hasRouteAccess = activeRoute
@@ -569,7 +578,7 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className="sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-colors" data-density={workspace.density}>
+    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-colors ${newUI ? "s2-root" : ""}`} data-density={workspace.density}>
       <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
       {/* Sidebar (Hidden in Focus Mode) */}
       {!isFocusMode && (
@@ -582,7 +591,7 @@ function AppMainContent() {
               onClick={() => setIsMobileNavigationOpen(false)}
             />
           )}
-          <Sidebar
+          {newUI ? <PreviewSidebar key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-consig-symbol.svg'} /> : <Sidebar
             currentView={effectiveView}
             currentPath={pathname}
             preferenceKey={preferenceKey}
@@ -591,7 +600,7 @@ function AppMainContent() {
             branding={branding}
             isMobileOpen={isMobileNavigationOpen}
             onCloseMobile={() => setIsMobileNavigationOpen(false)}
-          />
+          />}
         </>
       )}
 
@@ -600,6 +609,12 @@ function AppMainContent() {
         {/* Top Header or Sleek Focus Mode Floating Bar */}
         {!isFocusMode ? (
           <Header
+            redesignPreview={newUI}
+            onToggleFavorite={newUI && hasRouteAccess && activeRoute && !activeRoute.isDynamic ? () => workspace.toggleFavorite(activeRoute.path) : undefined}
+            isFavorite={!!activeRoute && workspace.favorites.includes(activeRoute.path)}
+            onToggleDensity={newUI ? workspace.toggleDensity : undefined}
+            density={workspace.density}
+            onOpenSearch={() => setIsUniversalSearchOpen(true)}
             onOpenNotifications={() => setIsNotificationsOpen(true)}
             onOpenTestRunner={() => setIsTestRunnerOpen(true)}
             onOpenBackupModal={() => setIsBackupModalOpen(true)}
@@ -665,7 +680,7 @@ function AppMainContent() {
         )}
 
         {/* Breadcrumb Navigation Bar */}
-        {!isFocusMode && effectiveView !== 'tv-monitor' && (
+        {!newUI && !isFocusMode && effectiveView !== 'tv-monitor' && (
           <WorkspaceToolbar route={hasRouteAccess ? activeRoute : null} user={activeUser} preferenceKey={preferenceKey} onNavigate={handleNavigate} />
         )}
 
@@ -688,7 +703,8 @@ function AppMainContent() {
           ) : (
             <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-slate-500">Carregando tela...</div>}>
             <>
-              {effectiveView === 'torre-controle' && (
+              {effectiveView === 'torre-controle' && newUI && <PreviewDashboard key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
+              {effectiveView === 'torre-controle' && !newUI && (
                 <ControlTower
                   onNavigate={handleNavigate}
                   onNavigateToProductionWithFilter={handleNavigateToProductionWithFilter}
@@ -736,7 +752,9 @@ function AppMainContent() {
                 />
               )}
 
-              {effectiveView === 'producao' && (
+              {effectiveView === 'producao' && newUI && !fullProposals && !productionFilter && <PreviewProposals key={preferenceKey} rows={preview.rows} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} fullView={() => setFullProposals(true)} />}
+              {effectiveView === 'producao' && newUI && (fullProposals || productionFilter) && <button className="s2-button mb-4" onClick={() => {setFullProposals(false);setProductionFilter(null);}}>Voltar à consulta compacta</button>}
+              {effectiveView === 'producao' && (!newUI || fullProposals || productionFilter) && (
                 <ProductionList
                   onOpenNewProduction={canCreateProposals ? openNewProduction : undefined}
                   onOpenImportExcel={canCreateProposals ? openProposalImport : undefined}
@@ -811,7 +829,7 @@ function AppMainContent() {
         </main>
 
         {/* Bottom Operational Status Bar */}
-        {!isFocusMode && effectiveView !== 'tv-monitor' && (
+        {!newUI && !isFocusMode && effectiveView !== 'tv-monitor' && (
           <footer className="sentinel-status-footer h-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none shrink-0">
             <div className="flex items-center gap-2.5">
               <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
@@ -910,7 +928,9 @@ function AppMainContent() {
         />
       )}
       {/* Universal Search Command Palette (Ctrl+K) */}
-      {isUniversalSearchOpen && <UniversalCommandPalette
+      {(import.meta as any).env.DEV && <button className="s2-dev-switch" onClick={() => { const next=!newUI;setNewUI(next);const url=new URL(window.location.href);url.searchParams.set('ui',next?'2':'legacy');window.history.replaceState(null,'',url);setIsMobileNavigationOpen(false);setIsUniversalSearchOpen(false); }} title="Alternar apresentação mantendo a sessão e as rotas">{newUI ? 'Prévia 2.0 · voltar à interface atual' : 'Avaliar Sentinel 2.0'}</button>}
+      {isUniversalSearchOpen && newUI && <PreviewSearch key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} rows={preview.rows} clients={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? StorageService.getClients().map(c=>({id:c.id,name:c.fullName||'Cliente não informado',cpf:c.cpf||''})) : []} openClient={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? cpf => {setGlobalSearchTerm(cpf);navigate('/clientes');} : undefined} partners={hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.view') || hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.crm.view') ? StorageService.getPartners().map(p => ({name:p.fullName,code:p.login})) : []} recent={workspace.recent} favorites={workspace.favorites} navigate={handleNavigate} openProposal={id => {setDetailProposalId(id);navigate(`/propostas/${id}`);}} close={() => setIsUniversalSearchOpen(false)} />}
+      {isUniversalSearchOpen && !newUI && <UniversalCommandPalette
         isOpen={isUniversalSearchOpen}
         onClose={() => setIsUniversalSearchOpen(false)}
         onNavigate={handleNavigate}
