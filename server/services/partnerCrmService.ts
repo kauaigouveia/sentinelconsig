@@ -602,6 +602,8 @@ export class PartnerCrmService {
           id: true,
           proposalNumber: true,
           bank: { select: { name: true } },
+          type: true,
+          debtBalance: true,
           status: { select: { name: true, color: true } },
           standardCategory: true,
           contractValue: true,
@@ -709,7 +711,7 @@ export class PartnerCrmService {
         type: 'PROPOSAL',
         date: p.createdAt.toISOString(),
         title: `Proposta #${p.proposalNumber || p.id} - ${bankName}`,
-        subtitle: `${clientName} (${maskedCpf}) — R$ ${Number(p.contractValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        subtitle: `${clientName} (${maskedCpf}) — ${p.type === 'PORTABILIDADE' ? 'Saldo: ' : ''}R$ ${Number(p.type === 'PORTABILIDADE' ? (p.debtBalance ?? p.contractValue ?? 0) : (p.releasedValue ?? p.contractValue ?? 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         status: statusName,
         data: p,
       });

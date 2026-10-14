@@ -422,7 +422,7 @@ export class PartnerPortalService {
           select: { name: true },
         },
         status: {
-          select: { name: true, color: true, code: true, standardCategory: true },
+          select: { name: true, color: true, code: true, standardCategory: true, responsibleGroup: true },
         },
       },
       orderBy: { updatedAt: 'desc' },
@@ -443,11 +443,13 @@ export class PartnerPortalService {
 
       totalContract += contract;
 
+      const needsAttention = p.status?.responsibleGroup === 'PARCEIRO' || cat === 'PENDENTE' || code.toUpperCase().includes('PENDENCIA');
+      if (needsAttention) pendingCount++;
       if (cat === 'PAGO' || code === 'PAGO' || code === 'CONCLUIDO') {
         completedCount++;
         totalDisbursed += released;
-      } else if (cat === 'PENDENTE' || code.includes('PENDENCIA')) {
-        pendingCount++;
+      } else if (needsAttention) {
+        // Responsibility-based attention does not change the bank's operational status.
       } else if (code.toUpperCase().includes('CIP') || code.toUpperCase().includes('RETORNO')) {
         waitingReturnCount++;
         inProgressCount++;
@@ -526,6 +528,10 @@ export class PartnerPortalService {
         OR: [
           { standardCategory: options.standardCategory },
           { status: { is: { standardCategory: options.standardCategory } } },
+          ...(options.standardCategory === 'PENDENTE' ? [
+            { status: { is: { responsibleGroup: 'PARCEIRO' } } },
+            { status: { is: { code: { contains: 'PENDENCIA', mode: 'insensitive' } } } },
+          ] : []),
         ],
       });
     }

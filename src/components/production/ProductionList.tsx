@@ -1149,7 +1149,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                           ) : (
                             <span className="text-slate-400 dark:text-slate-500">—</span>
                           )}
-                          {p.contractBalance !== undefined ? (
+                          {p.type === 'PORTABILIDADE' && p.contractBalance !== undefined ? (
                             <span className="font-semibold text-indigo-600 dark:text-indigo-400 text-[10px]">
                               Saldo: {formatCurrency(p.contractBalance)}
                             </span>
