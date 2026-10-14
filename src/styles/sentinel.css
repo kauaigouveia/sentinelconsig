@@ -378,3 +378,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sentinel-accen
 .sentinel-portal .portal-navigation .sentinel-brand-name { font-size: 15px !important; }
 .sentinel-portal .portal-navigation .sentinel-brand-subtitle { display: none; }
 @media (max-width: 767px) { .sentinel-portal .portal-navigation { display: none; } }
+
+/* Official identity on both login surfaces; custom tenant marks keep their own sizing. */
+.sentinel-auth-wordmark img.sentinel-auth-official-wordmark { width: min(300px, 100%); height: auto; object-fit: contain; }
+.sentinel-auth-tenant img.sentinel-auth-official-logo { width: min(260px, 100%); height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
