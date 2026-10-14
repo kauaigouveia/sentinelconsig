@@ -610,7 +610,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
             <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-2xs">
               <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
-                <span>Evolução de Produção (Bruto vs Pago)</span>
+                <span>Evolução de Produção (Digitado × Pago)</span>
               </h2>
               {production && production.series.length > 0 ? (
                 <div className="h-64 w-full">
@@ -624,7 +624,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
                         contentStyle={{ backgroundColor: '#1e293b', color: '#fff', borderRadius: '8px', fontSize: '12px' }}
                       />
                       <Legend wrapperStyle={{ fontSize: '11px' }} />
-                      <Bar dataKey="grossValue" name="Valor Bruto" fill="#93c5fd" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="netValue" name="Digitado" fill="#93c5fd" radius={[4, 4, 0, 0]} />
                       <Area type="monotone" dataKey="paidValue" name="Valor Pago" fill="#10b981" stroke="#059669" fillOpacity={0.4} />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -723,7 +723,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
                       contentStyle={{ backgroundColor: '#1e293b', color: '#fff', borderRadius: '8px', fontSize: '12px' }}
                     />
                     <Legend wrapperStyle={{ fontSize: '11px' }} />
-                    <Bar yAxisId="left" dataKey="grossValue" name="Valor Bruto" fill="#93c5fd" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="netValue" name="Digitado" fill="#93c5fd" radius={[4, 4, 0, 0]} />
                     <Area yAxisId="left" type="monotone" dataKey="paidValue" name="Valor Pago" fill="#10b981" stroke="#059669" fillOpacity={0.4} />
                     <Line yAxisId="right" type="monotone" dataKey="count" name="Propostas" stroke="#f59e0b" strokeWidth={2} dot />
                   </ComposedChart>

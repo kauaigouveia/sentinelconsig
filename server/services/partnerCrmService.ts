@@ -3,6 +3,7 @@ import { centralEventBus } from './eventBus.js';
 import { AuditLogService } from './auditLogService.js';
 import { logger } from '../logger.js';
 import express from 'express';
+import { partnerProposalVolume } from './partnerProposalVolume.js';
 
 export type PartnerCadastralStatus = 'ATIVO' | 'INATIVO';
 export type PartnerOperationalStatus = 'ATIVO_RECENTE' | 'SEM_ATIVIDADE' | 'COM_PENDENCIAS' | 'INATIVO';
@@ -149,10 +150,10 @@ export class PartnerCrmService {
       latestInteractions,
     ] = await Promise.all([
       prisma.proposal.groupBy({
-        by: ['partnerId', 'standardCategory'],
+        by: ['partnerId', 'standardCategory', 'type'],
         where: { tenantId, partnerId: { in: partnerIds }, deletedAt: null },
         _count: { _all: true },
-        _sum: { contractValue: true, releasedValue: true },
+        _sum: { contractValue: true, releasedValue: true, debtBalance: true },
       }),
       prisma.pendency.groupBy({
         by: ['partnerId'],
@@ -193,11 +194,11 @@ export class PartnerCrmService {
     const items = partners.map(p => {
       const pProposals = proposalsGroup.filter(g => g.partnerId === p.id);
       const totalProposalsCount = pProposals.reduce((acc, curr) => acc + (curr._count?._all || 0), 0);
-      const totalProposalsVolume = pProposals.reduce((acc, curr) => acc + Number(curr._sum?.contractValue || 0), 0);
+      const totalProposalsVolume = pProposals.reduce((acc, curr) => acc + partnerProposalVolume({ type: curr.type, ...curr._sum }), 0);
 
       const approvedProposals = pProposals.filter(g => g.standardCategory === StandardStatusCategory.PAGO || g.standardCategory === StandardStatusCategory.ANDAMENTO);
       const approvedCount = approvedProposals.reduce((acc, curr) => acc + (curr._count?._all || 0), 0);
-      const approvedVolume = approvedProposals.reduce((acc, curr) => acc + Number(curr._sum?.contractValue || 0), 0);
+      const approvedVolume = approvedProposals.reduce((acc, curr) => acc + partnerProposalVolume({ type: curr.type, ...curr._sum }), 0);
 
       const openPendency = openPendenciesGroup.find(g => g.partnerId === p.id);
       const openPendenciesCount = openPendency?._count?._all || 0;
@@ -443,6 +444,7 @@ export class PartnerCrmService {
           contractValue: true,
           releasedValue: true,
           commissionRate: true,
+          debtBalance: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -455,6 +457,7 @@ export class PartnerCrmService {
     const totalCount = proposals.length;
     const totalContractValue = proposals.reduce((acc, p) => acc + (Number(p.contractValue) || 0), 0);
     const totalReleasedValue = proposals.reduce((acc, p) => acc + (Number(p.releasedValue) || 0), 0);
+    const totalProductionVolume = proposals.reduce((acc, p) => acc + partnerProposalVolume(p), 0);
     const totalCommission = proposals.reduce((acc, p) => {
       const val = Number(p.contractValue) || 0;
       const rate = Number(p.commissionRate) || 0;
@@ -467,7 +470,7 @@ export class PartnerCrmService {
       const st = p.status?.name || p.standardCategory || 'OUTRO';
       const curr = statusMap.get(st) || { count: 0, volume: 0 };
       curr.count += 1;
-      curr.volume += Number(p.contractValue) || 0;
+      curr.volume += partnerProposalVolume(p);
       statusMap.set(st, curr);
     });
 
@@ -488,7 +491,7 @@ export class PartnerCrmService {
       const b = p.bank?.name || 'Outro';
       const curr = bankMap.get(b) || { count: 0, volume: 0, approvedCount: 0 };
       curr.count += 1;
-      curr.volume += Number(p.contractValue) || 0;
+      curr.volume += partnerProposalVolume(p);
       if (p.standardCategory === StandardStatusCategory.PAGO || p.status?.standardCategory === StandardStatusCategory.PAGO) {
         curr.approvedCount += 1;
       }
@@ -512,7 +515,7 @@ export class PartnerCrmService {
       const prod = p.product?.name || p.type || 'Outro';
       const curr = productMap.get(prod) || { count: 0, volume: 0 };
       curr.count += 1;
-      curr.volume += Number(p.contractValue) || 0;
+      curr.volume += partnerProposalVolume(p);
       productMap.set(prod, curr);
     });
 
@@ -530,22 +533,23 @@ export class PartnerCrmService {
     const inProgress = proposals.filter(p => p.standardCategory === StandardStatusCategory.ANDAMENTO || p.standardCategory === StandardStatusCategory.ESTEIRA || p.standardCategory === StandardStatusCategory.PENDENTE);
 
     const approvalRate = totalCount > 0 ? (approved.length / totalCount) * 100 : 0;
-    const ticketAverage = totalCount > 0 ? totalContractValue / totalCount : 0;
+    const ticketAverage = totalCount > 0 ? totalProductionVolume / totalCount : 0;
 
     return {
       period,
       summary: {
         totalCount,
         totalContractValue,
+        totalProductionVolume,
         totalReleasedValue,
         totalNetValue: totalReleasedValue,
         totalCommission,
         ticketAverage,
         approvalRate,
         approvedCount: approved.length,
-        approvedVolume: approved.reduce((acc, p) => acc + (Number(p.contractValue) || 0), 0),
+        approvedVolume: approved.reduce((acc, p) => acc + partnerProposalVolume(p), 0),
         paidCount: paid.length,
-        paidVolume: paid.reduce((acc, p) => acc + (Number(p.contractValue) || 0), 0),
+        paidVolume: paid.reduce((acc, p) => acc + partnerProposalVolume(p), 0),
         deniedCount: denied.length,
         cancelledCount: cancelled.length,
         inProgressCount: inProgress.length,

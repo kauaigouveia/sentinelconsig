@@ -1865,7 +1865,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
                       <span className="text-xs text-slate-400 uppercase font-semibold">Volume Produzido</span>
                       <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">
-                        R$ {Number(metrics.summary?.totalContractValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {Number(metrics.summary?.totalProductionVolume ?? metrics.summary?.totalReleasedValue ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
                       <span className="text-[11px] text-slate-500 mt-0.5 block">
                         {metrics.summary?.totalCount || 0} propostas cadastradas

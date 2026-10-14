@@ -293,7 +293,7 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
 
         <MetricCard
           title="Volume em Produção"
-          value={`R$ ${(stats.totalVolume / 1000).toFixed(0)}k`}
+          value={stats.totalVolume.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           subtitle={`${stats.totalProposals} propostas digitadas`}
           icon={<DollarSign className="w-5 h-5 text-indigo-600" />}
         />
@@ -457,7 +457,7 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase font-semibold block">Volume</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
-                      R$ {((p.metrics?.totalProposalsVolume || 0) / 1000).toFixed(0)}k
+                      {Number(p.metrics?.totalProposalsVolume || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   </div>
                   <div>
