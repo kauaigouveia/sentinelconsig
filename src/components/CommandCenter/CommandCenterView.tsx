@@ -408,7 +408,7 @@ export function CommandCenterView() {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4 min-w-0">
+    <div className="flex flex-col h-full space-y-4 min-w-0 p2-command-workspace">
       {/* 1. Header Superior de Comando Operacional */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center gap-3">
@@ -492,7 +492,7 @@ export function CommandCenterView() {
       </div>
 
       {/* 2. Top Navigation Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg px-2 pt-1 shadow-xs">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg px-2 pt-1 shadow-xs p2-command-tabs">
         <button
           onClick={() => setActiveTab('VISAO_GERAL')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold border-b-2 transition-colors cursor-pointer ${

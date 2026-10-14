@@ -32,6 +32,7 @@ import {
 import { BankIntegrationsView } from '../integrations/BankIntegrationsView';
 import { FinantoIntegrationTab } from '../integrations/FinantoIntegrationTab';
 import { NossaFintechIntegrationTab } from '../integrations/NossaFintechIntegrationTab';
+import { PremiumContent } from '../redesign/PremiumContent';
 
 export type HubTab = 'overview' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'health' | 'incidents' | 'logs';
 
@@ -125,10 +126,11 @@ export interface DiagnosticModalState {
 }
 
 export interface HubIntegracoesProps {
+  premium?: boolean;
   initialSubTab?: HubTab;
 }
 
-export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 'overview' }) => {
+export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 'overview', premium = false }) => {
   const [activeTab, setActiveTab] = useState<HubTab>(initialSubTab);
   const [integrations, setIntegrations] = useState<IntegrationDefinition[]>([]);
   const [summary, setSummary] = useState<HubSummary>({
@@ -410,9 +412,9 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${premium ? 'p2-live-module p2-live-integrations' : ''}`}>
       {/* Top Banner do Hub */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${premium ? 'p2-integration-header' : ''}`}>
         <div className="flex items-center gap-4">
           <div className="p-3 bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/30">
             <Zap className="w-8 h-8" />
@@ -465,7 +467,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       </div>
 
       {/* Cards de Métricas e Contadores no Topo */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className={`grid grid-cols-2 md:grid-cols-5 gap-3 ${premium ? 'p2-integration-metrics' : ''}`}>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
             <span>INTEGRAÇÕES ATIVAS</span>
@@ -512,7 +514,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       </div>
 
       {/* Barra de Subnavegação das 8 Abas do Hub */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-800 pb-2">
+      <div className={`flex items-center gap-1 overflow-x-auto border-b border-slate-800 pb-2 ${premium ? 'p2-integration-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Áreas de integração' : undefined}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -520,6 +522,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              aria-current={premium && isActive ? 'page' : undefined}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 isActive
                   ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
@@ -534,6 +537,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       </div>
 
       {/* Feedback de Ações (Mensagens de Sucesso ou Erro) */}
+      <PremiumContent active={premium} className="p2-integration-body space-y-6">
       {actionFeedback && (
         <div
           className={`p-3.5 rounded-lg border text-xs flex items-center justify-between ${
@@ -1249,6 +1253,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
           </div>
         </div>
       )}
+      </PremiumContent>
     </div>
   );
 };

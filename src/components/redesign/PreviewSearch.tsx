@@ -3,6 +3,8 @@ import { Search, ArrowUpRight, X, Star, Clock } from "lucide-react";
 import { visibleNavigation } from "./navigation";
 import type { PreviewRow } from "./PreviewData";
 import type { Role } from "../../types";
+import { hasPermission } from "../../lib/permissions";
+import type { SearchTask } from "./useTaskSearch";
 export function PreviewSearch({
   role,
   permissions = [],
@@ -15,6 +17,7 @@ export function PreviewSearch({
   navigate,
   openProposal,
   close,
+  tasks = [],
 }: {
   role?: Role;
   permissions?: string[];
@@ -27,6 +30,7 @@ export function PreviewSearch({
   navigate: (path: string) => void;
   openProposal: (id: string) => void;
   close: () => void;
+  tasks?: SearchTask[];
 }) {
   const [query, setQuery] = useState(""),
     [index, setIndex] = useState(0),
@@ -53,7 +57,7 @@ export function PreviewSearch({
       ? rows
           .filter(
             (r) =>
-              [r.client, r.ade].some((v) =>
+              [r.client, r.ade, r.notes || ""].some((v) =>
                 v.toLocaleLowerCase("pt-BR").includes(q),
               ) ||
               (!!digits && r.cpf.replace(/\D/g, "").includes(digits)),
@@ -97,6 +101,22 @@ export function PreviewSearch({
             detail: "Parceiro " + p.code,
             run: () => navigate("/crm-parceiros"),
             icon: ArrowUpRight,
+          }))
+      : []),
+    ...(q && hasPermission(role, permissions, "tasks.view")
+      ? tasks
+          .filter((t) =>
+            [t.title, t.clientName || ""].some((v) =>
+              v.toLocaleLowerCase("pt-BR").includes(q),
+            ),
+          )
+          .slice(0, 3)
+          .map((t) => ({
+            id: "task:" + t.id,
+            title: t.title,
+            detail: "Tarefa · agenda operacional",
+            run: () => navigate("/agenda-operacional"),
+            icon: Clock,
           }))
       : []),
   ].slice(0, 15);

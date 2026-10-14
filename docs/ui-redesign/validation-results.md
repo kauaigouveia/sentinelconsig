@@ -117,3 +117,27 @@ Não houve sessão autenticada/base isolada confirmada. Não executados: troca r
 Nenhum backend, schema, migration, regra financeira, API bancária ou infraestrutura foi modificado. Legado mantido. Nenhum push, merge ou deploy realizado. **Aguardar aprovação visual.**
 
 Revisão adicional: Propostas, Esteira, Cliente 360° e Simulações foram navegados em 390px e 1024px; os quatro retornaram `overflow: false` para a página. Grids/tabelas/abas mantêm scroll interno quando necessário. Uma interação do navegador teve timeout durante o build local; estado foi relido e a navegação seguinte concluiu, sem erro no console. Isso não foi classificado como falha funcional do produto.
+
+## Integração funcional de Shell e Propostas — 14/10/2026
+
+Etapa autorizada em branch `codex/sentinel-2-proposals-functional`. A identidade V2 foi aprovada; a homologação funcional completa continua pendente. A matriz de 45 equivalências foi registrada antes das alterações. O componente operacional e os formulários originais foram reaproveitados, sem fixtures na aplicação autenticada.
+
+79 testes locais selecionados aprovados; 23 novos testes de DOM/busca. Typecheck, build local sem migrations e `git diff --check` aprovados. Aviso de chunks acima de 500 kB permanece. Não executados testes de banco/produção. Nenhuma captura autenticada foi produzida sem ambiente isolado; capturas antigas da galeria não comprovam esta etapa. O legado continua padrão e a V2 permanece opt-in de desenvolvimento.
+
+Detalhamento dos testes, arquivos, riscos e bloqueios: [proposals-functional-validation.md](proposals-functional-validation.md). Plano solicitado para homologação segura, com custos e autorizações ainda pendentes: [staging-environment-plan.md](staging-environment-plan.md). Nenhum recurso externo, migration, push, merge ou deploy foi realizado.
+
+## Continuação autorizada — homologação cancelada
+
+Em 14/10/2026 o usuário cancelou a etapa de homologação separada e autorizou migração progressiva dos demais módulos, sem publicar. O plano anterior foi marcado como histórico cancelado; autenticação ausente não bloqueou o desenvolvimento.
+
+Consolidação: **251 testes aprovados em 20 arquivos locais selecionados**, mais checagens de tipos e builds por módulo/família. Nenhum teste usou banco ou serviço externo real. Paridade estática dos controles/expressões foi combinada com interações DOM mockadas nos módulos mais alterados. Casos de escopo cobrem as 45 rotas declaradas; o portal fica separado e Command Center mantém sua identidade de incidentes. Não interpretar essa cobertura como login autenticado em 45 caminhos.
+
+Relatório por módulo, profundidade da migração, funcionalidades preservadas, riscos e todos os fluxos **não validados**: [progressive-migration.md](progressive-migration.md). Lista de arquivos: [migration-changed-files.md](migration-changed-files.md). Capturas anteriores de galeria continuam sendo apenas evidência da prévia visual, sem comprovar a aplicação autenticada.
+
+## Continuidade funcional adicional — 14/10/2026
+
+259 testes aprovados em 22 arquivos locais selecionados. Novos testes de Simulações, transições manuais de Kanban e recebimento/permissão de Atendimento; nenhum transporte externo ou banco. Capturas locais isoladas de Propostas, Simulações, Kanban, Clientes 360°, CIP e Pendências estão em `screenshots/functional-local`. Fontes explicitamente fictícias; não são evidência autenticada. Build local aprovado com aviso de chunks acima de 500 kB. O typecheck após corrigir `ImportMeta.env` passou; a ampliação posterior do harness recebe uma nova checagem. Marco e pendências: [functional-continuation.md](functional-continuation.md). Não declarar toda a migração concluída.
+
+## Fechamento local de frontend — 14/10/2026
+
+261 testes aprovados em 23 arquivos seguros selecionados. Typecheck, build local final e git diff --check aprovados. Última etapa: apresentação V2 dos diálogos originais, navegação de Automações/Intelligence e correções de contraste. Formulário real de nova proposta mantém rascunho ao trocar o ancestral V2/legado e cancela sem gravar. Capturas de formulário e Automações salvas; captura final de Intelligence/Administração indisponível no navegador, sem fabricar evidência. Fluxos autenticados permanecem não validados. Relatório consolidado: [frontend-delivery.md](frontend-delivery.md). Sem alterações nos caminhos protegidos, push, merge, deploy, migrations ou banco de produção.

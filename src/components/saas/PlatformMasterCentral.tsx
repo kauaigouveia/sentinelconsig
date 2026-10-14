@@ -717,7 +717,7 @@ export const PlatformMasterCentral: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p2-platform-workspace">
       {/* Active Context Banner */}
       {adminContext.active && adminContext.context && (
         <div className="flex items-center justify-between p-4 rounded-xl bg-purple-900 text-white border border-purple-500 shadow-md">
@@ -807,7 +807,7 @@ export const PlatformMasterCentral: React.FC = () => {
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 p2-platform-tabs">
         <button
           onClick={() => setActiveTab('tenants')}
           className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${

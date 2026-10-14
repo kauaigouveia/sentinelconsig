@@ -27,8 +27,9 @@ import { AuthorityBadge } from '../ui/AuthorityBadge';
 import { EmptyState } from '../ui/EmptyState';
 import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
+import { KanbanStageNavigator } from '../redesign/KanbanStageNavigator';
 
-export const KanbanBoard: React.FC = () => {
+export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const [proposals, setProposals] = useState<Proposal[]>(() => StorageService.getProposals());
   const statuses = StorageService.getStatuses().filter(s => s.active);
   const clients = StorageService.getClients();
@@ -224,7 +225,7 @@ export const KanbanBoard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-3.5 h-[calc(100vh-8.5rem)] flex flex-col">
+    <div className={`space-y-3.5 h-[calc(100vh-8.5rem)] flex flex-col ${premium ? 'p2-live-module p2-live-kanban' : ''}`}>
       {/* Top Action Bar with Filters */}
       <ActionBar
         title="Esteira Kanban"
@@ -304,6 +305,7 @@ export const KanbanBoard: React.FC = () => {
         }
       />
 
+      {premium && proposals.length > 0 && <KanbanStageNavigator stages={statuses.map(status => ({id: status.id, name: status.name, color: status.color, count: filteredProposals.filter(p => p.statusId === status.id).length}))} onJump={id => { const column = document.getElementById(`p2-stage-${id}`); column?.focus({preventScroll:true}); column?.scrollIntoView({block:'nearest',inline:'start'}); }} />}
       {proposals.length === 0 ? (
         <EmptyState
           title="Esteira Kanban sem propostas"
@@ -311,13 +313,16 @@ export const KanbanBoard: React.FC = () => {
         />
       ) : (
         /* Columns Container */
-        <div className="flex-1 flex gap-3 overflow-x-auto pb-2 min-h-0">
+        <div className={`flex-1 flex gap-3 overflow-x-auto pb-2 min-h-0 ${premium ? 'p2-kanban-board' : ''}`}>
           {statuses.map((status, statusIdx) => {
             const colProps = filteredProposals.filter(p => p.statusId === status.id);
 
             return (
               <div
                 key={status.id}
+                id={premium ? `p2-stage-${status.id}` : undefined}
+                tabIndex={premium ? -1 : undefined}
+                aria-label={premium ? `Etapa ${status.name}` : undefined}
                 className="w-80 shrink-0 flex flex-col rounded-xl bg-slate-100/80 dark:bg-[#0c1220] border border-slate-200/90 dark:border-slate-800/80 overflow-hidden shadow-xs"
               >
                 {/* Column Header */}

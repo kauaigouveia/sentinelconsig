@@ -142,3 +142,7 @@ Usuário aprovou com ressalvas apenas Design System e preparação do shell, com
 Continua a autorização visual limitada. Dashboard de leitura evoluído; novas propostas, Kanban, Cliente 360° e Simulações são demonstrações exclusivas da galeria. Nenhum módulo operacional completo foi migrado. Relatório: `premium-v2-review.md`.
 
 A estrutura/rotas/permissões da primeira entrega permanece a base. A galeria agora usa fixtures explícitas com valores financeiros fictícios, autorizadas neste briefing; elas nunca alimentam a aplicação autenticada. Preservar legado, portal e white label. Parar após entrega visual; nenhuma autorização de push, merge, deploy ou migração posterior.
+
+## Autorização vigente — 14/10/2026
+
+Identidade Premium V2 aprovada. Usuário autorizou migração funcional progressiva de todos os módulos na branch existente. A exigência de parar após Propostas foi substituída por essa autorização. Homologação separada cancelada; não criar recursos ou banco. Fluxos dependentes de sessão/dados reais ficam **não validados**, sem bloquear implementação local. Preservar legado, backend e regras; testar localmente após cada módulo; nenhuma autorização de push, merge, deploy, migrations ou seeds. Registro: `progressive-migration.md`.

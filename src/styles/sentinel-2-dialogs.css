@@ -1,0 +1,41 @@
+/* Original operational dialogs, scoped exclusively to the authenticated V2 shell.
+   No portal/body flags: partner and legacy dialogs retain their own presentation. */
+.s2-root :is([role="dialog"], .fixed.inset-0 > div.bg-white, .fixed.inset-0 > section.bg-white,
+  .fixed.inset-0 > div.bg-slate-900, .fixed.inset-0 > section.bg-slate-900) {
+  color: var(--s2-text);
+  background: var(--s2-surface);
+  border-color: var(--s2-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px #02061766;
+  isolation: isolate;
+}
+.s2-root .fixed.inset-0 :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+.s2-root [role="dialog"] :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+  color: var(--s2-text);
+  background: var(--s2-elevated);
+  border-color: var(--s2-border);
+  font-size: 13px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.s2-root .fixed.inset-0 :is(input,select,textarea):focus-visible,
+.s2-root [role="dialog"] :is(input,select,textarea):focus-visible {
+  outline: 2px solid var(--s2-blue);
+  outline-offset: 2px;
+}
+.s2-root .fixed.inset-0 :is(label,h1,h2,h3,h4,.text-slate-900,.text-slate-800),
+.s2-root [role="dialog"] :is(label,h1,h2,h3,h4,.text-slate-900,.text-slate-800) { color: var(--s2-text); }
+.s2-root .fixed.inset-0 :is(.text-slate-400,.text-slate-500,.text-slate-600),
+.s2-root [role="dialog"] :is(.text-slate-400,.text-slate-500,.text-slate-600) { color: var(--s2-muted); }
+.s2-root .fixed.inset-0 :is(.bg-slate-50,.bg-slate-100,.bg-slate-800),
+.s2-root [role="dialog"] :is(.bg-slate-50,.bg-slate-100,.bg-slate-800) { background: var(--s2-elevated); border-color: var(--s2-border); }
+.s2-root .fixed.inset-0 table,.s2-root [role="dialog"] table { color: var(--s2-text); font-size: 12px; }
+.s2-root .fixed.inset-0 thead,.s2-root [role="dialog"] thead { background: var(--s2-elevated); color: var(--s2-muted); }
+.s2-root .fixed.inset-0 :is(th,td),.s2-root [role="dialog"] :is(th,td) { border-color: var(--s2-border); }
+.s2-root [role="dialog"] > header { border-color: var(--s2-border); background: var(--s2-surface); }
+.s2-root [role="dialog"] > footer { border-color: var(--s2-border); background: var(--s2-elevated); }
+@media(max-width:767px) {
+  .s2-root .fixed.inset-0 :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+  .s2-root [role="dialog"] :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) { font-size: 16px; }
+}

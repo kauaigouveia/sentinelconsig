@@ -364,7 +364,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-4 pb-12 animate-fadeIn select-none">
+    <div className="space-y-4 pb-12 animate-fadeIn select-none p2-bi-workspace">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
@@ -418,7 +418,7 @@ export const ExecutiveBIDashboard: React.FC = () => {
       )}
 
       {/* Analytical Tab Navigation Bar */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800 p2-analytics-tabs">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

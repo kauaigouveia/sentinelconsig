@@ -24,6 +24,7 @@ export type PreviewRow = {
   active: boolean;
   paid: boolean;
   pending: boolean;
+  notes?: string;
 };
 export function readPreviewRows(): PreviewRow[] {
   const user = StorageService.getActiveUser();
@@ -41,6 +42,7 @@ export function readPreviewRows(): PreviewRow[] {
         proposal.status || statuses.find((v) => v.id === proposal.statusId);
     return {
       id: proposal.id,
+      notes: proposal.notes,
       ade: proposal.proposalNumber,
       client:
         client?.fullName || proposal.clientName || "Cliente não informado",

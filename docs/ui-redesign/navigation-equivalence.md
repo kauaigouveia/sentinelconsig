@@ -85,3 +85,19 @@ A paridade de destinos estáticos autorizados foi verificada por testes para os 
 - Galeria de propostas tem controles/drawer demonstrativos; a aplicação autenticada mantém PreviewProposals de leitura e ProductionList/detalhes existentes. Nenhum botão demonstrativo é anunciado como fluxo de produção migrado.
 - Novas prévias de Kanban/Cliente/Simulações não substituem seus componentes reais. Portal e Command Center de incidentes permanecem separados.
 - Fonte de permanência pode ser recarregada pelo dashboard opt-in usando a chamada existente; não há novo endpoint/contrato.
+
+## Integração funcional de Shell e Propostas — 14/10/2026
+
+Na branch `codex/sentinel-2-proposals-functional`, `/propostas` no modo DEV `?ui=2` passa a usar o `ProductionList` operacional original com apresentação Premium. A consulta intermediária `PreviewProposals` e o botão de retorno a “todas as ações” foram removidos da aplicação autenticada. A galeria permanece independente e demonstrativa.
+
+Todos os destinos, modais e callbacks continuam os existentes. Paginação e configuração de colunas são aditivas; exportação, seleção em lote e navegação do detalhe usam a carteira filtrada completa. Kanban abre `/esteira`, sem migrar sua implementação. Tarefas na busca utilizam o GET existente `/api/tasks` somente com `tasks.view`; respostas antigas são descartadas ao mudar o contexto.
+
+O legado continua padrão e `?ui=legacy` permite comparação. A nova tela não foi liberada como padrão: homologação autenticada, notificações e troca real entre empresas ainda estão bloqueadas. A matriz de 45 equivalências está em `proposals-functional-parity.md`.
+
+## Migração progressiva autorizada
+
+Em 14/10/2026 o usuário autorizou a continuação dos módulos e cancelou homologação separada. As rotas e aliases não mudaram. `/simulacoes` utiliza o `SimulationView` original com adapter de layout, mantendo solicitações, fila, resultados/parceiros e planilhas. `/esteira` utiliza o `KanbanBoard` original, com navegador adicional para suas colunas reais. `/clientes` e aliases continuam com `Client360View`, seus múltiplos registros por cliente e sete seções. Nenhuma galeria substitui componentes operacionais. Progresso e limites em `progressive-migration.md`.
+
+`/portabilidade`, `/central-pendencias`, `/financeiro-geral`, `/crm-parceiros` e `/integracoes` continuam utilizando seus componentes e handlers reais. Administração passa a apresentar suas subáreas em navegação horizontal; os mesmos destinos internos e restrições de plataforma permanecem. Rotina, atendimento, gestão, automações e plataforma recebem escopo visual a partir do viewId atual, sem alterar o roteador, permissões ou instanciar formulários em abas paralelas.
+
+Preferência de apresentação exclusivamente em desenvolvimento: `?ui=2` ativa V2, `?ui=legacy` ativa legado; escolha lembrada no mesmo origin para refresh/navegação. Caminhos, aliases e parâmetros operacionais existentes permanecem os mesmos. Relatório de alcance e validação: `progressive-migration.md`.

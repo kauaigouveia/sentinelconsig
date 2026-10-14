@@ -31,7 +31,7 @@ import { PartnerImportModal } from '../admin/PartnerImportModal';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import { useRouter } from '../../router';
 
-export const PartnerCrmHub: React.FC = () => {
+export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const { searchParams, navigate } = useRouter();
   const [partners, setPartners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,9 +204,9 @@ export const PartnerCrmHub: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className={`space-y-6 animate-in fade-in duration-300 ${premium ? 'p2-live-module p2-live-crm' : ''}`}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs ${premium ? 'p2-crm-header' : ''}`}>
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
             <Building className="w-6 h-6" />
@@ -243,7 +243,7 @@ export const PartnerCrmHub: React.FC = () => {
       </div>
 
       {/* KPI Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className={`grid grid-cols-2 lg:grid-cols-5 gap-3.5 ${premium ? 'p2-crm-metrics' : ''}`}>
         <MetricCard
           title="Total de Parceiros"
           value={stats.total}
@@ -281,7 +281,7 @@ export const PartnerCrmHub: React.FC = () => {
       </div>
 
       {/* Filter & Control Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+      <div className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs ${premium ? 'p2-crm-filters' : ''}`}>
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative flex-1">

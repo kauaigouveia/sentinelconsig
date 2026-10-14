@@ -5,10 +5,17 @@ import { realtimeHub } from './services/realtimeService';
 import { PreviewSidebar } from './components/redesign/PreviewSidebar';
 import { WorkTabs } from './components/redesign/WorkTabs';
 import { PreviewDashboard } from './components/redesign/PreviewDashboard';
-import { PreviewProposals } from './components/redesign/PreviewProposals';
 import { PreviewSearch } from './components/redesign/PreviewSearch';
 import { usePreviewData } from './components/redesign/PreviewData';
+import { useTaskSearch } from './components/redesign/useTaskSearch';
+import { operationalFamily } from './components/redesign/operationalFamilies';
+import { rememberDevelopmentPresentation } from './components/redesign/developmentPresentation';
+import { initialPresentation, canSwitchProductionPresentation } from './components/redesign/productionPresentation';
 import './styles/sentinel-2-preview.css';
+import './styles/sentinel-2-production.css';
+import './styles/sentinel-2-modules.css';
+import './styles/sentinel-2-dialogs.css';
+import './styles/sentinel-2-finishing.css';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { WorkspaceToolbar } from './components/layout/WorkspaceToolbar';
@@ -86,8 +93,8 @@ const TenantSelectionView = lazyNamed(() => import('./components/auth/TenantSele
 const ForcePasswordChangeModal = lazyNamed(() => import('./components/auth/ForcePasswordChangeModal'), 'ForcePasswordChangeModal');
 
 function AppMainContent() {
-  const [newUI, setNewUI] = useState(() => (import.meta as any).env.DEV && new URLSearchParams(window.location.search).get('ui') === '2');
-  const [fullProposals, setFullProposals] = useState(false);
+  const [newUI, setNewUI] = useState(() => initialPresentation((import.meta as any).env.DEV, (import.meta as any).env.VITE_SENTINEL_UI_MODE, window.location.search));
+  useEffect(() => { if ((import.meta as any).env.DEV) rememberDevelopmentPresentation(newUI); }, [newUI]);
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
@@ -109,6 +116,9 @@ function AppMainContent() {
   } = useRouter();
 
   const preferenceKey = workspaceKey(adminContext?.targetTenantId || StorageService.getCurrentTenantId() || activeUser?.tenantId, activeUser?.id);
+  useEffect(() => {
+    if (!(import.meta as any).env.DEV) setNewUI(initialPresentation(false, (import.meta as any).env.VITE_SENTINEL_UI_MODE, ''));
+  }, [preferenceKey, activeUser?.role]);
   const workspace = useWorkspacePreferences(preferenceKey);
   const preview = usePreviewData(`${preferenceKey}:${activeUser?.role}:${(activeUser?.customPermissions || []).join(',')}`, newUI && isAuthenticated && !pathname.startsWith('/parceiro'));
   useEffect(() => {
@@ -288,6 +298,7 @@ function AppMainContent() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isUniversalSearchOpen, setIsUniversalSearchOpen] = useState(false);
+  const taskSearch = useTaskSearch(`${preferenceKey}:${activeUser?.role}:${(activeUser?.customPermissions || []).join(',')}`, newUI && isAuthenticated && isUniversalSearchOpen && hasPermission(activeUser?.role, activeUser?.customPermissions, 'tasks.view'));
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isWhiteLabelModalOpen, setIsWhiteLabelModalOpen] = useState(false);
@@ -688,7 +699,7 @@ function AppMainContent() {
         {/* Dynamic Page Views */}
         {newUI && !isFocusMode && <WorkTabs key={preferenceKey} path={pathname} recent={workspace.recent} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} />}
         <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
-          <div className={showRouteContext && hasRouteAccess ? 'sentinel-view-frame' : ''}><div className="sentinel-view-body">
+          <div className={showRouteContext && hasRouteAccess ? 'sentinel-view-frame' : ''}><div className="sentinel-view-body" data-ui-module={newUI && hasRouteAccess ? effectiveView : undefined} data-ui-family={newUI && hasRouteAccess ? operationalFamily(effectiveView) : undefined}>
           {is404 ? (
             <NotFoundView
               pathname={pathname}
@@ -731,7 +742,7 @@ function AppMainContent() {
 
               {effectiveView === 'minha-fila' && <MyTaskQueueView onNavigate={navigate} />}
 
-              {effectiveView === 'financeiro-geral' && <GeneralFinanceView />}
+              {effectiveView === 'financeiro-geral' && <GeneralFinanceView premium={newUI} />}
 
               {effectiveView === 'saas-tenants' && <PlatformMasterCentral />}
 
@@ -747,6 +758,7 @@ function AppMainContent() {
 
               {effectiveView === 'simulacoes' && activeUser?.role !== 'DIGITADOR' && (
                 <SimulationView
+                  premium={newUI}
                   onOpenProposalDetail={propId => {
                     setDetailProposalId(propId);
                     navigate(`/propostas/${propId}`);
@@ -754,10 +766,11 @@ function AppMainContent() {
                 />
               )}
 
-              {effectiveView === 'producao' && newUI && !fullProposals && !productionFilter && <PreviewProposals key={preferenceKey} rows={preview.rows} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} fullView={() => setFullProposals(true)} />}
-              {effectiveView === 'producao' && newUI && (fullProposals || productionFilter) && <button className="s2-button mb-4" onClick={() => {setFullProposals(false);setProductionFilter(null);}}>Voltar à consulta compacta</button>}
-              {effectiveView === 'producao' && (!newUI || fullProposals || productionFilter) && (
+              {effectiveView === 'producao' && (
                 <ProductionList
+                  key={preferenceKey}
+                  premium={newUI}
+                  onKanban={hasPermission(activeUser?.role,activeUser?.customPermissions,'proposals.view') ? () => handleNavigate('/esteira') : undefined}
                   onOpenNewProduction={canCreateProposals ? openNewProduction : undefined}
                   onOpenImportExcel={canCreateProposals ? openProposalImport : undefined}
                   onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
@@ -766,15 +779,15 @@ function AppMainContent() {
                 />
               )}
 
-              {effectiveView === 'esteira' && <KanbanBoard />}
+              {effectiveView === 'esteira' && <KanbanBoard premium={newUI} />}
 
-              {effectiveView === 'portabilidades' && <PortabilityView />}
+              {effectiveView === 'portabilidades' && <PortabilityView premium={newUI} />}
 
               {(effectiveView === 'clientes' || effectiveView === 'busca-cpf' || effectiveView === 'pesquisa-cpf') && (
-                <Client360View initialSearchCpf={globalSearchTerm} />
+                <Client360View premium={newUI} initialSearchCpf={globalSearchTerm} />
               )}
 
-              {effectiveView === 'parceiros' && <PartnerManagement />}
+              {effectiveView === 'parceiros' && <PartnerManagement premium={newUI} />}
 
               {(effectiveView === 'promotoras' || effectiveView === 'admin-bancos') && (
                 <BankPromoterManagement />
@@ -807,16 +820,16 @@ function AppMainContent() {
 
               {/* NOVOS MÓDULOS OPERACIONAIS & CENTRAL DE ADMINISTRAÇÃO */}
               {(effectiveView === 'central-administracao' || effectiveView === 'administracao') && (
-                <CentralAdministracao />
+                <CentralAdministracao premium={newUI} />
               )}
               {(effectiveView === 'central-pendencias' || effectiveView === 'pendencias-central') && (
-                <CentralPendencias />
+                <CentralPendencias premium={newUI} />
               )}
               {(effectiveView === 'central-automacao' || effectiveView === 'automacoes') && (
                 <CentralAutomacoes />
               )}
               {(effectiveView === 'hub-integracoes' || effectiveView === 'integracoes-hub') && (
-                <HubIntegracoes />
+                <HubIntegracoes premium={newUI} />
               )}
               {(effectiveView === 'command-center' || effectiveView === 'command') && (
                 <CommandCenterView />
@@ -930,8 +943,8 @@ function AppMainContent() {
         />
       )}
       {/* Universal Search Command Palette (Ctrl+K) */}
-      {(import.meta as any).env.DEV && <button className="s2-dev-switch" onClick={() => { const next=!newUI;setNewUI(next);const url=new URL(window.location.href);url.searchParams.set('ui',next?'2':'legacy');window.history.replaceState(null,'',url);setIsMobileNavigationOpen(false);setIsUniversalSearchOpen(false); }} title="Alternar apresentação mantendo a sessão e as rotas">{newUI ? 'Prévia 2.0 · voltar à interface atual' : 'Avaliar Sentinel 2.0'}</button>}
-      {isUniversalSearchOpen && newUI && <PreviewSearch key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} rows={preview.rows} clients={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? StorageService.getClients().map(c=>({id:c.id,name:c.fullName||'Cliente não informado',cpf:c.cpf||''})) : []} openClient={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? cpf => {setGlobalSearchTerm(cpf);navigate('/clientes');} : undefined} partners={hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.view') || hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.crm.view') ? StorageService.getPartners().map(p => ({name:p.fullName,code:p.login})) : []} recent={workspace.recent} favorites={workspace.favorites} navigate={handleNavigate} openProposal={id => {setDetailProposalId(id);navigate(`/propostas/${id}`);}} close={() => setIsUniversalSearchOpen(false)} />}
+      {((import.meta as any).env.DEV || canSwitchProductionPresentation(isAuthenticated, activeUser?.role, (import.meta as any).env.VITE_SENTINEL_UI_MODE)) && <button className="s2-dev-switch" onClick={() => { const next=!newUI;setNewUI(next);if ((import.meta as any).env.DEV) {const url=new URL(window.location.href);url.searchParams.set('ui',next?'2':'legacy');window.history.replaceState(null,'',url);}setIsMobileNavigationOpen(false);setIsUniversalSearchOpen(false); }} title="Alternar apresentação mantendo a sessão e as rotas">{newUI ? 'Premium V2 · voltar ao legado' : 'Ativar Sentinel 2.0'}</button>}
+      {isUniversalSearchOpen && newUI && <PreviewSearch tasks={taskSearch} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} rows={preview.rows} clients={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? StorageService.getClients().map(c=>({id:c.id,name:c.fullName||'Cliente não informado',cpf:c.cpf||''})) : []} openClient={hasPermission(activeUser?.role,activeUser?.customPermissions,'clients.view') ? cpf => {setGlobalSearchTerm(cpf);navigate('/clientes');} : undefined} partners={hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.view') || hasPermission(activeUser?.role, activeUser?.customPermissions,'partners.crm.view') ? StorageService.getPartners().map(p => ({name:p.fullName,code:p.login})) : []} recent={workspace.recent} favorites={workspace.favorites} navigate={handleNavigate} openProposal={id => {setDetailProposalId(id);navigate(`/propostas/${id}`);}} close={() => setIsUniversalSearchOpen(false)} />}
       {isUniversalSearchOpen && !newUI && <UniversalCommandPalette
         isOpen={isUniversalSearchOpen}
         onClose={() => setIsUniversalSearchOpen(false)}

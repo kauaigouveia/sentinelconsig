@@ -1,0 +1,1115 @@
+{
+  "baseline": "795dc0d",
+  "capturedBeforeImplementation": true,
+  "files": [
+    {
+      "path": "src/components/production/ProductionList.tsx",
+      "sha256": "fbbe5276488d52b834c9ce45cfbea3a3d47a4383215983890db8d74f05adbb90",
+      "controls": [
+        {
+          "tag": "input",
+          "line": 478,
+          "attributes": [
+            "type=\"text\"",
+            "value={searchTerm}",
+            "onChange={e => setSearchTerm(e.target.value)}",
+            "placeholder=\"Buscar CPF, Nome, ADE ou Parceiro...\""
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 489,
+          "attributes": [
+            "value={filterStatus}",
+            "onChange={e => setFilterStatus(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 505,
+          "attributes": [
+            "value={filterAlçada}",
+            "onChange={e => setFilterAlçada(e.target.value as any)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 521,
+          "attributes": [
+            "value={filterBank}",
+            "onChange={e => setFilterBank(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 537,
+          "attributes": [
+            "value={filterPromoter}",
+            "onChange={e => setFilterPromoter(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 553,
+          "attributes": [
+            "value={filterDigitizer}",
+            "onChange={e => setFilterDigitizer(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 567,
+          "attributes": [
+            "value={filterProduct}",
+            "onChange={e => setFilterProduct(e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 596,
+          "attributes": [
+            "value={filterSla}",
+            "onChange={e => setFilterSla(e.target.value as any)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 611,
+          "attributes": [
+            "onClick={clearFilters}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 636,
+          "attributes": [
+            "onClick={toggleDensity}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 646,
+          "attributes": [
+            "id=\"btn-production-focus-mode\"",
+            "onClick={onToggleFocusMode}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 665,
+          "attributes": [
+            "id=\"btn-open-import-excel\"",
+            "onClick={onOpenImportExcel}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 675,
+          "attributes": [
+            "id=\"btn-open-export\"",
+            "onClick={() => setExportModalOpen(true)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 684,
+          "attributes": [
+            "id=\"btn-open-new-production\"",
+            "onClick={onOpenNewProduction}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 719,
+          "attributes": [
+            "onClick={() => setChipMode('STATUS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 730,
+          "attributes": [
+            "onClick={() => setChipMode('BANK')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 746,
+          "attributes": [
+            "onClick={() => handleScrollChips('left')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 753,
+          "attributes": [
+            "onClick={() => handleScrollChips('right')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 772,
+          "attributes": [
+            "onClick={() => setFilterStatus('')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 797,
+          "attributes": [
+            "onClick={() => setFilterStatus(isSelected ? '' : s.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 827,
+          "attributes": [
+            "onClick={() => setFilterBank('')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 852,
+          "attributes": [
+            "onClick={() => setFilterBank(isSelected ? '' : b.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 898,
+          "attributes": [
+            "onClick={() => setSelectedIds([])}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 904,
+          "attributes": [
+            "id=\"btn-open-bulk-status\"",
+            "onClick={() => setBulkModalOpen(true)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 912,
+          "attributes": [
+            "id=\"btn-bulk-delete\"",
+            "onClick={handleBulkDelete}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 926,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 956,
+          "attributes": [
+            "onClick={handleSelectAll}",
+            "disabled={!canUpdateProposals && !canDeleteProposals}",
+            "aria-label=\"Selecionar todas as propostas que você pode operar\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 965,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleSort('proposalNumber')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 971,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleSort('clientName')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 977,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleSort('cpf')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 984,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleSort('bank')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 990,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleSort('disbursedValue')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 999,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleSort('createdAt')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1030,
+          "attributes": [
+            "onClick={() => toggleSelect(p.id)}",
+            "disabled={!canUpdateProposals && !canDeleteProposals}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1046,
+          "attributes": [
+            "onClick={() => setDetailProposalId(p.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1052,
+          "attributes": [
+            "onClick={e => {\r\n                              e.stopPropagation();\r\n                              toastService.copyToClipboard(p.proposalNumber, 'ADE');\r\n                            }}",
+            "aria-label=\"Copiar ADE\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1086,
+          "attributes": [
+            "onClick={e => {\r\n                                e.stopPropagation();\r\n                                toastService.copyToClipboard(clientCpf, 'CPF');\r\n                              }}",
+            "aria-label=\"Copiar CPF\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1167,
+          "attributes": [
+            "onClick={() => setDetailProposalId(p.id)}",
+            "aria-label=\"Ver detalhes da proposta\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1175,
+          "attributes": [
+            "onClick={() => handleDeleteProposal(p)}",
+            "aria-label=\"Excluir proposta\""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/production/NewProductionModal.tsx",
+      "sha256": "6cd36f2c05329cbe63a33ad61756306ab78953bf936ca67eb115d4d96dbe4c39",
+      "controls": [
+        {
+          "tag": "button",
+          "line": 621,
+          "attributes": [
+            "onClick={onClose}",
+            "disabled={isSaving}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 662,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={handleSave}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 670,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => setLinkingErrorLog(null)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 685,
+          "attributes": [
+            "onClick={() => setMode('RAPIDO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 695,
+          "attributes": [
+            "onClick={() => setMode('COMPLETO')}"
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 720,
+          "attributes": []
+        },
+        {
+          "tag": "input",
+          "line": 723,
+          "attributes": [
+            "id=\"input-new-prod-cpf\"",
+            "type=\"text\"",
+            "value={cpf}",
+            "onChange={e => handleCpfChange(e.target.value)}",
+            "placeholder=\"000.000.000-00 ou 00000000000\""
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 737,
+          "attributes": []
+        },
+        {
+          "tag": "input",
+          "line": 740,
+          "attributes": [
+            "id=\"input-new-prod-name\"",
+            "type=\"text\"",
+            "value={fullName}",
+            "onChange={e => setFullName(e.target.value)}",
+            "placeholder=\"Ex: MARIA JOSE ALEXANDRE\""
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 769,
+          "attributes": []
+        },
+        {
+          "tag": "input",
+          "line": 772,
+          "attributes": [
+            "type=\"text\"",
+            "value={phone}",
+            "onChange={e => setPhone(e.target.value)}",
+            "placeholder=\"(00) 00000-0000\""
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 781,
+          "attributes": []
+        },
+        {
+          "tag": "input",
+          "line": 784,
+          "attributes": [
+            "type=\"email\"",
+            "value={email}",
+            "onChange={e => setEmail(e.target.value)}",
+            "placeholder=\"email@cliente.com\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 802,
+          "attributes": [
+            "id=\"btn-add-ade-row\"",
+            "onClick={handleAddRow}"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 846,
+          "attributes": [
+            "type=\"text\"",
+            "value={row.proposalNumber}",
+            "onChange={e => handleUpdateRow(idx, 'proposalNumber', e.target.value)}",
+            "placeholder=\"833085808 ou UUID\""
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 855,
+          "attributes": [
+            "value={row.convenioId || ''}",
+            "onChange={e => handleUpdateRow(idx, 'convenioId', e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 870,
+          "attributes": [
+            "value={row.productId}",
+            "onChange={e => handleUpdateRow(idx, 'productId', e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 884,
+          "attributes": [
+            "value={row.bankId}",
+            "onChange={e => handleUpdateRow(idx, 'bankId', e.target.value)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 898,
+          "attributes": [
+            "value={row.promoterId}",
+            "onChange={e => handleUpdateRow(idx, 'promoterId', e.target.value)}"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 918,
+          "attributes": [
+            "type=\"text\"",
+            "value={row.disbursedValue ?? ''}",
+            "onChange={e => handleUpdateRow(idx, 'disbursedValue', e.target.value)}",
+            "placeholder=\"0,00\""
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 939,
+          "attributes": [
+            "type=\"text\"",
+            "value={row.contractBalance ?? ''}",
+            "onChange={e => handleUpdateRow(idx, 'contractBalance', e.target.value)}",
+            "placeholder={isPort ? 'Saldo devedor' : 'Opcional'}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 958,
+          "attributes": [
+            "value={row.linkWithPortabilityIndex ?? ''}",
+            "onChange={e =>\r\n                                  handleUpdateRow(\r\n                                    idx,\r\n                                    'linkWithPortabilityIndex',\r\n                                    e.target.value === '' ? undefined : Number(e.target.value)\r\n                                  )\r\n                                }"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 1011,
+          "attributes": [
+            "type=\"text\"",
+            "value={row.notes || ''}",
+            "onChange={e => handleUpdateRow(idx, 'notes', e.target.value)}",
+            "placeholder=\"Observação\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1022,
+          "attributes": [
+            "onClick={() => handleRemoveRow(idx)}",
+            "disabled={adeRows.length <= 1}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1063,
+          "attributes": [
+            "onClick={onClose}",
+            "disabled={isSaving}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1070,
+          "attributes": [
+            "id=\"btn-save-all-ades\"",
+            "onClick={handleSave}",
+            "disabled={isSaving}"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/production/ProposalDetailModal.tsx",
+      "sha256": "d6616827338afc7a25adbda7ff4c3cb75f717f00408109c20724059b0f55bd29",
+      "controls": [
+        {
+          "tag": "button",
+          "line": 596,
+          "attributes": [
+            "onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}",
+            "aria-label=\"Copiar número da ADE\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 614,
+          "attributes": [
+            "onClick={() => toastService.copyToClipboard(clientCpf, 'CPF')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 631,
+          "attributes": [
+            "onClick={handleGoPrevious}",
+            "disabled={!hasPrevious}",
+            "aria-label=\"Proposta Anterior\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 644,
+          "attributes": [
+            "onClick={handleGoNext}",
+            "disabled={!hasNext}",
+            "aria-label=\"Próxima Proposta\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 657,
+          "attributes": [
+            "onClick={onClose}",
+            "aria-label=\"Fechar Detalhes da Proposta\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 715,
+          "attributes": [
+            "onClick={() => setIsEditingFinancials(prev => !prev)}"
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 728,
+          "attributes": []
+        },
+        {
+          "tag": "input",
+          "line": 731,
+          "attributes": [
+            "type=\"text\"",
+            "value={editDisbursedStr}",
+            "onChange={e => setEditDisbursedStr(e.target.value)}",
+            "placeholder=\"Ex: 1.250,00\""
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 740,
+          "attributes": []
+        },
+        {
+          "tag": "input",
+          "line": 743,
+          "attributes": [
+            "type=\"text\"",
+            "value={editBalanceStr}",
+            "onChange={e => setEditBalanceStr(e.target.value)}",
+            "placeholder=\"Ex: 15.420,00\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 751,
+          "attributes": [
+            "onClick={handleSaveFinancials}",
+            "disabled={financialsSaving}"
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 785,
+          "attributes": []
+        },
+        {
+          "tag": "button",
+          "line": 797,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={fetchOfficialStatuses}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 807,
+          "attributes": [
+            "value={selectedStatusId}",
+            "onChange={e => setSelectedStatusId(e.target.value)}",
+            "disabled={statusesLoading || allStatuses.length === 0 || statusUpdating}"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 825,
+          "attributes": [
+            "type=\"text\"",
+            "value={statusObservation}",
+            "onChange={e => setStatusObservation(e.target.value)}",
+            "placeholder=\"Motivo / Observação da alteração...\"",
+            "disabled={statusesLoading || allStatuses.length === 0 || statusUpdating}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 834,
+          "attributes": [
+            "onClick={handleUpdateStatus}",
+            "disabled={statusesLoading || allStatuses.length === 0 || statusUpdating || !selectedStatusId || (selectedStatusId === proposal.statusId && !statusObservation)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 882,
+          "attributes": [
+            "onClick={() => setActiveTab('C6_BANK')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 936,
+          "attributes": [
+            "onClick={() => setActiveTab('FACTA')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 984,
+          "attributes": [
+            "onClick={() => setActiveTab('HAPPY')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1001,
+          "attributes": [
+            "onClick={() => setActiveTab('HISTORICO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1013,
+          "attributes": [
+            "onClick={() => setActiveTab('PENDENCIAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1025,
+          "attributes": [
+            "onClick={() => setActiveTab('COMENTARIOS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1037,
+          "attributes": [
+            "onClick={() => setActiveTab('CLIENTE')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1049,
+          "attributes": [
+            "onClick={() => setActiveTab('INTEGRACOES')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1062,
+          "attributes": [
+            "onClick={() => setActiveTab('C6_BANK')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1078,
+          "attributes": [
+            "onClick={() => setActiveTab('FACTA')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1094,
+          "attributes": [
+            "onClick={() => setActiveTab('HAPPY')}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 1215,
+          "attributes": [
+            "value={pendencyType}",
+            "onChange={e => setPendencyType(e.target.value as PendencyType)}"
+          ]
+        },
+        {
+          "tag": "select",
+          "line": 1228,
+          "attributes": [
+            "value={pendencyPriority}",
+            "onChange={e => setPendencyPriority(e.target.value as PendencyPriority)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1238,
+          "attributes": [
+            "onClick={handleAddPendency}",
+            "disabled={isSavingPendency || !pendencyDesc.trim()}"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 1247,
+          "attributes": [
+            "type=\"text\"",
+            "value={pendencyDesc}",
+            "onChange={e => setPendencyDesc(e.target.value)}",
+            "placeholder=\"Descreva a pendência com detalhes operacionais...\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1295,
+          "attributes": [
+            "onClick={() => handleResolvePendency(pen.id)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1303,
+          "attributes": [
+            "onClick={() => handleDeletePendency(pen)}"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 1322,
+          "attributes": [
+            "type=\"text\"",
+            "value={commentText}",
+            "onChange={e => setCommentText(e.target.value)}",
+            "placeholder=\"Escreva um comentário interno (visível para a equipe)...\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1329,
+          "attributes": [
+            "onClick={handleAddComment}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1378,
+          "attributes": [
+            "onClick={() => toastService.copyToClipboard(clientCpf, 'CPF')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1552,
+          "attributes": [
+            "onClick={handleDeleteProposal}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 1560,
+          "attributes": [
+            "onClick={onClose}"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/production/BulkStatusModal.tsx",
+      "sha256": "f7f5c4ae2f33177605fbad46c27956138481609bb683d3653cc861f4e47d3a27",
+      "controls": [
+        {
+          "tag": "button",
+          "line": 168,
+          "attributes": [
+            "onClick={onClose}",
+            "disabled={isProcessing}"
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 179,
+          "attributes": []
+        },
+        {
+          "tag": "select",
+          "line": 182,
+          "attributes": [
+            "value={targetStatusId}",
+            "onChange={e => setTargetStatusId(e.target.value)}",
+            "disabled={isProcessing || isLoadingStatuses || statuses.length === 0}"
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 205,
+          "attributes": []
+        },
+        {
+          "tag": "textarea",
+          "line": 208,
+          "attributes": [
+            "value={observation}",
+            "onChange={e => setObservation(e.target.value)}",
+            "placeholder=\"Ex: Atualizado após confirmação bancária em lote...\""
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 240,
+          "attributes": [
+            "onClick={onClose}",
+            "disabled={isProcessing}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 247,
+          "attributes": [
+            "onClick={handleConfirm}",
+            "disabled={isProcessing || isLoadingStatuses || !!statusLoadError || !statuses.some(status => status.manualChangeAllowed) || !targetStatusId}"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/production/ExcelImportModal.tsx",
+      "sha256": "7eaea2252362588e4ecb75eb9ec4ae400c2ff98ac78c1d8ce5a3850a2b0d3aff",
+      "controls": [
+        {
+          "tag": "button",
+          "line": 425,
+          "attributes": [
+            "onClick={handleClose}",
+            "disabled={isDispatching || jobProgress?.status === 'PROCESSING'}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 517,
+          "attributes": [
+            "onClick={handleCancelJob}",
+            "disabled={isCancelling}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 582,
+          "attributes": [
+            "onClick={handleDownloadImportErrors}"
+          ]
+        },
+        {
+          "tag": "input",
+          "line": 614,
+          "attributes": [
+            "type=\"file\"",
+            "disabled={isAnalyzing}",
+            "onChange={e => {\n                  const file = e.target.files?.[0];\n                  e.target.value = '';\n                  if (file) handleFileSelected(file);\n                }}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 680,
+          "attributes": [
+            "onClick={handleReplaceFile}",
+            "disabled={isAnalyzing || isDispatching}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 692,
+          "attributes": [
+            "onClick={() => setActiveTab('VALIDAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 702,
+          "attributes": [
+            "onClick={() => setActiveTab('ERROS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 712,
+          "attributes": [
+            "onClick={() => setActiveTab('DUPLICADAS')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 722,
+          "attributes": [
+            "onClick={() => setActiveTab('MAPA')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 866,
+          "attributes": [
+            "onClick={handleClose}",
+            "disabled={isDispatching || jobProgress?.status === 'PROCESSING'}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 874,
+          "attributes": [
+            "id=\"btn-confirm-import-excel\"",
+            "onClick={handleConfirmImport}",
+            "disabled={isDispatching || !analysisResult || analysisResult.validRows.length === 0}"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/production/ExcelExportModal.tsx",
+      "sha256": "379c95cca82ca96be8784d1008f39a0165ff595eab171a237b39609a3ec3204c",
+      "controls": [
+        {
+          "tag": "button",
+          "line": 180,
+          "attributes": [
+            "onClick={onClose}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 192,
+          "attributes": [
+            "onClick={() => setExportType('PADRAO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 209,
+          "attributes": [
+            "onClick={() => setExportType('PERSONALIZADO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 235,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => setFileFormat('XLSX')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 246,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => setFileFormat('CSV')}"
+          ]
+        },
+        {
+          "tag": "label",
+          "line": 265,
+          "attributes": []
+        },
+        {
+          "tag": "select",
+          "line": 267,
+          "attributes": [
+            "value={standardProductId}",
+            "onChange={event => setStandardProductId(event.target.value)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 294,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleApplyPreset('ESSENCIAL')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 301,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleApplyPreset('FINANCEIRO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 308,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => handleApplyPreset('COMPLETO')}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 318,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={handleSelectAll}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 326,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={handleSelectNone}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 344,
+          "attributes": [
+            "type=\"button\"",
+            "onClick={() => toggleColumn(col.key)}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 389,
+          "attributes": [
+            "onClick={onClose}"
+          ]
+        },
+        {
+          "tag": "button",
+          "line": 395,
+          "attributes": [
+            "id=\"btn-confirm-download-excel\"",
+            "onClick={handleExport}",
+            "disabled={isExporting || Boolean(downloadSuccess) || proposalsForExport.length === 0}"
+          ]
+        }
+      ]
+    }
+  ],
+  "operationalExpressions": {
+    "canCreateProposals": "c91d924652cca3f42dcfafb71e7213a1da1fe562d79bbdc8474ff051f5b3c975",
+    "canUpdateProposals": "f7157e06b2bd73e67aef1d48f3ef56527e09696904cd909aa41911c4f9e4a1c2",
+    "canDeleteProposals": "392265b8c7f95a4dbf33023eb604400cc7afa299fcc0a6f566fe4d4417df84a4",
+    "getEffectiveStatus": "64e9c02698303a28cf0736f51181f33393e701c59575fbfdc5c60179d4269f49",
+    "handleSort": "bb29bde20d0a46ec85f13142a54c790708f4cc4c1bdc5a6414b1cb342451323e",
+    "handleDeleteProposal": "ce19ce0dc142238539189b818d1cbaa6c5eda310df4652f2f22b41599b7c48e7",
+    "handleBulkDelete": "d6938071c2b740112bb86d232ebd7d077adfb4225ed73dfc5ff0b44395560f45",
+    "getProposalClientInfo": "08e64af03723a438dbb454035a74bf0463cefbce7ec554b0e5a9ef94569d9d62",
+    "filteredProposals": "1394d38c5c19d337cb7034746a4d29546a5f3cf9e70f6b34074a16424ddce6eb",
+    "handleSelectAll": "da6d5a57e52785d4807834a31911b02fe65be77aa90173c87ecd1b3957b065af",
+    "toggleSelect": "c947b89611769a6e9f664bf85c05925cedcedc947e0bebee21d12425ef78dda5",
+    "clearFilters": "62efa857d2ddec6a1b40694dee24e7f1905939a77922316afe999b8b509da1ff",
+    "totalDisbursedFiltered": "8f5742d8e6fc7c75706d713dfc45f14d70239d88a4f2f6e7fa9d3102a98f56ce",
+    "proposalIdsList": "1025ba4268d53749e0fce60f00812e9dec5cc8989432af1bd8f21372407db9b2"
+  }
+}

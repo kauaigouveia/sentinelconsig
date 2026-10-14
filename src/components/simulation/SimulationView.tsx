@@ -50,6 +50,7 @@ import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
 
 interface SimulationViewProps {
+  premium?: boolean;
   onOpenProposalDetail?: (proposalId: string) => void;
 }
 
@@ -61,7 +62,7 @@ const toLocalDateKey = (value: string): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDetail }) => {
+const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDetail, premium = false }) => {
   const activeUser = StorageService.getActiveUser();
   const canSetInitialStatus = hasPermission(activeUser?.role, activeUser?.customPermissions, 'simulations.update');
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
@@ -1010,7 +1011,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const simulationSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Conversão em digitação</span><strong>{metrics.taxaConversao}%</strong><p>{metrics.digitadas} de {metrics.total} simulações</p></div>{[{ label: 'Cadastradas', value: metrics.total, color: '#5c8dff' }, { label: 'Na fila da mesa', value: metrics.enviadas, color: '#ffbc52' }, { label: 'Digitadas', value: metrics.digitadas, color: '#32d9a4' }, { label: 'Ofertas perdidas', value: metrics.perdidas, color: '#fb7b97' }, { label: 'Não passíveis', value: metrics.naoPassivel, color: '#ad7bff' }].map(item => <div className="record-stat-row" key={item.label}><span className="record-stat-dot" style={{ background: item.color }} /><span>{item.label}</span><strong>{item.value}</strong></div>)}<div className="record-stat-note">As ofertas do portal têm prazo de 5 dias úteis para digitação.</div></div>;
 
   return (
-    <div className="sentinel-simulation-page space-y-6 pb-6">
+    <div className={`sentinel-simulation-page space-y-6 pb-6 ${premium ? 'p2-live-module p2-live-simulations' : ''}`}>
       {/* Page Header */}
       <div className="module-command-header">
         <div>
@@ -1062,9 +1063,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       <div className="module-process-strip"><span>01 · Solicitar simulação</span><ArrowRight size={13} /><span>02 · Comparar ofertas</span><ArrowRight size={13} /><span>03 · Acompanhar digitação</span></div>
       {presentation === 'cards' && simulationsLoadError && <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">{simulationsLoadError}<button type="button" className="ml-4 underline" onClick={() => void loadData()}>Tentar novamente</button></div>}
       {/* Navigation Sub-Tabs */}
-      <div className="module-mode-tabs">
-        <button type="button" onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'PORT_REFIN_PLANILHAS' ? 'text-blue-600' : 'text-slate-500'}`}><FileSpreadsheet size={15} className="mr-2 inline" />PORT + REFIN · Planilhas</button>
+      <div className="module-mode-tabs" role="navigation" aria-label="Áreas de simulação">
+        <button type="button" aria-current={premium && activeTab === 'PORT_REFIN_PLANILHAS' ? 'page' : undefined} onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'PORT_REFIN_PLANILHAS' ? 'text-blue-600' : 'text-slate-500'}`}><FileSpreadsheet size={15} className="mr-2 inline" />PORT + REFIN · Planilhas</button>
         <button
+          aria-current={premium && activeTab === 'VISAO_GERAL' ? 'page' : undefined}
           onClick={() => setActiveTab('VISAO_GERAL')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'VISAO_GERAL'
@@ -1080,6 +1082,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         </button>
 
         <button
+          aria-current={premium && activeTab === 'AGUARDANDO_DIGITACAO' ? 'page' : undefined}
           onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'AGUARDANDO_DIGITACAO'
@@ -1097,6 +1100,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         </button>
 
         <button
+          aria-current={premium && activeTab === 'DASHBOARD_ANALISES' ? 'page' : undefined}
           onClick={() => setActiveTab('DASHBOARD_ANALISES')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'DASHBOARD_ANALISES'
@@ -1110,10 +1114,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       </div>
 
       {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
-      {activeTab === 'PORT_REFIN_PLANILHAS' && <SpreadsheetPortRefinWorkspace partners={partners} onSuccess={() => { void loadData(); }} />}
+      {activeTab === 'PORT_REFIN_PLANILHAS' && <SpreadsheetPortRefinWorkspace premium={premium} partners={partners} onSuccess={() => { void loadData(); }} />}
       {activeTab === 'VISAO_GERAL' && (
-        <div className="space-y-6 animate-in fade-in">
-          <RecordWorkspace filters={simulationFilters} summary={simulationSummary} count={filteredSimulations.length} mode={presentation} onMode={setPresentation}>
+        <div className="p2-simulation-requests space-y-6 animate-in fade-in">
+          <RecordWorkspace premium={premium} filters={simulationFilters} summary={simulationSummary} count={filteredSimulations.length} mode={presentation} onMode={setPresentation}>
           {/* Bulk Actions Bar */}
           {selectedIds.length > 0 && (
             <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center justify-between animate-in fade-in">
@@ -1472,8 +1476,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* TAB 2: FILA DA MESA (AGUARDANDO DIGITAÇÃO) */}
       {activeTab === 'AGUARDANDO_DIGITACAO' && (
-        <div className="space-y-4 animate-in fade-in">
-          <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between">
+        <div className="p2-simulation-queue space-y-4 animate-in fade-in">
+          <div className="p2-queue-context p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Clock className="h-5 w-5 text-amber-600 shrink-0" />
               <div>
@@ -1495,7 +1499,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             return <OperationCard key={sim.id} title={formatCpf(sim.cpf)} eyebrow={`POSIÇÃO ${index + 1} · ${operationLabel(sim.operationType || sim.simulationType)}`} status="Aguardando digitação" amountLabel="Valor da oferta" statusColor="#ffbc52" amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'Tempo na fila', value: elapsed.text }, { label: 'Próximo passo', value: 'Digitação pela mesa' }]} onOpen={() => setDetailTarget(sim)} actions={canChangeStatusUI(activeUser, sim) ? <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus('DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(''); }}>Definir status</button> : undefined} />;
           })}{!pendingQueueSimulations.length && <div className="record-empty">Fila zerada. Nenhuma simulação aguardando digitação.</div>}</div>}
           {presentation === 'list' && <>
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+          <div className="p2-queue-table bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
                 <tr>
@@ -1580,10 +1584,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* TAB 3: DASHBOARD & ANÁLISES */}
       {activeTab === 'DASHBOARD_ANALISES' && (
-        <div className="space-y-6 animate-in fade-in">
+        <div className="p2-simulation-analytics space-y-6 animate-in fade-in">
           <PartnerSimulationMonthlyReport simulations={simulations} partners={partners} />
           {/* Top Summary Banner */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
+          <div className="p2-simulation-funnel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
               <BarChart2 className="h-4 w-4 text-blue-600" />
               Funil de Conversão & Tempo Médio

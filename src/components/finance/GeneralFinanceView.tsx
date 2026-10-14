@@ -66,7 +66,7 @@ const parseBrazilianAmount = (raw: string): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-export const GeneralFinanceView: React.FC = () => {
+export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = false }) => {
   const [entries, setEntries] = useState<FinancialEntry[]>([]);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -283,7 +283,7 @@ export const GeneralFinanceView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${premium ? 'p2-live-module p2-live-finance' : ''}`}>
       {/* Header */}
       <ActionBar
         title="Gestão Financeira Geral da Promotora"
@@ -302,7 +302,7 @@ export const GeneralFinanceView: React.FC = () => {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 ${premium ? 'p2-finance-metrics' : ''}`}>
         <MetricCard
           label="Entradas Realizadas"
           value={formatCurrency(totalReceitas)}
@@ -337,7 +337,7 @@ export const GeneralFinanceView: React.FC = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-2xs dark:border-slate-800 dark:bg-slate-900 ${premium ? 'p2-finance-filters' : ''}`}>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
           <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -417,7 +417,7 @@ export const GeneralFinanceView: React.FC = () => {
       </div>
 
       {/* Financial Entries Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+      <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs ${premium ? 'p2-finance-results' : ''}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">

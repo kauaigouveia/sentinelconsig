@@ -39,12 +39,13 @@ import { hasPermission } from '../../lib/permissions';
 import { realtimeHub } from '../../services/realtimeService';
 
 interface Client360ViewProps {
+  premium?: boolean;
   initialSearchCpf?: string;
 }
 
 type TabType = 'overview' | 'proposals' | 'contracts' | 'timeline' | 'documents' | 'communications' | 'notes';
 
-export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }) => {
+export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, premium = false }) => {
   const [searchTerm, setSearchTerm] = useState(initialSearchCpf || '');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -391,7 +392,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${premium ? 'p2-live-module p2-live-clients' : ''}`}>
       {/* Title */}
       <ActionBar
         title="Visão do Cliente 360º"
@@ -399,7 +400,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
         financialTotal={selectedClient ? `CPF: ${formatCpf(selectedClient.cpf)}` : undefined}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${premium ? 'p2-client-layout' : ''}`}>
         {/* Left Column: Client Search & List */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs space-y-3 flex flex-col h-[min(70vh,760px)] min-h-[320px] lg:h-[760px]">
           <div className="relative">
@@ -468,11 +469,11 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
         </div>
 
         {/* Right Column: 360 Client Profile & Navigation */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={`lg:col-span-2 space-y-4 ${premium ? 'p2-client-detail' : ''}`}>
           {selectedClient ? (
             <>
               {/* Profile Card & KPI Header */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
+              <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4 ${premium ? 'p2-client-profile' : ''}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold flex items-center justify-center text-lg shadow-xs">
@@ -548,7 +549,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pt-2 text-xs">
+                <div className={`flex items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pt-2 text-xs ${premium ? 'p2-client-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Seções do cliente' : undefined}>
                   {[
                     { id: 'overview', label: 'Visão Geral', icon: FileText },
                     { id: 'proposals', label: `Propostas (${clientProposals.length})`, icon: Layers },
@@ -564,6 +565,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as TabType)}
+                        aria-current={premium && isActive ? 'page' : undefined}
                         className={`flex items-center gap-1.5 px-3 py-2 font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
                           isActive
                             ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/30 dark:bg-blue-950/30'
@@ -579,7 +581,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf }
               </div>
 
               {/* Tab Contents */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs min-h-[400px]">
+              <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs min-h-[400px] ${premium ? 'p2-client-content' : ''}`}>
                 {/* 1. VISÃO GERAL */}
                 {activeTab === 'overview' && (
                   <div className="space-y-5">
