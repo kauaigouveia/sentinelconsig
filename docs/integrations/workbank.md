@@ -6,7 +6,7 @@
 - Conexão exclusiva por empresa/promotora; login, clientKey e publicKey criptografados em SystemConfig existente. Sem migration.
 - Autenticação POST `/api/auth/v1/token`, headers `clientKey`/`publicKey`, JSON `username`.
 - Extrato POST `/api/partner/v1/extract`, headers `x-api-key`/`x-api-token`, ação `Extrair`, período `DataOperacao`, datas AAAAMMDD e página.
-- A documentação fornecida menciona `goapi.workbankvirtual.com.br` e `go-api.workbankvirtual.com.br`. O administrador confirma os dois destinos nos seletores restritos a esses hosts HTTPS. Não há redirecionamento automático nem tentativa com credenciais em outro host.
+- O usuário confirmou `https://go-api.workbankvirtual.com.br` para autenticação e extrato. O servidor fixa esse domínio inclusive para configurações antigas, preservando as credenciais. Não há seletores, redirecionamento automático nem tentativa em outro host.
 - O token fica somente no servidor, em memória e com expiração. Testar autenticação não retorna o token ao navegador.
 
 ## Fluxo

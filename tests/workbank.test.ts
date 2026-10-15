@@ -44,6 +44,14 @@ beforeEach(() => { process.env.JWT_SECRET = 'fictional-workbank-test-secret'; })
 afterEach(() => { if (secret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = secret; vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('WorkBank — no live network or database', () => {
+  it('reports HTTP 500 as a provider error without exposing its body or trying another host', async () => {
+    const { db } = fakeDb();
+    await WorkbankService.save(db, 'tenant-a', 'promoter-a', { enabled: true, username: 'error-example', clientKey: 'client', publicKey: 'public' });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ message: 'fictional-private-provider-body' }), { status: 500 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(WorkbankService.token(db, 'tenant-a', 'promoter-a', true)).rejects.toThrow('erro interno (HTTP 500)');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it('preserves names exactly, strips excess spaces and never matches a partial agent name', () => {
     expect(workbankAgentKey(' Exemplo   - Agente ')).toBe('EXEMPLO - AGENTE');
     expect(workbankAgentKey('EXEMPLO')).not.toBe(workbankAgentKey('EXEMPLO - AGENTE'));
@@ -83,6 +91,8 @@ describe('WorkBank — no live network or database', () => {
     expect(records.items[0].state).toBe('WAITING_AGENT'); expect(records.items[0].row.cpf).toBeUndefined();
     await expect(WorkbankService.publish(db, 'tenant-a', 'promoter-a', 'user-a', records.items[0].id, {}, true)).rejects.toThrow('Vincule');
     const auth = request.mock.calls[0] as any, extract = request.mock.calls[1] as any;
+    expect(auth[0]).toBe('https://go-api.workbankvirtual.com.br/api/auth/v1/token');
+    expect(extract[0]).toBe('https://go-api.workbankvirtual.com.br/api/partner/v1/extract');
     expect(auth[1].headers).toMatchObject({ clientKey: 'client', publicKey: 'public' });
     expect(extract[1].headers).toMatchObject({ 'x-api-key': 'public', 'x-api-token': 'fictional-token' });
     expect(JSON.parse(extract[1].body)).toMatchObject({ acao: 'Extrair', tipoperiodo: 'DataOperacao', pageNumber: 1 });

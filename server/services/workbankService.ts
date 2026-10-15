@@ -5,6 +5,7 @@ import { resolveMappedBankStatus } from './bankStatusMappings.js';
 import { isValidCpf } from '../../src/lib/utils.js';
 
 const ORIGINS = ['https://goapi.workbankvirtual.com.br', 'https://go-api.workbankvirtual.com.br'];
+const WORKBANK_ORIGIN = 'https://go-api.workbankvirtual.com.br';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export const workbankAgentKey = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
 function key() {
@@ -54,13 +55,14 @@ export class WorkbankService {
     return db.systemConfig.upsert({ where: { tenantId_configKey: { tenantId, configKey } }, create: { tenantId, configKey, configValue, isSecret: true }, update: { configValue, isSecret: true } });
   }
   static async config(db: any, tenantId: string, promoterId: string): Promise<Config> {
-    return (await this.read(db, tenantId, promoterId, 'config'))?.value || { enabled: false, username: '', clientKey: '', publicKey: '', authOrigin: ORIGINS[1], extractOrigin: ORIGINS[0] };
+    const saved = (await this.read(db, tenantId, promoterId, 'config'))?.value;
+    return { ...(saved || { enabled: false, username: '', clientKey: '', publicKey: '' }), authOrigin: WORKBANK_ORIGIN, extractOrigin: WORKBANK_ORIGIN };
   }
   static metadata(config: Config) { return { enabled: config.enabled, username: config.username, authOrigin: config.authOrigin, extractOrigin: config.extractOrigin, hasClientKey: !!config.clientKey, hasPublicKey: !!config.publicKey }; }
   static async save(db: any, tenantId: string, promoterId: string, input: any) {
     const old = await this.config(db, tenantId, promoterId);
-    const config: Config = { enabled: input.enabled === true, username: String(input.username || '').trim(), clientKey: String(input.clientKey || old.clientKey).trim(), publicKey: String(input.publicKey || old.publicKey).trim(), authOrigin: input.authOrigin, extractOrigin: input.extractOrigin };
-    if (!ORIGINS.includes(config.authOrigin) || !ORIGINS.includes(config.extractOrigin)) throw new Error('Utilize apenas os domínios HTTPS oficiais WorkBank.');
+    if ([input.authOrigin, input.extractOrigin].some(value => value && !ORIGINS.includes(value))) throw new Error('Utilize apenas o domínio HTTPS oficial WorkBank.');
+    const config: Config = { enabled: input.enabled === true, username: String(input.username || '').trim(), clientKey: String(input.clientKey || old.clientKey).trim(), publicKey: String(input.publicKey || old.publicKey).trim(), authOrigin: WORKBANK_ORIGIN, extractOrigin: WORKBANK_ORIGIN };
     if ([config.clientKey, config.publicKey, config.username].some(value => value.length > 10000 || /[\r\n]/.test(value))) throw new Error('Credenciais inválidas.');
     if (config.enabled && (!config.username || !config.clientKey || !config.publicKey)) throw new Error('Preencha login, clientKey e publicKey.');
     await this.write(db, tenantId, promoterId, 'config', config); tokens.delete(`${tenantId}:${promoterId}`);
@@ -73,7 +75,10 @@ export class WorkbankService {
     if (!force && cached?.fingerprint === fingerprint && cached.expires > Date.now()) return cached.token;
     const response = await fetch(`${config.authOrigin}/api/auth/v1/token`, { method: 'POST', headers: { clientKey: config.clientKey, publicKey: config.publicKey, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ username: config.username }), redirect: 'error', signal: AbortSignal.timeout(15000) });
     const data = await response.json().catch(() => null);
-    if (!response.ok || typeof data?.token !== 'string' || !data.token || /[\r\n]/.test(data.token)) throw new Error(`WorkBank não autenticou a conexão (HTTP ${response.status}). Confira o domínio e as credenciais.`);
+    if (!response.ok || typeof data?.token !== 'string' || !data.token || /[\r\n]/.test(data.token)) {
+      if (response.status >= 500) throw new Error(`A autenticação da WorkBank retornou erro interno (HTTP ${response.status}) no endpoint oficial. Isso não confirma credenciais inválidas. Se persistir, confira com a WorkBank a liberação do login/clientKey/publicKey desta conexão.`);
+      throw new Error(`WorkBank não autenticou a conexão (HTTP ${response.status}). Confira o login e as chaves desta promotora.`);
+    }
     const expires = Number(data.expiresIn);
     if (Number.isFinite(expires) && expires > 60) tokens.set(cacheKey, { token: data.token, fingerprint, expires: Date.now() + Math.min(expires - 60, 3600) * 1000 });
     return data.token as string;

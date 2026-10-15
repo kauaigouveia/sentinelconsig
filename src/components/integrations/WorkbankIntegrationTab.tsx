@@ -5,7 +5,7 @@ import { hasPermission } from '../../lib/permissions';
 
 type Choice = { id: string; name: string; code?: string };
 type Received = { id: string; row: { id: string; proposalNumber: string; agent: string; bank: string; product: string; agreement: string; operation: string; status: string; clientName: string; releasedValue: number; contractValue: number; installmentsCount: number; installmentValue: number }; partnerId?: string; proposalId?: string; message?: string; state: string; lastSyncAt: string };
-const empty = { enabled: false, username: '', authOrigin: 'https://go-api.workbankvirtual.com.br', extractOrigin: 'https://goapi.workbankvirtual.com.br', hasClientKey: false, hasPublicKey: false };
+const empty = { enabled: false, username: '', authOrigin: 'https://go-api.workbankvirtual.com.br', extractOrigin: 'https://go-api.workbankvirtual.com.br', hasClientKey: false, hasPublicKey: false };
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export function WorkbankIntegrationTab({ promoterId }: { promoterId: string }) {
   const [config, setConfig] = useState(empty), [clientKey, setClientKey] = useState(''), [publicKey, setPublicKey] = useState('');
@@ -64,8 +64,7 @@ export function WorkbankIntegrationTab({ promoterId }: { promoterId: string }) {
         <label>clientKey<input type="password" autoComplete="new-password" className={field} value={clientKey} placeholder={config.hasClientKey ? 'Cadastrada — preencha para alterar' : ''} onChange={e => setClientKey(e.target.value)} /></label>
         <label>publicKey<input type="password" autoComplete="new-password" className={field} value={publicKey} placeholder={config.hasPublicKey ? 'Cadastrada — preencha para alterar' : ''} onChange={e => setPublicKey(e.target.value)} /></label>
       </div>
-      <p className="text-sm text-slate-500">A documentação recebida usa dois domínios. Confirme os destinos oficiais autorizados para a sua conexão.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{(['authOrigin', 'extractOrigin'] as const).map(key => <label key={key}>{key === 'authOrigin' ? 'Domínio de autenticação' : 'Domínio do extrato'}<select className={field} value={config[key]} onChange={e => setConfig({ ...config, [key]: e.target.value })}>{['https://go-api.workbankvirtual.com.br', 'https://goapi.workbankvirtual.com.br'].map(origin => <option key={origin}>{origin}</option>)}</select></label>)}</div>
+      <div className="text-sm text-slate-500 space-y-1 break-all"><p>Autenticação: https://go-api.workbankvirtual.com.br/api/auth/v1/token</p><p>Extrato: https://go-api.workbankvirtual.com.br/api/partner/v1/extract</p></div>
       <label className="flex gap-2"><input type="checkbox" checked={config.enabled} onChange={e => setConfig({ ...config, enabled: e.target.checked })} />Habilitar WorkBank</label>
       <div className="flex flex-wrap gap-2"><button type="button" className="rounded-lg bg-blue-600 px-4 py-2 text-white" onClick={() => run(async () => { setConfig(await api('config', 'PUT', { ...config, clientKey, publicKey })); setClientKey(''); setPublicKey(''); setNotice('Configuração salva para esta promotora.'); })}>Salvar conexão</button><button type="button" className="rounded-lg border px-4 py-2" onClick={() => run(async () => setNotice((await api('test', 'POST', {})).message))}>Testar autenticação salva</button></div>
     </fieldset>
