@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { bankPromoterConfigKey, resolveBankPromoter } from './bankPromoterConfig.js';
-export const STATUS_MAPPING_BANKS = ['facta', 'c6', 'bmg', 'happy', 'finanto', 'nossa-fintech'] as const;
+export const STATUS_MAPPING_BANKS = ['facta', 'c6', 'bmg', 'happy', 'finanto', 'nossa-fintech', 'workbank'] as const;
 export type BankStatusMapping = { externalStatus: string; internalStatusId: string };
 export const normalizeBankStatus = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[–—]/g, '-').trim().replace(/\s+/g, ' ').toUpperCase();
 export async function getBankStatusMappings(prisma: PrismaClient, tenantId: string, promoterId: string, bank: string): Promise<BankStatusMapping[]> {

@@ -1,5 +1,6 @@
 import type { Proposal } from '../types';
 export function proposalProviderVisibility(proposal: Proposal, bank?: { name?: string; code?: string }) {
+  if (proposal.workbankSource) return { finanto: false, nossa: false };
   const name = String(bank?.name || '').toUpperCase();
   return {
     finanto: Boolean(proposal.finantoSimulationId?.trim() || /FINANTO|JOIN\s?BANK/.test(name)),

@@ -1144,6 +1144,7 @@ export class StorageService {
       currentResponsible: p.status?.responsibleGroup || 'CLIENTE',
 
       disbursedValue: p.releasedValue !== undefined && p.releasedValue !== null ? Number(p.releasedValue) : 0,
+      ...(p.workbankSource !== undefined ? { workbankSource: p.workbankSource === true } : {}),
       contractValue: p.contractValue !== undefined && p.contractValue !== null ? Number(p.contractValue) : undefined,
       contractBalance: p.debtBalance !== undefined && p.debtBalance !== null
         ? Number(p.debtBalance)

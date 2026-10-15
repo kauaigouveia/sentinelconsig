@@ -138,6 +138,7 @@ import { EvolutionService } from './server/services/evolutionService.js';
 import { C6SimulationService } from './server/services/c6SimulationService.js';
 import { registerSimulationBankOrderRoutes } from './server/services/simulationBankOrderRoutes.js';
 import { registerBmgRoutes } from './server/services/bmgRoutes.js';
+import { registerWorkbankRoutes, decorateWorkbankProposals } from './server/services/workbankRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
 import { createOrResumePartnerImport, continuePartnerImport, cancelPartnerImport } from './server/services/partnerImportContinuation.js';
 import { STATUS_MAPPING_BANKS, getBankStatusMappings, saveBankStatusMappings, resolveMappedBankStatus, updateMappedProviderProposal } from './server/services/bankStatusMappings.js';
@@ -2092,6 +2093,7 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // Register static preference paths before /api/simulations/:id.
   registerSimulationBankOrderRoutes(app, prisma, getAuthSession);
+  registerWorkbankRoutes(app, prisma, getAuthSession);
   registerBmgRoutes(app, prisma, getAuthSession);
   registerDaycovalRoutes(app, prisma, getAuthSession);
   app.get('/api/simulations', async (req, res) => {
@@ -3072,7 +3074,7 @@ async function auditAndEnsureMasterUser() {
         include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
         orderBy: { createdAt: 'desc' },
       });
-      return res.json(proposals);
+      return res.json(await decorateWorkbankProposals(prisma, tenantId, proposals));
     } catch (err) {
       console.error('[API PROPOSALS GET ERROR]', err);
       return res.status(500).json({ error: 'Erro ao buscar propostas no PostgreSQL.' });

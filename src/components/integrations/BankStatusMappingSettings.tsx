@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { promoterApiUrl } from './BankPromoterConnection';
-const providers = [['facta', 'FACTA'], ['c6', 'C6'], ['bmg', 'BMG'], ['happy', 'Happy / BYX'], ['finanto', 'FINANTO'], ['nossa-fintech', 'Nossa Fintech']];
+const providers = [['facta', 'FACTA'], ['c6', 'C6'], ['bmg', 'BMG'], ['happy', 'Happy / BYX'], ['finanto', 'FINANTO'], ['nossa-fintech', 'Nossa Fintech'], ['workbank', 'WorkBank']];
 export function BankStatusMappingSettings({ promoterId, initialProvider }: { promoterId: string; initialProvider: string }) {
   const [provider, setProvider] = useState(initialProvider);
   const [rows, setRows] = useState<{ externalStatus: string; internalStatusId: string }[]>([]);

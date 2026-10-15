@@ -15,10 +15,11 @@ beforeEach(()=>vi.stubGlobal('fetch',vi.fn(async(url,options:any)=>{
 })));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('Hub Premium, sem chamadas reais aos bancos',()=>{
-  it('preserva dez áreas e o rascunho do componente filho no rollback',async()=>{
+  it('preserva as áreas existentes, inclui WorkBank e mantém o rascunho no rollback',async()=>{
     const {rerender}=render(<HubIntegracoes premium />);
     const nav=screen.getByRole('navigation',{name:'Áreas de integração'});
-    expect(within(nav).getAllByRole('button')).toHaveLength(10);
+    expect(within(nav).getAllByRole('button')).toHaveLength(11);
+    expect(within(nav).getByRole('button',{name:'WorkBank'})).toBeTruthy();
     fireEvent.click(within(nav).getByRole('button',{name:'C6 Bank'}));
     fireEvent.change(screen.getByLabelText('Configuração local c6'),{target:{value:'rascunho sintético'}});
     rerender(<HubIntegracoes premium={false} />);

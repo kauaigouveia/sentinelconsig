@@ -1,5 +1,6 @@
 import type { Bank, Proposal } from '../types';
 export function proposalSyncProvider(proposal: Proposal, banks: Bank[]): string | null {
+  if (proposal.workbankSource) throw new Error('Atualize esta proposta pelo período na aba WorkBank da promotora vinculada.');
   const linked = [proposal.finantoSimulationId?.trim() ? 'finanto' : '', proposal.nossaFintechDebtKey?.trim() ? 'nossa-fintech' : ''].filter(Boolean);
   if (linked.length > 1) throw new Error('Mais de uma API externa vinculada. Revise a origem desta proposta.');
   if (linked.length) return linked[0];

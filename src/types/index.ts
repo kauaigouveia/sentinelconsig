@@ -424,6 +424,7 @@ export interface Proposal {
   status?: any;
   currentResponsible: Alcada;
   disbursedValue?: number; // Valor liberado para o cliente / troco (R$)
+  workbankSource?: boolean;
   contractValue?: number; // Valor bruto do contrato (R$)
   contractBalance?: number; // Valor do saldo do contrato / saldo devedor / quitação em portabilidade (R$)
   installmentValue?: number; // Valor da parcela (R$)

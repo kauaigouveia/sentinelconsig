@@ -140,16 +140,16 @@ const ProposalDetailModalContent: React.FC<
   const bankCode = (bank?.code || '').toUpperCase();
   const bankName = (bank?.name || '').toUpperCase();
 
-  const isC6Bank = bankCode === '336' || bankName.includes('C6');
+  const isC6Bank = !proposal.workbankSource && (bankCode === '336' || bankName.includes('C6'));
 
-  const isFactaBank = bankCode === '149' || bankName.includes('FACTA');
+  const isFactaBank = !proposal.workbankSource && (bankCode === '149' || bankName.includes('FACTA'));
   const providerVisibility = proposalProviderVisibility(proposal, bank);
   const hasProviderIntegration = providerVisibility.finanto || providerVisibility.nossa;
 
   const isHappyBank =
-    bankCode === 'HAPPY' ||
+    !proposal.workbankSource && (bankCode === 'HAPPY' ||
     bankName.includes('HAPPY') ||
-    bankName.includes('BYX');
+    bankName.includes('BYX'));
 
   // Status reais sincronizados do PostgreSQL
   const [dbStatuses, setDbStatuses] = useState<any[]>([]);
@@ -851,6 +851,7 @@ const ProposalDetailModalContent: React.FC<
           )}
         </div> : <div className="px-6 py-3 bg-slate-50/80 text-xs text-slate-500 dark:bg-slate-950/40 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">Seu perfil pode consultar a proposta, mas não possui permissão para alterar status ou valores.</div>}
 
+        {proposal.workbankSource && <div className="px-6 py-3 text-sm border-b border-cyan-600 bg-cyan-500/10">Origem: WorkBank. Atualize pelo período na aba WorkBank da promotora vinculada. As APIs diretas dos bancos não são utilizadas nesta proposta.</div>}
         {/* Integração C6 Bank Status Bar */}
         {isC6Bank && (
           <div className="px-6 py-2.5 bg-slate-900 text-white dark:bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
