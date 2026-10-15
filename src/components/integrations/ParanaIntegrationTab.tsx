@@ -33,7 +33,7 @@ export function ParanaIntegrationTab({ promoterId }: { promoterId: string }) {
     const data = await api(`proposals?${query}`); setRows(data.propostas); setNext(data.indiceDaPagina); setNotice(`${data.propostas.length} propostas retornadas para o código do promotor configurado.${data.ignoredCount ? ` ${data.ignoredCount} registros de outros códigos foram excluídos desta visualização.` : ''}`);
   }
   return <section className="space-y-4 min-w-0" aria-label="Integração API Paraná Banco">
-    <header><h2 className="text-xl font-bold">Paraná Banco · API de propostas</h2><p className="text-sm text-slate-500">Conexão da empresa e promotora selecionadas. O simulador PORT + REFIN por planilha continua separado.</p></header>
+    <header><h2 className="text-xl font-bold">Paraná Banco · API INSS e CLT</h2><p className="text-sm text-slate-500">Conexão da empresa e promotora selecionadas. Crédito Trabalhador disponível na tela CLT; requer liberação do produto no banco. O simulador PORT + REFIN por planilha continua separado.</p></header>
     {loading && <p role="status">Carregando conexão Paraná…</p>}
     {error && <p role="alert" className="rounded-lg border border-rose-500 p-3 text-rose-500">{error}</p>}
     {notice && <p role="status" className="rounded-lg border border-cyan-600 p-3">{notice}</p>}

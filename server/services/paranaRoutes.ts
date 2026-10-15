@@ -1,3 +1,4 @@
+import { ParanaCltService } from './paranaCltService.js';
 import type { Express, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { hasPermission } from '../../src/lib/permissions.js';
@@ -29,6 +30,9 @@ export function registerParanaRoutes(app: Express, prisma: any, getAuthSession: 
   app.get('/api/integrations/parana/config', wrap('integrations.view', true, async (req, c) => ({ ...ParanaBankService.metadata(await ParanaBankService.config(prisma, c.tenantId, c.promoterId, req.query.environment as string | undefined)), activeEnvironment: (await ParanaBankService.config(prisma, c.tenantId, c.promoterId)).environment })));
   app.put('/api/integrations/parana/config', wrap('integrations.manage', true, async (req, c) => { const result = await ParanaBankService.save(prisma, c.tenantId, c.promoterId, req.body); await audit(c, req, 'PARANA_CONFIG_UPDATED', c.promoterId); return result; }));
   app.post('/api/integrations/parana/test', wrap('integrations.manage', true, async (req, c) => { await ParanaBankService.token(prisma, c.tenantId, c.promoterId, true, req.body?.environment); await audit(c, req, 'PARANA_AUTH_TEST', c.promoterId); return { success: true, message: 'Autenticação Paraná concluída.' }; }));
+  for (const action of ['consent', 'status', 'eligibility', 'assessment', 'simulate']) {
+    app.post(`/api/integrations/parana/clt/${action}`, wrap('simulations.create', false, async (req, c) => ParanaCltService.journey(prisma, c.tenantId, req.body || {}, action)));
+  }
   for (const [path, action] of [['consent', 'consent'], ['consent-status', 'status'], ['offers', 'offers']] as const) {
     app.post(`/api/integrations/parana/novo/${path}`, wrap('simulations.create', false, async (req, c) => ParanaBankService.novoJourney(prisma, c.tenantId, req.body, action)));
   }

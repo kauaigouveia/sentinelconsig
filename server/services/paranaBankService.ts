@@ -43,6 +43,8 @@ export class ParanaBankService {
     if (active && (!environment || active.environment === environment)) return active;
     return { environment: (environment || 'homologation') as Config['environment'], enabled: false, clientId: '', clientSecret: '', bankId: '', promoterCode: '' };
   }
+  static encodeContext(value: unknown) { return seal(value); }
+  static decodeContext(value: string) { try { const parts = value.split('.'); if (parts.length !== 3 || parts.some(part => !/^[A-Za-z0-9+/]+={0,2}$/.test(part) || Buffer.from(part, 'base64').toString('base64') !== part) || Buffer.from(parts[0], 'base64').length !== 12 || Buffer.from(parts[1], 'base64').length !== 16) throw new Error('Invalid context'); return open(value); } catch { throw new Error('Consulta Paraná inválida ou vencida. Consulte a elegibilidade novamente.'); } }
   static metadata(config: Config) { const { clientSecret, ...safe } = config; return { ...safe, hasClientSecret: !!clientSecret }; }
   static async save(db: any, tenantId: string, promoterId: string, input: any) {
     if (!Object.keys(HOSTS).includes(input.environment)) throw new Error('Selecione Produção ou Homologação.');
