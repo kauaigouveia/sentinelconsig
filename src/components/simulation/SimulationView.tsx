@@ -2551,9 +2551,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           if (flow === 'MANUAL') {
             handleOpenManualModal();
           } else if (flow === 'HAPPY_INSS') {
-            setIsHappyInssModalOpen(true);
+            setFinantoOperationCode('1'); setIsFinantoInssModalOpen(true);
           } else if (flow === 'HAPPY_CLT') {
-            setIsHappyCltModalOpen(true);
+            setMultiProduct('CLT');
           } else if (flow === 'FINANTO_INSS' || flow === 'FINANTO_INSS_PORTABILIDADE' || flow === 'FINANTO_INSS_REFIN' || flow === 'FINANTO_INSS_PORTABILIDADE_REFIN') {
             setInssInitialDraft(undefined);
             setFinantoOperationCode(flow === 'FINANTO_INSS' ? '1' : flow === 'FINANTO_INSS_PORTABILIDADE' ? '2' : flow === 'FINANTO_INSS_REFIN' ? '3' : '4');
@@ -2564,7 +2564,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         }}
       />
 
-      {multiProduct && <ProductSimulationModal key={multiProduct} product={multiProduct} isOpen onClose={() => setMultiProduct(null)} onHappyClt={happySimulationAccessEnabled ? () => { setMultiProduct(null); setIsHappyCltModalOpen(true); } : undefined} />}
+      {multiProduct && <ProductSimulationModal partners={partners} onSuccess={async () => { await loadData(); }} key={multiProduct} product={multiProduct} isOpen onClose={() => setMultiProduct(null)} onHappyClt={happySimulationAccessEnabled ? () => { setMultiProduct(null); setIsHappyCltModalOpen(true); } : undefined} />}
 
       {/* Modal Simulação Happy INSS */}
       <HappyInssSimulationModal
@@ -2587,6 +2587,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       />
 
       <FinantoInssSimulationModal
+        happyEnabled={happySimulationAccessEnabled}
         isOpen={isFinantoInssModalOpen}
         initialDraft={inssInitialDraft}
         operationCode={finantoOperationCode}
@@ -2596,6 +2597,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       />
 
       <NossaFintechPortRefinSimulationModal
+        happyEnabled={happySimulationAccessEnabled}
         isOpen={isNossaFintechPortRefinOpen}
         partners={partners}
         onSuccess={async () => { await loadData(); }}

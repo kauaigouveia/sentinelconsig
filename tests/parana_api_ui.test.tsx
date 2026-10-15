@@ -43,16 +43,20 @@ it('loads separate credentials on environment switch and clears the unsaved secr
   expect((fetchMock.mock.calls[1] as any)[0]).toContain('environment=production');
 });
 
-it('queries Paraná only on explicit click and selects an actual Novo offer with source metadata', async () => {
-  const offer = { id: '11111111-2222-4333-8444-555555555555', benefit: '0000000001', species: 41, amount: 2000, installment: 60, term: 108, rate: 1.85, insurance: false, expiresAt: '2099-01-01T00:00:00Z' };
-  const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/connections') ? [{ id: 'demo', name: 'DG' }] : { offers: [offer, { ...offer, benefit: 'other' }], environment: 'homologation' })));
+it('requires consent before querying Novo and does not show a promoter selector', async () => {
+  const offer = { id: '11111111-2222-4333-8444-555555555555', benefit: '0000000001', species: 41, amount: 2000, installment: 60, term: 108, rate: 1.85, insurance: false, expiresAt: '2099-01-01T00:00:00Z', environment: 'homologation', promoterId: 'demo' };
+  const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/consent') ? { links: ['https://paranabanco-consentimento.opsdigital.com.br?guid=demo'] } : url.endsWith('/consent-status') ? { active: true } : { offers: [offer] })));
   vi.stubGlobal('fetch', fetchMock); const onSelect = vi.fn();
-  render(<ParanaNovoOpportunities cpf="52998224725" benefit="0000000001" species="41" onSelect={onSelect} onClear={() => {}} />);
-  await screen.findByRole('button', { name: 'Consultar ofertas Novo · Paraná' });
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole('button', { name: 'Consultar ofertas Novo · Paraná' }));
+  render(<ParanaNovoOpportunities name="Cliente Ficticio" phone="11999999999" onNameChange={() => {}} onPhoneChange={() => {}} cpf="52998224725" benefit="0000000001" species="41" onSelect={onSelect} onClear={() => {}} />);
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(screen.queryByRole('combobox')).toBeNull();
+  expect((screen.getByRole('button', { name: /3. Consultar/ }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: /1. Gerar/ }));
+  await screen.findByRole('link', { name: /Abrir consentimento/ });
+  fireEvent.click(screen.getByRole('button', { name: /2. Confirmar/ }));
+  await waitFor(() => expect((screen.getByRole('button', { name: /3. Consultar/ }) as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByRole('button', { name: /3. Consultar/ }));
   await screen.findByRole('button', { name: 'Selecionar oferta' });
   fireEvent.click(screen.getByRole('button', { name: 'Selecionar oferta' }));
-  expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ provider: 'Paraná Banco', promoterId: 'demo', environment: 'homologation', tableId: offer.id, amount: 2000 }));
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ provider: 'Paraná Banco', promoterId: 'demo', environment: 'homologation', tableId: offer.id }));
 });

@@ -1,5 +1,5 @@
 import { CurrencyInput } from '../common/CurrencyInput';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Briefcase,
   XCircle,
@@ -21,6 +21,8 @@ import { formatCpf, normalizeCpf, isValidCpf } from '../../lib/utils';
 
 interface HappyCltSimulationModalProps {
   isOpen: boolean;
+  embedded?: boolean;
+  initialData?: { cpf?: string; name?: string; phone?: string; birthDate?: string; benefit?: string; partnerId?: string };
   onClose: () => void;
   partners: Partner[];
   onSuccess: (simulation: SimulationRequest) => void;
@@ -30,6 +32,8 @@ type CltStep = 'CLIENTE' | 'DATAPREV' | 'SIMULACAO' | 'RESULTADO';
 
 export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = ({
   isOpen,
+  embedded = false,
+  initialData,
   onClose,
   partners,
   onSuccess,
@@ -39,15 +43,15 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   const [error, setError] = useState<string | null>(null);
 
   // Form Cliente CLT
-  const [nome, setNome] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [cpf, setCpf] = useState('');
+  const [nome, setNome] = useState(initialData?.name || '');
+  const [telefone, setTelefone] = useState(initialData?.phone || '');
+  const [cpf, setCpf] = useState(initialData?.cpf || '');
   const [dataAutorizacaoDataprev, setDataAutorizacaoDataprev] = useState(() => {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${pad(d.getDate())}${pad(d.getMonth() + 1)}${d.getFullYear()}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   });
-  const [selectedPartnerId, setSelectedPartnerId] = useState('');
+  const [selectedPartnerId, setSelectedPartnerId] = useState(initialData?.partnerId || '');
   const [canalCpfAgente, setCanalCpfAgente] = useState('');
 
   // Identificadores gerados
@@ -65,6 +69,8 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
 
   // Resultado
   const [simulationResult, setSimulationResult] = useState<any>(null);
+
+  useEffect(() => { if (embedded && step === 'CLIENTE') { if (initialData?.name) setNome(initialData.name); if (initialData?.phone) setTelefone(initialData.phone); if (initialData?.cpf) setCpf(initialData.cpf); } }, [embedded, step, initialData?.name, initialData?.phone, initialData?.cpf, initialData?.birthDate]);
 
   if (!isOpen) return null;
 
@@ -263,8 +269,8 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
-      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800">
+    <div className={embedded ? "min-w-0" : "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in"}>
+      <div className={embedded ? "w-full min-w-0 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" : "relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800"}>
         {/* HEADER */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
@@ -281,6 +287,8 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
             </div>
           </div>
           <button
+            type="button"
+            hidden={embedded}
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-lg"
           >

@@ -52,6 +52,7 @@ describe('Paraná API — in-memory data and mocked requests only', () => {
   it('queries Novo opportunities with scoped credentials and handles empty, partial and mismatched returns', async () => {
     const { db, save } = fake(); await save();
     const cpf = '52998224725';
+    vi.spyOn(ParanaBankService, 'consent').mockResolvedValue({ active: true });
     const token = vi.spyOn(ParanaBankService, 'token').mockResolvedValue('fictional');
     const mock = vi.fn(async () => new Response(JSON.stringify({ cliente: { cpf }, oportunidades: [] }), { status: 207 })); vi.stubGlobal('fetch', mock);
     expect(await ParanaBankService.opportunities(db, 'tenant-a', 'promoter-a', { cpf })).toMatchObject({ offers: [], partial: true });
@@ -66,6 +67,29 @@ describe('Paraná API — in-memory data and mocked requests only', () => {
     token.mockRestore();
     await expect(ParanaBankService.opportunities(db, 'tenant-b', 'promoter-a', { cpf })).rejects.toThrow('habilite');
     expect(db.proposal.updateMany).not.toHaveBeenCalled();
+  });
+  it('generates consent without SMS and blocks offers before bank-confirmed acceptance', async () => {
+    const { db, save } = fake(); await save();
+    vi.spyOn(ParanaBankService, 'token').mockResolvedValue('fictional');
+    const mock = vi.fn(async () => new Response(JSON.stringify({ linkConsentimento: 'https://paranabanco-consentimento.opsdigital.com.br?guid=demo' })));
+    vi.stubGlobal('fetch', mock);
+    expect(await ParanaBankService.consent(db, 'tenant-a', 'promoter-a', { cpf: '52998224725', name: 'Cliente Ficticio', phone: '11999999999' }, true)).toHaveProperty('link');
+    const call: any = mock.mock.calls[0]; expect(call[0]).toContain('/v1/inss/beneficio/consentimento');
+    expect(JSON.parse(call[1].body)).toMatchObject({ enviarSms: false, nome: 'Cliente Ficticio', telefone: '11999999999' });
+    mock.mockImplementation(async () => new Response(JSON.stringify({ tokenAtivo: false })));
+    await expect(ParanaBankService.opportunities(db, 'tenant-a', 'promoter-a', { cpf: '52998224725' })).rejects.toThrow('Consentimento');
+    expect(mock.mock.calls.every((call: any) => !call[0].endsWith('/v1/oportunidades'))).toBe(true);
+    expect(ParanaBankService.bankError({ erros: [{ codigo: 'CLCD_0020', mensagem: 'private' }] }, 400)).toContain('consentimento ativo');
+    expect(ParanaBankService.bankError({ erros: [{ codigo: 'UNKNOWN', mensagem: 'private' }] }, 400)).not.toContain('private');
+  });
+  it('automatically uses only enabled connections of the current company and preserves offer origin', async () => {
+    const { db, save } = fake(); await save(); await save('production', 'promoter-b');
+    db.promoter.findMany.mockImplementation(async ({ where }: any) => where.tenantId === 'tenant-a' ? [{ id: 'promoter-a' }, { id: 'promoter-b' }, { id: 'disabled' }] : []);
+    const scoped = vi.spyOn(ParanaBankService, 'opportunities').mockImplementation(async (_db, _tenant, id) => ({ offers: [{ id: 'demo' }], promoterId: id, environment: id === 'promoter-a' ? 'homologation' : 'production' } as any));
+    const result = await ParanaBankService.novoJourney(db, 'tenant-a', {}, 'offers');
+    expect(result.offers.map((row: any) => row.promoterId)).toEqual(['promoter-a', 'promoter-b']);
+    expect(scoped).toHaveBeenCalledTimes(2);
+    await expect(ParanaBankService.novoJourney(db, 'tenant-b', {}, 'offers')).rejects.toThrow('Nenhuma conexão');
   });
   it('encrypts credentials, scopes connections and honors the actual expires_in', async () => {
     const { db, config, save } = fake(); await save();

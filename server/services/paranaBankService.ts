@@ -88,10 +88,61 @@ export class ParanaBankService {
     if (!response.ok || !Array.isArray(data?.propostas) || data.propostas.length > 100 || data?.erros?.length) throw new Error(`Consulta Paraná não concluída (HTTP ${response.status}). Nenhuma proposta foi gravada.`);
     return data;
   }
+  static bankError(data: any, status: number) {
+    const known: Record<string, string> = { CLCD_0020: 'O cliente não possui consentimento ativo.', CLCD_0023: 'CPF inválido.', CLCD_0024: 'CPF obrigatório.', PESSD_0027: 'CPF inválido.', PESSD_0070: 'CPF não localizado pelo banco.', IE: 'Benefício bloqueado para empréstimo pelo beneficiário.', IF: 'Benefício bloqueado na concessão.', IT: 'Benefício bloqueado por TBM.' };
+    const errors = Array.isArray(data?.erros) ? data.erros : [];
+    const messages = errors.map((error: any) => known[String(error.codigo || '').trim()]).filter(Boolean);
+    return messages.length ? [...new Set(messages)].join(' ') : `Paraná não concluiu a consulta (HTTP ${status}). Confira consentimento, cadastro do cliente e habilitação da conexão no banco.`;
+  }
+  static async consentRequest(db: any, tenantId: string, promoterId: string, path: string, body: any) {
+    if (!['/v1/inss/beneficio/consentimento', '/v1/inss/beneficio/consentimento/ativo'].includes(path)) throw new Error('Recurso de consentimento inválido.');
+    const config = await this.config(db, tenantId, promoterId), token = await this.token(db, tenantId, promoterId, false, config.environment);
+    const response = await fetch(`${HOSTS[config.environment]}/consignado-cartao${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Client-Id': config.clientId, 'Content-Type': 'application/json-patch+json', Accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000), redirect: 'error' });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data || data.erros?.length) throw new Error(this.bankError(data, response.status));
+    return data;
+  }
+  static async consent(db: any, tenantId: string, promoterId: string, input: any, generate: boolean) {
+    const cpf = digits(input?.cpf);
+    if (!isValidCpf(cpf)) throw new Error('Informe um CPF válido.');
+    if (!generate) {
+      const data = await this.consentRequest(db, tenantId, promoterId, '/v1/inss/beneficio/consentimento/ativo', { cpf });
+      const expiry = data.dataDeValidadeDaAutorizacao;
+      return { active: data.tokenAtivo === true && (expiry == null || (Number.isFinite(Date.parse(expiry)) && Date.parse(expiry) > Date.now())) };
+    }
+    const nome = String(input?.name || '').trim(), telefone = digits(input?.phone);
+    if (nome.length < 3 || nome.length > 100 || telefone.length !== 11) throw new Error('Informe nome completo e telefone com DDD (11 dígitos) para gerar o consentimento.');
+    const data = await this.consentRequest(db, tenantId, promoterId, '/v1/inss/beneficio/consentimento', { cpf, nome, telefone, enviarSms: false });
+    let link: URL;
+    try { link = new URL(data.linkConsentimento); } catch { throw new Error('Paraná não retornou um link de consentimento válido.'); }
+    if (link.protocol !== 'https:' || link.username || link.password) throw new Error('Link de consentimento inválido.');
+    return { link: link.toString(), active: false };
+  }
+  static async novoConnections(db: any, tenantId: string) {
+    const promoters = await db.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true }, orderBy: { id: 'asc' } });
+    const active = [];
+    for (const promoter of promoters) if ((await this.config(db, tenantId, promoter.id)).enabled) active.push(promoter.id);
+    if (!active.length) throw new Error('Nenhuma conexão Paraná habilitada nesta empresa.');
+    return active as string[];
+  }
+  static async novoJourney(db: any, tenantId: string, input: any, action: 'consent' | 'status' | 'offers') {
+    const ids = await this.novoConnections(db, tenantId);
+    const results: any[] = [], errors: string[] = [];
+    for (const id of ids) {
+      try {
+        if (action === 'offers') results.push(await this.opportunities(db, tenantId, id, input));
+        else results.push(await this.consent(db, tenantId, id, input, action === 'consent'));
+      } catch (error) { errors.push(error instanceof Error ? error.message : 'Falha na conexão Paraná.'); }
+    }
+    if (!results.length && errors.length) throw new Error([...new Set(errors)].join(' '));
+    return { links: [...new Set(results.map(row => row.link).filter(Boolean))], active: results.some(row => row.active === true), offers: results.flatMap(row => (row.offers || []).map((offer: any) => ({ ...offer, promoterId: row.promoterId, environment: row.environment }))), messages: [...new Set(errors)], message: results.find(row => row.message)?.message };
+  }
   static async opportunities(db: any, tenantId: string, promoterId: string, input: any) {
     const cpf = digits(input?.cpf);
     if (!isValidCpf(cpf)) throw new Error('Informe um CPF válido.');
     const config = await this.config(db, tenantId, promoterId);
+    if (!(await this.consent(db, tenantId, promoterId, { cpf }, false)).active) throw new Error('Consentimento Paraná pendente. Gere o link, aguarde o aceite e confirme a autorização.');
+    if (JSON.stringify(config) !== JSON.stringify(await this.config(db, tenantId, promoterId))) throw new Error('A conexão Paraná mudou durante a confirmação. Confirme novamente.');
     const token = await this.token(db, tenantId, promoterId, false, config.environment);
     const response = await fetch(`${HOSTS[config.environment]}/consignado-cartao/v1/oportunidades`, {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Client-Id': config.clientId, 'Content-Type': 'application/json-patch+json', Accept: 'application/json' },
@@ -99,7 +150,7 @@ export class ParanaBankService {
     });
     if (response.status === 204) return { offers: [], message: 'O Paraná não retornou oportunidades para este cliente.' };
     const data = await response.json().catch(() => null);
-    if (![200, 207].includes(response.status) || !data || !Array.isArray(data.oportunidades)) throw new Error(`Consulta de oportunidades Paraná não concluída (HTTP ${response.status}).`);
+    if (![200, 207].includes(response.status) || !data || !Array.isArray(data.oportunidades)) throw new Error(this.bankError(data, response.status));
     if (digits(data.cliente?.cpf) !== cpf) throw new Error('O CPF retornado pelo Paraná diverge do cliente consultado.');
     const offers = paranaNovoOffers(data);
     return { offers, environment: config.environment, promoterId, message: offers.length ? 'Condições definidas pelo Paraná; não são recalculadas pela parcela ou prazo dos outros simuladores.' : 'Nenhuma oferta válida de Novo INSS retornada. Verifique consentimento, margem e HISCON junto ao banco.', partial: response.status === 207 };

@@ -1,3 +1,4 @@
+import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { ParanaNovoOpportunities } from './ParanaNovoOpportunities';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
@@ -20,6 +21,7 @@ type NossaInssNovoQuote = { table?: ApiItem; success: boolean; status?: number; 
 
 interface Props {
   isOpen: boolean;
+  happyEnabled?: boolean;
   operationCode: '1' | '2' | '3' | '4';
   onClose: () => void;
   partners: Partner[];
@@ -51,7 +53,7 @@ const OPERATION_LABELS: Record<Props['operationCode'], string> = {
 // A enumeração oficial da API é: 1 Novo, 2 Refinanciamento, 3 Portabilidade, 4 Portabilidade + Refinanciamento.
 const API_OPERATION_CODES: Record<Props['operationCode'], number> = { '1': 1, '2': 3, '3': 2, '4': 4 };
 
-export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationCode, onClose, partners, onSuccess, initialDraft }) => {
+export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabled = false, operationCode, onClose, partners, onSuccess, initialDraft }) => {
   const appliedDraft = useRef(false);
   const [draftReady, setDraftReady] = useState(false);
   const [factaOffers, setFactaOffers] = useState<FactaComparisonOffer[]>([]);
@@ -438,7 +440,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
           <button type="button" onClick={onClose} className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-700">Concluir</button></div> : <form onSubmit={handleCreate} className="space-y-6">
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Dados obrigatórios do cliente</h3><p className="text-xs text-slate-500">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
-          {operationCode === '1' && <ParanaNovoOpportunities cpf={cpf} benefit={benefit} species={benefitType} selected={selectedCondition} onSelect={setSelectedCondition} onClear={() => setSelectedCondition(current => current?.provider === 'Paraná Banco' ? undefined : current)} />}
+          {operationCode === '1' && <ParanaNovoOpportunities name={name} phone={phone} onNameChange={setName} onPhoneChange={setPhone} cpf={cpf} benefit={benefit} species={benefitType} selected={selectedCondition} onSelect={setSelectedCondition} onClear={() => setSelectedCondition(current => current?.provider === 'Paraná Banco' ? undefined : current)} />}
 
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">2. Produto e condição</h3><p className="text-xs text-slate-500">{loadingRules ? 'Carregando condições disponíveis...' : 'As condições são consultadas nas integrações habilitadas para a modalidade e a espécie selecionadas.'}</p>
           {(operationCode === '2' || operationCode === '4') && <div className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h4 className="mb-3 text-sm font-bold">Dados do contrato atual para portabilidade</h4><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{field('Código do banco de origem', originLenderCode, setOriginLenderCode, 'number')}{field('Número do contrato', originContractNumber, setOriginContractNumber)}{field('Prazo original (meses)', originTerm, setOriginTerm, 'number')}{field('Parcelas restantes', originInstallmentsRemaining, setOriginInstallmentsRemaining, 'number')}{field('Valor da parcela atual (R$)', originInstallmentValue, setOriginInstallmentValue, 'number')}{field('Saldo devedor (R$)', originDueBalanceValue, setOriginDueBalanceValue, 'number')}</div></div>}
@@ -481,6 +483,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
           {error && <div role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-950/40 dark:text-rose-200"><AlertCircle className="mr-2 inline h-4 w-4" />{error}</div>}
           <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800"><button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-700">Cancelar</button>{typing ? <><button type="button" onClick={() => setTyping(false)} className="rounded-lg border px-4 py-2">Voltar à simulação</button><button type="submit" disabled={loading || !selectedCondition} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{loading ? 'Enviando...' : selectedCondition?.provider === 'FINANTO' ? 'Enviar para digitação' : 'Salvar dados para a mesa'}</button></> : <><button type="button" onClick={saveDraft} disabled={loading || !selectedCondition} className="rounded-lg border px-4 py-2 disabled:opacity-50">{loading ? 'Salvando...' : 'Salvar simulação'}</button><button type="button" onClick={() => { if (!partnerId) { setError('Selecione o parceiro responsável.'); return; } setTyping(true); setError(''); }} disabled={loading || !selectedCondition} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Seguir para digitação</button></>}</div>
         </form>}
+        {happyEnabled && operationCode === '1' && !typing && <details className="mt-5 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded isOpen key={`happy-${cpf}-${benefit}`} initialData={{ cpf, name, phone, birthDate, benefit, partnerId }} partners={partners} onClose={() => {}} onSuccess={onSuccess} /></details>}
       </div>
     </section>
   </div>;

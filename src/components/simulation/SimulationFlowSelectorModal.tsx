@@ -91,40 +91,7 @@ export const SimulationFlowSelectorModal: React.FC<SimulationFlowSelectorModalPr
           </button>
 
           {/* CARD 2: HAPPY INSS (Oculto se Happy estiver bloqueado) */}
-          {happySimulationAccessEnabled && (
-            <button
-              type="button"
-              id="btn-flow-happy-inss"
-              onClick={() => onSelectFlow('HAPPY_INSS')}
-              className="group relative flex flex-col justify-between p-5 rounded-xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-left transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                    INSS
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    INSS
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
-                    Consignado Público INSS. Esteira completa com <strong>IN100</strong>, autorização digital, margem livre e refin.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 pt-3 border-t border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                <span>Iniciar INSS</span>
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </button>
-          )}
-
-          {(finantoEnabled || nossaFintechEnabled) && ([
+          {(finantoEnabled || nossaFintechEnabled || happySimulationAccessEnabled) && ([
             { flow: 'FINANTO_INSS' as const, title: 'INSS Novo', description: 'Compare as condições disponíveis para um novo contrato.' },
             { flow: 'FINANTO_INSS_PORTABILIDADE' as const, title: 'INSS Portabilidade', description: 'Informe saldo devedor, parcela atual e parcelas restantes do contrato.' },
             { flow: 'FINANTO_INSS_REFIN' as const, title: 'INSS Refinanciamento', description: 'Consulte contratos elegíveis para refinanciamento.' },
