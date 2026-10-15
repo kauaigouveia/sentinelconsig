@@ -123,16 +123,17 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         if (result.status === 'fulfilled') combined.push(...result.value);
         else notes.push(`${provider}: ${result.reason?.message || 'não foi possível simular'}`);
       });
-      setRows(combined);
+      const eligible = combined.filter(row => row.troco == null || row.troco >= 0);
+      setRows(eligible);
       setProviderNotes(notes);
-      if (!combined.length) setError(notes.join(' · ') || 'Nenhum banco retornou tabelas para os dados informados.');
+      if (!eligible.length) setError('Nenhuma simulação elegível com troco não negativo foi retornada para os dados informados.');
     } finally { setLoading(false); }
   };
 
   const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || Number(form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : row.provider === 'FACTA' ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
   const draftValues = () => ({ ...Object.fromEntries(Object.entries(form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
   const save = async () => {
-    if (!selected || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
+    if (!selected || !Number.isFinite(selected.troco) || !(Number(selected.troco) > 0) || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
     setLoading(true); setError('');
     try {
       const response = await fetch('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance } } }) });

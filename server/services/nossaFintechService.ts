@@ -2,7 +2,7 @@ import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate, nossaFintechBenefitError } from '../../src/lib/inssEligibility';
-import { matchNossaFintechNovoTable, getNossaFintechNovoOptions } from '../../src/lib/nossaFintech';
+import { matchNossaFintechNovoTable, getNossaFintechNovoOptions, getNossaFintechTroco } from '../../src/lib/nossaFintech';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
 const CONFIG_KEYS = {
@@ -189,9 +189,12 @@ export class NossaFintechService {
           return { table, success: false, status: 0, error: error.message || 'Falha ao consultar esta tabela.' };
         }
       }));
-      results.push(...batchResults);
+      results.push(...batchResults.filter(row => {
+        const troco = getNossaFintechTroco(row.data);
+        return troco === null || troco >= 0;
+      }));
     }
-    return { success: true, status: 200, data: { tables: candidates, results, excludedTables } };
+    return { success: true, status: 200, data: { tables: candidates.filter((table: any) => results.some(row => row.table === table)), results, excludedTables } };
   }
 
   static async simulateInssNovoAcrossTables(prisma: PrismaClient, tenantId: string, input: {

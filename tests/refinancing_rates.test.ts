@@ -20,6 +20,23 @@ describe('Taxas do refinanciamento', () => {
     expect(finantoRefinancingChoices({ name: 'Outra tabela', items: rule.items }, 108).map(item => item.rate)).toEqual([1.85]);
     expect(nossaFintechTableRate({ name: 'INSS PORT-REFIN 1,83% - 108x' })).toBe(1.83);
   });
+  it('não retorna ofertas com troco negativo, inclusive quando todas são negativas', async () => {
+    const simulate = (values: number[]) => {
+      let index = 0;
+      vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_db, _tenant, method) => method === 'GET'
+        ? { success: true, status: 200, data: values.map((_, i) => ({ cod_tabela: String(i + 1), name: 'Tabela', number_of_installments: [108] })) }
+        : { success: true, status: 200, data: { final_disbursement_amount: values[index++] } });
+      return NossaFintechService.simulatePortabilityAcrossTables({} as any, 'tenant', {
+        birthDate: '1980-01-01', lastDueBalance: 20000, installmentFaceValue: 500, openedInstallmentNumber: 72, numberOfInstallments: 108, legalRepresentative: false,
+      });
+    };
+    const mixed = await simulate([-9.68, 68.42, -89.66, 626.41, 0]);
+    expect((mixed.data as any).results.map((row: any) => row.data.final_disbursement_amount)).toEqual([68.42, 626.41, 0]);
+    expect((mixed.data as any).tables).toHaveLength(3);
+    const negative = await simulate([-1, -100]);
+    expect((negative.data as any).results).toEqual([]);
+    expect((negative.data as any).tables).toEqual([]);
+  });
   it('Nossa Fintech consulta apenas a taxa escolhida', async () => {
     const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_prisma, _tenant, method) => method === 'GET'
       ? { success: true, status: 200, data: [
