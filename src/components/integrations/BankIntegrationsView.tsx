@@ -55,7 +55,7 @@ interface BankMeta {
 }
 
 const BANKS_META: BankMeta[] = [
-  { id: 'presenca', name: 'Presença Bank', code: 'PB', tagline: 'Consentimento, vínculos, margem e ofertas CLT', status: 'pending', products: ['CLT · consulta e simulação'] },
+  { id: 'presenca', name: 'Presença Bank', code: 'PB', tagline: 'CLT e antecipação FGTS', status: 'pending', products: ['CLT · consulta e simulação', 'FGTS · tabelas e valores liberados'] },
   { id: 'parana', name: 'Paraná Banco · API', code: '254', tagline: 'Consulta e atualização de propostas', status: 'pending', products: ['Consignado e cartão · acompanhamento'] },
   { id: 'workbank', name: 'WorkBank', code: 'WB', tagline: 'Extrato de propostas por agente', status: 'configured', products: ['Consulta e acompanhamento de propostas'] },
   { id: 'daycoval', name: 'PORT + REFIN · Planilhas', code: 'XLS', tagline: 'Simulador por planilha', status: 'configured', products: ['INSS Portabilidade + Refinanciamento'] },

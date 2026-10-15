@@ -56,6 +56,16 @@ describe('Presença — mocked bank and memory database only', () => {
     await Bank.save(db, 'tenant-a', 'promoter-a', { ...credentials, login: '', password: '' });
     expect((await Bank.config(db, 'tenant-a', 'promoter-a')).password).toBe('fake-password');
   });
+  it('saves FGTS activation independently and preserves it for older configuration clients', async () => {
+    const { db } = fake();
+    await Bank.save(db, 'tenant-a', 'promoter-a', { ...credentials, fgtsEnabled: true, cltEnabled: false });
+    expect(await Bank.available(db, 'tenant-a', 'fgts')).toEqual(['promoter-a']);
+    expect(await Bank.available(db, 'tenant-a', 'clt')).toEqual([]);
+    await Bank.save(db, 'tenant-a', 'promoter-a', credentials);
+    expect((await Bank.config(db, 'tenant-a', 'promoter-a')).fgtsEnabled).toBe(true);
+    await Bank.save(db, 'tenant-a', 'promoter-a', { ...credentials, fgtsEnabled: false });
+    expect(await Bank.available(db, 'tenant-a', 'fgts')).toEqual([]);
+  });
   it('authenticates at the fixed host and caches using expireAt and connection fingerprint', async () => {
     const { db } = fake(); await Bank.save(db, 'tenant-a', 'promoter-a', credentials);
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ token: 'fictional-token', expireAt: new Date(Date.now() + 120000).toISOString() })));

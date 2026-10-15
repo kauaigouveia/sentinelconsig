@@ -1,4 +1,4 @@
-# Presença Bank — primeira etapa: conexão e consulta CLT
+# Presença Bank — conexão e consultas CLT/FGTS
 
 ## Escopo entregue
 
@@ -11,6 +11,19 @@
 - Parcela limitada pela margem retornada. Valores monetários usam CurrencyInput/BRL existente. Sem cálculo de taxa ou valor por estimativa.
 - Ofertas negativas, de teste, de outro tipo de crédito e com parcela acima da margem não são exibidas.
 - Permissões: integrations.view para metadados; integrations.manage para salvar/testar; simulations.create para consultas. Rotas internas não aceitam perfis/sessões de parceiro.
+
+## Segunda etapa: consulta de antecipação FGTS
+
+- Habilitação FGTS independente de CLT, por tenant/promotora/ambiente; inicialmente desativada inclusive para conexões já existentes.
+- Painel dentro de Simulações → FGTS, sem abrir outra tela, visível somente com conexão habilitada. Reutiliza autenticação e token já implementados.
+- POST /v3/operacoes/fgts/simulacao/agrupamento com cpf e cdc=false; consulta todas as tabelas válidas retornadas nas conexões habilitadas.
+- POST /v3/operacoes/fgts/simulacao uma vez por tabela, com cpf, cdc=false e tabelaId obtido no retorno autenticado. Contexto criptografado de 15 minutos vincula tabela, CPF, usuário, empresa e conexão; IDs enviados pelo navegador não substituem a tabela de origem.
+- Cada consulta é uma requisição independente, com tempo limite e progresso. Falhas não interrompem as demais tabelas. É possível interromper e retomar apenas pendentes/falhas; resultados concluídos são preservados.
+- HTTP 429 respeita Retry-After, com até duas esperas automáticas limitadas a 120 segundos cada; depois a falha fica registrada para retomada manual. Não existe repetição automática de contratação.
+- Retornos incluem valorLiquido, saldoTotal, prazo e parcelas com dataRepasse/valor. Mostra valores BRL e **saques antecipados**, sem tratar o prazo como parcelas mensais ou inventar uma parcela fixa. Ordenação por valor liberado, sem afirmar que a comparação está completa quando há falhas/tabelas inconsistentes.
+- Não utiliza rentabilidade como taxa do cliente; utiliza taxaJuros da tabela. Tabela solicitada e id da resposta de simulação são preservados separadamente, pois os exemplos recebidos não garantem igualdade desses IDs.
+- Não permite CDC, contratação via POST /v2/operacoes/fgts, gravação de proposta, persistência de oferta selecionada ou sincronização nesta etapa.
+- Contratos FGTS extraídos do material enviado pelo usuário (etapas 01 e 02, incluindo respostas). Sem chamada bancária real pela implementação.
 
 ## Contratos conferidos no MCP
 
@@ -33,7 +46,7 @@ No CLT, v6 é a versão atual; v5 é legada. Isso não implica alteração de ve
 - Não validado com credenciais/sessões reais, nem realizado consentimento ou consulta de cliente pela equipe de implementação. Testes automatizados usam fetch simulado e banco em memória.
 - Homologação: endereço antigo deixou de autenticar segundo relato do usuário. O MCP lista o host atual acima, sem confirmar servidor atual de homologação. Credenciais de homologação podem ser salvas desativadas; chamadas bloqueadas. Não há fallback para produção.
 - Sem originação, assinatura automática, cancelamento, contratação, documentos, seleção persistente de oferta, vínculo com identificador externo, sincronização de status/valores ou webhook nesta etapa. Portanto não é integração bancária completa.
-- INSS não ativado: o próprio MCP informa que o exemplo de retorno da simulação foi inferido de outro produto. SIAPE, FGTS e Hapvida permanecem para próximas etapas.
+- INSS não ativado: o próprio MCP informa que o exemplo de retorno da simulação foi inferido de outro produto. SIAPE e Hapvida permanecem para próximas etapas.
 - Grupos USUÁRIOS, TABELAS (administração), PARCEIROS, Permissões, DashboardsV2 e CADASTRO permanecem excluídos. Consulta de ofertas CLT usa exclusivamente o endpoint de simulação, sem importar cadastros administrativos do banco.
 - O endpoint de assinatura de termo próprio não foi implementado. Nenhum SMS ou aceite automático é enviado pela aplicação; a geração de termo segue o comportamento do endpoint do banco.
 - Falhas retornam HTTP e orientação genérica, sem repassar mensagens brutas que possam expor dados pessoais/credenciais. Diagnóstico detalhado de códigos poderá ser adicionado com catálogo confirmado.
@@ -41,7 +54,9 @@ No CLT, v6 é a versão atual; v5 é legada. Isso não implica alteração de ve
 
 ## Verificação local
 
-Suítes seguras executadas: tests/presenca_api.test.ts, tests/presenca_ui.test.tsx, tests/parana_clt.test.ts, tests/parana_clt_ui.test.tsx, tests/ui_simulations_operational.test.tsx, tests/happy_embedded.test.tsx e tests/brl_input.test.tsx. Resultado: 38 testes aprovados em sete arquivos. Após o último ajuste, os 12 testes específicos Presença foram reexecutados e aprovados.
+Rodada FGTS: tests/presenca_fgts.test.ts, tests/presenca_fgts_ui.test.tsx, tests/presenca_api.test.ts, tests/presenca_ui.test.tsx e tests/ui_simulations_operational.test.tsx: **27 testes aprovados em cinco arquivos**. Cobertura de tabelas múltiplas, CPF, ativação independente, preservação de configuração, isolamento de tenant/usuário, contexto adulterado/vencido, conexão alterada, parcelas anuais, valores inválidos/negativos, retomada de falhas, interrupção e Retry-After. Typecheck, build local e diff aprovados; build mantém aviso de chunks acima de 500 kB. Fluxo bancário real FGTS não validado.
+
+Rodada inicial CLT (histórico): tests/presenca_api.test.ts, tests/presenca_ui.test.tsx, tests/parana_clt.test.ts, tests/parana_clt_ui.test.tsx, tests/ui_simulations_operational.test.tsx, tests/happy_embedded.test.tsx e tests/brl_input.test.tsx. Resultado naquela entrega: 38 testes aprovados em sete arquivos, com reexecução dos então 12 testes específicos Presença.
 
 `npm run lint` (tsc --noEmit): aprovado. `npm run build`: aprovado (Prisma generate, Vite e esbuild), com aviso de chunks acima de 500 kB. `git diff --check`: aprovado. Diff revisado sem alterações em Prisma, migrations ou regras financeiras existentes. O build não executa migrations. A verificação funcional com o banco continua pendente.
 

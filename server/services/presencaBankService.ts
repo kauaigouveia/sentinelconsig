@@ -3,9 +3,10 @@ import { bankPromoterConfigKey, resolveBankPromoter } from './bankPromoterConfig
 import { isValidCpf } from '../../src/lib/utils.js';
 
 type Environment = 'production' | 'homologation';
-type Config = { environment: Environment; enabled: boolean; login: string; password: string; cltEnabled: boolean };
+type Config = { environment: Environment; enabled: boolean; login: string; password: string; cltEnabled: boolean; fgtsEnabled?: boolean };
 const HOST = 'https://presenca-bank-api.azurewebsites.net';
 const allowed = ['/consultas/termo-inss', '/v3/operacoes/consignado-privado/consultar-vinculos', '/v3/operacoes/consignado-privado/consultar-margem', '/v6/operacoes/simulacao/disponiveis'];
+const fgtsPaths = ['/v3/operacoes/fgts/simulacao/agrupamento', '/v3/operacoes/fgts/simulacao'];
 const tokens = new Map<string, { token: string; expires: number }>();
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const digits = (value: unknown) => String(value ?? '').replace(/\D/g, '');
@@ -36,14 +37,14 @@ export class PresencaBankService {
     const row = await db.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: env ? `${key}:${env}` : key } } });
     return row ? open(row.configValue) : { environment: env || 'production', enabled: false, login: '', password: '', cltEnabled: false };
   }
-  static metadata(config: Config) { return { environment: config.environment, enabled: config.enabled, cltEnabled: config.cltEnabled, hasCredentials: !!config.login && !!config.password, homologationAvailable: false }; }
+  static metadata(config: Config) { return { environment: config.environment, enabled: config.enabled, cltEnabled: config.cltEnabled, fgtsEnabled: config.fgtsEnabled === true, hasCredentials: !!config.login && !!config.password, homologationAvailable: false }; }
   static async save(db: any, tenantId: string, promoterId: string, input: any) {
     await resolveBankPromoter(db, tenantId, promoterId);
     const env = environment(input.environment), old = await this.config(db, tenantId, promoterId, env);
     const login = input.login === '' || input.login === undefined ? old.login : text(input.login, 300);
     const password = input.password === '' || input.password === undefined ? old.password : typeof input.password === 'string' && input.password.length <= 1000 && !/[\u0000-\u001f]/.test(input.password) ? input.password : '';
     if ((input.login && !login) || (input.password && !password)) throw new Error('Credenciais Presença inválidas.');
-    const value: Config = { environment: env, login, password, enabled: input.enabled === true, cltEnabled: input.cltEnabled === true };
+    const value: Config = { environment: env, login, password, enabled: input.enabled === true, cltEnabled: input.cltEnabled === true, fgtsEnabled: input.fgtsEnabled === undefined ? old.fgtsEnabled === true : input.fgtsEnabled === true };
     if (value.enabled && env === 'homologation') throw new Error('URL de homologação atual não confirmada pelo Presença. Este ambiente pode ser salvo desativado.');
     if (value.enabled && (!login || !password)) throw new Error('Informe login e senha deste ambiente.');
     const configKey = this.configKey(promoterId), configValue = seal(value);
@@ -74,31 +75,34 @@ export class PresencaBankService {
     return data.token as string;
   }
   static async request(db: any, tenantId: string, promoterId: string, path: string, body: unknown) {
-    if (!allowed.includes(path)) throw new Error('Operação Presença não permitida nesta etapa.');
+    const fgts = fgtsPaths.includes(path);
+    if (!allowed.includes(path) && !fgts) throw new Error('Operação Presença não permitida nesta etapa.');
     const config = await this.enabledConfig(db, tenantId, promoterId);
-    if (!config.cltEnabled) throw new Error('CLT não habilitado nesta conexão Presença.');
+    if (!(fgts ? config.fgtsEnabled : config.cltEnabled)) throw new Error(`${fgts ? 'FGTS' : 'CLT'} não habilitado nesta conexão Presença.`);
     const token = await this.token(db, tenantId, promoterId);
     let response: Response;
     try { response = await fetch(`${HOST}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000), redirect: 'error' }); }
     catch { throw new Error('Presença não respondeu à consulta. Tente novamente.'); }
     const data = await response.json().catch(() => null);
     // Never forward raw upstream errors: they can contain customer data and credentials.
-    if (!response.ok || data === null || data?.errors?.length || data?.error || data?.code || data?.emProcessamento === true) throw new Error(`Consulta Presença não concluída (HTTP ${response.status}). Confira autorização do cliente, dados e habilitação CLT. Se estiver em processamento, aguarde antes de consultar novamente.`);
+    if (response.status === 429) { const error = new Error('Limite de consultas Presença atingido. Aguarde um minuto antes de tentar novamente.'); error.name = 'PresencaRateLimitError'; throw error; }
+    if (!response.ok || data === null || data?.errors?.length || data?.error || data?.code || data?.emProcessamento === true) throw new Error(`Consulta Presença não concluída (HTTP ${response.status}). Confira autorização do cliente, dados e habilitação ${fgts ? 'FGTS' : 'CLT'}. Se estiver em processamento, aguarde antes de consultar novamente.`);
     return data;
   }
   static receipt(context: any, kind: string, data: any) { return seal({ ...context, kind, data, expires: Date.now() + 15 * 60 * 1000 }); }
-  static async context(db: any, tenantId: string, userId: string, receipt: unknown, kind: string) {
+  static async context(db: any, tenantId: string, userId: string, receipt: unknown, kind: string, product: 'clt' | 'fgts' = 'clt') {
     if (typeof receipt !== 'string') throw new Error('Recomece a consulta Presença.');
     const context = open(receipt);
     if (context.tenantId !== tenantId || context.userId !== userId || context.kind !== kind || !Number.isFinite(context.expires) || context.expires <= Date.now()) throw new Error('Consulta Presença vencida ou de outra sessão/empresa. Recomece.');
     const config = await this.enabledConfig(db, tenantId, context.promoterId);
-    if (!config.cltEnabled || hash(config) !== context.fingerprint) throw new Error('A conexão Presença mudou. Recomece a consulta.');
+    if (!(product === 'fgts' ? config.fgtsEnabled : config.cltEnabled) || hash(config) !== context.fingerprint) throw new Error('A conexão Presença mudou. Recomece a consulta.');
     return context;
   }
-  static async available(db: any, tenantId: string) {
+  static fingerprint(config: unknown) { return hash(config); }
+  static async available(db: any, tenantId: string, product: 'clt' | 'fgts' = 'clt') {
     const promoters = await db.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true }, orderBy: { id: 'asc' } });
     const ids: string[] = [];
-    for (const promoter of promoters) { const config = await this.config(db, tenantId, promoter.id); if (config.enabled && config.cltEnabled && config.environment === 'production') ids.push(promoter.id); }
+    for (const promoter of promoters) { const config = await this.config(db, tenantId, promoter.id); if (config.enabled && (product === 'fgts' ? config.fgtsEnabled : config.cltEnabled) && config.environment === 'production') ids.push(promoter.id); }
     return ids;
   }
   static async journey(db: any, tenantId: string, userId: string, action: string, input: any) {
