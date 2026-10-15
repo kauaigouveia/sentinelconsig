@@ -141,6 +141,7 @@ import { registerSimulationBankOrderRoutes } from './server/services/simulationB
 import { registerBmgRoutes } from './server/services/bmgRoutes.js';
 import { registerWorkbankRoutes, decorateWorkbankProposals } from './server/services/workbankRoutes.js';
 import { registerParanaRoutes } from './server/services/paranaRoutes.js';
+import { registerPresencaRoutes } from './server/services/presencaRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
 import { createOrResumePartnerImport, continuePartnerImport, cancelPartnerImport } from './server/services/partnerImportContinuation.js';
 import { STATUS_MAPPING_BANKS, getBankStatusMappings, saveBankStatusMappings, resolveMappedBankStatus, updateMappedProviderProposal } from './server/services/bankStatusMappings.js';
@@ -2097,6 +2098,7 @@ async function auditAndEnsureMasterUser() {
   registerSimulationBankOrderRoutes(app, prisma, getAuthSession);
   registerWorkbankRoutes(app, prisma, getAuthSession);
   registerParanaRoutes(app, prisma, getAuthSession);
+  registerPresencaRoutes(app, prisma, getAuthSession);
   registerBmgRoutes(app, prisma, getAuthSession);
   registerDaycovalRoutes(app, prisma, getAuthSession);
   app.get('/api/simulations', async (req, res) => {

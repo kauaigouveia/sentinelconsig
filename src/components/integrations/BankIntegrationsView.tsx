@@ -6,6 +6,7 @@ import { PortRefinWorkbookSettings } from './DaycovalWorkbookSettings';
 import { BankStatusMappingSettings } from './BankStatusMappingSettings';
 import { WorkbankIntegrationTab } from './WorkbankIntegrationTab';
 import { ParanaIntegrationTab } from './ParanaIntegrationTab';
+import { PresencaIntegrationTab } from './PresencaIntegrationTab';
 import {
   Server,
   Zap,
@@ -42,7 +43,7 @@ import { StorageService } from '../../services/storageService';
 import { hasPermission } from '../../lib/permissions';
 import { toastService } from '../ui/toastService';
 
-type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros' | 'daycoval' | 'workbank' | 'parana';
+type BankTab = 'c6' | 'facta' | 'bmg' | 'happy' | 'outros' | 'daycoval' | 'workbank' | 'parana' | 'presenca';
 
 interface BankMeta {
   id: BankTab;
@@ -54,6 +55,7 @@ interface BankMeta {
 }
 
 const BANKS_META: BankMeta[] = [
+  { id: 'presenca', name: 'Presença Bank', code: 'PB', tagline: 'Consentimento, vínculos, margem e ofertas CLT', status: 'pending', products: ['CLT · consulta e simulação'] },
   { id: 'parana', name: 'Paraná Banco · API', code: '254', tagline: 'Consulta e atualização de propostas', status: 'pending', products: ['Consignado e cartão · acompanhamento'] },
   { id: 'workbank', name: 'WorkBank', code: 'WB', tagline: 'Extrato de propostas por agente', status: 'configured', products: ['Consulta e acompanhamento de propostas'] },
   { id: 'daycoval', name: 'PORT + REFIN · Planilhas', code: 'XLS', tagline: 'Simulador por planilha', status: 'configured', products: ['INSS Portabilidade + Refinanciamento'] },
@@ -685,7 +687,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
                 </span>
               ) : (
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  {b.id === 'daycoval' ? 'Planilha INSS' : b.id === 'bmg' || b.id === 'workbank' || b.id === 'parana' ? 'Configurar' : 'Em breve'}
+                  {b.id === 'daycoval' ? 'Planilha INSS' : b.id === 'bmg' || b.id === 'workbank' || b.id === 'parana' || b.id === 'presenca' ? 'Configurar' : 'Em breve'}
                 </span>
               )}
             </button>
@@ -695,10 +697,11 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
 
       {/* CONTEÚDO DA ABA ATIVA */}
       {canManageConfig && <SimulationBankOrderSettings />}
-      {canManageConfig && activeTab !== 'daycoval' && activeTab !== 'outros' && <BankStatusMappingSettings key={`${activeTab}:${promoterId}`} promoterId={promoterId} initialProvider={activeTab} />}
+      {canManageConfig && activeTab !== 'daycoval' && activeTab !== 'outros' && activeTab !== 'presenca' && <BankStatusMappingSettings key={`${activeTab}:${promoterId}`} promoterId={promoterId} initialProvider={activeTab} />}
       {activeTab === 'daycoval' && <PortRefinWorkbookSettings />}
       {activeTab === 'workbank' && <WorkbankIntegrationTab key={promoterId} promoterId={promoterId} />}
       {activeTab === 'parana' && <ParanaIntegrationTab key={promoterId} promoterId={promoterId} />}
+      {activeTab === 'presenca' && <PresencaIntegrationTab key={promoterId} promoterId={promoterId} />}
 
       {/* ABA C6 BANK: Integração Completa */}
       {activeTab === 'c6' && (
