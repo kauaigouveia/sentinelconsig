@@ -53,3 +53,9 @@ O manual fornecido define POST `/v1/inss/beneficio/consentimento` (nome, CPF, te
 A tela não oferece seletor nem nomes de promotoras. A jornada consulta automaticamente as conexões Paraná habilitadas da empresa autenticada; não utiliza conexões de outra empresa nem troca credenciais entre ambientes. Cada oferta retém promotora e ambiente de origem internamente. Quando o banco exige autorizações separadas, são apresentados os links retornados pelas conexões, sem presumir que o aceite de uma autorize as demais. Falhas conhecidas mostram causas sanitizadas por código; o erro real HTTP 400 da sessão do usuário ainda precisa ser reconferido após concluir o consentimento.
 
 Happy INSS/CLT foi incorporado como painel na tela comum da respectiva modalidade, preservando as jornadas e endpoints existentes, sem formulários aninhados, sem chamadas bancárias automáticas e respeitando a habilitação atual.
+
+## Diagnóstico da geração de consentimento
+
+Erros agora identificam a etapa e o ambiente que respondeu, reconhecendo `erros`, `errors` (inclusive validações por campo), `Erros`, `detail` e mensagens diretas. Códigos e descrições de validação são preservados, com remoção de credenciais, CPF, telefone, e-mail e links. O corpo completo da resposta não é registrado nem exposto. Homologação informa a limitação aos cenários de teste documentados; não há troca automática para Produção.
+
+A ocorrência HTTP 400 informada pelo usuário aconteceu ao gerar o link. A causa específica não foi confirmada com resposta real do banco; a mensagem anterior descartava erros não mapeados. É necessário repetir essa etapa na sessão autorizada para obter o motivo detalhado. Testes usam respostas simuladas, sem gerar consentimentos reais.

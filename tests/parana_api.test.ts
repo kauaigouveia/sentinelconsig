@@ -80,7 +80,7 @@ describe('Paraná API — in-memory data and mocked requests only', () => {
     await expect(ParanaBankService.opportunities(db, 'tenant-a', 'promoter-a', { cpf: '52998224725' })).rejects.toThrow('Consentimento');
     expect(mock.mock.calls.every((call: any) => !call[0].endsWith('/v1/oportunidades'))).toBe(true);
     expect(ParanaBankService.bankError({ erros: [{ codigo: 'CLCD_0020', mensagem: 'private' }] }, 400)).toContain('consentimento ativo');
-    expect(ParanaBankService.bankError({ erros: [{ codigo: 'UNKNOWN', mensagem: 'private' }] }, 400)).not.toContain('private');
+    expect(ParanaBankService.bankError({ erros: [{ codigo: 'UNKNOWN', mensagem: 'Recusa específica' }] }, 400)).toContain('UNKNOWN: Recusa específica');
   });
   it('automatically uses only enabled connections of the current company and preserves offer origin', async () => {
     const { db, save } = fake(); await save(); await save('production', 'promoter-b');
@@ -90,6 +90,25 @@ describe('Paraná API — in-memory data and mocked requests only', () => {
     expect(result.offers.map((row: any) => row.promoterId)).toEqual(['promoter-a', 'promoter-b']);
     expect(scoped).toHaveBeenCalledTimes(2);
     await expect(ParanaBankService.novoJourney(db, 'tenant-b', {}, 'offers')).rejects.toThrow('Nenhuma conexão');
+  });
+  it('shows bank validation details for consent HTTP 400, with operation/environment and redacted personal data', async () => {
+    const { db, save } = fake(); await save();
+    vi.spyOn(ParanaBankService, 'token').mockResolvedValue('fictional-token');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ errors: { telefone: ['Telefone inválido: 11999999999'], nome: ['Cliente Ficticio não encontrado'] } }), { status: 400 })));
+    const promise = ParanaBankService.consent(db, 'tenant-a', 'promoter-a', { cpf: '52998224725', name: 'Cliente Ficticio', phone: '11999999999' }, true);
+    await expect(promise).rejects.toThrow('Gerar consentimento · Homologação · HTTP 400');
+    await expect(promise).rejects.toThrow('Telefone inválido: [omitido]');
+    await expect(promise).rejects.toThrow('[omitido] não encontrado');
+    await expect(promise).rejects.toThrow('CPFs de teste');
+  });
+  it('handles alternative bank error envelopes without exposing credentials or arbitrary response fields', () => {
+    const context = { environment: 'production', operation: 'Gerar consentimento', sensitive: ['fictional-secret', 'fictional-client', 'fictional-token', 'Cliente Ficticio'] };
+    const message = ParanaBankService.bankError({ erros: [{ codigo: 'NEW_1234', mensagem: 'Cliente Ficticio: campo obrigatório. client_secret=fictional-secret CPF 529.982.247-25 contato demo@example.com https://secret.test/token' }], internal: 'private-stack' }, 400, context);
+    expect(message).toContain('NEW_1234'); expect(message).toContain('campo obrigatório');
+    for (const privateValue of ['fictional-secret', 'Cliente Ficticio', '529.982.247-25', 'demo@example.com', 'secret.test', 'private-stack']) expect(message).not.toContain(privateValue);
+    expect(message).not.toContain('CPFs de teste');
+    expect(ParanaBankService.bankError({ detail: 'Limite de tentativas atingido' }, 400, context)).toContain('Limite de tentativas');
+    expect(ParanaBankService.bankError(null, 400, context)).toContain('não retornou um motivo legível');
   });
   it('encrypts credentials, scopes connections and honors the actual expires_in', async () => {
     const { db, config, save } = fake(); await save();

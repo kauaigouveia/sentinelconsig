@@ -88,18 +88,45 @@ export class ParanaBankService {
     if (!response.ok || !Array.isArray(data?.propostas) || data.propostas.length > 100 || data?.erros?.length) throw new Error(`Consulta Paraná não concluída (HTTP ${response.status}). Nenhuma proposta foi gravada.`);
     return data;
   }
-  static bankError(data: any, status: number) {
+  static bankError(data: any, status: number, context?: { environment: string; operation: string; sensitive?: string[] }) {
     const known: Record<string, string> = { CLCD_0020: 'O cliente não possui consentimento ativo.', CLCD_0023: 'CPF inválido.', CLCD_0024: 'CPF obrigatório.', PESSD_0027: 'CPF inválido.', PESSD_0070: 'CPF não localizado pelo banco.', IE: 'Benefício bloqueado para empréstimo pelo beneficiário.', IF: 'Benefício bloqueado na concessão.', IT: 'Benefício bloqueado por TBM.' };
-    const errors = Array.isArray(data?.erros) ? data.erros : [];
-    const messages = errors.map((error: any) => known[String(error.codigo || '').trim()]).filter(Boolean);
-    return messages.length ? [...new Set(messages)].join(' ') : `Paraná não concluiu a consulta (HTTP ${status}). Confira consentimento, cadastro do cliente e habilitação da conexão no banco.`;
+    const sanitize = (value: unknown) => {
+      if (typeof value !== 'string') return '';
+      let text = value;
+      for (const secret of context?.sensitive || []) if (secret.length >= 3) text = text.split(secret).join('[omitido]');
+      return text.replace(/https?:\/\/[^\s]+/gi, '[link omitido]')
+        .replace(/(?:Bearer\s+)?eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[token omitido]')
+        .replace(/(?:client[_-]?secret|client[_-]?id|authorization|access[_-]?token|publicKey|clientKey|password|senha)\s*[:=]\s*[^,;\s]+/gi, '[credencial omitida]')
+        .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[documento omitido]')
+        .replace(/\(?\d{2}\)?[ -]?\d{4,5}[ -]?\d{4}\b/g, '[telefone omitido]')
+        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[e-mail omitido]')
+        .replace(/<[^>]*>|[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 350);
+    };
+    const messages: string[] = [];
+    const add = (item: any) => {
+      if (typeof item === 'string') { const text = sanitize(item); if (text) messages.push(text); return; }
+      if (!item || typeof item !== 'object') return;
+      const code = String(item.codigo || item.code || item.Codigo || '').trim();
+      const safeCode = /^[A-Z][A-Z0-9_]{0,35}$/.test(code) ? code : '';
+      const text = known[code] || sanitize(item.mensagem || item.message || item.descricao || item.description || item.Mensagem);
+      if (text || safeCode) messages.push(`${safeCode ? `${safeCode}: ` : ''}${text || 'Solicitação recusada pelo banco.'}`);
+    };
+    for (const source of [data?.erros, data?.errors, data?.Erros]) {
+      if (Array.isArray(source)) source.slice(0, 8).forEach(add);
+      else if (source && typeof source === 'object') for (const values of Object.values(source).slice(0, 8)) (Array.isArray(values) ? values : [values]).slice(0, 4).forEach(add);
+    }
+    if (!messages.length) add(typeof data === 'string' ? data : data?.detail || data?.mensagem || data?.message || data?.error_description || data?.error || data?.title);
+    const location = context ? `${context.operation} · ${context.environment === 'production' ? 'Produção' : 'Homologação'} · ` : '';
+    const detail = [...new Set(messages)].slice(0, 4).join(' ') || 'O banco não retornou um motivo legível. Confira os dados e a habilitação da conexão.';
+    const hint = context?.environment === 'homologation' ? ' Homologação utiliza os cenários e CPFs de teste definidos pelo Paraná; não equivale à consulta de clientes em produção.' : '';
+    return `Paraná · ${location}HTTP ${status}: ${detail}${hint}`;
   }
   static async consentRequest(db: any, tenantId: string, promoterId: string, path: string, body: any) {
     if (!['/v1/inss/beneficio/consentimento', '/v1/inss/beneficio/consentimento/ativo'].includes(path)) throw new Error('Recurso de consentimento inválido.');
     const config = await this.config(db, tenantId, promoterId), token = await this.token(db, tenantId, promoterId, false, config.environment);
     const response = await fetch(`${HOSTS[config.environment]}/consignado-cartao${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Client-Id': config.clientId, 'Content-Type': 'application/json-patch+json', Accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000), redirect: 'error' });
     const data = await response.json().catch(() => null);
-    if (!response.ok || !data || data.erros?.length) throw new Error(this.bankError(data, response.status));
+    if (!response.ok || !data || data.erros?.length) throw new Error(this.bankError(data, response.status, { environment: config.environment, operation: path.endsWith('/ativo') ? 'Confirmar consentimento' : 'Gerar consentimento', sensitive: [config.clientId, config.clientSecret, token, ...Object.values(body).filter((value): value is string => typeof value === 'string')] }));
     return data;
   }
   static async consent(db: any, tenantId: string, promoterId: string, input: any, generate: boolean) {
@@ -150,7 +177,7 @@ export class ParanaBankService {
     });
     if (response.status === 204) return { offers: [], message: 'O Paraná não retornou oportunidades para este cliente.' };
     const data = await response.json().catch(() => null);
-    if (![200, 207].includes(response.status) || !data || !Array.isArray(data.oportunidades)) throw new Error(this.bankError(data, response.status));
+    if (![200, 207].includes(response.status) || !data || !Array.isArray(data.oportunidades)) throw new Error(this.bankError(data, response.status, { environment: config.environment, operation: 'Consultar ofertas', sensitive: [cpf, config.clientId, config.clientSecret, token] }));
     if (digits(data.cliente?.cpf) !== cpf) throw new Error('O CPF retornado pelo Paraná diverge do cliente consultado.');
     const offers = paranaNovoOffers(data);
     return { offers, environment: config.environment, promoterId, message: offers.length ? 'Condições definidas pelo Paraná; não são recalculadas pela parcela ou prazo dos outros simuladores.' : 'Nenhuma oferta válida de Novo INSS retornada. Verifique consentimento, margem e HISCON junto ao banco.', partial: response.status === 207 };
