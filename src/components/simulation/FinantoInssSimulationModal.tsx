@@ -1,8 +1,9 @@
+import { CurrencyInput } from '../common/CurrencyInput';
 import { ParanaNovoOpportunities } from './ParanaNovoOpportunities';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { AlertCircle, CheckCircle2, LoaderCircle, ShieldCheck, X } from 'lucide-react';
 import { Partner, SimulationRequest } from '../../types';
-import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
+import { parseCurrency, formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
 import { getNossaFintechNovoAmount, getNossaFintechNovoOptions } from '../../lib/nossaFintech';
 import { FactaSimulationResults, type FactaComparisonOffer } from './FactaSimulationResults';
 import { SimulationOfferCard } from './SimulationOfferCard';
@@ -210,7 +211,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
   }, [draftReady, isOpen, initialDraft, cpf, term, rate]);
   if (!isOpen) return null;
 
-  const parseAmount = (value: string) => Number(value.replace(',', '.'));
+  const parseAmount = (value: string) => parseCurrency(value) ?? 0;
   const originDataReady = Number.isInteger(Number(originLenderCode)) && Number(originLenderCode) > 0 && Boolean(originContractNumber.trim()) && Number.isInteger(Number(originTerm)) && Number(originTerm) > 0 && Number.isInteger(Number(originInstallmentsRemaining)) && Number(originInstallmentsRemaining) > 0 && parseAmount(originInstallmentValue) > 0 && parseAmount(originDueBalanceValue) > 0;
   const refinancingDataReady = Number.isInteger(Number(refinanceTerm)) && Number(refinanceTerm) > 0 && parseAmount(refinanceRate) > 0 && parseAmount(refinanceInstallmentValue) >= 0;
   const refinanceIdentityReady = isValidCpf(normalizeCpf(cpf)) && Boolean(benefit.replace(/\D/g, ''));
@@ -423,7 +424,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
     finally { setLoadingTerm(false); }
   };
 
-  const field = (title: string, value: string, change: (value: string) => void, type = 'text', required = true, maxLength?: number, step?: string) => <label className={labelClass}>{title}<input className={inputClass} type={type} required={required} value={value} maxLength={maxLength} step={type === 'number' ? step || 'any' : undefined} onChange={e => change(e.target.value)} /></label>;
+  const field = (title: string, value: string, change: (value: string) => void, type = 'text', required = true, maxLength?: number, step?: string) => <label className={labelClass}>{title}{title.includes('R$') ? <CurrencyInput className={inputClass} required={required} value={value} onValueChange={change} /> : <input className={inputClass} type={type} required={required} value={value} maxLength={maxLength} step={type === 'number' ? step || 'any' : undefined} onChange={e => change(e.target.value)} />}</label>;
   const selectField = (title: string, value: string, change: (value: string) => void, options: number[], placeholder: string) => <label className={labelClass}>{title}<select className={inputClass} required value={value} onChange={e => change(e.target.value)}><option value="">{placeholder}</option>{options.map(option => <option key={option} value={String(option)}>{option.toLocaleString('pt-BR')}</option>)}</select></label>;
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
@@ -447,7 +448,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
           <div className="grid gap-3 sm:grid-cols-2">{selectField('Taxa mensal (%)', rate, value => { setRate(value); setCalculation(null); setQuotes([]); }, availableRates, 'Selecione a taxa')}{selectField('Prazo (meses)', term, value => { setTerm(value); setCalculation(null); setQuotes([]); }, availableTerms, 'Selecione o prazo')}</div>
           {operationCode === '3' && <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
             <label className={labelClass}>Contrato C6<input value={c6Contract} onChange={e => setC6Contract(e.target.value)} className={inputClass} /></label>
-            <label className={labelClass}>Renda para refinanciamento (R$)<input type="number" min="0.01" step="0.01" value={income} onChange={e => setIncome(e.target.value)} className={inputClass} /></label>
+            <label className={labelClass}>Renda para refinanciamento (R$)<CurrencyInput min="0.01" step="0.01" value={income} onValueChange={value => setIncome(value)} className={inputClass} /></label>
             <button type="button" disabled={loadingFactaContracts || !borrowerSimulationDataReady} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50" onClick={async () => {
               setLoadingFactaContracts(true); setFactaMessage('');
               try { const response = await fetch('/api/integrations/facta/inss/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(cpf), benefitNumber: benefit }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); setFactaContracts(result.contracts || []); if (!result.contracts?.length) setFactaMessage('Nenhum contrato elegível neste benefício.'); }
@@ -455,7 +456,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, operationC
             }}>{loadingFactaContracts ? 'Consultando...' : 'Consultar contratos para refinanciamento'}</button>
             {factaContracts.length > 0 && <label className={labelClass}>Contrato retornado pela FACTA<select value={factaContract} onChange={e => setFactaContract(e.target.value)} className={inputClass}><option value="">Selecione o contrato</option>{factaContracts.map(item => <option key={item.code} value={item.code}>{item.code} · parcela R$ {item.installment?.toLocaleString('pt-BR')} · saldo R$ {item.debt?.toLocaleString('pt-BR')}</option>)}</select></label>}
           </div>}
-          {operationCode === '1' && <label className={labelClass}>Renda mensal para C6 (R$)<input type="number" min="0.01" step="0.01" value={income} onChange={e => setIncome(e.target.value)} className={inputClass} /></label>}
+          {operationCode === '1' && <label className={labelClass}>Renda mensal para C6 (R$)<CurrencyInput min="0.01" step="0.01" value={income} onValueChange={value => setIncome(value)} className={inputClass} /></label>}
           {!canCalculate && <p className="text-xs text-slate-500">Informe os dados obrigatorios do cliente acima e selecione os campos desta modalidade, taxa e prazo.</p>}<button type="button" onClick={handleCalculate} disabled={loading || loadingRules || !canCalculate} className="rounded-lg border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300">{loading ? 'Calculando...' : 'Calcular simulação'}</button>
           <BmgCustomerAuthorization input={{ product: 'INSS', operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, income: parseAmount(income), term: Number(term), value: newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : parseAmount(installmentValue), mode: newSimulationMode }} onRows={setBmgRows} />
           <OrderedSimulationBanks operation={({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode]} groups={[

@@ -1,3 +1,4 @@
+import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useState, useEffect } from 'react';
 import { Activity, AlertCircle, LoaderCircle, X } from 'lucide-react';
 import { Partner, SimulationRequest } from '../../types';
@@ -157,8 +158,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <label className={labelClass}>Número do contrato<input required value={form.originContractNumber} onChange={e => update('originContractNumber', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Prazo original (meses)<input required type="number" min="1" value={form.originalTerm} onChange={e => update('originalTerm', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Parcelas restantes<input required type="number" min="1" value={form.openedInstallmentNumber} onChange={e => update('openedInstallmentNumber', e.target.value)} className={inputClass} /></label>
-          <label className={labelClass}>Saldo devedor (R$)<input required type="number" min="0.01" step="0.01" value={form.lastDueBalance} onChange={e => update('lastDueBalance', e.target.value)} className={inputClass} /></label>
-          <label className={labelClass}>Parcela atual (R$)<input required type="number" min="0.01" step="0.01" value={form.installmentFaceValue} onChange={e => update('installmentFaceValue', e.target.value)} className={inputClass} /></label>
+          <label className={labelClass}>Saldo devedor (R$)<CurrencyInput required min="0.01" step="0.01" value={form.lastDueBalance} onValueChange={value => update('lastDueBalance', value)} className={inputClass} /></label>
+          <label className={labelClass}>Parcela atual (R$)<CurrencyInput required min="0.01" step="0.01" value={form.installmentFaceValue} onValueChange={value => update('installmentFaceValue', value)} className={inputClass} /></label>
           <label className={labelClass}>Prazo do novo refinanciamento<select value={form.numberOfInstallments} onChange={e => update('numberOfInstallments', e.target.value)} className={inputClass}>{INSS_TERMS.map(term => <option key={term} value={term}>{term} meses</option>)}</select></label>
           <label className={labelClass}>Taxa do refinanciamento<select value={form.refinancingRate} onChange={e => update('refinancingRate', e.target.value)} className={inputClass}><option value="">Todas as taxas disponíveis</option>{INSS_REFINANCING_RATES.map(rate => <option key={rate} value={rate}>{rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}% ao mês</option>)}</select></label>
           <label className="mt-5 inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={form.legalRepresentative} onChange={e => update('legalRepresentative', e.target.checked)} />Possui representante legal</label>

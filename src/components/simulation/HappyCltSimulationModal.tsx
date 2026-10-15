@@ -1,3 +1,4 @@
+import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useState } from 'react';
 import {
   Briefcase,
@@ -599,12 +600,11 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     VALOR SOLICITADO (R$)
                   </label>
-                  <input
-                    type="number"
+                  <CurrencyInput
                     step="0.01"
                     value={valorSolicitado}
-                    onChange={(e) => setValorSolicitado(e.target.value)}
-                    placeholder="Ex: 3500.00"
+                    onValueChange={value => setValorSolicitado(value)}
+                    placeholder="Ex: 3.500,00"
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>

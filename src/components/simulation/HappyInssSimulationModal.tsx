@@ -1,3 +1,4 @@
+import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useState } from 'react';
 import {
   Building2,
@@ -695,12 +696,11 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         VALOR DA PARCELA DESEJADA (R$)
                       </label>
-                      <input
-                        type="number"
+                      <CurrencyInput
                         step="0.01"
                         value={valorParcela}
-                        onChange={(e) => setValorParcela(e.target.value)}
-                        placeholder="Ex: 250.00"
+                        onValueChange={value => setValorParcela(value)}
+                        placeholder="Ex: 250,00"
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
@@ -754,13 +754,12 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         SALDO DEVEDOR ESTIMADO (R$) <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="number"
+                      <CurrencyInput
                         step="0.01"
                         required
                         value={saldoDevedor}
-                        onChange={(e) => setSaldoDevedor(e.target.value)}
-                        placeholder="Ex: 5000.00"
+                        onValueChange={value => setSaldoDevedor(value)}
+                        placeholder="Ex: 5.000,00"
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
@@ -769,12 +768,11 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         VALOR DA PARCELA ATUAL (R$)
                       </label>
-                      <input
-                        type="number"
+                      <CurrencyInput
                         step="0.01"
                         value={valorParcelas}
-                        onChange={(e) => setValorParcelas(e.target.value)}
-                        placeholder="Ex: 180.00"
+                        onValueChange={value => setValorParcelas(value)}
+                        placeholder="Ex: 180,00"
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>

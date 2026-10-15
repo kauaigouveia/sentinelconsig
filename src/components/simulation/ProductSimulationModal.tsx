@@ -1,3 +1,4 @@
+import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useState } from 'react';
 import { X, LoaderCircle } from 'lucide-react';
 import { formatCpf } from '../../lib/utils';
@@ -35,7 +36,7 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
     } catch (error: any) { setMessage(error.message); }
     finally { setLoading(false); }
   };
-  const field = (title: string, key: 'name' | 'phone' | 'employerDocument' | 'value', required = true, type = 'text') => <label className="text-xs font-semibold">{title}<input required={required} type={type} min={type === 'number' ? '0.01' : undefined} step={type === 'number' ? '0.01' : undefined} value={form[key]} onChange={event => update(key, event.target.value)} className={inputClass} /></label>;
+  const field = (title: string, key: 'name' | 'phone' | 'employerDocument' | 'value', required = true, type = 'text') => <label className="text-xs font-semibold">{title}{key === 'value' ? <CurrencyInput required={required} min={0.01} value={form[key]} onValueChange={value => update(key, value)} className={inputClass} /> : <input required={required} type={type} min={type === 'number' ? '0.01' : undefined} step={type === 'number' ? '0.01' : undefined} value={form[key]} onChange={event => update(key, event.target.value)} className={inputClass} />}</label>;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"><div className="flex max-h-[94vh] w-full max-w-5xl flex-col rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
     <header className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-800"><div><h2 className="font-bold">{product === 'FGTS' ? 'FGTS · Antecipação do saque-aniversário' : 'CLT · Crédito do trabalhador'}</h2><p className="mt-1 text-xs text-slate-500">Consulte as instituições e tabelas disponíveis nas integrações habilitadas.</p></div><button type="button" aria-label="Fechar" onClick={onClose}><X className="h-5 w-5" /></button></header>
     <div className="overflow-y-auto p-5"><form className="space-y-4" onSubmit={event => { event.preventDefault(); void run('simulate'); }}>
