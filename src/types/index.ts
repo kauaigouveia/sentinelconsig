@@ -910,7 +910,7 @@ export interface SimulationRequest {
   offerExpiresAt?: string;
   offerLostAt?: string;
   matchedAfterDeadline?: boolean;
-  selectedCondition?: { provider: string; tableId: string; tableName: string; amount: number; installment: number | null; term: number; rate: number | null; portabilityCode?: string };
+  selectedCondition?: { provider: string; tableId: string; tableName: string; amount: number; installment: number | null; term: number; rate: number | null; portabilityCode?: string; promoterId?: string; environment?: string; expiresAt?: string; hasInsurance?: boolean };
   customerData?: { birthDate: string; benefitNumber: string; benefitType: number; name?: string; hasInsurance?: boolean; legalRepresentative?: boolean; refinancing?: Record<string, string>; originContract?: Record<string, string>; phone?: string; email?: string; income?: string; benefitState?: string; benefitStartDate?: string; address?: Record<string, string>; document?: Record<string, string>; creditBankAccount?: Record<string, string> };
   id: string;
   cpf: string; // 11 raw digits normalized

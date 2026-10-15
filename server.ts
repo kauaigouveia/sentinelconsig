@@ -1,3 +1,4 @@
+import { ParanaBankService } from './server/services/paranaBankService.js';
 import { partnerPublicResponse } from './server/services/partnerPublicResponse.js';
 import { withIntegrationPromoter, resolveBankPromoter } from './server/services/bankPromoterConfig.js';
 import 'dotenv/config';
@@ -2209,6 +2210,11 @@ async function auditAndEnsureMasterUser() {
       if (simulationType === 'INSS_MULTI') {
         if (!partnerId) return res.status(400).json({ error: 'Selecione o parceiro responsável.' });
         try { draft = inssSimulationDraft(req.body); } catch (error: any) { return res.status(400).json({ error: error.message }); }
+        if (draft.selectedCondition.provider === 'Paraná Banco') {
+          await resolveBankPromoter(prisma, tenantId, draft.selectedCondition.promoterId);
+          const connection = await ParanaBankService.config(prisma, tenantId, draft.selectedCondition.promoterId!, draft.selectedCondition.environment);
+          if (!connection.enabled) return res.status(400).json({ error: 'A conexão Paraná de origem não está habilitada.' });
+        }
       }
       const allowedInitialStatuses = ['SIMULAÇÃO ENVIADA', 'NÃO PASSÍVEL DE CONTRATAÇÃO'];
       if (!allowedInitialStatuses.includes(initialStatus)) {

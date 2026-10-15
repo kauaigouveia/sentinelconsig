@@ -1,3 +1,5 @@
+import { isValidCpf } from '../../src/lib/utils.js';
+import { paranaNovoOffers } from '../../src/lib/paranaOffers.js';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { bankPromoterConfigKey, resolveBankPromoter } from './bankPromoterConfig.js';
 import { resolveMappedBankStatus } from './bankStatusMappings.js';
@@ -85,6 +87,22 @@ export class ParanaBankService {
     const data = await response.json().catch(() => null);
     if (!response.ok || !Array.isArray(data?.propostas) || data.propostas.length > 100 || data?.erros?.length) throw new Error(`Consulta Paraná não concluída (HTTP ${response.status}). Nenhuma proposta foi gravada.`);
     return data;
+  }
+  static async opportunities(db: any, tenantId: string, promoterId: string, input: any) {
+    const cpf = digits(input?.cpf);
+    if (!isValidCpf(cpf)) throw new Error('Informe um CPF válido.');
+    const config = await this.config(db, tenantId, promoterId);
+    const token = await this.token(db, tenantId, promoterId, false, config.environment);
+    const response = await fetch(`${HOSTS[config.environment]}/consignado-cartao/v1/oportunidades`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Client-Id': config.clientId, 'Content-Type': 'application/json-patch+json', Accept: 'application/json' },
+      body: JSON.stringify({ cpf }), signal: AbortSignal.timeout(25000), redirect: 'error',
+    });
+    if (response.status === 204) return { offers: [], message: 'O Paraná não retornou oportunidades para este cliente.' };
+    const data = await response.json().catch(() => null);
+    if (![200, 207].includes(response.status) || !data || !Array.isArray(data.oportunidades)) throw new Error(`Consulta de oportunidades Paraná não concluída (HTTP ${response.status}).`);
+    if (digits(data.cliente?.cpf) !== cpf) throw new Error('O CPF retornado pelo Paraná diverge do cliente consultado.');
+    const offers = paranaNovoOffers(data);
+    return { offers, environment: config.environment, promoterId, message: offers.length ? 'Condições definidas pelo Paraná; não são recalculadas pela parcela ou prazo dos outros simuladores.' : 'Nenhuma oferta válida de Novo INSS retornada. Verifique consentimento, margem e HISCON junto ao banco.', partial: response.status === 207 };
   }
   static async list(db: any, tenantId: string, promoterId: string, query: any) {
     const count = Number(query.quantidadeDeItens || 100);

@@ -29,6 +29,12 @@ export function registerParanaRoutes(app: Express, prisma: any, getAuthSession: 
   app.get('/api/integrations/parana/config', wrap('integrations.view', true, async (req, c) => ({ ...ParanaBankService.metadata(await ParanaBankService.config(prisma, c.tenantId, c.promoterId, req.query.environment as string | undefined)), activeEnvironment: (await ParanaBankService.config(prisma, c.tenantId, c.promoterId)).environment })));
   app.put('/api/integrations/parana/config', wrap('integrations.manage', true, async (req, c) => { const result = await ParanaBankService.save(prisma, c.tenantId, c.promoterId, req.body); await audit(c, req, 'PARANA_CONFIG_UPDATED', c.promoterId); return result; }));
   app.post('/api/integrations/parana/test', wrap('integrations.manage', true, async (req, c) => { await ParanaBankService.token(prisma, c.tenantId, c.promoterId, true, req.body?.environment); await audit(c, req, 'PARANA_AUTH_TEST', c.promoterId); return { success: true, message: 'Autenticação Paraná concluída.' }; }));
+  app.get('/api/integrations/parana/connections', wrap('simulations.create', false, async (_req, c) => {
+    const promoters = await prisma.promoter.findMany({ where: { tenantId: c.tenantId, status: 'ATIVO' }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+    const connections = await Promise.all(promoters.map(async (promoter: any) => (await ParanaBankService.config(prisma, c.tenantId, promoter.id)).enabled ? promoter : null));
+    return connections.filter(Boolean);
+  }));
+  app.post('/api/integrations/parana/opportunities', wrap('simulations.create', true, async (req, c) => ParanaBankService.opportunities(prisma, c.tenantId, c.promoterId, req.body)));
   app.get('/api/integrations/parana/proposals', wrap('integrations.view', true, async (req, c) => { if (!c.can('proposals.view')) throw new Error('Sem permissão proposals.view.'); return ParanaBankService.list(prisma, c.tenantId, c.promoterId, req.query); }));
   app.post('/api/proposals/:id/parana-sync', wrap('integrations.sync', false, async (req, c) => {
     if (!c.can('proposals.view') || !c.can('proposals.update')) throw new Error('Sem permissão de consulta e atualização de propostas.');

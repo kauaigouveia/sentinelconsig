@@ -49,6 +49,24 @@ describe('Paraná API — in-memory data and mocked requests only', () => {
     expect(new URLSearchParams(call[1].body).get('client_secret')).toBe('production-secret');
     expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a')).environment).toBe('homologation');
   });
+  it('queries Novo opportunities with scoped credentials and handles empty, partial and mismatched returns', async () => {
+    const { db, save } = fake(); await save();
+    const cpf = '52998224725';
+    const token = vi.spyOn(ParanaBankService, 'token').mockResolvedValue('fictional');
+    const mock = vi.fn(async () => new Response(JSON.stringify({ cliente: { cpf }, oportunidades: [] }), { status: 207 })); vi.stubGlobal('fetch', mock);
+    expect(await ParanaBankService.opportunities(db, 'tenant-a', 'promoter-a', { cpf })).toMatchObject({ offers: [], partial: true });
+    const call: any = mock.mock.calls[0];
+    expect(call[0]).toBe('https://api-marketplace-hom.paranabanco.com.br/consignado-cartao/v1/oportunidades');
+    expect(call[1].headers).toMatchObject({ Authorization: 'Bearer fictional', 'X-Client-Id': 'fictional-client' });
+    expect(JSON.parse(call[1].body)).toEqual({ cpf });
+    mock.mockImplementation(async () => new Response(null, { status: 204 }));
+    expect(await ParanaBankService.opportunities(db, 'tenant-a', 'promoter-a', { cpf })).toMatchObject({ offers: [] });
+    mock.mockImplementation(async () => new Response(JSON.stringify({ cliente: { cpf: '11111111111' }, oportunidades: [] })));
+    await expect(ParanaBankService.opportunities(db, 'tenant-a', 'promoter-a', { cpf })).rejects.toThrow('diverge');
+    token.mockRestore();
+    await expect(ParanaBankService.opportunities(db, 'tenant-b', 'promoter-a', { cpf })).rejects.toThrow('habilite');
+    expect(db.proposal.updateMany).not.toHaveBeenCalled();
+  });
   it('encrypts credentials, scopes connections and honors the actual expires_in', async () => {
     const { db, config, save } = fake(); await save();
     expect(JSON.stringify([...config.values()])).not.toContain('fictional-secret');

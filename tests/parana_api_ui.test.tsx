@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ParanaNovoOpportunities } from '../src/components/simulation/ParanaNovoOpportunities';
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -40,4 +41,18 @@ it('loads separate credentials on environment switch and clears the unsaved secr
   expect((screen.getByLabelText('client_secret') as HTMLInputElement).value).toBe('');
   expect(fetchMock).toHaveBeenCalledTimes(2);
   expect((fetchMock.mock.calls[1] as any)[0]).toContain('environment=production');
+});
+
+it('queries Paraná only on explicit click and selects an actual Novo offer with source metadata', async () => {
+  const offer = { id: '11111111-2222-4333-8444-555555555555', benefit: '0000000001', species: 41, amount: 2000, installment: 60, term: 108, rate: 1.85, insurance: false, expiresAt: '2099-01-01T00:00:00Z' };
+  const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/connections') ? [{ id: 'demo', name: 'DG' }] : { offers: [offer, { ...offer, benefit: 'other' }], environment: 'homologation' })));
+  vi.stubGlobal('fetch', fetchMock); const onSelect = vi.fn();
+  render(<ParanaNovoOpportunities cpf="52998224725" benefit="0000000001" species="41" onSelect={onSelect} onClear={() => {}} />);
+  await screen.findByRole('button', { name: 'Consultar ofertas Novo · Paraná' });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Consultar ofertas Novo · Paraná' }));
+  await screen.findByRole('button', { name: 'Selecionar oferta' });
+  fireEvent.click(screen.getByRole('button', { name: 'Selecionar oferta' }));
+  expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ provider: 'Paraná Banco', promoterId: 'demo', environment: 'homologation', tableId: offer.id, amount: 2000 }));
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 });

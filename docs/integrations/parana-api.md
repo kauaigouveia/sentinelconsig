@@ -39,3 +39,9 @@ Testes usam somente fetch/Prisma em memória e dados fictícios. Não se enviam 
 Homologação e Produção possuem configurações criptografadas independentes por empresa e promotora. Trocar o seletor apenas carrega os campos daquele ambiente e limpa a senha ainda não salva. Uma senha em branco preserva exclusivamente a senha já cadastrada no mesmo ambiente; nunca utiliza a do outro.
 
 “Salvar e usar este ambiente” salva e define a conexão ativa para consultas e sincronizações. O teste de autenticação usa o ambiente exibido sem alterar a conexão ativa. A listagem usa a conexão ativa identificada na tela. Configurações anteriores são preservadas no próprio ambiente, sem migrations. Nenhuma credencial é devolvida ao navegador.
+
+## Novo INSS — oportunidades
+
+Em Simulações → INSS Novo, o painel Paraná consulta POST `/consignado-cartao/v1/oportunidades` com CPF, Bearer e X-Client-Id da conexão ativa da empresa/promotora. A consulta é explícita; não gera contrato, consentimento, SMS ou webhook. Retorna somente ofertas `OfertaNovoInss` principais e secundárias, com ou sem seguro, válidas e com valores positivos, filtradas pelo benefício e espécie informados. Cartões são excluídos. Prazo, parcela e taxa vêm do banco; não há recálculo pelo valor digitado nos outros simuladores.
+
+HTTP 204 é ausência de oferta; 207 é tratado como retorno parcial, sem presumir aprovação. CPF divergente é bloqueado. Dados bancários pessoais do retorno não são enviados à interface. A oferta pode ser salva na esteira existente para a mesa, preservando ID, promotora, ambiente, seguro e validade; oferta vencida é bloqueada. A formalização bancária permanece fora desta integração. Testes locais usam respostas fictícias; validação autenticada real permanece pendente.
