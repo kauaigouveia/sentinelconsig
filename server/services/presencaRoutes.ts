@@ -5,6 +5,7 @@ import { resolveBankPromoter } from './bankPromoterConfig.js';
 import { AuditLogService } from './auditLogService.js';
 import { PresencaBankService } from './presencaBankService.js';
 import { PresencaFgtsService } from './presencaFgtsService.js';
+import { PresencaInssLookup } from './presencaInssLookup.js';
 
 export function registerPresencaRoutes(app: Express, db: any, getAuthSession: (req: Request) => Promise<any>) {
   app.use('/api/integrations/presenca', rateLimit({ windowMs: 60000, max: 30, skip: req => req.path === '/fgts/simulate', standardHeaders: true, legacyHeaders: false, message: { error: 'Limite Presença atingido. Aguarde um minuto.' } }));
@@ -32,7 +33,9 @@ export function registerPresencaRoutes(app: Express, db: any, getAuthSession: (r
     return result;
   }));
   app.post('/api/integrations/presenca/test', wrap('integrations.manage', true, async (req, c) => { await PresencaBankService.token(db, c.tenantId, c.promoterId, true, req.body?.environment); return { message: 'Autenticação Presença concluída. Produtos ainda dependem de liberação no banco.' }; }));
-  app.get('/api/integrations/presenca/availability', wrap('simulations.create', false, async (_req, c) => ({ clt: (await PresencaBankService.available(db, c.tenantId)).length > 0, fgts: (await PresencaBankService.available(db, c.tenantId, 'fgts')).length > 0 })));
+  app.get('/api/integrations/presenca/availability', wrap('simulations.create', false, async (_req, c) => ({ clt: (await PresencaBankService.available(db, c.tenantId)).length > 0, fgts: (await PresencaBankService.available(db, c.tenantId, 'fgts')).length > 0, inssLookup: (await PresencaBankService.available(db, c.tenantId, 'inss-lookup')).length > 0 })));
+  app.post('/api/integrations/presenca/inss/benefits', wrap('simulations.create', false, async (req, c) => PresencaInssLookup.list(db, c.tenantId, c.userId, req.body || {})));
+  app.post('/api/integrations/presenca/inss/benefit-detail', wrap('simulations.create', false, async (req, c) => PresencaInssLookup.detail(db, c.tenantId, c.userId, req.body || {})));
   for (const action of ['consent', 'employments', 'margin', 'offers']) app.post(`/api/integrations/presenca/clt/${action}`, wrap('simulations.create', false, async (req, c) => PresencaBankService.journey(db, c.tenantId, c.userId, action, req.body || {})));
   app.post('/api/integrations/presenca/fgts/tables', wrap('simulations.create', false, async (req, c) => PresencaFgtsService.tables(db, c.tenantId, c.userId, req.body || {})));
   app.post('/api/integrations/presenca/fgts/simulate', wrap('simulations.create', false, async (req, c) => PresencaFgtsService.simulate(db, c.tenantId, c.userId, req.body || {})));

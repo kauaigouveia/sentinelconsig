@@ -2,6 +2,7 @@ import { C6SimulationResults } from './C6SimulationResults';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { ParanaNovoOpportunities } from './ParanaNovoOpportunities';
+import { PresencaInssBenefits, type PresencaBenefitDetail } from './PresencaInssBenefits';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { AlertCircle, CheckCircle2, LoaderCircle, ShieldCheck, X } from 'lucide-react';
 import { Partner, SimulationRequest } from '../../types';
@@ -429,6 +430,15 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
   };
 
   const field = (title: string, value: string, change: (value: string) => void, type = 'text', required = true, maxLength?: number, step?: string) => <label className={labelClass}>{title}{title.includes('R$') ? <CurrencyInput className={inputClass} required={required} value={value} onValueChange={change} /> : <input className={inputClass} type={type} required={required} value={value} maxLength={maxLength} step={type === 'number' ? step || 'any' : undefined} onChange={e => change(e.target.value)} />}</label>;
+  const applyPresencaBenefit = (data: PresencaBenefitDetail) => {
+    if (normalizeCpf(cpf) !== data.cpf) return;
+    setBenefit(data.benefit); setBenefitType(data.species);
+    if (data.name) setName(data.name);
+    if (data.birthDate) setBirthDate(data.birthDate);
+    if (data.income !== null) setIncome(data.income.toFixed(2));
+    if (data.benefitStartDate) setBenefitStartDate(data.benefitStartDate);
+    if (data.benefitState) setBenefitState(data.benefitState);
+  };
   const selectField = (title: string, value: string, change: (value: string) => void, options: number[], placeholder: string) => <label className={labelClass}>{title}<select className={inputClass} required value={value} onChange={e => change(e.target.value)}><option value="">{placeholder}</option>{options.map(option => <option key={option} value={String(option)}>{option.toLocaleString('pt-BR')}</option>)}</select></label>;
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
@@ -442,6 +452,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
           <button type="button" onClick={onClose} className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-700">Concluir</button></div> : <form onSubmit={handleCreate} className="space-y-6">
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Dados obrigatórios do cliente</h3><p className="text-xs text-slate-500">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
+          <PresencaInssBenefits key={normalizeCpf(cpf)} cpf={cpf} onApply={applyPresencaBenefit} onUseMargin={operationCode === '1' ? data => { if (normalizeCpf(cpf) !== data.cpf || data.margin === null || data.margin <= 0) return; applyPresencaBenefit(data); setNewSimulationMode('INSTALLMENT'); setInstallmentValue(data.margin.toFixed(2)); } : undefined} />
           {operationCode === '1' && <ParanaNovoOpportunities name={name} phone={phone} onNameChange={setName} onPhoneChange={setPhone} cpf={cpf} benefit={benefit} species={benefitType} selected={selectedCondition} onSelect={setSelectedCondition} onClear={() => setSelectedCondition(current => current?.provider === 'Paraná Banco' ? undefined : current)} />}
 
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">2. Produto e condição</h3><p className="text-xs text-slate-500">{loadingRules ? 'Carregando condições disponíveis...' : 'As condições são consultadas nas integrações habilitadas para a modalidade e a espécie selecionadas.'}</p>
