@@ -18,7 +18,8 @@ describe('Hub Premium, sem chamadas reais aos bancos',()=>{
   it('preserva as áreas existentes, inclui WorkBank e mantém o rascunho no rollback',async()=>{
     const {rerender}=render(<HubIntegracoes premium />);
     const nav=screen.getByRole('navigation',{name:'Áreas de integração'});
-    expect(within(nav).getAllByRole('button')).toHaveLength(11);
+    expect(within(nav).getAllByRole('button')).toHaveLength(12);
+    expect(within(nav).getByRole('button',{name:'Paraná Banco · API'})).toBeTruthy();
     expect(within(nav).getByRole('button',{name:'WorkBank'})).toBeTruthy();
     fireEvent.click(within(nav).getByRole('button',{name:'C6 Bank'}));
     fireEvent.change(screen.getByLabelText('Configuração local c6'),{target:{value:'rascunho sintético'}});

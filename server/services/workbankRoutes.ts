@@ -62,7 +62,7 @@ export function registerWorkbankRoutes(app: Express, prisma: any, getAuthSession
   }));
   // Imported WorkBank proposals must never fall through to another provider just because the bank matches.
   app.use(['/api/proposals/:id/:action', '/api/integrations/bmg/proposals/:id/sync'], async (req, res, next) => {
-    if (req.method !== 'POST' || (req.params.action && !/^(?:facta|c6|happy|finanto|nossa-fintech)-sync$/.test(req.params.action))) return next();
+    if (req.method !== 'POST' || (req.params.action && !/^(?:facta|c6|happy|finanto|nossa-fintech|parana)-sync$/.test(req.params.action))) return next();
     try {
       const session = await getAuthSession(req), tenantId = session?.effectiveTenantId || session?.user?.tenantId;
       if (!tenantId) return next();

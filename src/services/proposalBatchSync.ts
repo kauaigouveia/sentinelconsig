@@ -9,6 +9,7 @@ export function proposalSyncProvider(proposal: Proposal, banks: Bank[]): string 
   if (code === '149' || name.includes('FACTA')) return 'facta';
   if (code === '336' || name.includes('C6')) return 'c6';
   if (code === '318' || name.includes('BMG')) return 'bmg';
+  if (code === '254' || /PARAN[AÁ]/.test(name)) return 'parana';
   if (code === 'HAPPY' || /HAPPY|BYX/.test(name)) return 'happy';
   return null;
 }

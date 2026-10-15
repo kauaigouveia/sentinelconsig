@@ -34,7 +34,7 @@ import { FinantoIntegrationTab } from '../integrations/FinantoIntegrationTab';
 import { NossaFintechIntegrationTab } from '../integrations/NossaFintechIntegrationTab';
 import { PremiumContent } from '../redesign/PremiumContent';
 
-export type HubTab = 'overview' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'health' | 'incidents' | 'logs';
+export type HubTab = 'overview' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'health' | 'incidents' | 'logs';
 
 export interface IntegrationDefinition {
   id: string;
@@ -407,6 +407,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
     { id: 'finanto', label: 'FINANTO', icon: Plug },
     { id: 'nossa-fintech', label: 'Nossa Fintech', icon: Landmark },
     { id: 'workbank', label: 'WorkBank', icon: Plug },
+    { id: 'parana', label: 'Paraná Banco · API', icon: Landmark },
     { id: 'health', label: 'Saúde das APIs', icon: Activity },
     { id: 'incidents', label: 'Incidentes', icon: AlertTriangle },
     { id: 'logs', label: 'Logs & Auditoria', icon: History },
@@ -743,6 +744,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       {/* ABA 5: HAPPY */}
       {activeTab === 'happy' && <BankIntegrationsView initialTab="happy" />}
       {activeTab === 'workbank' && <BankIntegrationsView initialTab="workbank" />}
+      {activeTab === 'parana' && <BankIntegrationsView initialTab="parana" />}
 
       {/* ABA FINANTO / JOINBANK */}
       {activeTab === 'finanto' && <FinantoIntegrationTab />}
