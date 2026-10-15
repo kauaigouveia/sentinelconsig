@@ -28,3 +28,16 @@ it('syncs only the selected local proposal on explicit click and refreshes the r
   expect(state.sync).toHaveBeenCalledWith('Proposal');
   expect(screen.getByRole('status').textContent).toContain('Configure o mapeamento');
 });
+
+it('loads separate credentials on environment switch and clears the unsaved secret without saving', async () => {
+  const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({ environment: url.includes('environment=production') ? 'production' : 'homologation', activeEnvironment: 'homologation', enabled: false, clientId: url.includes('environment=production') ? 'prod-client' : 'hom-client', hasClientSecret: false, bankId: '', promoterCode: '' })));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<ParanaIntegrationTab promoterId="promoter-demo" />);
+  await waitFor(() => expect((screen.getByLabelText('client_id') as HTMLInputElement).value).toBe('hom-client'));
+  fireEvent.change(screen.getByLabelText('client_secret'), { target: { value: 'unsaved-secret' } });
+  fireEvent.change(screen.getByLabelText('Ambiente'), { target: { value: 'production' } });
+  await waitFor(() => expect((screen.getByLabelText('client_id') as HTMLInputElement).value).toBe('prod-client'));
+  expect((screen.getByLabelText('client_secret') as HTMLInputElement).value).toBe('');
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect((fetchMock.mock.calls[1] as any)[0]).toContain('environment=production');
+});

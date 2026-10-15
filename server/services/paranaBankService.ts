@@ -29,28 +29,46 @@ export function paranaFinancial(row: any) {
 }
 export class ParanaBankService {
   static configKey(promoterId: string) { return bankPromoterConfigKey('parana', promoterId, 'config'); }
-  static async config(db: any, tenantId: string, promoterId: string): Promise<Config> {
-    const row = await db.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: this.configKey(promoterId) } } });
-    return row ? open(row.configValue) : { environment: 'homologation', enabled: false, clientId: '', clientSecret: '', bankId: '', promoterCode: '' };
+  static async config(db: any, tenantId: string, promoterId: string, environment?: string): Promise<Config> {
+    if (environment !== undefined && !Object.hasOwn(HOSTS, environment)) throw new Error('Selecione Produção ou Homologação.');
+    const read = (configKey: string) => db.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey } } });
+    if (environment) {
+      const saved = await read(`${this.configKey(promoterId)}:${environment}`);
+      if (saved) return open(saved.configValue);
+    }
+    const row = await read(this.configKey(promoterId));
+    const active = row ? open(row.configValue) : null;
+    if (active && (!environment || active.environment === environment)) return active;
+    return { environment: (environment || 'homologation') as Config['environment'], enabled: false, clientId: '', clientSecret: '', bankId: '', promoterCode: '' };
   }
   static metadata(config: Config) { const { clientSecret, ...safe } = config; return { ...safe, hasClientSecret: !!clientSecret }; }
   static async save(db: any, tenantId: string, promoterId: string, input: any) {
-    const old = await this.config(db, tenantId, promoterId);
     if (!Object.keys(HOSTS).includes(input.environment)) throw new Error('Selecione Produção ou Homologação.');
+    const old = await this.config(db, tenantId, promoterId, input.environment);
     const value: Config = { environment: input.environment, enabled: input.enabled === true, clientId: String(input.clientId || '').trim(), clientSecret: String(input.clientSecret || old.clientSecret).trim(), bankId: String(input.bankId || ''), promoterCode: String(input.promoterCode || '').trim() };
     if ([value.clientId, value.clientSecret].some(item => item.length > 10000 || /[\r\n]/.test(item))) throw new Error('Credenciais inválidas.');
     const bank = value.bankId ? await db.bank.findFirst({ where: { id: value.bankId, tenantId, status: 'ATIVO' } }) : null;
     if (value.bankId && !isParanaBank(bank)) throw new Error('Selecione o cadastro do Paraná Banco desta empresa.');
     if (value.enabled && (!value.clientId || !value.clientSecret || !bank || !value.promoterCode)) throw new Error('Preencha client_id, client_secret, código do promotor no Paraná e selecione o banco.');
     const configKey = this.configKey(promoterId), configValue = seal(value);
-    await db.systemConfig.upsert({ where: { tenantId_configKey: { tenantId, configKey } }, create: { tenantId, configKey, configValue, isSecret: true }, update: { configValue, isSecret: true } });
-    tokens.delete(`${tenantId}:${promoterId}`);
+    await db.$transaction(async (tx: any) => {
+      // Preserve the previous active credentials before switching environments, including legacy connections.
+      const previous = await this.config(tx, tenantId, promoterId);
+      for (const [storedKey, storedValue] of [
+        [`${configKey}:${previous.environment}`, seal(previous)],
+        [`${configKey}:${value.environment}`, configValue],
+        [configKey, configValue],
+      ]) {
+        await tx.systemConfig.upsert({ where: { tenantId_configKey: { tenantId, configKey: storedKey } }, create: { tenantId, configKey: storedKey, configValue: storedValue, isSecret: true }, update: { configValue: storedValue, isSecret: true } });
+      }
+    });
+    tokens.delete(`${tenantId}:${promoterId}:${value.environment}`);
     return this.metadata(value);
   }
-  static async token(db: any, tenantId: string, promoterId: string, force = false) {
-    const config = await this.config(db, tenantId, promoterId);
+  static async token(db: any, tenantId: string, promoterId: string, force = false, environment?: string) {
+    const config = await this.config(db, tenantId, promoterId, environment);
     if (!config.enabled || !config.clientId || !config.clientSecret) throw new Error('Cadastre e habilite a conexão Paraná desta promotora.');
-    const cacheKey = `${tenantId}:${promoterId}`, fingerprint = createHash('sha256').update(JSON.stringify(config)).digest('hex'), cached = tokens.get(cacheKey);
+    const cacheKey = `${tenantId}:${promoterId}:${config.environment}`, fingerprint = createHash('sha256').update(JSON.stringify(config)).digest('hex'), cached = tokens.get(cacheKey);
     if (!force && cached?.fingerprint === fingerprint && cached.expires > Date.now()) return cached.token;
     const response = await fetch(`${HOSTS[config.environment]}/v1/auth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', 'X-Client-Id': config.clientId }, body: new URLSearchParams({ grant_type: 'client_credentials', scope: 'openid', client_id: config.clientId, client_secret: config.clientSecret }).toString(), signal: AbortSignal.timeout(15000), redirect: 'error' });
     const payload = await response.json().catch(() => null);

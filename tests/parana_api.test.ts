@@ -30,6 +30,25 @@ const previousSecret = process.env.JWT_SECRET;
 beforeEach(() => { process.env.JWT_SECRET = 'fictional-parana-test-secret'; });
 afterEach(() => { if (previousSecret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previousSecret; vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe('Paraná API — in-memory data and mocked requests only', () => {
+  it('keeps credentials independent and preserves legacy credentials only in their own environment', async () => {
+    const { db, config, save } = fake(); await save();
+    config.delete(`tenant-a|${ParanaBankService.configKey('promoter-a')}:homologation`);
+    const input = { environment: 'production', enabled: true, clientId: 'production-client', clientSecret: '', bankId: 'bank-a', promoterCode: 'PROD' };
+    await expect(ParanaBankService.save(db, 'tenant-a', 'promoter-a', input)).rejects.toThrow('client_secret');
+    await ParanaBankService.save(db, 'tenant-a', 'promoter-a', { ...input, clientSecret: 'production-secret' });
+    expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a', 'homologation')).clientSecret).toBe('fictional-secret+&=%');
+    await ParanaBankService.save(db, 'tenant-a', 'promoter-a', { ...input, environment: 'homologation', clientId: 'hom-client' });
+    expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a')).clientSecret).toBe('fictional-secret+&=%');
+    expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a', 'production')).clientSecret).toBe('production-secret');
+    expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a')).environment).toBe('homologation');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ access_token: 'demo', expires_in: 300 })));
+    vi.stubGlobal('fetch', fetchMock);
+    await ParanaBankService.token(db, 'tenant-a', 'promoter-a', true, 'production');
+    const call: any = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('https://api-marketplace.paranabanco.com.br/v1/auth/token');
+    expect(new URLSearchParams(call[1].body).get('client_secret')).toBe('production-secret');
+    expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a')).environment).toBe('homologation');
+  });
   it('encrypts credentials, scopes connections and honors the actual expires_in', async () => {
     const { db, config, save } = fake(); await save();
     expect(JSON.stringify([...config.values()])).not.toContain('fictional-secret');

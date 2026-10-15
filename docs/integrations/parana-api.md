@@ -33,3 +33,9 @@ Permissões: integrations.view/manage para configuração; proposals.view para l
 Os exemplos recebidos também descrevem oportunidades, cadastro de clientes/dados bancários, consentimento/SMS, formalização e gestão de webhook. Esses fluxos não são expostos nesta entrega de consulta/acompanhamento; não há chamada a endpoints de contratação, aprovação ou cancelamento. O simulador por planilha não foi substituído por API.
 
 Testes usam somente fetch/Prisma em memória e dados fictícios. Não se enviam os CPFs de exemplo ao banco e não se escrevem dados de teste em produção. Autenticação real, liberação comercial, payloads reais e atualização autenticada ainda dependem da conferência autorizada pela empresa. HTTP 204 significa lista vazia; erros e ausência de resultado não são tratados como sucesso da sincronização.
+
+## Credenciais por ambiente
+
+Homologação e Produção possuem configurações criptografadas independentes por empresa e promotora. Trocar o seletor apenas carrega os campos daquele ambiente e limpa a senha ainda não salva. Uma senha em branco preserva exclusivamente a senha já cadastrada no mesmo ambiente; nunca utiliza a do outro.
+
+“Salvar e usar este ambiente” salva e define a conexão ativa para consultas e sincronizações. O teste de autenticação usa o ambiente exibido sem alterar a conexão ativa. A listagem usa a conexão ativa identificada na tela. Configurações anteriores são preservadas no próprio ambiente, sem migrations. Nenhuma credencial é devolvida ao navegador.
