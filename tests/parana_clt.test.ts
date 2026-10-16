@@ -59,3 +59,14 @@ it('explains a missing bank partner configuration without changing credentials o
   await expect(Clt.start(db, 'tenant-a', 'promoter-a', { cpf, name: 'Cliente Ficticio', phone: '11999999999' }, 'consent')).rejects.toThrow(/MKT_007:.*client_id.*habilitação/);
   expect(mock).toHaveBeenCalledTimes(1);
 });
+
+it('keeps the CLT journey available when INSS is disabled', async () => {
+  vi.spyOn(Bank, 'config').mockResolvedValue({ ...config, inssEnabled: false });
+  const start = vi.spyOn(Clt, 'start').mockResolvedValue({ status: 'Solicitado', link: 'https://example.test/consent' });
+  const result = await Clt.journey(db, 'tenant-a', { cpf }, 'consent');
+  expect(result.results).toHaveLength(1);
+  expect(start).toHaveBeenCalledWith(db, 'tenant-a', 'promoter-a', { cpf }, 'consent');
+  vi.spyOn(Bank, 'config').mockResolvedValue({ ...config, enabled: false, inssEnabled: false });
+  await expect(Clt.journey(db, 'tenant-a', { cpf }, 'consent')).rejects.toThrow('Nenhuma conexão Paraná CLT');
+  expect(start).toHaveBeenCalledTimes(1);
+});

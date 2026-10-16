@@ -11,6 +11,13 @@ function validCpf(cpf: string, environment: string) { return isValidCpf(cpf) || 
 function link(value: unknown) { try { const url = new URL(String(value)); return url.protocol === 'https:' && !url.username && !url.password ? url.toString() : null; } catch { return null; } }
 function within(value: any, min: any, max: any, integer = false) { return typeof value === 'number' && Number.isFinite(value) && value > 0 && (!integer || Number.isInteger(value)) && typeof min === 'number' && typeof max === 'number' && value >= min && value <= max; }
 export class ParanaCltService {
+  static async connections(db: any, tenantId: string) {
+    const promoters = await db.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true }, orderBy: { id: 'asc' } });
+    const ids: string[] = [];
+    for (const promoter of promoters) if ((await ParanaBankService.config(db, tenantId, promoter.id)).enabled) ids.push(promoter.id);
+    if (!ids.length) throw new Error('Nenhuma conexão Paraná CLT habilitada nesta empresa.');
+    return ids;
+  }
   static async request(db: any, tenantId: string, promoterId: string, method: 'GET' | 'POST', path: string, body?: any) {
     const allowed = method === 'POST' ? ['/v1/consentimentos', '/v1/consentimentos/status', '/v1/elegibilidades', '/v1/simulacoes'].includes(path) : /^\/v1\/elegibilidades\/[a-f0-9-]{36}$/i.test(path);
     if (!allowed) throw new Error('Operação Paraná CLT não permitida.');
@@ -85,7 +92,7 @@ export class ParanaCltService {
     if (action === 'assessment') return this.assessment(db, tenantId, input.receipt);
     if (action === 'simulate') return this.simulate(db, tenantId, input);
     if (!['consent', 'status', 'eligibility'].includes(action)) throw new Error('Ação CLT inválida.');
-    const ids = await ParanaBankService.novoConnections(db, tenantId), results = [], messages = [];
+    const ids = await this.connections(db, tenantId), results = [], messages = [];
     for (const id of ids) try { results.push(await this.start(db, tenantId, id, input, action as 'consent' | 'status' | 'eligibility')); } catch (error) { messages.push(error instanceof Error ? error.message : 'Falha na conexão Paraná CLT.'); }
     if (!results.length) throw new Error([...new Set(messages)].join(' '));
     return { results, messages: [...new Set(messages)] };
