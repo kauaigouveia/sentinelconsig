@@ -112,6 +112,7 @@ export const C6BankConfigView: React.FC = () => {
           typistCode: config.typistCode,
           certifiedAgentCpf: config.certifiedAgentCpf,
           simulationEnabled: config.simulationEnabled,
+          cltEnabled: config.cltEnabled,
           password: password ? password : undefined,
           baseUrl: config.baseUrl,
           autoSyncEnabled: config.autoSyncEnabled,
@@ -416,6 +417,7 @@ export const C6BankConfigView: React.FC = () => {
         <div className="space-y-6">
           <form onSubmit={handleSaveConfig} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
             <label className="block text-sm">Código de promotora C6<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.promoterCode || ''} onChange={e => setConfig({ ...config, promoterCode: e.target.value })} /></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.cltEnabled} onChange={e => setConfig({ ...config, cltEnabled: e.target.checked })} />Habilitar C6 CLT · autorização e consulta de status</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.simulationEnabled} onChange={e => setConfig({ ...config, simulationEnabled: e.target.checked })} />Habilitar C6 nas simulações INSS</label>
             <label className="block text-sm">Código do digitador C6<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.typistCode || ''} onChange={e => setConfig({ ...config, typistCode: e.target.value })} /></label>
             <label className="block text-sm">CPF do agente certificado<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.certifiedAgentCpf || ''} onChange={e => setConfig({ ...config, certifiedAgentCpf: e.target.value })} /></label>

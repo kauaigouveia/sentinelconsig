@@ -78,6 +78,7 @@ export interface C6TenantConfig {
   typistCode?: string;
   certifiedAgentCpf?: string;
   simulationEnabled?: boolean;
+  cltEnabled?: boolean;
   username: string;
   password?: string;
   baseUrl: string;

@@ -1,3 +1,4 @@
+import { registerC6CltRoutes } from './server/services/c6CltService.js';
 import { registerBankPlaybookCatalog } from './server/services/bankPlaybookCatalog.js';
 import { ParanaBankService } from './server/services/paranaBankService.js';
 import { partnerPublicResponse } from './server/services/partnerPublicResponse.js';
@@ -2101,6 +2102,7 @@ async function auditAndEnsureMasterUser() {
   registerWorkbankRoutes(app, prisma, getAuthSession);
   registerParanaRoutes(app, prisma, getAuthSession);
   registerPresencaRoutes(app, prisma, getAuthSession);
+  registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);
   registerBankPlaybookRoutes(app, prisma, req => PartnerPortalService.getPartnerSession(req, prisma));
   registerBmgRoutes(app, prisma, getAuthSession);
@@ -15126,6 +15128,7 @@ async function auditAndEnsureMasterUser() {
         typistCode: config.typistCode,
         certifiedAgentCpf: config.certifiedAgentCpf,
         simulationEnabled: config.simulationEnabled,
+        cltEnabled: config.cltEnabled,
         baseUrl: config.baseUrl,
         autoSyncEnabled: config.autoSyncEnabled,
         syncIntervalMinutes: config.syncIntervalMinutes,
@@ -15159,6 +15162,7 @@ async function auditAndEnsureMasterUser() {
         typistCode: req.body?.typistCode,
         certifiedAgentCpf: req.body?.certifiedAgentCpf,
         simulationEnabled: req.body?.simulationEnabled,
+        cltEnabled: req.body?.cltEnabled,
         enabled: req.body?.enabled,
         username,
         password,

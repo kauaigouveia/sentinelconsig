@@ -457,6 +457,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
           typistCode: c6Config.typistCode,
           certifiedAgentCpf: c6Config.certifiedAgentCpf,
           simulationEnabled: c6Config.simulationEnabled,
+          cltEnabled: c6Config.cltEnabled,
           password: c6Password ? c6Password : undefined,
           baseUrl: c6Config.baseUrl,
           autoSyncEnabled: c6Config.autoSyncEnabled,
@@ -953,6 +954,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
                 <div className="grid gap-3 sm:grid-cols-2">
                   {([['promoterCode', 'Código da promotora C6'], ['typistCode', 'Código do digitador C6'], ['certifiedAgentCpf', 'CPF do agente certificado']] as const).map(([key, label]) => <label key={key} className="text-xs font-semibold">{label}<input value={c6Config[key] || ''} onChange={event => setC6Config({ ...c6Config, [key]: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800" /></label>)}
                 </div>
+                <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={!!c6Config.cltEnabled} onChange={event => setC6Config({ ...c6Config, cltEnabled: event.target.checked })} />Habilitar C6 CLT · autorização e status</label>
                 <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={!!c6Config.simulationEnabled} onChange={event => setC6Config({ ...c6Config, simulationEnabled: event.target.checked })} />Habilitar C6 nas simulações INSS</label>
                 <p className="text-xs text-slate-500">Preencha os dados da empresa atual. A simulação requer código de promotora e renda mensal do cliente; digitador e agente certificado serão usados na inclusão de propostas.</p>
 
