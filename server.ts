@@ -1,4 +1,5 @@
 import { registerC6CltRoutes } from './server/services/c6CltService.js';
+import { registerTelegramRoutes } from './server/services/telegramNotificationService.js';
 import { registerBankPlaybookCatalog } from './server/services/bankPlaybookCatalog.js';
 import { ParanaBankService } from './server/services/paranaBankService.js';
 import { partnerPublicResponse } from './server/services/partnerPublicResponse.js';
@@ -2099,6 +2100,7 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // Register static preference paths before /api/simulations/:id.
   registerSimulationBankOrderRoutes(app, prisma, getAuthSession);
+  registerTelegramRoutes(app, prisma, getAuthSession);
   registerWorkbankRoutes(app, prisma, getAuthSession);
   registerParanaRoutes(app, prisma, getAuthSession);
   registerPresencaRoutes(app, prisma, getAuthSession);

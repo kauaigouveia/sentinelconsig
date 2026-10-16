@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PartnerTelegramSettings } from './PartnerTelegramSettings';
 import { User, Lock, Building2, Mail, Phone, Shield, CheckCircle2, AlertCircle, Save } from 'lucide-react';
 import { PartnerInfo, PartnerPortalAccessInfo, PartnerPortalClient, TenantInfo } from '../../services/partnerPortalClient';
 
@@ -80,6 +81,7 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 select-none animate-in fade-in duration-150 text-xs">
+      <PartnerTelegramSettings />
       {/* Dados Cadastrais do Parceiro */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
         <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
