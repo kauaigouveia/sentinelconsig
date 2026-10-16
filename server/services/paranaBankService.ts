@@ -5,7 +5,7 @@ import { bankPromoterConfigKey, resolveBankPromoter } from './bankPromoterConfig
 import { resolveMappedBankStatus } from './bankStatusMappings.js';
 
 const HOSTS = { homologation: 'https://api-marketplace-hom.paranabanco.com.br', production: 'https://api-marketplace.paranabanco.com.br' };
-type Config = { environment: keyof typeof HOSTS; enabled: boolean; clientId: string; clientSecret: string; bankId: string; promoterCode: string };
+type Config = { environment: keyof typeof HOSTS; enabled: boolean; inssEnabled?: boolean; clientId: string; clientSecret: string; bankId: string; promoterCode: string };
 const tokens = new Map<string, { token: string; expires: number; fingerprint: string }>();
 function key() { const secret = process.env.JWT_SECRET || process.env.AUTH_SECRET; if (!secret) throw new Error('Segredo de autenticação não configurado.'); return createHash('sha256').update(`sentinel:parana:${secret}`).digest(); }
 function seal(value: unknown) { const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', key(), iv); const data = Buffer.concat([cipher.update(JSON.stringify(value)), cipher.final()]); return [iv, cipher.getAuthTag(), data].map(item => item.toString('base64')).join('.'); }
@@ -45,11 +45,11 @@ export class ParanaBankService {
   }
   static encodeContext(value: unknown) { return seal(value); }
   static decodeContext(value: string) { try { const parts = value.split('.'); if (parts.length !== 3 || parts.some(part => !/^[A-Za-z0-9+/]+={0,2}$/.test(part) || Buffer.from(part, 'base64').toString('base64') !== part) || Buffer.from(parts[0], 'base64').length !== 12 || Buffer.from(parts[1], 'base64').length !== 16) throw new Error('Invalid context'); return open(value); } catch { throw new Error('Consulta Paraná inválida ou vencida. Consulte a elegibilidade novamente.'); } }
-  static metadata(config: Config) { const { clientSecret, ...safe } = config; return { ...safe, hasClientSecret: !!clientSecret }; }
+  static metadata(config: Config) { const { clientSecret, ...safe } = config; return { ...safe, inssEnabled: config.inssEnabled !== false, hasClientSecret: !!clientSecret }; }
   static async save(db: any, tenantId: string, promoterId: string, input: any) {
     if (!Object.keys(HOSTS).includes(input.environment)) throw new Error('Selecione Produção ou Homologação.');
     const old = await this.config(db, tenantId, promoterId, input.environment);
-    const value: Config = { environment: input.environment, enabled: input.enabled === true, clientId: String(input.clientId || '').trim(), clientSecret: String(input.clientSecret || old.clientSecret).trim(), bankId: String(input.bankId || ''), promoterCode: String(input.promoterCode || '').trim() };
+    const value: Config = { environment: input.environment, enabled: input.enabled === true, inssEnabled: input.inssEnabled === undefined ? old.inssEnabled !== false : input.inssEnabled === true, clientId: String(input.clientId || '').trim(), clientSecret: String(input.clientSecret || old.clientSecret).trim(), bankId: String(input.bankId || ''), promoterCode: String(input.promoterCode || '').trim() };
     if ([value.clientId, value.clientSecret].some(item => item.length > 10000 || /[\r\n]/.test(item))) throw new Error('Credenciais inválidas.');
     const bank = value.bankId ? await db.bank.findFirst({ where: { id: value.bankId, tenantId, status: 'ATIVO' } }) : null;
     if (value.bankId && !isParanaBank(bank)) throw new Error('Selecione o cadastro do Paraná Banco desta empresa.');
@@ -125,6 +125,7 @@ export class ParanaBankService {
   }
   static async consentRequest(db: any, tenantId: string, promoterId: string, path: string, body: any) {
     if (!['/v1/inss/beneficio/consentimento', '/v1/inss/beneficio/consentimento/ativo'].includes(path)) throw new Error('Recurso de consentimento inválido.');
+    if ((await this.config(db, tenantId, promoterId)).inssEnabled === false) throw new Error('INSS Paraná desabilitado nesta conexão.');
     const config = await this.config(db, tenantId, promoterId), token = await this.token(db, tenantId, promoterId, false, config.environment);
     const response = await fetch(`${HOSTS[config.environment]}/consignado-cartao${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Client-Id': config.clientId, 'Content-Type': 'application/json-patch+json', Accept: 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000), redirect: 'error' });
     const data = await response.json().catch(() => null);
@@ -147,11 +148,11 @@ export class ParanaBankService {
     if (link.protocol !== 'https:' || link.username || link.password) throw new Error('Link de consentimento inválido.');
     return { link: link.toString(), active: false };
   }
-  static async novoConnections(db: any, tenantId: string) {
+  static async novoConnections(db: any, tenantId: string, allowEmpty = false) {
     const promoters = await db.promoter.findMany({ where: { tenantId, status: 'ATIVO' }, select: { id: true }, orderBy: { id: 'asc' } });
     const active = [];
-    for (const promoter of promoters) if ((await this.config(db, tenantId, promoter.id)).enabled) active.push(promoter.id);
-    if (!active.length) throw new Error('Nenhuma conexão Paraná habilitada nesta empresa.');
+    for (const promoter of promoters) { const config = await this.config(db, tenantId, promoter.id); if (config.enabled && config.inssEnabled !== false) active.push(promoter.id); }
+    if (!active.length && !allowEmpty) throw new Error('Nenhuma conexão Paraná INSS habilitada nesta empresa.');
     return active as string[];
   }
   static async novoJourney(db: any, tenantId: string, input: any, action: 'consent' | 'status' | 'offers') {

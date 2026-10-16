@@ -36,6 +36,7 @@ export function registerParanaRoutes(app: Express, prisma: any, getAuthSession: 
   for (const [path, action] of [['consent', 'consent'], ['consent-status', 'status'], ['offers', 'offers']] as const) {
     app.post(`/api/integrations/parana/novo/${path}`, wrap('simulations.create', false, async (req, c) => ParanaBankService.novoJourney(prisma, c.tenantId, req.body, action)));
   }
+  app.get('/api/integrations/parana/novo/availability', wrap('simulations.create', false, async (_req, c) => ({ enabled: (await ParanaBankService.novoConnections(prisma, c.tenantId, true)).length > 0 })));
   app.get('/api/integrations/parana/connections', wrap('simulations.create', false, async (_req, c) => {
     const promoters = await prisma.promoter.findMany({ where: { tenantId: c.tenantId, status: 'ATIVO' }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
     const connections = await Promise.all(promoters.map(async (promoter: any) => (await ParanaBankService.config(prisma, c.tenantId, promoter.id)).enabled ? promoter : null));

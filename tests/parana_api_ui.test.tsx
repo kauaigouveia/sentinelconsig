@@ -45,10 +45,11 @@ it('loads separate credentials on environment switch and clears the unsaved secr
 
 it('requires consent before querying Novo and does not show a promoter selector', async () => {
   const offer = { id: '11111111-2222-4333-8444-555555555555', benefit: '0000000001', species: 41, amount: 2000, installment: 60, term: 108, rate: 1.85, insurance: false, expiresAt: '2099-01-01T00:00:00Z', environment: 'homologation', promoterId: 'demo' };
-  const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/consent') ? { links: ['https://paranabanco-consentimento.opsdigital.com.br?guid=demo'] } : url.endsWith('/consent-status') ? { active: true } : { offers: [offer] })));
+  const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/availability') ? { enabled: true } : url.endsWith('/consent') ? { links: ['https://paranabanco-consentimento.opsdigital.com.br?guid=demo'] } : url.endsWith('/consent-status') ? { active: true } : { offers: [offer] })));
   vi.stubGlobal('fetch', fetchMock); const onSelect = vi.fn();
   render(<ParanaNovoOpportunities name="Cliente Ficticio" phone="11999999999" onNameChange={() => {}} onPhoneChange={() => {}} cpf="52998224725" benefit="0000000001" species="41" onSelect={onSelect} onClear={() => {}} />);
-  expect(fetchMock).not.toHaveBeenCalled();
+  await screen.findByRole('button', { name: /1. Gerar/ });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('combobox')).toBeNull();
   expect((screen.getByRole('button', { name: /3. Consultar/ }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: /1. Gerar/ }));
@@ -59,4 +60,12 @@ it('requires consent before querying Novo and does not show a promoter selector'
   await screen.findByRole('button', { name: 'Selecionar oferta' });
   fireEvent.click(screen.getByRole('button', { name: 'Selecionar oferta' }));
   expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ provider: 'Paraná Banco', promoterId: 'demo', environment: 'homologation', tableId: offer.id }));
+});
+
+it('hides the full INSS section when disabled', async () => {
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify({ enabled: false })));
+  vi.stubGlobal('fetch', fetchMock);
+  const { container } = render(<ParanaNovoOpportunities name="" phone="" onNameChange={() => {}} onPhoneChange={() => {}} cpf="" benefit="" species="" onSelect={() => {}} onClear={() => {}} />);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  expect(container.textContent).toBe('');
 });

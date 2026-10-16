@@ -40,5 +40,14 @@ function ConnectionOffers({ name, phone, onNameChange, onPhoneChange, cpf, benef
   </div>;
 }
 export function ParanaNovoOpportunities(props: Props) {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/integrations/parana/novo/availability', { credentials: 'include', cache: 'no-store', signal: controller.signal })
+      .then(async response => { if (!response.ok) return; const data = await response.json(); if (!controller.signal.aborted) setAvailable(data.enabled === true); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  if (!available) return null;
   return <section className="space-y-3 rounded-xl border border-blue-200 p-4 dark:border-blue-900"><h3 className="font-bold">Paraná Banco · Ofertas Novo INSS</h3><p className="text-xs text-slate-500">Consulta por CPF e benefício. Prazo, parcela e taxa são retornados pelo banco e não seguem os parâmetros dos outros simuladores. Primeiro gere o consentimento, aguarde o aceite e confirme a autorização. Sem envio automático de SMS.</p><ConnectionOffers key={`${props.cpf}-${props.benefit}-${props.species}`} {...props} /></section>;
 }

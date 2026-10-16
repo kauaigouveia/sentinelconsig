@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StorageService } from '../../services/storageService';
 import { hasPermission } from '../../lib/permissions';
 import { promoterApiUrl } from './BankPromoterConnection';
-const empty = { enabled: false, environment: 'homologation', clientId: '', hasClientSecret: false, bankId: '', promoterCode: '' };
+const empty = { enabled: false, inssEnabled: true, environment: 'homologation', clientId: '', hasClientSecret: false, bankId: '', promoterCode: '' };
 export function ParanaIntegrationTab({ promoterId }: { promoterId: string }) {
   const [config, setConfig] = useState(empty), [secret, setSecret] = useState(''), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
   const [activeEnvironment, setActiveEnvironment] = useState('homologation');
@@ -45,7 +45,7 @@ export function ParanaIntegrationTab({ promoterId }: { promoterId: string }) {
         <label>client_secret<input className={field} type="password" autoComplete="new-password" value={secret} placeholder={config.hasClientSecret ? 'Cadastrada — preencha para alterar' : ''} onChange={e => setSecret(e.target.value)} /></label>
         <label>Código do promotor no Paraná<input className={field} value={config.promoterCode} onChange={e => setConfig({ ...config, promoterCode: e.target.value })} /></label>
       </div>
-      <label className="flex gap-2"><input type="checkbox" checked={config.enabled} onChange={e => setConfig({ ...config, enabled: e.target.checked })} />Habilitar API Paraná</label>
+      <label className="flex gap-2"><input type="checkbox" checked={config.enabled} onChange={e => setConfig({ ...config, enabled: e.target.checked })} />Habilitar API Paraná</label><label className="flex gap-2"><input type="checkbox" checked={config.inssEnabled !== false} onChange={e => setConfig({ ...config, inssEnabled: e.target.checked })} />Habilitar INSS Paraná (consentimento e ofertas)</label><p className="text-xs text-slate-500">Desmarque para ocultar o INSS dos simuladores. O CLT continua seguindo a ativação da conexão.</p>
       <div className="flex flex-wrap gap-2"><button type="button" className="rounded-lg bg-blue-600 px-4 py-2 text-white" onClick={() => run(async () => { setConfig(await api('config', 'PUT', { ...config, clientSecret: secret })); setSecret(''); setActiveEnvironment(config.environment); setRows([]); setNext(null); setNotice('Credenciais salvas somente neste ambiente.'); })}>Salvar e usar este ambiente</button><button type="button" className="rounded-lg border px-4 py-2" onClick={() => run(async () => setNotice((await api('test', 'POST', { environment: config.environment })).message))}>Testar autenticação salva</button></div>
       <p className="text-sm text-slate-500">Credenciais independentes por ambiente. Consultas de propostas usam o ambiente salvo como ativo: {activeEnvironment === 'production' ? 'Produção' : 'Homologação'}. O token é reutilizado somente durante o expires_in retornado pelo banco. Todas as consultas enviam Bearer e X-Client-Id.</p>
     </fieldset>

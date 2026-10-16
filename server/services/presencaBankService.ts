@@ -85,11 +85,16 @@ export class PresencaBankService {
     if (!(inssLookup ? config.inssLookupEnabled : fgts ? config.fgtsEnabled : config.cltEnabled)) throw new Error(`${product} não habilitado nesta conexão Presença.`);
     const token = await this.token(db, tenantId, promoterId);
     let response: Response;
-    try { response = await fetch(`${HOST}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: method === 'GET' ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(25000), redirect: 'error' }); }
+    try { response = await fetch(`${HOST}${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}), Accept: 'application/json' }, body: method === 'GET' ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(25000), redirect: 'error' }); }
     catch { throw new Error('Presença não respondeu à consulta. Tente novamente.'); }
     const data = await response.json().catch(() => null);
     // Never forward raw upstream errors: they can contain customer data and credentials.
     if (response.status === 429) { const error = new Error('Limite de consultas Presença atingido. Aguarde um minuto antes de tentar novamente.'); error.name = 'PresencaRateLimitError'; throw error; }
+    if (inssLookup && (!response.ok || data === null || data?.errors?.length || data?.error || data?.code || data?.emProcessamento === true)) {
+      const step = path.endsWith('/beneficios') ? 'Listar benefícios' : 'Detalhar benefício';
+      const hint = response.status >= 500 ? 'O servidor Presença retornou uma falha interna. Isso não confirma falta de consentimento. Confira se o login cadastrado é o mesmo utilizado no Postman; se persistir, informe este erro ao suporte Presença.' : response.status === 401 || response.status === 403 ? 'O banco recusou o acesso. Confira as credenciais e a permissão de consulta INSS dessa conexão.' : data?.emProcessamento === true ? 'Consulta em processamento no banco. Aguarde antes de tentar novamente.' : 'O banco não retornou os dados esperados. Confira o CPF e tente novamente.';
+      throw new Error(`Presença · ${step} · HTTP ${response.status}: ${hint}`);
+    }
     if (!response.ok || data === null || data?.errors?.length || data?.error || data?.code || data?.emProcessamento === true) throw new Error(`Consulta Presença não concluída (HTTP ${response.status}). Confira autorização do cliente, dados e habilitação ${product}. Se estiver em processamento, aguarde antes de consultar novamente.`);
     return data;
   }

@@ -47,3 +47,13 @@ it('allows only exact GET lookup paths and requires lookup-specific activation',
   vi.spyOn(Bank, 'config').mockResolvedValue({ ...config, inssLookupEnabled: false } as any);
   await expect(Bank.request(db, 'tenant-a', 'promoter-a', path, undefined, 'GET')).rejects.toThrow('não habilitado');
 });
+
+it('reports lookup HTTP 500 without claiming consent is missing and sends GET without a body', async () => {
+  vi.spyOn(Bank, 'token').mockResolvedValue('fictional-token');
+  const mock = vi.fn(async () => new Response(JSON.stringify({ error: 'private customer data' }), { status: 500 }));
+  vi.stubGlobal('fetch', mock);
+  await expect(Bank.request(db, 'tenant-a', 'promoter-a', `/v2/consultas/inss/${cpf}/beneficios`, undefined, 'GET')).rejects.toThrow('Isso não confirma falta de consentimento');
+  const options = (mock.mock.calls[0] as any)[1];
+  expect(options.body).toBeUndefined(); expect(options.headers).not.toHaveProperty('Content-Type');
+  expect(mock).toHaveBeenCalledTimes(1);
+});

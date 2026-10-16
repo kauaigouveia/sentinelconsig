@@ -167,3 +167,17 @@ describe('Paraná API — in-memory data and mocked requests only', () => {
     session.activeRole = 'MASTER'; expect((await request(app).get('/api/integrations/parana/config?promoterId=other')).status).toBe(400);
   });
 });
+
+it('persists the INSS switch per environment and blocks direct consent without disabling the connection', async () => {
+  const { db, save } = fake(); await save();
+  const config = await ParanaBankService.config(db, 'tenant-a', 'promoter-a');
+  await ParanaBankService.save(db, 'tenant-a', 'promoter-a', { ...config, inssEnabled: false });
+  const saved = await ParanaBankService.config(db, 'tenant-a', 'promoter-a');
+  expect(saved.enabled).toBe(true); expect(saved.inssEnabled).toBe(false);
+  const mock = vi.fn(); vi.stubGlobal('fetch', mock);
+  await expect(ParanaBankService.consentRequest(db, 'tenant-a', 'promoter-a', '/v1/inss/beneficio/consentimento', {})).rejects.toThrow('desabilitado');
+  expect(mock).not.toHaveBeenCalled();
+  await save('production');
+  expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a', 'homologation')).inssEnabled).toBe(false);
+  expect((await ParanaBankService.config(db, 'tenant-a', 'promoter-a', 'production')).inssEnabled).toBe(true);
+});
