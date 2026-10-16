@@ -1,7 +1,9 @@
 import source from '../data/bankPlaybooks.json';
+import portability from '../data/portabilityPlaybooks.json';
 import { ageAt } from './inssEligibility';
 
 export const BANK_PLAYBOOKS = source;
+export const PORTABILITY_PLAYBOOKS = portability;
 export type PlaybookId = typeof source[number]['id'];
 export type PlaybookInput = { birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean };
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -14,7 +16,7 @@ export function publicPlaybookText(value: string) {
 export function searchBankPlaybooks(query: string, partner = false) {
   const words = normalize(query.slice(0, 500)).match(/[a-z0-9]{2,}/g)?.filter(word => !['qual','quais','para','como','pode','banco','com','uma','tem','que','dos','das','por','nos','nas','roteiro'].includes(word)) || [];
   if (!words.length) return [];
-  const matches = BANK_PLAYBOOKS.flatMap(book => {
+  const matches = [...BANK_PLAYBOOKS, ...PORTABILITY_PLAYBOOKS].flatMap(book => {
     const text = partner ? publicPlaybookText(book.text) : book.text;
     const paragraphs = text.split(/\r?\n|\s{3,}/).filter(Boolean).flatMap(paragraph => {
       const reference = /^\[PDF pp?\. [^\]]+\]/.exec(paragraph)?.[0];

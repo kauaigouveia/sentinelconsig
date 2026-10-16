@@ -1,3 +1,4 @@
+import { BankCodeSelect } from '../common/BankCodeSelect';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import { CurrencyInput } from '../common/CurrencyInput';
@@ -156,7 +157,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <InssBenefitTypeSelect className={labelClass} required value={form.benefitType} onChange={value => update('benefitType', value)} />
         </div></section>
         <section className="rounded-xl border border-violet-200 p-4 dark:border-violet-900"><h3 className="mb-3 text-sm font-bold">2. Contrato de origem</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className={labelClass}>Banco de origem (código)<input required type="number" min="1" value={form.originLenderCode} onChange={e => update('originLenderCode', e.target.value)} className={inputClass} /></label>
+          <BankCodeSelect label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
           <label className={labelClass}>Número do contrato<input required value={form.originContractNumber} onChange={e => update('originContractNumber', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Prazo original (meses)<input required type="number" min="1" value={form.originalTerm} onChange={e => update('originalTerm', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Parcelas restantes<input required type="number" min="1" value={form.openedInstallmentNumber} onChange={e => update('openedInstallmentNumber', e.target.value)} className={inputClass} /></label>

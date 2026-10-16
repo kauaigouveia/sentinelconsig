@@ -42,3 +42,16 @@ FACTA, BMG, Daycoval e Paraná foram substituídos por resumos operacionais conf
 A IA e os trechos de consulta passam a citar página do PDF, banco, versão e arquivo. Não houve atualização de APIs bancárias, ativação de produtos ou confirmação de vigência junto aos bancos. Dados de exemplo de telas, documentos pessoais, credenciais e nomes de promotoras não foram incorporados aos resumos.
 
 Verificação da revisão PDF: 15 testes aprovados em quatro arquivos (bank_playbooks, bank_playbooks_ui, bank_playbook_routes, sentinela_bank_playbooks); TypeScript e build local aprovados, com o aviso conhecido de chunks acima de 500 kB. Conferência visual das páginas FACTA 3/8, BMG 1/3/5, Daycoval 3 e Paraná 3/4, além da leitura do texto das páginas operacionais relevantes. Dados reais de clientes e chamadas reais aos bancos/modelo não utilizados.
+
+
+## Resumo de portabilidade e instituições STR — 16/10/2026
+
+Incluídas doze referências do PDF NOVO RESUMO DA PORTABILIDADE INSS 10.09.pdf, versão de capa 10/09/2026. A página 8 foi excluída a pedido do usuário, inclusive da busca da IA. Os dois quadros BRB permanecem separados por página; diferenças entre resumo e roteiros completos exigem conferência de canal/tabela. O resumo não altera automaticamente cálculos, habilitação de APIs ou aprovação de crédito. Proveniência e SHA-256 em portability-source.json. Nomes de promotoras e condições de comissionamento não integram o catálogo distribuído.
+
+ParticipantesSTR.xlsx forneceu 464 linhas: 461 códigos únicos de instituições importados e três registros 000 de câmaras/sistemas de liquidação excluídos. Proveniência, hash e exclusões em str-source.json. A presença no STR não comprova participação na CIP, atividade atual ou aceitação por determinado banco. A lista mantém os nomes recebidos e códigos com zeros à esquerda.
+
+O seletor permite pesquisa por nome/código nas origens de portabilidade internas e do portal, nos dados bancários FINANTO e no formulário CLT BMG. Envia somente o código ao formulário; códigos numéricos manuais continuam disponíveis para preservar integrações existentes. O cadastro interno de bancos financiadores vinculados a promotoras não foi substituído.
+
+Verificação: 19 testes aprovados em sete arquivos, incluindo catálogo, seletor por teclado, preservação de códigos, exclusão da página 8, busca e recuperação de fontes da IA. TypeScript aprovado. Não houve chamadas bancárias reais, alterações no banco de dados ou consulta real ao modelo.
+
+Build local aprovado; permanece o aviso conhecido de chunks acima de 500 kB.

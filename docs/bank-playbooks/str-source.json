@@ -1,0 +1,26 @@
+{
+  "sourceFile": "ParticipantesSTR.xlsx",
+  "sha256": "f39f55fea074e82d290d0fbe687ce13eaeb512a68fdf1f5641c2da79e73a3a53",
+  "receivedAt": "2026-10-16",
+  "sheet": "Worksheet",
+  "sourceRows": 464,
+  "imported": 461,
+  "excludedSettlementSystems": [
+    {
+      "row": 203,
+      "code": "000",
+      "name": "Sistema do Balcão B3"
+    },
+    {
+      "row": 382,
+      "code": "000",
+      "name": "Câmara B3"
+    },
+    {
+      "row": 414,
+      "code": "000",
+      "name": "Câmara de Câmbio B3"
+    }
+  ],
+  "notice": "Cadastro de participantes STR fornecido pela empresa; não comprova participação CIP, operação ativa ou aceite por credor."
+}
