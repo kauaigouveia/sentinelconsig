@@ -89,17 +89,20 @@ function eventType(proposal: any) {
         return 'CANCELADO';
     if (status.code === 'SALDO_RETORNADO' && ['PORTABILIDADE', 'REFIN_PORTABILIDADE'].includes(proposal.type) && Number(proposal.debtBalance) > 0)
         return 'SALDO';
+    if (status.finalStatus)
+        return null;
     const group = String(status.responsibleGroup).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-    return ['PARCEIRO', 'CLIENTE'].includes(group) ? group : 'ATUALIZACAO';
+    return ['PARCEIRO', 'CLIENTE'].includes(group) ? group : null;
 }
 function fingerprint(proposal: any) { return hash(`${proposal.statusId}:${proposal.statusHistories[0]?.id || proposal.statusId}:${eventType(proposal) === 'SALDO' ? String(proposal.debtBalance) : ''}`); }
-const include = { status: true, statusHistories: { take: 1, orderBy: { createdAt: 'desc' as const } }, partner: true, bank: true, client: { select: { fullName: true } }, tenant: { include: { whiteLabel: true } } } satisfies Prisma.ProposalInclude;
+const include = { status: true, statusHistories: { take: 1, orderBy: { createdAt: 'desc' as const } }, partner: true, bank: true, client: { select: { fullName: true, cpf: true } }, tenant: { include: { whiteLabel: true } } } satisfies Prisma.ProposalInclude;
 function message(proposal: any) {
     const kind = eventType(proposal), companyName = proposal.tenant.whiteLabel?.companyName || proposal.tenant.tradeName || proposal.tenant.name;
-    const labels: Record<string, string> = { ATUALIZACAO: 'Status da proposta atualizado', SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
+    const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
     const money = (value: unknown) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const client = String(proposal.client.fullName).trim().split(/\s+/).map((word: string, index: number) => index === 0 ? word : word[0] + '.').join(' ');
-    return `${String(companyName).replace(/[\r\n]/g, ' ').slice(0, 160)}\n\n${labels[kind!]}.\nProposta: #${proposal.proposalNumber}\nCliente: ${client}\nBanco: ${proposal.bank?.name || 'Não informado'}\nStatus: ${proposal.status.name}${kind === 'SALDO' ? `\nSaldo devedor: ${money(proposal.debtBalance)}` : ''}\n${kind === 'PAGO' ? `Valor liberado: ${money(proposal.releasedValue)}\n` : ''}\nConsulte os detalhes no portal do parceiro.`.slice(0, 3800);
+    const client = String(proposal.client.fullName).replace(/[\r\n]/g, ' ').trim();
+    const cpf = String(proposal.client.cpf || '').replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    return `${String(companyName).replace(/[\r\n]/g, ' ').slice(0, 160)}\n\n${labels[kind!]}.\nBanco: ${proposal.bank?.name || 'Não informado'}\nProposta: #${proposal.proposalNumber}\nValor liberado: ${money(proposal.releasedValue)}\nCliente: ${client}\nCPF: ${cpf || 'Não informado'}\nEtapa: ${proposal.status.name}${kind === 'SALDO' ? `\nSaldo devedor: ${money(proposal.debtBalance)}` : ''}\n\nConsulte os detalhes no portal do parceiro.`.slice(0, 3800);
 }
 export class TelegramNotificationService {
     static async dispatch(db: PrismaClient) {

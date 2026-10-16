@@ -60,3 +60,10 @@ O atendimento Telegram foi desativado globalmente, inclusive para empresas com a
 Os avisos agora contemplam qualquer status atual atualizado, mantendo mensagens especificas para saldo retornado, parceiro, cliente, pagamento e cancelamento. A varredura consolida o estado atual; nao garante aviso de cada transicao intermediaria entre execucoes.
 
 Calculo de cinco dias uteis de CIP e despacho de mensagens sao rotinas distintas. Completar o prazo nao confirma retorno de saldo pelo banco. O agendador externo ainda precisa ser configurado para chamar GET /api/cron/telegram-notifications com Authorization Bearer CRON_SECRET a cada cinco minutos. Nenhum agendador externo foi provisionado por esta alteracao.
+
+
+## Regras finais dos avisos
+
+Enviar somente para o parceiro vinculado a proposta: etapas de responsabilidade PARCEIRO ou CLIENTE, saldo retornado de portabilidade com saldo positivo, pagamento e cancelamento. Etapas internas, de banco ou sistema nao geram aviso por si mesmas. Outros estados finais tambem nao geram aviso.
+
+Mensagem: nome da empresa, banco, numero da proposta, valor liberado em BRL, nome completo e CPF formatado do cliente, etapa atual; saldo devedor adicional no retorno da portabilidade. CPF e nome sao usados apenas para compor a mensagem ao destinatario validado, sem gravacao do corpo na fila. Esta regra substitui a descricao anterior sobre qualquer status atualizado.
