@@ -430,6 +430,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           visible: hasPermission(role, userCustomPerms, 'proposals.view'),
         },
         {
+          id: 'roteiros', to: '/roteiros', label: 'Roteiros', icon: Calculator, color: 'cyan', visible: hasPermission(role, userCustomPerms, 'simulations.view'),
+        },
+        {
           id: 'simulacoes',
           to: '/simulacoes',
           label: 'Simulações',

@@ -64,3 +64,12 @@ Regras explícitas do resumo 10/09/2026 em src/lib/portabilityEligibility.ts. Da
 Planilhas internas e portal exigem origem e pagas por contrato; bloqueio também no servidor antes de calcular/salvar. No comparador, pagas derivam de prazo original menos restantes; FACTA e FINANTO não consultam condições incompatíveis. Portal aplica a regra antes da consulta por destino. O painel de roteiros usa os mesmos critérios para alternativas sem API. Produtos sem regra individualizada mantêm a análise do banco; isto não substitui os demais critérios operacionais. Nenhuma consulta real a banco executada nesta alteração.
 
 Checagem TypeScript aprovada nesta alteração. Testes automatizados e consultas bancárias reais não executados nesta rodada.
+
+
+## Biblioteca Roteiros
+
+Nova página /roteiros no menu de Produção, com busca por banco/conteúdo, seleção lateral e leitura em fonte de 16 px, linhas espaçadas e parágrafos. O mesmo leitor substitui os blocos compactos dos painéis de simulação. Usuários com simulations.view consultam; MASTER, PLATFORM_MASTER e ADMIN cadastram e editam materiais próprios. Os documentos embarcados permanecem preservados: a ação cria uma nova versão/complemento, sem substituir silenciosamente a fonte.
+
+Cadastros por empresa em SystemConfig, chave BANK_PLAYBOOK_CUSTOM_<id>, com banco/título, versão, referência, nome do arquivo e texto. Sem migrations ou mudanças de configuração em produção durante implementação. As rotas usam tenant da sessão e verificam autorização no servidor. A IA interna recupera os materiais da empresa ativa; conteúdo cadastrado internamente não é publicado automaticamente no portal do parceiro. Novos textos não alteram automaticamente os filtros estruturados de elegibilidade: mudanças desses filtros exigem implementação específica.
+
+Checagem TypeScript aprovada. Sem testes automatizados, chamadas reais ao modelo ou gravações de cadastros em produção nesta rodada.

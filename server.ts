@@ -1,3 +1,4 @@
+import { registerBankPlaybookCatalog } from './server/services/bankPlaybookCatalog.js';
 import { ParanaBankService } from './server/services/paranaBankService.js';
 import { partnerPublicResponse } from './server/services/partnerPublicResponse.js';
 import { withIntegrationPromoter, resolveBankPromoter } from './server/services/bankPromoterConfig.js';
@@ -2100,6 +2101,7 @@ async function auditAndEnsureMasterUser() {
   registerWorkbankRoutes(app, prisma, getAuthSession);
   registerParanaRoutes(app, prisma, getAuthSession);
   registerPresencaRoutes(app, prisma, getAuthSession);
+  registerBankPlaybookCatalog(app, prisma, getAuthSession);
   registerBankPlaybookRoutes(app, prisma, req => PartnerPortalService.getPartnerSession(req, prisma));
   registerBmgRoutes(app, prisma, getAuthSession);
   registerDaycovalRoutes(app, prisma, getAuthSession);

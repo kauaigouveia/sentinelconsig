@@ -19,6 +19,7 @@ export interface RouteConfig {
 }
 
 export const APP_ROUTES: RouteConfig[] = [
+  { path: '/roteiros', viewId: 'roteiros', title: 'Roteiros', category: 'Operação', requiredPermission: 'simulations.view' },
   // 1. INÍCIO
   {
     path: '/',

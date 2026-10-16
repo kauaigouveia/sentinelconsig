@@ -59,6 +59,7 @@ const HolidayManagement = lazyNamed(() => import('./components/admin/HolidayMana
 const AuditLogView = lazyNamed(() => import('./components/admin/AuditLogView'), 'AuditLogView');
 const UserManagement = lazyNamed(() => import('./components/admin/UserManagement'), 'UserManagement');
 const StatusImport = lazyNamed(() => import('./components/admin/StatusImport'), 'StatusImport');
+const BankPlaybooksView = lazyNamed(() => import('./components/simulation/BankPlaybooksView'), 'BankPlaybooksView');
 const SimulationView = lazyNamed(() => import('./components/simulation/SimulationView'), 'SimulationView');
 const TVOperationsMonitor = lazyNamed(() => import('./components/monitor/TVOperationsMonitor'), 'TVOperationsMonitor');
 const CommercialRadarView = lazyNamed(() => import('./components/bi/CommercialRadarView'), 'CommercialRadarView');
@@ -806,6 +807,7 @@ function AppMainContent() {
 
               {effectiveView === 'admin-produtos' && <ProductManagement />}
 
+              {effectiveView === 'roteiros' && <BankPlaybooksView />}
               {effectiveView === 'admin-status' && <StatusManagement />}
 
               {effectiveView === 'admin-calendario' && <HolidayManagement />}

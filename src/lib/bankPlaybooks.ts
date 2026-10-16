@@ -14,10 +14,10 @@ export function publicPlaybookText(value: string) {
     .replace(/Suporte ao Correspondente:[\s\S]*$/i, '')
     .replace(/Portabilidade na Autorregulação[\s\S]*?(?=Resumo das Informações)/i, '');
 }
-export function searchBankPlaybooks(query: string, partner = false) {
+export function searchBankPlaybooks(query: string, partner = false, additions: typeof BANK_PLAYBOOKS = []) {
   const words = normalize(query.slice(0, 500)).match(/[a-z0-9]{2,}/g)?.filter(word => !['qual','quais','para','como','pode','banco','com','uma','tem','que','dos','das','por','nos','nas','roteiro'].includes(word)) || [];
   if (!words.length) return [];
-  const matches = [...BANK_PLAYBOOKS, ...PORTABILITY_PLAYBOOKS].flatMap(book => {
+  const matches = [...BANK_PLAYBOOKS, ...PORTABILITY_PLAYBOOKS, ...additions].flatMap(book => {
     const text = partner ? publicPlaybookText(book.text) : book.text;
     const paragraphs = text.split(/\r?\n|\s{3,}/).filter(Boolean).flatMap(paragraph => {
       const reference = /^\[PDF pp?\. [^\]]+\]/.exec(paragraph)?.[0];

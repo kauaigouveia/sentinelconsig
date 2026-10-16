@@ -24,6 +24,7 @@ export function navigationGroup(
     [
       "/esteira",
       "/simulacoes",
+      "/roteiros",
       "/portabilidade",
       "/propostas",
       "/central-pendencias",
@@ -42,6 +43,7 @@ const preferred = [
   "/agenda-operacional",
   "/propostas",
   "/simulacoes",
+      "/roteiros",
   "/portabilidade",
   "/central-pendencias",
   "/esteira",
