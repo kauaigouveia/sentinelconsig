@@ -22,6 +22,7 @@ import { WorkspaceToolbar } from './components/layout/WorkspaceToolbar';
 import { RouteContextPanel } from './components/layout/RouteContextPanel';
 import { useWorkspacePreferences, workspaceKey } from './hooks/useWorkspacePreferences';
 import { useTenantBranding } from './hooks/useTenantBranding';
+import { resolveAuthenticatedBranding } from './lib/branding';
 import { getRoleLabel } from './lib/roleLabels';
 
 import { ResponsibleAlçada, User } from './types';
@@ -100,7 +101,9 @@ function AppMainContent() {
   const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
   const [activeUser, setActiveUser] = useState<User | null>(null);
   const [adminContext, setAdminContext] = useState<{ targetTenantId: string; targetTenantName: string } | null>(null);
-  const { branding } = useTenantBranding();
+  const { branding: publicBranding } = useTenantBranding();
+  const brandingTenant = StorageService.getTenants().find(tenant => tenant.id === (adminContext?.targetTenantId || StorageService.getCurrentTenantId() || activeUser?.tenantId)) || null;
+  const branding = resolveAuthenticatedBranding(publicBranding, isAuthenticated, brandingTenant, StorageService.getWhiteLabel());
 
   // Router context for URL-driven navigation and deep linking
   const {

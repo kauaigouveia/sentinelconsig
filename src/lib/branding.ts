@@ -1,4 +1,16 @@
 import { Role } from '../types';
+import type { TenantBranding } from '../hooks/useTenantBranding';
+
+// Presentation fallback only: domain status and authentication checks stay intact.
+export function resolveAuthenticatedBranding(
+  branding: TenantBranding,
+  authenticated: boolean,
+  tenant: { name?: string; whiteLabel?: { logoUrl?: string | null } } | null,
+  whiteLabel?: { logoUrl?: string | null } | null,
+): TenantBranding {
+  if (!authenticated || !tenant?.name || (branding.status !== 'DOMAIN_NOT_CONFIGURED' && branding.status !== 'PLATFORM_DEFAULT')) return branding;
+  return { ...branding, companyName: tenant.name, logoUrl: tenant.whiteLabel?.logoUrl || whiteLabel?.logoUrl || null };
+}
 
 export interface EffectiveTenantBranding {
   tenantId: string;
