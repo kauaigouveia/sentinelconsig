@@ -17,9 +17,10 @@ export function searchBankPlaybooks(query: string, partner = false) {
   const matches = BANK_PLAYBOOKS.flatMap(book => {
     const text = partner ? publicPlaybookText(book.text) : book.text;
     const paragraphs = text.split(/\r?\n|\s{3,}/).filter(Boolean).flatMap(paragraph => {
-      const chunks: string[] = []; for (let index = 0; index < paragraph.length; index += 1800) chunks.push(paragraph.slice(index, index + 1800)); return chunks;
+      const reference = /^\[PDF pp?\. [^\]]+\]/.exec(paragraph)?.[0];
+      const chunks: string[] = []; for (let index = 0; index < paragraph.length; index += 1800) chunks.push(`${index > 0 && reference ? `${reference} ` : ''}${paragraph.slice(index, index + 1800)}`); return chunks;
     });
-    return paragraphs.map((excerpt, index) => ({ bankId: book.id, bank: book.name, version: book.version, receivedAt: book.receivedAt, source: book.source, section: index + 1, excerpt,
+    return paragraphs.map((excerpt, index) => ({ bankId: book.id, bank: book.name, version: book.version, receivedAt: book.receivedAt, source: book.source, sourceFile: book.sourceFile, page: /^\[PDF pp?\. ([^\]]+)\]/.exec(excerpt)?.[1] || null, section: index + 1, excerpt,
       score: words.reduce((score, word) => score + (normalize(excerpt).includes(word) ? 1 : 0) + (normalize(book.name).includes(word) ? 3 : 0), 0) }));
   }).filter(row => row.score > 0).sort((a, b) => b.score - a.score);
   return matches.slice(0, 8).map(({ score: _score, ...row }) => row);
@@ -49,7 +50,7 @@ export function evaluateBankPlaybooks(input: PlaybookInput, today?: Date) {
     if (book.id === 'facta' && uf === 'PI') blocked.push('Roteiro FACTA não atende benefícios no PI.');
     if (book.id === 'facta' && [9,10,13,15,25,31,35,36,39,47,48,50,53,61,62,63,64,65,66,67,68,69,70,71,73,74,75,76,77,79,80,85,86,87,88,90,91,94,95,97,98,99].includes(benefit)) blocked.push('Espécie explicitamente não consignável no roteiro FACTA.');
     if (book.id === 'c6' && [18,87,88].includes(benefit)) blocked.push('LOAS/Auxílio Inclusão suspensos no roteiro C6.');
-    if (age !== null && age >= 60 && ['PB','AP','TO','RR'].includes(uf)) {
+    if (age !== null && age >= 60 && (['PB','AP','TO','RR'].includes(uf) || book.id === 'facta' && uf === 'SC')) {
       if (['finanto','presenca','parana'].includes(book.id)) blocked.push('Restrição de idade/UF no roteiro; encaminhar para conferência na fronteira de 60 anos.');
       else review.push('Conferir exigência de formalização física/híbrida para idosos nesta UF.');
     }
@@ -59,7 +60,23 @@ export function evaluateBankPlaybooks(input: PlaybookInput, today?: Date) {
     if (book.id === 'finanto' && benefit === 87) blocked.push('Espécie 87 não opera.');
     if (book.id === 'finanto' && benefit === 32 && input.operation !== 'NEW') blocked.push('Espécie 32 somente em contratos novos.');
     if (book.id === 'finanto' && benefit === 32 && age !== null && age <= 60) blocked.push('Espécie 32 exige idade acima de 60 anos.');
-    if (input.legalRepresentative && ['daycoval','banrisul','c6','presenca','safra'].includes(book.id)) blocked.push('Representação legal não atendida conforme roteiro.');
+    if (input.legalRepresentative && ['daycoval','banrisul','parana','c6','presenca','safra'].includes(book.id)) blocked.push('Representação legal não atendida conforme roteiro.');
+    if (book.id === 'bmg' && benefit === 21 && age !== null && age < 28) blocked.push('BMG: espécie 21 exige 28 anos completos (PDF p. 5).');
+    if (age !== null && (book.id === 'facta' && [32,92].includes(benefit) || book.id === 'bmg' && [4,5,6,32,33,92].includes(benefit))) {
+      if (age < 55) blocked.push('Espécie de invalidez fora da idade mínima de 55 anos descrita no PDF.');
+      else if (age < 60) {
+        const benefitYears = ageAt(input.benefitStartDate || '', today);
+        if (benefitYears === null) review.push('De 55 a 59 anos, conferir data de concessão: exige pelo menos quinze anos de benefício.');
+        else if (benefitYears < 15) blocked.push('De 55 a 59 anos, esta espécie exige pelo menos quinze anos de benefício.');
+      }
+    }
+    if (book.id === 'facta') {
+      if (uf === 'GO') review.push('GO: contratação por telefone não permitida no PDF p. 3.');
+      if (uf === 'CE') review.push('CE: conferir comunicado FF06/24, citado mas não incluído no PDF.');
+      if (uf === 'RS' && input.operation === 'NEW') review.push('A carência de até 180 dias no RS citada no PDF era excepcional por 90 dias desde 28/06/2024; não tratar como condição atual.');
+      review.push('Cliente iletrado: somente operação Nova, conforme PDF p. 3; demais modalidades exigem conferência antes de prosseguir.');
+    }
+    if (book.id === 'parana') review.push('Conferir exceção 33180/33181: o mínimo geral de R$ 1,00 não substitui o líquido de Refin de R$ 100,00 na p. 4; Port+Refin exige R$ 100,00.');
     if (age !== null && age >= minimum && age <= maximum) {
       let maxTerm = 108, maxAmount = Infinity;
       if (book.id === 'facta') { maxTerm = age <= 71 ? 108 : 108 - (age - 71) * 12; maxAmount = age <= 73 ? 150000 : age === 74 ? 50000 : 30000; }

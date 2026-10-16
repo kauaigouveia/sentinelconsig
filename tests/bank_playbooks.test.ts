@@ -35,3 +35,32 @@ describe('company supplied INSS playbooks', () => {
   expect(JSON.stringify(BANK_PLAYBOOKS)).not.toMatch(/BEM PROMOTORA|Suporte ao Correspondente|SIM remunera/);
  });
 });
+
+it('tracks the four PDF sources with hashes, actual versions and page references', () => {
+ const updated = BANK_PLAYBOOKS.filter(book => book.sourceFile);
+ expect(updated.map(book => book.id).sort()).toEqual(['bmg','daycoval','facta','parana']);
+ expect(updated.every(book => /^[a-f0-9]{64}$/.test(book.sourceSha256 || '') && (book.sourcePageCount || 0) > 0)).toBe(true);
+ expect(updated.find(book => book.id === 'bmg')?.version).toContain('21/07/2026');
+ expect(updated.find(book => book.id === 'daycoval')?.version).toContain('02/07/2026');
+ const found = searchBankPlaybooks('BMG 28 anos');
+ expect(found.some(row => row.bankId === 'bmg' && row.page === '5' && row.sourceFile?.includes('BMG'))).toBe(true);
+});
+it('enforces the BMG pension age and the documented benefit duration for disability', () => {
+ const find = (extra: any) => evaluateBankPlaybooks({ birthDate: '1999-10-16', species: '21', operation: 'NEW', ...extra }, new Date(2026,9,16)).find(row => row.bankId === 'bmg')!;
+ expect(find({}).blocked.join(' ')).toContain('28 anos completos');
+ expect(find({ birthDate: '1998-10-16' }).status).toBe('REVIEW');
+ expect(find({ birthDate: '1972-10-16', species: '32' }).status).toBe('BLOCKED');
+ expect(find({ birthDate: '1971-10-16', species: '32', benefitStartDate: '2012-10-16' }).status).toBe('BLOCKED');
+ expect(find({ birthDate: '1971-10-16', species: '32', benefitStartDate: '2011-10-16' }).status).toBe('REVIEW');
+});
+it('preserves historical and conflicting PDF caveats instead of treating them as current permission', () => {
+ const facta = BANK_PLAYBOOKS.find(book => book.id === 'facta')!;
+ expect(facta.text).toContain('EXCEÇÃO HISTÓRICA');
+ expect(facta.text).toContain('somente para operações NOVAS');
+ expect(facta.text).toContain('não confirma limite de dez arquivos');
+ const row = evaluateBankPlaybooks({ birthDate: '1960-01-01', species: '41', operation: 'NEW', state: 'SC' }, new Date(2026,9,16)).find(row => row.bankId === 'facta')!;
+ expect(row.status).toBe('REVIEW'); expect(row.review.join(' ')).toContain('formalização física/híbrida');
+ const parana = BANK_PLAYBOOKS.find(book => book.id === 'parana')!;
+ expect(parana.text).toContain('Conferir acordo específico'); expect(parana.text).toContain('fronteira exata de 58');
+ expect(evaluateBankPlaybooks({ birthDate: '1960-01-01', species: '41', operation: 'NEW', legalRepresentative: true }, new Date(2026,9,16)).find(row => row.bankId === 'parana')?.blocked.join(' ')).toContain('Representação legal');
+});

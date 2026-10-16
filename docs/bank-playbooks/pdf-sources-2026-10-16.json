@@ -1,0 +1,30 @@
+[
+  {
+    "id": "facta",
+    "version": "PDF - alterações até 17/06/2026",
+    "sourceFile": "2026-07-16_10-26-17_INSS - FACTA - EMPRÉSTIMO - ROTEIRO OPERACIONAL..pdf.pdf",
+    "sourceSha256": "d5f8508630bb400899bb2bf4841cdc8a188cc1d24e5883af36034bf98849a664",
+    "sourcePageCount": 19
+  },
+  {
+    "id": "bmg",
+    "version": "21/07/2026 - entidade 1581",
+    "sourceFile": "2026-08-25_11-55-54_INSS - BMG - EMPRÉSTIMO.pdf",
+    "sourceSha256": "d4fe8534e4eb9d8ca5bfc2d8d36bcccdaeae99f531557f0ea9c20dc9816006ef",
+    "sourcePageCount": 35
+  },
+  {
+    "id": "daycoval",
+    "version": "76.0 - atualização 02/07/2026",
+    "sourceFile": "2026-08-25_12-32-35_INSS - DAYCOVAL - EMPRÉSTIMO.pdf",
+    "sourceSha256": "8db9a0270c0e6be79d48fb48545e38c99fdf5208a3a09c9de0aaf51065e6cafe",
+    "sourcePageCount": 16
+  },
+  {
+    "id": "parana",
+    "version": "Código 331 - PDF sem versão datada",
+    "sourceFile": "2026-09-10_13-15-35_INSS - PARANA BANCO - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf.pdf",
+    "sourceSha256": "e115811a8a307feec4a3bddfda1183d3d383febe1ba017a856862d133c30a995",
+    "sourcePageCount": 51
+  }
+]
