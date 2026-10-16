@@ -89,3 +89,8 @@ No bot, enviar /start, /menu ou /consultar. O teclado oferece Consultar proposta
 Cada mensagem revalida bot ativo, empresa habilitada/ativa, parceiro ativo e vinculo confirmado do chat privado. Toda busca/detalhe aplica tenantId e partnerId; numeros de outra empresa/parceiro nao sao retornados. Mudanca ou revogacao do vinculo invalida o contexto. CPF no retorno permanece mascarado. Consulta aceita qualquer etapa atual, independentemente dos filtros dos avisos automaticos.
 
 Estado criptografado por bot/chat expira em 10 minutos; guarda somente IDs de resultados, vinculos e fase, sem CPF pesquisado nem texto enviado. Recibo por message_id evita processar novamente o mesmo update; recibo e estado gravados em transacao Serializable antes da resposta. Se a resposta Telegram falhar apos o commit, o parceiro pode repetir a pesquisa com nova mensagem. Consulta e imediata via webhook e nao depende do cron; nao altera status nem marcadores de notificacao automatica e nao reativa atendimento humano.
+
+
+## Valores de portabilidade na consulta
+
+Toda mensagem inclui o tipo da proposta com nome legivel. Na consulta de PORTABILIDADE, Valor liberado vem do refin explicitamente vinculado, independentemente da etapa; Saldo devedor vem da portabilidade consultada. Na consulta do REFIN_PORTABILIDADE, o liberado e da propria proposta e o saldo e da portabilidade explicitamente vinculada (mesma empresa, parceiro e cliente), com fallback ao saldo do proprio refin. Valores ausentes aparecem como Nao informado. Nao se infere vinculo por CPF e nao se calcula retorno de saldo por prazo.

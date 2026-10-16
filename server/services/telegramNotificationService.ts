@@ -97,14 +97,17 @@ function eventType(proposal: any) {
 }
 function fingerprint(proposal: any) { return hash(`${proposal.statusId}:${proposal.statusHistories[0]?.id || proposal.statusId}:${eventType(proposal) === 'SALDO' ? String(proposal.debtBalance) : ''}`); }
 const include = { status: true, statusHistories: { take: 1, orderBy: { createdAt: 'desc' as const } }, partner: true, bank: true, client: { select: { fullName: true, cpf: true } }, tenant: { include: { whiteLabel: true } } } satisfies Prisma.ProposalInclude;
-function message(proposal: any, portabilityRefinValue?: unknown, query = false) {
+function message(proposal: any, portabilityRefinValue?: unknown, query = false, portabilityBalance: unknown = proposal.debtBalance) {
     const kind = eventType(proposal), companyName = proposal.tenant.whiteLabel?.companyName || proposal.tenant.tradeName || proposal.tenant.name;
     const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
     const money = (value: unknown) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const html = (value: unknown) => String(value ?? '').replace(/[\r\n]/g, ' ').trim().slice(0, 160).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const cpfDigits = String(proposal.client.cpf || '').replace(/\D/g, '');
     const cpf = cpfDigits.length === 11 ? `***.${cpfDigits.slice(3, 6)}.${cpfDigits.slice(6, 9)}-**` : 'Não informado';
-    return `<b>${html(companyName)}</b>\n\n${query ? 'Consulta da proposta' : labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nValor liberado: <b>${html(kind === 'SALDO' ? portabilityRefinValue == null ? 'Não informado' : money(portabilityRefinValue) : money(proposal.releasedValue))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status?.name || 'Etapa não informada')}</b>${kind === 'SALDO' ? `\nSaldo devedor: <b>${html(money(proposal.debtBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
+    const isPortability = ['PORTABILIDADE', 'REFIN_PORTABILIDADE'].includes(proposal.type);
+    const types: Record<string, string> = { NOVO: 'Novo', REFIN: 'Refinanciamento', PORTABILIDADE: 'Portabilidade', REFIN_PORTABILIDADE: 'Refinanciamento da portabilidade', CARTAO_RMC: 'Cartão RMC', CARTAO_RCC: 'Cartão RCC', SAQUE_COMPLEMENTAR: 'Saque complementar' };
+    const released = kind === 'SALDO' || (query && isPortability) ? portabilityRefinValue : proposal.releasedValue;
+    return `<b>${html(companyName)}</b>\n\n${query ? 'Consulta da proposta' : labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nTipo da proposta: <b>${html(types[proposal.type] || proposal.type)}</b>\nValor liberado: <b>${html(released == null ? 'Não informado' : money(released))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status?.name || 'Etapa não informada')}</b>${kind === 'SALDO' || (query && isPortability) ? `\nSaldo devedor: <b>${html(portabilityBalance == null ? 'Não informado' : money(portabilityBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
 }
 export class TelegramNotificationService {
     static async dispatch(db: PrismaClient) {
@@ -296,10 +299,15 @@ async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any
             const proposal = await tx.proposal.findFirst({ where: { ...scope(state.selected!), id }, include });
             if (!proposal) { method(); response = 'Esta proposta não está disponível para seu cadastro. Faça uma nova consulta.'; return; }
             let refinValue: unknown;
-            if (eventType(proposal) === 'SALDO') {
+            let balance: unknown = proposal.debtBalance;
+            if (['PORTABILIDADE', 'REFIN_PORTABILIDADE'].includes(proposal.type)) {
                 refinValue = proposal.type === 'REFIN_PORTABILIDADE' ? proposal.releasedValue : (await tx.proposal.findFirst({ where: { ...scope(state.selected!), clientId: proposal.clientId, relatedPortabilityId: proposal.id, type: 'REFIN_PORTABILIDADE' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { releasedValue: true } }))?.releasedValue;
             }
-            response = message(proposal, refinValue, true);
+            if (proposal.type === 'REFIN_PORTABILIDADE' && proposal.relatedPortabilityId) {
+                const portability = await tx.proposal.findFirst({ where: { ...scope(state.selected!), id: proposal.relatedPortabilityId, clientId: proposal.clientId, type: 'PORTABILIDADE' }, select: { debtBalance: true } });
+                balance = portability?.debtBalance ?? proposal.debtBalance;
+            }
+            response = message(proposal, refinValue, true, balance);
             htmlMode = true;
             state.phase = 'METHOD';
             state.results = undefined;
