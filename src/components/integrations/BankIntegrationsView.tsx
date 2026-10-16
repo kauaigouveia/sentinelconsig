@@ -7,7 +7,6 @@ import { BankStatusMappingSettings } from './BankStatusMappingSettings';
 import { WorkbankIntegrationTab } from './WorkbankIntegrationTab';
 import { ParanaIntegrationTab } from './ParanaIntegrationTab';
 import { PresencaIntegrationTab } from './PresencaIntegrationTab';
-import { TelegramIntegrationSettings } from './TelegramIntegrationSettings';
 import {
   Server,
   Zap,
@@ -549,7 +548,6 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto text-xs animate-in fade-in duration-150">
-      <TelegramIntegrationSettings key={StorageService.getCurrentTenantId() || activeUser?.tenantId || 'platform'} />
       {/* Cabeçalho da Central de Integrações */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">

@@ -28,13 +28,16 @@ import {
   FileText,
   Lock,
   Plug,
+  Send,
 } from 'lucide-react';
 import { BankIntegrationsView } from '../integrations/BankIntegrationsView';
 import { FinantoIntegrationTab } from '../integrations/FinantoIntegrationTab';
 import { NossaFintechIntegrationTab } from '../integrations/NossaFintechIntegrationTab';
 import { PremiumContent } from '../redesign/PremiumContent';
+import { TelegramIntegrationSettings } from '../integrations/TelegramIntegrationSettings';
+import { StorageService } from '../../services/storageService';
 
-export type HubTab = 'overview' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'health' | 'incidents' | 'logs';
+export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'health' | 'incidents' | 'logs';
 
 export interface IntegrationDefinition {
   id: string;
@@ -400,6 +403,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
   const tabs: { id: HubTab; label: string; icon: React.ElementType }[] = [
     { id: 'overview', label: 'Visão Geral', icon: Landmark },
+    { id: 'telegram', label: 'Telegram', icon: Send },
     { id: 'c6', label: 'C6 Bank', icon: Zap },
     { id: 'facta', label: 'FACTA', icon: Server },
     { id: 'bmg', label: 'BMG', icon: ShieldCheck },
@@ -541,6 +545,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
       {/* Feedback de Ações (Mensagens de Sucesso ou Erro) */}
       <PremiumContent active={premium} className="p2-integration-body space-y-6">
+      {activeTab === 'telegram' && <TelegramIntegrationSettings key={StorageService.getCurrentTenantId() || 'platform'} />}
       {actionFeedback && (
         <div
           className={`p-3.5 rounded-lg border text-xs flex items-center justify-between ${
