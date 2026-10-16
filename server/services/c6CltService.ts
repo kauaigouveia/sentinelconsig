@@ -32,8 +32,10 @@ export function registerC6CltRoutes(app: Express, db: PrismaClient, getSession: 
      if(!['https:','http:'].includes(link.protocol) || link.username || link.password || !(link.hostname==='c6consig.com.br' || link.hostname.endsWith('.c6consig.com.br')))return res.status(502).json({error:'C6 retornou um endereço de autorização não reconhecido.'});
      return res.json({link:link.href,expiresAt:typeof data.data_expiracao==='string'?data.data_expiracao.slice(0,30):null,message:'Abra o link e aguarde a autorização do cliente. Depois consulte o status.'});
     }
-    const status=String(data.status || '');const messages:Record<string,string>={AUTORIZADO:'Cliente autorizado pelo C6.',AGUARDANDO_AUTORIZACAO:'Aguardando autorização do cliente.',NAO_AUTORIZADO:'Autorização não concedida ou expirada.',WAITING_FOR_AUTHORIZATION:'Aguardando autorização do cliente.',PENDING_OF_LIVENESS:'Aguardando verificação do cliente.'};
-    return res.json({status:messages[status]?status:'UNKNOWN',message:messages[status] || 'C6 retornou um status ainda não reconhecido. Confira no banco.'});
+    const returnedStatus=String(data.status || '');
+    const status=returnedStatus==='AUTHORIZED'?'AUTORIZADO':returnedStatus;const messages:Record<string,string>={AUTORIZADO:'Cliente autorizado pelo C6.',AGUARDANDO_AUTORIZACAO:'Aguardando autorização do cliente.',NAO_AUTORIZADO:'Autorização não concedida ou expirada.',WAITING_FOR_AUTHORIZATION:'Aguardando autorização do cliente.',PENDING_OF_LIVENESS:'Aguardando verificação do cliente.'};
+    const expiresAt=typeof data.data_expiracao==='string' && /^\d{4}-\d{2}-\d{2}$/.test(data.data_expiracao) && Number.isFinite(Date.parse(data.data_expiracao)) ? data.data_expiracao : null;
+    return res.json({status:messages[status]?status:'UNKNOWN',expiresAt,message:messages[status] || 'C6 retornou um status ainda não reconhecido. Confira no banco.'});
    }catch{return res.status(502).json({error:'Não foi possível concluir a consulta C6 CLT. Tente novamente.'});}
   });
  }

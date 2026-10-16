@@ -7,3 +7,5 @@ Ativação independente cltEnabled em Integrações > C6. Reutiliza credenciais 
 O usuário informa que as simulações aparecem após a autorização. Solicitado exemplo sanitizado para confirmar se são exibidas no link do C6 ou retornadas no JSON. O manual disponível não contém contrato de resposta de ofertas CLT. Não foi inventado endpoint ou adaptada simulação INSS para CLT; importação de ofertas e contratação continuam pendentes dessa confirmação.
 
 Checagem TypeScript aprovada. Sem testes automatizados, consultas reais ao C6 ou geração de autorização para clientes nesta rodada.
+
+Resposta real fornecida pelo usuário confirma status AUTHORIZED e data_expiracao em YYYY-MM-DD. AUTHORIZED é normalizado para AUTORIZADO; validade exibida em dd/mm/aaaa. Resposta não inclui ofertas financeiras. Nenhum dado pessoal do exemplo foi incorporado.
