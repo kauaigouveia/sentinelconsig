@@ -100,9 +100,10 @@ function message(proposal: any) {
     const kind = eventType(proposal), companyName = proposal.tenant.whiteLabel?.companyName || proposal.tenant.tradeName || proposal.tenant.name;
     const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
     const money = (value: unknown) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const client = String(proposal.client.fullName).replace(/[\r\n]/g, ' ').trim();
-    const cpf = String(proposal.client.cpf || '').replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
-    return `${String(companyName).replace(/[\r\n]/g, ' ').slice(0, 160)}\n\n${labels[kind!]}.\nBanco: ${proposal.bank?.name || 'Não informado'}\nProposta: #${proposal.proposalNumber}\nValor liberado: ${money(proposal.releasedValue)}\nCliente: ${client}\nCPF: ${cpf || 'Não informado'}\nEtapa: ${proposal.status.name}${kind === 'SALDO' ? `\nSaldo devedor: ${money(proposal.debtBalance)}` : ''}\n\nConsulte os detalhes no portal do parceiro.`.slice(0, 3800);
+    const html = (value: unknown) => String(value ?? '').replace(/[\r\n]/g, ' ').trim().slice(0, 160).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const cpfDigits = String(proposal.client.cpf || '').replace(/\D/g, '');
+    const cpf = cpfDigits.length === 11 ? `***.${cpfDigits.slice(3, 6)}.${cpfDigits.slice(6, 9)}-**` : 'Não informado';
+    return `<b>${html(companyName)}</b>\n\n${labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nValor liberado: <b>${html(money(proposal.releasedValue))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status.name)}</b>${kind === 'SALDO' ? `\nSaldo devedor: <b>${html(money(proposal.debtBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
 }
 export class TelegramNotificationService {
     static async dispatch(db: PrismaClient) {
@@ -160,7 +161,7 @@ export class TelegramNotificationService {
             if (!lease.count)
                 continue;
             try {
-                await telegram(config, 'sendMessage', { chat_id: recipient.chatId, text: message(proposal), protect_content: true });
+                await telegram(config, 'sendMessage', { chat_id: recipient.chatId, text: message(proposal), parse_mode: 'HTML', protect_content: true });
                 await db.systemConfig.update({ where: { id: job.id }, data: { configValue: JSON.stringify({ ...claimed, state: 'SENT' }) } });
                 sent++;
             }

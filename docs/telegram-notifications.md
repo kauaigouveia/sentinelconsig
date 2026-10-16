@@ -67,3 +67,8 @@ Calculo de cinco dias uteis de CIP e despacho de mensagens sao rotinas distintas
 Enviar somente para o parceiro vinculado a proposta: etapas de responsabilidade PARCEIRO ou CLIENTE, saldo retornado de portabilidade com saldo positivo, pagamento e cancelamento. Etapas internas, de banco ou sistema nao geram aviso por si mesmas. Outros estados finais tambem nao geram aviso.
 
 Mensagem: nome da empresa, banco, numero da proposta, valor liberado em BRL, nome completo e CPF formatado do cliente, etapa atual; saldo devedor adicional no retorno da portabilidade. CPF e nome sao usados apenas para compor a mensagem ao destinatario validado, sem gravacao do corpo na fila. Esta regra substitui a descricao anterior sobre qualquer status atualizado.
+
+
+## Formato visual dos avisos
+
+Cabecalho com nome da empresa em negrito. Valores de banco, proposta, valor liberado, cliente, CPF e etapa em negrito via parse_mode HTML, com escape dos campos dinamicos. CPF sempre mascarado como ***.XXX.XXX-**; valores invalidos aparecem como Nao informado. O formato vale para novas entregas, sem reenvio das mensagens ja entregues.
