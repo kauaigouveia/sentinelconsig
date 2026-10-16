@@ -9,3 +9,7 @@ O usuário informa que as simulações aparecem após a autorização. Solicitad
 Checagem TypeScript aprovada. Sem testes automatizados, consultas reais ao C6 ou geração de autorização para clientes nesta rodada.
 
 Resposta real fornecida pelo usuário confirma status AUTHORIZED e data_expiracao em YYYY-MM-DD. AUTHORIZED é normalizado para AUTORIZADO; validade exibida em dd/mm/aaaa. Resposta não inclui ofertas financeiras. Nenhum dado pessoal do exemplo foi incorporado.
+
+## Suspensão — 16/10/2026
+
+A pedido do usuário após confirmação com o banco, C6 CLT suspenso: controles removidos das simulações internas e do portal, ativação indisponível nas configurações, availability retorna enabled:false/suspended:true e authorize/status retornam 409 sem acessar credenciais ou chamar o banco. Configurações antigas não reativam o fluxo. C6 INSS e demais bancos não foram alterados.

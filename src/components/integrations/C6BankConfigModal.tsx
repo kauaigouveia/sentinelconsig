@@ -375,7 +375,7 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                   </span>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.cltEnabled} onChange={e => setConfig({ ...config, cltEnabled: e.target.checked })} />Habilitar C6 CLT · autorização e status</label>
+                <p className="text-sm text-slate-500">C6 CLT temporariamente suspenso.</p>
                 {/* Switch Auto-Sync e Intervalo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40">
                   <div className="flex items-center gap-3">

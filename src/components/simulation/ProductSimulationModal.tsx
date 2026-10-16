@@ -1,4 +1,3 @@
-import { C6CltAuthorization } from './C6CltAuthorization';
 import { ParanaCltSimulation } from './ParanaCltSimulation';
 import { PresencaCltSimulation } from './PresencaCltSimulation';
 import { PresencaFgtsSimulation } from './PresencaFgtsSimulation';
@@ -57,7 +56,6 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
       <div className="flex flex-wrap gap-3">{product === 'CLT' && <button type="button" disabled={loading} onClick={() => void run('authorize')} className="rounded-lg border border-indigo-400 px-4 py-2 text-sm font-semibold disabled:opacity-50">Solicitar autorização nas instituições</button>}{product === 'CLT' && <button type="button" disabled={loading} onClick={() => void run('refresh')} className="rounded-lg border border-emerald-500 px-4 py-2 text-sm font-semibold disabled:opacity-50">Atualizar dados do cliente</button>}<button disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{loading && <LoaderCircle className="h-4 w-4 animate-spin" />}{loading ? 'Consultando instituições…' : 'Simular nas instituições disponíveis'}</button></div>
       {product === 'CLT' && <BmgCustomerAuthorization input={{ ...form, product, cpf: form.cpf.replace(/\D/g, '') }} onRows={bmgRows => setRows(current => [...current.filter(row => row.provider !== 'BMG'), ...bmgRows])} />}
     </form>
-    {product === 'CLT' && <C6CltAuthorization key={`c6-${form.cpf}`} cpf={form.cpf} name={form.name} phone={form.phone} />}
     {product === 'CLT' && <ParanaCltSimulation key={form.cpf} cpf={form.cpf} name={form.name} phone={form.phone} />}
     {product === 'CLT' && <PresencaCltSimulation key={`${form.cpf}:${form.name}:${form.phone}`} cpf={form.cpf} name={form.name} phone={form.phone} />}
     {product === 'FGTS' && <PresencaFgtsSimulation key={form.cpf} cpf={form.cpf} />}

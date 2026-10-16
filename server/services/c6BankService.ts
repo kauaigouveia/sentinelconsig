@@ -89,7 +89,7 @@ export class C6BankService {
       typistCode: configMap.get('c6_bank_typist_code') || '',
       certifiedAgentCpf: configMap.get('c6_bank_certified_agent_cpf') || '',
       simulationEnabled: configMap.get('c6_bank_simulation_enabled') === 'true',
-      cltEnabled: configMap.get('c6_bank_clt_enabled') === 'true',
+      cltEnabled: false, // C6 CLT suspended by company request.
       username: username.trim(),
       password: password.trim(),
       baseUrl: baseUrl.trim().replace(/\/+$/, ''),
@@ -148,7 +148,7 @@ export class C6BankService {
     if (data.promoterCode !== undefined) await upsertConfig('c6_bank_promoter_code', String(data.promoterCode).trim());
     if (data.typistCode !== undefined) await upsertConfig('c6_bank_typist_code', String(data.typistCode).trim());
     if (data.certifiedAgentCpf !== undefined) await upsertConfig('c6_bank_certified_agent_cpf', String(data.certifiedAgentCpf).replace(/\D/g, ''));
-    if (typeof data.cltEnabled === 'boolean') await upsertConfig('c6_bank_clt_enabled', String(data.cltEnabled));
+    if (typeof data.cltEnabled === 'boolean') await upsertConfig('c6_bank_clt_enabled', 'false');
     if (data.simulationEnabled !== undefined) await upsertConfig('c6_bank_simulation_enabled', data.simulationEnabled ? 'true' : 'false');
     if (data.password !== undefined && data.password.trim() !== '') {
       await upsertConfig('c6_bank_password', data.password.trim(), true);
