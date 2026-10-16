@@ -87,6 +87,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals state
+  const [spreadsheetVisited,setSpreadsheetVisited]=useState(false);
+  useEffect(()=>{if(activeTab==='PORT_REFIN_PLANILHAS')setSpreadsheetVisited(true);},[activeTab]);
   const [isFlowSelectorOpen, setIsFlowSelectorOpen] = useState(false);
   const [multiProduct, setMultiProduct] = useState<'CLT' | 'FGTS' | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -1116,7 +1118,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       </div>
 
       {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
-      {activeTab === 'PORT_REFIN_PLANILHAS' && <SpreadsheetPortRefinWorkspace premium={premium} partners={partners} onSuccess={() => { void loadData(); }} />}
+      {(activeTab === 'PORT_REFIN_PLANILHAS' || spreadsheetVisited) && <div hidden={activeTab !== 'PORT_REFIN_PLANILHAS'}><button type="button" onClick={()=>setActiveTab('VISAO_GERAL')} className="mb-4 rounded-lg border px-4 py-2 text-sm font-semibold">← Voltar às simulações</button><SpreadsheetPortRefinWorkspace premium={premium} partners={partners} onSuccess={() => { void loadData(); }} /></div>}
       {activeTab === 'VISAO_GERAL' && (
         <div className="p2-simulation-requests space-y-6 animate-in fade-in">
           <RecordWorkspace premium={premium} filters={simulationFilters} summary={simulationSummary} count={filteredSimulations.length} mode={presentation} onMode={setPresentation}>
@@ -1746,6 +1748,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <XCircle className="h-5 w-5" />
               </button>
             </div>
+
+            <button type="button" onClick={()=>setIsFlowSelectorOpen(true)} className="my-3 rounded-lg border px-4 py-2 text-sm font-semibold">← Alterar produto</button>
 
             {/* AVISO DE DUPLICIDADE (SE HOUVER) */}
             {duplicateWarning ? (
@@ -2545,6 +2549,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         nossaFintechEnabled={nossaFintechEnabled}
         onSelectFlow={(flow) => {
           setIsFlowSelectorOpen(false);
+          if(flow==='MANUAL' && isNewModalOpen)return;
+          setIsNewModalOpen(false); setIsHappyInssModalOpen(false); setIsHappyCltModalOpen(false); setIsFinantoInssModalOpen(false); setIsNossaFintechPortRefinOpen(false); setMultiProduct(null);
           if (flow === 'PORT_REFIN_PLANILHAS') { setActiveTab('PORT_REFIN_PLANILHAS'); return; }
           if (flow === 'CLT_MULTI' || flow === 'FGTS_MULTI') {
             setMultiProduct(flow === 'CLT_MULTI' ? 'CLT' : 'FGTS');
@@ -2566,10 +2572,11 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         }}
       />
 
-      {multiProduct && <ProductSimulationModal partners={partners} onSuccess={async () => { await loadData(); }} key={multiProduct} product={multiProduct} isOpen onClose={() => setMultiProduct(null)} onHappyClt={happySimulationAccessEnabled ? () => { setMultiProduct(null); setIsHappyCltModalOpen(true); } : undefined} />}
+      {(['CLT','FGTS'] as const).map(product => <ProductSimulationModal key={product} partners={partners} onSuccess={async () => { await loadData(); }} product={product} isOpen={multiProduct===product} onBack={()=>setIsFlowSelectorOpen(true)} onClose={() => setMultiProduct(null)} onHappyClt={happySimulationAccessEnabled ? () => { setMultiProduct(null); setIsHappyCltModalOpen(true); } : undefined} />)}
 
       {/* Modal Simulação Happy INSS */}
       <HappyInssSimulationModal
+        onBack={()=>setIsFlowSelectorOpen(true)}
         isOpen={isHappyInssModalOpen}
         onClose={() => setIsHappyInssModalOpen(false)}
         partners={partners}
@@ -2580,6 +2587,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal Simulação Happy CLT (Consignado Privado) */}
       <HappyCltSimulationModal
+        onBack={()=>setIsFlowSelectorOpen(true)}
         isOpen={isHappyCltModalOpen}
         onClose={() => setIsHappyCltModalOpen(false)}
         partners={partners}
@@ -2589,6 +2597,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       />
 
       <FinantoInssSimulationModal
+        onBack={()=>setIsFlowSelectorOpen(true)}
         happyEnabled={happySimulationAccessEnabled}
         isOpen={isFinantoInssModalOpen}
         initialDraft={inssInitialDraft}
@@ -2599,6 +2608,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       />
 
       <NossaFintechPortRefinSimulationModal
+        onBack={()=>setIsFlowSelectorOpen(true)}
         happyEnabled={happySimulationAccessEnabled}
         isOpen={isNossaFintechPortRefinOpen}
         partners={partners}

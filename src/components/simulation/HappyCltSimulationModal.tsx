@@ -1,3 +1,4 @@
+import { SimulationBack } from './SimulationSteps';
 import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useEffect, useState } from 'react';
 import {
@@ -24,6 +25,7 @@ interface HappyCltSimulationModalProps {
   embedded?: boolean;
   initialData?: { cpf?: string; name?: string; phone?: string; birthDate?: string; benefit?: string; partnerId?: string };
   onClose: () => void;
+  onBack?: () => void;
   partners: Partner[];
   onSuccess: (simulation: SimulationRequest) => void;
 }
@@ -35,6 +37,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   embedded = false,
   initialData,
   onClose,
+  onBack,
   partners,
   onSuccess,
 }) => {
@@ -278,7 +281,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
               <Briefcase className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <SimulationBack onBack={onBack}/><h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Central de Simulações — Happy CLT
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">

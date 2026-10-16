@@ -762,6 +762,7 @@ function AppMainContent() {
 
               {effectiveView === 'simulacoes' && activeUser?.role !== 'DIGITADOR' && (
                 <SimulationView
+                  key={preferenceKey}
                   premium={newUI}
                   onOpenProposalDetail={propId => {
                     setDetailProposalId(propId);

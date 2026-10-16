@@ -1,3 +1,4 @@
+import { SimulationBack } from './SimulationSteps';
 import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useEffect, useState } from 'react';
 import {
@@ -28,6 +29,7 @@ interface HappyInssSimulationModalProps {
   initialOperation?: 'MARGEM_LIVRE' | 'PORTABILIDADE_REFIN';
   initialData?: { cpf?: string; name?: string; phone?: string; birthDate?: string; benefit?: string; partnerId?: string };
   onClose: () => void;
+  onBack?: () => void;
   partners: Partner[];
   onSuccess: (simulation: SimulationRequest) => void;
 }
@@ -41,6 +43,7 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
   initialOperation = 'MARGEM_LIVRE',
   initialData,
   onClose,
+  onBack,
   partners,
   onSuccess,
 }) => {
@@ -331,7 +334,7 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <SimulationBack onBack={onBack}/><h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Central de Simulações — Happy INSS
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
