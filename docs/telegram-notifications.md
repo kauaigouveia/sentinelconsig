@@ -51,3 +51,12 @@ Texto é suportado até 3.500 caracteres por mensagem. Para arquivos/imagens, o 
 A entrada é deduplicada por bot/chat/message_id, com recibo e gravação de conversa/mensagem em transação serializável. O estado do menu é criptografado. A sessão de conversa é revalidada contra empresa e parceiro ativos, integração e vínculo atual a cada mensagem. As respostas humanas são persistidas antes de enviar; 429 confirmado volta à fila do cron, erros ambíguos ficam UNKNOWN e não são repetidos automaticamente.
 
 As opções de menu passam pelo webhook já utilizado. Quem já ativou a conexão não precisa registrar novos tipos de update para atendimento por texto; somente mensagens privadas são aceitas.
+
+
+## Atualizacao: bot exclusivo para avisos
+
+O atendimento Telegram foi desativado globalmente, inclusive para empresas com a opcao antiga salva. O webhook apenas identifica o Telegram para confirmar o vinculo no portal. Comandos de atendimento direcionam ao portal e removem o teclado antigo. Historicos existentes permanecem preservados; novas conversas e entregas de suporte pelo Telegram estao bloqueadas.
+
+Os avisos agora contemplam qualquer status atual atualizado, mantendo mensagens especificas para saldo retornado, parceiro, cliente, pagamento e cancelamento. A varredura consolida o estado atual; nao garante aviso de cada transicao intermediaria entre execucoes.
+
+Calculo de cinco dias uteis de CIP e despacho de mensagens sao rotinas distintas. Completar o prazo nao confirma retorno de saldo pelo banco. O agendador externo ainda precisa ser configurado para chamar GET /api/cron/telegram-notifications com Authorization Bearer CRON_SECRET a cada cinco minutos. Nenhum agendador externo foi provisionado por esta alteracao.
