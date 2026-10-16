@@ -140,7 +140,7 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
       {activeTab === 'dashboard' && <PartnerPortalDashboard onNavigate={(tab, params) => { if (tab === 'propostas') setProposalFilters({ standardCategory: params?.standardCategory, waitingReturnOnly: params?.waitingReturnOnly === true }); setActiveTab(tab as any); }} onSelectProposal={id => { setProposalFilters({}); setDashboardProposalId(id); setActiveTab('propostas'); }} />}
       {activeTab === 'propostas' && <PartnerProposalsView initialStatusCategory={proposalFilters.standardCategory} initialWaitingReturnOnly={proposalFilters.waitingReturnOnly} initialProposalId={dashboardProposalId} onInitialProposalHandled={() => setDashboardProposalId(null)} onOpenChatForProposal={handleOpenChatForProposal} />}
       {activeTab === 'atendimento' && <PartnerSupportView initialProposalId={chatProposal?.id} initialProposalNumber={chatProposal?.number} />}
-      {activeTab === 'perfil' && <PartnerProfileView partner={partner} access={access} tenant={tenant} onContactUpdated={contact => setPartner(current => current ? { ...current, ...contact } : current)} />}
+      {activeTab === 'perfil' && <PartnerProfileView onPasswordChanged={() => { void verifySession(); }} partner={partner} access={access} tenant={tenant} onContactUpdated={contact => setPartner(current => current ? { ...current, ...contact } : current)} />}
     </main></div>
   </div>;
 };

@@ -8,6 +8,7 @@ interface PartnerProfileViewProps {
   access: PartnerPortalAccessInfo;
   tenant: TenantInfo;
   onContactUpdated?: (contact: { email: string | null; phone: string | null }) => void;
+  onPasswordChanged?: () => void;
 }
 
 export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
@@ -15,6 +16,7 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
   access,
   tenant,
   onContactUpdated,
+  onPasswordChanged,
 }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -53,6 +55,7 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      onPasswordChanged?.();
     } catch (err: any) {
       setErrorMsg(err?.message || 'Falha ao alterar senha.');
     } finally {
@@ -81,7 +84,7 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 select-none animate-in fade-in duration-150 text-xs">
-      <PartnerTelegramSettings key={`${tenant.id}:${partner.id}`} />
+      <PartnerTelegramSettings key={`${tenant.id}:${partner.id}:${access.mustChangePassword}`} />
       {/* Dados Cadastrais do Parceiro */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
         <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
