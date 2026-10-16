@@ -97,14 +97,14 @@ function eventType(proposal: any) {
 }
 function fingerprint(proposal: any) { return hash(`${proposal.statusId}:${proposal.statusHistories[0]?.id || proposal.statusId}:${eventType(proposal) === 'SALDO' ? String(proposal.debtBalance) : ''}`); }
 const include = { status: true, statusHistories: { take: 1, orderBy: { createdAt: 'desc' as const } }, partner: true, bank: true, client: { select: { fullName: true, cpf: true } }, tenant: { include: { whiteLabel: true } } } satisfies Prisma.ProposalInclude;
-function message(proposal: any, portabilityRefinValue?: unknown) {
+function message(proposal: any, portabilityRefinValue?: unknown, query = false) {
     const kind = eventType(proposal), companyName = proposal.tenant.whiteLabel?.companyName || proposal.tenant.tradeName || proposal.tenant.name;
     const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
     const money = (value: unknown) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const html = (value: unknown) => String(value ?? '').replace(/[\r\n]/g, ' ').trim().slice(0, 160).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const cpfDigits = String(proposal.client.cpf || '').replace(/\D/g, '');
     const cpf = cpfDigits.length === 11 ? `***.${cpfDigits.slice(3, 6)}.${cpfDigits.slice(6, 9)}-**` : 'Não informado';
-    return `<b>${html(companyName)}</b>\n\n${labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nValor liberado: <b>${html(kind === 'SALDO' ? portabilityRefinValue == null ? 'Não informado' : money(portabilityRefinValue) : money(proposal.releasedValue))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status.name)}</b>${kind === 'SALDO' ? `\nSaldo devedor: <b>${html(money(proposal.debtBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
+    return `<b>${html(companyName)}</b>\n\n${query ? 'Consulta da proposta' : labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nValor liberado: <b>${html(kind === 'SALDO' ? portabilityRefinValue == null ? 'Não informado' : money(portabilityRefinValue) : money(proposal.releasedValue))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status?.name || 'Etapa não informada')}</b>${kind === 'SALDO' ? `\nSaldo devedor: <b>${html(money(proposal.debtBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
 }
 export class TelegramNotificationService {
     static async dispatch(db: PrismaClient) {
@@ -239,10 +239,133 @@ export function registerTelegramRoutes(app:Express,db:PrismaClient,getSession:(r
  app.post('/api/partner-portal/telegram/link',wrap(async req=>{const session=await portal(req);const config=await activeBot(db,session.tenant.id),options=await company(db,session.tenant.id);if(!config?.registered||!(options.enabled))throw new Error();const payload=randomBytes(24).toString('base64url');await db.$transaction(async tx=>{await tx.systemConfig.deleteMany({where:{tenantId:session.tenant.id,configKey:LINK+session.partner.id}});await tx.systemConfig.create({data:{id:'tg-link-'+hash(payload),tenantId:session.tenant.id,configKey:LINK+session.partner.id,configValue:encrypt({partnerId:session.partner.id,botId:botId(config),expires:Date.now()+10*60_000}),isSecret:true}});});return {url:`https://t.me/${config.username||BOT}?start=${payload}`,expiresIn:600};}));
  app.post('/api/partner-portal/telegram/confirm',wrap(async req=>{const session=await portal(req);await db.$transaction(async tx=>{const config=await activeBot(tx,session.tenant.id);if(!config?.registered)throw new Error();const ticket=await tx.systemConfig.findFirst({where:{id:String(req.body?.ticketId||''),tenantId:session.tenant.id,configKey:LINK+session.partner.id}});if(!ticket)throw new Error();const candidate=decrypt<Ticket>(ticket.configValue);if(!candidate.chatId||candidate.expires<Date.now()||candidate.partnerId!==session.partner.id||candidate.botId!==botId(config))throw new Error();const consumed=await tx.systemConfig.deleteMany({where:{id:ticket.id,configValue:ticket.configValue}});if(consumed.count!==1)throw new Error();await put(tx,session.tenant.id,BINDING+session.partner.id,{chatId:candidate.chatId,botId:botId(config),linkedAt:new Date().toISOString()},true);});return {linked:true};}));
  app.delete('/api/partner-portal/telegram',wrap(async req=>{const session=await portal(req);await db.systemConfig.deleteMany({where:{tenantId:session.tenant.id,configKey:{in:[BINDING+session.partner.id,LINK+session.partner.id]}}});return {linked:false};}));
- const webhook=(own:boolean)=>async(req:any,res:any)=>{res.setHeader('Cache-Control','no-store');try{const config=own?await customBot(db,String(req.params.tenantId)):await botConfig(db);const secret=String(req.headers['x-telegram-bot-api-secret-token']||'');if(!config?.registered||!equal(secret,config.secret))return res.status(403).end();if(own&&(await company(db,config.ownerTenant!)).botMode!=='CUSTOM')return res.json({ok:true});const msg=req.body?.message;if(msg?.chat?.type!=='private'||!Number.isSafeInteger(msg.chat.id)||msg.from?.is_bot||msg.from?.id!==msg.chat.id)return res.json({ok:true});const match=/^\/start(?:@\w+)? ([A-Za-z0-9_-]{32})$/.exec(String(msg.text||''));if(match){const row=await db.systemConfig.findUnique({where:{id:'tg-link-'+hash(match[1])}});if(!row?.tenantId||config.ownerTenant&&row.tenantId!==config.ownerTenant)return res.json({ok:true});const active=await activeBot(db,row.tenantId);if(!active||botId(active)!==botId(config))return res.json({ok:true});const ticket=decrypt<Ticket>(row.configValue);if(ticket.expires<Date.now()||ticket.chatId||ticket.botId!==botId(config))return res.json({ok:true});const valid=await db.partner.findFirst({where:{id:ticket.partnerId,tenantId:row.tenantId,deletedAt:null,status:'ATIVO',tenant:{status:'ACTIVE',deletedAt:null}}});if(!valid)return res.json({ok:true});const claimed=await db.systemConfig.updateMany({where:{id:row.id,configValue:row.configValue},data:{configValue:encrypt({...ticket,chatId:String(msg.chat.id),label:String(msg.from.username?'@'+msg.from.username:msg.from.first_name||'Telegram pessoal').slice(0,100)})}});if(claimed.count){try{await telegram(config,'sendMessage',{chat_id:String(msg.chat.id),text:'Telegram identificado! Volte ao portal da empresa, atualize o vínculo e confirme sua conta.'});}catch{}}}else if (/^\/(?:start|menu)(?:@\w+)?$|^Atendimento$/i.test(String(msg.text||''))) {try {await telegram(config,'sendMessage',{chat_id:String(msg.chat.id),text:'Este bot envia avisos das suas propostas. Para falar com a equipe, acesse Atendimento no portal da sua empresa.',reply_markup:{remove_keyboard:true}});}catch{}}return res.json({ok:true});}catch{return res.status(503).json({ok:false});}};
+ const webhook=(own:boolean)=>async(req:any,res:any)=>{res.setHeader('Cache-Control','no-store');try{const config=own?await customBot(db,String(req.params.tenantId)):await botConfig(db);const secret=String(req.headers['x-telegram-bot-api-secret-token']||'');if(!config?.registered||!equal(secret,config.secret))return res.status(403).end();if(own&&(await company(db,config.ownerTenant!)).botMode!=='CUSTOM')return res.json({ok:true});const msg=req.body?.message;if(msg?.chat?.type!=='private'||!Number.isSafeInteger(msg.chat.id)||msg.from?.is_bot||msg.from?.id!==msg.chat.id)return res.json({ok:true});const match=/^\/start(?:@\w+)? ([A-Za-z0-9_-]{32})$/.exec(String(msg.text||''));if(match){const row=await db.systemConfig.findUnique({where:{id:'tg-link-'+hash(match[1])}});if(!row?.tenantId||config.ownerTenant&&row.tenantId!==config.ownerTenant)return res.json({ok:true});const active=await activeBot(db,row.tenantId);if(!active||botId(active)!==botId(config))return res.json({ok:true});const ticket=decrypt<Ticket>(row.configValue);if(ticket.expires<Date.now()||ticket.chatId||ticket.botId!==botId(config))return res.json({ok:true});const valid=await db.partner.findFirst({where:{id:ticket.partnerId,tenantId:row.tenantId,deletedAt:null,status:'ATIVO',tenant:{status:'ACTIVE',deletedAt:null}}});if(!valid)return res.json({ok:true});const claimed=await db.systemConfig.updateMany({where:{id:row.id,configValue:row.configValue},data:{configValue:encrypt({...ticket,chatId:String(msg.chat.id),label:String(msg.from.username?'@'+msg.from.username:msg.from.first_name||'Telegram pessoal').slice(0,100)})}});if(claimed.count){try{await telegram(config,'sendMessage',{chat_id:String(msg.chat.id),text:'Telegram identificado! Volte ao portal da empresa, atualize o vínculo e confirme sua conta.'});}catch{}}}else await handleProposalQuery(db,config,msg);return res.json({ok:true});}catch{return res.status(503).json({ok:false});}};
  app.post('/api/webhooks/telegram/sentinel',webhook(false));
  app.post('/api/webhooks/telegram/company/:tenantId',webhook(true));
  app.get('/api/cron/telegram-notifications',async(req,res)=>{const secret=process.env.CRON_SECRET;if(!secret||!equal(String(req.headers.authorization||''),`Bearer ${secret}`))return res.status(403).end();try{return res.json(await TelegramNotificationService.dispatch(db));}catch{return res.status(503).json({error:'Não foi possível processar os avisos Telegram.'});}});
 }
 type TelegramAccount={tenantId:string;partnerId:string;label:string;linkedAt:string};
-type TelegramChatState={phase:'MENU'|'COMPANY'|'CHAT';accounts?:TelegramAccount[];page?:number;selected?:TelegramAccount;conversationId?:string;expires:number};
+type ProposalQueryState = {
+    phase: 'MENU' | 'COMPANY' | 'METHOD' | 'NUMBER' | 'CPF' | 'RESULTS';
+    selected?: TelegramAccount;
+    choices?: TelegramAccount[];
+    page?: number;
+    results?: string[];
+    expires: number;
+};
+
+async function handleProposalQuery(db: PrismaClient, config: BotConfig, msg: any) {
+    if (!Number.isSafeInteger(msg.message_id)) return;
+    const chatId = String(msg.chat.id);
+    const stateId = 'tg-query-' + hash(`${botId(config)}:${chatId}`);
+    const receiptId = 'tg-query-receipt-' + hash(`${botId(config)}:${chatId}:${msg.message_id}`);
+    const result = await db.$transaction(async tx => {
+        if (await tx.systemConfig.findUnique({ where: { id: receiptId } })) return null;
+        const row = await tx.systemConfig.findUnique({ where: { id: stateId } });
+        let state: ProposalQueryState = row ? decrypt<ProposalQueryState>(row.configValue) : { phase: 'MENU', expires: 0 };
+        if (state.expires < Date.now()) state = { phase: 'MENU', expires: 0 };
+        const text = String(msg.text || '').trim();
+        const command = text.toLocaleLowerCase('pt-BR').replace(/^\/(start|menu|consultar)(?:@\w+)?$/, '/$1');
+        let response = 'Selecione Consultar proposta para pesquisar por número ou CPF. O atendimento está disponível no portal da empresa.';
+        let keyboard = [['Consultar proposta']];
+        let htmlMode = false;
+        const valid = async (account: TelegramAccount) => {
+            if (config.ownerTenant && account.tenantId !== config.ownerTenant) return false;
+            const current = await activeBot(tx, account.tenantId);
+            if (!current?.registered || botId(current) !== botId(config) || !(await company(tx, account.tenantId)).enabled) return false;
+            const recipient = await binding(tx, account.tenantId, account.partnerId, current);
+            if (!recipient || recipient.chatId !== chatId || recipient.linkedAt !== account.linkedAt) return false;
+            return !!await tx.partner.findFirst({ where: { id: account.partnerId, tenantId: account.tenantId, status: 'ATIVO', deletedAt: null, tenant: { status: 'ACTIVE', deletedAt: null } } });
+        };
+        const method = () => {
+            state.phase = 'METHOD';
+            response = `${state.selected!.label}\n\nComo deseja pesquisar?`;
+            keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
+        };
+        const showCompanies = () => {
+            const page = state.page || 0;
+            const choices = state.choices!.slice(page * 8, page * 8 + 8);
+            response = 'Escolha a empresa e o cadastro de parceiro:\n\n' + choices.map((a, i) => `${i + 1}. ${a.label}`).join('\n');
+            keyboard = choices.map((_, i) => [String(i + 1)]);
+            if (page > 0) keyboard.push(['Empresas anteriores']);
+            if ((page + 1) * 8 < state.choices!.length) keyboard.push(['Mais empresas']);
+            keyboard.push(['Menu']);
+        };
+        const scope = (account: TelegramAccount): Prisma.ProposalWhereInput => ({ tenantId: account.tenantId, partnerId: account.partnerId, deletedAt: null });
+        const detail = async (id: string) => {
+            const proposal = await tx.proposal.findFirst({ where: { ...scope(state.selected!), id }, include });
+            if (!proposal) { method(); response = 'Esta proposta não está disponível para seu cadastro. Faça uma nova consulta.'; return; }
+            let refinValue: unknown;
+            if (eventType(proposal) === 'SALDO') {
+                refinValue = proposal.type === 'REFIN_PORTABILIDADE' ? proposal.releasedValue : (await tx.proposal.findFirst({ where: { ...scope(state.selected!), clientId: proposal.clientId, relatedPortabilityId: proposal.id, type: 'REFIN_PORTABILIDADE' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { releasedValue: true } }))?.releasedValue;
+            }
+            response = message(proposal, refinValue, true);
+            htmlMode = true;
+            state.phase = 'METHOD';
+            state.results = undefined;
+            keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
+        };
+        if (['menu', '/menu', '/start'].includes(command)) {
+            state = { phase: 'MENU', expires: 0 };
+        } else if (['consultar proposta', '/consultar', 'trocar empresa'].includes(command)) {
+            const bindings = await tx.systemConfig.findMany({ where: { configKey: { startsWith: BINDING }, ...(config.ownerTenant ? { tenantId: config.ownerTenant } : {}), tenant: { status: 'ACTIVE', deletedAt: null } } });
+            const accounts: TelegramAccount[] = [];
+            for (const candidate of bindings) {
+                if (!candidate.tenantId) continue;
+                const recipient = decrypt<Binding>(candidate.configValue);
+                if (recipient.chatId !== chatId) continue;
+                const account: TelegramAccount = { tenantId: candidate.tenantId, partnerId: candidate.configKey.slice(BINDING.length), label: '', linkedAt: recipient.linkedAt };
+                if (!await valid(account)) continue;
+                const partner = await tx.partner.findFirst({ where: { id: account.partnerId, tenantId: account.tenantId }, include: { tenant: { include: { whiteLabel: true } } } });
+                if (!partner) continue;
+                account.label = `${partner.tenant.whiteLabel?.companyName || partner.tenant.tradeName || partner.tenant.name} · ${partner.name} (${partner.code})`.replace(/[\r\n]/g, ' ').slice(0, 160);
+                accounts.push(account);
+            }
+            accounts.sort((a, b) => a.label.localeCompare(b.label));
+            state = { phase: 'COMPANY', choices: accounts, page: 0, expires: 0 };
+            if (!accounts.length) response = 'Para consultar propostas, vincule seu Telegram em Meu cadastro no portal da empresa. A empresa precisa habilitar os avisos Telegram.';
+            else if (accounts.length === 1) { state.selected = accounts[0]; method(); }
+            else showCompanies();
+        } else if (state.phase === 'COMPANY' && state.choices?.length) {
+            if (command === 'mais empresas') state.page = Math.min(Math.floor((state.choices.length - 1) / 8), (state.page || 0) + 1);
+            else if (command === 'empresas anteriores') state.page = Math.max(0, (state.page || 0) - 1);
+            else if (/^[1-8]$/.test(text)) {
+                const chosen = state.choices[(state.page || 0) * 8 + Number(text) - 1];
+                if (chosen && await valid(chosen)) { state.selected = chosen; method(); }
+            }
+            if (state.phase === 'COMPANY') showCompanies();
+        } else if (state.selected && await valid(state.selected)) {
+            keyboard = [['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']];
+            if (command === 'número da proposta') { state.phase = 'NUMBER'; response = 'Digite o número completo da proposta.'; }
+            else if (command === 'cpf do cliente') { state.phase = 'CPF'; response = 'Digite o CPF completo do cliente, com ou sem pontuação.'; }
+            else if (state.phase === 'RESULTS' && state.results && /^\d{1,2}$/.test(text)) {
+                const id = state.results[Number(text) - 1];
+                if (id) await detail(id);
+                else response = 'Escolha um número da lista ou faça uma nova pesquisa.';
+            } else if (state.phase === 'NUMBER' || state.phase === 'CPF') {
+                const cpf = text.replace(/\D/g, '');
+                if (state.phase === 'CPF' && (cpf.length !== 11 || !/^[\d.\-\s]+$/.test(text))) response = 'Informe um CPF com 11 dígitos.';
+                else if (state.phase === 'NUMBER' && (!text || text.length > 100)) response = 'Informe o número completo da proposta, com até 100 caracteres.';
+                else {
+                    const proposals = await tx.proposal.findMany({ where: { ...scope(state.selected), ...(state.phase === 'CPF' ? { client: { tenantId: state.selected.tenantId, cpf } } : { proposalNumber: text.replace(/^#/, '') }) }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], take: 21, select: { id: true, proposalNumber: true, bank: { select: { name: true } }, status: { select: { name: true } } } });
+                    if (!proposals.length) response = 'Nenhuma proposta encontrada para seu cadastro nesta empresa. Confira os dados ou escolha outra pesquisa.';
+                    else if (proposals.length === 1) await detail(proposals[0].id);
+                    else {
+                        state.phase = 'RESULTS'; state.results = proposals.slice(0, 20).map(p => p.id);
+                        response = 'Selecione uma proposta:\n\n' + proposals.slice(0, 20).map((p, i) => `${i + 1}. #${p.proposalNumber} · ${p.bank?.name || 'Banco não informado'} · ${p.status?.name || 'Etapa não informada'}`.replace(/[\r\n]/g, ' ').slice(0, 160)).join('\n');
+                        if (proposals.length > 20) response += '\n\nExibindo as 20 mais recentes. Para outras propostas, pesquise pelo número.';
+                        keyboard = state.results.map((_, i) => [String(i + 1)]).concat([['Número da proposta', 'CPF do cliente'], ['Trocar empresa', 'Menu']]);
+                    }
+                }
+            } else method();
+        } else {
+            state = { phase: 'MENU', expires: 0 };
+            response = 'Selecione Consultar proposta para começar. Se o vínculo mudou, conecte novamente pelo portal da empresa.';
+        }
+        state.expires = Date.now() + 10 * 60_000;
+        await tx.systemConfig.upsert({ where: { id: stateId }, create: { id: stateId, configKey: 'TELEGRAM_PROPOSAL_QUERY_V1', configValue: encrypt(state), isSecret: true }, update: { configValue: encrypt(state) } });
+        await tx.systemConfig.create({ data: { id: receiptId, configKey: 'TELEGRAM_QUERY_RECEIPT_V1', configValue: 'done', isSecret: true } });
+        return { response, keyboard, htmlMode };
+    }, { isolationLevel: 'Serializable', maxWait: 3000, timeout: 15000 });
+    if (result) await telegram(config, 'sendMessage', { chat_id: chatId, text: result.response, ...(result.htmlMode ? { parse_mode: 'HTML' } : {}), reply_markup: { keyboard: result.keyboard.map(row => row.map(text => ({ text }))), resize_keyboard: true }, protect_content: true });
+}

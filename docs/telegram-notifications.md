@@ -80,3 +80,12 @@ No aviso SALDO, Valor liberado usa releasedValue do REFIN_PORTABILIDADE explicit
 ## Deduplicacao de avisos por status
 
 A entrega registra o ultimo status enviado por empresa, proposta e parceiro. Se o status atual ja foi enviado, o aviso pendente e descartado mesmo com novo vinculo Telegram, alteracao de valor/saldo ou novo registro de historico para a mesma etapa. Entregas antigas confirmadas tambem sao reconhecidas quando correspondem ao fingerprint atual. Outro status elegivel pode gerar novo aviso. O marcador e atualizado somente apos resposta positiva do Telegram; continua sem garantia de exactly-once em falhas ambiguas de rede.
+
+
+## Consulta de propostas pelo parceiro
+
+No bot, enviar /start, /menu ou /consultar. O teclado oferece Consultar proposta, escolha de empresa/cadastro quando houver varios vinculos, Numero da proposta e CPF do cliente. A pesquisa e exata por numero ou CPF normalizado. Mais de um resultado apresenta selecao numerada das 20 propostas mais recentes; para outras, pesquisar pelo numero.
+
+Cada mensagem revalida bot ativo, empresa habilitada/ativa, parceiro ativo e vinculo confirmado do chat privado. Toda busca/detalhe aplica tenantId e partnerId; numeros de outra empresa/parceiro nao sao retornados. Mudanca ou revogacao do vinculo invalida o contexto. CPF no retorno permanece mascarado. Consulta aceita qualquer etapa atual, independentemente dos filtros dos avisos automaticos.
+
+Estado criptografado por bot/chat expira em 10 minutos; guarda somente IDs de resultados, vinculos e fase, sem CPF pesquisado nem texto enviado. Recibo por message_id evita processar novamente o mesmo update; recibo e estado gravados em transacao Serializable antes da resposta. Se a resposta Telegram falhar apos o commit, o parceiro pode repetir a pesquisa com nova mensagem. Consulta e imediata via webhook e nao depende do cron; nao altera status nem marcadores de notificacao automatica e nao reativa atendimento humano.
