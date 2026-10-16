@@ -8,5 +8,12 @@ export function canAccessSimulationSupport(role?: string | null) {
 
 // Apply in the database query as well as the UI; custom permissions cannot override this scope.
 export function supportDepartmentScope(role?: string | null) {
-  return canAccessSimulationSupport(role) ? {} : { department: { not: 'SIMULATION' } };
+  return {
+    ...(!canAccessSimulationSupport(role) ? { department: { not: 'SIMULATION' } } : {}),
+    ...(!canAccessTelegramSupport(role) ? { channel: { not: 'TELEGRAM' } } : {}),
+  };
+}
+
+export function canAccessTelegramSupport(role?: string | null) {
+  return ['SUPORTE', 'MASTER', 'PLATFORM_MASTER', 'ADMIN'].includes(role || '');
 }

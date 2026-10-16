@@ -1,40 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
-type Settings = {
-    bot: string;
-    configured: boolean;
-    registered: boolean;
-    enabled: boolean;
-    platformMaster: boolean;
-    canManage: boolean;
-};
-export function TelegramIntegrationSettings() {
-    const [settings, setSettings] = useState<Settings | null>(null), [token, setToken] = useState(''), [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
-    async function load() { const response = await fetch('/api/integrations/telegram/config', { cache: 'no-store' }); const data = await response.json(); if (!response.ok)
-        throw new Error(data.error); setSettings(data); }
-    useEffect(() => { let active = true; fetch('/api/integrations/telegram/config', { cache: 'no-store' }).then(async (response) => { const data = await response.json(); if (!response.ok)
-        throw new Error(data.error); if (active)
-        setSettings(data); }).catch(() => { if (active)
-        setNotice('Não foi possível carregar a configuração Telegram.'); }); return () => { active = false; }; }, []);
-    async function action(path: string, body: unknown, method = 'POST') { setBusy(true); setNotice(''); try {
-        const response = await fetch(`/api/integrations/telegram/${path}`, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const data = await response.json();
-        if (!response.ok)
-            throw new Error(data.error);
-        setToken('');
-        await load();
-        setNotice('Configuração atualizada.');
-    }
-    catch (error) {
-        setNotice(error instanceof Error ? error.message : 'Não foi possível salvar.');
-    }
-    finally {
-        setBusy(false);
-    } }
-    return <section className="space-y-4 rounded-2xl border border-blue-500/30 bg-white p-5 dark:bg-slate-900"><header className="flex items-center gap-3"><Send className="text-blue-500" size={22}/><div><h2 className="text-base font-bold">Telegram · Sentinel Conecta</h2><p className="mt-1 text-sm text-slate-500">Um bot compartilhado. Os avisos levam o nome da sua empresa e seguem o parceiro vinculado no portal.</p></div></header>
- <p className="text-sm leading-6">Avisos: saldo retornado, ação do parceiro ou cliente, proposta cancelada e proposta paga. O envio acompanha as atualizações registradas no Sentinel, em ciclos de até 5 minutos.</p>
- {settings && <><p className="text-sm">Bot: <strong>@{settings.bot}</strong> · {settings.registered ? 'Conexão pronta' : settings.configured ? 'Falta ativar recebimento' : 'Aguardando configuração da plataforma'}</p><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={settings.enabled} disabled={busy || !settings.registered || !settings.canManage} onChange={event => action('config', { enabled: event.target.checked }, 'PUT')}/>Habilitar avisos para esta empresa</label>
- {settings.platformMaster && <div className="space-y-3 rounded-xl border border-slate-500/20 p-4"><h3 className="font-semibold">Configuração global · administração da plataforma</h3><p className="text-sm text-slate-500">O token é criptografado e não será exibido novamente. Cadastre o token do @SentinelConectaBot e depois ative o recebimento de vínculos.</p><label className="block text-sm">Token do BotFather<input type="password" autoComplete="new-password" value={token} onChange={event => setToken(event.target.value)} placeholder={settings.configured ? 'Cadastrado — preencha somente para alterar' : 'Cole o token neste campo protegido'} className="mt-2 block w-full rounded-lg border border-slate-500/30 bg-transparent p-3"/></label><div className="flex flex-wrap gap-3"><button type="button" disabled={busy || !token.trim()} onClick={() => action('bot', { token }, 'PUT')} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Salvar token</button><button type="button" disabled={busy || !settings.configured} onClick={() => action('webhook', {})} className="rounded-lg border border-blue-500/40 px-4 py-2 text-sm font-semibold disabled:opacity-40">Ativar recebimento de vínculos</button></div></div>}</>}
- {notice && <p role="status" className="text-sm">{notice}</p>}
+type Settings={bot:string;configured:boolean;registered:boolean;enabled:boolean;supportEnabled:boolean;botMode:'SHARED'|'CUSTOM';globalConfigured:boolean;globalRegistered:boolean;platformMaster:boolean;canManage:boolean};
+export function TelegramIntegrationSettings(){
+ const [settings,setSettings]=useState<Settings|null>(null),[token,setToken]=useState(''),[globalToken,setGlobalToken]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
+ async function load(signal?:AbortSignal){const response=await fetch('/api/integrations/telegram/config',{cache:'no-store',signal});const data=await response.json();if(!response.ok)throw new Error(data.error);setSettings(data);}
+ useEffect(()=>{const request=new AbortController();load(request.signal).catch(()=>{if(!request.signal.aborted)setNotice('Não foi possível carregar a conexão Telegram.');});return()=>request.abort();},[]);
+ async function action(path:string,body:unknown,method='POST'){setBusy(true);setNotice('');try{const response=await fetch(`/api/integrations/telegram/${path}`,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok)throw new Error(data.error);setToken('');setGlobalToken('');await load();setNotice('Configuração atualizada.');}catch(error){setNotice(error instanceof Error?error.message:'Não foi possível salvar.');}finally{setBusy(false);}}
+ const inputClass='mt-2 block w-full rounded-lg border border-slate-500/30 bg-transparent p-3';
+ const buttonClass='rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40';
+ return <section className="space-y-4 rounded-2xl border border-blue-500/30 bg-white p-5 dark:bg-slate-900"><header className="flex items-center gap-3"><Send className="text-blue-500" size={22}/><div><h2 className="text-base font-bold">Telegram da empresa</h2><p className="mt-1 text-sm text-slate-500">Avisos de propostas e atendimento com a mesa de suporte.</p></div></header>
+ {settings&&<><label className="block text-sm font-semibold">Bot utilizado por esta empresa<select value={settings.botMode} disabled={busy||!settings.canManage} onChange={event=>action('config',{botMode:event.target.value},'PUT')} className={inputClass}><option value="SHARED">Sentinel Conecta · bot compartilhado</option><option value="CUSTOM">Bot próprio da empresa</option></select></label><p className="text-sm leading-6 text-slate-500">Ao escolher um bot próprio, ele substitui o Sentinel Conecta nesta empresa. Os parceiros precisarão fazer um novo vínculo pelo portal. Outras empresas continuam com suas conexões.</p><p className="text-sm">Bot atual: <strong>{settings.bot==='Bot próprio'?settings.bot:'@'+settings.bot}</strong> · {settings.registered?'Conexão pronta':settings.configured?'Falta ativar recebimento':'Aguardando cadastro do token'}</p>
+ {settings.botMode==='CUSTOM'&&settings.canManage&&<div className="space-y-3 rounded-xl border border-slate-500/20 p-4"><h3 className="font-semibold">Conectar bot próprio</h3><p className="text-sm text-slate-500">Crie o bot no BotFather. O token fica criptografado, é exclusivo desta empresa e não será exibido novamente.</p><label className="block text-sm">Token do bot da empresa<input type="password" value={token} onChange={event=>setToken(event.target.value)} autoComplete="new-password" placeholder="Cole o token do seu bot" className={inputClass}/></label><div className="flex flex-wrap gap-3"><button type="button" disabled={busy||!token.trim()} onClick={()=>action('custom-bot',{token},'PUT')} className={buttonClass}>Salvar bot próprio</button><button type="button" disabled={busy||!settings.configured} onClick={()=>action('custom-webhook',{})} className={buttonClass}>Ativar conexão do bot próprio</button></div></div>}
+ <div className="space-y-3"><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={settings.enabled} disabled={busy||!settings.canManage||(!settings.registered&&!settings.enabled)} onChange={event=>action('config',{enabled:event.target.checked},'PUT')}/>Habilitar avisos de propostas</label><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={settings.supportEnabled} disabled={busy||!settings.canManage||(!settings.registered&&!settings.supportEnabled)} onChange={event=>action('config',{supportEnabled:event.target.checked},'PUT')}/>Habilitar atendimento pelo Telegram para a mesa de suporte</label></div>
+ <p className="text-sm leading-6 text-slate-500">Avisos: saldo retornado, ação do parceiro ou cliente, cancelamento e pagamento. No bot, o parceiro seleciona Atendimento e a empresa; a equipe responde pela Central de Atendimento. Conversas por texto.</p>
+ {settings.platformMaster&&<details className="rounded-xl border border-slate-500/20 p-4"><summary className="cursor-pointer font-semibold">Bot compartilhado · administração da plataforma</summary><div className="mt-4 space-y-3"><p className="text-sm">@SentinelConectaBot · {settings.globalRegistered?'Conexão pronta':settings.globalConfigured?'Token cadastrado':'Token não cadastrado'}</p><label className="block text-sm">Token global do BotFather<input type="password" autoComplete="new-password" value={globalToken} onChange={event=>setGlobalToken(event.target.value)} className={inputClass} placeholder="Preencha somente para cadastrar ou alterar"/></label><div className="flex flex-wrap gap-3"><button type="button" disabled={busy||!globalToken.trim()} onClick={()=>action('bot',{token:globalToken},'PUT')} className={buttonClass}>Salvar token global</button><button type="button" disabled={busy||!settings.globalConfigured} onClick={()=>action('webhook',{})} className={buttonClass}>Ativar bot compartilhado</button></div></div></details>}</>}
+ {notice&&<p role="status" className="text-sm">{notice}</p>}
  </section>;
 }

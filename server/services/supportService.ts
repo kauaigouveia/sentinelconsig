@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { eventBus, CentralEventBus } from './eventBus.js';
+import { TelegramNotificationService } from './telegramNotificationService.js';
 import { EvolutionService } from './evolutionService.js';
-import { canAccessSimulationSupport, supportDepartmentScope } from '../../src/lib/supportAccess.js';
+import { canAccessSimulationSupport, canAccessTelegramSupport, supportDepartmentScope } from '../../src/lib/supportAccess.js';
 
 const messageSelect = { id: true, conversationId: true, senderType: true, senderId: true, senderName: true, message: true, channel: true, externalMessageId: true, readAt: true, createdAt: true, deliveryStatus: true, attachmentName: true, attachmentMime: true } as const;
 
@@ -14,7 +15,7 @@ export interface SupportMessageDTO {
   senderId?: string | null;
   senderName?: string | null;
   message: string;
-  channel: 'PORTAL' | 'WHATSAPP';
+  channel: 'PORTAL' | 'WHATSAPP' | 'TELEGRAM';
   externalMessageId?: string | null;
   readAt?: Date | null;
   createdAt: Date;
@@ -271,7 +272,7 @@ export class SupportService {
         senderId: m.senderId,
         senderName: m.senderName,
         message: m.message,
-        channel: m.channel as 'PORTAL' | 'WHATSAPP',
+        channel: m.channel as 'PORTAL' | 'WHATSAPP' | 'TELEGRAM',
         externalMessageId: m.externalMessageId,
         deliveryStatus: m.deliveryStatus,
         attachmentName: m.attachmentName,
@@ -311,6 +312,7 @@ export class SupportService {
     if (!conversation) {
       throw new Error('Conversa de atendimento não encontrada ou sem permissão.');
     }
+    if (conversation.channel === 'TELEGRAM') throw new Error('Continue esta conversa pelo Telegram da empresa.');
     if (conversation.channel === 'WHATSAPP') throw new Error('Continue esta conversa pelo WhatsApp do canal de simulação.');
 
     const message = await prisma.supportMessage.create({
@@ -383,8 +385,10 @@ export class SupportService {
       throw new Error('Conversa não encontrada.');
     }
 
+    if (conversation.channel === 'TELEGRAM' && !canAccessTelegramSupport(adminRole)) throw new Error('Atendimento Telegram disponível para o perfil Suporte e administração.');
     if (conversation.department === 'SIMULATION' && !canAccessSimulationSupport(adminRole)) throw new Error('Acesso à mesa de simulação não permitido para este perfil.');
 
+    if (conversation.channel === 'TELEGRAM' && cleanText.length > 3500) throw new Error('Envie até 3.500 caracteres por mensagem no Telegram.');
     const message = await prisma.supportMessage.create({
       data: {
         tenantId,
@@ -394,7 +398,7 @@ export class SupportService {
         senderName: userName,
         message: cleanText,
         channel: conversation.channel,
-        deliveryStatus: conversation.channel === 'WHATSAPP' ? 'PENDING' : 'RECEIVED',
+        deliveryStatus: ['WHATSAPP','TELEGRAM'].includes(conversation.channel) ? 'PENDING' : 'RECEIVED',
       },
     });
 
@@ -418,13 +422,16 @@ export class SupportService {
           conversationId,
           messageId: message.id,
           senderType: 'SUPPORT',
-          senderName: userName,
-          message: cleanText,
+          ...(conversation.channel !== 'TELEGRAM' ? { senderName: userName, message: cleanText } : {}),
           partnerId: conversation.partnerId,
         },
       });
     }
 
+    if (conversation.channel === 'TELEGRAM') {
+      try { await TelegramNotificationService.deliverSupport(message.id, tenantId, prisma); } catch { /* Stored delivery state remains visible to support. */ }
+      return prisma.supportMessage.findUnique({where:{id:message.id},select:messageSelect});
+    }
     if (conversation.channel === 'WHATSAPP') {
       try { await EvolutionService.deliver(message.id, tenantId, prisma); }
       catch { /* The persisted FAILED status is visible in the conversation and can be retried. */ }
@@ -470,7 +477,7 @@ export class SupportService {
     }
     if (filters.department && filters.department !== 'ALL') where.department = filters.department;
     // Keep role restrictions independent from user-supplied filters.
-    if (!canAccessSimulationSupport(filters.adminRole)) where.AND = [supportDepartmentScope(filters.adminRole)];
+    where.AND = [supportDepartmentScope(filters.adminRole)];
 
     if (filters.search) {
       const term = filters.search.trim();
@@ -577,7 +584,12 @@ export class SupportService {
       throw new Error('Conversa não encontrada.');
     }
 
+    if (conversation.channel === 'TELEGRAM' && !canAccessTelegramSupport(adminRole)) throw new Error('Atendimento Telegram disponível para o perfil Suporte e administração.');
     if (conversation.department === 'SIMULATION' && !canAccessSimulationSupport(adminRole)) throw new Error('Acesso à mesa de simulação não permitido para este perfil.');
+    if (conversation.channel === 'TELEGRAM' && data.assignedUserId) {
+      const assignee = await prisma.user.findFirst({where:{id:data.assignedUserId,tenantId,active:true},select:{role:true}});
+      if (!assignee || !canAccessTelegramSupport(assignee.role)) throw new Error('Escolha um responsável com perfil Suporte.');
+    }
     if (conversation.department === 'SIMULATION' && data.assignedUserId) {
       const assignee = await prisma.user.findFirst({ where: { id: data.assignedUserId, tenantId, active: true }, select: { role: true } });
       if (!assignee || !canAccessSimulationSupport(assignee.role)) throw new Error('Escolha um responsável com perfil de acesso à mesa de simulação.');

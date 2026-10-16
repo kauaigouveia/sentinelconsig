@@ -3,7 +3,7 @@
 ## Ativação
 
 1. Em Hub de Integrações, no cartão Telegram, o PLATFORM_MASTER cadastra o token do @SentinelConectaBot no campo protegido e ativa o recebimento de vínculos.
-2. O servidor usa APP_URL como endereço HTTPS público do webhook, JWT_SECRET (ou AUTH_SECRET) para criptografia e CRON_SECRET para autenticar o processamento agendado. O token não é armazenado no navegador nem devolvido pela API.
+2. O servidor usa APP_URL como endereço HTTPS público do webhook, JWT_SECRET (ou AUTH_SECRET) para criptografia e CRON_SECRET para autenticar o processamento agendado. O token não é persistido no navegador nem devolvido pela API.
 3. Cada empresa habilita seus próprios avisos. A configuração da empresa não altera o token global.
 4. No portal, Meu cadastro → Avisos pelo Telegram: gerar vínculo, abrir o bot, tocar em Iniciar, atualizar o vínculo e confirmar a conta apresentada.
 5. A desconexão fica disponível na mesma tela.
@@ -29,3 +29,23 @@ SystemConfig mantém configuração global por ID fixo, configuração/cursor po
 Nenhuma migração é necessária. A ativação depende do token, do endereço público e do cron em execução. Não houve chamada real de envio ou alteração de webhook durante a implementação.
 
 Referências oficiais: [Bot API](https://core.telegram.org/bots/api#setwebhook) e [deep links](https://core.telegram.org/bots/features#deep-linking).
+
+## Bot próprio da empresa
+
+A configuração Telegram oferece os modos SHARED e CUSTOM. O modo CUSTOM exige token e ativação próprios, obtém o nome de usuário diretamente do getMe e usa webhook exclusivo em /api/webhooks/telegram/company/:tenantId. Não há fallback para o bot compartilhado quando o próprio estiver ausente ou indisponível.
+
+A posse do bot é reservada por identidade Telegram em um registro global único. O mesmo bot próprio não pode ser cadastrado por empresas diferentes. Tokens ficam criptografados; apenas usuários internos com integrations.manage da empresa podem cadastrar o próprio. O bot global continua restrito ao PLATFORM_MASTER.
+
+Tickets, vínculos e rotas de conversa registram a identidade do bot. A troca para outro bot exige novo vínculo dos parceiros; envios antigos não são transferidos para o novo canal. O webhook do bot antigo é ignorado se ele deixar de ser o bot ativo da empresa. Na volta ao compartilhado, a empresa também precisa de vínculo compatível.
+
+## Atendimento pelo Telegram
+
+A empresa habilita Atendimento independentemente dos avisos de propostas. Após confirmar o vínculo no portal, o parceiro envia /start e escolhe Atendimento. Quando houver múltiplas empresas vinculadas ao mesmo bot e Telegram, escolhe explicitamente a empresa; a lista possui paginação.
+
+O atendimento usa SupportConversation com channel=TELEGRAM e department=SUPPORT. Conversas abertas são reutilizadas pelo mesmo parceiro e empresa. Mensagens entram na Central de Atendimento, com eventos de atualização da fila. Respostas da equipe voltam pelo bot ativo da empresa, validando vínculo, identidade do bot e rota de conversa. O perfil SUPORTE e a administração MASTER/PLATFORM_MASTER/ADMIN têm acesso, além das permissões support.view/support.reply. Atribuições exigem perfil compatível.
+
+Texto é suportado até 3.500 caracteres por mensagem. Para arquivos/imagens, o bot orienta utilizar o portal. Não há download de arquivos enviados ao bot. Respostas a mensagens de outro atendimento não são encaminhadas ao atendimento selecionado. Trocar empresa altera o contexto; Encerrar atendimento resolve a conversa atual.
+
+A entrada é deduplicada por bot/chat/message_id, com recibo e gravação de conversa/mensagem em transação serializável. O estado do menu é criptografado. A sessão de conversa é revalidada contra empresa e parceiro ativos, integração e vínculo atual a cada mensagem. As respostas humanas são persistidas antes de enviar; 429 confirmado volta à fila do cron, erros ambíguos ficam UNKNOWN e não são repetidos automaticamente.
+
+As opções de menu passam pelo webhook já utilizado. Quem já ativou a conexão não precisa registrar novos tipos de update para atendimento por texto; somente mensagens privadas são aceitas.

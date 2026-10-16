@@ -131,7 +131,7 @@ export interface PartnerSupportConversation {
   proposalId?: string | null;
   proposalNumber?: string | null;
   proposalClientName?: string | null;
-  channel: 'PORTAL' | 'WHATSAPP';
+  channel: 'PORTAL' | 'WHATSAPP' | 'TELEGRAM';
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
   subject?: string | null;
   lastMessageAt: string;
@@ -154,7 +154,7 @@ export interface PartnerSupportMessage {
   senderId?: string | null;
   senderName?: string | null;
   message: string;
-  channel: 'PORTAL' | 'WHATSAPP';
+  channel: 'PORTAL' | 'WHATSAPP' | 'TELEGRAM';
   externalMessageId?: string | null;
   readAt?: string | null;
   createdAt: string;

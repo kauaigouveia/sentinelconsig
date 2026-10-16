@@ -435,7 +435,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
 
             {/* Message Input Form */}
             {activeConversationData?.id === activeConversationId && <SupportRating key={activeConversationId} conversation={activeConversationData} onRated={() => { if (activeConversationId) void fetchMessages(activeConversationId, true); }} />}
-            {activeConversationData?.channel === 'WHATSAPP' ? <p className="border-t border-slate-200 p-3 text-xs dark:border-slate-800">Continue esta conversa pelo WhatsApp do canal de simulação.</p> : <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
+            {['WHATSAPP','TELEGRAM'].includes(activeConversationData?.channel) ? <p className="border-t border-slate-200 p-3 text-xs dark:border-slate-800">Continue esta conversa pelo {activeConversationData?.channel === 'TELEGRAM' ? 'Telegram da empresa' : 'WhatsApp do canal de simulação'}.</p> : <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
               <input
                 type="text"
                 value={inputText}

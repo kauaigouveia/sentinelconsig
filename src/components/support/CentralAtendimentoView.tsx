@@ -25,7 +25,7 @@ import { toastService } from '../ui/toastService';
 import { realtimeHub } from '../../services/realtimeService';
 import { StorageService } from '../../services/storageService';
 import { hasPermission } from '../../lib/permissions';
-import { canAccessSimulationSupport } from '../../lib/supportAccess';
+import { canAccessSimulationSupport, canAccessTelegramSupport } from '../../lib/supportAccess';
 
 interface SupportConversationAdmin {
   id: string;
@@ -38,7 +38,7 @@ interface SupportConversationAdmin {
   bankName?: string | null;
   assignedUserId?: string | null;
   assignedUserName?: string | null;
-  channel: 'PORTAL' | 'WHATSAPP';
+  channel: 'PORTAL' | 'WHATSAPP' | 'TELEGRAM';
   department?: string;
   simulationStage?: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
@@ -64,7 +64,7 @@ interface SupportMessageAdmin {
   senderId?: string | null;
   senderName?: string | null;
   message: string;
-  channel: 'PORTAL' | 'WHATSAPP';
+  channel: 'PORTAL' | 'WHATSAPP' | 'TELEGRAM';
   externalMessageId?: string | null;
   readAt?: string | null;
   createdAt: string;
@@ -75,6 +75,7 @@ export const CentralAtendimentoView: React.FC = () => {
   const canReply = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.reply');
   const canManage = hasPermission(activeUser?.role, activeUser?.customPermissions, 'support.manage');
   const canViewSimulation = canAccessSimulationSupport(activeUser?.role);
+  const canViewTelegram = canAccessTelegramSupport(activeUser?.role);
   const canConfigure = canViewSimulation && hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
   const [conversations, setConversations] = useState<SupportConversationAdmin[]>([]);
   const [metrics, setMetrics] = useState({
@@ -402,6 +403,9 @@ export const CentralAtendimentoView: React.FC = () => {
             </div>
 
             {/* Status Tabs */}
+            <select aria-label="Canal de atendimento" value={channelFilter} onChange={e => setChannelFilter(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+              <option value="ALL">Todos os canais</option><option value="PORTAL">Portal</option><option value="WHATSAPP">WhatsApp</option>{canViewTelegram && <option value="TELEGRAM">Telegram</option>}
+            </select>
             <select aria-label="Fila de atendimento" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-800">
               <option value="ALL">Todas as filas</option>{canViewSimulation && <option value="SIMULATION">Mesa de simulação</option>}<option value="SUPPORT">Atendimento ao parceiro</option>
             </select>
@@ -622,8 +626,9 @@ export const CentralAtendimentoView: React.FC = () => {
                         >
                           <p className="whitespace-pre-wrap break-words">{m.message}</p>
                           {m.attachmentName && <a href={`/api/support/messages/${encodeURIComponent(m.id)}/attachment`} className="mt-2 block underline">Baixar {m.attachmentName}</a>}
-                          {m.deliveryStatus === 'FAILED' && <div className="mt-2"><span>Falha no envio ao WhatsApp. </span>{canReply && <button type="button" className="underline" onClick={async () => { try { const response = await fetch(`/api/support/messages/${encodeURIComponent(m.id)}/retry`, { method: 'POST' }); if (!response.ok) throw new Error('Falha ao reenviar.'); if (activeConversationId) await fetchMessages(activeConversationId, true); } catch { toastService.error('Mensagem não enviada', 'Verifique a conexão do WhatsApp e tente novamente.'); } }}>Reenviar</button>}</div>}
-                          {m.deliveryStatus === 'SENDING' && <p className="mt-1 opacity-70">Enviando ao WhatsApp...</p>}
+                          {m.deliveryStatus === 'FAILED' && <div className="mt-2"><span>Falha no envio ao {activeConversationData?.channel === 'TELEGRAM' ? 'Telegram' : 'WhatsApp'}. </span>{canReply && activeConversationData?.channel !== 'TELEGRAM' && <button type="button" className="underline" onClick={async () => { try { const response = await fetch(`/api/support/messages/${encodeURIComponent(m.id)}/retry`, { method: 'POST' }); if (!response.ok) throw new Error('Falha ao reenviar.'); if (activeConversationId) await fetchMessages(activeConversationId, true); } catch { toastService.error('Mensagem não enviada', 'Verifique a conexão do WhatsApp e tente novamente.'); } }}>Reenviar</button>}</div>}
+                          {m.deliveryStatus === 'UNKNOWN' && <p className="mt-1 opacity-70">Entrega não confirmada. Confira com o parceiro antes de enviar novamente.</p>}
+                          {m.deliveryStatus === 'SENDING' && <p className="mt-1 opacity-70">Enviando ao {activeConversationData?.channel === 'TELEGRAM' ? 'Telegram' : 'WhatsApp'}...</p>}
                         </div>
                       </div>
                     );
