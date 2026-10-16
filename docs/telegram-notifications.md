@@ -18,7 +18,9 @@ Mensagens identificam a empresa (marca configurada, nome fantasia ou razão soci
 
 ## Processamento e isolamento
 
-O cron /api/cron/telegram-notifications executa a cada cinco minutos. Ele consulta atualizações já registradas no Sentinel; não consulta o banco nem inicia sincronização de propostas. Os avisos começam após habilitação da empresa e vínculo do parceiro, sem disparo retroativo da carteira. Em cada ciclo é considerada a situação atual; uma mudança já superada não produz um aviso antigo.
+O endpoint GET /api/cron/telegram-notifications precisa ser chamado por um agendador autenticado. No plano Hobby da Vercel, o cron nativo não admite frequência de cinco minutos; por isso este endpoint não é cadastrado em vercel.json. Para processamento frequente, configure um agendador externo com Authorization: Bearer seguido do CRON_SECRET já cadastrado no servidor. Sem esse agendador, os avisos periódicos e as novas tentativas da fila não são processados automaticamente. O atendimento por webhook e as respostas imediatas da equipe não dependem desse agendamento.
+
+O processamento consulta atualizações já registradas no Sentinel; não consulta o banco nem inicia sincronização de propostas. Os avisos começam após habilitação da empresa e vínculo do parceiro, sem disparo retroativo da carteira. Em cada ciclo é considerada a situação atual; uma mudança já superada não produz um aviso antigo.
 
 Vínculos exigem sessão do portal, desafio aleatório de dez minutos e confirmação autenticada. Token e chats são criptografados com AES-256-GCM. O webhook exige o secret_token do Telegram e ignora grupos. Empresas, parceiros e propostas inativos/excluídos são filtrados novamente antes do envio.
 

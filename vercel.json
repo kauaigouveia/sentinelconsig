@@ -13,10 +13,6 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/telegram-notifications",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/cron/partner-simulations",
       "schedule": "0 3 * * *"
     }
