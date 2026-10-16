@@ -52,3 +52,10 @@ describe('Paraná Crédito Trabalhador — mocked bank only', () => {
     request.mockResolvedValue({ ...response, simulacoes: [{ ...response.simulacoes[0], valorLiberadoDaOperacao: -1 }] }); expect((await Clt.simulate(db, 'tenant-a', input)).offers).toEqual([]);
   });
 });
+
+it('explains a missing bank partner configuration without changing credentials or retrying consent', async () => {
+  const mock = vi.fn(async () => new Response(JSON.stringify({ erros: [{ codigo: 'MKT_007', mensagem: 'Configuração do parceiro não encontrada.' }] }), { status: 400 }));
+  vi.stubGlobal('fetch', mock);
+  await expect(Clt.start(db, 'tenant-a', 'promoter-a', { cpf, name: 'Cliente Ficticio', phone: '11999999999' }, 'consent')).rejects.toThrow(/MKT_007:.*client_id.*habilitação/);
+  expect(mock).toHaveBeenCalledTimes(1);
+});

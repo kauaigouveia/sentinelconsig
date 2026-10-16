@@ -42,3 +42,20 @@ it('keeps stored credentials hidden and clears unsaved secrets when switching en
   expect(mock.mock.calls.at(-1)?.[0]).toBe('/api/integrations/presenca/config?environment=homologation&promoterId=promoter-a');
   expect((screen.getByLabelText('Habilitar conexão Presença') as HTMLInputElement).disabled).toBe(true);
 });
+
+it('retries availability inside CLT after a transient server failure', async () => {
+  const mock = vi.fn().mockResolvedValueOnce(new Response('<html>unavailable</html>', { status: 503 })).mockResolvedValueOnce(new Response(JSON.stringify({ clt: true })));
+  vi.stubGlobal('fetch', mock); render(<PresencaCltSimulation {...props} />);
+  expect((await screen.findByRole('alert')).textContent).toContain('HTTP 503');
+  fireEvent.click(screen.getByRole('button', { name: 'Verificar Presença novamente' }));
+  await screen.findByRole('button', { name: '1. Gerar consentimento Presença' });
+  expect(mock).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('explains rate limits without treating availability as disabled', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 429 })));
+  render(<PresencaCltSimulation {...props} />);
+  expect((await screen.findByRole('alert')).textContent).toContain('Aguarde um minuto');
+  expect(screen.queryByRole('button', { name: '1. Gerar consentimento Presença' })).toBeNull();
+});

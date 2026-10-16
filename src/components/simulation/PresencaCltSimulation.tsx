@@ -9,19 +9,28 @@ type Offer = { id: number; name: string; amount: number; installment: number; te
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-transparent p-2 text-sm dark:border-slate-700';
 export function PresencaCltSimulation(props: Props) {
   const [available, setAvailable] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [failed, setFailed] = useState(false);
-  const [availabilityError, setAvailabilityError] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState('');
+  const [availabilityAttempt, setAvailabilityAttempt] = useState(0);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [consents, setConsents] = useState<Consent[]>([]), [confirmed, setConfirmed] = useState(false), [choices, setChoices] = useState<Choice[]>([]), [selected, setSelected] = useState('');
   const [margin, setMargin] = useState<number | null>(null), [receipt, setReceipt] = useState(''), [installment, setInstallment] = useState(''), [email, setEmail] = useState(''), [offers, setOffers] = useState<Offer[]>([]);
   const current = useRef<AbortController | null>(null);
   useEffect(() => {
     const request = new AbortController(); current.current = request;
+    setCheckingAvailability(true); setAvailabilityError('');
+    const timeout = setTimeout(() => request.abort('timeout'), 20000);
     fetch('/api/integrations/presenca/availability', { signal: request.signal, credentials: 'include', cache: 'no-store' }).then(async response => {
-      if ([401, 403].includes(response.status)) return;
-      const data = await response.json(); if (!response.ok) throw new Error('availability');
+      if (!response.ok) {
+        const hint = response.status === 401 ? 'Entre novamente no sistema.' : response.status === 403 ? 'Seu perfil não tem acesso à simulação Presença.' : response.status === 429 ? 'Limite de consultas atingido. Aguarde um minuto e tente novamente.' : response.status === 404 ? 'Serviço Presença indisponível nesta versão. Atualize a página e tente novamente.' : 'Não foi possível ler a configuração Presença. Tente novamente; se persistir, confira a conexão em Integrações.';
+        throw new Error(`Presença · HTTP ${response.status}: ${hint}`);
+      }
+      const data = await response.json();
       if (!request.signal.aborted) setAvailable(data.clt === true);
-    }).catch(() => { if (!request.signal.aborted) setAvailabilityError(true); });
-    return () => current.current?.abort();
-  }, []);
+    }).catch(error => {
+      if (!request.signal.aborted || request.signal.reason === 'timeout') setAvailabilityError(request.signal.reason === 'timeout' ? 'A verificação Presença demorou demais. Tente novamente.' : error instanceof Error && error.message.startsWith('Presença · HTTP') ? error.message : 'Falha de conexão ao verificar Presença. Confira sua conexão e tente novamente.');
+    }).finally(() => { clearTimeout(timeout); if (!request.signal.aborted || request.signal.reason === 'timeout') setCheckingAvailability(false); });
+    return () => { clearTimeout(timeout); request.abort(); current.current?.abort(); };
+  }, [availabilityAttempt]);
   async function api(action: string, body: unknown, signal: AbortSignal) {
     const response = await fetch(`/api/integrations/presenca/clt/${action}`, { method: 'POST', credentials: 'include', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Consulta Presença não concluída.'); return data;
@@ -51,7 +60,7 @@ export function PresencaCltSimulation(props: Props) {
     } catch (error) { if (!request.signal.aborted) { setFailed(true); setMessage(error instanceof Error ? error.message : 'Falha na consulta Presença.'); } }
     finally { if (!request.signal.aborted) setBusy(false); }
   }
-  if (!available) return availabilityError ? <p role="alert" className="mt-5 text-sm text-amber-600 dark:text-amber-300">Não foi possível verificar a disponibilidade Presença. Reabra o simulador para tentar novamente.</p> : null;
+  if (!available) return availabilityError ? <div className="mt-5 space-y-2 text-sm"><p role="alert" className="text-amber-600 dark:text-amber-300">{availabilityError}</p><button type="button" onClick={() => setAvailabilityAttempt(value => value + 1)} className="rounded-lg border px-3 py-2">Verificar Presença novamente</button></div> : checkingAvailability && availabilityAttempt > 0 ? <p role="status">Verificando disponibilidade Presença…</p> : null;
   return <section className="mt-5 space-y-3 rounded-xl border border-cyan-200 p-4 dark:border-cyan-900" aria-label="Presença CLT">
     <h3 className="font-bold">Presença Bank · CLT</h3><p className="text-xs text-slate-500">Consentimento → vínculos → margem → ofertas. Consulta disponível nas conexões habilitadas da empresa. Não realiza contratação nem registra assinatura pelo cliente.</p>
     <fieldset disabled={busy} className="space-y-3">

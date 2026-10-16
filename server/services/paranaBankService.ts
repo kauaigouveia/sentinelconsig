@@ -91,7 +91,7 @@ export class ParanaBankService {
     return data;
   }
   static bankError(data: any, status: number, context?: { environment: string; operation: string; sensitive?: string[] }) {
-    const known: Record<string, string> = { CLCD_0020: 'O cliente não possui consentimento ativo.', CLCD_0023: 'CPF inválido.', CLCD_0024: 'CPF obrigatório.', PESSD_0027: 'CPF inválido.', PESSD_0070: 'CPF não localizado pelo banco.', IE: 'Benefício bloqueado para empréstimo pelo beneficiário.', IF: 'Benefício bloqueado na concessão.', IT: 'Benefício bloqueado por TBM.' };
+    const known: Record<string, string> = { MKT_007: 'Configuração do parceiro não encontrada pelo Paraná. Confira o client_id do ambiente selecionado em Integrações e solicite ao banco a confirmação do cadastro e da habilitação para Crédito Trabalhador nesse ambiente.', CLCD_0020: 'O cliente não possui consentimento ativo.', CLCD_0023: 'CPF inválido.', CLCD_0024: 'CPF obrigatório.', PESSD_0027: 'CPF inválido.', PESSD_0070: 'CPF não localizado pelo banco.', IE: 'Benefício bloqueado para empréstimo pelo beneficiário.', IF: 'Benefício bloqueado na concessão.', IT: 'Benefício bloqueado por TBM.' };
     const sanitize = (value: unknown) => {
       if (typeof value !== 'string') return '';
       let text = value;
