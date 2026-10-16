@@ -1,30 +1,100 @@
 [
   {
     "id": "facta",
-    "version": "PDF - alterações até 17/06/2026",
+    "name": "FACTA Financeira",
     "sourceFile": "2026-07-16_10-26-17_INSS - FACTA - EMPRÉSTIMO - ROTEIRO OPERACIONAL..pdf.pdf",
     "sourceSha256": "d5f8508630bb400899bb2bf4841cdc8a188cc1d24e5883af36034bf98849a664",
     "sourcePageCount": 19
   },
   {
+    "id": "finanto",
+    "name": "FINANTO Bank",
+    "sourceFile": "2026-07-24_15-35-13_INSS - FINANTO BANK - EMPRÉSTIMO.pdf",
+    "sourceSha256": "fa85e6f996dc03e77b111ce5430446a8d4003cc7781669fa3504e45c6f3085f6",
+    "sourcePageCount": 28
+  },
+  {
     "id": "bmg",
-    "version": "21/07/2026 - entidade 1581",
+    "name": "BMG",
     "sourceFile": "2026-08-25_11-55-54_INSS - BMG - EMPRÉSTIMO.pdf",
     "sourceSha256": "d4fe8534e4eb9d8ca5bfc2d8d36bcccdaeae99f531557f0ea9c20dc9816006ef",
     "sourcePageCount": 35
   },
   {
     "id": "daycoval",
-    "version": "76.0 - atualização 02/07/2026",
+    "name": "Daycoval",
     "sourceFile": "2026-08-25_12-32-35_INSS - DAYCOVAL - EMPRÉSTIMO.pdf",
     "sourceSha256": "8db9a0270c0e6be79d48fb48545e38c99fdf5208a3a09c9de0aaf51065e6cafe",
     "sourcePageCount": 16
   },
   {
+    "id": "banrisul",
+    "name": "Banrisul",
+    "sourceFile": "2026-09-09_11-15-40_INSS - BANRISUL - EMPRÉSTIMO.pdf",
+    "sourceSha256": "6f9e142ae48fe8f11b9adbe05d81d266bebc04e7f353c4694b944677d090a492",
+    "sourcePageCount": 15
+  },
+  {
     "id": "parana",
-    "version": "Código 331 - PDF sem versão datada",
+    "name": "Paraná Banco",
     "sourceFile": "2026-09-10_13-15-35_INSS - PARANA BANCO - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf.pdf",
     "sourceSha256": "e115811a8a307feec4a3bddfda1183d3d383febe1ba017a856862d133c30a995",
     "sourcePageCount": 51
+  },
+  {
+    "id": "c6",
+    "name": "C6 Bank",
+    "sourceFile": "2026-09-15_15-55-29_INSS - C6 BANK - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf",
+    "sourceSha256": "c5055d33ed01853ff077d770cbf489956fb7ae4e886e018aa0a20160cf2edceb",
+    "sourcePageCount": 92
+  },
+  {
+    "id": "presenca",
+    "name": "Presença Bank",
+    "sourceFile": "2026-09-22_10-57-52_INSS - PRESENÇA BANK - EMPRESTIMO - ROTEIRO OPERACIONAL.pdf.pdf",
+    "sourceSha256": "3957594256267fff0c4a5476d102a4ec5e4fd52e3fac435c456d33a7996f4e0b",
+    "sourcePageCount": 7
+  },
+  {
+    "id": "safra",
+    "name": "Safra",
+    "sourceFile": "2026-09-24_11-58-26_INSS - SAFRA - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf",
+    "sourceSha256": "26637530a02d533aab25234ef191da46b152dfac42d3f905b6aee108a0931cf0",
+    "sourcePageCount": 13
+  },
+  {
+    "id": "icred",
+    "name": "iCred",
+    "sourceFile": "2026-09-25_10-12-39_INSS - ICRED - EMPRÉSTIMO.pdf",
+    "sourceSha256": "2992cb0ec8c10f205e1d6fd18e4f78c6e88833da2f3dc39accd8d9a80db3017c",
+    "sourcePageCount": 17
+  },
+  {
+    "id": "brb",
+    "name": "BRB",
+    "sourceFile": "2026-09-28_11-40-37_INSS - BRB - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf",
+    "sourceSha256": "89b3e3798784197d86125d4a6890bcaf47fb636ee3756f80b2c7734acc177ada",
+    "sourcePageCount": 9
+  },
+  {
+    "id": "digio",
+    "name": "Digio",
+    "sourceFile": "2026-09-28_15-09-31_INSS - DIGIO - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf",
+    "sourceSha256": "c00d022e6f77fc9e3bd619ae37a35fb42c2202df1eabb3d160cdc27d095ae404",
+    "sourcePageCount": 15
+  },
+  {
+    "id": "mercantil",
+    "name": "Mercantil",
+    "sourceFile": "2026-10-01_09-45-10_INSS - MERCANTIL - EMPRÉSTIMO - ROTEIRO OPERACIONAL.pdf",
+    "sourceSha256": "0205709d8b7c38a531b7449b152f9bcbc90fe314c679d85a6c132b362e6ee9cf",
+    "sourcePageCount": 13
+  },
+  {
+    "id": "vctex",
+    "name": "VCTEX",
+    "sourceFile": "2026-10-09_15-41-10_INSS - VCTEX - EMPRÉSTIMO.pdf",
+    "sourceSha256": "1d345a9957d222c67b64c8de14d1386f49f6414d81a180c451b3800a833781d3",
+    "sourcePageCount": 37
   }
 ]

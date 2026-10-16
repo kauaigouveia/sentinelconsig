@@ -1,4 +1,4 @@
-import { customPlaybooks } from './bankPlaybookCatalog.js';
+import pdfIndex from '../assets/bank-playbooks/text-index.json';
 import { PrismaClient } from '@prisma/client';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { BIService } from './biService.js';
@@ -74,7 +74,7 @@ export class SentinelaToolRouter {
     if (userRole === 'PARTNER' && toolName !== 'searchBankPlaybooks') return { success: false, toolName, rbacBlocked: true, error: 'Consulta do portal restrita aos roteiros bancários.' };
     if (toolName === 'searchBankPlaybooks') {
       if (userRole !== 'PARTNER' && !hasPermission(userRole, customPermissions, 'simulations.view') && !hasPermission(userRole, customPermissions, 'simulations.create')) return { success: false, toolName, rbacBlocked: true, error: 'Sem permissão de consulta de simulações.' };
-      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER', userRole === 'PARTNER' ? [] : await customPlaybooks(prisma, tenantId)), notice: 'Material fornecido pela empresa em 16/10/2026; não comprova política vigente nem aprovação de crédito. Cite banco, versão e página do PDF quando disponível, ou seção da transcrição. Preserve ressalvas e divergências. Ausência de informação não é permissão. API ativa é independente de compatibilidade com roteiro.' } };
+      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER', pdfIndex.filter(page=>userRole!=='PARTNER'||page.partnerSafe) as any), notice: 'Biblioteca substituída pelos 14 PDFs recebidos em 16/10/2026. Trechos extraídos por página; não reconstrua tabelas se as colunas estiverem ambíguas. Consulte a página original e informe lacunas de extração. Não use resumos anteriores. Material fornecido pela empresa em 16/10/2026; não comprova política vigente nem aprovação de crédito. Cite banco, versão e página do PDF quando disponível, ou seção da transcrição. Preserve ressalvas e divergências. Ausência de informação não é permissão. API ativa é independente de compatibilidade com roteiro.' } };
     }
 
     // Sanitize filters (strip any tenantId injected in args, force session.effectiveTenantId)
