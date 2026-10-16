@@ -1,0 +1,283 @@
+1. ROTEIRO OPERACIONAL: FACTA FINANCEIRA (INSS)Controle de AlteraçõesPág. 6: Alteração Parâmetros de idade | Data: 21.05.2026 | Autor: Pâmela   Pág. 5: Informações atendimento a analfabetos | Data: 11.06.2026 | Autor: Pâmela   Pág. 7: Retirado prazo | Data: 17.06.2026 | Autor: Pâmela   Público Atendido e Regras de EspéciesPúblico Geral: Aposentados e pensionistas, conforme relação de benefícios consignáveis.   Pensão por Morte (Espécie 21): Atende em todos os tipos de operações (NOVO, PORT, REFIN e REFIN DA PORT) sob as regras:   Concedidos antes de 17/06/2015 (Lei 8.213/1991): Cônjuges são vitalícios; dependentes perdem o direito ao atingir a maioridade.   Concedidos entre 17/06/2015 e 31/12/2020 (Lei 13.135/2015): Cônjuges são vitalícios se tivessem 44 anos ou mais na data da concessão; filhos dependentes perdem ao atingir a maioridade.   Concedidos a partir de 01/01/2021 (Portaria 424/2021): Cônjuges são vitalícios se tivessem 45 anos ou mais na data da concessão; filhos dependentes perdem ao atingir a maioridade.   Tabela de Prazos de Cessação de Pensão por MorteTipo de PensionistaIdade na ConcessãoPrazo de CessaçãoExceçãoFilho ou pessoa equiparadaNão se aplicaAo atingir 21 anosInválido/deficienteFilho ou equiparado c/ invalidezNão se aplicaAo cessar a invalidezNão se aplicaFilho ou equiparado c/ deficiência intelectual, mental ou graveNão se aplicaPelo afastamento da deficiênciaNão se aplicaCônjuge ou companheiro c/ invalidez ou deficiênciaNão se aplicaPela cessação da invalidez ou afastamento da deficiênciaNão se aplicaCônjuge ou companheiroMenos de 22 anos3 anosNão se aplicaCônjuge ou companheiroEntre 22 e 27 anos6 anosNão se aplicaCônjuge ou companheiroEntre 28 e 30 anos10 anosNão se aplicaCônjuge ou companheiroEntre 31 e 41 anos15 anosNão se aplicaCônjuge ou companheiroEntre 41 e 44 anos20 anosNão se aplicaCônjuge ou companheiroCom 45 anos ou maisVitalíciaNão se aplicaAtenção (Períodos de Contribuição para Cônjuge/Companheiro):   a) Se inválido ou com deficiência: cessa com o fim da invalidez/deficiência, respeitados os períodos mínimos das alíneas "b" e "c".   b) 4 meses: se o óbito ocorrer sem 18 contribuições mensais ou se o casamento/união estável tiver menos de 2 anos antes do óbito.   c) Períodos da tabela acima: se o óbito ocorrer após 18 contribuições mensais E pelo menos 2 anos de casamento/união estável.   Espécies 32 e 92 (Invalidez): Atende de 55 até 59 anos de idade quando decorridos 15 anos da concessão da aposentadoria por invalidez (caso contrário, operação cancelada fora da política). A partir de 60 anos o benefício é vitalício.   Regras por UF e Benefícios Consignáveis / Não ConsignáveisIdosos 60+ em PB, AP, TO, RR e SC: Obrigatoriamente formalização digital + obrigatório envio de via física assinada pelo cliente (CCB, Termo de adesão ou Seguro). (Contratação normal permitida até 59 anos, 11 meses e 29 dias; a partir de 60 anos segue regra específica).   Ceará (CE): Segue regras do comunicado FF06/24.   Goiás (GO): Não permite contratação via telefone (Lei nº 22.036/2023).   Público Não Atendido: Pensão alimentícia; Previdência complementar (Ex: Correios, BB, Petrobrás); Deficientes visuais/surdos/mudos; Procurador outorgado (particular ou público); Perícia anterior a Janeiro/2018; Clientes com benefício no Piauí (PI).   Benefícios Consignáveis (Códigos): 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 19, 20, 21, 24, 28, 30, 32 (verificar normativa), 33, 34, 37, 38, 40, 41, 42, 43, 44, 45, 46, 49, 51, 52, 57, 58, 72, 78, 81, 82, 92 (verificar normativa), 93.   Benefícios NÃO Consignáveis (Códigos): 09, 10, 13, 15, 25, 31, 35, 36, 39, 47, 48, 50, 53, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 79, 80, 85, 86, 87, 88, 90, 91, 94, 95, 97, 98, 99.   Atendimento a Clientes Analfabetos (Iletrados)Digitação de Propostas (Agente Facta):   Declarar incapacidade de assinatura na etapa de dados pessoais ("Cliente iletrado ou impossibilitado de assinar? Sim/Não"). Caso omitido, o OCR detectará na análise do documento.   Exige 3 dados obrigatórios do Assinante a Rogo: Nome Completo, CPF e Número de Celular.   Regra do A Rogo: Deve possuir parentesco comprovado de 1º ou 2º grau com o cliente e estar dentro dos parâmetros de idade do convênio.   Formalização Digital:   Assinante a Rogo: Envio obrigatório de Documento de Identificação + Captura de Selfie.   Cliente: Fluxo normal (assinatura/digital + documento de identificação + selfie 3D).   Assinatura em CCB Física e Envio:   Após formalização digital, imprimir CCB física para coleta do polegar do cliente, assinatura do a rogo e de 02 testemunhas (com Nome e CPF).   Tanto a via negociável quanto a não negociável devem conter todas as assinaturas.   Anexar a CCB integralmente no sistema Agente Facta (máximo 6MB por arquivo, limite de 10 arquivos).   Status Operacionais Específicos:   270 - PENDENTE - AGUARDANDO CCB ASSINADA: Aplicado após a formalização digital, aguardando upload da CCB física para ir à mesa de crédito.   151 - ENVIADO AO CLIENTE LINK CHAMADA DE VIDEO: Disparo de SMS para o assinante a rogo com link (NuVidio) para videochamada de confirmação conduzida pela mesa de formalização.   Limites Operacionais (Idade, Valores, Refin e Portabilidade)Tabela de Idade x Valor x Prazo (Na assinatura do contrato)IdadeValor Máximo (Risco por CPF)Prazo Máximo21 a 71 anos, 11 meses e 29 diasR$ 150.000,00108x72 a 72 anos, 11 meses e 29 diasR$ 150.000,0096x73 a 73 anos, 11 meses e 29 diasR$ 150.000,0084x74 a 74 anos, 11 meses e 29 diasR$ 50.000,0072x75 a 75 anos, 11 meses e 29 diasR$ 30.000,0060xCarência RS: Para operações NOVO no RS, carência de até 180 dias (excepcionalmente conforme IN INSS 169).   Valores Mínimos:   Líquido Refin de Carteira / Cedido: R$ 100,00.   Líquido Refin da Portabilidade: R$ 50,00.   Parcela mínima (Novo, Refin e Refin da Port): R$ 50,00.   Dia de corte mensal: 2º dia útil.   Liberação: Na mesma conta onde o cliente recebe o benefício.   Regras de RefinanciamentoTroco mínimo: R$ 100,00.   Unificação de parcela: Sim, desde que o líquido mínimo do cliente seja R$ 250,00 (apenas dentro da carteira; não unifica na portabilidade).   Redução de parcela: Sim, desde que a margem esteja negativa.   Mínimo de parcelas pagas (carteira cedida): 0 (sem mínimo).   Mínimo de margem a ser agregada: R$ 6,00.   Regras de PortabilidadeMargem zerada ou negativa: Sim, opera.   Mínimo de parcelas pagas por banco:   Agibank: 15 pagas   Daycoval: 24 pagas   Pan: 30 pagas   Paraná: 15 pagas   BMG / C6 / Santander / Olé: 12 pagas   BRB (originado pela Facta) e Demais Bancos: 0 pagas   Bancos que NÃO porta: Paulista (originado pela Facta); Zema (originado pela Facta); Inbursa (BI); Banco Pine; Socicred 917; Banco BRB (não originado Facta).   Prazo mínimo do Refin da Port: 60x.   Portabilidade com redução de parcela: Sim, desde que cubra o saldo devedor dentro da taxa e a parcela portada seja no mínimo R$ 50,00.   Portabilidade Pura: Sim, a partir de R$ 1.900,00 de saldo.   Parcela mínima na Portabilidade: Sem valor mínimo para portar, desde que o Refin da Portabilidade tenha parcela mínima de R$ 50,00.   Múltiplos contratos / Unificação na Port: Não porta 2 ou mais contratos numa única proposta; não unifica parcelas.   Forma de portar: TED STR47, via CIP.   Fórmulas de CálculoOperações Novas:   Valor máximo disponível = Margem Consignável ÷ Fator da tabela   Valor da parcela = Valor solicitado × Fator da tabela   Refinanciamento:   Margem Consignável Total = Margem Consignável + Parcela Refinanciada   Valor máximo disponível = Margem Consignável Total ÷ Fator da tabela   Valor da parcela = Valor solicitado × Fator da tabela   Portabilidade Manual:   Margem Consignável Total = Margem do site + Parcela refinanciada + Parcela comprada   Valor máximo financiado = Margem Consignável Total ÷ Fator da tabela   Valor líquido a receber = Valor máximo financiado - Saldo devedor   Valor da parcela = (Líquido para o cliente + Saldo devedor) × Fator da tabela   Documentação, Seguro e Bancos DigitaisDocumentos de Identificação Aceitos: Somente RG ou CNH (CNH vencida é aceita; único documento digital aceito é a CNH; não aceita CTPS).   Documentos Obrigatórios na Digitação/Formalização: Selfie do cliente; Ficha Cadastral; Documento de identificação do cliente (e do A Rogo, se analfabeto); Comprovante de residência.   CPF: Deve estar "REGULAR" na Receita Federal (necessário imprimir consulta).   Comprovante de Renda / Conta Bancária: 1 cópia da impressão do Detalhamento de Crédito atualizado. Correntistas HSBC devem apresentar extrato bancário + cópia do cartão. Cópia do cartão magnético exigida quando constar recebimento via cartão magnético na IN100.   Seguro Prestamista: Ativado conforme tabela selecionada. Na formalização presencial, exige envio de áudio separado com script. Inclui telemedicina 24h após cadastro via WhatsApp (máximo 3 consultas a cada 30 dias).   Ação Judicial: Restringe se houver ações contra a Facta.   Telefones/Referências: Obrigatório informar celular próprio ou para recado; não exige referências.   Bancos Digitais Aceitos: C6, Pan, Nubank, Inter, Banco Original, Banco Banespa, PicPay, Banco Digio.   Bancos Digitais NÃO Aceitos: PagBank, PagSeguro, Mercado Pago, Iti (Itaú), XP, Pefisa, Superdigital, Sofisa, Neon, Stone, Votorantim, Next.   Anuência Beneficiário: Confirmação obrigatória pelo cliente no app Meu INSS via biometria facial para Novo, Portabilidade e Refinanciamento.   2. ROTEIRO OPERACIONAL: FINANTO BANK (INSS)Fluxos das Propostas no SistemaPortabilidade Pura: Formalizado (Até 14 dias) ➔ Aguardando CIP (5 dias úteis):   Se Redução $\ge$ 1%: Aprovação Manual ➔ Aguardando Averbação ➔ Integrado.   Se recusado: Rejeitado ➔ Reprovado.   Portabilidade com Refin: Formalizado (Até 14 dias) (+ Desbloqueio) ➔ Aguardando CIP (5 dias úteis):   Caminho 1: Aguardando Aprovação Manual ➔ Se Troco $\ge$ digitado (Aprovação) OU Se Troco < +30% (Aprovação c/ Reformalização) ➔ Aguardando Averbação (+ Anuência) ➔ Integrado. (Regra do endividamento: troco mínimo de 5% do valor do endividamento, não sendo inferior a R$ 100,00).   Caminho 2 (Passível de análise): Rejeitado ➔ Reprovado.   Contrato Novo: Formalizado (Até 14 dias) ➔ Averbado ➔ Pendente anuência:   Fluxo Auditoria (Propostas por amostragem ou clientes que recebem por cartão magnético): Averbado Aguardando Auditoria ➔ Aprovado (ou Reprovado) ➔ Aguardando Aprov. Super. ➔ Integrado (ou Reprovado).   Fluxo Direto: Aguardando Aprovação Supervisor ➔ Aprovado (ou Reprovado) ➔ Integrado.   Fluxo de Pendência de Evidência: Aguardando Aprovação Supervisor ➔ Aprovado ➔ Averbado Pendente Evidência ➔ Retornar Evidência ➔ Averbado Regulariza Evidência ➔ Aprovado ➔ Integrado (se Rejeitado, retorna para Averbado Pendente Evidência).   Tabelas e LimitesContrato NovoTabelaTaxaPrazoParcela Mín.Limite por CPFSeguroCarência DisponívelNovo / Entrante1,85%48 a 108xR$ 20,00Não possuiNão30, 60 ou 90 diasPortabilidade PuraTabelaTaxaPrazoSaldo MínimoLimite por CPFSeguroRegras Específicas6021 PORTABILIDADE1,66% a 1,80%72x a 108xR$ 8.000,00Não possuiNãoReduzir no mín. 1% da parcela atual; não permite refin posterior.Portabilidade com RefinTabelaTaxaPrazoParcela MínimaSaldo MínimoSeguroTroco MínimoPrime1,60% a 1,85%108xAcima de R$ 300Não possuiNãoR$ 100,00*Select1,68% a 1,85%108xDe R$ 101 a R$ 299Não possuiNãoR$ 100,00*Essencial1,75% a 1,85%108xDe R$ 50 a R$ 100Não possuiNãoR$ 100,00*Regra de Troco Mínimo (% sobre novo endividamento): Até 24 pagas = mín. 2%; De 25 a 40 pagas = mín. 3%; Acima de 41 pagas = mín. 5%.   Carência disponível: 30, 60 ou 90 dias. Simulador: [https://simuladorinss.finanto.com.br/](https://simuladorinss.finanto.com.br/).   Regras Gerais, Idade e BenefíciosDocumentos Aceitos: RG Físico e Digital (até 10 anos); CNH Física e Digital, Passaporte e Carteira Funcional (passam por análise do formalizador); CRNM, RNM e RNE (estrangeiros).   Política de Idade x Prazo x TicketIdadePrazo MáximoTicket22 a 68 anos108xSem limite69 anos96xSem limite70 anos84xSem limite71 anos72xSem limite72 anos60xSem limite73 anos48xSem limiteIdades Limites por Produto:   Port + Refin: 68 anos e 10 meses.   Port Pura: 70 anos (seguindo política de idade x prazo em aberto).   Contrato Novo: 73 anos e 10 meses (em 48x).   Regras de Espécies e UF:   Benefício 21: Acima de 45 anos.   Benefício 32: Acima de 60 anos, somente para contratos NOVOS (apenas em 108x).   Benefício 92: Acima de 68 anos.   UFs PB, AP, TO, RR: Não opera acima de 60 anos.   BPC/LOAS: Espécie 87 não opera. Espécie 88 opera todos os produtos (Idade máxima: 66 anos e 10 meses; Prazo averbação: 5 dias; Representante Legal: Temporariamente Suspenso).   Operacional Margem/Parcelas:   Junção de parcelas: Realizada via Refin puro, usando a tabela da menor parcela portada.   Agregar Margem: Apenas no Refin Puro.   Margem Negativa: Opera somente em Port+Refin se cobrir o negativo (Taxa de entrada da port em margem negativa: 0,90%).   Política de Parcelas Pagas (Portabilidade) e TeimosinhaNÃO PORTA: Inbursa, Qi Sociedade, PicPay, Pine, BNP Paribas.   ACIMA DE 12 PAGAS: Pan, Paraná, Santander, Mercantil, Agibank, Daycoval, Alfa, Facta, Parati, C6, Safra, BRB 925 (somente contratos com prazo original de 84x ou 96x).   Demais Bancos: Porta desde que o contrato de origem tenha sido feito há pelo menos 30 dias na data do retorno do saldo devedor.   Teimosinha (Tentativas automáticas de IN100):   Contrato Novo: Ativa por 30 dias corridos.   Refinanciamento: Ativa por 5 dias corridos.   Entrantes: Fica represado considerando a data de concessão; a partir do 89º dia, consulta IN100 por mais 29 dias corridos.   Retorno Margem Excedida: O valor real disponível aparece na observação; é necessário redigitar a proposta (ou cancelar se zerada).   Contas Aceitas e PagamentoCartão Magnético: Escolher um dos bancos autorizados para liberação.   Dígito da conta letra: Preencher sempre com 0.   Reapresentação de Pagamento: Refin = 2 dias úteis da integração; Novo = 5 dias corridos da integração.   Bancos Autorizados (Código - Nome):   001 - Banco do Brasil   033 - Banco Santander (Exceto contas que iniciam por "77")   041 - Banrisul   069 - Banco Crefisa   085 - Ailos   104 - Caixa (exceto Caixa Tem)   121 - Banco Agibank   136 - Unicred   237 - Banco Bradesco (exceto Next)   260 - Banco Nubank   336 - Banco C6   341 - Itaú Unibanco (exceto Iti)   389 - Banco Mercantil do Brasil   422 - Banco Safra   623 - Banco Pan   748 - Sicredi   756 - Sicoob   Envio de Evidência e Script WhatsAppObrigatoriedade: Toda proposta de Contrato Novo (no ato da negociação).   Formatos Aceitos: Gravação de ligação, vídeo do cliente na loja ou print de conversa (WhatsApp, Telegram, etc.) com aceite claro.   Regras para Print de WhatsApp:   Texto completo visível (clicar em "Ler mais"), o "SIM" claro do cliente e o número de telefone nítido no topo/dados do contato.   Proibido conter áudios no meio da confirmação.   O número de telefone deve pertencer exclusivamente ao titular (validado em base pelo analista; proibido telefone de cônjuge, filhos, vizinhos).   Script Padrão WhatsApp (Finanto / QI SCD)Sr.(a) XXXXX, portador(a) do CPF XXX.XXXX.XXXX-XX, sou consultor(a) XXX, da empresa FINANTO.
+Para fins de confirmação e registro da operação, informo que hoje, XX/XX/2026, às XX:XXhrs, estamos realizando a confirmação da sua contratação de crédito consignado novo para a QI SCD, com as seguintes condições:
+• Valor do crédito contratado: R$ XX.XXX,XX
+• Prazo do contrato: XX meses
+• Prazo de carência do contrato: X meses (ou caso não possua carência informar Sem carência)
+• Valor da parcela: R$ XXX,XX
+• CET - Custo Efetivo Total: 1,96% ao mês (ou o vigente na proposta parte da CET)
+• Forma de pagamento: desconto automático mensal em seu benefício.
+Confirmação dos Dados Bancários: Conta Corrente: Banco: XXX - Agência: XXXX - Conta: XXXXXXXXXXX - Dígito X
+Para registro do aceite, solicito que o(a) senhor(a) confirme que:
+• Recebeu todas as informações de forma clara e completa;
+• Compreendeu integralmente as condições da operação contratada;
+• Confirma os dados bancários informados;
+• Autoriza expressamente a continuidade da contratação. Informo que qualquer oferta anterior a esta confirmação não será considerada válida.
+Gostaria de reforçar uma informação muito importante:
+A FINANTO, nunca solicita pagamentos, depósitos, PIX ou qualquer tipo de transferência para liberação de empréstimos ou serviços. Caso alguém entre em contato solicitando qualquer valor, não realize o pagamento e entre em contato conosco imediatamente. Qualquer solicitação dessa natureza caracteriza tentativa de fraude.
+Solicito, por gentileza, que responda claramente com "SIM" para formalização do aceite.   Regra de Anuência (Meu INSS)Processo obrigatório após averbação via app/site Meu INSS.   Contrato Novo: Desbloqueio > Averbação > Anuência > Auditoria/Evidência > Pagamento (Prazo de 5 dias corridos).   Refinanciamento: Desbloqueio > Averbação > Anuência > Pagamento (Prazo de 3 dias corridos).   3. ROTEIRO OPERACIONAL: BANCO BMG - ENTIDADE 1581 (INSS)Limites Operacionais x Faixa EtáriaFaixa EtáriaPrazo MáximoValor Máximo ConcedidoDe 21 a 70 anos108xSem limite (mediante disponibilidade de margem)71 anos96xSem limite (mediante disponibilidade de margem)72 anos84xSem limite (mediante disponibilidade de margem)73 anos72xSem limite (mediante disponibilidade de margem)74 anos60xR$ 30.000,0075 anos48xR$ 20.000,00Idade Mínima: 21 anos | Idade Máxima: 75 anos.   Quantidade máxima de contratos por benefício: 13 empréstimos.   Valor Mínimo da Operação (Novo, Refin e Port): Conforme divulgação de tabelas.   Público-Alvo: Espécies Atendidas e Não AtendidasEspécies Atendidas: 1, 2, 3, 4*, 5*, 6*, 7, 8, 19, 20, 21*, 22, 23, 24, 26, 27, 28, 32*, 33*, 37, 38, 41, 42, 43, 44, 45, 46, 49, 52, 55, 56, 57, 58, 59, 72, 78, 81, 82, 84, 89, 92*, 93, 96.   Particularidade Invalidez (Espécies 04, 05, 06, 32, 33 e 92): Idade mínima de 60 anos completos; se entre 55 e 59 anos, apenas se receberem o benefício há pelo menos 15 anos.   Particularidade Pensão por Morte Previdenciária (Espécie 21): Idade mínima de 28 anos completos.   Espécies NÃO Atendidas: 10, 11, 12, 13, 15, 21 (para menores de 21 anos), 25, 29, 30, 31, 36, 40, 47, 48, 50, 51, 76, 79, 80, 83, 86, 87 (LOAS Deficiência), 88 (LOAS Idoso), 91, 94, 95.   Margem Consignável INSS (MP Nº 1.355 de 04/05/2026)Vigência a partir de 20/05/2026: Limite global passou de 45% para 40%:   Empréstimo Consignado: Até 40% (sendo 35% exclusivo para empréstimo + 5% compartilhado que pode ser usado para cartão).   Cartão de Crédito Consignado (RMC) / Cartão Benefício (RCC): 5% compartilhado com os 40% de empréstimo (limitado à contratação de apenas 1 cartão por benefício). Se o cliente já possuía ambos os cartões antes da regra, a margem de 40% é impactada e pode ficar negativa.   Formalização Digital e Documentos AceitosDocumentos de Identificação Aceitos (Emissão máxima de 10 anos; não aceita cópia/xerox):   RG / CIN (Carteira de Identidade Nacional);   CNH Física com foto (mesmo vencida) e CNH Digital (mesmo vencida, obrigatório QR Code);   Carteira de Registro Profissional por Categoria (ex: jornalista);   Carteira Funcional válida em todo território nacional;   Passaporte comum brasileiro (Polícia Federal);   Novo modelo de CTPS (mediante envio das folhas com digital, foto, assinatura e qualificação civil);   CRNM, RNM ou antigo RNE.   Fluxo Híbrido / Fígital: Clientes Analfabetos e Idosos 60+ (AP, PB, RR, TO)1. Clientes AnalfabetosRequisitos:   Idade mínima do cliente analfabeto: 21 anos.   Idade permitida do Rogado: 21 a 75 anos.   Parentesco aceito para Rogado: 1º grau (pai, mãe, filhos) ou 2º grau (irmãos).   2 Testemunhas (não podem ser os usuários digitadores).   Digitação no Novo Consig: Na etapa 3 (Dados), selecionar Grau de instrução ANALFABETO e preencher CPF, Nome Completo e Data de Nascimento do Rogo.   Formalização Híbrida (Digital Token + Física):   Eletrônica: Interpretada pelo rogado; exige selfie/prova de vida do cliente analfabeto e documentos de identificação do cliente e do rogado.   Física: Coletar polegar do cliente analfabeto + assinatura de próprio punho do rogado + assinatura de 2 testemunhas (com nome e CPF).   Documentos a anexar em PDF único ("Termo de Adesão Assinatura Física", máx. 2.048Kb): CCB (4 primeiras páginas) + Termo de Autorização do Beneficiário INSS (1-2 páginas) + Termo de Solicitação de Portabilidade (1 página, se aplicável) + Documentos de Seguro (se houver). Dispensa envio físico para custódia.   2. UFs com Assinatura Física Obrigatória para 60+ (AP, PB, RR e TO)Clientes com 60 anos ou mais residentes no Amapá, Paraíba, Roraima e Tocantins realizam a formalização Digital/Digital Token normal E geram pendência obrigatória de anexo físico (Termo de Adesão Assinatura Física).   Imprimir, coletar assinatura de próprio punho do cliente e anexar em PDF único: CCB (4 primeiras páginas) + Termo de Solicitação de Portabilidade (1 página, quando for portabilidade). Dispensa envio para custódia.   Motivos de pendência de anexo (Analfabetos e 60+): Termo sem assinatura, incompleto, danificado/ilegível, não reconhecido ou divergente do documento de identificação.   Regras de Refinanciamento e PortabilidadeParâmetroRefinanciamento INSS   PDFPortabilidade INSS   PDFMínimo de parcelas pagas5 parcelas (Com prazo de 108x é possível com menos de 5 pagas)   1 parcela paga   Agregação de margemSim   -Opera com margem negativa?Sim   Não   Unificação de contratosNão permite   Não permite   Múltiplas propostas na digitação-Sim, até 8 portabilidades numa única digitação   Valor / Troco MínimoConforme tabela   Troco mín. Refin da Port: R$ 50,00 (Saldo/taxa conforme condições comerciais)   Readequação/Reformalização CIP-Sim, automático via pendência no acompanhamento   Anuência / Confirmação após AverbaçãoRegra Geral (Vigência 19/05/2026): Toda averbação (Empréstimo, Refinanciamento, Cartão Consignado e Cartão Benefício) exige confirmação pelo beneficiário no app Meu INSS (biometria facial) em até 5 dias corridos após a averbação.   Impacto no Sistema e Margem:   Gera alerta Aguardando confirmar contrato (anuência) e etapa Consulta de anuência: Em andamento.   O benefício continua sendo bloqueado automaticamente a cada averbação, mas o bloqueio não impede a anuência.   A margem fica ocupada enquanto aguarda anuência, mas o cliente pode contratar outros consignados com a margem restante livre.   Se não confirmar em 5 dias corridos ou recusar: A Dataprev exclui a averbação automaticamente e a proposta é cancelada no BMG.   Liberação de Crédito e Bancos AceitosRecebimento por Conta Corrente: Pagamento (TED/PIX) obrigatoriamente na conta onde recebe o benefício (validado via Dataprev).   Recebimento por Cartão Magnético: Pagamento via TED/PIX em conta corrente ou poupança de mesma titularidade do beneficiário (não permite Ordem de Pagamento).   Bancos Aceitos para Pagamento (Código - Banco):   1 - Banco do Brasil S.A.   3 - Banco da Amazônia S.A.   4 - Banco do Nordeste Brasil S/A   10 - Credicoamo Cred. Rural Cooperat   21 - Banco do Estado Esp. Santo S/A   33 - Banco Santander (Brasil) S.A.   37 - Banco do Estado do Pará S.A.   41 - Banco do Estado R.G. Sul S/A   47 - Banco do Estado de Sergipe S/A   69 - Banco Crefisa S.A.   77 - Banco Inter S.A.   84 - Unicred Norte do Paraná-Coop.   85 - Cooperativa Central Cred. Urban   89 - Cooperativa Cred Rural Região   97 - Coop. Central Credito Noroest. B   104 - Caixa Econômica Federal   121 - Banco Agibank S.A.   133 - Confederação Nacional Coop. Cen   136 - CC Unicred do Brasil   237 - Banco Bradesco S.A.   250 - BCV Banco de Crédito e Varejo   281 - Cooperativa de Crédito Rural C   318 - Banco BMG S.A.   322 - Cooperativa de Crédito Rural D   341 - Itaú Unibanco S.A.   389 - Banco Mercantil do Brasil S.A.   422 - Banco Safra S.A.   623 - Banco Pan S.A.   748 - Banco Cooperativo Sicredi S.A.   756 - Bancoob Bco Coop. Brasil S.A.   Contatos e Suporte BMG   Suporte ao Cliente: Central: 4002-7007 (Celular) / 0800-770-1790 (Fixo) | SAC: 0800-979-9099 | Ouvidoria: 0800-723-2044 | Deficientes Auditivos: 0800-979-7333 | PROCON: 0800-723-3077.   Suporte ao Correspondente:   Treinamento (SAT): sat@bancobmg.com.br   Apoio Comercial / SAF: (11) 3003-9747 / apoiocomercial@bancobmg.com.br   Comissão BMG: (11) 3003-9747 (Opção 2) / suportecomissao@bancobmg.com.br
+1. ROTEIRO OPERACIONAL: BANCO DAYCOVAL (INSS - Versão 76.0)
+🚨 Adicional Atualizado: Regras para Portabilidade
+•	Acordos Mantidos (Mínimo de Parcelas Pagas):
+o	Facta: 24 pagas
+o	Agibank: 15 pagas
+o	Pan, Itaú, BMG, QI SCD (QI QUA) e BRB: 12 pagas
+o	NÃO PORTAMOS: C6, Safra, Alfa, Inbursa e Master
+•	Condições Operacionais da Portabilidade:
+o	Risco: Risco Banco na averbação.
+o	Troco Mínimo: 2% ou R$ 100,00 (o que for maior).
+o	Reassinatura: Necessária quando houver variação maior ou menor que 10%.
+•	Portabilidade na Autorregulação (Todos os Bancos, remuneração no retorno da CIP):
+o	Bancos de Rede (Contratos originados em agência): SIM remunera — operamos com mínimo de 6 parcelas pagas.
+o	Bancos de Rede (Contratos originados em Corban): SIM remunera se igual ou superior a 360 dias | NÃO remunera se inferior a 360 dias (aplicável a todos os bancos, inclusive não aderentes à autorregulação).
+Resumo das Informações e Público-Alvo
+•	Data de Corte: 2º dia útil de cada mês.
+•	Prazo Utilizável: Até 108 meses.
+•	Quantidade Máxima de Contratos: 13 contratos por matrícula.
+•	Margem Legal / Utilizável: 40% (100% da margem livre para Novo; 100% da parcela refinanciada para Refin; 100% da parcela portada para Portabilidade).
+•	Aposentadoria por Invalidez (Espécies 32 e 92):
+o	Idade 1: De 40 anos completos até 52 anos incompletos.
+o	Idade 2: De 53 anos completos até 59 anos e 11 meses e com mais de 13 anos de benefício.
+o	Idade 3: A partir de 60 anos completos (isentos de perícia médica bienal conforme Lei 13.063/2014).
+•	Pensão por Morte Previdenciária (Espécie 21):
+o	Duração de 4 meses: Se óbito ocorrer sem 18 contribuições mensais ou casamento/união estável iniciado há menos de 2 anos antes do óbito.
+o	Duração Variável (após 18 contribuições e 2 anos de união, ou acidente de qualquer natureza): Menos de 21 anos = 3 anos; 21 a 26 anos = 6 anos; 27 a 29 anos = 10 anos; 30 a 40 anos = 15 anos; 41 a 43 anos = 20 anos; A partir de 44 anos = Vitalício.
+•	Público NÃO Aceito: Residentes no exterior; pagos por cooperativas sem contrato; pensão alimentícia; empresas convenentes; assistenciais (BPC/LOAS); representantes legais (tutelados/curatelados/procuradores, mesmo com autorização judicial); pagos via Correios (ECT); residentes no município de Timbiras - MA.
+•	Avaliação mediante prévia autorização: Aposentados e pensionistas com declaração/assinatura a rogo.
+•	Espécies Permitidas (Anexo I): 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 18 (Auxílio Inclusão), 21, 28, 30, 32, 33, 34, 37, 38, 40, 41, 42, 43, 44, 45, 46, 49, 51, 52, 57, 58, 60, 72, 78, 81, 82, 83, 92, 93.
+Regras de Margem, Refin e Portabilidade
+•	Margem Negativa: Mostra margem negativa e permite abater o valor somente em operações de Refinanciamento.
+•	Refinanciamento: Permite agregar margem; permite unificar parcelas.
+•	Portabilidade: NÃO permite agregar margem; NÃO permite unificar parcelas.
+•	Vedação Associativa (Lei 15.327/2026): Vedados descontos de mensalidades associativas e repasses para consignado; exigida autorização prévia com biometria/reconhecimento facial ou assinatura eletrônica qualificada.
+Política de Idade x Valor x Prazo
+Digital / Híbrido (Margem Livre + Refin)
+Início da Operação	Término da Operação	Valor Máximo
+21 anos completos	69 anos, 11 meses e 29 dias	R$ 400.000,00
+70 anos completos	72 anos, 11 meses e 29 dias	R$ 350.000,00
+73 anos completos	80 anos, 11 meses e 29 dias	R$ 300.000,00
+Digital / Híbrido (Portabilidade)
+Início da Operação	Término da Operação	Valor Máximo
+21 anos completos	62 anos, 11 meses e 29 dias	R$ 400.000,00
+63 anos completos	65 anos, 11 meses e 29 dias	R$ 350.000,00
+66 anos completos	72 anos, 11 meses e 29 dias	R$ 300.000,00
+Portabilidade / Refin da Portabilidade (Idade x Prazo)
+Idade Máxima na Contratação	Prazo Máximo	Idade ao Final do Contrato
+71 anos, 11 meses e 29 dias	108x	80 anos, 11 meses e 29 dias
+72 anos, 11 meses e 29 dias	96x	80 anos, 11 meses e 29 dias
+73 anos, 11 meses e 29 dias	84x	80 anos, 11 meses e 29 dias
+Horários Operacionais, Formalização e Regras de Abordagem
+•	Reserva de Margem (Averbação Online): Digitadas até 16h30 = Envio D+0 | Após 16h30 = Envio D+1.
+•	Horário Limite de Digitação e Pagamento:
+o	Contrato Novo e Refinanciamento: Limite 16h00 para pagamento no mesmo dia (D+0); após 16h00 paga em D+1.
+o	Portabilidade (STR0047): Limite 13h00 para vencimento no dia.
+•	Formalização Digital / WhatsApp Dayane: Cliente recebe link por SMS ou pode enviar "Oi" no WhatsApp para a assistente Dayane no número (11) 99111-6583.
+•	Formalização Híbrida (60+ anos): Clientes com mais de 60 anos podem formalizar de forma híbrida pelo Portal do Correspondente (faz jornada digital com selfie e ao término imprime e assina fisicamente o contrato).
+•	Checklist de Documentos Obrigatórios (Portal Digital): Ficha Cadastral assinada; CCB assinada; CNH (Digital ou Física) ou RG Civil/Militar; Termo de Autorização (validade de 30 dias para consulta); Comprovante ou Declaração de Endereço; Solicitação de Portabilidade assinada (para Port); Extrato ou Cópia do Cartão (para Margem/Refin/Transfer quando sem comprovação no contracheque).
+•	Bloqueios e Proibição de Marketing Ativo: Proibida abordagem/oferta até 180 dias da concessão (o cliente pode desbloquear por iniciativa própria após 90 dias da concessão) e até 60 dias após transferência de benefício (TBM). Obrigatório higienizar base diária do "Não Me Perturbe" em [https://up.daycoval.com.br](https://up.daycoval.com.br).
+2. ROTEIRO OPERACIONAL: BANRISUL - BEM PROMOTORA (INSS - Versão 05)
+Público-Alvo e Restrições
+•	Público Atendido: Aposentados e pensionistas do RGPS/INSS.
+•	Pensão por Morte: De 18 a 20 anos = encerrar contrato 2 meses antes de completar 21 anos; Acima de 21 anos = segue tabela de limites por idade.
+•	Público Impedido de Operar: Benefícios por acordos internacionais (residentes no exterior); pagos por empresa convenente; recebidos por representante legal (procuração, tutor ou curador); clientes não alfabetizados.
+•	Espécies Permitidas:
+o	Aposentadorias por Idade: 7, 8, 41, 52, 78, 81.
+o	Aposentadorias por Tempo de Contribuição: 42, 43, 44, 45, 46, 49, 57, 72, 82.
+o	Aposentadorias por Invalidez: 4, 6, 32, 33, 34, 51, 83.
+o	Pensão por Morte: 01, 03, 21, 28.
+o	Benefícios Assistenciais (Antigos): 11, 12, 30, 40.
+o	Acidentários: 02, 05, 92, 93.
+o	EPU: 20, 24, 37, 38, 58.
+Limites Operacionais e Tabela de Idade
+•	Valores por Operação:
+o	Contrato Novo: Mínimo R$ 700,00 | Máximo R$ 70.000,00.
+o	Refinanciamento: Mínimo R$ 100,00 | Máximo R$ 70.000,00.
+o	Parcela Mínima: R$ 8,00 (respeitando o mínimo liberado da operação).
+•	Quantidade Máxima de Contratos: Até 13 contratos ativos por benefício (desde que sem inadimplência no CPF).
+•	Margem Consignável: Calculada sobre 35% para empréstimos consignados (Banrisul não opera Cartão Consignado RMC nem Cartão Benefício RCC).
+Limites por Idade
+Faixa Etária	Valor Máximo	Regra de Prazo / Vencimento
+De 18 a 65 anos	R$ 70.000,00	Prazo máximo do convênio, desde que o vencimento da última prestação ocorra 1 mês antes de o cliente completar 78 anos.
+De 66 a 69 anos	R$ 50.000,00	Idem acima.
+De 70 a 73 anos	R$ 40.000,00	Idem acima.
+De 74 a 75 anos	R$ 15.000,00	Idem acima.
+Regras por Tipo de Operação e Liberação
+•	Liberação de Crédito: Conta Corrente = depósito direto na conta do benefício; Cartão Magnético = crédito em Conta Corrente ou Poupança de titularidade do beneficiário.
+•	Refinanciamento:
+o	Mínimo de 10 parcelas pagas OU mínimo de 5 parcelas pagas com financiamento a partir de R$ 5.000,00.
+o	Permite refinanciar até 5 contratos juntos.
+o	Permite agregação de margem se houver 1 linha de desconto disponível.
+•	Operação de Compra: Exclusiva para contratos em situação BRW quando apresentar crítica da Regra 218 no sistema (abrir chamado ao Apoio Operacional).
+Documentação, Formalização e Anuência
+•	Assinatura Eletrônica: Exige apenas Documento de Identificação; dispensa envio físico à New Space.
+•	Assinatura Fígital: Exige Documento de Identificação, CPF, Comprovante de Residência, 2 vias da CCB (assinadas e rubricadas em todas as páginas sem assinatura), Formulário de Solicitação de Portabilidade e Proposta FOR/10 assinada/rubricada. Após situação "Efetivada", enviar Kit completo à New Space em até 5 dias úteis.
+•	Documentos de Identificação Aceitos: RG, CNH válida, Passaporte válido, CRNM, Protocolos PF com foto/assinatura, Cédulas de Identidade de Estrangeiro ou Entidades Profissionais válidas (Não aceita CTPS).
+•	CPF: Aceito se constar no RG/CNH/IR; status "Pendente" ou "Suspenso" aceito com documento de regularização; "Cancelado" ou "Nulo" não aceito.
+•	Comprovante de Residência: Contas de consumo, IPTU, escritura, telecom, aluguel + recibo, carta de concessão INSS (Não aceita contas emitidas pelo DMAE). Aceito em nome de pais, filhos, cônjuge ou irmãos (anexar documento do titular do comprovante), ou Declaração de Residência FOR/03 assinada (máx. 60 dias).
+•	Anuência INSS: Obrigatória confirmação pelo cliente no Meu INSS ("Confirmar Empréstimo Consignado") para Novos Contratos e Refinanciamentos antes da liberação do valor.
+3. ROTEIRO OPERACIONAL: PARANÁ BANCO - CÓD 331 (INSS)
+Regras Gerais e Critérios de Contratação
+•	Quantidade Máxima de Contratos: 13 contratos por benefício/matrícula.
+•	Data de Corte: Todo 2º dia útil do mês.
+•	Idade Mínima: 18 anos | Idade Máxima (Término do contrato): 77 anos, 11 meses e 29 dias.
+•	Prazo Máximo: 108 meses | Taxa Máxima: 1,85% a.m.
+•	Formalização: Apenas formalização digital (Não atende analfabetos nem deficientes visuais — suspensos por prazo indeterminado; reprova automaticamente clientes 60+ residentes em PB, AP, TO e RR pois não realiza formalização física).
+•	Seguro Prestamista: Não permite.
+•	Parcelas Mínimas e Troco Mínimo:
+o	Contrato Novo: Parcela mín. R$ 60,00 (R$ 15,00 para Espécies 32/92; R$ 1,00 para Novo Cobrança regra 33180) | Troco mín. R$ 1,00.
+o	Refinanciamento: Parcela mín. R$ 15,00 (R$ 1,00 para Refin Cobrança regra 33181) | Líquido mín. R$ 100,00 (ou R$ 1,00 conforme regra geral).
+o	Portabilidade Pura e Portabilidade com Refin Vinculado: Parcela mín. R$ 120,00 | Troco mín. no Refin Vinculado: R$ 100,00 (Isenção de RCO para INSS/SIAPE segue valor mínimo de parcela; demais convênios exigem saldo > R$ 4.000,00).
+•	Margem Negativa / Zerada: Não opera contrato novo ou portabilidade com margem negativa (opera portabilidade com margem zerada). No refinanciamento (ou após portabilidade sem refin que deixou margem negativa), deduz o valor negativo da parcela refinanciada. Atualização de margem negativa ocorre após 7 dias úteis da integração.
+•	Refinanciamento e Junção: Permite refinanciar após 7 dias úteis da integração do contrato original. Permite agregar margem e unificar parcelas no refinanciamento de carteira (obrigatoriamente consolidando todas as operações do cliente no seu COD). Junção por atraso/margem negativa usa sistema Função na regra 33181 (sem limite de valor principal; espécies 32/92 exigem autorização via Boleto de Abertura de Parâmetro).
+Tabelas de Idade x Valor x Prazo
+Regra Geral (Término do contrato aos 77 anos, 11 meses e 29 dias)
+Idade	Valor Máximo (CPF)	Prazo Máximo
+Até 68 anos	R$ 100.000,00	108x (9 anos)
+69 anos	R$ 100.000,00	96x (8 anos)
+70 e 71 anos	R$ 100.000,00	72x (6 anos)
+72 anos	R$ 25.000,00	60x (5 anos)
+73 e 74 anos	R$ 10.000,00	36x (3 anos)
+Aposentados por Invalidez - Espécies 32/92 (Término aos 73 anos, 11 meses e 29 dias)
+Idade	Valor Máximo (CPF)	Prazo Máximo
+Até 64 anos	R$ 100.000,00	108x (9 anos)
+65 anos	R$ 100.000,00	96x (8 anos)
+66 e 67 anos	R$ 100.000,00	72x (6 anos)
+68 anos	R$ 25.000,00	60x (5 anos)
+69 e 70 anos	R$ 10.000,00	36x (3 anos)
+Regras de Espécies (Invalidez, Pensão e Restrições)
+•	Espécies Autorizadas: 1, 2, 3, 4, 5, 6, 7, 8, 19, 20, 21, 24, 28, 32, 33, 34, 37, 38, 41, 42, 43, 44, 45, 46, 49, 51, 52, 57, 58, 72, 78, 82, 83, 92, 93.
+•	Espécies NÃO Autorizadas: 10, 11, 12, 13, 15, 22, 23, 25, 26, 27, 29, 30, 31, 36, 40, 47, 48, 50, 54, 55, 56, 59, 60, 76, 79, 80, 84, 85, 86, 87, 88, 89, 91, 94, 95, 96.
+•	Critérios para Invalidez (Espécies 32/92):
+1.	Acima de 58 anos completos: Validação automática na esteira.
+2.	Entre 55 e 57 anos completos: Exige mínimo de 15 anos de benefício (validação automática).
+3.	Fora das faixas acima (ex: menor de 55 anos): Aceito no sistema Função anexando "Comunicação de Decisão" com Deferimento do Pedido para o assunto Aposentadoria por invalidez, Pedido de acréscimo (25%) ou Aposentadoria por incapacidade permanente (contrato deve terminar antes dos 75 anos).
+•	Critérios para Pensão por Morte (Espécie 21): Elegíveis apenas pensões vitalícias (acima de 44 anos na data do óbito) ou cuja data de extinção de cota esteja a pelo menos 96 meses (8 anos) da competência atual (encerrar antes da extinção da cota ou de completar 81 anos).
+Limitações de Portabilidade e Bancos Bloqueados para Pagamento
+•	Regras de Quitação na Portabilidade: Não permite agregar margem; nova parcela não pode ser maior que a de origem.
+o	121 - Agibank: Mínimo 13 parcelas pagas.
+o	626 - C6 Consignado: Mínimo 25 parcelas pagas.
+o	012 e 055 - Banco Inbursa: Mínimo 13 parcelas pagas.
+•	Bancos Digitais/Instituições Bloqueados para Pagamento (Crédito/Regularização): 11 Credit Suisse; 12 Inbursa; 26 Alfa; 35 BEC; 55 e 655 BV/Votorantim/Neon; 77 Inter; 79 Original Agronegócio; 93 Banrisul Cartões; 106 Itaú BBA; 107 Bocom BBM; 136 Unicred; 208 BTG Pactual; 239 Crefisa; 261 Claro; 286 e 827 Bari; 290 PagSeguro/PagBank; 299 Sorocred; 309 Cambionet; 316 e 826 XP; 323 Mercado Pago; 349 Al5; 380 PicPay; 480 Digimais; 623 PAN; 736 Cetelem; 741 Ribeirão Preto; 746 Modal; 816 Topázio; 888 Fator; 902 Banco da Amazônia; 954 Finaxis.
+Sistemas (Front360 / Função), Desbloqueio, Anuência e SLA de Esteira
+•	Protocolo INSS: Exige desbloqueio por operação (com biometria facial no Meu INSS, selo Prata/Ouro) e anuência individual por contrato no Meu INSS (consentimento de consulta de dados no Front360 não substitui a anuência).
+•	Represamento Automático de Bloqueio: Benefícios novos em carência (90 dias) ficam na atividade 1120 - AG DESBLOQ EMPRÉSTIMO; bloqueio por TBM (60 dias) fica na 1000 - AG RETORNO IT.
+•	Fluxo de Digitação: Iniciar sempre pelo Front360 (validar telefone via token SMS de 4 dígitos ➔ enviar link de consentimento INSS ➔ usar aba Oferta Única ou cadastrar Portabilidade no Sistema Função usando convênio 033101 - INSS PORT e retornar ao Front360 para enviar link de formalização).
+•	SLA de Pagamento na Esteira: Assinatura digital concluída pelo cliente até às 16h = pagamento no mesmo dia até às 18h | Assinatura concluída após às 16h = pagamento até às 12h do dia seguinte.
+4. ROTEIRO OPERACIONAL: C6 BANK / C6 CONSIG (INSS - Julho/2026)
+Regras do Produto por Modalidade
+Parâmetro	Margem Livre (Novo) PDF+ 1	Refinanciamento PDF+ 1	Portabilidade / Refin Port PDF+ 2
+Valor Mínimo Solicitado / Financiado	R$ 1.000,00 	-	R$ 2.000,00 (ex: R$ 1.950 saldo + R$ 50 troco)
+Troco Mínimo Liberado	-	Menor valor entre R$ 700,00 ou 5% do valor financiado 	Menor valor entre R$ 50,00 ou 5% do valor financiado
+Mínimo de Parcelas Pagas	-	Incremento mínimo de 12 parcelas (Retenção: idade + prazo > 82 anos) 	-
+Carência (1ª parcela)	30, 60 ou 90 dias 	30, 60 ou 90 dias 	-
+Permite Reduzir / Aumentar Parcela?	-	Permite ambos (Reduzir taxa: máx. 0,10% do contrato origem) 	Port: permite reduzir / Refin Port: permite reduzir e aumentar (agregar margem)
+Permite Unificar Parcelas?	Não 	Permite 	Não permite (apenas 1 contrato por vez)
+Opera com Margem Negativa?	Não 	Sim, deduzindo o valor negativo da parcela refinanciada 	Sim, deduzindo o valor negativo da parcela portada
+Tipo de Formalização	Digital Web ou Plus 	Digital Web ou Plus 	Digital Web ou Plus (1 selfie única se digitados juntos)
+•	Regras Críticas de Portabilidade:
+o	O Refin da Port deve ser concluído em até 45 dias (após isso, digitar como refinanciamento normal de carteira).
+o	Se houver uma Portabilidade em andamento e for digitada Margem Livre para o mesmo CPF, a proposta de Margem Livre será reprovada.
+o	Se o Refin da Port for reprovado/cancelado antes do pagamento do saldo CIP, a Portabilidade cai junto.
+o	Recálculo de Saldo CIP (Taxa Ponderada): Se a taxa final ficar abaixo da mínima da tabela digitada, cai na etapa AJUSTAR TABELA — o ajuste deve ser feito no mesmo dia do retorno do saldo até às 16h. Se ficar dentro ou acima, o sistema recalcula automaticamente respeitando a taxa máxima ponderada.
+Tabela de Idade x Prazo x Valor Máximo
+Idade	Margem Livre (Prazo / Valor Máx.)	Refinanciamento (Prazo / Valor Máx.)	Portabilidade (Prazo / Valor Máx.)	Refin da Port (Prazo / Valor Máx.)
+18 a 20 anos	Não opera	Não opera	Não opera	Não opera
+21 a 71 anos	108x / Conforme margem	108x / Conforme margem	108x / Conforme margem	108x / Conforme margem
+72 anos	96x / Conforme margem	108x / Conforme margem	108x / Conforme margem	108x / Conforme margem
+73 anos	84x / Conforme margem	108x / Conforme margem	108x / Conforme margem	108x / Conforme margem
+74 anos	72x / R$ 35.000	96x / R$ 35.000	96x / R$ 35.000	Não opera
+75 anos	60x / R$ 20.000	84x / R$ 20.000	84x / R$ 20.000	Não opera
+76 anos	48x / R$ 15.000	48x / R$ 15.000	48x / R$ 15.000	Não opera
+77 anos	36x / R$ 10.000	36x / R$ 10.000	36x / R$ 10.000	Não opera
+78 anos	24x / R$ 8.000	24x / R$ 8.000	24x / R$ 8.000	Não opera
+79 anos	12x / R$ 5.000	12x / R$ 5.000	12x / R$ 5.000	Não opera
+Público-Alvo, Espécies e Regras de Invalidez
+•	Espécies Autorizadas: 1, 2, 3, 4*, 5*, 6*, 7, 8, 11*, 12, 19, 20, 21, 24, 28, 30*, 32*, 33*, 34*, 37, 38, 40, 41, 42, 43, 44, 45, 46, 49, 51*, 52, 57, 58, 72, 78, 81, 82, 83*, 92*, 93.
+•	LOAS / Auxílio Inclusão (Suspensos): Espécies 18, 87 e 88 estão suspensas.
+•	Público Não Autorizado: Pensão alimentícia, residentes no exterior, assistenciais, procuradores, pagos via ECT (Correios), empresas conveniadas ou cooperativas sem contrato, e demais espécies listadas na página 8 do manual.
+•	Regras de Invalidez (Espécies 4, 5, 6, 11, 30, 32, 33, 34, 51, 83, 92):
+o	60 anos ou mais: Não há verificação da data de perícia/invalidez.
+o	Entre 55 e 59 anos: Se concedido há mais de 15 anos, sem verificação; se concedido há menos de 15 anos, última perícia deve ter ocorrido pelo menos em JAN/2017.
+o	Inferior a 55 anos: Última perícia deve ter sido realizada pelo menos em JAN/2017.
+Bancos e Agências NÃO Aceitos para Pagamento
+•	Bancos Bloqueados: 077 Inter; 197 Stone; 213 Arbi; 218 BS2; 290 PagSeguro; 323 Mercado Pago; 422 Safra; 655 Votorantim; 079 e 380 PicPay.
+•	Contas / Agências Digitais Bloqueadas:
+o	Santander: Recusa contas que começam com 77 (digital).
+o	104 - Caixa Tem: Agência 3880.
+o	237 - Next: Agências 3728, 3737, 3738, 3750, 3925, 3929, 6176, 7160, 7320, 7526, 7615, 7802.
+o	341 - Iti: Agência 0500.
+o	655 - Neon: Agência 0655.
+•	Modalidade Digital Web Plus (Fígital): Atendimento exclusivo por meio de Banco de Rede (não aceita nenhum banco digital).
+Formalização, Anuência e Dicionário de Esteira
+•	Formalização Plus (Fígital / A Rogo / Idosos 60+ em AP, PB, RR e TO): Obrigatória para clientes com mais de 60 anos residentes no Amapá, Paraíba, Roraima e Tocantins. Exige anexar: Termo de Autorização IN100 assinado; Páginas 1, 2 e 3 da CCB assinadas; Termo de Solicitação de Portabilidade (se port); Doc. de identificação do cliente; Doc. de identificação do rogado com parentesco de 1º grau (para analfabeto/a rogo).
+•	Anuência Obrigatória (IN PRES/INSS 204 - Vigência 19/05/2026):
+o	Obrigatória para Novo, Refin e Refin da Port no portal Meu INSS (conta gov.br Prata ou Ouro + biometria facial) em até 5 dias corridos.
+o	No sistema C6 Consig, após averbar, a proposta vai para a atividade 1269 - AGUARDA ANUENCIA com retorno BZ e situação 18 - Pendente de confirmação. Se aprovada pelo cliente, retorna 0 (Ativo) ou 5 (Programado próxima competência); se recusada/expirada, retorna 19 ou 20 e cancela a proposta.
+•	Gestão de Esteira e Cancelamento: Propostas com 10 dias sem atuação são canceladas automaticamente pelo banco. Agências, contas, UF, nome incorretos ou valor de parcela com margem excedida podem ser ajustados na esteira sem redigitar.
+•	Dicionário de Reprova (Política Interna):
+o	Cabe Redigitação (Código AR): Política Interna 01, 02, 22, 23, 24, 40, 43 (regra de negócio) e 90 a 99 (solicitação de documentos).
+o	NÃO Cabe Redigitação (Código IR): Política Interna 11, 41, 42 e 60 a 69.
+5. ROTEIRO OPERACIONAL: PRESENÇA BANK (INSS - 04/09/2026)
+Elegibilidade, Limites e Margem
+•	Público Atendido: Aposentados e pensionistas vitalícios (RGPS/INSS).
+•	Público NÃO Atendido: Procuradores, curadores, tutores e representante legal; Povos indígenas (determinação FUNAI); pagos via Correios (ECT); domiciliados no exterior; analfabetos e impossibilitados de assinar; Pessoa Politicamente Exposta (PEP); empresas conveniadas/cooperativas sem contrato; Previdência Complementar; clientes com mais de 60 anos residentes em PB, AP, TO e RR (contratação permitida apenas até 59 anos, 11 meses e 29 dias nessas UFs).
+•	Parâmetros Operacionais:
+o	Idade Mínima: 22 anos | Idade Máxima na Contratação: 71 anos (última parcela deve vencer antes de o cliente completar 77 anos).
+o	Taxa de Juros: 1,85% a.m.
+o	Margem Consignável: 40% da renda líquida total (5% RMC e 5% RCC estão inseridos dentro dos 40% totais).
+o	Valores: Mínimo liberado R$ 700,00 | Máximo liberado R$ 60.000,00 | Parcela mínima R$ 20,00 | Prazo de 60 a 108 parcelas.
+o	Benefícios Novos: Bloqueio inicial de 90 dias; desbloqueio manual pelo titular após o trimestre inicial.
+Tabela de Idade Máxima x Prazo x Valor
+Prazo	Idade Máxima na Contratação	Valor Máximo
+108 parcelas	67 anos	R$ 60.000,00
+96 parcelas	68 anos	R$ 60.000,00
+84 parcelas	69 anos	R$ 20.000,00
+72 parcelas	70 anos	R$ 20.000,00
+60 parcelas	71 anos	R$ 20.000,00
+Espécies de Benefícios Atendidos e Ressalvas de Idade
+•	Sem ressalva específica de espécie (segue regra geral 22 a 71 anos): 7, 8, 37, 38, 41, 42, 43, 44, 45, 49, 52, 57, 58, 72, 82.
+•	Exige idade ACIMA DE 45 ANOS (Pensões por Morte): 1, 2, 3, 20, 21, 22, 23, 26, 27, 28, 29, 55, 59, 93.
+•	Exige idade ACIMA DE 60 ANOS (Aposentadorias por Invalidez): 4, 5, 6, 33, 34, 51, 83, 92.
+Documentação, Anuência e Bancos Não Autorizados
+•	Documentação Necessária: RG ou CNH atualizado e legível (Não aceita CTPS); Selfie digital; Termo de autorização IN100; Anuência gerada na conta Gov.br (nível Prata ou Ouro no portal Meu INSS após averbação).
+•	Liberação: Na mesma conta onde o cliente recebe o benefício.
+•	Bancos e Agências NÃO Autorizados: 341 Iti (Ag. 500); 655 Neon (Ag. 655) e Votorantim; 380 PicPay; 033 Santander (Agência digital iniciada em 77); 231 Banco Arbi; 340 Superdigital; 422 Safra; 218 BS2; 323 Mercado Pago; 290 PagSeguro; 637 Sofisa; 070 Banco BRB (não autorizado p/ reapresentação); 077 Inter; 336 C6; 197 Stone; 623 PAN; 104 Caixa Tem (Ag. 3880); 237 Next (múltiplas agências).
+6. ROTEIRO OPERACIONAL: BANCO SAFRA / ALFA - N° 50.000 (INSS - Versão 193)
+Público-Alvo, Espécies e Restrições
+•	Espécies Autorizadas: 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 34, 37, 38, 41, 42, 43, 44, 45, 46, 49, 51, 52, 54, 55, 57, 58, 59, 81, 82, 83, 84, 89, 93.
+•	Espécies NÃO Autorizadas: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 25, 30, 31, 32, 33, 35, 36, 39, 40, 47, 48, 50, 53, 56, 60, 61 a 79, 80, 85, 86, 87 (LOAS), 88 (LOAS), 90, 91, 92, 94 a 99.
+•	Regra Pensão por Morte (Espécie 21): Duração de 4 meses (se < 18 contribuições ou < 2 anos de união) ou variável conforme idade na data do óbito: < 22 anos = 3 anos; 22 a 27 anos = 6 anos; 28 a 30 anos = 10 anos; 31 a 41 anos = 15 anos; 42 a 44 anos = 20 anos; A partir de 45 anos = Vitalício.
+•	Público Impedido / Suspenso:
+o	Analfabetos: Operações temporariamente suspensas.
+o	Não consignáveis / Inadequados: Procuração pública ou particular; pensão alimentícia; empresas convenentes (quando banco pagador for "INSS/CONVÊNIOS"); assistenciais; representante legal (tutelado/curatelado); pagos via Correios (ECT); tribos indígenas; deficientes visuais; titulares que não sacaram seus benefícios nos últimos meses.
+Limites Operacionais, Margem e Risco por CPF
+•	Idade Mínima: 26 anos (Aposentados e Pensionistas).
+•	Idade Máxima: 76 anos, 11 meses e 29 dias (Atenção: Prazo da Operação + Idade do Cliente não deve ultrapassar 76 anos, 11 meses e 29 dias).
+•	Valores e Prazos:
+o	Valor Mínimo do Empréstimo: R$ 400,00 | Valor Máximo: Dentro da margem.
+o	Valor da Parcela: Sem limite mínimo.
+o	Renda Líquida Mínima: R$ 600,00.
+o	Prazo Máximo: Até 108 meses (Carência de até 90 dias, conforme IN nº 204).
+o	Taxa: 1,85% a.m. (conferir tabela Price) | Sem cobrança de TC | Seguro Prestamista: Não autoriza.
+o	Tempo Mínimo de Benefício: 90 dias após a concessão (na Portabilidade exige mínimo de 5 meses de benefício).
+o	Quantidade Máxima de Contratos: 13 empréstimos por benefício.
+•	Risco Máximo por CPF:
+o	Cliente com histórico: R$ 80.000,00.
+o	Cliente sem histórico (1º contrato): R$ 70.000,00.
+•	Cálculo de Margem: Limitado a 35% no simulador ((Somatório Vencimentos Fixos - Desc. Compulsórios) * 35%) - Desc. Facultativos. Risco revertido ao Corban se houver perda em casos de endividamento superior ao permitido, rubrica 203 Consignação, Pensão Alimentícia, mais de 13 linhas por decisão judicial ou RMC acima de 5%.
+Regras de Refinanciamento, Retenção e Portabilidade
+•	Status da Portabilidade: PRODUTO PORTABILIDADE BLOQUEADO no momento.
+•	Mínimo de Parcelas Pagas:
+o	Retenção: 0 parcelas pagas.
+o	Refin de Carteira: 3 parcelas pagas.
+•	Junção de Contratos (Alteração Versão 193 de 10/09/2026):
+o	Alterado de "13 para 1" para "1 para 1" (Permitido Refin de Carteira, Refin de Portabilidade e Retenção apenas de 1 para 1).
+•	Agregação de Margem: Permitida no Refin de Carteira e na Retenção de Carteira (NÃO permitida no Refin de Portabilidade).
+Liberação de Crédito, Bancos Aceitos e Documentação
+•	Conta Corrente: Crédito obrigatoriamente na conta onde o benefício é pago (proibido reapresentar em conta divergente da averbada na Dataprev; se a TED voltar, cancelar a proposta).
+•	Cartão Magnético: Liberação em Conta Corrente ou Poupança ativa de mesma titularidade.
+•	Regras de Bloqueio de Bancos:
+o	Fechamento Completo (Captura e Reprocessamento): 290 PagSeguro e 323 Mercado Pago.
+o	Cartão Magnético (Únicos Bancos Autorizados): 422 Safra, 341 Itaú, 237 Bradesco, 033 Santander, 001 Banco do Brasil, 104 CEF, 77 Inter, 25 Alfa, 260 Nubank, 208 BTG, 348 XP e 707 Daycoval (fechado para todas as demais instituições no cartão magnético).
+•	Formalização Unificada Digital (Sistema EPF-WEB [https://epfweb.safra.com.br](https://epfweb.safra.com.br)):
+o	Termos de Aceite: CCB, CET, Termo de autorização consulta INSS, Termo de Biometria e Termo de Ciência.
+o	Documentos Pessoais Aceitos: RG, CNH (Física ou Digital), DNI, CIN, RNE, RNM, CTPS, Carteiras Funcionais (PM, Marinha, STJ) e Carteiras de Classe (OAB, CREA, CONFEF, CONFEA, COREN).

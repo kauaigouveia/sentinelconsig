@@ -6,6 +6,7 @@ import { AnalyticsService, AnalyticsFilterOptions } from './analyticsService.js'
 import { ManagerialIntelligenceService } from './managerialIntelligenceService.js';
 import { ApiMonitoringService } from './apiMonitoringService.js';
 import { BIFilterOptions } from '../../src/types/bi.js';
+import { searchBankPlaybooks } from '../../src/lib/bankPlaybooks.js';
 
 export interface ToolContextSession {
   user: {
@@ -67,6 +68,12 @@ export class SentinelaToolRouter {
         toolName,
         error: 'TENANT_NOT_RESOLVED: Nenhum tenant ativo na sessão.',
       };
+    }
+
+    if (userRole === 'PARTNER' && toolName !== 'searchBankPlaybooks') return { success: false, toolName, rbacBlocked: true, error: 'Consulta do portal restrita aos roteiros bancários.' };
+    if (toolName === 'searchBankPlaybooks') {
+      if (userRole !== 'PARTNER' && !hasPermission(userRole, customPermissions, 'simulations.view') && !hasPermission(userRole, customPermissions, 'simulations.create')) return { success: false, toolName, rbacBlocked: true, error: 'Sem permissão de consulta de simulações.' };
+      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER'), notice: 'Material fornecido pela empresa em 16/10/2026; não comprova política vigente nem aprovação de crédito. Cite banco, versão e seção. Preserve ressalvas e divergências. Ausência de informação não é permissão. API ativa é independente de compatibilidade com roteiro.' } };
     }
 
     // Sanitize filters (strip any tenantId injected in args, force session.effectiveTenantId)

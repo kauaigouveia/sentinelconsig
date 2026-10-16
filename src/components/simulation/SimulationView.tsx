@@ -1,3 +1,4 @@
+import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
 import {
@@ -1012,6 +1013,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
   return (
     <div className={`sentinel-simulation-page space-y-6 pb-6 ${premium ? 'p2-live-module p2-live-simulations' : ''}`}>
+      <BankPlaybooksPanel />
       {/* Page Header */}
       <div className="module-command-header">
         <div>

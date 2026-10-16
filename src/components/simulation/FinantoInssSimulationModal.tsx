@@ -1,3 +1,4 @@
+import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import { C6SimulationResults } from './C6SimulationResults';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { CurrencyInput } from '../common/CurrencyInput';
@@ -452,6 +453,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
           <button type="button" onClick={onClose} className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-700">Concluir</button></div> : <form onSubmit={handleCreate} className="space-y-6">
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Dados obrigatórios do cliente</h3><p className="text-xs text-slate-500">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
+          <BankPlaybooksPanel input={{ birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
           <PresencaInssBenefits key={normalizeCpf(cpf)} cpf={cpf} onApply={applyPresencaBenefit} onUseMargin={operationCode === '1' ? data => { if (normalizeCpf(cpf) !== data.cpf || data.margin === null || data.margin <= 0) return; applyPresencaBenefit(data); setNewSimulationMode('INSTALLMENT'); setInstallmentValue(data.margin.toFixed(2)); } : undefined} />
           {operationCode === '1' && <ParanaNovoOpportunities name={name} phone={phone} onNameChange={setName} onPhoneChange={setPhone} cpf={cpf} benefit={benefit} species={benefitType} selected={selectedCondition} onSelect={setSelectedCondition} onClear={() => setSelectedCondition(current => current?.provider === 'Paraná Banco' ? undefined : current)} />}
 

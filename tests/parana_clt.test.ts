@@ -64,6 +64,8 @@ it('keeps the CLT journey available when INSS is disabled', async () => {
   vi.spyOn(Bank, 'config').mockResolvedValue({ ...config, inssEnabled: false });
   const start = vi.spyOn(Clt, 'start').mockResolvedValue({ status: 'Solicitado', link: 'https://example.test/consent' });
   const result = await Clt.journey(db, 'tenant-a', { cpf }, 'consent');
+  expect(result).toHaveProperty('results');
+  if (!('results' in result)) throw new Error('Expected CLT journey result');
   expect(result.results).toHaveLength(1);
   expect(start).toHaveBeenCalledWith(db, 'tenant-a', 'promoter-a', { cpf }, 'consent');
   vi.spyOn(Bank, 'config').mockResolvedValue({ ...config, enabled: false, inssEnabled: false });
