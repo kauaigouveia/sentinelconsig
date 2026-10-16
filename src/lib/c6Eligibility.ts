@@ -13,3 +13,14 @@ export function c6ConditionEligible(condition: any, benefitType: number | string
   // Unknown ticket labels cannot safely establish eligibility.
   return false;
 }
+
+
+/** Filter returned conditions locally; the C6 response may include other rates. Rates are percentages per month. */
+export function c6MatchesSelection(rate: unknown, term: unknown, selectedRate?: unknown, selectedTerm?: unknown): boolean {
+  const numeric = (value: unknown) => typeof value === 'number' || typeof value === 'string' ? Number(String(value).trim().replace(',', '.')) : NaN;
+  const hasRate = selectedRate !== undefined && selectedRate !== null && selectedRate !== '';
+  const hasTerm = selectedTerm !== undefined && selectedTerm !== null && selectedTerm !== '';
+  if (hasRate && (!(numeric(selectedRate) > 0) || !Number.isFinite(numeric(rate)) || Math.abs(numeric(rate) - numeric(selectedRate)) > 0.000001)) return false;
+  if (hasTerm && (!Number.isInteger(numeric(selectedTerm)) || numeric(selectedTerm) <= 0 || numeric(term) !== numeric(selectedTerm))) return false;
+  return true;
+}

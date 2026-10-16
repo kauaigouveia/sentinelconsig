@@ -1,3 +1,4 @@
+import { SimulationCustomerSummary } from './SimulationCustomerSummary';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from './SimulationSteps';
 import { paidFromTerms, portabilityEligibility } from '../../lib/portabilityEligibility';
 import { BankCodeSelect } from '../common/BankCodeSelect';
@@ -23,7 +24,7 @@ const messagesOf = (data: any) => Array.isArray(data?.messages) ? data.messages.
 
 export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue }) => {
   const [form, setForm] = useState({
-    cpf: '', birthDate: '', benefitNumber: '', benefitType: '',
+    name: '', cpf: '', birthDate: '', benefitNumber: '', benefitType: '',
     originLenderCode: '', originContractNumber: '', originalTerm: '',
     lastDueBalance: '', installmentFaceValue: '', openedInstallmentNumber: '', numberOfInstallments: '108', refinancingRate: '', legalRepresentative: false,
   });
@@ -154,9 +155,10 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
       <header className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-800"><div><SimulationBack onBack={onBack} disabled={loading}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-slate-900 dark:text-white">INSS · Portabilidade + Refinanciamento</h2><p className="mt-1 text-xs text-slate-500">Informe cliente e dívida para comparar as condições nas integrações habilitadas.</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></header>
-      <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/><div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
+      <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>{step===2 && <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={Number(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?Number(form.refinancingRate):undefined}/>}<div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
         <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-slate-200 p-5 dark:border-slate-700"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className={labelClass}>CPF<input required value={form.cpf} onChange={e => update('cpf', formatCpf(e.target.value))} className={inputClass} /></label>
+          <label className={labelClass}>Nome do cliente (opcional)<input value={form.name} onChange={e=>update('name',e.target.value)} className={inputClass}/></label>
           <label className={labelClass}>Data de nascimento<input required type="date" value={form.birthDate} onChange={e => update('birthDate', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Número do benefício<input required value={form.benefitNumber} onChange={e => update('benefitNumber', e.target.value.replace(/\D/g, '').slice(0, 20))} className={inputClass} /></label>
           <InssBenefitTypeSelect className={labelClass} required value={form.benefitType} onChange={value => update('benefitType', value)} />

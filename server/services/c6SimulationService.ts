@@ -1,7 +1,7 @@
 import { integrationConfigStore } from './bankPromoterConfig.js';
 import type { PrismaClient } from '@prisma/client';
 import { C6BankService } from './c6BankService.js';
-import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
+import { c6ConditionEligible, c6MatchesSelection } from '../../src/lib/c6Eligibility.js';
 
 export class C6SimulationService {
   static async inss(prisma: PrismaClient, tenantId: string, input: any) {
@@ -16,6 +16,7 @@ export class C6SimulationService {
     if (!promoterCode) throw new Error('Cadastre o código de promotora na configuração C6.');
     if (!(Number(input.income) > 0)) throw new Error('Informe a renda mensal para simular no C6.');
     if (input.operation === 'REFIN' && !input.c6Contract) throw new Error('Informe o contrato C6 para refinanciamento.');
+    if (input.rate !== undefined && input.rate !== null && input.rate !== '' && (!Number.isFinite(Number(String(input.rate).replace(',', '.'))) || !(Number(String(input.rate).replace(',', '.')) > 0))) throw new Error('Selecione uma taxa mensal válida para o C6.');
     const token = await C6BankService.getAccessToken(prisma, tenantId);
     const payload = {
       operation_type: input.operation === 'NEW' ? 'NOVA' : 'REFINANCIAMENTO',
@@ -31,7 +32,7 @@ export class C6SimulationService {
     const data = await response.json().catch(() => null);
     if (!response.ok || !data || data.error || data.errors) throw new Error(`C6 não concluiu a simulação (HTTP ${response.status}).`);
     const conditions = Array.isArray(data.credit_conditions) ? data.credit_conditions : Array.isArray(data) ? data : data.covenant ? [data] : [];
-    return conditions.filter(condition => c6ConditionEligible(condition, input.benefitType)).map(condition => ({
+    return conditions.filter(condition => c6ConditionEligible(condition, input.benefitType) && c6MatchesSelection(condition.monthly_customer_rate, condition.installment_quantity, input.rate, input.term)).map(condition => ({
       provider: 'C6', institution: 'C6 BANK', state: 'OFFER',
       id: `c6-${condition.covenant?.code}-${condition.product?.code}-${condition.installment_quantity}`,
       tableCode: String(condition.covenant?.code || ''), tableName: condition.covenant?.description,
