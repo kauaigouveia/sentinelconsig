@@ -96,14 +96,14 @@ function eventType(proposal: any) {
 }
 function fingerprint(proposal: any) { return hash(`${proposal.statusId}:${proposal.statusHistories[0]?.id || proposal.statusId}:${eventType(proposal) === 'SALDO' ? String(proposal.debtBalance) : ''}`); }
 const include = { status: true, statusHistories: { take: 1, orderBy: { createdAt: 'desc' as const } }, partner: true, bank: true, client: { select: { fullName: true, cpf: true } }, tenant: { include: { whiteLabel: true } } } satisfies Prisma.ProposalInclude;
-function message(proposal: any) {
+function message(proposal: any, portabilityRefinValue?: unknown) {
     const kind = eventType(proposal), companyName = proposal.tenant.whiteLabel?.companyName || proposal.tenant.tradeName || proposal.tenant.name;
     const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
     const money = (value: unknown) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const html = (value: unknown) => String(value ?? '').replace(/[\r\n]/g, ' ').trim().slice(0, 160).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const cpfDigits = String(proposal.client.cpf || '').replace(/\D/g, '');
     const cpf = cpfDigits.length === 11 ? `***.${cpfDigits.slice(3, 6)}.${cpfDigits.slice(6, 9)}-**` : 'Não informado';
-    return `<b>${html(companyName)}</b>\n\n${labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nValor liberado: <b>${html(money(proposal.releasedValue))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status.name)}</b>${kind === 'SALDO' ? `\nSaldo devedor: <b>${html(money(proposal.debtBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
+    return `<b>${html(companyName)}</b>\n\n${labels[kind!]}.\nBanco: <b>${html(proposal.bank?.name || 'Não informado')}</b>\nProposta: <b>${html(proposal.proposalNumber)}</b>\nValor liberado: <b>${html(kind === 'SALDO' ? portabilityRefinValue == null ? 'Não informado' : money(portabilityRefinValue) : money(proposal.releasedValue))}</b>\nCliente: <b>${html(proposal.client.fullName)}</b>\nCPF: <b>${cpf}</b>\nEtapa: <b>${html(proposal.status.name)}</b>${kind === 'SALDO' ? `\nSaldo devedor: <b>${html(money(proposal.debtBalance))}</b>` : ''}\n\nConsulte os detalhes no portal do parceiro.`;
 }
 export class TelegramNotificationService {
     static async dispatch(db: PrismaClient) {
@@ -156,12 +156,26 @@ export class TelegramNotificationService {
                 await db.systemConfig.updateMany({ where: { id: job.id, configValue: job.configValue }, data: { configValue: JSON.stringify({ ...delivery, state: 'STALE' }) } });
                 continue;
             }
+            // Only an explicit link may supply the refinancing amount; never infer by CPF.
+            let portabilityRefinValue: unknown;
+            if (eventType(proposal) === 'SALDO') {
+                if (proposal.type === 'REFIN_PORTABILIDADE') {
+                    portabilityRefinValue = proposal.releasedValue;
+                } else {
+                    const refin = await db.proposal.findFirst({
+                        where: { tenantId, partnerId: delivery.partnerId, clientId: proposal.clientId, relatedPortabilityId: proposal.id, type: 'REFIN_PORTABILIDADE', deletedAt: null },
+                        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                        select: { releasedValue: true },
+                    });
+                    portabilityRefinValue = refin?.releasedValue;
+                }
+            }
             const claimed = { ...delivery, state: 'SENDING', attempt: delivery.attempt + 1 };
             const lease = await db.systemConfig.updateMany({ where: { id: job.id, configValue: job.configValue }, data: { configValue: JSON.stringify(claimed) } });
             if (!lease.count)
                 continue;
             try {
-                await telegram(config, 'sendMessage', { chat_id: recipient.chatId, text: message(proposal), parse_mode: 'HTML', protect_content: true });
+                await telegram(config, 'sendMessage', { chat_id: recipient.chatId, text: message(proposal, portabilityRefinValue), parse_mode: 'HTML', protect_content: true });
                 await db.systemConfig.update({ where: { id: job.id }, data: { configValue: JSON.stringify({ ...claimed, state: 'SENT' }) } });
                 sent++;
             }

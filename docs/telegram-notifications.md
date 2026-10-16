@@ -72,3 +72,6 @@ Mensagem: nome da empresa, banco, numero da proposta, valor liberado em BRL, nom
 ## Formato visual dos avisos
 
 Cabecalho com nome da empresa em negrito. Valores de banco, proposta, valor liberado, cliente, CPF e etapa em negrito via parse_mode HTML, com escape dos campos dinamicos. CPF sempre mascarado como ***.XXX.XXX-**; valores invalidos aparecem como Nao informado. O formato vale para novas entregas, sem reenvio das mensagens ja entregues.
+
+
+No aviso SALDO, Valor liberado usa releasedValue do REFIN_PORTABILIDADE explicitamente vinculado por relatedPortabilityId, na mesma empresa, parceiro e cliente. Se a propria proposta for REFIN_PORTABILIDADE, usa o valor dela. Sem refin vinculado, mostra Nao informado, sem usar o valor da portabilidade como substituto. Demais avisos preservam o valor da propria proposta.
