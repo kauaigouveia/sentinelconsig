@@ -75,3 +75,8 @@ Cabecalho com nome da empresa em negrito. Valores de banco, proposta, valor libe
 
 
 No aviso SALDO, Valor liberado usa releasedValue do REFIN_PORTABILIDADE explicitamente vinculado por relatedPortabilityId, na mesma empresa, parceiro e cliente. Se a propria proposta for REFIN_PORTABILIDADE, usa o valor dela. Sem refin vinculado, mostra Nao informado, sem usar o valor da portabilidade como substituto. Demais avisos preservam o valor da propria proposta.
+
+
+## Deduplicacao de avisos por status
+
+A entrega registra o ultimo status enviado por empresa, proposta e parceiro. Se o status atual ja foi enviado, o aviso pendente e descartado mesmo com novo vinculo Telegram, alteracao de valor/saldo ou novo registro de historico para a mesma etapa. Entregas antigas confirmadas tambem sao reconhecidas quando correspondem ao fingerprint atual. Outro status elegivel pode gerar novo aviso. O marcador e atualizado somente apos resposta positiva do Telegram; continua sem garantia de exactly-once em falhas ambiguas de rede.

@@ -39,6 +39,7 @@ type Ticket = {
 };
 type Delivery = {
     proposalId: string;
+    statusId?: string | null;
     partnerId: string;
     fingerprint: string;
     linkedAt: string;
@@ -128,7 +129,7 @@ export class TelegramNotificationService {
                     const recipient = await binding(db, tenantId, proposal.partnerId!);
                     if (recipient && proposal.updatedAt >= new Date(recipient.linkedAt)) {
                         const fp = fingerprint(proposal), configKey = EVENT + hash(`${proposal.id}:${proposal.partnerId}:${recipient.linkedAt}:${fp}`);
-                        const delivery: Delivery = { proposalId: proposal.id, partnerId: proposal.partnerId!, fingerprint: fp, linkedAt: recipient.linkedAt, state: 'PENDING', nextAt: 0, attempt: 0 };
+                        const delivery: Delivery = { proposalId: proposal.id, statusId: proposal.statusId, partnerId: proposal.partnerId!, fingerprint: fp, linkedAt: recipient.linkedAt, state: 'PENDING', nextAt: 0, attempt: 0 };
                         await db.systemConfig.upsert({ where: { tenantId_configKey: { tenantId, configKey } }, create: { tenantId, configKey, configValue: JSON.stringify(delivery), isSecret: true }, update: {} });
                         queued++;
                     }
@@ -156,6 +157,25 @@ export class TelegramNotificationService {
                 await db.systemConfig.updateMany({ where: { id: job.id, configValue: job.configValue }, data: { configValue: JSON.stringify({ ...delivery, state: 'STALE' }) } });
                 continue;
             }
+            const sentKey = 'TELEGRAM_LAST_SENT_STATUS_V1_' + hash(`${proposal.id}:${delivery.partnerId}`);
+            const lastSent = await get(db, tenantId, sentKey);
+            let alreadySent = lastSent ? JSON.parse(lastSent.configValue).statusId === proposal.statusId : false;
+            if (!lastSent) {
+                // Recognize deliveries made before the last-status marker was introduced.
+                const previous = await db.systemConfig.findFirst({
+                    where: { tenantId, configKey: { startsWith: EVENT }, AND: [
+                        { configValue: { contains: JSON.stringify({ proposalId: proposal.id }).slice(1, -1) } },
+                        { configValue: { contains: '"state":"SENT"' } },
+                    ] }, orderBy: { updatedAt: 'desc' },
+                });
+                const sent: Delivery | null = previous ? JSON.parse(previous.configValue) : null;
+                alreadySent = !!sent && sent.partnerId === delivery.partnerId && (sent.statusId !== undefined ? sent.statusId === proposal.statusId : sent.fingerprint === fingerprint(proposal));
+                if (alreadySent) await put(db, tenantId, sentKey, { statusId: proposal.statusId });
+            }
+            if (alreadySent) {
+                await db.systemConfig.updateMany({ where: { id: job.id, configValue: job.configValue }, data: { configValue: JSON.stringify({ ...delivery, state: 'STALE' }) } });
+                continue;
+            }
             // Only an explicit link may supply the refinancing amount; never infer by CPF.
             let portabilityRefinValue: unknown;
             if (eventType(proposal) === 'SALDO') {
@@ -177,6 +197,7 @@ export class TelegramNotificationService {
             try {
                 await telegram(config, 'sendMessage', { chat_id: recipient.chatId, text: message(proposal, portabilityRefinValue), parse_mode: 'HTML', protect_content: true });
                 await db.systemConfig.update({ where: { id: job.id }, data: { configValue: JSON.stringify({ ...claimed, state: 'SENT' }) } });
+                await put(db, tenantId, sentKey, { statusId: proposal.statusId });
                 sent++;
             }
             catch (error) {
