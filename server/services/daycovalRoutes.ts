@@ -1,3 +1,4 @@
+import { portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
 import type { Express, Request } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import multer from 'multer';
@@ -55,7 +56,8 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
         const partner = await prisma.partner.findFirst({ where: { id: partnerId, tenantId: ctx.tenantId, deletedAt: null, status: 'ATIVO' } });
         if (!partner) return res.status(400).json({ error: 'Selecione um parceiro ativo da empresa.' });
         if (!Array.isArray(raw.contracts) || raw.contracts.length < 1 || raw.contracts.length > 17) return res.status(400).json({ error: 'Informe de 1 a 17 contratos.' });
-        const input = { cpf, name: String(raw.name || '').trim().slice(0, 200), birthDate: raw.birthDate, simulationDate: raw.simulationDate, term: Number(raw.term), refinanceRate: Number(raw.refinanceRate), benefitType: Number(raw.benefitType), benefitContractCount: Number(raw.benefitContractCount), negativeMargin: raw.negativeMargin === true, portInstallment: Number(raw.portInstallment), additionalMargin: Number(raw.additionalMargin || 0), requestedRefinAmount: Number(raw.requestedRefinAmount || 0), contracts: raw.contracts.map((c: any) => ({ balance: Number(c?.balance), installment: Number(c?.installment), remaining: Number(c?.remaining), cipInstallment: c?.cipInstallment ? Number(c.cipInstallment) : 0 })), product: 'INSS', operation: 'PORT_REFIN' };
+        for (const [index, contract] of raw.contracts.entries()) { const agreement = portabilityEligibility(bank, contract?.originBank, contract?.paidInstallments); if (agreement.blocked) return res.status(400).json({ error: `Contrato ${index + 1}: ${agreement.reason}` }); }
+        const input = { cpf, name: String(raw.name || '').trim().slice(0, 200), birthDate: raw.birthDate, simulationDate: raw.simulationDate, term: Number(raw.term), refinanceRate: Number(raw.refinanceRate), benefitType: Number(raw.benefitType), benefitContractCount: Number(raw.benefitContractCount), negativeMargin: raw.negativeMargin === true, portInstallment: Number(raw.portInstallment), additionalMargin: Number(raw.additionalMargin || 0), requestedRefinAmount: Number(raw.requestedRefinAmount || 0), contracts: raw.contracts.map((c: any) => ({ originBank: String(c?.originBank || ''), paidInstallments: Number(c?.paidInstallments), balance: Number(c?.balance), installment: Number(c?.installment), remaining: Number(c?.remaining), cipInstallment: c?.cipInstallment ? Number(c.cipInstallment) : 0 })), product: 'INSS', operation: 'PORT_REFIN' };
         const result = calculatePortRefin(bank, book, input);
         const available = result.offers.filter(o => o.eligible && o.amount > 0);
         const inputHash = createHash('sha256').update(JSON.stringify({ ...input, partnerId, version: book.hash })).digest('hex');

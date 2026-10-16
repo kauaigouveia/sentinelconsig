@@ -1,3 +1,4 @@
+import { portabilityEligibility } from './portabilityEligibility';
 import source from '../data/bankPlaybooks.json';
 import portability from '../data/portabilityPlaybooks.json';
 import { ageAt } from './inssEligibility';
@@ -5,7 +6,7 @@ import { ageAt } from './inssEligibility';
 export const BANK_PLAYBOOKS = source;
 export const PORTABILITY_PLAYBOOKS = portability;
 export type PlaybookId = typeof source[number]['id'];
-export type PlaybookInput = { birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean };
+export type PlaybookInput = { originBank?: string; paidInstallments?: number; birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean };
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function publicPlaybookText(value: string) {
   // Commercial correspondent details are company-only, never part of partner answers.
@@ -43,6 +44,7 @@ export function evaluateBankPlaybooks(input: PlaybookInput, today?: Date) {
   const age = ageAt(input.birthDate, today), benefit = Number(input.species), uf = (input.state || '').trim().toUpperCase();
   return BANK_PLAYBOOKS.map(book => {
     const blocked: string[] = [], review: string[] = [];
+    if (['PORT','PORT_REFIN'].includes(input.operation)) { const agreement = portabilityEligibility(book.id, input.originBank, input.paidInstallments); (agreement.blocked ? blocked : review).push(agreement.reason); }
     const [minimum, maximum] = ages[book.id];
     if (age === null) review.push('Informe nascimento válido para conferir idade.');
     else if (age < minimum || age > maximum) blocked.push(`Idade fora da faixa de ${minimum} a ${maximum} anos informada no roteiro.`);

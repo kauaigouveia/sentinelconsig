@@ -1,3 +1,4 @@
+import { paidFromTerms, portabilityEligibility } from '../../lib/portabilityEligibility';
 import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import { BankCodeSelect } from '../common/BankCodeSelect';
 import { C6SimulationResults } from './C6SimulationResults';
@@ -205,10 +206,10 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
     return () => { cancelled = true; };
   }, [isOpen, operationCode, initialDraft]);
 
-  useEffect(() => { setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); }, [cpf, birthDate, benefit, benefitType]);
+  useEffect(() => { setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); }, [cpf, birthDate, benefit, benefitType, originLenderCode, originTerm, originInstallmentsRemaining]);
   useEffect(() => { setC6Offers([]); setC6Message(''); }, [cpf, birthDate, benefit, benefitType, rate, term, income, c6Contract, newSimulationMode, loanValue, installmentValue, operationCode]);
   useEffect(() => { setNossaFintechQuotes([]); setNossaFintechError(''); }, [newSimulationMode, loanValue, installmentValue, term, rate, hasInsurance, nossaFintechLegalRepresentative]);
-  useEffect(() => { setFactaOffers([]); setFactaMessage(''); }, [cpf, birthDate, benefit, benefitType, term, rate, loanValue, installmentValue, income, factaContract, originDueBalanceValue, originInstallmentValue, originTerm, originInstallmentsRemaining, refinanceRate, refinanceTerm, refinanceInstallmentValue]);
+  useEffect(() => { setFactaOffers([]); setFactaMessage(''); }, [originLenderCode, cpf, birthDate, benefit, benefitType, term, rate, loanValue, installmentValue, income, factaContract, originDueBalanceValue, originInstallmentValue, originTerm, originInstallmentsRemaining, refinanceRate, refinanceTerm, refinanceInstallmentValue]);
   useEffect(() => { setFactaContracts([]); setFactaContract(''); }, [cpf, benefit]);
   useEffect(() => {
     if (!draftReady || !isOpen || !initialDraft || appliedDraft.current || cpf !== initialDraft.values.cpf || term !== initialDraft.values.term || rate !== initialDraft.values.rate) return;
@@ -250,6 +251,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
     setFactaOffers([]); setFactaMessage('');
     try {
       const factaPromise = (async () => {
+        if (originContract) { const check = portabilityEligibility('facta', originLenderCode, paidFromTerms(originTerm, originInstallmentsRemaining)); if (check.blocked) { setFactaMessage(check.reason); return 0; } }
         try {
           const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, benefitType: Number(benefitType), operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], mode: operationCode === '1' ? newSimulationMode : 'INSTALLMENT', value: operationCode === '1' ? newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment : (operationCode === '4' ? refinancing?.installmentValue : originContract?.installmentValue) || enteredInstallment || factaContracts.find(item => item.code === factaContract)?.installment, term: Number(operationCode === '4' ? refinanceTerm : term), rate: Number(operationCode === '4' ? refinanceRate : rate), debt: originContract?.dueBalanceValue, originalTerm: originContract?.term, remainingTerm: originContract?.installmentsRemaining, originalInstallment: originContract?.installmentValue, income: parseAmount(income), contract: factaContract }) });
           const result = await response.json();
@@ -297,7 +299,8 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
             const installmentError = operationCode === '2' || operationCode === '4' ? finantoInstallmentError(rule.name || '', parseAmount(originInstallmentValue)) : null;
             const defaultItem = finantoRuleItem(rule, requestedTerm, Number(refinancing?.rate || rate));
             const rateError = finantoTableRateError(rule.name || '', Number(refinancing?.rate || rate));
-            const eligibilityError = ageError || installmentError || rateError || (!defaultItem ? 'A tabela não atende à taxa e ao prazo escolhidos.' : null);
+            const agreement = originContract ? portabilityEligibility('finanto', originLenderCode, paidFromTerms(originTerm, originInstallmentsRemaining)) : null;
+            const eligibilityError = (agreement?.blocked ? agreement.reason : null) || ageError || installmentError || rateError || (!defaultItem ? 'A tabela não atende à taxa e ao prazo escolhidos.' : null);
             if (eligibilityError) { results[index] = { rule, skipped: true, error: eligibilityError }; continue; }
             let originContracts: ApiItem[] | undefined;
             if (operationCode === '3') {
@@ -454,7 +457,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, happyEnabl
           <button type="button" onClick={onClose} className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-700">Concluir</button></div> : <form onSubmit={handleCreate} className="space-y-6">
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Dados obrigatórios do cliente</h3><p className="text-xs text-slate-500">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
-          <BankPlaybooksPanel input={{ birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
+          <BankPlaybooksPanel input={{ originBank: originLenderCode, paidInstallments: paidFromTerms(originTerm, originInstallmentsRemaining), birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
           <PresencaInssBenefits key={normalizeCpf(cpf)} cpf={cpf} onApply={applyPresencaBenefit} onUseMargin={operationCode === '1' ? data => { if (normalizeCpf(cpf) !== data.cpf || data.margin === null || data.margin <= 0) return; applyPresencaBenefit(data); setNewSimulationMode('INSTALLMENT'); setInstallmentValue(data.margin.toFixed(2)); } : undefined} />
           {operationCode === '1' && <ParanaNovoOpportunities name={name} phone={phone} onNameChange={setName} onPhoneChange={setPhone} cpf={cpf} benefit={benefit} species={benefitType} selected={selectedCondition} onSelect={setSelectedCondition} onClear={() => setSelectedCondition(current => current?.provider === 'Paraná Banco' ? undefined : current)} />}
 

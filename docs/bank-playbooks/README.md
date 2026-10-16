@@ -55,3 +55,12 @@ O seletor permite pesquisa por nome/código nas origens de portabilidade interna
 Verificação: 19 testes aprovados em sete arquivos, incluindo catálogo, seletor por teclado, preservação de códigos, exclusão da página 8, busca e recuperação de fontes da IA. TypeScript aprovado. Não houve chamadas bancárias reais, alterações no banco de dados ou consulta real ao modelo.
 
 Build local aprovado; permanece o aviso conhecido de chunks acima de 500 kB.
+
+
+## Filtros de origem e parcelas pagas
+
+Regras explícitas do resumo 10/09/2026 em src/lib/portabilityEligibility.ts. Daycoval bloqueia C6 e exige 15 pagas Agibank, 24 FACTA, 13 Inbursa, 12 Pan/Itaú/BRB e 6 Pine/QI. Outros acordos explícitos foram codificados por destino (C6, FACTA, Happy, FINANTO, iCred, Inter, Diga, Digio). BRB com quadros divergentes e acordos genéricos de bancos de rede permanecem para revisão: não se presume que toda instituição STR seja CIP. Regras não individualizadas não significam aprovação. Não foram codificadas suposições para bancos sem código identificado.
+
+Planilhas internas e portal exigem origem e pagas por contrato; bloqueio também no servidor antes de calcular/salvar. No comparador, pagas derivam de prazo original menos restantes; FACTA e FINANTO não consultam condições incompatíveis. Portal aplica a regra antes da consulta por destino. O painel de roteiros usa os mesmos critérios para alternativas sem API. Produtos sem regra individualizada mantêm a análise do banco; isto não substitui os demais critérios operacionais. Nenhuma consulta real a banco executada nesta alteração.
+
+Checagem TypeScript aprovada nesta alteração. Testes automatizados e consultas bancárias reais não executados nesta rodada.

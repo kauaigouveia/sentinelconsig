@@ -1,3 +1,4 @@
+import { paidFromTerms, portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
 import type { PrismaClient } from '@prisma/client';
 import { FactaSimulationService, type FactaInssInput } from './factaSimulationService.js';
 import { FactaBankService } from './factaBankService.js';
@@ -28,7 +29,7 @@ export class PartnerSimulationService {
     if (action !== 'SIMULATE') return { rows: await partnerHappySimulation(prisma, tenantId, input, action), message: '' };
     const offers: any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
-      try { await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
+      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = portabilityEligibility(provider, input.originalBank, paidFromTerms(input.originalTerm, input.remainingTerm)); if (check.blocked) throw new Error(check.reason); } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
       if (onRows) await onRows([...offers]);
     };
     await Promise.all([
