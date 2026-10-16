@@ -73,3 +73,12 @@ Nova página /roteiros no menu de Produção, com busca por banco/conteúdo, sel
 Cadastros por empresa em SystemConfig, chave BANK_PLAYBOOK_CUSTOM_<id>, com banco/título, versão, referência, nome do arquivo e texto. Sem migrations ou mudanças de configuração em produção durante implementação. As rotas usam tenant da sessão e verificam autorização no servidor. A IA interna recupera os materiais da empresa ativa; conteúdo cadastrado internamente não é publicado automaticamente no portal do parceiro. Novos textos não alteram automaticamente os filtros estruturados de elegibilidade: mudanças desses filtros exigem implementação específica.
 
 Checagem TypeScript aprovada. Sem testes automatizados, chamadas reais ao modelo ou gravações de cadastros em produção nesta rodada.
+
+
+## Consulta por banco e assunto
+
+A biblioteca abre com cartões por banco; materiais do mesmo banco são agrupados, mantendo roteiro completo, resumo de portabilidade e complementos como documentos distintos. Dentro do banco há seletor de versão/material, consulta por assunto e aba Texto e fonte. BRB mantém os dois quadros separados no seletor. Busca por palavras e filtros por tipo de material.
+
+O leitor compartilhado agrupa trechos literais em portabilidade/pagas, público/idade, valores/prazos, documentos, conta/pagamento, atenção e outras orientações. Essa organização textual não é uma síntese ou validação de política e não altera regras de elegibilidade. Cláusulas separadas por ponto e vírgula permanecem juntas; trechos condicionais dos PDFs são mantidos juntos quando identificados. Cada trecho permite consultar seu contexto integral e a referência de página quando disponível. Texto integral sempre acessível.
+
+Novos complementos podem ser associados ao banco e acrescentados por assunto. bankId opcional é persistido junto ao cadastro existente e validado no servidor; sem migration. Materiais anteriores continuam legíveis. Dados bancários, motores de simulação e corpus da IA não foram reescritos nesta alteração. Sem testes automatizados ou consultas reais ao banco/modelo nesta rodada.

@@ -28,7 +28,8 @@ export function registerBankPlaybookCatalog(app: Express, db: PrismaClient, getS
    const raw = req.body || {};
    if (typeof raw.name !== 'string' || !raw.name.trim() || raw.name.length > 150 || typeof raw.version !== 'string' || !raw.version.trim() || raw.version.length > 100 || typeof raw.text !== 'string' || !raw.text.trim() || raw.text.length > 100000) return res.status(400).json({error:'Informe banco/título, versão e conteúdo (até 100.000 caracteres).'});
    const id = typeof raw.id === 'string' && /^custom-[a-f0-9-]{36}$/.test(raw.id) ? raw.id : `custom-${randomUUID()}`;
-   const row = { id, name: raw.name.trim(), version: raw.version.trim(), text: raw.text.trim(), source: String(raw.source || 'Cadastro interno').slice(0,250), sourceFile: String(raw.sourceFile || '').slice(0,250), receivedAt: new Date().toISOString().slice(0,10), active: true };
+   const bankId = typeof raw.bankId==='string' && /^[a-z0-9-]{1,100}$/.test(raw.bankId) ? raw.bankId : undefined;
+   const row = { id, ...(bankId?{bankId}:{}), name: raw.name.trim(), version: raw.version.trim(), text: raw.text.trim(), source: String(raw.source || 'Cadastro interno').slice(0,250), sourceFile: String(raw.sourceFile || '').slice(0,250), receivedAt: new Date().toISOString().slice(0,10), active: true };
    await db.systemConfig.upsert({where:{tenantId_configKey:{tenantId:session.effectiveTenantId,configKey:prefix+id}},create:{tenantId:session.effectiveTenantId,configKey:prefix+id,configValue:JSON.stringify(row)},update:{configValue:JSON.stringify(row)}});
    return res.json({row});
   } catch { return res.status(500).json({error:'Não foi possível salvar o roteiro.'}); }
