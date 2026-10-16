@@ -28,5 +28,5 @@ export function searchBankPlaybooks(query: string, partner = false, additions: t
 }
 
 export function evaluateBankPlaybooks(_input: PlaybookInput, _today?: Date) {
- return BANK_PLAYBOOKS.map(book=>({bankId:book.id,bank:book.name,version:book.version,status:'REVIEW' as const,blocked:[] as string[],review:['Consulte os critérios e as tabelas diretamente no PDF deste banco.'],source:book.source,receivedAt:book.receivedAt}));
+ return BANK_PLAYBOOKS.map(book=>({bankId:book.id,bank:book.name,version:book.version,status:'REVIEW' as const,blocked:[] as string[],review:['Consulte os critérios, tabelas e exceções deste banco na aba Roteiros.'],source:book.source,receivedAt:book.receivedAt}));
 }

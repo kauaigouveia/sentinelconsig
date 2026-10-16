@@ -1,4 +1,6 @@
-import pdfIndex from '../assets/bank-playbooks/text-index.json';
+import readingContent from '../assets/bank-playbooks/reading-content.json';
+import quickReference from '../assets/bank-playbooks/quick-reference.json';
+import playbookSources from '../../src/data/bankPlaybooks.json';
 import { PrismaClient } from '@prisma/client';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { BIService } from './biService.js';
@@ -8,6 +10,17 @@ import { ManagerialIntelligenceService } from './managerialIntelligenceService.j
 import { ApiMonitoringService } from './apiMonitoringService.js';
 import { BIFilterOptions } from '../../src/types/bi.js';
 import { searchBankPlaybooks } from '../../src/lib/bankPlaybooks.js';
+
+function searchablePlaybooks(partner: boolean) {
+    return [...quickReference, ...readingContent].filter(section => !partner || section.partnerSafe).flatMap(section => {
+        const book = playbookSources.find(book => book.id === section.bankId);
+        if (!book) return [];
+        const reference = `[PDF p. ${section.page}] ${section.title}`;
+        const lines = [reference, ...section.paragraphs.map(text => `${reference}: ${text}`),
+            ...section.tables.flatMap(table => table.rows.map(row => `${reference}: ${row.join(' | ')}`))];
+        return [{ ...book, id: section.id, text: lines.join('\n') }];
+    });
+}
 
 export interface ToolContextSession {
   user: {
@@ -74,7 +87,7 @@ export class SentinelaToolRouter {
     if (userRole === 'PARTNER' && toolName !== 'searchBankPlaybooks') return { success: false, toolName, rbacBlocked: true, error: 'Consulta do portal restrita aos roteiros bancários.' };
     if (toolName === 'searchBankPlaybooks') {
       if (userRole !== 'PARTNER' && !hasPermission(userRole, customPermissions, 'simulations.view') && !hasPermission(userRole, customPermissions, 'simulations.create')) return { success: false, toolName, rbacBlocked: true, error: 'Sem permissão de consulta de simulações.' };
-      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER', pdfIndex.filter(page=>userRole!=='PARTNER'||page.partnerSafe) as any), notice: 'Biblioteca substituída pelos 14 PDFs recebidos em 16/10/2026. Trechos extraídos por página; não reconstrua tabelas se as colunas estiverem ambíguas. Consulte a página original e informe lacunas de extração. Não use resumos anteriores. Material fornecido pela empresa em 16/10/2026; não comprova política vigente nem aprovação de crédito. Cite banco, versão e página do PDF quando disponível, ou seção da transcrição. Preserve ressalvas e divergências. Ausência de informação não é permissão. API ativa é independente de compatibilidade com roteiro.' } };
+      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER', searchablePlaybooks(userRole === 'PARTNER')), notice: 'Biblioteca substituída pelos 14 PDFs recebidos em 16/10/2026. Consulte a mesma base de textos e tabelas exibida na aba Roteiros. As células de uma linha de tabela estão separadas por |; preserve a relação entre critério, valor e exceção. Não reconstrua colunas ambíguas. Consulte a página original e informe lacunas de extração. Não use resumos anteriores. Material fornecido pela empresa em 16/10/2026; não comprova política vigente nem aprovação de crédito. Cite banco, versão e página do PDF quando disponível, ou seção da transcrição. Preserve ressalvas e divergências. Ausência de informação não é permissão. API ativa é independente de compatibilidade com roteiro.' } };
     }
 
     // Sanitize filters (strip any tenantId injected in args, force session.effectiveTenantId)

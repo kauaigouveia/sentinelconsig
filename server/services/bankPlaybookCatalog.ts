@@ -5,6 +5,8 @@ import type { Express, Request } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { BANK_PLAYBOOKS } from '../../src/lib/bankPlaybooks.js';
+import readingContent from '../assets/bank-playbooks/reading-content.json';
+import quickReference from '../assets/bank-playbooks/quick-reference.json';
 const prefix = 'BANK_PLAYBOOK_PDF_V2_';
 export async function customPlaybooks(db: PrismaClient, tenantId: string) {
  const rows = await db.systemConfig.findMany({ where: { tenantId, configKey: { startsWith: prefix } } });
@@ -21,7 +23,7 @@ export function registerBankPlaybookCatalog(app: Express, db: PrismaClient, getS
  app.get('/api/bank-playbooks', async (req,res) => {
   res.setHeader('Cache-Control','no-store');
   try { const session = await access(req); if (!session) return res.status(403).json({error:'Sem acesso aos roteiros.'});
-   return res.json({ rows: BANK_PLAYBOOKS.map(book=>({...book,pdfUrl:`/api/bank-playbooks/${book.id}/pdf`,coverUrl:`/api/bank-playbooks/${book.id}/cover`})), canEdit: false });
+   return res.json({ rows: BANK_PLAYBOOKS.map(book=>({...book,pdfUrl:`/api/bank-playbooks/${book.id}/pdf`,sections:[...quickReference,...readingContent].filter(section=>section.bankId===book.id)})), canEdit: false });
   } catch { return res.status(500).json({error:'Não foi possível carregar os roteiros.'}); }
  });
  app.get('/api/bank-playbooks/:id/cover',async(req,res)=>{

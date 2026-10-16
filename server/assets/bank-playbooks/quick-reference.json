@@ -1,0 +1,997 @@
+[
+  {
+    "id": "facta-guide-2",
+    "bankId": "facta",
+    "title": "Invalidez e pensão por morte",
+    "page": 2,
+    "topics": [
+      "Idade e benefício"
+    ],
+    "paragraphs": [
+      "A tabela de pensão apresenta sobreposição na idade de 41 anos. Confirme o enquadramento com o banco."
+    ],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Espécies 32 e 92 · 55 a 59 anos",
+            "Exige 15 anos decorridos da concessão da aposentadoria por invalidez."
+          ],
+          [
+            "Espécies 32 e 92 · a partir de 60 anos",
+            "O roteiro considera o benefício vitalício."
+          ],
+          [
+            "Pensão por morte · espécie 21",
+            "Verificar data de concessão, idade na concessão e duração do benefício antes de definir o prazo."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "facta-guide-3",
+    "bankId": "facta",
+    "title": "Analfabetos e regras por estado",
+    "page": 3,
+    "topics": [
+      "Restrições e exceções"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Cliente analfabeto",
+            "Atendimento somente para operação nova; seguir o procedimento de assinatura a rogo das páginas 4 a 6."
+          ],
+          [
+            "PB, AP, TO, RR e SC · 60 anos ou mais",
+            "Formalização digital acompanhada de via física assinada."
+          ],
+          [
+            "Goiás",
+            "Não permite contratação por telefone."
+          ],
+          [
+            "Ceará",
+            "Observar o comunicado FF06/24."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "finanto-guide-13",
+    "bankId": "finanto",
+    "title": "Idades, prazos e margem",
+    "page": 13,
+    "topics": [
+      "Idade e benefício"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Novo",
+            "Idade máxima: 73 anos e 10 meses, em 48 parcelas."
+          ],
+          [
+            "Portabilidade + refinanciamento",
+            "Idade máxima: 68 anos e 10 meses."
+          ],
+          [
+            "Portabilidade pura",
+            "Idade máxima: 70 anos, respeitando a política de idade × prazo em aberto."
+          ],
+          [
+            "Novo · 22 a 68 anos",
+            "Até 108 parcelas."
+          ],
+          [
+            "Novo · 69 / 70 / 71 / 72 / 73 anos",
+            "Até 96 / 84 / 72 / 60 / 48 parcelas, respectivamente."
+          ],
+          [
+            "Espécie 21",
+            "Acima de 45 anos."
+          ],
+          [
+            "Espécie 32",
+            "Acima de 60 anos; somente contratos novos, em 108 parcelas."
+          ],
+          [
+            "Espécie 92",
+            "Acima de 68 anos."
+          ],
+          [
+            "PB, AP, TO e RR",
+            "Não opera acima de 60 anos."
+          ],
+          [
+            "Agregar margem",
+            "Somente no refinanciamento puro."
+          ],
+          [
+            "Margem negativa",
+            "Somente portabilidade + refinanciamento, se cobrir o negativo; taxa de entrada da portabilidade: 0,90%."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "finanto-guide-9",
+    "bankId": "finanto",
+    "title": "Contrato novo: condições das tabelas",
+    "page": 9,
+    "topics": [
+      "Valores e prazos"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Novo e entrante",
+            "Taxa indicada: 1,85%; prazo de 48 a 108 parcelas; parcela mínima de R$ 20,00."
+          ],
+          [
+            "Carência",
+            "Tabelas com 30, 60 ou 90 dias; confirmar o código da tabela na digitação."
+          ],
+          [
+            "Seguro",
+            "O quadro indica que não possui seguro."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "bmg-guide-3",
+    "bankId": "bmg",
+    "title": "Limites por idade",
+    "page": 3,
+    "topics": [
+      "Idade e benefício"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "21 a 70 anos",
+            "Até 108 parcelas; limite conforme disponibilidade da margem."
+          ],
+          [
+            "71 anos",
+            "Até 96 parcelas; limite conforme disponibilidade da margem."
+          ],
+          [
+            "72 anos",
+            "Até 84 parcelas; limite conforme disponibilidade da margem."
+          ],
+          [
+            "73 anos",
+            "Até 72 parcelas; limite conforme disponibilidade da margem."
+          ],
+          [
+            "74 anos",
+            "Até 60 parcelas; máximo de R$ 30.000,00."
+          ],
+          [
+            "75 anos",
+            "Até 48 parcelas; máximo de R$ 20.000,00."
+          ],
+          [
+            "Contratos por benefício",
+            "Máximo de 13 empréstimos."
+          ],
+          [
+            "Mínimo da operação",
+            "Conforme divulgação das tabelas; não há valor único neste quadro."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "bmg-guide-19",
+    "bankId": "bmg",
+    "title": "Refinanciamento: parcelas pagas",
+    "page": 19,
+    "topics": [
+      "Refinanciamento"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Parcelas pagas",
+            "Exige 5 parcelas pagas; em 108 parcelas, pode admitir menos, conforme tabela e análise."
+          ],
+          [
+            "Margem",
+            "Aceita agregação e margem negativa."
+          ],
+          [
+            "Unificação",
+            "Não unifica dois ou mais contratos."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "daycoval-guide-1",
+    "bankId": "daycoval",
+    "title": "Como aplicar as regras do Daycoval",
+    "page": 1,
+    "topics": [
+      "Orientações gerais"
+    ],
+    "paragraphs": [
+      "Use a busca por espécie, idade ou portabilidade para consultar os quadros e suas exceções nas seções abaixo.",
+      "A fonte deixa um intervalo entre 52 anos completos e 53 anos. Não presumir atendimento nessa lacuna; confirmar com o banco e conferir o quadro específico de idade."
+    ],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Versão da fonte",
+            "Roteiro operacional 76.0."
+          ],
+          [
+            "Idade e espécie",
+            "Consultar o quadro específico de cada benefício; há faixas com limites distintos."
+          ],
+          [
+            "Margem",
+            "O percentual total de margem não representa, por si só, margem livre disponível."
+          ],
+          [
+            "Portabilidade",
+            "Consultar a regra do produto e os acordos de origem aplicáveis; não generalizar o critério de um banco cedente para todos."
+          ],
+          [
+            "Prazo utilizável informado",
+            "108 meses, respeitados os limites de idade e benefício."
+          ],
+          [
+            "Espécies 32 e 92 · faixa 1",
+            "A partir de 40 anos completos até 52 anos incompletos."
+          ],
+          [
+            "Espécies 32 e 92 · faixa 2",
+            "De 53 anos completos a 59 anos e 11 meses, com mais de 13 anos de benefício."
+          ],
+          [
+            "Espécies 32 e 92 · faixa 3",
+            "A partir de 60 anos completos."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "banrisul-guide-4",
+    "bankId": "banrisul",
+    "title": "Limites por idade e pagamento",
+    "page": 4,
+    "topics": [
+      "Idade e benefício"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "18 a 65 anos",
+            "Até R$ 70.000,00."
+          ],
+          [
+            "66 a 69 anos",
+            "Até R$ 50.000,00."
+          ],
+          [
+            "70 a 73 anos",
+            "Até R$ 40.000,00."
+          ],
+          [
+            "74 a 75 anos",
+            "Até R$ 15.000,00."
+          ],
+          [
+            "Última prestação",
+            "Deve vencer 1 mês antes de o cliente completar 78 anos, respeitado o prazo máximo do convênio."
+          ],
+          [
+            "Recebe em conta corrente",
+            "Crédito na conta em que recebe o benefício."
+          ],
+          [
+            "Recebe por cartão magnético",
+            "Conta corrente ou poupança de titularidade do beneficiário."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "banrisul-guide-5",
+    "bankId": "banrisul",
+    "title": "Refinanciamento: parcelas pagas e unificação",
+    "page": 5,
+    "topics": [
+      "Refinanciamento"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Parcelas pagas",
+            "Mínimo de 10; ou mínimo de 5 com financiamento a partir de R$ 5.000,00."
+          ],
+          [
+            "Unificação",
+            "Até 5 contratos podem ser refinanciados juntos."
+          ],
+          [
+            "Agregação de margem",
+            "Permitida se houver 1 linha de desconto disponível."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "parana-guide-4",
+    "bankId": "parana",
+    "title": "Refinanciamento: valor de troco",
+    "page": 4,
+    "topics": [
+      "Refinanciamento"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Troco no refinanciamento",
+            "Mínimo de R$ 100,00."
+          ],
+          [
+            "Aplicação do mínimo",
+            "Não substituir esse mínimo específico pelo limite genérico de R$ 1,00 de outros quadros."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "c6-guide-6",
+    "bankId": "c6",
+    "title": "Novo, refinanciamento e portabilidade: valores mínimos",
+    "page": 6,
+    "topics": [
+      "Valores e prazos"
+    ],
+    "paragraphs": [
+      "Os demais critérios de idade, espécie, formalização e produto continuam aplicáveis. Consulte as seções correspondentes."
+    ],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Valor mínimo solicitado",
+            "R$ 1.000,00."
+          ],
+          [
+            "Valor máximo solicitado",
+            "Conforme margem disponível."
+          ],
+          [
+            "Refinanciamento · mínimo liberado",
+            "Menor valor entre R$ 700,00 e 5% do valor financiado."
+          ],
+          [
+            "Portabilidade · mínimo financiado",
+            "R$ 2.000,00, somando saldo e troco."
+          ],
+          [
+            "Refinanciamento da portabilidade · troco mínimo",
+            "R$ 50,00."
+          ],
+          [
+            "Margem negativa no refinanciamento ou portabilidade",
+            "Deduzir o negativo do valor da parcela do contrato."
+          ],
+          [
+            "Prazo para concluir refinanciamento da portabilidade",
+            "Até 45 dias; depois, digitar como refinanciamento normal de carteira."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "presenca-guide-2",
+    "bankId": "presenca",
+    "title": "Público atendido e restrições",
+    "page": 2,
+    "topics": [
+      "Restrições e exceções"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Idade",
+            "Mínima de 22 anos; máxima de 71 anos."
+          ],
+          [
+            "Público",
+            "Titulares de aposentadoria e pensão vitalícia do RGPS/INSS; invalidez e pensão dependem de regras específicas."
+          ],
+          [
+            "Representante legal",
+            "Não atende procuradores, curadores, tutores ou representante legal."
+          ],
+          [
+            "Assinatura",
+            "Não atende analfabetos ou impossibilitados de assinar."
+          ],
+          [
+            "PB, AP, TO e RR",
+            "Não digitar propostas de clientes com idade superior a 60 anos."
+          ],
+          [
+            "Outras restrições",
+            "Não atende povos indígenas, PEP, residentes no exterior e os meios de pagamento excluídos no roteiro."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "presenca-guide-3",
+    "bankId": "presenca",
+    "title": "Valores, prazos e benefício novo",
+    "page": 3,
+    "topics": [
+      "Valores e prazos"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Valor liberado",
+            "De R$ 700,00 a R$ 60.000,00."
+          ],
+          [
+            "Parcela mínima",
+            "R$ 20,00."
+          ],
+          [
+            "Prazo",
+            "De 60 a 108 parcelas."
+          ],
+          [
+            "Margem indicada no roteiro",
+            "40% da renda líquida para o conjunto de empréstimos e cartões; não equivale à margem livre."
+          ],
+          [
+            "Benefício recém-concedido",
+            "Bloqueio inicial de 90 dias; após esse período, o titular deve solicitar desbloqueio pelos canais oficiais."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "safra-guide-6",
+    "bankId": "safra",
+    "title": "Margem e demonstrativo de crédito",
+    "page": 6,
+    "topics": [
+      "Valores e prazos"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Margem indicada",
+            "Limitada a 35%."
+          ],
+          [
+            "Cálculo",
+            "((Vencimentos fixos − descontos compulsórios) × 35%) − descontos facultativos."
+          ],
+          [
+            "Demonstrativo",
+            "Aceita demonstrativos até o mês anterior ao vigente."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "icred-guide-2",
+    "bankId": "icred",
+    "title": "Formalização e regras gerais",
+    "page": 2,
+    "topics": [
+      "Documentação"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Prazo máximo",
+            "108 meses, sujeito à política de idade e valor."
+          ],
+          [
+            "Contratos por benefício",
+            "Máximo de 13 empréstimos."
+          ],
+          [
+            "Margem autorizada",
+            "35%, conforme este roteiro."
+          ],
+          [
+            "Formalização",
+            "100% digital."
+          ],
+          [
+            "Pagamento",
+            "Pix na conta do beneficiário."
+          ],
+          [
+            "Analfabeto",
+            "Não permite."
+          ],
+          [
+            "Representante legal",
+            "Não permite."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "icred-guide-7",
+    "bankId": "icred",
+    "title": "Limites de crédito por idade",
+    "page": 7,
+    "topics": [
+      "Idade e benefício"
+    ],
+    "paragraphs": [
+      "Cada faixa anual termina em 11 meses e 29 dias. Limites sujeitos à restrição por idade."
+    ],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "18 a 61 anos, 11 meses e 29 dias",
+            "108 parcelas; até R$ 100.000,00."
+          ],
+          [
+            "62 / 63 / 64 / 65 anos",
+            "108 parcelas; até R$ 90.000 / R$ 80.000 / R$ 70.000 / R$ 60.000, respectivamente."
+          ],
+          [
+            "66 / 67 / 68 / 69 anos",
+            "108 parcelas; até R$ 50.000 / R$ 40.000 / R$ 30.000 / R$ 25.000, respectivamente."
+          ],
+          [
+            "70 anos",
+            "96 parcelas; até R$ 25.000,00."
+          ],
+          [
+            "71 anos",
+            "84 parcelas; até R$ 25.000,00."
+          ],
+          [
+            "72 anos",
+            "72 parcelas; até R$ 25.000,00."
+          ],
+          [
+            "73 anos",
+            "60 parcelas; até R$ 25.000,00."
+          ],
+          [
+            "74 anos ou mais",
+            "Não opera."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "brb-guide-4",
+    "bankId": "brb",
+    "title": "Portabilidade: valores e bancos de origem",
+    "page": 4,
+    "topics": [
+      "Portabilidade"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Valor mínimo da operação",
+            "R$ 5.000,00."
+          ],
+          [
+            "Simulação de troco",
+            "Mínimo de R$ 100,00."
+          ],
+          [
+            "Tempo do contrato de origem",
+            "Solicitação de saldo apenas para contratos com mais de 360 dias desde a contratação original."
+          ],
+          [
+            "Bancos não portados",
+            "Picpay, Agibank, Banco C6 e Banco C6 Consignado."
+          ],
+          [
+            "Margem negativa",
+            "Não pode finalizar somente na portabilidade; deduzir o negativo da parcela na simulação."
+          ],
+          [
+            "Liquidação",
+            "Registrar e liquidar no mesmo dia do retorno do saldo, respeitando os horários do roteiro."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "digio-guide-8",
+    "bankId": "digio",
+    "title": "Portabilidade e troco mínimo",
+    "page": 8,
+    "topics": [
+      "Portabilidade"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Parcelas pagas na portabilidade",
+            "Não exige mínimo no contrato de origem."
+          ],
+          [
+            "Margem negativa na portabilidade",
+            "Não permite deduzir do valor da parcela do contrato portado."
+          ],
+          [
+            "Portabilidade com refin vinculado",
+            "Permitida."
+          ],
+          [
+            "Unificação de parcelas",
+            "Não permite."
+          ],
+          [
+            "Troco mínimo no refinanciamento e refin da portabilidade",
+            "R$ 250,00."
+          ],
+          [
+            "Refin da portabilidade · parcela",
+            "Deve ser igual ou maior que a da portabilidade."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "mercantil-guide-3",
+    "bankId": "mercantil",
+    "title": "Novo: valores, prazo e espécies especiais",
+    "page": 3,
+    "topics": [
+      "Valores e prazos"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Valor",
+            "De R$ 300,00 a R$ 180.000,00."
+          ],
+          [
+            "Prazo máximo",
+            "108 parcelas."
+          ],
+          [
+            "Idade geral",
+            "De 22 a 79 anos, podendo variar conforme o benefício."
+          ],
+          [
+            "Espécie 21",
+            "De 27 a 79 anos; prazo de 12 a 108 meses; valor de R$ 300,00 a R$ 180.000,00."
+          ],
+          [
+            "Espécies 32 e 92",
+            "De 22 a 72 anos; prazo de 12 a 108 meses; valor de R$ 300,00 a R$ 180.000,00."
+          ],
+          [
+            "BPC/LOAS · espécies 87 e 88",
+            "Oferta de consignado indisponível."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "vctex-guide-5",
+    "bankId": "vctex",
+    "title": "Formalização e público não atendido",
+    "page": 5,
+    "topics": [
+      "Restrições e exceções"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Prazo máximo",
+            "108 meses, sujeito à política de idade e valor."
+          ],
+          [
+            "Contratos por benefício",
+            "Máximo de 13 empréstimos ativos."
+          ],
+          [
+            "Analfabeto / representante legal / BPC-LOAS",
+            "Não aceita."
+          ],
+          [
+            "Ordem de pagamento",
+            "Não aceita; pagamento por Pix na conta do benefício."
+          ],
+          [
+            "Documentos",
+            "RG físico; CNH física ou digital com QR Code."
+          ],
+          [
+            "Dataprev",
+            "Benefício deve estar elegível."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "vctex-guide-6",
+    "bankId": "vctex",
+    "title": "Benefício, autorização e estados restritos",
+    "page": 6,
+    "topics": [
+      "Restrições e exceções"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "Benefício",
+            "Deve estar ativo e elegível para empréstimo."
+          ],
+          [
+            "Autorização",
+            "Operação somente mediante termo IN100 assinado pelo cliente."
+          ],
+          [
+            "Estados não atendidos",
+            "Amapá, Tocantins, Paraíba, Piauí, Rio Grande do Sul e Bahia."
+          ],
+          [
+            "Conta de crédito",
+            "De titularidade do beneficiário, cadastrada no INSS para recebimento do benefício."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  },
+  {
+    "id": "vctex-guide-7",
+    "bankId": "vctex",
+    "title": "Idade, valor máximo e parcela mínima",
+    "page": 7,
+    "topics": [
+      "Idade e benefício"
+    ],
+    "paragraphs": [],
+    "tables": [
+      {
+        "kind": "table",
+        "rows": [
+          [
+            "Critério",
+            "Regra do banco"
+          ],
+          [
+            "21 a 69 anos, 11 meses e 29 dias",
+            "Até 108 parcelas; máximo de R$ 42.600,00."
+          ],
+          [
+            "70 a 70 anos, 11 meses e 29 dias",
+            "Até 96 parcelas; máximo de R$ 42.600,00."
+          ],
+          [
+            "71 a 71 anos, 11 meses e 29 dias",
+            "Até 84 parcelas; máximo de R$ 42.600,00."
+          ],
+          [
+            "Parcela mínima",
+            "R$ 35,00."
+          ]
+        ]
+      }
+    ],
+    "partnerSafe": true,
+    "isGuide": true
+  }
+]
