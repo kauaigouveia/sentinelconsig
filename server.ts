@@ -145,6 +145,7 @@ import { registerSimulationBankOrderRoutes } from './server/services/simulationB
 import { registerBmgRoutes } from './server/services/bmgRoutes.js';
 import { registerWorkbankRoutes, decorateWorkbankProposals } from './server/services/workbankRoutes.js';
 import { registerParanaRoutes } from './server/services/paranaRoutes.js';
+import { registerV8Routes } from './server/services/v8Routes.js';
 import { registerPresencaRoutes } from './server/services/presencaRoutes.js';
 import { registerBankPlaybookRoutes } from './server/services/bankPlaybookRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
@@ -2105,6 +2106,7 @@ async function auditAndEnsureMasterUser() {
   registerWorkbankRoutes(app, prisma, getAuthSession);
   registerParanaRoutes(app, prisma, getAuthSession);
   registerPresencaRoutes(app, prisma, getAuthSession);
+  registerV8Routes(app, prisma, getAuthSession);
   registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);
   registerBankPlaybookRoutes(app, prisma, req => PartnerPortalService.getPartnerSession(req, prisma));
