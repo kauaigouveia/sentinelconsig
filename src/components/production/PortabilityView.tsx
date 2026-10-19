@@ -54,7 +54,9 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
     setCronFeedback('Executando cron server-side de CIP...');
     const res = await AutomationService.runPortabilityCron();
     setCronFeedback(
-      `Verificação concluída: ${res.checkedCount} propostas verificadas | ${res.saldoRetornadoCount} saldos retornados automaticamente!`
+      res.success === false
+        ? res.details.join(' ') || 'Não foi possível verificar as portabilidades.'
+        : `Verificação concluída: ${res.checkedCount} propostas verificadas | ${res.saldoRetornadoCount} retornos de saldo registrados.`
     );
     refreshData();
     setTimeout(() => setCronFeedback(null), 5000);

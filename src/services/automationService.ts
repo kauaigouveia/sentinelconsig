@@ -3,6 +3,7 @@ import { calculateBusinessDays, isBusinessDay, formatDate } from '../lib/utils';
 import { Proposal } from '../types';
 
 export interface AutomationResult {
+  success?: boolean;
   checkedCount: number;
   saldoRetornadoCount: number;
   alertsGenerated: number;
@@ -13,9 +14,8 @@ export class AutomationService {
   /**
    * Evaluates all portability proposals currently in AGUARDAR_RETORNO_CIP status.
    * Calculates business days elapsed since portabilitySlaStartedAt (skipping weekends & holidays).
-   * If >= configured days (default 5):
-   *   transitions status to SALDO_RETORNADO (unless CANCELADO or REPROVADO).
-   * If = 4 or 5 days, generates warning notification.
+   * Prazo de CIP e retorno confirmado de saldo são eventos distintos.
+   * O resultado do servidor determina se houve mudança de status.
    */
   public static async runPortabilityCron(): Promise<AutomationResult> {
     try {
@@ -31,8 +31,9 @@ export class AutomationService {
       if (res.ok) {
         const data = await res.json();
         // Sync local storage state after server cron execution
-        StorageService.syncWithPostgreSQL().catch(() => {});
+        await StorageService.syncWithPostgreSQL();
         return {
+          success: data.success !== false,
           checkedCount: data.checkedCount || 0,
           saldoRetornadoCount: data.saldoRetornadoCount || 0,
           alertsGenerated: data.alertsGenerated || 0,
@@ -40,6 +41,7 @@ export class AutomationService {
         };
       }
       return {
+        success: false,
         checkedCount: 0,
         saldoRetornadoCount: 0,
         alertsGenerated: 0,
@@ -48,6 +50,7 @@ export class AutomationService {
     } catch (err: any) {
       console.error('[AutomationService] Falha ao invocar cron server-side:', err);
       return {
+        success: false,
         checkedCount: 0,
         saldoRetornadoCount: 0,
         alertsGenerated: 0,
