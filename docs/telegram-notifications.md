@@ -94,3 +94,20 @@ Estado criptografado por bot/chat expira em 10 minutos; guarda somente IDs de re
 ## Valores de portabilidade na consulta
 
 Toda mensagem inclui o tipo da proposta com nome legivel. Na consulta de PORTABILIDADE, Valor liberado vem do refin explicitamente vinculado, independentemente da etapa; Saldo devedor vem da portabilidade consultada. Na consulta do REFIN_PORTABILIDADE, o liberado e da propria proposta e o saldo e da portabilidade explicitamente vinculada (mesma empresa, parceiro e cliente), com fallback ao saldo do proprio refin. Valores ausentes aparecem como Nao informado. Nao se infere vinculo por CPF e nao se calcula retorno de saldo por prazo.
+
+
+## Automacao CIP por prazo (19/10/2026)
+
+O GET autenticado /api/cron/telegram-notifications agora executa a automacao CIP antes da fila Telegram. Nao e necessario trocar URL, chave ou criar outro cron. O retorno inclui portability com contadores de verificadas, retornadas, sincronizadas e falhas. A rota interna POST /api/internal/cron/portability foi registrada, exige sessao de operador, empresa ativa e proposals.update, e usa a mesma rotina.
+
+Escopo: portabilidades ativas no status AGUARDAR_RETORNO_CIP. A data de entrada usa retentionDeadline ou historico da etapa; criacao e o ultimo fallback. Fuso America/Bahia, fins de semana e feriados ativos do calendario da empresa sao descontados, com prazo PORTABILITY_BALANCE_DAYS ou 5. Feriados padrao de 2026 correspondem ao calendario inicial do sistema; novos anos exigem calendario atualizado.
+
+Sem API vinculada/configurada: ao atingir prazo, altera para SALDO_RETORNADO (status ativo que permita automacao), preserva TODOS os valores e cria historico e auditoria PORTABILITY_RETURN_BY_SLA deixando explicito que a origem e prazo sem confirmacao bancaria. Atualizacao condicional impede sobrescrever edicao concorrente. O refin relacionado nao e mudado por inferencia.
+
+Com API: respeita empresa/promotora e IDs externos. Consulta FACTA, C6, Happy, FINANTO, Nossa Fintech e registros importados WorkBank. Mantem retorno real e mapeamento bancario; uma falha ou status sem mapeamento nao vira saldo por prazo. Vencimento nao significa aprovacao. Conexao vinculada indisponivel exige correcao; nao cai no caminho manual. Motivo de reprovacao e registrado em comentario quando devolvido; se o banco nao fornecer motivo, a observacao declara a ausencia.
+
+Valores retornados sao aplicados apenas quando presentes e validos, preservando cadastros na ausencia. FACTA inclui saldo_devedor, valor_af, valor_bruto, parcela e prazo; C6 usa campos presentes de credit_condition; Happy usa campos financeiros presentes do contrato. FINANTO/Nossa usam detalhes e mapeamento ja existentes. WorkBank reconsulta o extrato, revalida ID, numero, CPF e agente vinculado; pagina seguinte continua no proximo ciclo quando necessario.
+
+Processamento paginado (60 candidatas/ciclo) com cursor persistente e no maximo uma consulta bancaria por execucao, para reservar tempo ao Telegram na Vercel. Cada proposta tem tentativa exclusiva por cinco minutos. Se houver volume, candidatos restantes e avisos podem seguir em ciclos posteriores. Nao utiliza processo background depois da resposta nem depende de tela aberta. Continua necessario que o bot/empresa e o vinculo do parceiro estejam habilitados para enviar.
+
+Nao foram feitas consultas bancarias reais nem alteracoes no banco de producao durante a implementacao.

@@ -40,12 +40,13 @@ export class AutomationService {
           details: data.details || [],
         };
       }
+      const error = await res.json().catch(() => null);
       return {
         success: false,
         checkedCount: 0,
         saldoRetornadoCount: 0,
         alertsGenerated: 0,
-        details: [`Erro ao executar cron server-side (HTTP ${res.status}).`],
+        details: [error?.error || `Não foi possível verificar as portabilidades (HTTP ${res.status}).`],
       };
     } catch (err: any) {
       console.error('[AutomationService] Falha ao invocar cron server-side:', err);

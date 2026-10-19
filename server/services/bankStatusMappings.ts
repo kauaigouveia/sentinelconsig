@@ -37,7 +37,7 @@ export async function resolveMappedBankStatus(prisma: PrismaClient, tenantId: st
   return null;
 }
 /** Provider payload and mapped internal status/history commit together. No provider writes. */
-export async function updateMappedProviderProposal(prisma: PrismaClient, proposal: any, data: any, target: any, userId: string, source: string) {
+export async function updateMappedProviderProposal(prisma: PrismaClient, proposal: any, data: any, target: any, userId: string | null, source: string) {
   return prisma.$transaction(async tx => {
     const updated = await tx.proposal.update({ where: { id: proposal.id }, data: { ...data, ...(target ? { statusId: target.id, standardCategory: target.standardCategory, retentionDeadline: target.code === 'AGUARDAR_RETORNO_CIP' ? (proposal.retentionDeadline ? undefined : new Date()) : null } : {}) }, include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true } });
     if (target && target.id !== proposal.statusId) await tx.statusHistory.create({ data: { tenantId: proposal.tenantId, proposalId: proposal.id, statusId: target.id, statusName: target.name, userId, notes: `[${source}] Mapeamento configurado pela empresa.` } });

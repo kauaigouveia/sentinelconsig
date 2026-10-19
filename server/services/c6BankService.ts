@@ -1,3 +1,4 @@
+import { providerAmount } from './providerFinancialValue.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../logger.js';
@@ -823,6 +824,10 @@ export class C6BankService {
             c6SyncStatus: 'SYNCED',
             c6SyncError: null,
             c6RawData: sanitizedRaw,
+            releasedValue: providerAmount(c6Data.credit_condition?.client_amount),
+            contractValue: providerAmount(c6Data.credit_condition?.principal_amount),
+            installmentValue: providerAmount(c6Data.credit_condition?.installment_amount),
+            debtBalance: providerAmount(c6Data.credit_condition?.debt_balance),
             ...(newInternalStatusId
               ? {
                   statusId: newInternalStatusId,

@@ -26,7 +26,7 @@ function open(value: string) {
 export type WorkbankRow = {
   id: string; proposalNumber: string; agent: string; bank: string; product: string; agreement: string;
   status: string; operation: string; cpf: string; clientName: string; createdAt: string;
-  releasedValue: number; contractValue: number; debtBalance: number; installmentValue: number; installmentsCount: number;
+  releasedValue: number; contractValue: number; debtBalance: number; installmentValue: number; installmentsCount: number; observation?: string;
 };
 export function normalizeWorkbankRow(raw: any): WorkbankRow {
   const text = (field: string, max = 250) => String(raw?.[field] ?? '').trim().slice(0, max);
@@ -39,7 +39,7 @@ export function normalizeWorkbankRow(raw: any): WorkbankRow {
   if (String(raw?.idProposta ?? '').length > 80 || String(raw?.nrProposta ?? '').length > 80) throw new Error('Identificador da proposta excede o limite permitido.');
   if (!id || !proposalNumber || !Number.isInteger(installmentsCount) || installmentsCount < 1 || installmentsCount > 1000) throw new Error('Identificador, número ou prazo ausente/inválido.');
   if (typeof raw.idProposta === 'number' && !Number.isSafeInteger(raw.idProposta)) throw new Error('Identificador numérico fora do limite seguro.');
-  return { id, proposalNumber, agent: text('nmAgente'), bank: text('nmBanco'), product: text('dsProduto'), agreement: text('dsConvenio'), status: text('DsSituacao'), operation: text('dsTipoProposta'), cpf: text('nrCPF', 30).replace(/\D/g, ''), clientName: text('nmCliente'), createdAt: text('dtInclusao', 50), releasedValue: amount('vrLiquido'), contractValue: amount('VAL_BRUTO'), debtBalance: amount('vrSaldoRefin'), installmentValue: amount('vrParcela'), installmentsCount };
+  return { id, proposalNumber, observation: text('dsObservacao', 2000), agent: text('nmAgente'), bank: text('nmBanco'), product: text('dsProduto'), agreement: text('dsConvenio'), status: text('DsSituacao'), operation: text('dsTipoProposta'), cpf: text('nrCPF', 30).replace(/\D/g, ''), clientName: text('nmCliente'), createdAt: text('dtInclusao', 50), releasedValue: amount('vrLiquido'), contractValue: amount('VAL_BRUTO'), debtBalance: amount('vrSaldoRefin'), installmentValue: amount('vrParcela'), installmentsCount };
 }
 type RecordData = { row: WorkbankRow; proposalId?: string; message?: string; lastSyncAt: string };
 type Config = { enabled: boolean; username: string; clientKey: string; publicKey: string; authOrigin: string; extractOrigin: string };
@@ -114,7 +114,7 @@ export class WorkbankService {
     if (!partner) throw new Error('Selecione um parceiro ativo vinculado a esta empresa e promotora.');
     await this.write(db, tenantId, promoterId, `agent:${hash(normalized)}`, { name: normalized, partnerId });
   }
-  static async syncImported(tx: any, tenantId: string, promoterId: string, item: RecordData, userId: string) {
+  static async syncImported(tx: any, tenantId: string, promoterId: string, item: RecordData, userId: string | null) {
     if (!item.proposalId) return;
     const partner = await this.agent(tx, tenantId, promoterId, item.row.agent);
     const proposal = await tx.proposal.findFirst({ where: { id: item.proposalId, tenantId, promoterId, deletedAt: null }, include: { client: true } });
@@ -126,6 +126,39 @@ export class WorkbankService {
     item.message = undefined;
   }
   static financial(row: WorkbankRow) { return { releasedValue: row.releasedValue, contractValue: row.contractValue, debtBalance: row.debtBalance, installmentValue: row.installmentValue, installmentsCount: row.installmentsCount }; }
+  static async linkedProposal(db: any, tenantId: string, promoterId: string, proposalId: string) {
+    const rows = await db.systemConfig.findMany({ where: { tenantId, configKey: { startsWith: this.configKey(promoterId, 'record:') } }, take: 2001 });
+    if (rows.length > 2000) throw new Error('Conferência de vínculos WorkBank requer processamento em lote.');
+    return rows.find((row: any) => open(row.configValue).proposalId === proposalId) || null;
+  }
+  static async refreshLinkedProposal(db: any, proposal: any) {
+    const stored = await this.linkedProposal(db, proposal.tenantId, proposal.promoterId, proposal.id);
+    if (!stored) throw new Error('Vínculo WorkBank não encontrado.');
+    const item: RecordData = open(stored.configValue);
+    const progressKey = `cip-page:${proposal.id}`;
+    const page = (await this.read(db, proposal.tenantId, proposal.promoterId, progressKey))?.value?.page || 1;
+    const start = new Date(item.row.createdAt); start.setUTCDate(start.getUTCDate() - 1);
+    if (!Number.isFinite(start.getTime())) throw new Error('Data de origem WorkBank inválida.');
+    const format = (date: Date) => date.toISOString().slice(0, 10).replace(/-/g, '');
+    const batch = await this.extract(db, proposal.tenantId, proposal.promoterId, 'SYSTEM_CIP', { datainicio: format(start), datatermino: format(new Date()), pageNumber: page });
+    const saved = await this.read(db, proposal.tenantId, proposal.promoterId, `batch:${batch.batchId}`);
+    if (!saved) throw new Error('Página WorkBank indisponível.');
+    const matches = saved.value.rows.filter((row: WorkbankRow) => row.id === item.row.id && row.proposalNumber === proposal.proposalNumber);
+    // This private scratch batch belongs only to this invocation, not an operator import.
+    await db.systemConfig.deleteMany({ where: { id: saved.id, tenantId: proposal.tenantId, configKey: this.configKey(proposal.promoterId, `batch:${batch.batchId}`) } });
+    if (matches.length !== 1) {
+      await this.write(db, proposal.tenantId, proposal.promoterId, progressKey, { page: batch.hasNextPage ? page + 1 : 1 });
+      throw new Error('Proposta não localizada nesta página WorkBank; consulta continuará no próximo ciclo.');
+    }
+    item.row = matches[0]; item.lastSyncAt = new Date().toISOString();
+    await db.$transaction(async (tx: any) => {
+      await this.syncImported(tx, proposal.tenantId, proposal.promoterId, item, null);
+      if (item.message) throw new Error(item.message);
+      await tx.systemConfig.update({ where: { id: stored.id }, data: { configValue: seal(item) } });
+    });
+    await this.write(db, proposal.tenantId, proposal.promoterId, progressKey, { page: 1 });
+    return { success: true, reason: item.row.observation || item.row.status };
+  }
   static async step(db: any, tenantId: string, promoterId: string, userId: string, batchId: string) {
     if (!/^[a-f0-9-]{36}$/.test(batchId)) throw new Error('Lote inválido.');
     return db.$transaction(async (tx: any) => {

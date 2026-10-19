@@ -33,6 +33,9 @@ export function normalizeFactaStatusKey(statusStr?: string | null): string {
 
 // Dicionário unificado de mapeamento Facta -> Sentinel Status Code (usando os códigos oficiais do banco de dados)
 const factaStatusDictionary: Record<string, string> = {
+  'SALDO RETORNADO': 'SALDO_RETORNADO',
+  'SALDO INFORMADO': 'SALDO_RETORNADO',
+  'SALDO_RETORNADO': 'SALDO_RETORNADO',
   // CANCELADO
   'CANCELADO': 'CANCELADO',
   'CANCELADA': 'CANCELADO',

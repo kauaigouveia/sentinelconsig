@@ -1,3 +1,4 @@
+import { providerAmount } from './providerFinancialValue.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import {
@@ -567,7 +568,7 @@ export class HappyBankService {
     if (contractIdToQuery) {
       matchedContract = contratos.find((c) => String(c.id) === String(contractIdToQuery));
     }
-    if (!matchedContract && contratos.length > 0) {
+    if (!matchedContract && !contractIdToQuery && contratos.length === 1) {
       matchedContract = contratos[0];
     }
 
@@ -637,6 +638,10 @@ export class HappyBankService {
           happySyncStatus: 'SYNCED',
           happySyncError: null,
           happyRawData: matchedContract as any,
+          debtBalance: providerAmount(matchedContract.saldo_devedor),
+          releasedValue: providerAmount(matchedContract.valor_liquido),
+          contractValue: providerAmount(matchedContract.valor_bruto),
+          installmentValue: providerAmount(matchedContract.valor_parcela),
           ...(internalStatusChanged && targetStatusRecord
             ? {
                 statusId: targetStatusRecord.id,

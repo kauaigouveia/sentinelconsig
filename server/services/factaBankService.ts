@@ -1,3 +1,4 @@
+import { providerAmount } from './providerFinancialValue.js';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../logger.js';
 import {
@@ -774,6 +775,11 @@ export class FactaBankService {
             factaSyncStatus: 'SYNCED',
             factaSyncError: null,
             factaRawData: sanitizedRaw,
+            debtBalance: providerAmount(item.saldo_devedor),
+            releasedValue: providerAmount(item.valor_af),
+            contractValue: providerAmount(item.valor_bruto),
+            installmentValue: providerAmount(item.vlrprestacao),
+            installmentsCount: Number.isInteger(providerAmount(item.numeroprestacao)) && Number(item.numeroprestacao) > 0 ? Number(item.numeroprestacao) : undefined,
             ...(targetStatusRecord
               ? {
                   statusId: targetStatusRecord.id,
