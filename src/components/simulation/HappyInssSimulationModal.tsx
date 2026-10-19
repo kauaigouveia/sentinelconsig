@@ -393,6 +393,7 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
           {/* PASSO 1: DADOS DO CLIENTE & BENEFÍCIO */}
           {step === 'CLIENTE' && (
             <form onSubmit={handleCadastrarClienteEConsultar} className="space-y-4">
+              <PortabilityReviewFields value={portabilityContext} onChange={setPortabilityContext}/>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -767,7 +768,7 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
 
               {/* FORM PORTABILIDADE + REFIN */}
               {opType === 'PORTABILIDADE_REFIN' && (
-                <div className="space-y-4"><PortabilityReviewFields value={portabilityContext} onChange={setPortabilityContext}/>
+                <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2"><div className="text-xs font-semibold"><BankCodeSelect label="Banco de origem" value={originalBank} onChange={setOriginalBank} className="mt-2 w-full rounded-lg border border-slate-500/30 bg-transparent p-2"/></div><label className="text-xs font-semibold">Parcelas pagas<input type="number" min={0} step={1} value={paidInstallments} onChange={event=>setPaidInstallments(event.target.value)} className="mt-2 w-full rounded-lg border border-slate-500/30 bg-transparent p-2"/></label></div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
