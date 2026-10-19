@@ -296,7 +296,7 @@ export function simulateDaycoval(book: DaycovalWorkbook, input: any) {
   const maxTerm = age <= 71 ? 108 : age === 72 ? 96 : 84;
   const term = Number(input.term);
   if (!Number.isInteger(term) || term > maxTerm || !book.terms.includes(term)) throw new CalculationError(`Prazo indisponível. Para esta idade, o máximo é ${maxTerm} meses, conforme tabelas importadas.`);
-  if (!Array.isArray(input.contracts) || !input.contracts.length || input.contracts.length > 17) throw new CalculationError('Informe de 1 a 17 contratos.');
+  if (!Array.isArray(input.contracts) || !input.contracts.length || input.contracts.length > 3) throw new CalculationError('Informe de 1 a 3 contratos.');
   const overrides: Record<string, Cell> = { F8: 'INSS', H8: serial(date), I27: 1, I26: term, E26: num(input.additionalMargin ?? 0), E23: num(input.requestedRefinAmount ?? 0) };
   if (num(overrides.E26) < 0 || num(overrides.E23) < 0) throw new CalculationError('Margem adicional e valor solicitado não podem ser negativos.');
   for (let i = 0; i < 17; i++) {
