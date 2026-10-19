@@ -15070,8 +15070,18 @@ async function auditAndEnsureMasterUser() {
       await resolveBankPromoter(prisma, tenantId, proposal.promoterId);
       const result = await withIntegrationPromoter(proposal.promoterId, () => NossaFintechService.request(prisma, tenantId, 'GET', `${route}${encodeURIComponent(proposal.nossaFintechDebtKey)}`));
       if (!result.success) {
-        await prisma.proposal.update({ where: { id: proposal.id }, data: { nossaFintechSyncError: `HTTP ${result.status}` } });
-        return res.status(502).json({ error: 'A Nossa Fintech não retornou os detalhes da operação.', providerStatus: result.status, details: result.data });
+        const hint = result.status === 404
+          ? 'A operação ou a rota não foi encontrada. Confira se o identificador vinculado é o debt_key retornado pela API; o número do contrato/ADE pode ser diferente. Confira também o produto e a promotora da conexão.'
+          : result.status === 401 || result.status === 403
+            ? 'A API recusou o acesso. Confira as credenciais e a liberação dessa operação para a promotora da proposta.'
+            : result.status === 429
+              ? 'A API limitou as consultas. Aguarde antes de tentar novamente.'
+              : result.status >= 500
+                ? 'O servidor da Nossa Fintech retornou uma falha. Tente novamente mais tarde.'
+                : 'Confira o identificador da operação, o produto e a promotora da conexão.';
+        const message = `Nossa Fintech · Consulta da operação · HTTP ${result.status}: ${hint}`;
+        await prisma.proposal.update({ where: { id: proposal.id }, data: { nossaFintechSyncError: message } });
+        return res.status(502).json({ error: message, providerStatus: result.status });
       }
       const payload = result.data as any;
       const operation = payload?.operation || payload?.proposal || payload?.data?.operation || payload?.data || payload;
