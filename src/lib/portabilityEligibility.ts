@@ -1,4 +1,5 @@
 import { normalizeInstitutionCode } from './strParticipants';
+import { evaluatePortabilityPolicy, type PortabilityContext } from './portabilityPolicy';
 
 // Creditor agreements from the company portability summary, 10/09/2026.
 // Missing or conflicting agreements require review, never automatic approval.
@@ -14,7 +15,9 @@ const rules: Record<string, { blocked: string[]; paid: Record<string, number> }>
  digio: { blocked: ['237','041','001'], paid: {} },
  banrisul: { blocked: [], paid: {} },
 };
-export function portabilityEligibility(destination: string, origin: unknown, paid: unknown) {
+export function portabilityEligibility(destination: string, origin: unknown, paid: unknown, input: PortabilityContext = {}) {
+ const current = evaluatePortabilityPolicy(destination, origin, paid, input);
+ if (current) return current;
  const key = destination.toLowerCase().replace(/[^a-z0-9]/g, '');
  const rule = rules[key];
  if (!rule) return { blocked: false, review: true, reason: 'Acordo de origem exige conferência no roteiro do banco.' };

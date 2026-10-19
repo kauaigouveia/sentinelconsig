@@ -1,3 +1,4 @@
+import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import type { PrismaClient } from '@prisma/client';
 import { FactaBankService } from './factaBankService';
 import { factaFetch } from './factaTransport.js';
@@ -8,7 +9,7 @@ export type FactaInssInput = {
   operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term: number;
   mode: 'AMOUNT' | 'INSTALLMENT'; value: number; rate?: number;
   debt?: number; originalTerm?: number; remainingTerm?: number; originalInstallment?: number;
-  income?: number; contract?: string;
+  income?: number; contract?: string; originalBank?: string; state?: string; benefitStartDate?: string;
 };
 export type FactaOffer = { code: string; name: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number; portabilityCode?: string };
 export const factaNumber = (value: unknown): number | undefined => {
@@ -66,6 +67,7 @@ export class FactaSimulationService {
   static async inss(prisma: PrismaClient, tenantId: string, input: FactaInssInput): Promise<{ offers: FactaOffer[]; message?: string }> {
     const config = await FactaBankService.getTenantConfig(prisma, tenantId);
     if (!config.simulationEnabled || !config.isConfigured) return { offers: [] };
+    if (['PORT','PORT_REFIN'].includes(input.operation)) { const check=simulationPortabilityCheck('facta',input);if(check.blocked)throw new Error(check.reason); }
     const query: Record<string, unknown> = { produto: 'D', convenio: 3, averbador: 3, cpf: input.cpf, data_nascimento: date(input.birthDate), prazo: input.term, opcao_valor: input.mode === 'AMOUNT' ? 1 : 2, ...(input.mode === 'AMOUNT' ? { valor: input.value } : { valor_parcela: input.value }) };
     if (input.operation === 'REFIN') {
       if (!input.contract || !factaNumber(input.income)) throw new Error('Para refinanciar na FACTA, informe a renda e selecione um contrato elegível.');
@@ -104,7 +106,10 @@ export class FactaSimulationService {
     } else if (input.operation === 'PORT') {
       offers = list(result.tabelas_portabilidade).filter(eligible).map(table => this.offer(table));
     } else offers = list(result.tabelas).filter(eligible).map(table => this.offer(table));
-    if (offers.length) return { offers };
+    if (offers.length) {
+      const checks = offers.map(offer=>({offer,check:['PORT','PORT_REFIN'].includes(input.operation)?simulationPortabilityCheck('facta',input,offer):null}));
+      return {offers:checks.filter(row=>!row.check?.blocked).map(row=>row.offer),message:checks.filter(row=>row.check?.blocked).map(row=>row.check!.reason).join(' ')||undefined};
+    }
     const returned = list(input.operation === 'PORT_REFIN' ? result.tabelas_refin_portabilidade : input.operation === 'PORT' ? result.tabelas_portabilidade : result.tabelas);
     const compatible = returned.filter(benefitEligible);
     const rateMatches = compatible.filter(rateEligible);

@@ -1,3 +1,5 @@
+import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
+import { PortabilityReviewFields } from './PortabilityReviewFields';
 import { SimulationCustomerSummary } from './SimulationCustomerSummary';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from './SimulationSteps';
 import { paidFromTerms, portabilityEligibility } from '../../lib/portabilityEligibility';
@@ -5,7 +7,7 @@ import { BankCodeSelect } from '../common/BankCodeSelect';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import { CurrencyInput } from '../common/CurrencyInput';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity, AlertCircle, LoaderCircle, X } from 'lucide-react';
 import { Partner, SimulationRequest } from '../../types';
 import { readJsonResponse } from '../../lib/httpJson';
@@ -23,6 +25,7 @@ const itemsOf = (data: any) => Array.isArray(data?.items) ? data.items : Array.i
 const messagesOf = (data: any) => Array.isArray(data?.messages) ? data.messages.map((item: any) => item?.text).filter(Boolean).join(' ') : '';
 
 export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue }) => {
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [form, setForm] = useState({
     name: '', cpf: '', birthDate: '', benefitNumber: '', benefitType: '',
     originLenderCode: '', originContractNumber: '', originalTerm: '',
@@ -37,13 +40,14 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [partnerId, setPartnerId] = useState('');
   const [saved, setSaved] = useState(false);
 
+  useEffect(()=>{setPortabilityContext({});},[form.cpf]);
   if (!isOpen) return null;
 
   const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null); setProviderNotes([]); setError(''); };
   const calculateNossaFintech = async (): Promise<SimulationRow[]> => {
     const response = await fetch('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lastDueBalance: Number(form.lastDueBalance), installmentFaceValue: Number(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? Number(form.refinancingRate) : undefined }),
+      body: JSON.stringify({ ...portabilityContext,originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: Number(form.lastDueBalance), installmentFaceValue: Number(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? Number(form.refinancingRate) : undefined }),
     });
     const result = await readJsonResponse(response);
     if (!response.ok || result.success === false) throw new Error(result.error || result.data?.message || `Nossa Fintech respondeu com HTTP ${result.status || response.status}.`);
@@ -56,7 +60,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const calculateFacta = async (): Promise<SimulationRow[]> => {
     const agreement = portabilityEligibility('facta', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)); if (agreement.blocked) throw new Error(agreement.reason);
-    const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: Number(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? Number(form.refinancingRate) : undefined, debt: Number(form.lastDueBalance), originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: Number(form.installmentFaceValue) }) });
+    const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portabilityContext,cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: Number(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? Number(form.refinancingRate) : undefined, debt: Number(form.lastDueBalance), originalBank: form.originLenderCode, originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: Number(form.installmentFaceValue) }) });
     const result = await readJsonResponse(response);
     if (!response.ok) throw new Error(result.error || 'Falha ao consultar FACTA.');
     if (result.message) throw new Error(result.message);
@@ -71,7 +75,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     const config = configResponse.ok ? await configResponse.json() : null;
     if (!config?.isConfigured || !config?.enabled) throw new Error('FINANTO não está configurada e ativada para esta empresa.');
     const call = async (endpoint: string, body: any) => {
-      const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint, body, clientBirthDate: form.birthDate }) });
+      const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint, body, clientBirthDate: form.birthDate, benefitType: Number(form.benefitType),portabilityContext }) });
       const data = await response.json();
       if (!response.ok || messagesOf(data)) throw new Error(data.error || messagesOf(data) || 'Falha na consulta FINANTO.');
       return data;
@@ -181,7 +185,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {step===2 && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar ao contrato"/>}
       {step===2 && error && <p role="alert" className="my-3 rounded-lg bg-rose-500/10 p-4 text-sm text-rose-500">{error}</p>}
       <div hidden={step!==2}>{loading && <p role="status" className="my-4 rounded-xl bg-blue-500/10 p-5 text-sm">Consultando as condições disponíveis…</p>}
-      <BankPlaybooksPanel input={{ originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments) }} />
+      <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);setRows([]);setSelected(null);}}/><BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments) }} />
       {happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-amber-600">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
       {providerNotes.length > 0 && <div className="mt-4 space-y-1 rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{providerNotes.map(note => <p key={note}>{note}</p>)}</div>}

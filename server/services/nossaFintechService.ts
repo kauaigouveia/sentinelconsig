@@ -1,3 +1,4 @@
+import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
@@ -148,7 +149,7 @@ export class NossaFintechService {
   }
 
   static async simulatePortabilityAcrossTables(prisma: PrismaClient, tenantId: string, input: {
-    lastDueBalance: number; installmentFaceValue: number; openedInstallmentNumber: number;
+    lastDueBalance: number; installmentFaceValue: number; openedInstallmentNumber: number; policyContext?: any;
     numberOfInstallments: number; legalRepresentative: boolean; birthDate: string; refinancingRate?: number; benefitType?: number;
   }) {
     const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
@@ -191,7 +192,8 @@ export class NossaFintechService {
       }));
       results.push(...batchResults.filter(row => {
         const troco = getNossaFintechTroco(row.data);
-        return troco === null || troco >= 0;
+        const check=input.policyContext?simulationPortabilityCheck('Nossa Fintech',input.policyContext,{amount:troco??undefined,rate:nossaFintechTableRate(row.table)}):null;
+        return (troco === null || troco >= 0)&&!check?.blocked;
       }));
     }
     return { success: true, status: 200, data: { tables: candidates.filter((table: any) => results.some(row => row.table === table)), results, excludedTables } };

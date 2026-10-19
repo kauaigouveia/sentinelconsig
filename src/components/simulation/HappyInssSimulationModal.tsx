@@ -1,3 +1,5 @@
+import { PortabilityReviewFields } from './PortabilityReviewFields';
+import { BankCodeSelect } from '../common/BankCodeSelect';
 import { SimulationBack } from './SimulationSteps';
 import { CurrencyInput } from '../common/CurrencyInput';
 import React, { useEffect, useState } from 'react';
@@ -47,6 +49,7 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
   partners,
   onSuccess,
 }) => {
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [step, setStep] = useState<InssStep>('CLIENTE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,17 +83,20 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
   const [prazo, setPrazo] = useState('84');
   // Portabilidade + Refin
   const [saldoDevedor, setSaldoDevedor] = useState('');
+  const [originalBank,setOriginalBank]=useState('');
+  const [paidInstallments,setPaidInstallments]=useState('');
   const [numeroParcelas, setNumeroParcelas] = useState('84');
   const [valorParcelas, setValorParcelas] = useState('');
   const [valorParcelasRefin, setValorParcelasRefin] = useState('');
   const [numeroParcelasRefin, setNumeroParcelasRefin] = useState('84');
-  const [taxaMensalRefin, setTaxaMensalRefin] = useState('1.66');
+  const [taxaMensalRefin, setTaxaMensalRefin] = useState('1.85');
   const [cdBeneficioTipo, setCdBeneficioTipo] = useState('1');
   const [idExternoPlano, setIdExternoPlano] = useState('1');
 
   // Resultado
   const [simulationResult, setSimulationResult] = useState<any>(null);
 
+  useEffect(()=>{setPortabilityContext({});},[cpf]);
   useEffect(() => { if (embedded && step === 'CLIENTE') { if (initialData?.name) setNome(initialData.name); if (initialData?.phone) setTelefone(initialData.phone); if (initialData?.cpf) setCpf(initialData.cpf); if (initialData?.birthDate) setDtNascimento(initialData.birthDate); if (initialData?.benefit) setNumeroBeneficio(initialData.benefit); if (initialData?.partnerId) setSelectedPartnerId(initialData.partnerId); } }, [embedded, step, initialData?.name, initialData?.phone, initialData?.cpf, initialData?.birthDate, initialData?.benefit, initialData?.partnerId]);
 
   if (!isOpen) return null;
@@ -285,7 +291,7 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cpf: cleanCpf,
-          saldo_devedor: Number(saldoDevedor),
+          ...portabilityContext,saldo_devedor: Number(saldoDevedor), originalBank, paidInstallments: paidInstallments==''?undefined:Number(paidInstallments), birthDate: dtNascimento,
           numero_parcelas: Number(numeroParcelas),
           valor_parcelas: Number(valorParcelas),
           valor_parcelas_refin: Number(valorParcelasRefin),
@@ -761,7 +767,8 @@ export const HappyInssSimulationModal: React.FC<HappyInssSimulationModalProps> =
 
               {/* FORM PORTABILIDADE + REFIN */}
               {opType === 'PORTABILIDADE_REFIN' && (
-                <div className="space-y-4">
+                <div className="space-y-4"><PortabilityReviewFields value={portabilityContext} onChange={setPortabilityContext}/>
+                  <div className="grid gap-4 sm:grid-cols-2"><div className="text-xs font-semibold"><BankCodeSelect label="Banco de origem" value={originalBank} onChange={setOriginalBank} className="mt-2 w-full rounded-lg border border-slate-500/30 bg-transparent p-2"/></div><label className="text-xs font-semibold">Parcelas pagas<input type="number" min={0} step={1} value={paidInstallments} onChange={event=>setPaidInstallments(event.target.value)} className="mt-2 w-full rounded-lg border border-slate-500/30 bg-transparent p-2"/></label></div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">

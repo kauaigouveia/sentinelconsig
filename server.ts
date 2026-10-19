@@ -1,3 +1,4 @@
+import { simulationPortabilityCheck, portabilityReviewMetadata } from './src/lib/portabilitySimulationPolicy.js';
 import { registerC6CltRoutes } from './server/services/c6CltService.js';
 import { registerTelegramRoutes } from './server/services/telegramNotificationService.js';
 import { registerBankPlaybookCatalog } from './server/services/bankPlaybookCatalog.js';
@@ -27,7 +28,7 @@ import { ALL_PERMISSIONS, getEffectivePermissions, getPermissionsForRole, hasPer
 import { canAccessSimulationSupport, supportDepartmentScope } from './src/lib/supportAccess.js';
 import { normalizeProposalType } from './src/lib/proposalTypeNormalizer.js';
 import { isValidCpf } from './src/lib/utils.js';
-import { ageAt, finantoAgeError, finantoBenefitError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
+import { ageAt, finantoCashOut, finantoAgeError, finantoBenefitError, finantoInstallmentError, finantoTableRateError, nossaFintechAgeError } from './src/lib/inssEligibility.js';
 import { Role } from './src/types/index.js';
 
 function dispatchImportWorker(task: () => Promise<unknown>, label: string): void {
@@ -14859,7 +14860,10 @@ async function auditAndEnsureMasterUser() {
         const ageError = finantoAgeError(req.body.clientBirthDate, Number(req.body.body?.refinancing?.term || req.body.body?.term));
         if (ageError) return res.status(422).json({ error: ageError });
       }
+      const portInput=endpoint==='/v3/loan-inss-simulations/calculation'&&req.body.body?.originContract?{...req.body.body,...portabilityReviewMetadata(req.body.portabilityContext),birthDate:req.body.clientBirthDate,benefitType:req.body.benefitType,operation:req.body.body.refinancing?'PORT_REFIN':'PORT'}:null;
+      if(portInput){const check=simulationPortabilityCheck('finanto',portInput);if(check.blocked)return res.status(422).json({error:check.reason});}
       const result = await FinantoService.request(prisma, tenantId, req.body.method, req.body.endpoint, req.body.body);
+      if(portInput&&result.success){const data=result.data as any;const check=simulationPortabilityCheck('finanto',portInput,{amount:finantoCashOut(data),contractAmount:data?.loanValue,installment:data?.refinancing?.installmentValue??data?.installmentValue,rate:data?.refinancing?.rate??portInput.refinancing?.rate});if(check.blocked)return res.status(422).json({error:check.reason});}
       res.status(result.status).json(result.data);
     } catch (err: any) {
       res.status(502).json({ error: err.message || 'Falha na chamada FINANTO.' });
@@ -14982,6 +14986,7 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
       const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, birthDate, benefitType, refinancingRate, legalRepresentative = false } = req.body || {};
+      const policyContext={...req.body,operation:'PORT_REFIN'};const policy=simulationPortabilityCheck('Nossa Fintech',policyContext);if(policy.blocked)return res.status(422).json({error:policy.reason});
       if (refinancingRate !== undefined && (!Number.isFinite(Number(refinancingRate)) || Number(refinancingRate) < 1.6 || Number(refinancingRate) > 1.85)) {
         return res.status(400).json({ error: 'Informe uma taxa de refinanciamento entre 1,60% e 1,85%.' });
       }
@@ -14992,7 +14997,7 @@ async function auditAndEnsureMasterUser() {
       const ageError = nossaFintechAgeError(birthDate, Number(numberOfInstallments));
       if (ageError) return res.status(422).json({ error: ageError });
       const result = await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, {
-        lastDueBalance: Number(lastDueBalance), installmentFaceValue: Number(installmentFaceValue),
+        policyContext,lastDueBalance: Number(lastDueBalance), installmentFaceValue: Number(installmentFaceValue),
         openedInstallmentNumber: Number(openedInstallmentNumber), numberOfInstallments: Number(numberOfInstallments), legalRepresentative, birthDate,
         refinancingRate: refinancingRate === undefined ? undefined : Number(refinancingRate), benefitType: benefitType === undefined ? undefined : Number(benefitType),
       });
@@ -16169,6 +16174,7 @@ async function auditAndEnsureMasterUser() {
 
       const cleanCpf = SimulationService.normalizeCpf(cpf);
       const simRes = await HappySimulationService.simularPortabilidadeRefinInss(prisma, tenantId, {
+        ...req.body,originalBank:req.body.originalBank,paidInstallments:req.body.paidInstallments,birthDate:req.body.birthDate,state:req.body.state,benefitStartDate:req.body.benefitStartDate,
         cpf: cleanCpf,
         saldo_devedor,
         numero_parcelas,
@@ -18260,7 +18266,7 @@ async function auditAndEnsureMasterUser() {
       if (!['SIMULATE', 'REFRESH', 'AUTHORIZE', 'CONTRACTS'].includes(action)) return res.status(400).json({ error: 'Ação inválida.' });
       const raw = req.body || {};
       if (action === 'CONTRACTS' && raw.product !== 'INSS') return res.status(400).json({ error: 'Consulta de contratos disponível somente para INSS.' });
-      const input = { product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, bmgActorId: "partner:" + context.access.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
+      const input = { state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:String(raw.sex||'').slice(0,1),originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10),product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, bmgActorId: "partner:" + context.access.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
       if (!isValidCpf(input.cpf) || !['INSS', 'CLT', 'FGTS'].includes(input.product) || !['Payment', 'Liquid'].includes(input.mode) || !Number.isInteger(input.term) || input.term < (input.product === 'CLT' ? 0 : 1) || input.term > 120) return res.status(400).json({ error: 'Informe CPF, produto e prazo válidos.' });
       if (action === 'SIMULATE' && input.product !== 'FGTS' && (!Number.isFinite(input.value) || input.value <= 0)) return res.status(400).json({ error: 'Informe um valor positivo para simular.' });
       if (input.product === 'CLT' && (!input.name || !/^\d{10,11}$/.test(input.phone) || (input.employerDocument && ![8, 14].includes(input.employerDocument.length)))) return res.status(400).json({ error: 'Informe nome, telefone e inscrição do empregador válidos.' });

@@ -1,3 +1,4 @@
+import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { importDaycoval, simulateDaycoval, DaycovalCalculator, type DaycovalWorkbook, serial, parseDate, addMonths } from './daycovalWorkbook.js';
 import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
 import { INSS_BENEFIT_TYPES } from '../../src/lib/inssBenefitTypes.js';
@@ -32,6 +33,13 @@ export function portRefinRatePolicies(bank: SpreadsheetBank, book: DaycovalWorkb
   return policies;
 }
 export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {
+  const check=simulationPortabilityCheck(bank,input);
+  if(check.blocked)throw new Error(check.reason);
+  const result=calculatePortRefinUnchecked(bank,book,input);
+  const offers=result.offers.map(offer=>{const check=simulationPortabilityCheck(bank,input,offer);return {...offer,eligible:offer.eligible&&!check.blocked,policyReview:check.reason,status:check.blocked?check.reason:offer.status};});
+  return {...result,offers,message:['message' in result?result.message:'',check.review?check.reason:''].filter(Boolean).join(' ')};
+}
+function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {
   if(bank==='DAYCOVAL')return simulateDaycoval(book,input);
   const date=parseDate(input.simulationDate),birth=parseDate(input.birthDate);if(birth>date)throw new Error('Nascimento inválido.');
   if(!Array.isArray(input.contracts)||input.contracts.length!==1)throw new Error('Esta planilha calcula um contrato por vez.');

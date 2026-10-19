@@ -1,3 +1,4 @@
+import { PortabilityReviewFields } from './PortabilityReviewFields';
 import { portabilityEligibility } from '../../lib/portabilityEligibility';
 import { BankCodeSelect } from '../common/BankCodeSelect';
 import { CurrencyInput } from '../common/CurrencyInput';
@@ -18,6 +19,7 @@ export function DaycovalSimulationModal({ partners = [], portal = false, bank = 
   const label = { DAYCOVAL: 'Daycoval', C6: 'C6', PARANA: 'Paraná' }[bank];
   const routeName = bank === 'DAYCOVAL' ? 'daycoval' : `${bank.toLowerCase()}-spreadsheet`;
   const dialog = useRef<HTMLElement>(null);
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [meta, setMeta] = useState<any>(null), [result, setResult] = useState<any>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ cpf: '', partnerId: '', name: '', birthDate: '', simulationDate: today(), term: '108', additionalMargin: '', requestedRefinAmount: '', refinanceRate: '1.85', benefitType: '', benefitContractCount: '', negativeMargin: 'NO', portInstallment: '' });
   const [contracts, setContracts] = useState<Contract[]>([blank()]);
@@ -26,11 +28,12 @@ export function DaycovalSimulationModal({ partners = [], portal = false, bank = 
   const endpoint = portal ? `/api/partner-portal/${routeName}` : `/api/${routeName}`;
   const simulationDate = new Date(`${form.simulationDate}T00:00:00Z`), birthDate = new Date(`${form.birthDate}T00:00:00Z`);
   const age = simulationDate.getUTCFullYear() - birthDate.getUTCFullYear() - (simulationDate.getUTCMonth() < birthDate.getUTCMonth() || simulationDate.getUTCMonth() === birthDate.getUTCMonth() && simulationDate.getUTCDate() < birthDate.getUTCDate() ? 1 : 0);
-  const maxTerm = bank === 'DAYCOVAL' && Number.isFinite(age) ? age >= 74 ? 0 : age === 73 ? 84 : age === 72 ? 96 : 108 : 108;
+  const maxTerm = bank === 'DAYCOVAL' && Number.isFinite(age) ? age >= 73 ? 0 : age === 72 ? 84 : age === 71 ? 96 : 108 : 108;
   const availableTerms: number[] = (meta?.terms || [108, 96, 84]).filter((term: number) => term <= maxTerm);
   const refinInstallment = Number(form.negativeMargin === 'YES' ? form.portInstallment : contracts[0]?.installment) + Number(form.additionalMargin || 0);
   const availableRates = selectablePortRefinRates(meta?.ratePolicies || [], Number(form.term), refinInstallment, [32,92].includes(Number(form.benefitType)) ? 15 : undefined);
   const rateKey = availableRates.join(',');
+  useEffect(()=>{setPortabilityContext({});},[form.cpf]);
   useEffect(() => { if (bank === 'PARANA' && !availableRates.includes(Number(form.refinanceRate))) { setForm(current => ({ ...current, refinanceRate: availableRates.length ? String(availableRates[0]) : '' })); setResult(null); attempt.current = crypto.randomUUID(); } }, [bank, rateKey]);
   useEffect(() => { if (availableTerms.length && !availableTerms.includes(Number(form.term))) { setForm(current => ({ ...current, term: String(availableTerms[0]) })); setResult(null); attempt.current = crypto.randomUUID(); } }, [maxTerm, meta?.hash]);
   useEffect(() => { let active = true; setMeta(null); setResult(null); setError(''); attempt.current = crypto.randomUUID(); void fetch(endpoint).then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error); if (active) setMeta(data); }).catch(err => { if (active) setError(err.message); }); return () => { active = false; }; }, [endpoint]);
@@ -53,7 +56,7 @@ export function DaycovalSimulationModal({ partners = [], portal = false, bank = 
     if (restrictions.length) { setResult(null); setError(restrictions.map(row => `Contrato ${row.index + 1}: ${row.check.reason}`).join(' ')); return; }
     setBusy(true); setError(''); setResult(null);
     try {
-      const response = await fetch(`${endpoint}/simulate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, negativeMargin: form.negativeMargin === 'YES', contracts: bank === 'DAYCOVAL' ? contracts : contracts.slice(0, 1), convenio: 'INSS', attemptKey: attempt.current }) });
+      const response = await fetch(`${endpoint}/simulate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, ...portabilityContext, negativeMargin: form.negativeMargin === 'YES', contracts: bank === 'DAYCOVAL' ? contracts : contracts.slice(0, 1), convenio: 'INSS', attemptKey: attempt.current }) });
       const data = await response.json(); if (!response.ok) { if (response.status === 409) attempt.current = crypto.randomUUID(); throw new Error(data.error || 'Não foi possível simular.'); }
       if (data.simulationId) onSuccess();
       if (currentBank.current === bank) { setResult(data); setMeta((previous: any) => ({ ...previous, ...data.version })); }
@@ -63,7 +66,7 @@ export function DaycovalSimulationModal({ partners = [], portal = false, bank = 
     <section ref={dialog} tabIndex={-1} role={embedded ? undefined : "dialog"} aria-modal={embedded ? undefined : true} aria-labelledby="daycoval-title" className={`flex w-full flex-col rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 ${embedded ? "" : "max-h-[94dvh] max-w-6xl shadow-2xl"}`}>
       <header className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-700"><div><h2 id="daycoval-title" className="flex items-center gap-2 text-lg font-bold"><FileSpreadsheet className="text-blue-500" />{label} · INSS</h2><p className="mt-1 text-xs text-slate-500">Portabilidade + refinanciamento · condições da planilha semanal</p></div>{!embedded && <button aria-label={`Fechar simulador ${label}`} disabled={busy} onClick={onClose}><X /></button>}</header>
       <div className="space-y-5 overflow-y-auto p-5">
-        {error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</div>}
+        <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);changed();}}/>{error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{error}</div>}
         {!meta && !error && <p className="text-sm">Carregando versão da planilha…</p>}
         {meta && <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">{meta.configured ? <><strong>{meta.enabled ? "Planilha ativa:" : "Planilha desativada:"}</strong> {meta.fileName}<span className="ml-3 text-xs text-slate-500">Versão {meta.versionDate?.split('-').reverse().join('/') || '—'}</span>{meta.versionDate && Date.parse(`${form.simulationDate}T00:00:00Z`) - Date.parse(`${meta.versionDate}T00:00:00Z`) > 7 * 86400000 && <p className="mt-2 text-amber-600">A versão tem mais de 7 dias. Confira se existe uma planilha mais recente.</p>}</> : <p>A empresa ainda não importou a planilha deste banco.{!meta.canImport && ' Solicite ao MASTER a importação em Integrações Bancárias → Planilhas.'}</p>}
         </div>}

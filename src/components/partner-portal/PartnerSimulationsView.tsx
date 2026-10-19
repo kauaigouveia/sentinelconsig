@@ -1,3 +1,5 @@
+import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
+import { PortabilityReviewFields } from '../simulation/PortabilityReviewFields';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from '../simulation/SimulationSteps';
 import { paidFromTerms } from '../../lib/portabilityEligibility';
 import { BankPlaybooksPanel } from '../simulation/BankPlaybooksPanel';
@@ -15,11 +17,13 @@ const money = (value: unknown) => value == null ? 'Não informado' : Number(valu
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 dark:border-slate-700 dark:bg-slate-950';
 export function PartnerSimulationsView() {
   const [step,setStep]=useState(0);
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [spreadsheetVisited,setSpreadsheetVisited]=useState(false);
   const [daycovalOpen, setDaycovalOpen] = useState(false);
   const [form, setForm] = useState({ product: 'INSS', operation: 'NEW', cpf: '', name: '', phone: '', birthDate: '', benefitNumber: '', benefitType: '', mode: 'Payment', term: '108', value: '', rate: '', debt: '', originalTerm: '', remainingTerm: '', originalInstallment: '', originalBank: '', originalContract: '', income: '', c6Contract: '', contract: '', happyPlan: '', employerDocument: '', legalRepresentative: false, hasInsurance: false });
   const [rows, setRows] = useState<any[]>([]), [clients, setClients] = useState<any[]>([]), [history, setHistory] = useState<any[]>([]), [contracts, setContracts] = useState<any[]>([]);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [error, setError] = useState('');
+  useEffect(()=>{setPortabilityContext({});},[form.cpf]);
   const load = async () => {
     const response = await fetch('/api/partner-portal/simulations');
     const data = await response.json();
@@ -32,7 +36,7 @@ export function PartnerSimulationsView() {
     if(action==='simulate' || action==='authorize')setStep(2);
     setBusy(true); setError(''); setMessage(''); setRows([]);
     try {
-      const response = await fetch(`/api/partner-portal/simulations/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, employerDocument: action === 'refresh' ? '' : form.employerDocument, attemptKey: crypto.randomUUID() }) });
+      const response = await fetch(`/api/partner-portal/simulations/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form,...portabilityContext, employerDocument: action === 'refresh' ? '' : form.employerDocument, attemptKey: crypto.randomUUID() }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a consulta.');
       if (action === 'contracts') setContracts(data.contracts || []);
@@ -76,7 +80,7 @@ export function PartnerSimulationsView() {
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}{message && <p role="status" className="text-sm text-emerald-600">{message}</p>}
     </fieldset></form>}
     {!daycovalOpen && step===2 && <div className="space-y-3"><SimulationBack onBack={()=>setStep(1)} disabled={busy} label="Voltar às condições"/>{busy&&<p role="status" className="rounded-xl bg-blue-500/10 p-5 text-sm">Consultando os bancos disponíveis…</p>}{error&&<p role="alert" className="text-sm text-rose-500">{error}</p>}{message&&<p role="status" className="text-sm">{message}</p>}</div>}
-    {form.product === 'INSS' && <BankPlaybooksPanel portal input={{ originBank: form.originalBank, paidInstallments: paidFromTerms(form.originalTerm, form.remainingTerm), birthDate: form.birthDate, species: form.benefitType, operation: form.operation as 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN', term: Number(form.term), legalRepresentative: form.legalRepresentative }} />}
+    {form.product === 'INSS' && ['PORT','PORT_REFIN'].includes(form.operation)&&<PortabilityReviewFields value={portabilityContext} onChange={next=>{setPortabilityContext(next);setRows([]);}}/>}{form.product === 'INSS' && <BankPlaybooksPanel portal input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originalBank, paidInstallments: paidFromTerms(form.originalTerm, form.remainingTerm), birthDate: form.birthDate, species: form.benefitType, operation: form.operation as 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN', term: Number(form.term), legalRepresentative: form.legalRepresentative }} />}
     <div hidden={step!==2 || daycovalOpen}><OrderedSimulationBanks key={form.product + form.operation} operation={form.operation} groups={[...new Set(rows.map(row => String(row.provider || row.institution || "Outros")))].map(bank => ({ bank, visible: true, content: <>{rows.filter(row => String(row.provider || row.institution || "Outros") === bank).map((row, index) => <article key={index} className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-bold">{row.name || row.table || row.institution}</h3><p className="text-xs text-slate-500">{row.provider} · {row.institution}</p>{row.state === 'OFFER' ? <dl className="mt-3 grid gap-3 sm:grid-cols-4"><div><dt className="text-xs">Valor liberado</dt><dd className="font-bold">{money(row.amount)}</dd></div><div><dt className="text-xs">Valor do contrato</dt><dd>{money(row.contractAmount)}</dd></div><div><dt className="text-xs">Parcela</dt><dd>{money(row.installment)}</dd></div><div><dt className="text-xs">Prazo / taxa</dt><dd>{row.term || '—'} meses · {row.rate ?? '—'}%</dd></div></dl> : <p className="mt-2 text-sm">{row.message || 'Nenhum valor liberado.'}{row.link && /^https:\/\//.test(row.link) && <a className="ml-2 underline" href={row.link} target="_blank" rel="noreferrer">Abrir autorização</a>}</p>}</article>)}</> }))} />
     </div><details className="rounded-xl border p-5 dark:border-slate-800"><summary className="cursor-pointer font-bold">Histórico de simulações</summary><p className="mb-3 text-xs text-slate-500">Últimas 200 simulações. Ofertas sem digitação em 5 dias úteis são marcadas como perdidas.</p><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{['Data', 'CPF', 'Código do parceiro', 'Modalidade', 'Valor liberado', 'Status', 'Prazo para digitação'].map(label => <th className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{history.map(item => <tr key={item.id} className="border-t dark:border-slate-800"><td className="p-2">{new Date(item.createdAt).toLocaleString('pt-BR')}</td><td className="p-2">{formatCpf(item.cpf)}</td><td className="p-2">{item.partnerCode}</td><td className="p-2">{item.operationType}</td><td className="p-2">{money(item.selectedCondition?.amount)}</td><td className="p-2">{item.status === 'DIGITADA PELA MESA' ? `DIGITADA — ${item.matchedProposalNumber || ''}` : item.status === 'PERDIDA (NÃO DIGITADA)' ? 'OFERTA PERDIDA' : item.status}{item.matchedAfterDeadline && <small className="block text-amber-600">Digitada após o prazo</small>}</td><td className="p-2">{item.offerExpiresAt ? new Date(item.offerExpiresAt).toLocaleString('pt-BR') : '—'}</td></tr>)}</tbody></table></div></details>
   </div>;

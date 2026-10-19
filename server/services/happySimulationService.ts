@@ -1,3 +1,4 @@
+import { simulationPortabilityCheck, filterPortabilityResponse } from '../../src/lib/portabilitySimulationPolicy.js';
 import { integrationConfigStore } from './bankPromoterConfig.js';
 import { PrismaClient } from '@prisma/client';
 import {
@@ -295,6 +296,7 @@ export class HappySimulationService {
     tenantId: string,
     data: HappyInssPortabilidadeRefinRequest
   ): Promise<any> {
+    const check=simulationPortabilityCheck('happy',data);if(check.blocked)throw new Error(check.reason);
     const { headers, baseUrl } = await this.getHeaders(prisma, tenantId, 'public');
     const url = `${baseUrl}/portabilidade/refin/simulacao`;
 
@@ -326,7 +328,7 @@ export class HappySimulationService {
       throw new Error(`Erro ao simular portabilidade + refin INSS (HTTP ${response.status}): ${errDetail}`);
     }
 
-    return response.json();
+    return filterPortabilityResponse('happy',data,await response.json());
   }
 
   // =========================================================================

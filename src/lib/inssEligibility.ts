@@ -127,7 +127,7 @@ export function nossaFintechBalanceError(table: any, balance: number): string | 
   const name = String(table.name || table.nome_tabela || table.description || '');
   const rateMatch = /([12][.,]\d+)\s*%/.exec(name);
   const rate = rateMatch ? Number(rateMatch[1].replace(',', '.')) : Number(table.monthly_rate || table.rate || table.taxa);
-  let minimum = rate >= 1.65 && rate <= 1.78 ? 13000 : rate >= 1.79 && rate <= 1.85 ? 4000 : 0;
+  let minimum = 2900;
   if (Math.abs(rate - 1.85) < 0.00001 && /EXCLUSIV/i.test(name)) minimum = 2900;
   // Uma restrição adicional explicitamente devolvida no nome da tabela também vale.
   const declared = /saldo\s*m[ií]n(?:imo)?\s*(?:R\$)?\s*([\d.,]+)/i.exec(name);

@@ -1,3 +1,4 @@
+import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { paidFromTerms, portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
 import type { PrismaClient } from '@prisma/client';
 import { FactaSimulationService, type FactaInssInput } from './factaSimulationService.js';
@@ -29,7 +30,8 @@ export class PartnerSimulationService {
     if (action !== 'SIMULATE') return { rows: await partnerHappySimulation(prisma, tenantId, input, action), message: '' };
     const offers: any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
-      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = portabilityEligibility(provider, input.originalBank, paidFromTerms(input.originalTerm, input.remainingTerm)); if (check.blocked) throw new Error(check.reason); } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
+      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) throw new Error(check.reason); } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
+      if (['PORT','PORT_REFIN'].includes(input.operation)) { for (let index=offers.length-1;index>=0;index--) { const offer=offers[index]; const check=simulationPortabilityCheck(offer.provider||offer.institution,input,offer); if(check.blocked){notes.push(check.reason);offers.splice(index,1);}else offer.policyReview=check.reason; } }
       if (onRows) await onRows([...offers]);
     };
     await Promise.all([
@@ -49,7 +51,7 @@ export class PartnerSimulationService {
         const book = decodeDaycoval(config.configValue); if (book.enabled === false) return;
         if (bank === 'PARANA') { notes.push('Paraná: simule em PORT + REFIN · Planilhas para informar a quantidade de contratos e o enquadramento de margem.'); return; }
         const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        const result = calculatePortRefin(bank, book, { birthDate: input.birthDate, benefitType: input.benefitType, simulationDate: date, term: bank === 'C6' ? 108 : input.term, refinanceRate: input.rate, contracts: [{ balance: input.debt, installment: input.originalInstallment, remaining: input.remainingTerm }], additionalMargin: Math.max(0, Number(input.value) - Number(input.originalInstallment)) });
+        const result = calculatePortRefin(bank, book, { birthDate: input.birthDate, benefitType: input.benefitType, simulationDate: date, term: bank === 'C6' ? 108 : input.term, refinanceRate: input.rate, contracts: [{ originBank: input.originalBank, paidInstallments: paidFromTerms(input.originalTerm,input.remainingTerm), balance: input.debt, installment: input.originalInstallment, remaining: input.remainingTerm }], additionalMargin: Math.max(0, Number(input.value) - Number(input.originalInstallment)) });
         offers.push(...result.offers.filter(offer => offer.eligible && offer.amount > 0).map(offer => ({ ...offer, name: offer.tableName, code: offer.tableId, institution: bank, state: 'OFFER', spreadsheetVersion: result.version, spreadsheet: { bank, ...result } })));
       })),
       collect('BMG', async () => { if (input.bmgActorId) offers.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, input)); }),
@@ -59,7 +61,7 @@ export class PartnerSimulationService {
         if (!['NEW', 'PORT_REFIN'].includes(input.operation)) { notes.push('Nossa Fintech: modalidade disponível neste fluxo somente para Novo e Portabilidade + Refin.'); return; }
         const result = input.operation === 'NEW'
           ? await NossaFintechService.simulateInssNovoAcrossTables(prisma, tenantId, { numberOfInstallments: input.term, mode: input.mode === 'Payment' ? 'INSTALLMENT' : 'AMOUNT', value: input.value, legalRepresentative: !!input.legalRepresentative, birthDate: input.birthDate, benefitType: input.benefitType })
-          : await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, { numberOfInstallments: input.term, lastDueBalance: input.debt, installmentFaceValue: input.originalInstallment, openedInstallmentNumber: input.remainingTerm, legalRepresentative: !!input.legalRepresentative, birthDate: input.birthDate, benefitType: input.benefitType, refinancingRate: input.rate });
+          : await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, { policyContext:input,numberOfInstallments: input.term, lastDueBalance: input.debt, installmentFaceValue: input.originalInstallment, openedInstallmentNumber: input.remainingTerm, legalRepresentative: !!input.legalRepresentative, birthDate: input.birthDate, benefitType: input.benefitType, refinancingRate: input.rate });
         if (!result.success) throw new Error((result.data as any)?.message || 'Não foi possível consultar as condições.');
         const data = result.data as any;
         if (data.message) notes.push(`Nossa Fintech: ${data.message}`);

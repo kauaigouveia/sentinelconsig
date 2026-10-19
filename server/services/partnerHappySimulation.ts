@@ -38,7 +38,7 @@ export async function partnerHappySimulation(prisma: PrismaClient, tenantId: str
   if (input.operation === 'PORT_REFIN' && (!input.happyPlan || !input.rate)) return pending('Para consultar Happy Port/Refin, selecione taxa e informe o plano Happy.');
   const result = input.operation === 'NEW'
     ? await HappySimulationService.simularMargemLivreInss(prisma, tenantId, { cpf: input.cpf, numero_beneficio: input.benefitNumber, valor_parcela: input.value, prazo: input.term })
-    : await HappySimulationService.simularPortabilidadeRefinInss(prisma, tenantId, { cpf: input.cpf, saldo_devedor: input.debt, numero_parcelas: input.remainingTerm, valor_parcelas: input.originalInstallment, valor_parcelas_refin: input.value, numero_parcelas_refin: input.term, taxa_mensal_refin: input.rate, cd_beneficio_tipo: input.benefitType, id_externo_plano: input.happyPlan });
+    : await HappySimulationService.simularPortabilidadeRefinInss(prisma, tenantId, { ...input, cpf: input.cpf, saldo_devedor: input.debt, numero_parcelas: input.remainingTerm, valor_parcelas: input.originalInstallment, valor_parcelas_refin: input.value, numero_parcelas_refin: input.term, taxa_mensal_refin: input.rate, cd_beneficio_tipo: input.benefitType, id_externo_plano: input.happyPlan });
   const offers: any[] = [];
   const visit = (value: any) => {
     if (!value || typeof value !== 'object' || value.erro || value.error || value.success === false) return;

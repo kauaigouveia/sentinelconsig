@@ -1,3 +1,5 @@
+import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
+import { PortabilityReviewFields } from './PortabilityReviewFields';
 import { SimulationCustomerSummary } from './SimulationCustomerSummary';
 import { c6MatchesSelection } from '../../lib/c6Eligibility';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from './SimulationSteps';
@@ -64,6 +66,7 @@ const API_OPERATION_CODES: Record<Props['operationCode'], number> = { '1': 1, '2
 
 export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, operationCode, onClose, partners, onSuccess, initialDraft }) => {
   const appliedDraft = useRef(false);
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
   const [draftReady, setDraftReady] = useState(false);
   const [step,setStep]=useState(0);
   const [factaOffers, setFactaOffers] = useState<FactaComparisonOffer[]>([]);
@@ -137,6 +140,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
 
+  useEffect(()=>{setPortabilityContext({});},[cpf]);
   useEffect(() => {
     const cep = zipCode.replace(/\D/g, '');
     if (cep.length !== 8 || !typing) { setCepMessage(''); return; }
@@ -263,7 +267,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
       const factaPromise = (async () => {
         if (originContract) { const check = portabilityEligibility('facta', originLenderCode, paidFromTerms(originTerm, originInstallmentsRemaining)); if (check.blocked) { setFactaMessage(check.reason); return 0; } }
         try {
-          const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, benefitType: Number(benefitType), operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], mode: operationCode === '1' ? newSimulationMode : 'INSTALLMENT', value: operationCode === '1' ? newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment : (operationCode === '4' ? refinancing?.installmentValue : originContract?.installmentValue) || enteredInstallment || factaContracts.find(item => item.code === factaContract)?.installment, term: Number(operationCode === '4' ? refinanceTerm : term), rate: Number(operationCode === '4' ? refinanceRate : rate), debt: originContract?.dueBalanceValue, originalTerm: originContract?.term, remainingTerm: originContract?.installmentsRemaining, originalInstallment: originContract?.installmentValue, income: parseAmount(income), contract: factaContract }) });
+          const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portabilityContext,benefitStartDate,cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, benefitType: Number(benefitType), operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], mode: operationCode === '1' ? newSimulationMode : 'INSTALLMENT', value: operationCode === '1' ? newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment : (operationCode === '4' ? refinancing?.installmentValue : originContract?.installmentValue) || enteredInstallment || factaContracts.find(item => item.code === factaContract)?.installment, term: Number(operationCode === '4' ? refinanceTerm : term), rate: Number(operationCode === '4' ? refinanceRate : rate), debt: originContract?.dueBalanceValue, originalBank: originLenderCode, originalTerm: originContract?.term, remainingTerm: originContract?.installmentsRemaining, originalInstallment: originContract?.installmentValue, income: parseAmount(income), contract: factaContract }) });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || 'Falha na consulta.');
           setFactaOffers(result.offers || []); setFactaMessage(result.message || '');
@@ -274,7 +278,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
         setC6Offers([]); setC6Message('');
         if (operationCode === '2' || operationCode === '4') return 0;
         try {
-          const response = await fetch('/api/integrations/c6/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, benefitType: Number(benefitType), operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], mode: operationCode === '1' ? newSimulationMode : 'INSTALLMENT', value: operationCode === '1' && newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment, term: Number(term), rate: parseAmount(rate), income: parseAmount(income), c6Contract }) });
+          const response = await fetch('/api/integrations/c6/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portabilityContext,benefitStartDate,cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, benefitType: Number(benefitType), operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], mode: operationCode === '1' ? newSimulationMode : 'INSTALLMENT', value: operationCode === '1' && newSimulationMode === 'AMOUNT' ? enteredLoan : enteredInstallment, term: Number(term), rate: parseAmount(rate), income: parseAmount(income), c6Contract }) });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || 'Falha na consulta C6.');
           setC6Offers(data.offers || []); setC6Message(data.message || (data.offers?.length ? '' : 'Nenhuma oferta C6 corresponde à taxa e ao prazo escolhidos.'));
@@ -345,7 +349,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
               ...(originContracts ? { originContracts } : {}),
               ...(refinancing ? { refinancing } : {}),
             };
-            const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-inss-simulations/calculation', body: payload, clientBirthDate: birthDate }) });
+            const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint: '/v3/loan-inss-simulations/calculation', body: payload, clientBirthDate: birthDate, benefitType: Number(benefitType), portabilityContext:{...portabilityContext,benefitStartDate} }) });
             const data = await readJsonResponse(response);
             if (!response.ok || readMessages(data)) throw new Error(data.error || readMessages(data) || 'A FINANTO não calculou esta tabela.');
             if (operationCode === '4') {
@@ -468,7 +472,8 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
           <fieldset data-simulation-step hidden={step!==0 || typing} disabled={step!==0 || typing} className="space-y-5">
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Dados obrigatórios do cliente</h3><p className="text-xs text-slate-500">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Nome do cliente (opcional)', name, setName, 'text', false)}{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
-          <BankPlaybooksPanel input={{ originBank: originLenderCode, paidInstallments: paidFromTerms(originTerm, originInstallmentsRemaining), birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
+          {['2','4'].includes(operationCode)&&<PortabilityReviewFields value={{benefitStartDate,...portabilityContext}} onChange={value=>{setPortabilityContext(value);setBenefitStartDate(value.benefitStartDate||'');setSelectedCondition(undefined);setCalculation(null);setQuotes([]);setFactaOffers([]);}}/>}
+          <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: originLenderCode, paidInstallments: paidFromTerms(originTerm, originInstallmentsRemaining), birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
           <PresencaInssBenefits key={normalizeCpf(cpf)} cpf={cpf} onApply={applyPresencaBenefit} onUseMargin={operationCode === '1' ? data => { if (normalizeCpf(cpf) !== data.cpf || data.margin === null || data.margin <= 0) return; applyPresencaBenefit(data); setNewSimulationMode('INSTALLMENT'); setInstallmentValue(data.margin.toFixed(2)); } : undefined} />
           <SimulationContinue disabled={loading} onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset>
           <fieldset hidden={step!==1 || typing} disabled={step!==1 || typing} className="space-y-5">
@@ -492,7 +497,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
           </div>}
           {operationCode === '1' && <label className={labelClass}>Renda mensal para C6 (R$)<CurrencyInput min="0.01" step="0.01" value={income} onValueChange={value => setIncome(value)} className={inputClass} /></label>}
           {!canCalculate && <p className="text-xs text-slate-500">Informe os dados obrigatorios do cliente acima e selecione os campos desta modalidade, taxa e prazo.</p>}<button type="button" onClick={()=>{setStep(2);void handleCalculate();}} disabled={loading || loadingRules || !canCalculate} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{loading ? 'Calculando...' : 'Comparar ofertas'}</button>
-          <BmgCustomerAuthorization input={{ product: 'INSS', operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, income: parseAmount(income), term: Number(term), value: newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : parseAmount(installmentValue), mode: newSimulationMode }} onRows={setBmgRows} />
+          <BmgCustomerAuthorization input={{ product: 'INSS', operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], ...portabilityContext,benefitStartDate,cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, income: parseAmount(income), term: Number(term), value: newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : parseAmount(installmentValue), mode: newSimulationMode }} onRows={setBmgRows} />
           <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/></section></fieldset>
           <fieldset hidden={step!==2 || typing} disabled={step!==2 || typing} className="space-y-5"><SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar às condições"/>{loading && <p role="status" className="rounded-xl bg-blue-500/10 p-5 text-sm">Consultando as condições disponíveis…</p>}
           <section className="space-y-5"><h3 className="text-lg font-bold">Ofertas disponíveis</h3><OrderedSimulationBanks operation={({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode]} groups={[
