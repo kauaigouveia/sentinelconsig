@@ -26,9 +26,13 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
       return session ? { tenantId: session.tenant.id, partnerId: session.partner.id, accessName: session.access.name, userId: null, userName: session.access.name, canImport: false } : null;
     }
     const session = await getSession(req);
-    if (!session?.user || !session.effectiveTenantId || !hasPermission(session.activeRole || session.user.role, session.activePermissions || session.user.customPermissions, permission)) return null;
+    if (!session?.user || !session.effectiveTenantId) return null;
+    const role = session.user.role === 'PLATFORM_MASTER' ? 'PLATFORM_MASTER' : session.activeRole || session.user.role;
+    const permissions = session.activePermissions || session.user.customPermissions;
+    const canImport = ['MASTER', 'PLATFORM_MASTER'].includes(role) || hasPermission(role, permissions, 'integrations.manage');
+    if (!hasPermission(role, permissions, permission) && !(permission === 'simulations.view' && canImport)) return null;
     return { tenantId: session.effectiveTenantId, partnerId: null, accessName: null, userId: session.user.id, userName: session.user.name,
-      canImport: ['MASTER', 'PLATFORM_MASTER'].includes(session.activeRole || session.user.role) };
+      canImport };
   };
   for (const bank of Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]) {
   const model=SPREADSHEET_MODELS[bank], KEY=model.key, routeName=bank==='DAYCOVAL'?'daycoval':`${bank.toLowerCase()}-spreadsheet`;
@@ -86,7 +90,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
   app.post(`/api/${routeName}/import`, limiter, async (req, res) => {
     try {
     const ctx = await context(req, false, 'simulations.view');
-    if (!ctx?.canImport) return res.status(403).json({ error: 'Somente o MASTER da empresa pode atualizar e ativar a planilha.' });
+    if (!ctx?.canImport) return res.status(403).json({ error: 'Para importar a planilha, solicite a permissão de gerenciar integrações na empresa.' });
     upload(req, res, async error => {
       if (error) return res.status(400).json({ error: 'Envie um único arquivo Excel de até 3,5 MB.' });
       try {
@@ -109,7 +113,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
   app.patch(`/api/${routeName}/activation`, async (req, res) => {
     try {
       const ctx = await context(req, false, 'simulations.view');
-      if (!ctx?.canImport) return res.status(403).json({ error: 'Somente o MASTER da empresa pode ativar ou desativar a planilha.' });
+      if (!ctx?.canImport) return res.status(403).json({ error: 'Para ativar ou desativar a planilha, solicite a permissão de gerenciar integrações na empresa.' });
       if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'Informe a ativação da planilha.' });
       const book = await read(ctx.tenantId, bank); if (!book) return res.status(409).json({ error: 'Importe a planilha antes de ativar.' });
       book.enabled = req.body.enabled;
