@@ -3362,7 +3362,7 @@ async function auditAndEnsureMasterUser() {
         include: { client: true, bank: true, promoter: true, partner: true, product: true, convenio: true, status: true },
       });
 
-      await PartnerSimulationTracking.reconcile(prisma, tenantId).catch(error => logger.error({ error: error.message, tenantId }, 'Falha ao vincular simulação; nova tentativa na leitura da lista.'));
+      await PartnerSimulationTracking.reconcile(prisma, tenantId, new Date(), { partnerId: proposal.partnerId, cpf: proposal.client.cpf.replace(/\D/g, '') }).catch(error => logger.error({ error: error.message, tenantId }, 'Falha ao vincular simulação; nova tentativa na leitura da lista.'));
       // Emissão pós-commit de PROPOSAL_CREATED estritamente para o tenant da sessão
       sseRegistry.broadcastToTenant(tenantId, {
         type: 'PROPOSAL_CREATED',

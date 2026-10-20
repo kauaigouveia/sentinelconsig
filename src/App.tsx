@@ -891,9 +891,10 @@ function AppMainContent() {
         <NewProductionModal
           isOpen={isNewProductionOpen}
           onClose={() => setIsNewProductionOpen(false)}
-          onSuccess={() => {
+          onSuccess={(count) => {
             setIsNewProductionOpen(false);
             navigate('/propostas');
+            toastService.success('Cadastro concluído', `${count} proposta(s) cadastrada(s) com sucesso.`);
           }}
         />
       )}

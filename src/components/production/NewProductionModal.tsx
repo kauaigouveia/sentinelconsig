@@ -578,11 +578,9 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       }
 
       setSuccessMsg(`${allCreated.length} propostas cadastradas com sucesso para ${client.fullName}!`);
-      setTimeout(() => {
-        setIsSaving(false);
-        onSuccess(allCreated.length);
-        onClose();
-      }, 1200);
+      setIsSaving(false);
+      onSuccess(allCreated.length);
+      onClose();
     } catch (err: any) {
       setIsSaving(false);
       if (createdRows.size > 0) {

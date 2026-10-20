@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Building2,
   Plus,
@@ -34,16 +34,20 @@ export const BankPromoterManagement: React.FC = () => {
 
   const [message, setMessage] = useState<string | null>(null);
 
+  const refreshGeneration = useRef(0);
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     try {
       const [banksRes, promRes, bpRes] = await Promise.all([
-        fetch('/api/banks'),
-        fetch('/api/promoters'),
-        fetch('/api/bank-promoters'),
+        fetch('/api/banks', { cache: 'no-store' }),
+        fetch('/api/promoters', { cache: 'no-store' }),
+        fetch('/api/bank-promoters', { cache: 'no-store' }),
       ]);
 
+      if (generation !== refreshGeneration.current) return;
       if (banksRes.ok) {
         const banksData = await banksRes.json();
+        if (generation !== refreshGeneration.current) return;
         if (Array.isArray(banksData)) {
           StorageService.cacheBanksFromApi(banksData);
           setBanks(StorageService.getBanks());
@@ -54,6 +58,7 @@ export const BankPromoterManagement: React.FC = () => {
 
       if (promRes.ok) {
         const promData = await promRes.json();
+        if (generation !== refreshGeneration.current) return;
         if (Array.isArray(promData)) {
           StorageService.cachePromotersFromApi(promData);
           setPromoters(StorageService.getPromoters());
@@ -64,6 +69,7 @@ export const BankPromoterManagement: React.FC = () => {
 
       if (bpRes.ok) {
         const bpData = await bpRes.json();
+        if (generation !== refreshGeneration.current) return;
         if (Array.isArray(bpData)) {
           StorageService.cacheBankPromotersFromApi(bpData);
           setBankPromoters(StorageService.getBankPromoters());
@@ -72,6 +78,7 @@ export const BankPromoterManagement: React.FC = () => {
         setBankPromoters(StorageService.getBankPromoters());
       }
     } catch (err) {
+      if (generation !== refreshGeneration.current) return;
       console.warn('[BankPromoterManagement] Erro ao sincronizar com backend, usando cache:', err);
       setBanks(StorageService.getBanks());
       setPromoters(StorageService.getPromoters());
@@ -104,10 +111,15 @@ export const BankPromoterManagement: React.FC = () => {
         throw new Error(errJson.error || 'Erro ao cadastrar banco no servidor.');
       }
 
+      const saved = await res.json();
+      if (!saved?.id) throw new Error('O servidor não retornou o banco cadastrado.');
+      ++refreshGeneration.current;
+      StorageService.cacheBanksFromApi([...StorageService.getBanks().filter(item => item.id !== saved.id), saved]);
+      setBanks(StorageService.getBanks());
       setNewBankName('');
       setNewBankCode('');
       setMessage('Banco cadastrado com sucesso!');
-      await refresh();
+      void refresh();
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       alert(err.message || 'Erro ao cadastrar banco.');
@@ -131,9 +143,14 @@ export const BankPromoterManagement: React.FC = () => {
         throw new Error(errJson.error || 'Erro ao cadastrar promotora no servidor.');
       }
 
+      const saved = await res.json();
+      if (!saved?.id) throw new Error('O servidor não retornou a promotora cadastrada.');
+      ++refreshGeneration.current;
+      StorageService.cachePromotersFromApi([...StorageService.getPromoters().filter(item => item.id !== saved.id), saved]);
+      setPromoters(StorageService.getPromoters());
       setNewPromoterName('');
       setMessage('Promotora cadastrada com sucesso!');
-      await refresh();
+      void refresh();
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       alert(err.message || 'Erro ao cadastrar promotora.');

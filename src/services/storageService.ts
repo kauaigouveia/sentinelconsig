@@ -3689,6 +3689,7 @@ export class StorageService {
     const isC6Bank = selectedBank?.code === '336' || Boolean(selectedBank?.name && selectedBank.name.toUpperCase().includes('C6'));
     const finalC6Number = data.c6ProposalNumber || (isC6Bank ? cleanNumber : undefined);
 
+    let savedProposal: any = null;
     // Persist to PostgreSQL (Source of Truth)
     if (typeof window !== 'undefined') {
       try {
@@ -3732,6 +3733,7 @@ export class StorageService {
         const dbProposal = await res.json();
         if (!dbProposal?.id) throw new Error('A API não retornou a proposta salva.');
         targetProposalId = dbProposal.id;
+        savedProposal = dbProposal;
       } catch (err: any) {
         console.error('[PROPOSAL ASYNC POST ERROR]', err);
         throw err;
@@ -3769,8 +3771,10 @@ export class StorageService {
       newProposal.portabilitySlaStartedAt = new Date().toISOString();
     }
 
-    proposals.push(newProposal);
-    this.set(STORAGE_KEYS.PROPOSALS, proposals);
+    if (savedProposal) Object.assign(newProposal, this.mapDbProposalToFrontend(savedProposal));
+    // Read after the POST: realtime updates may have refreshed the cache while saving.
+    const currentProposals = this.getProposals().filter(item => item.id !== newProposal.id);
+    this.set(STORAGE_KEYS.PROPOSALS, [...currentProposals, newProposal]);
 
     // If related to a portability proposal, create the ProposalRelation
     if (data.relatedPortabilityId) {
