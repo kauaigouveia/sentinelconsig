@@ -95,9 +95,12 @@ export class V8BankService {
         const data = await response.json().catch(() => null);
         const rows = Array.isArray(data) ? data : data?.[check.field] ?? data?.data?.[check.field];
         const detail = JSON.stringify(data?.errors || data?.detail || data?.message || '').toLowerCase();
+        const accessDenied = data?.type === 'permission_denied' || response.status === 403;
+        const requiredPermission = check.product === 'CLT' ? 'get-configs:private-consignment-simulation' : 'get-fees:fgts-simulation';
         const parameters = ['provider', 'page', 'limit', 'config_id', 'consult_id'].filter(field => detail.includes(field));
-        const reason = !response.ok ? (parameters.length ? `A V8 recusou estes parâmetros: ${parameters.join(', ')}.` : response.status === 400 ? 'A V8 recusou os parâmetros da consulta.' : 'A V8 não liberou a consulta de tabelas.') : !Array.isArray(rows) ? 'O formato das tabelas retornadas não foi reconhecido.' : '';
-        return { product: check.product, httpStatus: response.status, available: response.ok && !data?.error && Array.isArray(rows), tableCount: Array.isArray(rows) ? rows.length : 0, reason };
+        const reason = accessDenied ? `O usuário autenticou, mas não tem permissão para consultar estas tabelas. Solicite à V8 a liberação de ${requiredPermission}.`
+          : !response.ok ? (parameters.length ? `A V8 recusou estes parâmetros: ${parameters.join(', ')}.` : response.status === 400 ? 'A V8 recusou a consulta. Solicite ao suporte V8 a verificação do acesso deste usuário.' : 'A V8 não liberou a consulta de tabelas.') : !Array.isArray(rows) ? 'O formato das tabelas retornadas não foi reconhecido.' : '';
+        return { product: check.product, httpStatus: response.status, available: response.ok && !data?.error && !accessDenied && Array.isArray(rows), tableCount: Array.isArray(rows) ? rows.length : 0, reason, accessDenied, ...(accessDenied ? { requiredPermission } : {}) };
       } catch { return { product: check.product, httpStatus: null, available: false, tableCount: 0 }; }
     }));
     return { authenticated: true, message: 'Autenticação V8 concluída. Consulte abaixo a disponibilidade dos produtos selecionados.', checks };

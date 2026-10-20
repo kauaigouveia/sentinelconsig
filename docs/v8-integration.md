@@ -37,3 +37,14 @@ As próximas entregas precisam persistir o vínculo entre ID externo e proposta 
 ## Sondagem de acesso sem credenciais
 
 Em 19/10/2026, GET de bancos retornou 200, tabelas FGTS e configurações CLT retornaram 401 por ausência de Authorization. Isso confirma alcance desses recursos, não valida autenticação, simulação, contratação ou callbacks. Nenhuma proposta foi criada, consentimento enviado ou webhook registrado nesta sondagem.
+
+## Diagnóstico autenticado — 20/10/2026
+
+A autenticação no host confirmado pelo suporte retornou HTTP 200. As consultas de tabelas FGTS (BMS e Girotech) e de configurações CLT retornaram HTTP 400 com `type=permission_denied`.
+
+Permissões solicitadas pela API:
+
+- FGTS: `get-fees:fgts-simulation`.
+- CLT: `get-configs:private-consignment-simulation`.
+
+Esses identificadores representam permissões do usuário na V8. Não substituir o `scope=offline_access` por eles sem instrução do suporte. O diagnóstico deve distinguir essa recusa de um erro de parâmetros. Nenhum token, credencial, dado de cliente ou contrato foi persistido nesta investigação. Foram executadas somente autenticação e leituras de tabelas.
