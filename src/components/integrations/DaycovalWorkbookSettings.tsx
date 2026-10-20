@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { readJsonResponse } from '../../lib/httpJson';
 
-export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOVAL' | 'C6' | 'PARANA' }) {
-  const label = { DAYCOVAL: 'Daycoval', C6: 'C6', PARANA: 'Paraná' }[bank];
+export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOVAL' | 'C6' | 'PARANA' | 'NOSSA_FINTECH' }) {
+  const label = { DAYCOVAL: 'Daycoval', C6: 'C6', PARANA: 'Paraná', NOSSA_FINTECH: 'Nossa Fintech' }[bank];
   const endpoint = bank === 'DAYCOVAL' ? '/api/daycoval' : `/api/${bank.toLowerCase()}-spreadsheet`;
   const [config, setConfig] = useState<any>(null), [file, setFile] = useState<File | null>(null), [versionDate, setVersionDate] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
@@ -35,6 +35,6 @@ export function DaycovalWorkbookSettings({ bank = 'DAYCOVAL' }: { bank?: 'DAYCOV
 }
 
 export function PortRefinWorkbookSettings() {
-  const [bank, setBank] = useState<'DAYCOVAL' | 'C6' | 'PARANA'>('DAYCOVAL');
-  return <div className="space-y-4"><div className="flex flex-wrap gap-2" role="tablist" aria-label="Planilhas de Portabilidade + Refinanciamento">{(['DAYCOVAL', 'C6', 'PARANA'] as const).map(item => <button key={item} type="button" role="tab" aria-selected={bank === item} onClick={() => setBank(item)} className={`rounded-lg border px-4 py-2 text-sm font-semibold ${bank === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-300 dark:border-slate-700'}`}>{item === 'PARANA' ? 'Paraná' : item === 'DAYCOVAL' ? 'Daycoval' : 'C6'}</button>)}</div><DaycovalWorkbookSettings key={bank} bank={bank} /></div>;
+  const [bank, setBank] = useState<'DAYCOVAL' | 'C6' | 'PARANA' | 'NOSSA_FINTECH'>('DAYCOVAL');
+  return <div className="space-y-4"><div className="flex flex-wrap gap-2" role="tablist" aria-label="Planilhas de Portabilidade + Refinanciamento">{(['DAYCOVAL', 'C6', 'PARANA', 'NOSSA_FINTECH'] as const).map(item => <button key={item} type="button" role="tab" aria-selected={bank === item} onClick={() => setBank(item)} className={`rounded-lg border px-4 py-2 text-sm font-semibold ${bank === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-300 dark:border-slate-700'}`}>{item === 'NOSSA_FINTECH' ? 'Nossa Fintech' : item === 'PARANA' ? 'Paraná' : item === 'DAYCOVAL' ? 'Daycoval' : 'C6'}</button>)}</div><DaycovalWorkbookSettings key={bank} bank={bank} /></div>;
 }

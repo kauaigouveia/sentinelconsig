@@ -1,10 +1,12 @@
+import { simulateNossaWorkbook, nossaWorkbookTables } from './nossaFintechWorkbook.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { importDaycoval, simulateDaycoval, DaycovalCalculator, type DaycovalWorkbook, serial, parseDate, addMonths } from './daycovalWorkbook.js';
 import { c6ConditionEligible } from '../../src/lib/c6Eligibility.js';
 import { INSS_BENEFIT_TYPES } from '../../src/lib/inssBenefitTypes.js';
 import { selectablePortRefinRates, type RatePolicy } from '../../src/lib/portRefinRates.js';
-export type SpreadsheetBank = 'DAYCOVAL' | 'C6' | 'PARANA';
+export type SpreadsheetBank = 'DAYCOVAL' | 'C6' | 'PARANA' | 'NOSSA_FINTECH';
 export const SPREADSHEET_MODELS = {
+  NOSSA_FINTECH: { key: 'NOSSA_FINTECH_PORT_REFIN_WORKBOOK_V7', label: 'Nossa Fintech', extensions: ['.xlsx'], hash: '6509696590f2399404432fda9aa6ac9a1154c6331e7970ad61cfccc0ef5b5a90', sheets: ['SIMULADOR', 'TABELAS', 'Motor_IOF_TrocoLiquido'] },
   DAYCOVAL: { key: 'DAYCOVAL_INSS_WORKBOOK_V1', label: 'Daycoval', extensions: ['.xlsx'], hash: '6e0eacd03bb614e7a257cae03b8c7844f4f1436abd14cad78124369427dfb1af', sheets: undefined },
   C6: { key: 'C6_PORT_REFIN_WORKBOOK_V1', label: 'C6', extensions: ['.xlsx', '.xlsm'], hash: 'db9afab9b88a4dcf391b704642f3534e9d4d9f81dc21e473a1940656821a5aef', sheets: ['Simulador Port','Planilha 1','PZO','VL_PARC'] },
   PARANA: { key: 'PARANA_PORT_REFIN_WORKBOOK_V1', label: 'Paraná', extensions: ['.xlsx'], hash: 'b2b070b28d91c88e71708351d45a49175a5cad79defbe6af2c00d792253effda', sheets: ['Simulador Portabilidade e Refin','Premissas Convênios','Build Up'] },
@@ -14,6 +16,7 @@ export async function importPortRefin(bank: SpreadsheetBank, buffer: Buffer, nam
   if(!model.extensions.some(extension=>name.toLowerCase().endsWith(extension)))throw new Error('Formato de arquivo inválido para este banco.');
   const book=await importDaycoval(buffer,name,model.hash,model.sheets);
   if(bank==='C6')book.terms=[108];
+  if(bank==='NOSSA_FINTECH') { book.terms=[108,96,84]; if(!nossaWorkbookTables(book).length)throw new Error('Nenhuma tabela Nossa Fintech encontrada.'); }
   if(bank==='PARANA') {
     const s=book.sheets['Premissas Convênios'];
     if(s.cells.A8!=='INSS')throw new Error('A linha INSS da planilha Paraná mudou.');
@@ -41,6 +44,7 @@ export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook
 }
 function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {
   if(bank==='DAYCOVAL')return simulateDaycoval(book,input);
+  if(bank==='NOSSA_FINTECH')return simulateNossaWorkbook(book,input);
   const date=parseDate(input.simulationDate),birth=parseDate(input.birthDate);if(birth>date)throw new Error('Nascimento inválido.');
   if(!Array.isArray(input.contracts)||input.contracts.length!==1)throw new Error('Esta planilha calcula um contrato por vez.');
   const contract=input.contracts[0],balance=Number(contract.balance),installment=Number(contract.installment),remaining=Number(contract.remaining),term=Number(input.term);

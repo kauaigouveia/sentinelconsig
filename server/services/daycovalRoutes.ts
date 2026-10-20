@@ -1,3 +1,4 @@
+import { nossaWorkbookTables } from './nossaFintechWorkbook.js';
 import { portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
 import type { Express, Request } from 'express';
 import type { PrismaClient } from '@prisma/client';
@@ -43,7 +44,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
       try {
         const ctx = await context(req, portal, 'simulations.view'); if (!ctx) return res.status(403).json({ error: 'Sessão e acesso às simulações são necessários.' });
         const book = await read(ctx.tenantId, bank);
-        return res.json({ configured: !!book, enabled: !!book && book.enabled !== false, canImport: ctx.canImport, ...(book ? { fileName: book.fileName, hash: book.hash, uploadedAt: book.uploadedAt, terms: book.terms, ratePolicies: portRefinRatePolicies(bank, book), versionDate: (book as any).versionDate } : {}) });
+        return res.json({ configured: !!book, enabled: !!book && book.enabled !== false, canImport: ctx.canImport, ...(book ? { fileName: book.fileName, hash: book.hash, uploadedAt: book.uploadedAt, terms: book.terms, ratePolicies: portRefinRatePolicies(bank, book), ...(bank === 'NOSSA_FINTECH' ? { workbookTables: nossaWorkbookTables(book) } : {}), versionDate: (book as any).versionDate } : {}) });
       } catch { return res.status(500).json({ error: 'Não foi possível carregar a planilha Daycoval.' }); }
     });
     app.post(`${path}/simulate`, limiter, async (req, res) => {
@@ -61,7 +62,14 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
         if (!partner) return res.status(400).json({ error: 'Selecione um parceiro ativo da empresa.' });
         if (!Array.isArray(raw.contracts) || raw.contracts.length < 1 || raw.contracts.length > 3) return res.status(400).json({ error: 'Informe de 1 a 3 contratos.' });
         for (const [index, contract] of raw.contracts.entries()) { const agreement = portabilityEligibility(bank, contract?.originBank, contract?.paidInstallments); if (agreement.blocked) return res.status(400).json({ error: `Contrato ${index + 1}: ${agreement.reason}` }); }
-        const input = { state:raw.state,benefitStartDate:raw.benefitStartDate,sex:raw.sex,originCategory:raw.originCategory,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:raw.medicalExamDate,cpf, name: String(raw.name || '').trim().slice(0, 200), birthDate: raw.birthDate, simulationDate: raw.simulationDate, term: Number(raw.term), refinanceRate: Number(raw.refinanceRate), benefitType: Number(raw.benefitType), benefitContractCount: Number(raw.benefitContractCount), negativeMargin: raw.negativeMargin === true, portInstallment: Number(raw.portInstallment), additionalMargin: Number(raw.additionalMargin || 0), requestedRefinAmount: Number(raw.requestedRefinAmount || 0), contracts: raw.contracts.map((c: any) => ({ originBank: String(c?.originBank || ''), paidInstallments: Number(c?.paidInstallments), balance: Number(c?.balance), installment: Number(c?.installment), remaining: Number(c?.remaining), cipInstallment: c?.cipInstallment ? Number(c.cipInstallment) : 0 })), product: 'INSS', operation: 'PORT_REFIN' };
+        const input = { state:raw.state,benefitStartDate:raw.benefitStartDate,sex:raw.sex,originCategory:raw.originCategory,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:raw.medicalExamDate,cpf, name: String(raw.name || '').trim().slice(0, 200), birthDate: raw.birthDate, simulationDate: raw.simulationDate, term: Number(raw.term), refinanceRate: Number(raw.refinanceRate), tableId: String(raw.tableId || ''), benefitType: Number(raw.benefitType), benefitContractCount: Number(raw.benefitContractCount), negativeMargin: raw.negativeMargin === true, portInstallment: Number(raw.portInstallment), additionalMargin: Number(raw.additionalMargin || 0), requestedRefinAmount: Number(raw.requestedRefinAmount || 0), contracts: raw.contracts.map((c: any) => ({ originBank: String(c?.originBank || ''), paidInstallments: Number(c?.paidInstallments), balance: Number(c?.balance), installment: Number(c?.installment), remaining: Number(c?.remaining), cipInstallment: c?.cipInstallment ? Number(c.cipInstallment) : 0 })), product: 'INSS', operation: 'PORT_REFIN' };
+        if (bank === 'NOSSA_FINTECH') {
+          const table = nossaWorkbookTables(book).find(row => row.id === input.tableId);
+          if (!table) return res.status(400).json({ error: 'Selecione uma tabela Nossa Fintech válida.' });
+          input.refinanceRate = table.rate * 100;
+          input.negativeMargin = Number(input.negativeMarginAmount || 0) > 0;
+          input.portInstallment = Number(input.contracts[0].installment) - Number(input.negativeMarginAmount || 0);
+        }
         const result = calculatePortRefin(bank, book, input);
         const available = result.offers.filter(o => o.eligible && o.amount > 0);
         const inputHash = createHash('sha256').update(JSON.stringify({ ...input, partnerId, version: book.hash })).digest('hex');
@@ -105,7 +113,7 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
         if (bank === 'DAYCOVAL' && (columns[0] !== 'EMPREGADOR' || columns[5] !== 'TAXA' || columns[6] !== 'PRAZO' || columns[19] !== 'minport_%')) throw new Error('A estrutura das tabelas Daycoval mudou. Esta versão precisa ser adaptada.');
         await prisma.systemConfig.upsert({ where: { tenantId_configKey: { tenantId: ctx.tenantId, configKey: KEY } }, create: { tenantId: ctx.tenantId, configKey: KEY, configValue: encodeDaycoval(book) }, update: { configValue: encodeDaycoval(book) } });
         await AuditLogService.record(prisma, { tenantId: ctx.tenantId, userId: ctx.userId, userName: ctx.userName, action: `${bank}_PLANILHA_IMPORTADA`, entity: 'SystemConfig', entityId: KEY, newData: { fileName: book.fileName, hash: book.hash, versionDate }, req });
-        return res.json({ configured: true, enabled: true, canImport: true, fileName: book.fileName, uploadedAt: book.uploadedAt, hash: book.hash, terms: book.terms, ratePolicies: portRefinRatePolicies(bank, book), versionDate });
+        return res.json({ configured: true, enabled: true, canImport: true, fileName: book.fileName, uploadedAt: book.uploadedAt, hash: book.hash, terms: book.terms, ratePolicies: portRefinRatePolicies(bank, book), ...(bank === 'NOSSA_FINTECH' ? { workbookTables: nossaWorkbookTables(book) } : {}), versionDate });
       } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível importar a planilha.' }); }
     });
     } catch { return res.status(500).json({ error: 'Não foi possível acessar a configuração Daycoval da empresa.' }); }
