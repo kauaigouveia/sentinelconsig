@@ -14,7 +14,7 @@ Aba em Bancos & Promotoras → V8 Digital. Configuração por empresa, promotora
 
 Fonte: [início](https://docs.v8sistema.com/guide/inicio), páginas FGTS e CLT e ferramenta `search_documentation` do MCP V8.
 
-Autenticação documentada: `POST https://api.v8digital.com/oauth/token`, formulário com `grant_type=password`, `username`, `password`, `audience`, `scope=offline_access`, `client_id`. O endereço precisa ser validado com as credenciais reais; não foi confirmado por uma autenticação nesta entrega. Cache do token respeita `expires_in`, com margem de 30 segundos e teto de 24 horas.
+Autenticação confirmada pelo suporte em 20/10/2026: `POST https://auth.v8sistema.com/oauth/token`, formulário com `grant_type=password`, `username`, `password`, `audience`, `scope=offline_access`, `client_id`. Audience confirmado: `https://bff.v8sistema.com`. O suporte substituiu o host do exemplo anterior. Credenciais devem ser cadastradas no formulário protegido; não devem constar neste documento ou no código. Autenticação real ainda depende do teste da conexão salva. Cache do token respeita `expires_in`, com margem de 30 segundos e teto de 24 horas.
 
 API: `https://bff.v8sistema.com`. Diagnóstico autenticado verifica o formato das tabelas e exibe resultado por produto; HTTP 200 isoladamente não confirma produto operacional.
 

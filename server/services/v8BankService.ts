@@ -5,7 +5,7 @@ type Environment = 'production' | 'homologation';
 type Config = { environment: Environment; enabled: boolean; fgtsEnabled: boolean; cltEnabled: boolean; username: string; password: string; clientId: string; audience: string };
 const tokenCache = new Map<string, { token: string; expires: number }>();
 const BASE = 'https://bff.v8sistema.com';
-const AUTH = 'https://api.v8digital.com/oauth/token';
+const AUTH = 'https://auth.v8sistema.com/oauth/token';
 function environment(value: unknown): Environment {
   if (value !== 'production' && value !== 'homologation') throw new Error('Selecione um ambiente válido.');
   return value;
@@ -76,7 +76,7 @@ export class V8BankService {
     try {
       response = await fetch(AUTH, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000), headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
         body: new URLSearchParams({ grant_type: 'password', username: config.username, password: config.password, audience: config.audience, scope: 'offline_access', client_id: config.clientId }) });
-    } catch { throw new Error('Não foi possível alcançar a autenticação V8 no endereço documentado. Confirme o endereço atual com a V8.'); }
+    } catch { throw new Error('Não foi possível alcançar a autenticação V8. Tente novamente em instantes.'); }
     const data = await response.json().catch(() => null), ttl = Number(data?.expires_in);
     if (!response.ok || data?.error || typeof data?.access_token !== 'string' || !data.access_token || /\s/.test(data.access_token) || !Number.isFinite(ttl) || ttl <= 30 || String(data?.token_type).toLowerCase() !== 'bearer') throw new Error(`V8 não autenticou a conexão (HTTP ${response.status}). Confira as credenciais e a liberação na V8.`);
     for (const [id, entry] of tokenCache) if (entry.expires <= Date.now()) tokenCache.delete(id);
