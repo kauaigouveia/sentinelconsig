@@ -909,7 +909,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <option value="MANUAL">Manual</option>
                   <option value="HAPPY_INSS">Happy INSS</option>
                   <option value="HAPPY_CLT">Happy CLT</option>
-                  <option value="INSS_MULTI">INSS · simulação</option>
+                  <option value="INSS_MULTI">INSS · simulação</option><option value="FGTS_MULTI">FGTS · oferta selecionada</option>
                   <option value="PARTNER_AUTO">Portal do parceiro · automáticas</option>
                   <option value="DAYCOVAL_INSS">Daycoval · versões anteriores</option><option value="SPREADSHEET_INSS">PORT + REFIN · Planilhas</option>
                   <option value="FINANTO_INSS">INSS · enviado à instituição</option>
@@ -2415,10 +2415,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   <div><dt className="text-slate-500">Valor liberado / contrato</dt><dd>R$ {detailTarget.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</dd></div>
                   <div><dt className="text-slate-500">Parcela</dt><dd>R$ {detailTarget.selectedCondition.installment?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'Não informada'}</dd></div>
-                  <div><dt className="text-slate-500">Prazo / taxa mensal</dt><dd>{detailTarget.selectedCondition.term} meses · {detailTarget.selectedCondition.rate != null ? `${detailTarget.selectedCondition.rate}%` : 'Não informada'}</dd></div>
-                  <div><dt className="text-slate-500">Benefício / espécie</dt><dd>{detailTarget.customerData?.benefitNumber} · {detailTarget.customerData?.benefitType}</dd></div>
+                  <div><dt className="text-slate-500">Prazo / taxa mensal</dt><dd>{detailTarget.selectedCondition.term || 'Não informado'} {detailTarget.simulationType === 'FGTS_MULTI' ? 'saques' : 'meses'} · {detailTarget.selectedCondition.rate != null ? `${detailTarget.selectedCondition.rate}%` : 'Não informada'}</dd></div>
+                  {detailTarget.simulationType !== 'FGTS_MULTI' && <div><dt className="text-slate-500">Benefício / espécie</dt><dd>{detailTarget.customerData?.benefitNumber} · {detailTarget.customerData?.benefitType}</dd></div>}
                   <div><dt className="text-slate-500">Cliente</dt><dd>{detailTarget.customerData?.name || 'Não informado'}</dd></div>
-                  <div><dt className="text-slate-500">Nascimento</dt><dd>{detailTarget.customerData?.birthDate?.split('-').reverse().join('/')}</dd></div>
+                  {detailTarget.customerData?.birthDate && <div><dt className="text-slate-500">Nascimento</dt><dd>{detailTarget.customerData.birthDate.split('-').reverse().join('/')}</dd></div>}
                 </dl>
                 {detailTarget.customerData && ['originContract', 'refinancing', 'address', 'document', 'creditBankAccount'].map(key => {
                   const value = detailTarget.customerData?.[key as 'address'];

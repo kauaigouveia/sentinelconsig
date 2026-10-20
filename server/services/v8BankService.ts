@@ -87,14 +87,17 @@ export class V8BankService {
   static async diagnostic(db: any, tenantId: string, promoterId: string, env: unknown) {
     const { token, config } = await this.token(db, tenantId, promoterId, env, true);
     const checks = await Promise.all(([
-      ...(config.fgtsEnabled ? [{ product: 'FGTS', path: '/fgts/simulations/fees/new', field: 'data' }] : []),
-      ...(config.cltEnabled ? [{ product: 'CLT', path: '/private-consignment/simulation/configs', field: 'configs' }] : []),
+      ...(config.fgtsEnabled ? [{ product: 'FGTS · BMS', path: '/fgts/simulations/fees/new?provider=bms', field: 'data' }, { product: 'FGTS · Girotech', path: '/fgts/simulations/fees/new?provider=girotech', field: 'data' }] : []),
+      ...(config.cltEnabled ? [{ product: 'CLT', path: '/private-consignment/simulation/configs?provider=QI', field: 'configs' }] : []),
     ]).map(async check => {
       try {
-        const response = await fetch(`${BASE}${check.path}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20000) });
+        const response = await fetch(`${BASE}${check.path}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20000) });
         const data = await response.json().catch(() => null);
-        const rows = Array.isArray(data) ? data : data?.[check.field];
-        return { product: check.product, httpStatus: response.status, available: response.ok && !data?.error && Array.isArray(rows), tableCount: Array.isArray(rows) ? rows.length : 0 };
+        const rows = Array.isArray(data) ? data : data?.[check.field] ?? data?.data?.[check.field];
+        const detail = JSON.stringify(data?.errors || data?.detail || data?.message || '').toLowerCase();
+        const parameters = ['provider', 'page', 'limit', 'config_id', 'consult_id'].filter(field => detail.includes(field));
+        const reason = !response.ok ? (parameters.length ? `A V8 recusou estes parâmetros: ${parameters.join(', ')}.` : response.status === 400 ? 'A V8 recusou os parâmetros da consulta.' : 'A V8 não liberou a consulta de tabelas.') : !Array.isArray(rows) ? 'O formato das tabelas retornadas não foi reconhecido.' : '';
+        return { product: check.product, httpStatus: response.status, available: response.ok && !data?.error && Array.isArray(rows), tableCount: Array.isArray(rows) ? rows.length : 0, reason };
       } catch { return { product: check.product, httpStatus: null, available: false, tableCount: 0 }; }
     }));
     return { authenticated: true, message: 'Autenticação V8 concluída. Consulte abaixo a disponibilidade dos produtos selecionados.', checks };

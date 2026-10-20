@@ -12,7 +12,7 @@ import { CltCustomerDataCard } from './CltCustomerDataCard';
 import { BmgCustomerAuthorization } from './BmgCustomerAuthorization';
 
 type Props = { partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; isOpen: boolean; onBack?: () => void; product: 'CLT' | 'FGTS'; onClose: () => void; onHappyClt?: () => void };
-type Row = { provider: string; institution: string; table?: string; state: string; message?: string; link?: string; amount?: number; installment?: number; term?: number; rate?: number; simulationId?: string; data?: any };
+type Row = { provider: string; institution: string; table?: string; state: string; message?: string; link?: string; amount?: number; installment?: number; term?: number; rate?: number; simulationId?: string; selectionReceipt?: string; data?: any };
 const money = (value: number | undefined) => value === undefined ? '—' : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950';
 
@@ -23,11 +23,14 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [step,setStep]=useState(0);
+  const [selectedOffer, setSelectedOffer] = useState<Row | null>(null);
+  const [partnerId, setPartnerId] = useState('');
+  const [saved, setSaved] = useState(false);
   if (!isOpen) return null;
-  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setMessage(''); if (key === 'cpf' || key === 'name' || key === 'phone') setClientRows([]); };
+  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelectedOffer(null); setSaved(false); setMessage(''); if (key === 'cpf' || key === 'name' || key === 'phone') setClientRows([]); };
   const run = async (action: 'authorize' | 'simulate' | 'refresh') => {
     if(action==='simulate' || action==='authorize')setStep(2);
-    setLoading(true); setRows([]); setMessage('');
+    setLoading(true); setRows([]); setSelectedOffer(null); setSaved(false); setMessage('');
     try {
       const response = await fetch(`/api/simulations/products/${product.toLowerCase()}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, employerDocument: action === 'refresh' ? '' : form.employerDocument, term: Number(form.term), value: Number(form.value) }) });
       const result = await response.json();
@@ -42,6 +45,18 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
         setForm(current => ({ ...current, employerDocument: employers.length === 1 ? employers[0] : current.employerDocument, name: customerName || current.name }));
       }
     } catch (error: any) { setMessage(error.message); }
+    finally { setLoading(false); }
+  };
+  const submitOffer = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedOffer?.selectionReceipt || !partnerId || loading || saved) return;
+    setLoading(true); setMessage('');
+    try {
+      const response = await fetch('/api/simulations/fgts/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receipt: selectedOffer.selectionReceipt, partnerId, name: form.name, phone: form.phone }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Não foi possível enviar a oferta.');
+      setSaved(true); setMessage('Oferta enviada para a fila de digitação da mesa. Nenhum contrato foi criado automaticamente no banco.'); onSuccess?.(data);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao enviar a oferta.'); }
     finally { setLoading(false); }
   };
   const field = (title: string, key: 'name' | 'phone' | 'employerDocument' | 'value', required = true, type = 'text') => <label className="text-xs font-semibold">{title}{key === 'value' ? <CurrencyInput required={required} min={0.01} value={form[key]} onValueChange={value => update(key, value)} className={inputClass} /> : <input required={required} type={type} min={type === 'number' ? '0.01' : undefined} step={type === 'number' ? '0.01' : undefined} value={form[key]} onChange={event => update(key, event.target.value)} className={inputClass} />}</label>;
@@ -67,7 +82,18 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
     {product === 'CLT' && onHappyClt && <details className="mt-5 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">Happy CLT · autorização e simulação</summary><HappyCltSimulationModal embedded isOpen key={form.cpf} initialData={{ cpf: form.cpf, name: form.name, phone: form.phone }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
     </div><div hidden={step!==2}><SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar às condições"/>{step===2 && loading && <p role="status" className="my-4 rounded-xl bg-blue-500/10 p-5 text-sm">Consultando ofertas e retornos dos bancos…</p>}{step===2 && !rows.length && !loading && <p className="py-5 text-sm text-slate-500">Nenhuma oferta disponível. Confira os retornos abaixo ou volte para ajustar os dados.</p>}</div>
     {message && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{message}</p>}
-    {step===2 && rows.length > 0 && <div className="mt-5 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-100 dark:bg-slate-800"><tr>{['Integração / instituição', 'Tabela', 'Valor liberado', 'Parcela', 'Prazo', 'Taxa mensal', 'Resultado'].map(label => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-b border-slate-200 dark:border-slate-800"><td className="p-3">{row.institution}<span className="block text-xs text-slate-500">Via {row.provider}</span></td><td className="p-3">{row.table || '—'}</td><td className="p-3 font-semibold">{money(row.amount)}</td><td className="p-3">{money(row.installment)}</td><td className="p-3">{row.term || '—'}</td><td className="p-3">{row.rate === undefined ? '—' : `${row.rate.toLocaleString('pt-BR')}%`}</td><td className="p-3"><span className={row.state === 'OFFER' ? 'text-emerald-600' : 'text-amber-600'}>{row.state === 'OFFER' ? 'Calculada' : row.message || 'Consulta pendente'}</span>{row.link && /^https:\/\//i.test(row.link) && <a href={row.link} target="_blank" rel="noopener noreferrer" className="mt-1 block text-indigo-500 underline">Abrir autorização do cliente</a>}</td></tr>)}</tbody></table></div>}
+    {step===2 && rows.length > 0 && <div className="mt-5 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-100 dark:bg-slate-800"><tr>{['Integração / instituição', 'Tabela', 'Valor liberado', 'Parcela', 'Prazo', 'Taxa mensal', 'Resultado', ...(product === 'FGTS' ? ['Selecionar'] : [])].map(label => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-b border-slate-200 dark:border-slate-800"><td className="p-3">{row.institution}<span className="block text-xs text-slate-500">Via {row.provider}</span></td><td className="p-3">{row.table || '—'}</td><td className="p-3 font-semibold">{money(row.amount)}</td><td className="p-3">{money(row.installment)}</td><td className="p-3">{row.term || '—'}</td><td className="p-3">{row.rate === undefined ? '—' : `${row.rate.toLocaleString('pt-BR')}%`}</td><td className="p-3"><span className={row.state === 'OFFER' ? 'text-emerald-600' : 'text-amber-600'}>{row.state === 'OFFER' ? 'Calculada' : row.message || 'Consulta pendente'}</span>{row.link && /^https:\/\//i.test(row.link) && <a href={row.link} target="_blank" rel="noopener noreferrer" className="mt-1 block text-indigo-500 underline">Abrir autorização do cliente</a>}</td>{product === 'FGTS' && <td className="p-3">{row.state === 'OFFER' && Number(row.amount) > 0 && row.selectionReceipt && <button type="button" disabled={loading || saved} onClick={() => { setSelectedOffer(row); setMessage(''); }} className="rounded-lg border border-blue-500 px-3 py-2 text-xs font-semibold text-blue-500 disabled:opacity-50">{selectedOffer === row ? 'Selecionada' : 'Selecionar oferta'}</button>}</td>}</tr>)}</tbody></table></div>}
+    {product === 'FGTS' && step === 2 && selectedOffer && <form onSubmit={event => void submitOffer(event)} className="mt-5 space-y-4 rounded-xl border border-blue-500/40 p-4">
+      <h3 className="font-bold">Oferta selecionada · {selectedOffer.institution}</h3>
+      <p className="text-sm">{selectedOffer.table} · {money(selectedOffer.amount)} · {selectedOffer.term || '—'} saques</p>
+      <p className="text-xs text-slate-500">Complete os dados e envie para a mesa continuar a digitação. O envio não contrata a operação automaticamente.</p>
+      <fieldset disabled={loading || saved} className="grid gap-3 sm:grid-cols-2">
+        <label className="text-xs font-semibold">Nome completo<input required maxLength={200} className={inputClass} value={form.name} onChange={e => setForm(current => ({ ...current, name: e.target.value }))} /></label>
+        <label className="text-xs font-semibold">Telefone com DDD (opcional)<input type="tel" className={inputClass} value={form.phone} onChange={e => setForm(current => ({ ...current, phone: e.target.value }))} /></label>
+        <label className="text-xs font-semibold">Parceiro responsável<select required className={inputClass} value={partnerId} onChange={e => setPartnerId(e.target.value)}><option value="">Selecione o parceiro</option>{partners.filter(partner => partner.active).map(partner => <option key={partner.id} value={partner.id}>{partner.login} · {partner.fullName}</option>)}</select></label>
+      </fieldset>
+      <button type="submit" disabled={loading || saved || !partnerId} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{saved ? 'Enviada para digitação' : loading ? 'Enviando…' : 'Enviar para digitação'}</button>
+    </form>}
     </div>
   </div></div>;
 };

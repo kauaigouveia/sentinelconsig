@@ -8,7 +8,7 @@ const empty = { environment: 'production', enabled: false, fgtsEnabled: false, c
 const credentials = { username: '', password: '', clientId: '', audience: '' };
 const fields = [['username', 'E-mail de acesso'], ['password', 'Senha'], ['clientId', 'client_id'], ['audience', 'audience']] as const;
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-transparent p-2 dark:border-slate-700';
-type Check = { product: string; httpStatus: number | null; available: boolean; tableCount: number };
+type Check = { product: string; httpStatus: number | null; available: boolean; tableCount: number; reason?: string };
 export function V8IntegrationTab({ promoterId }: { promoterId: string }) {
   const [config, setConfig] = useState(empty), [active, setActive] = useState('production');
   const [values, setValues] = useState(credentials), [checks, setChecks] = useState<Check[]>([]);
@@ -58,7 +58,7 @@ export function V8IntegrationTab({ promoterId }: { promoterId: string }) {
       <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void run(false)} className="rounded-lg bg-blue-600 px-4 py-2 text-white">Salvar e usar este ambiente</button><button type="button" disabled={dirty || !config.enabled || !config.hasCredentials || config.environment !== 'production'} onClick={() => void run(true)} className="rounded-lg border px-4 py-2 disabled:opacity-50">{busy ? 'Processando…' : 'Testar conexão salva'}</button></div>
       <p className="text-xs text-slate-500">Campos vazios preservam os valores já cadastrados neste ambiente. O teste usa a configuração salva e não cria propostas.</p>
     </fieldset>
-    {checks.length > 0 && <table className="w-full text-left text-sm"><caption className="mb-2 text-left font-bold">Disponibilidade retornada pela V8</caption><thead><tr><th className="p-2">Produto</th><th className="p-2">Resultado</th><th className="p-2">Tabelas</th></tr></thead><tbody>{checks.map(check => <tr key={check.product}><td className="p-2">{check.product}</td><td className="p-2">{check.available ? 'Consulta concluída' : `Não confirmado${check.httpStatus ? ` · HTTP ${check.httpStatus}` : ' · sem resposta'}`}</td><td className="p-2">{check.available ? check.tableCount : '—'}</td></tr>)}</tbody></table>}
+    {checks.length > 0 && <table className="w-full text-left text-sm"><caption className="mb-2 text-left font-bold">Disponibilidade retornada pela V8</caption><thead><tr><th className="p-2">Produto</th><th className="p-2">Resultado</th><th className="p-2">Tabelas</th></tr></thead><tbody>{checks.map(check => <tr key={check.product}><td className="p-2">{check.product}</td><td className="p-2">{check.available ? 'Consulta concluída' : `Não confirmado${check.httpStatus ? ` · HTTP ${check.httpStatus}` : ' · sem resposta'}`}{check.reason && <span className="mt-1 block text-xs text-slate-500">{check.reason}</span>}</td><td className="p-2">{check.available ? check.tableCount : '—'}</td></tr>)}</tbody></table>}
     {!canManage && <p className="text-sm text-slate-500">Solicite a permissão de gerenciar integrações para configurar a V8.</p>}
   </section>;
 }
