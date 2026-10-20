@@ -12,6 +12,7 @@ const BINDING = 'TELEGRAM_BINDING_V1_';
 const LINK = 'TELEGRAM_LINK_V1_';
 const EVENT = 'TELEGRAM_EVENT_V1_';
 const CUSTOM = 'TELEGRAM_CUSTOM_BOT_V1';
+const REJECTED_CODES = ['REPROVADO', 'REPROVADA', 'RECUSADO', 'RECUSADA'];
 type Store = PrismaClient | Prisma.TransactionClient;
 type BotConfig = {
     token: string;
@@ -87,6 +88,8 @@ function eventType(proposal: any) {
         return null;
     if (status.code === 'PAGO' || status.standardCategory === 'PAGO' || proposal.standardCategory === 'PAGO')
         return 'PAGO';
+    if (REJECTED_CODES.includes(status.code) || status.standardCategory === 'RECUSADO' || proposal.standardCategory === 'RECUSADO')
+        return 'REPROVADO';
     if (status.code === 'CANCELADO' || status.standardCategory === 'CANCELADO' || proposal.standardCategory === 'CANCELADO')
         return 'CANCELADO';
     if (status.code === 'SALDO_RETORNADO' && ['PORTABILIDADE', 'REFIN_PORTABILIDADE'].includes(proposal.type) && Number(proposal.debtBalance) > 0)
@@ -100,7 +103,7 @@ function fingerprint(proposal: any) { return hash(`${proposal.statusId}:${propos
 const include = { status: true, statusHistories: { take: 1, orderBy: { createdAt: 'desc' as const } }, partner: true, bank: true, client: { select: { fullName: true, cpf: true } }, tenant: { include: { whiteLabel: true } } } satisfies Prisma.ProposalInclude;
 function message(proposal: any, portabilityRefinValue?: unknown, query = false, portabilityBalance: unknown = proposal.debtBalance) {
     const kind = eventType(proposal), companyName = proposal.tenant.whiteLabel?.companyName || proposal.tenant.tradeName || proposal.tenant.name;
-    const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada' };
+    const labels: Record<string, string> = { SALDO: 'Saldo da portabilidade retornado', PARCEIRO: 'Sua ação é necessária', CLIENTE: 'Ação do cliente necessária', PAGO: 'Proposta paga', CANCELADO: 'Proposta cancelada', REPROVADO: 'Proposta reprovada' };
     const money = (value: unknown) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const html = (value: unknown) => String(value ?? '').replace(/[\r\n]/g, ' ').trim().slice(0, 160).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const cpfDigits = String(proposal.client.cpf || '').replace(/\D/g, '');
@@ -125,10 +128,7 @@ export class TelegramNotificationService {
             const config = await activeBot(db,tenantId); if(!config?.registered)continue;
             const cursorRow = await get(db, tenantId, 'TELEGRAM_CURSOR_V1');
             const cursor = cursorRow ? JSON.parse(cursorRow.configValue) : { time: options.since, id: '' };
-            const proposals = await db.proposal.findMany({ where: { tenantId, deletedAt: null, partnerId: { not: null }, updatedAt: { gte: new Date(options.since) }, OR: [{ updatedAt: { gt: new Date(cursor.time) } }, { updatedAt: new Date(cursor.time), id: { gt: cursor.id } }] }, include, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: 100 });
-            for (const proposal of proposals) {
-                if (Date.now() > scanDeadline)
-                    break;
+            const enqueue = async (proposal: any) => {
                 if (eventType(proposal) && proposal.partner && proposal.partner.tenantId === tenantId && !proposal.partner.deletedAt && proposal.partner.status === 'ATIVO') {
                     const recipient = await binding(db, tenantId, proposal.partnerId!);
                     if (recipient && proposal.updatedAt >= new Date(recipient.linkedAt)) {
@@ -138,7 +138,39 @@ export class TelegramNotificationService {
                         queued++;
                     }
                 }
+            };
+            const proposals = await db.proposal.findMany({ where: { tenantId, deletedAt: null, partnerId: { not: null }, updatedAt: { gte: new Date(options.since) }, OR: [{ updatedAt: { gt: new Date(cursor.time) } }, { updatedAt: new Date(cursor.time), id: { gt: cursor.id } }] }, include, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: 100 });
+            for (const proposal of proposals) {
+                if (Date.now() > scanDeadline)
+                    break;
+                await enqueue(proposal);
                 await put(db, tenantId, 'TELEGRAM_CURSOR_V1', { time: proposal.updatedAt.toISOString(), id: proposal.id });
+            }
+            // One bounded catch-up for rejections skipped by the old final-status filter.
+            // Keep the live cursor intact, and reuse event/status deduplication at delivery.
+            const recoveryKey = 'TELEGRAM_REJECTION_CATCHUP_V1';
+            const recoveryRow = await get(db, tenantId, recoveryKey);
+            const recovery = recoveryRow ? JSON.parse(recoveryRow.configValue) : { time: options.since, id: '', until: new Date().toISOString(), done: false };
+            if (!recoveryRow) await put(db, tenantId, recoveryKey, recovery);
+            if (!recovery.done && Date.now() < scanDeadline) {
+                const missed = await db.proposal.findMany({
+                    where: { tenantId, deletedAt: null, partnerId: { not: null },
+                        updatedAt: { gte: new Date(options.since), lte: new Date(recovery.until) },
+                        AND: [
+                            { OR: [{ status: { code: { in: REJECTED_CODES } } }, { status: { standardCategory: 'RECUSADO' } }, { standardCategory: 'RECUSADO' }] },
+                            { OR: [{ updatedAt: { gt: new Date(recovery.time) } }, { updatedAt: new Date(recovery.time), id: { gt: recovery.id } }] },
+                        ],
+                    }, include, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: 100,
+                });
+                let processed = 0;
+                for (const proposal of missed) {
+                    if (Date.now() > scanDeadline) break;
+                    await enqueue(proposal);
+                    recovery.time = proposal.updatedAt.toISOString(); recovery.id = proposal.id;
+                    await put(db, tenantId, recoveryKey, recovery);
+                    processed++;
+                }
+                if (processed === missed.length && missed.length < 100) await put(db, tenantId, recoveryKey, { ...recovery, done: true });
             }
             await db.systemConfig.updateMany({ where: { id: row.id, configValue: row.configValue }, data: { updatedAt: new Date() } });
         }

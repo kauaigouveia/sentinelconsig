@@ -12,7 +12,7 @@
 
 - Saldo retornado: somente portabilidade/refinanciamento de portabilidade com saldo devedor positivo.
 - Status cuja alçada configurada seja PARCEIRO ou CLIENTE.
-- Cancelamento e pagamento por código ou categoria padrão.
+- Cancelamento, pagamento e reprovação por código ou categoria padrão (RECUSADO para reprovação).
 
 Mensagens identificam a empresa (marca configurada, nome fantasia ou razão social), número da proposta, primeiro nome/iniciais do cliente, banco e status. Saldo é exibido no retorno; valor liberado, no pagamento. Não são enviados CPF, documentos ou credenciais.
 
@@ -111,3 +111,9 @@ Valores retornados sao aplicados apenas quando presentes e validos, preservando 
 Processamento paginado (60 candidatas/ciclo) com cursor persistente e no maximo uma consulta bancaria por execucao, para reservar tempo ao Telegram na Vercel. Cada proposta tem tentativa exclusiva por cinco minutos. Se houver volume, candidatos restantes e avisos podem seguir em ciclos posteriores. Nao utiliza processo background depois da resposta nem depende de tela aberta. Continua necessario que o bot/empresa e o vinculo do parceiro estejam habilitados para enviar.
 
 Nao foram feitas consultas bancarias reais nem alteracoes no banco de producao durante a implementacao.
+
+## Reprovações
+
+REPROVADO/REPROVADA/RECUSADO/RECUSADA e categoria RECUSADO geram o aviso "Proposta reprovada", mesmo sendo status final ou da alçada SISTEMA. O formato mantém empresa, banco, número, tipo, valor liberado, cliente, CPF mascarado e etapa.
+
+O filtro anterior ignorava esses status finais. Foi incluída uma recuperação única e paginada por empresa (`TELEGRAM_REJECTION_CATCHUP_V1`), limitada à habilitação dos avisos e ao instante de início da recuperação. O cursor normal não é reiniciado. Apenas propostas atualmente reprovadas são recuperadas, respeitando vínculo do parceiro, empresa/parceiro ativos e deduplicação do último status enviado. O envio ocorre no cron autenticado existente; não há disparo direto no momento do deploy.
