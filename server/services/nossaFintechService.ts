@@ -16,6 +16,17 @@ const CONFIG_KEYS = {
 const allowedPrefixes = ['/nossa/v1/', '/nossa/v2/', '/inss/v1/', '/port-refin/v1/', '/clt-loan/v1/'];
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
+function portRefinFailure(data: unknown, status: number, stage: string) {
+  const body = data as any;
+  const detail = [body?.message, body?.detail, body?.error?.message, body?.error]
+    .find(value => typeof value === 'string' && value.trim() && !/<(?:html|!doctype|body)/i.test(value));
+  // Never include the raw request/response or authentication data in diagnostics.
+  const safeDetail = detail ? String(detail).replace(/Bearer\s+\S+/gi, '[token omitido]')
+    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF omitido]')
+    .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[e-mail omitido]').slice(0, 300) : '';
+  return `Nossa Fintech: falha ao ${stage} (HTTP ${status}).${safeDetail ? ` ${safeDetail}` : status >= 500 ? ' O provedor não retornou detalhes da falha.' : ''}`;
+}
+
 function encryptionKey() {
   const secret = process.env.JWT_SECRET || process.env.AUTH_SECRET;
   if (!secret) throw new Error('JWT_SECRET/AUTH_SECRET precisa estar configurado para proteger as credenciais Nossa Fintech.');
@@ -155,7 +166,10 @@ export class NossaFintechService {
     const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
     if (ageError) throw new Error(ageError);
     const tableResult = await this.request(prisma, tenantId, 'GET', `/inss/v1/rebates_parceiro?op_type=PORT-REFIN&legal_rep=${input.legalRepresentative}`);
-    if (!tableResult.success) return { success: false, status: tableResult.status, data: tableResult.data };
+    if (!tableResult.success) {
+      console.warn('[NossaFintech PortRefin]', { stage: 'tables', status: tableResult.status });
+      return { success: false, status: tableResult.status, error: portRefinFailure(tableResult.data, tableResult.status, 'consultar as tabelas Port/Refin'), data: tableResult.data };
+    }
     const tableData = tableResult.data as any;
     const tables = Array.isArray(tableData) ? tableData
       : tableData?.tabela_rebates || tableData?.table_rebates || tableData?.items ||
@@ -185,9 +199,10 @@ export class NossaFintechService {
             portability: { opened_installment_number: String(input.openedInstallmentNumber) },
             refinancing: { number_of_installments: String(input.numberOfInstallments), cod_tabela: String(table.cod_tabela) },
           });
-          return { table, success: response.success, status: response.status, data: response.data };
+          if (!response.success) console.warn('[NossaFintech PortRefin]', { stage: 'simulation', status: response.status, tableCode: String(table.cod_tabela) });
+          return { table, success: response.success, status: response.status, data: response.data, ...(!response.success ? { error: portRefinFailure(response.data, response.status, `simular a tabela ${String(table.cod_tabela)}`) } : {}) };
         } catch (error: any) {
-          return { table, success: false, status: 0, error: error.message || 'Falha ao consultar esta tabela.' };
+          return { table, success: false, status: 0, data: null, error: error.message || 'Falha ao consultar esta tabela.' };
         }
       }));
       results.push(...batchResults.filter(row => {
