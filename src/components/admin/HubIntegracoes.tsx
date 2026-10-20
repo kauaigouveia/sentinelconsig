@@ -37,7 +37,7 @@ import { PremiumContent } from '../redesign/PremiumContent';
 import { TelegramIntegrationSettings } from '../integrations/TelegramIntegrationSettings';
 import { StorageService } from '../../services/storageService';
 
-export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'health' | 'incidents' | 'logs';
+export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'v8' | 'health' | 'incidents' | 'logs';
 
 export interface IntegrationDefinition {
   id: string;
@@ -413,6 +413,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
     { id: 'workbank', label: 'WorkBank', icon: Plug },
     { id: 'parana', label: 'Paraná Banco · API', icon: Landmark },
     { id: 'presenca', label: 'Presença Bank', icon: Landmark },
+    { id: 'v8', label: 'V8 Digital', icon: Plug },
     { id: 'health', label: 'Saúde das APIs', icon: Activity },
     { id: 'incidents', label: 'Incidentes', icon: AlertTriangle },
     { id: 'logs', label: 'Logs & Auditoria', icon: History },
@@ -752,6 +753,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       {activeTab === 'workbank' && <BankIntegrationsView initialTab="workbank" />}
       {activeTab === 'parana' && <BankIntegrationsView initialTab="parana" />}
       {activeTab === 'presenca' && <BankIntegrationsView initialTab="presenca" />}
+      {activeTab === 'v8' && <BankIntegrationsView initialTab="v8" />}
 
       {/* ABA FINANTO / JOINBANK */}
       {activeTab === 'finanto' && <FinantoIntegrationTab />}
