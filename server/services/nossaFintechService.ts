@@ -1,8 +1,10 @@
+import { decodeDaycoval } from './daycovalWorkbook.js';
+import { NOSSA_WORKBOOK_KEY, nossaWorkbookTables, simulateNossaWorkbook } from './nossaFintechWorkbook.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import { nossaFintechAgeError, nossaFintechBalanceError, nossaFintechTableRate, nossaFintechBenefitError } from '../../src/lib/inssEligibility';
+import { nossaFintechAgeError, nossaFintechTableRate, nossaFintechBenefitError } from '../../src/lib/inssEligibility';
 import { matchNossaFintechNovoTable, getNossaFintechNovoOptions, getNossaFintechTroco } from '../../src/lib/nossaFintech';
 
 const API_BASE = 'https://nossa-fintech-api.spixiiservices.com.br';
@@ -165,6 +167,13 @@ export class NossaFintechService {
   }) {
     const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
     if (ageError) throw new Error(ageError);
+    // Fail closed: no API offer can bypass the company's active eligibility model.
+    const workbookConfig = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: NOSSA_WORKBOOK_KEY } } });
+    if (!workbookConfig) throw new Error('A validação das condições Nossa Fintech não está configurada. Solicite a ativação ao administrador.');
+    const workbook = decodeDaycoval(workbookConfig.configValue);
+    if (workbook.enabled === false) throw new Error('A validação das condições Nossa Fintech está desativada. Solicite a ativação ao administrador.');
+    const workbookTables = nossaWorkbookTables(workbook);
+    const simulationDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const tableResult = await this.request(prisma, tenantId, 'GET', `/inss/v1/rebates_parceiro?op_type=PORT-REFIN&legal_rep=${input.legalRepresentative}`);
     if (!tableResult.success) {
       console.warn('[NossaFintech PortRefin]', { stage: 'tables', status: tableResult.status });
@@ -180,13 +189,26 @@ export class NossaFintechService {
     });
     const excludedTables: Array<{ table: any; reason: string }> = [];
     const candidates = termCandidates.filter((table: any) => {
-      if (input.benefitType && nossaFintechBenefitError(table.name || table.nome_tabela || '', input.benefitType)) return false;
-      if (input.refinancingRate !== undefined && Math.abs((nossaFintechTableRate(table) ?? 0) - input.refinancingRate) > 0.00001) return false;
-      const reason = nossaFintechBalanceError(table, input.lastDueBalance);
-      if (reason) excludedTables.push({ table, reason });
-      return !reason;
+      const model = workbookTables.find(row => row.code === String(table.cod_tabela) && row.term === input.numberOfInstallments);
+      // Unknown tables require an updated model, never an approximation by rate/name.
+      if (!model || model.invalidity !== [5, 32, 92].includes(Number(input.benefitType))) return false;
+      const rate = model.rate * 100;
+      if (input.refinancingRate !== undefined && Math.abs(rate - input.refinancingRate) > 0.00001) return false;
+      const apiRate = nossaFintechTableRate(table);
+      if (apiRate == null || Math.abs(apiRate - rate) > 0.00001) return false;
+      const context = input.policyContext || {};
+      const margin = Number(context.negativeMarginAmount ?? 0);
+      const negativeMargin = margin < 0 || context.negativeMargin === true ? Math.abs(margin) : 0;
+      const calculationInput = { ...context, simulationDate, birthDate: input.birthDate, benefitType: input.benefitType,
+        term: input.numberOfInstallments, tableId: model.id, refinanceRate: rate, negativeMarginAmount: negativeMargin,
+        negativeMargin: negativeMargin > 0, operation: 'PORT_REFIN',
+        contracts: [{ originBank: context.originalBank || context.originLenderCode, paidInstallments: context.paidInstallments,
+          balance: input.lastDueBalance, installment: input.installmentFaceValue, remaining: input.openedInstallmentNumber }] };
+      const offer = simulateNossaWorkbook(workbook, calculationInput).offers[0];
+      const policy = simulationPortabilityCheck('Nossa Fintech', calculationInput, offer);
+      return offer.eligible && !policy.blocked;
     });
-    if (!candidates.length) return { success: true, status: 200, data: { tables: [], results: [], excludedTables, message: 'Nenhuma tabela elegível para o prazo e saldo informados.' } };
+    if (!candidates.length) return { success: true, status: 200, data: { tables: [], results: [], excludedTables, noEligibleTables: true } };
 
     const results: Array<{ table: any; success: boolean; status: number; data?: unknown; error?: string }> = [];
     for (let index = 0; index < candidates.length; index += 4) {
@@ -211,7 +233,7 @@ export class NossaFintechService {
         return (troco === null || troco >= 0)&&!check?.blocked;
       }));
     }
-    return { success: true, status: 200, data: { tables: candidates.filter((table: any) => results.some(row => row.table === table)), results, excludedTables } };
+    return { success: true, status: 200, data: { tables: candidates.filter((table: any) => results.some(row => row.table === table)), results, excludedTables, noEligibleTables: results.length === 0 } };
   }
 
   static async simulateInssNovoAcrossTables(prisma: PrismaClient, tenantId: string, input: {

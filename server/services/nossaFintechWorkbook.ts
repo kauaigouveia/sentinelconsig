@@ -1,5 +1,7 @@
 import { addMonths, parseDate, type DaycovalWorkbook } from './daycovalWorkbook.js';
 
+export const NOSSA_WORKBOOK_KEY = 'NOSSA_FINTECH_PORT_REFIN_WORKBOOK_V7';
+
 /** V.07: rates come from TABELAS; 218004 corrected to 1.72% by the operator. */
 export function nossaWorkbookTables(book: DaycovalWorkbook) {
   const cells = book.sheets.TABELAS?.cells;

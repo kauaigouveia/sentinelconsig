@@ -50,7 +50,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       body: JSON.stringify({ ...portabilityContext,originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: Number(form.lastDueBalance), installmentFaceValue: Number(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? Number(form.refinancingRate) : undefined }),
     });
     const result = await readJsonResponse(response);
+    if (response.status === 422) return [];
     if (!response.ok || result.success === false) throw new Error(result.error || result.data?.message || `Nossa Fintech respondeu com HTTP ${result.status || response.status}.`);
+    if (result.data?.noEligibleTables) return [];
     if (!result.data?.results?.length && !result.data?.excludedTables?.length) throw new Error('Nossa Fintech não retornou tabelas compatíveis com a taxa, o prazo e o saldo escolhidos.');
     return [
       ...(result.data?.results || []).map((row: any) => ({ ...row, provider: 'Nossa Fintech', term: Number(form.numberOfInstallments), troco: row.success ? getNossaFintechTroco(row.data) : null })),

@@ -37,3 +37,15 @@ O hash das fórmulas limita a importação à estrutura analisada. Novas versõe
 ## Verificação
 
 Checagem TypeScript (`npm run lint`, que executa `tsc --noEmit`) concluída sem erros. Não foram executados testes automatizados, validação no navegador nem chamadas ao banco. A ativação em produção depende da importação da planilha pela empresa.
+
+## Filtro interno das simulações pela API
+
+Port/Refin pela API agora depende do modelo ativo desta empresa. O serviço central confere o código exato da tabela retornada pela API, o prazo e a taxa contra TABELAS. Tabelas desconhecidas, com taxas divergentes ou não aptas não geram chamadas individuais de simulação e não aparecem no resultado, nem como excluídas.
+
+Sem taxa escolhida, confere todas as tabelas retornadas compatíveis. Com taxa escolhida, confere somente essa taxa. O cálculo usa a data atual de America/Bahia, os dados do contrato e a margem negativa quando explicitamente negativa ou sinalizada como tal. A política dos roteiros também é aplicada ao cálculo.
+
+Os valores exibidos continuam sendo da API. Não se devolvem o cálculo, os motivos das exclusões ou uma indicação de uso da planilha ao cliente. Quando nenhuma tabela é apta, `noEligibleTables: true` produz uma lista vazia e a comparação não exibe a Nossa Fintech. Falhas técnicas continuam identificadas; indisponibilidade não deve ser tratada como reprovação.
+
+O filtro é centralizado em simulatePortabilityAcrossTables, cobrindo o Hub de diagnóstico, a comparação do operador e o portal do parceiro. Nossa Fintech foi retirada do agregador automático de ofertas de planilha do portal para impedir resultados duplicados ou um caminho que contorne a API. O simulador manual de planilhas continua disponível na sua aba própria.
+
+Se o modelo estiver ausente ou desativado, a integração pede revisão da configuração e não apresenta ofertas sem conferência. A versão V.07 mantém a taxa mínima de origem provisória de 0,80% descrita acima.

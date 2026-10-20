@@ -30,7 +30,7 @@ export class PartnerSimulationService {
     if (action !== 'SIMULATE') return { rows: await partnerHappySimulation(prisma, tenantId, input, action), message: '' };
     const offers: any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
-      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) throw new Error(check.reason); } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
+      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { if (provider === 'Nossa Fintech' && input.operation === 'PORT_REFIN') return; throw new Error(check.reason); } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
       if (['PORT','PORT_REFIN'].includes(input.operation)) { for (let index=offers.length-1;index>=0;index--) { const offer=offers[index]; const check=simulationPortabilityCheck(offer.provider||offer.institution,input,offer); if(check.blocked){notes.push(check.reason);offers.splice(index,1);}else offer.policyReview=check.reason; } }
       if (onRows) await onRows([...offers]);
     };
@@ -44,7 +44,7 @@ export class PartnerSimulationService {
         if (result.message) notes.push(`FACTA: ${result.message}`);
       }),
       collect('C6', async () => { if (['PORT','PORT_REFIN'].includes(input.operation)) return; offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
-      ...(Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]).map(bank => collect(SPREADSHEET_MODELS[bank].label, async () => {
+      ...(Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]).filter(bank => bank !== 'NOSSA_FINTECH').map(bank => collect(SPREADSHEET_MODELS[bank].label, async () => {
         if (input.operation !== 'PORT_REFIN') return;
         const config = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: SPREADSHEET_MODELS[bank].key } } });
         if (!config) return;
