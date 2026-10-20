@@ -52,7 +52,7 @@ export function useTenantBranding() {
         document.head.appendChild(link);
       }
       link.removeAttribute('type');
-      link.href = !favicon || favicon === '/branding/sentinel-mark-v2.svg' ? '/branding/sentinel-consig-symbol.svg' : favicon;
+      link.href = !favicon || favicon.startsWith('/branding/sentinel-') ? '/branding/sentinel-icon-transparent-v3.png' : favicon;
     }
 
     // 3. Inject CSS Variables for Dynamic Color Theming

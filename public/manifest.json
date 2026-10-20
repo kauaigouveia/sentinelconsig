@@ -8,14 +8,10 @@
   "theme_color": "#080d18",
   "icons": [
     {
-      "src": "/branding/sentinel-consig-favicon-64x64.png",
-      "sizes": "64x64",
-      "type": "image/png"
-    },
-    {
-      "src": "/branding/sentinel-consig-favicon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png"
+      "src": "/branding/sentinel-icon-transparent-v3.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

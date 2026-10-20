@@ -32,7 +32,7 @@ export const SYSTEM_IDENTITY = {
   title: 'Sentinel Consig | Inteligência que antecipa. Controle que transforma.',
   badge: 'ENTERPRISE',
   subtitle: 'Veja. Antecipe. Comande.',
-  defaultLogo: '/branding/sentinel-mark-v2.svg',
+  defaultLogo: '/branding/sentinel-icon-transparent-v3.png',
 };
 
 export function resolveEffectiveTenantBranding(

@@ -385,3 +385,17 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sentinel-accen
 .sentinel-auth-tenant img.sentinel-auth-official-logo { width: min(320px, 100%); height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
 
 @media (max-width: 1000px) { .record-workspace.record-workspace-no-summary { grid-template-columns: minmax(0,1fr); } }
+
+/* Login identity uses readable text and the current transparent symbol. */
+.sentinel-login-brand { display: flex; align-items: center; gap: 16px; max-width: 100%; color: var(--text-primary); }
+.sentinel-login-brand > img { width: 72px; height: 72px; flex: 0 0 72px; object-fit: contain; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.sentinel-login-brand-name { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.sentinel-login-brand-name strong { font-size: clamp(24px, 3vw, 32px); font-weight: 800; letter-spacing: .035em; line-height: 1; }
+.sentinel-login-brand-name span { font-size: 12px; font-weight: 600; letter-spacing: .42em; line-height: 1.4; }
+.sentinel-auth-story > .sentinel-login-brand { color: #f1f8fa; position: relative; z-index: 1; }
+.sentinel-auth-tenant .sentinel-login-brand > img { width: 64px; height: 64px; flex-basis: 64px; }
+.sentinel-auth-card h1 { letter-spacing: -.025em; line-height: 1.3; }
+.sentinel-auth-card > p { font-size: 14px; }
+.sentinel-auth-story h2 { letter-spacing: -.035em; }
+.sentinel-auth-story p { font-size: 15px; line-height: 1.75; }
+@media (max-width: 480px) { .sentinel-login-brand { gap: 12px; } .sentinel-login-brand-name strong { font-size: 26px; } }
