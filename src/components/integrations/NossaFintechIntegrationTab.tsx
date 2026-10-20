@@ -1,3 +1,6 @@
+import { BankCodeSelect } from '../common/BankCodeSelect';
+import { InssBenefitTypeSelect } from '../simulation/InssBenefitTypeSelect';
+import { portabilityEligibility } from '../../lib/portabilityEligibility';
 import { BankPromoterConnection, promoterApiUrl } from './BankPromoterConnection';
 import React, { useEffect, useState } from 'react';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
@@ -79,8 +82,10 @@ const NossaFintechIntegrationTabContent: React.FC<{ promoterId: string }> = ({ p
   const [path, setPath] = useState(endpointOptions[0][1] as string);
   const [body, setBody] = useState('{}');
   const [result, setResult] = useState<ApiResult | null>(null);
-  const [portInput, setPortInput] = useState({ birthDate: '', lastDueBalance: '', installmentFaceValue: '', openedInstallmentNumber: '', numberOfInstallments: '96', legalRepresentative: false });
+  const [portInput, setPortInput] = useState({ birthDate: '', lastDueBalance: '', installmentFaceValue: '', openedInstallmentNumber: '', numberOfInstallments: '96', legalRepresentative: false, originalBank: '', paidInstallments: '', benefitType: '' });
+  const [portNotice, setPortNotice] = useState('');
   const [portResults, setPortResults] = useState<ApiResult | null>(null);
+  useEffect(() => { setPortResults(null); setPortNotice(''); }, [portInput]);
 
   useEffect(() => {
     fetch(promoterApiUrl('/api/integrations/nossa-fintech/config', connectionPromoterId)).then(async response => {
@@ -119,11 +124,17 @@ const NossaFintechIntegrationTabContent: React.FC<{ promoterId: string }> = ({ p
   };
 
   const simulatePortRefin = async () => {
-    setBusy(true); setPortResults(null); setNotice('');
+    setPortNotice(''); setPortResults(null);
+    if (!portInput.originalBank || portInput.paidInstallments === '' || !Number.isInteger(Number(portInput.paidInstallments)) || Number(portInput.paidInstallments) < 0 || !portInput.benefitType) {
+      setPortNotice('Informe banco de origem, parcelas pagas e espécie do benefício.'); return;
+    }
+    const eligibility = portabilityEligibility('Nossa Fintech', portInput.originalBank, portInput.paidInstallments);
+    if (eligibility.blocked) { setPortNotice(eligibility.reason); return; }
+    setBusy(true);
     try {
-      const response = await fetch(promoterApiUrl('/api/integrations/nossa-fintech/port-refin/simulate-all', connectionPromoterId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portInput, lastDueBalance: Number(portInput.lastDueBalance), installmentFaceValue: Number(portInput.installmentFaceValue), openedInstallmentNumber: Number(portInput.openedInstallmentNumber), numberOfInstallments: Number(portInput.numberOfInstallments) }) });
-      const data = await response.json(); setPortResults(data); if (!response.ok) throw new Error(data.error || 'Falha na simulação.');
-    } catch (error: any) { setNotice(error.message || 'Falha na simulação Port/Refin.'); } finally { setBusy(false); }
+      const response = await fetch(promoterApiUrl('/api/integrations/nossa-fintech/port-refin/simulate-all', connectionPromoterId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portInput, paidInstallments: Number(portInput.paidInstallments), benefitType: Number(portInput.benefitType), lastDueBalance: Number(portInput.lastDueBalance), installmentFaceValue: Number(portInput.installmentFaceValue), openedInstallmentNumber: Number(portInput.openedInstallmentNumber), numberOfInstallments: Number(portInput.numberOfInstallments) }) });
+      const data = await response.json(); setPortResults(data); if (!response.ok || data.success === false) throw new Error(data.error || data.data?.message || `Falha na simulação (HTTP ${data.status || response.status}).`);
+    } catch (error: any) { setPortNotice(error.message || 'Falha na simulação Port/Refin.'); } finally { setBusy(false); }
   };
 
   const selectedMethod = endpointOptions[endpointIndex][0];
@@ -144,15 +155,19 @@ const NossaFintechIntegrationTabContent: React.FC<{ promoterId: string }> = ({ p
 
     <section className="rounded-2xl border border-indigo-200 bg-white p-6 dark:border-indigo-950 dark:bg-slate-900">
       <div className="mb-4"><h3 className="font-bold">Simular Portabilidade + Refinanciamento em todas as tabelas elegíveis</h3><p className="mt-1 text-sm text-slate-500">A API não documenta consulta automática de dívida em qualquer banco. Preencha os dados do contrato atual; o Sentinel consulta as tabelas Port/Refin e executa uma simulação por tabela compatível.</p></div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <label className="text-xs font-semibold">Data de nascimento do cliente<input type="date" value={portInput.birthDate} onChange={e => setPortInput(v => ({ ...v, birthDate: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" /></label>
-        {([['Saldo devedor atual (R$)', 'lastDueBalance'], ['Parcela atual (R$)', 'installmentFaceValue'], ['Parcelas em aberto', 'openedInstallmentNumber']] as const).map(([label, key]) => <label key={key} className="text-xs font-semibold">{label}<input type="number" min="0.01" step={key === 'openedInstallmentNumber' ? '1' : '0.01'} value={portInput[key]} onChange={e => setPortInput(v => ({ ...v, [key]: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" /></label>)}
+      <form onSubmit={event => { event.preventDefault(); void simulatePortRefin(); }}><fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="text-xs font-semibold">Data de nascimento do cliente<input required type="date" value={portInput.birthDate} onChange={e => setPortInput(v => ({ ...v, birthDate: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" /></label>
+        {([['Saldo devedor atual (R$)', 'lastDueBalance'], ['Parcela atual (R$)', 'installmentFaceValue'], ['Parcelas em aberto', 'openedInstallmentNumber']] as const).map(([label, key]) => <label key={key} className="text-xs font-semibold">{label}<input required type="number" min={key === 'openedInstallmentNumber' ? 1 : 0.01} step={key === 'openedInstallmentNumber' ? '1' : '0.01'} value={portInput[key]} onChange={e => setPortInput(v => ({ ...v, [key]: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" /></label>)}
         <label className="text-xs font-semibold">Prazo do refinanciamento<select value={portInput.numberOfInstallments} onChange={e => setPortInput(v => ({ ...v, numberOfInstallments: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700">{INSS_TERMS.filter(term => term >= 60).map(term => <option key={term} value={term}>{term} meses</option>)}</select></label>
+        <BankCodeSelect label="Banco de origem" value={portInput.originalBank} onChange={value => setPortInput(v => ({ ...v, originalBank: value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" labelClassName="text-xs font-semibold" />
+        <label className="text-xs font-semibold">Parcelas pagas<input required type="number" min="0" step="1" value={portInput.paidInstallments} onChange={e => setPortInput(v => ({ ...v, paidInstallments: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" /></label>
+        <label className="text-xs font-semibold">Espécie do benefício<InssBenefitTypeSelect required value={portInput.benefitType} onChange={value => setPortInput(v => ({ ...v, benefitType: value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-transparent p-2.5 text-sm dark:border-slate-700" /></label>
         <label className="flex items-end gap-2 pb-2 text-xs"><input type="checkbox" checked={portInput.legalRepresentative} onChange={e => setPortInput(v => ({ ...v, legalRepresentative: e.target.checked }))} />Possui representante legal</label>
-      </div>
-      <button onClick={simulatePortRefin} disabled={busy || !config.enabled || !config.isConfigured || !portInput.birthDate || !portInput.lastDueBalance || !portInput.installmentFaceValue || !portInput.openedInstallmentNumber || !portInput.numberOfInstallments} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Activity className="h-4 w-4" />{busy ? 'Consultando tabelas e simulando…' : 'Calcular em todas as tabelas'}</button>
+      </fieldset>
+      <button type="submit" disabled={busy || !config.enabled || !config.isConfigured || !portInput.birthDate || !portInput.lastDueBalance || !portInput.installmentFaceValue || !portInput.openedInstallmentNumber || !portInput.numberOfInstallments || !portInput.originalBank || portInput.paidInstallments === '' || !portInput.benefitType} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Activity className="h-4 w-4" />{busy ? 'Consultando tabelas e simulando…' : 'Calcular em todas as tabelas'}</button></form>
+      {portNotice && <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">{portNotice}</p>}
       {portResults?.data?.message && <p className="mt-3 text-sm text-amber-700">{portResults.data.message}</p>}
-      {rows.length > 0 && <div className="mt-4 overflow-x-auto rounded-lg border dark:border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-100 text-xs dark:bg-slate-800"><tr><th className="p-2">Tabela/produto</th><th className="p-2">Prazo</th><th className="p-2">Resultado</th></tr></thead><tbody>{rows.map((row: any, index: number) => { const amount = getNossaFintechTroco(row.data); return <tr key={`${row.table?.cod_tabela || index}`} className="border-t dark:border-slate-800"><td className="p-2">{row.table?.name || row.table?.cod_tabela || 'Tabela'}</td><td className="p-2">{portInput.numberOfInstallments} meses</td><td className="p-2">{row.success ? <span className="font-semibold text-emerald-600">Troco retornado {amount !== null ? money(amount) : 'não informado pela API'}</span> : <span className="text-rose-600">Indisponível (HTTP {row.status})</span>}</td></tr>; })}</tbody></table></div>}
+      {rows.length > 0 && <div className="mt-4 overflow-x-auto rounded-lg border dark:border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-100 text-xs dark:bg-slate-800"><tr><th className="p-2">Tabela/produto</th><th className="p-2">Prazo</th><th className="p-2">Resultado</th></tr></thead><tbody>{rows.map((row: any, index: number) => { const amount = getNossaFintechTroco(row.data); return <tr key={`${row.table?.cod_tabela || index}`} className="border-t dark:border-slate-800"><td className="p-2">{row.table?.name || row.table?.cod_tabela || 'Tabela'}</td><td className="p-2">{portInput.numberOfInstallments} meses</td><td className="p-2">{row.success ? <span className="font-semibold text-emerald-600">Troco retornado {amount !== null ? money(amount) : 'não informado pela API'}</span> : <span className="text-rose-600">{row.error || `Indisponível (HTTP ${row.status})`}</span>}</td></tr>; })}</tbody></table></div>}
     </section>
 
     <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
