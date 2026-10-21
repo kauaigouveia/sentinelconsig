@@ -14,3 +14,9 @@
 Testes de normalização e persistência do payload permitido, fluxo inicial sem documentos, tratamento de respostas não JSON, limite/tipo/tamanho de documentos, tenant e validade de ticket, montagem e remoção de blobs (Azure e banco simulados). As suites existentes de simulação, espécies e taxas também são executadas.
 
 A criação real na FINANTO e a aplicação da migração em produção precisam ser confirmadas no ambiente publicado; os testes locais não usam credenciais nem dados reais de clientes.
+
+## Cliente analfabeto
+
+A etapa de dados do cliente pergunta "O cliente é analfabeto?" com Sim, Não ou Não informado. A pergunta permanece visível fora dos dados complementares recolhidos, nos fluxos INSS do operador (Novo/Refin/Portabilidade, Happy e planilhas) e do parceiro.
+
+Sim exibe um aviso para conferir formalização/documentos no roteiro. O indicador interno `illiterate` é normalizado estritamente (YES/true = true; NO/false = false; ausência = undefined) e participa da conferência de portabilidade. Não informado não equivale a Não. Não há bloqueio bancário novo inventado: as regras atuais geram necessidade de conferência para este caso. A alteração não acrescenta parâmetros sem documentação aos payloads bancários.

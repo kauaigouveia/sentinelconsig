@@ -1,5 +1,5 @@
 import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
-import { PortabilityReviewFields } from './PortabilityReviewFields';
+import { IlliteracyField, PortabilityReviewFields } from './PortabilityReviewFields';
 import { SimulationCustomerSummary } from './SimulationCustomerSummary';
 import { c6MatchesSelection } from '../../lib/c6Eligibility';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from './SimulationSteps';
@@ -472,6 +472,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
           <fieldset data-simulation-step hidden={step!==0 || typing} disabled={step!==0 || typing} className="space-y-5">
           <section className="space-y-3"><h3 className="font-bold text-slate-900 dark:text-white">1. Dados obrigatórios do cliente</h3><p className="text-xs text-slate-500">Esses dados são usados para validar a espécie e consultar as condições disponíveis.</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className={labelClass}>CPF<input className={inputClass} required value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} /></label>{field('Nome do cliente (opcional)', name, setName, 'text', false)}{field('Data de nascimento', birthDate, setBirthDate, 'date')}{field('Número do benefício', benefit, setBenefit, 'text', true, 20)}<InssBenefitTypeSelect className={labelClass} required value={benefitType} onChange={setBenefitType} /></div></section>
 
+          {!['2','4'].includes(operationCode)&&<IlliteracyField value={portabilityContext.illiterate||''} onChange={illiterate=>{setPortabilityContext(current=>({...current,illiterate}));setSelectedCondition(undefined);setCalculation(null);setQuotes([]);setFactaOffers([]);}}/>}
           {['2','4'].includes(operationCode)&&<PortabilityReviewFields value={{benefitStartDate,...portabilityContext}} onChange={value=>{setPortabilityContext(value);setBenefitStartDate(value.benefitStartDate||'');setSelectedCondition(undefined);setCalculation(null);setQuotes([]);setFactaOffers([]);}}/>}
           <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: originLenderCode, paidInstallments: paidFromTerms(originTerm, originInstallmentsRemaining), birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
           <PresencaInssBenefits key={normalizeCpf(cpf)} cpf={cpf} onApply={applyPresencaBenefit} onUseMargin={operationCode === '1' ? data => { if (normalizeCpf(cpf) !== data.cpf || data.margin === null || data.margin <= 0) return; applyPresencaBenefit(data); setNewSimulationMode('INSTALLMENT'); setInstallmentValue(data.margin.toFixed(2)); } : undefined} />

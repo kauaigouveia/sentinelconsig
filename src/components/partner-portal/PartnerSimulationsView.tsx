@@ -1,5 +1,5 @@
 import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
-import { PortabilityReviewFields } from '../simulation/PortabilityReviewFields';
+import { IlliteracyField, PortabilityReviewFields } from '../simulation/PortabilityReviewFields';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from '../simulation/SimulationSteps';
 import { paidFromTerms } from '../../lib/portabilityEligibility';
 import { BankPlaybooksPanel } from '../simulation/BankPlaybooksPanel';
@@ -63,6 +63,7 @@ export function PartnerSimulationsView() {
         {form.product === 'INSS' && form.operation !== 'REFIN' && field('Renda mensal para C6 (R$)', 'income', 'number')}
         {form.product === 'INSS' && form.operation === 'REFIN' && field('Contrato C6 para refinanciamento', 'c6Contract')}
       </div>
+      {form.product === 'INSS' && !['PORT','PORT_REFIN'].includes(form.operation)&&<IlliteracyField value={portabilityContext.illiterate||''} onChange={illiterate=>{setPortabilityContext(current=>({...current,illiterate}));setRows([]);}}/>}
       {form.product === 'INSS' && ['PORT','PORT_REFIN'].includes(form.operation)&&<PortabilityReviewFields value={portabilityContext} onChange={next=>{setPortabilityContext(next);setRows([]);}}/>}
       <SimulationContinue disabled={busy} onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset>
       <fieldset hidden={step!==1} disabled={step!==1} className="space-y-5"><SimulationBack onBack={()=>setStep(0)} disabled={busy} label="Voltar ao cliente"/>

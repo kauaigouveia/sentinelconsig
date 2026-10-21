@@ -1,8 +1,12 @@
 import { paidFromTerms, portabilityEligibility } from './portabilityEligibility';
 import type { PortabilityContext } from './portabilityPolicy';
 
+export function parseIlliteracy(value: unknown): boolean | undefined {
+ return value === true || value === 'YES' ? true : value === false || value === 'NO' ? false : undefined;
+}
+
 export function portabilityReviewMetadata(raw:any={}) {
- return {state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:['M','F'].includes(raw.sex)?raw.sex:undefined,originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount!==''&&raw.negativeMarginAmount!=null?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10)};
+ return {illiterate:parseIlliteracy(raw.illiterate),state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:['M','F'].includes(raw.sex)?raw.sex:undefined,originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount!==''&&raw.negativeMarginAmount!=null?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10)};
 }
 
 /** Normalize the existing simulators without confusing the port rate with the refinancing rate. */
@@ -22,7 +26,7 @@ export function simulationPortabilityCheck(bank: string, raw: any, offer?: any) 
   refinRate:number(offer?.rate,raw.refinancing?.rate,raw.refinanceRate,raw.refinancingRate,raw.taxa_mensal_refin,operation==='PORT'?undefined:raw.rate),
   negativeMargin:raw.negativeMargin===true,negativeMarginAmount:number(raw.negativeMarginAmount),
   additionalMargin:number(raw.additionalMargin,installment!=null&&originalInstallment!=null?Math.max(0,installment-originalInstallment):undefined),
-  contractCount:raw.contracts?.length||1,originCategory:raw.originCategory,illiterate:raw.illiterate,paymentOrder:raw.paymentOrder,
+  contractCount:raw.contracts?.length||1,originCategory:raw.originCategory,illiterate:parseIlliteracy(raw.illiterate),paymentOrder:raw.paymentOrder,
  };
  const origin=value(raw.originalBank,raw.originLenderCode,contract.lenderCode,contract.originBank);
  const paid=value(raw.paidInstallments,contract.paidInstallments,paidFromTerms(value(raw.originalTerm,contract.term),value(raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining)));

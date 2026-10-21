@@ -5,7 +5,7 @@ import { PORTABILITY_BOOKS } from './portabilityPlaybooks';
 export const BANK_PLAYBOOKS = source;
 export const PORTABILITY_PLAYBOOKS = PORTABILITY_BOOKS;
 export type PlaybookId = typeof source[number]['id'];
-export type PlaybookInput = { originBank?: string; paidInstallments?: number; birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean };
+export type PlaybookInput = { illiterate?: boolean; originBank?: string; paidInstallments?: number; birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean };
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function publicPlaybookText(value: string) {
   // Commercial correspondent details are company-only, never part of partner answers.
