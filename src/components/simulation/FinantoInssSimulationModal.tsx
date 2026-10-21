@@ -239,11 +239,25 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
   const refinanceIdentityReady = isValidCpf(normalizeCpf(cpf)) && Boolean(benefit.replace(/\D/g, ''));
   const manualAmountsReady = newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) > 0 : parseAmount(installmentValue) > 0;
   const borrowerSimulationDataReady = isValidCpf(normalizeCpf(cpf)) && ageAt(birthDate) !== null && Boolean(benefit.replace(/\D/g, '')) && Number.isInteger(Number(benefitType)) && Number(benefitType) > 0;
-  const operationDataReady = operationCode === '1' ? manualAmountsReady
-    : operationCode === '2' ? originDataReady
-      : operationCode === '3' ? refinanceIdentityReady
-        : originDataReady && refinancingDataReady;
-  const canCalculate = Number(rate) > 0 && Number.isInteger(Number(term)) && Number(term) > 0 && operationDataReady && borrowerSimulationDataReady;
+  const clientIssues = [
+    !isValidCpf(normalizeCpf(cpf)) ? 'Informe um CPF válido.' : '',
+    ageAt(birthDate) === null ? 'Informe uma data de nascimento válida.' : '',
+    !benefit.replace(/\D/g, '') ? 'Informe o número do benefício.' : '',
+    !(Number.isInteger(Number(benefitType)) && Number(benefitType) > 0) ? 'Selecione a espécie do benefício na lista.' : '',
+  ].filter(Boolean);
+  const conditionIssues = [
+    !(Number(rate) > 0) ? 'Selecione a taxa mensal.' : '',
+    !(Number.isInteger(Number(term)) && Number(term) > 0) ? 'Selecione o prazo.' : '',
+    operationCode === '1' && !manualAmountsReady ? (newSimulationMode === 'AMOUNT' ? 'Informe um valor liberado maior que zero.' : 'Informe uma parcela maior que zero.') : '',
+    ['2','4'].includes(operationCode) && !originDataReady ? 'Complete banco, número do contrato, prazo original, parcelas restantes, parcela atual e saldo devedor.' : '',
+    operationCode === '4' && !refinancingDataReady ? 'Complete prazo, taxa e parcela adicional do refinanciamento.' : '',
+  ].filter(Boolean);
+  const canCalculate = !clientIssues.length && !conditionIssues.length;
+  const compareOffers = () => {
+    if (clientIssues.length) { setError(clientIssues.join(' ')); setStep(0); return; }
+    if (conditionIssues.length) { setError(conditionIssues.join(' ')); return; }
+    setStep(2); void handleCalculate();
+  };
   const handleCalculate = async () => {
     setError(''); setSelectedCondition(undefined); setTyping(false); setCalculation(null); setQuotes([]); setNossaFintechQuotes([]); setNossaFintechError('');
     if (!borrowerSimulationDataReady) return setError('Antes de simular, informe CPF válido, data de nascimento, número do benefício e espécie do benefício.');
@@ -476,7 +490,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
           {['2','4'].includes(operationCode)&&<PortabilityReviewFields value={{benefitStartDate,...portabilityContext}} onChange={value=>{setPortabilityContext(value);setBenefitStartDate(value.benefitStartDate||'');setSelectedCondition(undefined);setCalculation(null);setQuotes([]);setFactaOffers([]);}}/>}
           <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: originLenderCode, paidInstallments: paidFromTerms(originTerm, originInstallmentsRemaining), birthDate, species: benefitType, operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' } as const)[operationCode], term: Number(term), amount: operationCode === '1' && newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : undefined, benefitStartDate, legalRepresentative: nossaFintechLegalRepresentative }} />
           <PresencaInssBenefits key={normalizeCpf(cpf)} cpf={cpf} onApply={applyPresencaBenefit} onUseMargin={operationCode === '1' ? data => { if (normalizeCpf(cpf) !== data.cpf || data.margin === null || data.margin <= 0) return; applyPresencaBenefit(data); setNewSimulationMode('INSTALLMENT'); setInstallmentValue(data.margin.toFixed(2)); } : undefined} />
-          <SimulationContinue disabled={loading} onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset>
+          <SimulationContinue disabled={loading} onClick={event=>{if(clientIssues.length){setError(clientIssues.join(' '));return;}setError('');continueSimulation(event,()=>setStep(1));}}/></fieldset>
           <fieldset hidden={step!==1 || typing} disabled={step!==1 || typing} className="space-y-5">
           {operationCode === '1' && <ParanaNovoOpportunities name={name} phone={phone} onNameChange={setName} onPhoneChange={setPhone} cpf={cpf} benefit={benefit} species={benefitType} selected={selectedCondition} onSelect={setSelectedCondition} onClear={() => setSelectedCondition(current => current?.provider === 'Paraná Banco' ? undefined : current)} />}
 
@@ -497,7 +511,7 @@ export const FinantoInssSimulationModal: React.FC<Props> = ({ isOpen, onBack, ha
             {factaContracts.length > 0 && <label className={labelClass}>Contrato retornado pela FACTA<select value={factaContract} onChange={e => setFactaContract(e.target.value)} className={inputClass}><option value="">Selecione o contrato</option>{factaContracts.map(item => <option key={item.code} value={item.code}>{item.code} · parcela R$ {item.installment?.toLocaleString('pt-BR')} · saldo R$ {item.debt?.toLocaleString('pt-BR')}</option>)}</select></label>}
           </div>}
           {operationCode === '1' && <label className={labelClass}>Renda mensal para C6 (R$)<CurrencyInput min="0.01" step="0.01" value={income} onValueChange={value => setIncome(value)} className={inputClass} /></label>}
-          {!canCalculate && <p className="text-xs text-slate-500">Informe os dados obrigatorios do cliente acima e selecione os campos desta modalidade, taxa e prazo.</p>}<button type="button" onClick={()=>{setStep(2);void handleCalculate();}} disabled={loading || loadingRules || !canCalculate} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{loading ? 'Calculando...' : 'Comparar ofertas'}</button>
+          {!canCalculate && <div id="inss-simulation-pending" role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"><p className="font-semibold">Para comparar as ofertas, confira:</p><ul className="mt-2 list-disc space-y-1 pl-5">{[...clientIssues,...conditionIssues].map(issue=><li key={issue}>{issue}</li>)}</ul>{clientIssues.length>0&&<button type="button" onClick={()=>setStep(0)} className="mt-3 rounded-lg border px-3 py-2 font-semibold">Corrigir dados do cliente</button>}</div>}<button type="button" aria-describedby={!canCalculate?'inss-simulation-pending':undefined} onClick={compareOffers} disabled={loading || loadingRules} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{loading ? 'Calculando...' : 'Comparar ofertas'}</button>
           <BmgCustomerAuthorization input={{ product: 'INSS', operation: ({ '1': 'NEW', '2': 'PORT', '3': 'REFIN', '4': 'PORT_REFIN' })[operationCode], ...portabilityContext,benefitStartDate,cpf: normalizeCpf(cpf), birthDate, benefitNumber: benefit, income: parseAmount(income), term: Number(term), value: newSimulationMode === 'AMOUNT' ? parseAmount(loanValue) : parseAmount(installmentValue), mode: newSimulationMode }} onRows={setBmgRows} />
           <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/></section></fieldset>
           <fieldset hidden={step!==2 || typing} disabled={step!==2 || typing} className="space-y-5"><SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar às condições"/>{loading && <p role="status" className="rounded-xl bg-blue-500/10 p-5 text-sm">Consultando as condições disponíveis…</p>}

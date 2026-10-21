@@ -20,3 +20,7 @@ A criação real na FINANTO e a aplicação da migração em produção precisam
 A etapa de dados do cliente pergunta "O cliente é analfabeto?" com Sim, Não ou Não informado. A pergunta permanece visível fora dos dados complementares recolhidos, nos fluxos INSS do operador (Novo/Refin/Portabilidade, Happy e planilhas) e do parceiro.
 
 Sim exibe um aviso para conferir formalização/documentos no roteiro. O indicador interno `illiterate` é normalizado estritamente (YES/true = true; NO/false = false; ausência = undefined) e participa da conferência de portabilidade. Não informado não equivale a Não. Não há bloqueio bancário novo inventado: as regras atuais geram necessidade de conferência para este caso. A alteração não acrescenta parâmetros sem documentação aos payloads bancários.
+
+## Pendências de dados antes de comparar
+
+A etapa Condições lista os dados inválidos ou ausentes por nome (CPF, nascimento, benefício, espécie, valor/parcela, taxa, prazo e contrato de origem quando aplicável), com atalho para corrigir a etapa Cliente. Comparar ofertas permite solicitar a conferência; não chama as APIs enquanto houver pendências. Continuar na etapa Cliente também confere CPF e os estados canônicos do benefício/espécie antes de avançar, além da validade HTML dos campos. Analfabetismo não é obrigatório nem bloqueia essa validação.
