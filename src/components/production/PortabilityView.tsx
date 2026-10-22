@@ -1,3 +1,5 @@
+import { PortabilityFinancialSummary } from './PortabilityFinancialSummary';
+import { PORTABILITY_SITUATIONS, portabilitySituation, portabilitySegment, portabilityMonitoredValue, type PortabilitySegment, type PortabilitySituation } from '../../lib/portabilityMonitoring';
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeftRight,
@@ -28,6 +30,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
   };
 
   const [proposals, setProposals] = useState<Proposal[]>(getPortabilityProposals);
+  const products = StorageService.getProducts();
   const clients = StorageService.getClients();
   const banks = StorageService.getBanks();
   const promoters = StorageService.getPromoters();
@@ -37,6 +40,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
   const config = StorageService.getConfig();
 
   const [activeTab, setActiveTab] = useState<'TODAS' | 'EM_PRAZO' | '5_DIA' | 'ATRASADAS' | 'SALDO_RETORNADO'>('TODAS');
+  const [financialFilter, setFinancialFilter] = useState<{segment: PortabilitySegment; situation: PortabilitySituation} | null>(null);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [cronFeedback, setCronFeedback] = useState<string | null>(null);
 
@@ -70,6 +74,8 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
       proposal: p,
       sla,
       status,
+      segment: portabilitySegment(p, products)!,
+      situation: portabilitySituation(p, status),
     };
   });
 
@@ -86,10 +92,11 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
     c => c.status?.code === 'SALDO_RETORNADO'
   );
 
-  const totalSaldoPortabilidade = proposals.reduce((acc, p) => acc + (p.contractBalance || 0), 0);
-  const totalTrocoPortabilidade = proposals.reduce((acc, p) => acc + (p.disbursedValue || 0), 0);
+  const openRows = classified.filter(row => ['ANDAMENTO', 'PENDENTE'].includes(row.situation));
+  const totalSaldoPortabilidade = openRows.filter(row => row.segment === 'SALDO').reduce((acc, row) => acc + (portabilityMonitoredValue(row.proposal, 'SALDO') ?? 0), 0);
+  const totalTrocoPortabilidade = openRows.filter(row => row.segment === 'TROCO').reduce((acc, row) => acc + (portabilityMonitoredValue(row.proposal, 'TROCO') ?? 0), 0);
 
-  const currentList =
+  const slaList =
     activeTab === 'TODAS'
       ? classified
       : activeTab === 'EM_PRAZO'
@@ -99,6 +106,8 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
       : activeTab === 'ATRASADAS'
       ? atrasadas
       : saldoRetornado;
+
+  const currentList = financialFilter ? slaList.filter(row => row.segment === financialFilter.segment && row.situation === financialFilter.situation) : slaList;
 
   return (
     <div className={`space-y-4 ${premium ? 'p2-live-module p2-live-cip' : ''}`}>
@@ -122,18 +131,20 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
       {/* Financial Summary Banner */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${premium ? 'p2-cip-totals' : ''}`}>
         <MetricCard
-          title="Saldo Total em Portabilidade"
+          title="Saldo de portabilidade em aberto"
           value={formatCurrency(totalSaldoPortabilidade)}
-          subtitle="Soma de todos os saldos devedores retidos ou aguardando retorno"
+          subtitle="Portabilidades em andamento ou pendentes; não inclui refinanciamentos"
           tone="info"
         />
         <MetricCard
-          title="Troco / Líquido Previsto"
+          title="Troco de refinanciamento em aberto"
           value={formatCurrency(totalTrocoPortabilidade)}
-          subtitle="Estimativa consolidada a ser liberada aos proponentes"
+          subtitle="Troco dos refinanciamentos da portabilidade em andamento ou pendentes"
           tone="success"
         />
       </div>
+
+      <PortabilityFinancialSummary rows={classified} selected={financialFilter} onSelect={(segment,situation)=>{setActiveTab('TODAS');setFinancialFilter(current=>current?.segment===segment&&current.situation===situation?null:{segment,situation});}}/>
 
       {/* Cron Feedback Banner */}
       {cronFeedback && (
@@ -146,7 +157,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
       {/* Metrics Filter Tabs */}
       <div className={`grid grid-cols-2 md:grid-cols-5 gap-2.5 ${premium ? 'p2-cip-queues' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Filas de portabilidade' : undefined}>
         <button
-          onClick={() => setActiveTab('TODAS')}
+          onClick={() => { setFinancialFilter(null); setActiveTab('TODAS'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'TODAS'
               ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 dark:border-blue-500'
@@ -158,7 +169,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
         </button>
 
         <button
-          onClick={() => setActiveTab('EM_PRAZO')}
+          onClick={() => { setFinancialFilter(null); setActiveTab('EM_PRAZO'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'EM_PRAZO'
               ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-500'
@@ -170,7 +181,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
         </button>
 
         <button
-          onClick={() => setActiveTab('5_DIA')}
+          onClick={() => { setFinancialFilter(null); setActiveTab('5_DIA'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === '5_DIA'
               ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 dark:border-amber-500'
@@ -182,7 +193,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
         </button>
 
         <button
-          onClick={() => setActiveTab('ATRASADAS')}
+          onClick={() => { setFinancialFilter(null); setActiveTab('ATRASADAS'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'ATRASADAS'
               ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/40 dark:border-rose-500'
@@ -194,7 +205,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
         </button>
 
         <button
-          onClick={() => setActiveTab('SALDO_RETORNADO')}
+          onClick={() => { setFinancialFilter(null); setActiveTab('SALDO_RETORNADO'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'SALDO_RETORNADO'
               ? 'border-purple-500 bg-purple-50/70 dark:bg-purple-950/40 dark:border-purple-500'
@@ -205,6 +216,8 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
           <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{saldoRetornado.length}</p>
         </button>
       </div>
+
+      {financialFilter && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-950/30"><span>{financialFilter.segment==='SALDO'?'Saldo de portabilidade':'Troco do refinanciamento'} · {PORTABILITY_SITUATIONS.find(item=>item.key===financialFilter.situation)?.label} · {currentList.length} proposta(s)</span><button type="button" onClick={()=>{setFinancialFilter(null);setActiveTab('TODAS');}} className="rounded-lg border px-3 py-2 font-semibold">Limpar filtro financeiro</button></div>}
 
       {/* Table */}
       <div className={`overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs ${premium ? 'p2-cip-results' : ''}`}>
@@ -241,6 +254,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
                     <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-3 font-mono font-black text-slate-900 dark:text-white">
                         ADE {p.proposalNumber}
+                        <span className="mt-1 block text-[10px] font-normal text-slate-500">{portabilitySegment(p,products)==='SALDO'?'Portabilidade':'Refinanciamento da portabilidade'}</span>
                       </td>
                       <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">
                         {client?.fullName}
@@ -260,17 +274,17 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {p.contractBalance ? (
+                        {portabilitySegment(p,products)==='SALDO' && portabilityMonitoredValue(p,'SALDO')!==null ? (
                           <span className="text-[11px] font-mono font-black text-indigo-700 dark:text-indigo-400 block">
-                            Saldo: {formatCurrency(p.contractBalance)}
+                            Saldo: {formatCurrency(portabilityMonitoredValue(p,'SALDO') ?? 0)}
                           </span>
                         ) : null}
-                        {p.disbursedValue ? (
+                        {portabilitySegment(p,products)==='TROCO' && portabilityMonitoredValue(p,'TROCO')!==null ? (
                           <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 block">
-                            Troco: {formatCurrency(p.disbursedValue)}
+                            Troco: {formatCurrency(portabilityMonitoredValue(p,'TROCO') ?? 0)}
                           </span>
                         ) : null}
-                        {!p.contractBalance && !p.disbursedValue && (
+                        {portabilityMonitoredValue(p,portabilitySegment(p,products)!)===null && (
                           <span className="text-slate-400 text-[10px]">—</span>
                         )}
                       </td>
