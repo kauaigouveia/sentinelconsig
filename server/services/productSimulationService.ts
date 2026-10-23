@@ -5,16 +5,20 @@ import { FactaBankService } from './factaBankService';
 import { FactaSimulationService } from './factaSimulationService';
 import { BmgBankService } from './bmgBankService.js';
 import { cltResponseReasons } from '../../src/lib/cltRestrictions';
+import { V8CltSimulationService } from './v8CltSimulationService.js';
+import { cltOutcome, cltPublicMessage, type CltOutcome } from '../../src/lib/cltSimulationOutcome.js';
+import { logger } from '../logger.js';
 
 export type ProductSimulationInput = {
-  cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string;
+  cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string; v8ConsultId?: string; v8PromoterId?: string;
   term: number; value: number; mode: 'Payment' | 'Liquid'; eligibility: boolean;
   bmgActorId?: string;
 };
 export type ProductSimulationRow = {
   provider: string; institution: string; table?: string; state: 'OFFER' | 'PENDING' | 'ERROR' | 'DATA';
-  message?: string; link?: string; amount?: number; installment?: number; term?: number; rate?: number;
+  message?: string; link?: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number;
   simulationId?: string; data?: unknown;
+  outcome?: CltOutcome;
 };
 const unwrap = (value: any) => value?.data && !value.key && (value.success !== undefined || value.status === undefined) ? value.data : value;
 const array = (value: any): any[] => Array.isArray(value) ? value : Array.isArray(value?.items) ? value.items : [];
@@ -198,12 +202,32 @@ export class ProductSimulationService {
       if (product !== 'CLT' || action !== 'SIMULATE' || !input.bmgActorId) return;
       rows.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, { ...input, product }));
     };
+    const v8 = async () => {
+      if (product !== 'CLT') return false;
+      const v8Rows = await V8CltSimulationService.run(prisma, tenantId, action, input);
+      if (!v8Rows.length) return false;
+      configured = true;
+      rows.push(...v8Rows);
+      return true;
+    };
+    const normalizeRows = () => {
+      if (product !== 'CLT') return;
+      for (const item of rows) {
+        item.outcome = cltOutcome(item);
+        const safe = cltPublicMessage(item.message);
+        if (safe !== item.message) logger.warn({ tenantId, provider: item.provider, outcome: item.outcome, code: 'PROVIDER_MESSAGE_SANITIZED' }, '[CLT] Provider response redacted');
+        item.message = safe;
+      }
+    };
+    const publishRows = async () => { normalizeRows(); if (onRows) await onRows([...rows]); };
     await Promise.all([
-      nossa().catch(error => failure('Nossa Fintech', product, error)).then(async () => { if (onRows) await onRows([...rows]); }),
-      finanto().catch(error => failure('FINANTO', product, error)).then(async () => { if (onRows) await onRows([...rows]); }),
-      facta().catch(error => failure('FACTA', product, error)).then(async () => { if (onRows) await onRows([...rows]); }),
-      bmg().catch(error => failure('BMG', 'BMG', error)).then(async () => { if (onRows) await onRows([...rows]); }),
+      nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows),
+      finanto().catch(error => failure('FINANTO', product, error)).then(publishRows),
+      facta().catch(error => failure('FACTA', product, error)).then(publishRows),
+      bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows),
+      v8().catch(() => { rows.push({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'ERROR', outcome: 'TECHNICAL_ERROR', message: 'Não foi possível consultar as conexões V8 desta empresa.' }); return true; }).then(async changed => { if (changed) await publishRows(); }),
     ]);
+    normalizeRows();
     return { rows, message: rows.length ? undefined : configured ? 'Nenhuma condição elegível retornada para os dados informados.' : 'Nenhuma integração habilitada e configurada para este produto.' };
   }
 }
