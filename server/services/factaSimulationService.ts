@@ -179,7 +179,14 @@ export class FactaSimulationService {
     }
     const result = await this.request(prisma, tenantId, '/consignado-trabalhador/autoriza-consulta', { cpf: input.cpf });
     if (!Array.isArray(result.dados_trabalhador?.dados)) throw new Error('FACTA retornou uma resposta incompatível com a consulta de vínculos CLT. A resposta não foi utilizada.');
-    const workers = list(result.dados_trabalhador?.dados).filter(worker => !input.employerDocument || digits(worker.numeroInscricaoEmpregador) === input.employerDocument);
+    const registrationOf = (value: unknown): string => typeof value === 'string' ? value : typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? String(value) : '';
+    let workers = list(result.dados_trabalhador?.dados).filter(worker => !input.employerDocument || digits(worker.numeroInscricaoEmpregador) === input.employerDocument);
+    // Re-read the authorized response; a browser-supplied registration is only a selector.
+    if (action === 'SIMULATE') {
+      if (input.factaRegistration) workers = workers.filter(worker => registrationOf(worker.matricula) === input.factaRegistration);
+      if (!workers.length) return [row({ state: 'PENDING', message: 'Vínculo FACTA selecionado não encontrado na consulta atual. Atualize os dados e selecione novamente a matrícula.' })];
+      if (workers.length > 1) return [row({ state: 'PENDING', message: 'A FACTA retornou múltiplos vínculos. Selecione a matrícula do vínculo que deseja simular.' })];
+    }
     for (const worker of workers) {
       if (digits(worker.cpf) !== input.cpf) throw new Error('FACTA retornou dados de outro CPF. A resposta não foi utilizada.');
       const eligible = [true, 1, '1', 'true', 'S', 'SIM'].includes(worker.elegivel);
@@ -189,6 +196,8 @@ export class FactaSimulationService {
         continue;
       }
       if (restrictions.length) { rows.push(row({ state: 'PENDING', message: restrictions.join(' · ') })); continue; }
+      const registration = registrationOf(worker.matricula);
+      if (!registration.trim() || registration.length > 100) { rows.push(row({ state: 'PENDING', message: 'A FACTA não informou uma matrícula válida para este vínculo. Atualize os dados antes de consultar ofertas.' })); continue; }
       if (!worker.dataNascimento || !factaNumber(worker.valorTotalVencimentos)) { rows.push(row({ state: 'PENDING', message: 'O banco não informou nascimento e renda necessários à simulação deste vínculo.' })); continue; }
       try {
         const tables = await this.request(prisma, tenantId, '/proposta/operacoes-disponiveis', { produto: 'D', tipo_operacao: 13, averbador: 10010, convenio: 3, opcao_valor: input.mode === 'Payment' ? 2 : 1, ...(input.mode === 'Payment' ? { valor_parcela: input.value } : { valor: input.value }), ...(input.term ? { prazo: input.term } : {}), cpf: input.cpf, data_nascimento: date(worker.dataNascimento), valor_renda: factaNumber(worker.valorTotalVencimentos) });
@@ -198,12 +207,12 @@ export class FactaSimulationService {
           }
           const offer = this.offer(table);
           if (input.term && offer.term !== input.term) continue;
-          if (!offer.term || !offer.contractAmount || !worker.matricula || !worker.dataNascimento || !worker.dataAdmissao) {
+          if (!offer.term || !offer.contractAmount || !worker.dataNascimento || !worker.dataAdmissao) {
             rows.push(row({ table: offer.name, state: 'PENDING', message: 'Dados insuficientes para validar a política de crédito deste vínculo.' })); continue;
           }
           try {
-            const policy = await this.request(prisma, tenantId, '/consignado-trabalhador/analise-politica-credito', { cpf: input.cpf, matricula: worker.matricula, dataNascimento: date(worker.dataNascimento), dataAdmissao: date(worker.dataAdmissao), prazo: offer.term, valorEmprestimo: offer.contractAmount });
-            if ((policy.cpf && digits(policy.cpf) !== input.cpf) || (policy.matricula && String(policy.matricula).trim() !== String(worker.matricula).trim())) throw new Error('FACTA retornou política de outro CPF ou vínculo. A condição não foi utilizada.');
+            const policy = await this.request(prisma, tenantId, '/consignado-trabalhador/analise-politica-credito', { cpf: input.cpf, matricula: registration, dataNascimento: date(worker.dataNascimento), dataAdmissao: date(worker.dataAdmissao), prazo: offer.term, valorEmprestimo: offer.contractAmount });
+            if ((policy.cpf && digits(policy.cpf) !== input.cpf) || (policy.matricula != null && registrationOf(policy.matricula) !== registration)) throw new Error('FACTA retornou política de outro CPF ou vínculo. A condição não foi utilizada.');
             if (String(policy.aprovado) !== '1') { rows.push(row({ table: offer.name, state: 'PENDING', message: policy.mensagem || 'Vínculo recusado pela política de crédito.' })); continue; }
 
             rows.push(row({ table: `${offer.name} · ${worker.nomeEmpregador || worker.numeroInscricaoEmpregador}`, state: offer.amount ? 'OFFER' : 'PENDING', amount: offer.amount, installment: offer.installment, term: offer.term, rate: offer.rate, message: offer.amount ? undefined : 'O banco não informou valor líquido para esta condição.' }));

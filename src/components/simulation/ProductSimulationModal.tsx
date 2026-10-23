@@ -17,7 +17,7 @@ const money = (value: number | undefined) => value === undefined ? '—' : value
 const inputClass = 'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950';
 
 export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClose, onBack, onHappyClt, partners = [], onSuccess }) => {
-  const [form, setForm] = useState({ cpf: '', name: '', phone: '', employerDocument: '', term: product === 'FGTS' ? '4' : '0', value: '', mode: 'Payment', eligibility: true });
+  const [form, setForm] = useState({ cpf: '', name: '', phone: '', employerDocument: '', factaRegistration: '', term: product === 'FGTS' ? '4' : '0', value: '', mode: 'Payment', eligibility: true });
   const [rows, setRows] = useState<Row[]>([]);
   const [clientRows, setClientRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,12 +27,12 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
   const [partnerId, setPartnerId] = useState('');
   const [saved, setSaved] = useState(false);
   if (!isOpen) return null;
-  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelectedOffer(null); setSaved(false); setMessage(''); if (key === 'cpf' || key === 'name' || key === 'phone') setClientRows([]); };
+  const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value, ...(['cpf', 'employerDocument', 'name', 'phone'].includes(key) ? { factaRegistration: '' } : {}) })); setRows([]); setSelectedOffer(null); setSaved(false); setMessage(''); if (key === 'cpf' || key === 'name' || key === 'phone') setClientRows([]); };
   const run = async (action: 'authorize' | 'simulate' | 'refresh') => {
     if(action==='simulate' || action==='authorize')setStep(2);
     setLoading(true); setRows([]); setSelectedOffer(null); setSaved(false); setMessage('');
     try {
-      const response = await fetch(`/api/simulations/products/${product.toLowerCase()}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, employerDocument: action === 'refresh' ? '' : form.employerDocument, term: Number(form.term), value: Number(form.value) }) });
+      const response = await fetch(`/api/simulations/products/${product.toLowerCase()}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, employerDocument: action === 'refresh' ? '' : form.employerDocument, factaRegistration: action === 'refresh' ? '' : form.factaRegistration, term: Number(form.term), value: Number(form.value) }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível concluir a consulta.');
       const returned: Row[] = result.rows || [];
@@ -42,7 +42,7 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
         setClientRows(updated);
         const employers = [...new Set(updated.flatMap(row => [row.data?.employment?.employer_cnpj, row.data?.margin?.employer?.document, ...(Array.isArray(row.data?.items) ? row.data.items.map((item: any) => item.employerDocument) : [])].filter(Boolean).map(value => String(value).replace(/\D/g, ''))))];
         const customerName = updated.map(row => row.data?.margin?.name || row.data?.borrower?.name).find(Boolean);
-        setForm(current => ({ ...current, employerDocument: employers.length === 1 ? employers[0] : current.employerDocument, name: customerName || current.name }));
+        setForm(current => ({ ...current, employerDocument: employers.length === 1 ? employers[0] : current.employerDocument, factaRegistration: '', name: customerName || current.name }));
       }
     } catch (error: any) { setMessage(error.message); }
     finally { setLoading(false); }
@@ -65,7 +65,7 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
     <SimulationSteps labels={['Cliente','Condições','Resultados']} step={step} onChange={setStep} disabled={loading}/><div className="overflow-y-auto p-5 sm:p-7"><form className="space-y-4" onSubmit={event => { event.preventDefault(); if(step===1)void run('simulate'); }}>
       <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-5"><section><h3 className="mb-3 text-base font-bold">1. Dados do cliente</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><label className="text-xs font-semibold">CPF<input required value={form.cpf} onChange={event => update('cpf', formatCpf(event.target.value))} className={inputClass} /></label>{product === 'CLT' && <>{field('Nome completo', 'name')}{field('Telefone com DDD', 'phone')}{field('CNPJ do empregador (opcional: consulta automática dos vínculos)', 'employerDocument', false)}</>}</div></section>
       <SimulationContinue disabled={loading} onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset>
-      <fieldset hidden={step!==1} disabled={step!==1} className="space-y-5">{clientRows.length > 0 && <section className="space-y-3"><h3 className="text-sm font-bold">Dados do cliente e vínculos consultados</h3>{clientRows.map((row, index) => <CltCustomerDataCard key={`${row.provider}-${row.institution}-${index}`} row={row} selectedEmployer={form.employerDocument} onSelectEmployer={cnpj => update('employerDocument', cnpj)} />)}</section>}
+      <fieldset hidden={step!==1} disabled={step!==1} className="space-y-5">{clientRows.length > 0 && <section className="space-y-3"><h3 className="text-sm font-bold">Dados do cliente e vínculos consultados</h3>{clientRows.map((row, index) => <CltCustomerDataCard key={`${row.provider}-${row.institution}-${index}`} row={row} selectedEmployer={form.employerDocument} selectedFactaRegistration={form.factaRegistration} onSelectEmployer={(cnpj, registration) => { update('employerDocument', cnpj); setForm(current => ({ ...current, factaRegistration: registration ?? '' })); }} />)}</section>}
       <section><h3 className="mb-3 text-sm font-bold">2. Condições da simulação</h3><div className="grid gap-3 sm:grid-cols-3">
         {product === 'CLT' && <><label className="text-xs font-semibold">Simular por<select value={form.mode} onChange={event => update('mode', event.target.value)} className={inputClass}><option value="Payment">Valor da parcela</option><option value="Liquid">Valor liberado</option></select></label>{field(form.mode === 'Payment' ? 'Parcela desejada (R$)' : 'Valor liberado desejado (R$)', 'value', true, 'number')}</>}
         <label className="text-xs font-semibold">{product === 'FGTS' ? 'Saques a antecipar' : 'Prazo (meses)'}{product === 'CLT' ? <select value={form.term} onChange={event => update('term', event.target.value)} className={inputClass}><option value="0">Todos os prazos disponíveis</option>{[6, 12, 18, 24, 30, 36, 48, 60, 72, 84].map(term => <option key={term} value={term}>{term} meses</option>)}</select> : <input required type="number" min="1" max="120" value={form.term} onChange={event => update('term', event.target.value)} className={inputClass} />}</label>
