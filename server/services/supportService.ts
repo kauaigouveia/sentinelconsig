@@ -609,7 +609,7 @@ export class SupportService {
         tenantId,
         entity: 'SUPPORT',
         entityId: conversationId,
-        data: { conversationId, status: updated.status, assignedUserId: updated.assignedUserId },
+        data: { conversationId, partnerId: conversation.partnerId, status: updated.status, assignedUserId: updated.assignedUserId },
       });
     }
 

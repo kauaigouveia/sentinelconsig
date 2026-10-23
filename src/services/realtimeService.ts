@@ -1,3 +1,4 @@
+import { SUPPORT_EVENTS } from '../lib/supportRealtime';
 /**
  * Realtime Event Dispatcher & Server-Sent Events (SSE) Client Hub
  * Sentinel Consig SaaS — Phase 2.3
@@ -97,6 +98,7 @@ export class RealtimeService {
         if (e.key === 'sentinel_realtime_broadcast' && e.newValue) {
           try {
             const event: RealtimeEvent = JSON.parse(e.newValue);
+            if (this.currentTenantId && event.tenantId && event.tenantId !== this.currentTenantId) return;
             this.notifyListeners(event);
           } catch (err) {
             console.error('[REALTIME] Falha ao processar evento storage cross-tab:', err);
@@ -128,6 +130,7 @@ export class RealtimeService {
   public connect(tenantId?: string): void {
     if (typeof window === 'undefined') return;
     if (tenantId) {
+      if (this.currentTenantId && tenantId !== this.currentTenantId) this.disconnect();
       this.currentTenantId = tenantId;
     }
 
@@ -240,6 +243,7 @@ export class RealtimeService {
 
   private bindPusherEvents(channel: Channel): void {
     const eventTypes: RealtimeEvent['type'][] = [
+      ...SUPPORT_EVENTS,
       'ANNOUNCEMENT_PUBLISHED', 'ANNOUNCEMENT_UPDATED',
       'PROPOSAL_CREATED', 'PROPOSAL_UPDATED', 'PROPOSAL_DELETED',
       'STATUS_CHANGED', 'COMMENT_ADDED', 'TASK_CREATED', 'TASK_UPDATED', 'TASK_DELETED',
@@ -305,6 +309,7 @@ export class RealtimeService {
       });
 
       const eventTypes: RealtimeEvent['type'][] = [
+      ...SUPPORT_EVENTS,
         'PROPOSAL_CREATED',
         'PROPOSAL_UPDATED',
         'PROPOSAL_DELETED',

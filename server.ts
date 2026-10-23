@@ -1,3 +1,4 @@
+import { registerPartnerSupportRealtime } from './server/services/partnerSupportRealtime.js';
 import { createProposalEntityResolvers, InvalidProposalReference } from './server/services/proposalEntityResolution.js';
 import { simulationPortabilityCheck, portabilityReviewMetadata } from './src/lib/portabilitySimulationPolicy.js';
 import { registerC6CltRoutes } from './server/services/c6CltService.js';
@@ -2113,6 +2114,7 @@ async function auditAndEnsureMasterUser() {
   registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);
   registerBankPlaybookRoutes(app, prisma, req => PartnerPortalService.getPartnerSession(req, prisma));
+  registerPartnerSupportRealtime(app, req => PartnerPortalService.getPartnerSession(req, prisma));
   registerBmgRoutes(app, prisma, getAuthSession);
   registerDaycovalRoutes(app, prisma, getAuthSession);
   app.get('/api/simulations', async (req, res) => {

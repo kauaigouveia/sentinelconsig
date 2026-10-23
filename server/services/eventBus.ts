@@ -1,3 +1,4 @@
+import { publishPartnerSupport } from './partnerSupportRealtime.js';
 import { EventEmitter } from 'events';
 import { sseRegistry } from '../realtime.js';
 import { logger } from '../logger.js';
@@ -137,6 +138,14 @@ export class CentralEventBus extends EventEmitter {
         { error: err?.message, tenantId: event.tenantId, eventType: event.eventType },
         '[EVENT_BUS] Erro ao fazer broadcast do evento'
       );
+    }
+
+    if (event.entity === 'SUPPORT' && typeof (event.data as any)?.partnerId === 'string' && event.entityId) {
+      try {
+        await publishPartnerSupport(event.tenantId, (event.data as any).partnerId, {type: event.eventType, entityId: event.entityId});
+      } catch {
+        logger.warn({eventType: event.eventType}, '[SUPPORT] Partner transport unavailable; polling remains active');
+      }
     }
 
     // 3. Auditoria automática se solicitada

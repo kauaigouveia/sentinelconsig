@@ -1,7 +1,12 @@
 import Pusher from 'pusher';
+import { createHash } from 'node:crypto';
 import { logger } from '../logger.js';
 
 let pusherClient: Pusher | null = null;
+
+export function partnerSupportChannel(tenantId: string, partnerId: string) {
+  return `private-support-partner-${createHash('sha256').update(JSON.stringify([tenantId, partnerId])).digest('hex')}`;
+}
 
 /**
  * Gets or initializes the Pusher client using lazy loading.
@@ -45,6 +50,14 @@ export interface PublishPayload {
 }
 
 class EventBus {
+  public async publishPartnerSupport(tenantId: string, partnerId: string, payload: PublishPayload): Promise<void> {
+    const client = getPusherClient();
+    await client.trigger(partnerSupportChannel(tenantId, partnerId), payload.type, {
+      type: payload.type, entity: 'SUPPORT', entityId: payload.entityId, tenantId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   /**
    * Publishes an event to a tenant-specific channel.
    * Format: private-tenant-{tenantId}
@@ -56,6 +69,7 @@ class EventBus {
     try {
       const client = getPusherClient();
       const thinEvent = {
+        tenantId,
         type: payload.type,
         entity: payload.entity,
         entityId: payload.entityId,

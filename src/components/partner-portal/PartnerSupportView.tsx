@@ -1,3 +1,5 @@
+import '../support/support-workspace.css';
+import { isSupportEvent, supportConversationId } from '../../lib/supportRealtime';
 import React, { useState, useEffect, useRef } from 'react';
 import { SupportRating } from './SupportRating';
 import {
@@ -18,7 +20,7 @@ import {
   PartnerSupportConversation,
   PartnerSupportMessage,
 } from '../../services/partnerPortalClient';
-import { realtimeHub } from '../../services/realtimeService';
+import { connectPartnerSupportRealtime } from '../../services/partnerSupportRealtime';
 import { toastService } from '../ui/toastService';
 
 interface PartnerSupportViewProps {
@@ -30,6 +32,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
   initialProposalId,
   initialProposalNumber,
 }) => {
+  const [showQueue, setShowQueue] = useState(!initialProposalId);
   const [conversations, setConversations] = useState<PartnerSupportConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [activeConversationData, setActiveConversationData] = useState<any>(null);
@@ -118,14 +121,18 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
     fetchConversations(true);
 
     // Realtime Listener
-    const unsub = realtimeHub.subscribe('*', (event) => {
-      if (['SUPPORT_MESSAGE_RECEIVED', 'SUPPORT_CONVERSATION_CREATED', 'SUPPORT_CONVERSATION_STATUS_CHANGED'].includes(event?.type || '')) {
+    const unsub = connectPartnerSupportRealtime((event) => {
+      if (isSupportEvent(event)) {
         const conversationId = activeConversationIdRef.current;
-        if (event?.data?.conversationId === conversationId && conversationId) {
-          fetchMessagesRef.current(conversationId);
+        if (supportConversationId(event) === conversationId && conversationId) {
+          fetchMessagesRef.current(conversationId, true);
         }
-        fetchConversationsRef.current(false);
+        fetchConversationsRef.current(false, true);
       }
+    }, () => {
+      const conversationId = activeConversationIdRef.current;
+      if (conversationId) void fetchMessagesRef.current(conversationId, true);
+      void fetchConversationsRef.current(false, true);
     });
 
     return () => unsub();
@@ -182,6 +189,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
       })
         .then((conv) => {
           fetchConversations(false);
+          setShowQueue(false);
           selectConversation(conv.id);
         })
         .catch((err) => {
@@ -203,7 +211,8 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
     try {
       const newMsg = await PartnerPortalClient.sendMessage(conversationId, text);
       if (activeConversationIdRef.current !== conversationId) return;
-      setMessages((prev) => [...prev, newMsg]);
+      messageRequestRef.current += 1;
+      setMessages((prev) => prev.some(message => message.id === newMsg.id) ? prev : [...prev, newMsg]);
       setTimeout(scrollToBottom, 50);
       fetchConversations(false);
     } catch (err: any) {
@@ -230,6 +239,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
       setNewSubject('');
       setNewProposalId('');
       await fetchConversations(false);
+      setShowQueue(false);
       selectConversation(conv.id);
     } catch (err: any) {
       toastService.error('Falha ao criar atendimento', err?.message || 'Tente novamente.');
@@ -239,11 +249,11 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] min-h-[500px] flex flex-col md:flex-row gap-4 select-none animate-in fade-in duration-150">
+    <div className={`support-workspace support-inbox support-partner ${showQueue ? 'support-show-queue' : 'support-show-conversation'}`}>
       {/* Coluna da Esquerda: Lista de Conversas */}
-      <div className="w-full md:w-80 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden shrink-0">
+      <div className="support-queue flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
         {/* Header Lista */}
-        <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between shrink-0">
+        <div className="support-chat-header p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Headphones className="h-4 w-4 text-blue-500" />
             <span className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-tight">
@@ -287,7 +297,9 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
               return (
                 <div
                   key={c.id}
-                  onClick={() => selectConversation(c.id)}
+                  role="button" tabIndex={0} aria-pressed={isActive}
+                  onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  onClick={() => { setShowQueue(false); selectConversation(c.id); }}
                   className={`p-3 transition-colors cursor-pointer text-xs space-y-1 ${
                     isActive
                       ? 'bg-blue-500/10 dark:bg-blue-500/15 border-l-3 border-blue-600'
@@ -344,12 +356,13 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
       </div>
 
       {/* Coluna da Direita: Janela de Chat */}
-      <div className="flex-1 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+      <div className="support-chat flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+        <button type="button" className="support-back" onClick={() => setShowQueue(true)}>← Conversas</button>
         {activeConversationId ? (
           <>
             {activeConversationData ? <>
             {/* Chat Top Bar */}
-            <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between shrink-0">
+            <div className="support-chat-header p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between shrink-0">
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-xs text-slate-900 dark:text-white truncate">
@@ -417,7 +430,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                       </div>
 
                       <div
-                        className={`p-3 rounded-2xl max-w-[80%] text-xs font-medium leading-relaxed shadow-2xs ${
+                        className={`support-bubble p-3 rounded-2xl max-w-[80%] text-xs font-medium leading-relaxed shadow-2xs ${
                           isMe
                             ? 'bg-blue-600 text-white rounded-tr-xs'
                             : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-xs'
@@ -441,6 +454,7 @@ export const PartnerSupportView: React.FC<PartnerSupportViewProps> = ({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 disabled={!activeConversationData || activeConversationData.id !== activeConversationId || isLoadingMessages}
+                aria-label="Mensagem para o suporte"
                 placeholder="Digite sua mensagem para o suporte..."
                 className="flex-1 h-9.5 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
               />
