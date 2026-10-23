@@ -21,6 +21,8 @@ export interface SSEConnection {
   res: Response;
   createdAt: Date;
   heartbeatTimer?: NodeJS.Timeout;
+  validateAuthorization: () => Promise<boolean>;
+  authorizationKey?: string;
 }
 
 class SSERegistry {
@@ -31,6 +33,8 @@ class SSERegistry {
 
   // Índice rápido por connectionId -> SSEConnection
   private connectionIndex: Map<string, SSEConnection> = new Map();
+  // Coalesce only in-flight checks, never cache an authorization decision.
+  private authorizationChecks = new Map<string, Promise<boolean>>();
 
   // Métricas de monitoramento
   private metrics = {
@@ -60,15 +64,35 @@ class SSERegistry {
     this.metrics.totalConnectedEver++;
 
     // Inicia Heartbeat periódico a cada 25 segundos
-    connection.heartbeatTimer = setInterval(() => {
-      try {
-        connection.res.write(`event: ping\ndata: {}\n\n`);
-      } catch (err) {
-        this.unregisterConnection(connectionId);
-      }
+    let checkingHeartbeat = false;
+    connection.heartbeatTimer = setInterval(async () => {
+      if (checkingHeartbeat) return;
+      checkingHeartbeat = true;
+      try { await this.sendAuthorized(connection, 'event: ping\ndata: {}\n\n'); }
+      finally { checkingHeartbeat = false; }
     }, 25000);
+    connection.heartbeatTimer.unref?.();
 
     console.log(`[SSE REGISTRY] Conexão registrada [${connectionId}] para Tenant [${tenantId}] (User: ${connection.userId}). Total no tenant: ${this.tenantConnections.get(tenantId)?.size}`);
+  }
+
+  private async sendAuthorized(connection: SSEConnection, message: string): Promise<boolean> {
+    if (this.connectionIndex.get(connection.connectionId) !== connection) return false;
+    const key = connection.authorizationKey || connection.connectionId;
+    let validation = this.authorizationChecks.get(key);
+    if (!validation) {
+      validation = Promise.resolve().then(() => connection.validateAuthorization()).catch(() => false);
+      this.authorizationChecks.set(key, validation);
+      const current = validation;
+      void current.finally(() => {
+        if (this.authorizationChecks.get(key) === current) this.authorizationChecks.delete(key);
+      });
+    }
+    const authorized = await validation;
+    if (this.connectionIndex.get(connection.connectionId) !== connection) return false;
+    if (!authorized) { this.unregisterConnection(connection.connectionId); return false; }
+    try { connection.res.write(message); return true; }
+    catch { this.unregisterConnection(connection.connectionId); return false; }
   }
 
   public unregisterConnection(connectionId: string): void {
@@ -103,7 +127,7 @@ class SSERegistry {
    * Dispara evento EXCLUSIVAMENTE para conexões pertencentes àquele tenantId.
    * NUNCA envia para outros tenants.
    */
-  public broadcastToTenant(
+  public async broadcastToTenant(
     tenantId: string,
     eventData: {
       type: string;
@@ -112,7 +136,7 @@ class SSERegistry {
       userId?: string;
       data?: any;
     }
-  ): void {
+  ): Promise<void> {
     const isPusher = (process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher') === 'pusher';
     if (isPusher) {
       // Quando Pusher está ativo, entrega EXCLUSIVAMENTE via Pusher. SSE permanece desativado (sem fallback automático).
@@ -148,30 +172,14 @@ class SSERegistry {
 
     const sseMessage = `event: message\ndata: ${JSON.stringify(payload)}\n\n`;
 
-    let deliveredCount = 0;
-    const deadConnections: string[] = [];
-
-    for (const conn of connections) {
-      try {
-        conn.res.write(sseMessage);
-        deliveredCount++;
-      } catch (err) {
-        deadConnections.push(conn.connectionId);
-      }
-    }
-
-    this.metrics.totalEventsDelivered += deliveredCount;
-
-    // Limpeza de conexões mortas
-    for (const deadId of deadConnections) {
-      this.unregisterConnection(deadId);
-    }
+    const delivered = await Promise.all(Array.from(connections, conn => this.sendAuthorized(conn, sseMessage)));
+    this.metrics.totalEventsDelivered += delivered.filter(Boolean).length;
   }
 
   /**
    * Envia evento para um usuário específico (mesmo que tenha múltiplas abas abertas).
    */
-  public emitToUser(
+  public async emitToUser(
     tenantId: string,
     userId: string,
     eventData: {
@@ -179,7 +187,7 @@ class SSERegistry {
       entity: string;
       entityId: string;
     }
-  ): void {
+  ): Promise<void> {
     const isPusher = (process.env.VITE_REALTIME_PROVIDER || process.env.REALTIME_PROVIDER || 'pusher') === 'pusher';
     if (isPusher) {
       eventBus.publishToUser(userId, {
@@ -207,15 +215,8 @@ class SSERegistry {
 
     const sseMessage = `event: message\ndata: ${JSON.stringify(payload)}\n\n`;
 
-    for (const conn of connections) {
-      if (conn.userId === userId) {
-        try {
-          conn.res.write(sseMessage);
-        } catch {
-          this.unregisterConnection(conn.connectionId);
-        }
-      }
-    }
+    await Promise.all(Array.from(connections).filter(conn => conn.userId === userId)
+      .map(conn => this.sendAuthorized(conn, sseMessage)));
   }
 
   /**

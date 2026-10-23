@@ -290,8 +290,8 @@ export class SupportService {
     conversationId: string,
     partnerId: string,
     tenantId: string,
-    senderId: string,
-    senderName: string,
+    portalAccessId: string,
+    _senderName: string,
     messageText: string,
     prisma: PrismaClient,
     eventBus?: EventBus
@@ -315,13 +315,20 @@ export class SupportService {
     if (conversation.channel === 'TELEGRAM') throw new Error('Continue esta conversa pelo Telegram da empresa.');
     if (conversation.channel === 'WHATSAPP') throw new Error('Continue esta conversa pelo WhatsApp do canal de simulação.');
 
+    const author = await prisma.partnerPortalAccess.findFirst({
+      where: { id: portalAccessId, tenantId, partnerId, active: true },
+      select: { id: true, name: true },
+    });
+    if (!author) throw new Error('Acesso do autor não encontrado ou sem permissão.');
+
     const message = await prisma.supportMessage.create({
       data: {
         tenantId,
         conversationId,
         senderType: 'PARTNER',
-        senderId,
-        senderName,
+        // senderId references User. External authors retain their trusted name snapshot.
+        senderId: null,
+        senderName: author.name,
         message: cleanText,
         channel: 'PORTAL',
       },
@@ -346,7 +353,8 @@ export class SupportService {
           conversationId,
           messageId: message.id,
           senderType: 'PARTNER',
-          senderName,
+          senderName: author.name,
+          senderAccessId: author.id,
           message: cleanText,
           partnerId,
         },
@@ -586,13 +594,12 @@ export class SupportService {
 
     if (conversation.channel === 'TELEGRAM' && !canAccessTelegramSupport(adminRole)) throw new Error('Atendimento Telegram disponível para o perfil Suporte e administração.');
     if (conversation.department === 'SIMULATION' && !canAccessSimulationSupport(adminRole)) throw new Error('Acesso à mesa de simulação não permitido para este perfil.');
-    if (conversation.channel === 'TELEGRAM' && data.assignedUserId) {
-      const assignee = await prisma.user.findFirst({where:{id:data.assignedUserId,tenantId,active:true},select:{role:true}});
-      if (!assignee || !canAccessTelegramSupport(assignee.role)) throw new Error('Escolha um responsável com perfil Suporte.');
-    }
-    if (conversation.department === 'SIMULATION' && data.assignedUserId) {
+    if (data.assignedUserId !== undefined && data.assignedUserId !== null) {
+      if (typeof data.assignedUserId !== 'string' || !data.assignedUserId.trim()) throw new Error('Responsável inválido.');
       const assignee = await prisma.user.findFirst({ where: { id: data.assignedUserId, tenantId, active: true }, select: { role: true } });
-      if (!assignee || !canAccessSimulationSupport(assignee.role)) throw new Error('Escolha um responsável com perfil de acesso à mesa de simulação.');
+      if (!assignee) throw new Error('Escolha um responsável ativo da mesma empresa.');
+      if (conversation.channel === 'TELEGRAM' && !canAccessTelegramSupport(assignee.role)) throw new Error('Escolha um responsável com perfil Suporte.');
+      if (conversation.department === 'SIMULATION' && !canAccessSimulationSupport(assignee.role)) throw new Error('Escolha um responsável com perfil de acesso à mesa de simulação.');
     }
 
     const updated = await prisma.supportConversation.update({

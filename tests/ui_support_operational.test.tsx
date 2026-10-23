@@ -65,24 +65,31 @@ describe('Atendimento preservado no shell V2, sem envio externo',()=>{
     expect(screen.queryByText('Chamados Abertos')).toBeNull();
     expect(screen.getByLabelText('Resposta para o parceiro')).toBeTruthy();
   });
-  it('deduplicates an echoed message when POST finishes after realtime refresh',async()=>{
-    state.permissions=['support.view','support.reply'];
-    render(<CentralAtendimentoView />);
-    const input=await screen.findByLabelText('Resposta para o parceiro');
-    const message={id:'echo-id',message:'Resposta sintética',senderType:'SUPPORT',createdAt:'2026-10-23T12:00:00Z'};
-    const read=vi.mocked(fetch).getMockImplementation()!;
-    let finish:any;
-    vi.mocked(fetch).mockImplementation(async(url,options)=>{
-      if(options?.method==='POST')return await new Promise(resolve=>{finish=()=>resolve({ok:true,json:async()=>message} as Response);});
-      return read(url,options);
-    });
-    fireEvent.change(input,{target:{value:message.message}});
-    fireEvent.submit(input.closest('form')!);
-    await waitFor(()=>expect(finish).toBeTypeOf('function'));
-    state.messages=[message];
-    await act(async()=>state.listener({type:'SUPPORT_MESSAGE_RECEIVED',entity:'SUPPORT',entityId:conversation.id}));
-    await act(async()=>finish());
-    expect(screen.getAllByText(message.message)).toHaveLength(1);
+  it.each(['echo-first', 'ack-first'])('deduplicates an echoed message (%s) with a deterministic clock',async order=>{
+    vi.useFakeTimers();
+    try {
+      state.permissions=['support.view','support.reply'];
+      render(<CentralAtendimentoView />);
+      // Flush the actual 250ms filter debounce and its resolved fixture requests.
+      await act(async()=>{await vi.advanceTimersByTimeAsync(350);});
+      const input=screen.getByLabelText('Resposta para o parceiro');
+      const message={id:'echo-id',message:'Resposta sintética',senderType:'SUPPORT',createdAt:'2026-10-23T12:00:00Z'};
+      const read=vi.mocked(fetch).getMockImplementation()!;
+      let finish!:()=>void;
+      vi.mocked(fetch).mockImplementation(async(url,options)=>{
+        if(options?.method==='POST')return await new Promise(resolve=>{finish=()=>resolve({ok:true,json:async()=>message} as Response);});
+        return read(url,options);
+      });
+      fireEvent.change(input,{target:{value:message.message}});
+      await act(async()=>{fireEvent.submit(input.closest('form')!);fireEvent.submit(input.closest('form')!);});
+      expect(vi.mocked(fetch).mock.calls.filter(([,options])=>options?.method==='POST')).toHaveLength(1);
+      expect(finish).toBeTypeOf('function');
+      state.messages=[message];
+      const echo=()=>state.listener({type:'SUPPORT_MESSAGE_RECEIVED',entity:'SUPPORT',entityId:conversation.id});
+      if(order==='echo-first'){await act(async()=>echo());await act(async()=>finish());}
+      else {await act(async()=>finish());await act(async()=>echo());}
+      expect(screen.getAllByText(message.message)).toHaveLength(1);
+    } finally {cleanup();vi.clearAllTimers();vi.useRealTimers();}
   });
 
   it.each([

@@ -1598,6 +1598,7 @@ async function auditAndEnsureMasterUser() {
       res.flushHeaders?.();
 
       const connectionId = crypto.randomUUID();
+      const permissionScope = JSON.stringify([...(session.activePermissions || [])].sort());
       const sseConn = {
         connectionId,
         userId: session.user.id,
@@ -1605,6 +1606,17 @@ async function auditAndEnsureMasterUser() {
         userRole: session.user.role,
         res,
         createdAt: new Date(),
+        authorizationKey: JSON.stringify([session.id, tenantId, session.activeRole, permissionScope]),
+        validateAuthorization: async () => {
+          // Each stream outlives its opening request and its request-local session cache.
+          const freshRequest = Object.create(req);
+          freshRequest.__authSessionResolved = false;
+          freshRequest.__authSessionValue = undefined;
+          const current = await getAuthSession(freshRequest);
+          return !!current && current.id === session.id && current.user.id === session.user.id
+            && current.effectiveTenantId === tenantId && current.activeRole === session.activeRole
+            && JSON.stringify([...(current.activePermissions || [])].sort()) === permissionScope;
+        },
       };
 
       sseRegistry.registerConnection(sseConn);
