@@ -1,3 +1,4 @@
+import { createProposalEntityResolvers, InvalidProposalReference } from './server/services/proposalEntityResolution.js';
 import { simulationPortabilityCheck, portabilityReviewMetadata } from './src/lib/portabilitySimulationPolicy.js';
 import { registerC6CltRoutes } from './server/services/c6CltService.js';
 import { registerTelegramRoutes } from './server/services/telegramNotificationService.js';
@@ -2883,201 +2884,12 @@ async function auditAndEnsureMasterUser() {
   // -------------------------------------------------------------
   // ENTITY RESOLUTION HELPERS (PostgreSQL Catalogs)
   // -------------------------------------------------------------
-  async function resolveBankHelper(tenantId: string, bankIdOrCode?: string, bankName?: string) {
-    if (!bankIdOrCode && !bankName) return null;
-    const rawId = String(bankIdOrCode || '').trim();
-    const rawName = String(bankName || '').trim();
-    const cleanId = rawId.replace(/^bank-/, '').toUpperCase();
-
-    let found = rawId ? await prisma.bank.findFirst({ where: { id: rawId } }) : null;
-    if (found) return found;
-
-    found = await prisma.bank.findFirst({
-      where: {
-        OR: [
-          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
-          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
-        ]
-      }
-    });
-    if (found) return found;
-
-    const nameToUse = rawName || cleanId || rawId;
-    if (nameToUse) {
-      try {
-        const codeToUse = cleanId.match(/^\d+$/) ? cleanId : (nameToUse.includes('DAYCOVAL') ? '149' : (nameToUse.includes('C6') ? '336' : '000'));
-        found = await prisma.bank.create({
-          data: {
-            tenantId,
-            name: nameToUse.toUpperCase(),
-            code: codeToUse,
-            status: 'ATIVO'
-          }
-        });
-        return found;
-      } catch (err) {
-        console.warn('[resolveBankHelper] create failed:', err);
-      }
-    }
-    return null;
-  }
-
-  async function resolveProductHelper(tenantId: string, productIdOrCode?: string, productName?: string) {
-    if (!productIdOrCode && !productName) return null;
-    const rawId = String(productIdOrCode || '').trim();
-    const rawName = String(productName || '').trim();
-    const cleanId = rawId.replace(/^prod-/, '').toUpperCase();
-
-    let found = rawId ? await prisma.product.findFirst({ where: { id: rawId } }) : null;
-    if (found) return found;
-
-    found = await prisma.product.findFirst({
-      where: {
-        OR: [
-          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
-          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
-        ]
-      }
-    });
-    if (found) return found;
-
-    const nameToUse = rawName || cleanId || rawId;
-    if (nameToUse) {
-      try {
-        const codeToUse = cleanId || 'NOVO';
-        found = await prisma.product.create({
-          data: {
-            tenantId,
-            name: nameToUse.toUpperCase(),
-            code: codeToUse,
-            type: (nameToUse.includes('PORTABILIDADE') ? (nameToUse.includes('REFIN') ? 'REFIN_PORTABILIDADE' : 'PORTABILIDADE') : 'NOVO') as any,
-            active: true,
-            scope: 'GLOBAL'
-          }
-        });
-        return found;
-      } catch (err) {
-        console.warn('[resolveProductHelper] create failed:', err);
-      }
-    }
-    return null;
-  }
-
-  async function resolveConvenioHelper(tenantId: string, convenioIdOrCode?: string, convenioName?: string) {
-    if (!convenioIdOrCode && !convenioName) return null;
-    const rawId = String(convenioIdOrCode || '').trim();
-    const rawName = String(convenioName || '').trim();
-    const cleanId = rawId.replace(/^conv-/, '').toUpperCase();
-
-    let found = rawId ? await prisma.convenio.findFirst({ where: { id: rawId } }) : null;
-    if (found) return found;
-
-    found = await prisma.convenio.findFirst({
-      where: {
-        OR: [
-          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
-          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
-        ]
-      }
-    });
-    if (found) return found;
-
-    const nameToUse = rawName || cleanId || rawId;
-    if (nameToUse) {
-      try {
-        found = await prisma.convenio.create({
-          data: {
-            tenantId,
-            name: nameToUse.toUpperCase(),
-            code: cleanId || 'INSS',
-            active: true,
-            scope: 'GLOBAL'
-          }
-        });
-        return found;
-      } catch (err) {
-        console.warn('[resolveConvenioHelper] create failed:', err);
-      }
-    }
-    return null;
-  }
-
-  async function resolvePartnerHelper(tenantId: string, partnerIdOrCode?: string, partnerName?: string) {
-    if (!partnerIdOrCode && !partnerName) return null;
-    const rawId = String(partnerIdOrCode || '').trim();
-    const rawName = String(partnerName || '').trim();
-    const cleanId = rawId.replace(/^part-/, '').toUpperCase();
-
-    let found = rawId ? await prisma.partner.findFirst({ where: { id: rawId } }) : null;
-    if (found) return found;
-
-    found = await prisma.partner.findFirst({
-      where: {
-        tenantId,
-        OR: [
-          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
-          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
-        ]
-      }
-    });
-    if (found) return found;
-
-    const nameToUse = rawName || cleanId || rawId;
-    if (nameToUse) {
-      try {
-        found = await prisma.partner.create({
-          data: {
-            tenantId,
-            name: nameToUse.toUpperCase(),
-            code: cleanId || 'PARCEIRO',
-            status: 'ATIVO'
-          }
-        });
-        return found;
-      } catch (err) {
-        console.warn('[resolvePartnerHelper] create failed:', err);
-      }
-    }
-    return null;
-  }
-
-  async function resolvePromoterHelper(tenantId: string, promoterIdOrCode?: string, promoterName?: string) {
-    if (!promoterIdOrCode && !promoterName) return null;
-    const rawId = String(promoterIdOrCode || '').trim();
-    const rawName = String(promoterName || '').trim();
-    const cleanId = rawId.replace(/^prom-/, '').toUpperCase();
-
-    let found = rawId ? await prisma.promoter.findFirst({ where: { id: rawId } }) : null;
-    if (found) return found;
-
-    found = await prisma.promoter.findFirst({
-      where: {
-        OR: [
-          ...(rawId ? [{ code: rawId }, { code: cleanId }, { name: { contains: cleanId, mode: 'insensitive' as const } }] : []),
-          ...(rawName ? [{ name: { contains: rawName, mode: 'insensitive' as const } }] : [])
-        ]
-      }
-    });
-    if (found) return found;
-
-    const nameToUse = rawName || cleanId || rawId;
-    if (nameToUse) {
-      try {
-        found = await prisma.promoter.create({
-          data: {
-            tenantId,
-            name: nameToUse.toUpperCase(),
-            code: cleanId || 'PROM',
-            status: 'ATIVO'
-          }
-        });
-        return found;
-      } catch (err) {
-        console.warn('[resolvePromoterHelper] create failed:', err);
-      }
-    }
-    return null;
-  }
+  const proposalEntityResolvers = createProposalEntityResolvers(prisma);
+  const resolveBankHelper = (tenantId: string, id?: string, name?: string) => proposalEntityResolvers.resolve('bank', tenantId, id, name);
+  const resolvePartnerHelper = (tenantId: string, id?: string, name?: string) => proposalEntityResolvers.resolve('partner', tenantId, id, name);
+  const resolvePromoterHelper = (tenantId: string, id?: string, name?: string) => proposalEntityResolvers.resolve('promoter', tenantId, id, name);
+  const resolveProductHelper = (tenantId: string, id?: string, name?: string) => proposalEntityResolvers.resolve('product', tenantId, id, name);
+  const resolveConvenioHelper = (tenantId: string, id?: string, name?: string) => proposalEntityResolvers.resolve('convenio', tenantId, id, name);
 
   // -------------------------------------------------------------
   // PROPOSALS API (PostgreSQL / Prisma)
@@ -3163,6 +2975,52 @@ async function auditAndEnsureMasterUser() {
           return res.status(400).json({ error: 'A quantidade de parcelas deve ser um número inteiro entre 1 e 1.200.' });
         }
       }
+      await proposalEntityResolvers.validateReferences(tenantId, body);
+
+      // 7. Resolve Status with legacy mapping
+      let targetStatusId = statusId || null;
+      const LEGACY_STATUS_MAP: Record<string, string> = {
+        'st-1': 'AGUARDAR_FORMALIZACAO',
+        'st-2': 'AGUARDA_LIBERACAO_CORBAN',
+        'st-3': 'AGUARDAR_RETORNO_CIP',
+        'st-4': 'AGUARDAR_PORTABILIDADE',
+        'st-5': 'SALDO_RETORNADO',
+        'st-6': 'PENDENTE_ENVIO_DOCUMENTACAO',
+        'st-7': 'PENDENTE_ANEXO_DOCUMENTACAO',
+        'st-8': 'INTEGRADO',
+        'st-9': 'PAGO',
+        'st-10': 'CANCELADO',
+        'st-11': 'REPROVADO',
+      };
+
+      if (targetStatusId) {
+        const searchCode = LEGACY_STATUS_MAP[targetStatusId] || targetStatusId;
+        const validStatus = await prisma.proposalStatus.findFirst({
+          where: {
+            tenantId,
+            OR: [
+              { id: targetStatusId },
+              { code: targetStatusId },
+              { code: searchCode },
+              { name: { contains: targetStatusId, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (!validStatus) {
+          return res.status(400).json({ error: 'Status informado não existe nesta empresa.' });
+        }
+        targetStatusId = validStatus.id;
+      }
+      if (!targetStatusId) {
+        const defaultStatus = await prisma.proposalStatus.findFirst({
+          where: {
+            tenantId,
+            code: 'AGUARDAR_FORMALIZACAO',
+          }
+        });
+        targetStatusId = defaultStatus?.id || null;
+      }
+
       let targetClientId = clientId;
 
       // 1. Resolve the client without allowing proposal creation to silently
@@ -3182,6 +3040,8 @@ async function auditAndEnsureMasterUser() {
       let client = targetClientId
         ? await prisma.client.findFirst({ where: { id: targetClientId, tenantId, deletedAt: null } })
         : null;
+
+      if (targetClientId && !client) throw new InvalidProposalReference();
 
       if (client && cleanCpf && client.cpf !== cleanCpf) {
         return res.status(400).json({ error: 'O CPF informado não corresponde ao cliente selecionado.' });
@@ -3263,50 +3123,6 @@ async function auditAndEnsureMasterUser() {
         );
       } catch (error: any) {
         return res.status(400).json({ error: error.message || 'Tipo de proposta inválido.' });
-      }
-
-      // 7. Resolve Status with legacy mapping
-      let targetStatusId = statusId || null;
-      const LEGACY_STATUS_MAP: Record<string, string> = {
-        'st-1': 'AGUARDAR_FORMALIZACAO',
-        'st-2': 'AGUARDA_LIBERACAO_CORBAN',
-        'st-3': 'AGUARDAR_RETORNO_CIP',
-        'st-4': 'AGUARDAR_PORTABILIDADE',
-        'st-5': 'SALDO_RETORNADO',
-        'st-6': 'PENDENTE_ENVIO_DOCUMENTACAO',
-        'st-7': 'PENDENTE_ANEXO_DOCUMENTACAO',
-        'st-8': 'INTEGRADO',
-        'st-9': 'PAGO',
-        'st-10': 'CANCELADO',
-        'st-11': 'REPROVADO',
-      };
-
-      if (targetStatusId) {
-        const searchCode = LEGACY_STATUS_MAP[targetStatusId] || targetStatusId;
-        const validStatus = await prisma.proposalStatus.findFirst({
-          where: {
-            tenantId,
-            OR: [
-              { id: targetStatusId },
-              { code: targetStatusId },
-              { code: searchCode },
-              { name: { contains: targetStatusId, mode: 'insensitive' } }
-            ]
-          }
-        });
-        if (!validStatus) {
-          return res.status(400).json({ error: 'Status informado não existe nesta empresa.' });
-        }
-        targetStatusId = validStatus.id;
-      }
-      if (!targetStatusId) {
-        const defaultStatus = await prisma.proposalStatus.findFirst({
-          where: {
-            tenantId,
-            code: 'AGUARDAR_FORMALIZACAO',
-          }
-        });
-        targetStatusId = defaultStatus?.id || null;
       }
 
       const cleanPropNumber = (proposalNumber && String(proposalNumber).trim()) || `PROP-${Date.now()}`;
@@ -3392,6 +3208,7 @@ async function auditAndEnsureMasterUser() {
 
       return res.status(201).json(proposal);
     } catch (err: any) {
+      if (err instanceof InvalidProposalReference) return res.status(400).json({ error: err.message });
       // The pre-insert lookup improves the common path, while this unique-key
       // handler closes the race when two operators submit the same ADE at once.
       const uniqueTarget = Array.isArray(err?.meta?.target)
@@ -3561,6 +3378,8 @@ async function auditAndEnsureMasterUser() {
           newRetentionDeadline = null; // Clear if moving out of AGUARDAR_RETORNO_CIP
         }
       }
+
+      await proposalEntityResolvers.validateReferences(tenantId, body);
 
       // Resolve relational catalog entities if provided
       let resolvedBankId: string | undefined = undefined;
@@ -3889,6 +3708,7 @@ async function auditAndEnsureMasterUser() {
       await PartnerSimulationTracking.reconcile(prisma, tenantId).catch(error => logger.error({ error: error.message, tenantId }, 'Falha ao vincular simulação; nova tentativa na leitura da lista.'));
       return res.json(result.updated);
     } catch (err) {
+      if (err instanceof InvalidProposalReference) return res.status(400).json({ error: err.message });
       console.error('[API PROPOSALS PATCH ERROR]', err);
       return res.status(500).json({ error: 'Erro ao atualizar proposta no PostgreSQL.' });
     }
@@ -4038,12 +3858,12 @@ async function auditAndEnsureMasterUser() {
       const [historyResult, commentsResult, tasksResult, notifsResult] = await Promise.allSettled([
         prisma.statusHistory.findMany({
           where: { proposalId: id, tenantId },
-          include: { status: true, user: true },
+          include: { status: true, user: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'desc' },
         }),
         prisma.comment.findMany({
           where: { proposalId: id, tenantId },
-          include: { user: true },
+          include: { user: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'desc' },
         }),
         prisma.task.findMany({
