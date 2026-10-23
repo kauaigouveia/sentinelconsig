@@ -7,7 +7,7 @@ import { BmgBankService } from './bmgBankService.js';
 import { cltResponseReasons } from '../../src/lib/cltRestrictions';
 
 export type ProductSimulationInput = {
-  cpf: string; name: string; phone: string; employerDocument?: string;
+  cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string;
   term: number; value: number; mode: 'Payment' | 'Liquid'; eligibility: boolean;
   bmgActorId?: string;
 };
