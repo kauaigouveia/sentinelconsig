@@ -1,3 +1,4 @@
+import { CurrencyInput } from '../common/CurrencyInput';
 import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
 import { IlliteracyField, PortabilityReviewFields } from '../simulation/PortabilityReviewFields';
 import { SimulationSteps, SimulationBack, SimulationContinue, continueSimulation } from '../simulation/SimulationSteps';
@@ -47,7 +48,7 @@ export function PartnerSimulationsView() {
     } catch (err: any) { setError(err.message); }
     finally { setBusy(false); }
   };
-  const field = (label: string, key: keyof typeof form, type = 'text', required = false) => <label className="text-xs font-semibold">{label}<input className={control} type={type} step={type === 'number' ? 'any' : undefined} required={required} value={String(form[key])} onChange={event => update(key, key === 'cpf' ? formatCpf(event.target.value) : event.target.value)} /></label>;
+  const field = (label: string, key: keyof typeof form, type = 'text', required = false) => <label className="text-xs font-semibold">{label}{form.product === 'CLT' && key === 'value' ? <CurrencyInput className={control} required={required} min={0.01} value={form.value} onValueChange={value => update('value', value)} /> : <input className={control} type={type} step={type === 'number' ? 'any' : undefined} required={required} value={String(form[key])} onChange={event => update(key, key === 'cpf' ? formatCpf(event.target.value) : event.target.value)} />}</label>;
   return <div className="mx-auto max-w-6xl space-y-6 p-4">
     <button type="button" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white" disabled={busy} onClick={() => { setSpreadsheetVisited(true); setDaycovalOpen(value => !value); setRows([]); setMessage(''); setError(''); }}>{daycovalOpen ? "Voltar aos bancos por API" : "PORT + REFIN · Planilhas"}</button>
     {spreadsheetVisited && <div hidden={!daycovalOpen}><SpreadsheetPortRefinWorkspace portal onSuccess={() => { void load().catch(err => setError(err.message)); }} /></div>}
