@@ -18,6 +18,7 @@ import {
 import { SYSTEM_IDENTITY } from '../../lib/branding';
 import { useWorkspacePreferences, workspaceKey } from '../../hooks/useWorkspacePreferences';
 import { useTheme } from '../../context/ThemeContext';
+import { InstitutionalFooter } from '../layout/InstitutionalFooter';
 import { useTenantBranding } from '../../hooks/useTenantBranding';
 import {
   PartnerPortalAccessInfo,
@@ -141,6 +142,8 @@ export const PartnerPortalLayout: React.FC<PartnerPortalLayoutProps> = ({
       {activeTab === 'propostas' && <PartnerProposalsView initialStatusCategory={proposalFilters.standardCategory} initialWaitingReturnOnly={proposalFilters.waitingReturnOnly} initialProposalId={dashboardProposalId} onInitialProposalHandled={() => setDashboardProposalId(null)} onOpenChatForProposal={handleOpenChatForProposal} />}
       {activeTab === 'atendimento' && <PartnerSupportView initialProposalId={chatProposal?.id} initialProposalNumber={chatProposal?.number} />}
       {activeTab === 'perfil' && <PartnerProfileView onPasswordChanged={() => { void verifySession(); }} partner={partner} access={access} tenant={tenant} onContactUpdated={contact => setPartner(current => current ? { ...current, ...contact } : current)} />}
-    </main></div>
+    </main>
+    <InstitutionalFooter userName={access.name} companyName={tenant.name} />
+    </div>
   </div>;
 };

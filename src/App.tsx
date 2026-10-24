@@ -23,7 +23,7 @@ import { RouteContextPanel } from './components/layout/RouteContextPanel';
 import { useWorkspacePreferences, workspaceKey } from './hooks/useWorkspacePreferences';
 import { useTenantBranding } from './hooks/useTenantBranding';
 import { resolveAuthenticatedBranding } from './lib/branding';
-import { getRoleLabel } from './lib/roleLabels';
+import { InstitutionalFooter } from './components/layout/InstitutionalFooter';
 
 import { ResponsibleAlçada, User } from './types';
 import { Maximize2, Minimize2, Plus, Search, Keyboard } from 'lucide-react';
@@ -849,39 +849,11 @@ function AppMainContent() {
           </div>{showRouteContext && hasRouteAccess && activeRoute && activeUser && <RouteContextPanel route={activeRoute} user={activeUser} onNavigate={handleNavigate} />}</div>
         </main>
 
-        {/* Bottom Operational Status Bar */}
-        {!newUI && !isFocusMode && effectiveView !== 'tv-monitor' && (
-          <footer className="sentinel-status-footer h-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 select-none shrink-0">
-            <div className="flex items-center gap-2.5">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>SENTINEL OPERACIONAL</span>
-              </span>
-              <span className="text-slate-300 dark:text-slate-700">|</span>
-              <span className="truncate max-w-[200px]">
-                Empresa: <strong className="text-slate-700 dark:text-slate-300 font-medium">
-                  {activeUser?.role === 'PLATFORM_MASTER'
-                    ? (adminContext ? adminContext.targetTenantName : 'PLATAFORMA')
-                    : branding?.companyName || StorageService.getCurrentTenant().name}
-                </strong>
-              </span>
-              <span className="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
-              <span className="hidden sm:inline">
-                Contexto: <strong className="text-slate-700 dark:text-slate-300 font-medium">
-                  {activeUser?.role === 'PLATFORM_MASTER'
-                    ? (adminContext ? 'MASTER' : 'MASTER OP')
-                    : getRoleLabel(activeUser?.role)}
-                </strong>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 font-medium text-[10px]">
-              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-semibold">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Atualização em tempo real ativa
-              </span>
-            </div>
-          </footer>
+        {activeUser && !isFocusMode && effectiveView !== 'tv-monitor' && (
+          <InstitutionalFooter userName={activeUser.name} companyName={activeUser.role === 'PLATFORM_MASTER'
+            ? (adminContext?.targetTenantName || 'Plataforma')
+            : brandingTenant?.name || activeUser.availableMemberships?.find(membership => membership.tenantId === activeUser.tenantId)?.tenantName
+              || branding?.companyName || StorageService.getCurrentTenant().name} />
         )}
       </div>
 
