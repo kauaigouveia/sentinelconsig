@@ -13,7 +13,7 @@ import { cltOutcome, cltPublicMessage } from '../src/lib/cltSimulationOutcome';
 const consultId = '00000000-0000-4000-8000-000000000001', secondId = '00000000-0000-4000-8000-000000000002';
 const configId = '00000000-0000-4000-8000-000000000003', simulationId = '00000000-0000-4000-8000-000000000004';
 const input = { cpf: '00000000000', name: 'Pessoa sintética', phone: '11999999999', employerDocument: '12345678000100', factaRegistration: '000FACTA01', value: 1423.98, term: 24, mode: 'Payment' as const, eligibility: true };
-const consultation = { id: consultId, documentNumber: input.cpf, status: 'SUCCESS', name: input.name, availableMarginValue: '1.900,00' };
+const consultation = { id: consultId, documentNumber: input.cpf, status: 'SUCCESS', name: input.name, availableMarginValue: '1900.00' };
 const config = { environment: 'production' as const, enabled: true, cltEnabled: true, fgtsEnabled: false, username: 'synthetic-user', password: 'synthetic-secret', clientId: 'synthetic-client', audience: 'synthetic-audience' };
 const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
 let consultations: any[], tables: any[], response: any, db: any, fetchMock: ReturnType<typeof vi.fn>;
@@ -34,8 +34,8 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 const run = (extra: any = {}, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' = 'SIMULATE', tenant = 'tenant-a') => V8CltSimulationService.run(db, tenant, action, { ...input, ...extra });
 
-describe('V8 CLT, documented contracts and mocked external HTTP', () => {
-  it('dispatches the documented V8 payload without FACTA fields or invented employment identifiers', async () => {
+describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not homologated', () => {
+  it('uses documented field names and the current inactive-zero choice without FACTA fields', async () => {
     const rows = await run();
     expect(rows[0]).toMatchObject({ state: 'OFFER', amount: 12000, contractAmount: 13000, installment: 1423.98, simulationId });
     const call = fetchMock.mock.calls.find(([, options]) => options.method === 'POST')!;
@@ -47,7 +47,29 @@ describe('V8 CLT, documented contracts and mocked external HTTP', () => {
     await run({ mode: 'Liquid', value: 5000 });
     expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toMatchObject({ installment_face_value: 0, disbursed_amount: 5000 });
   });
-  it('returns a selectable consultation with BRL margin but no invented employer/matricula', async () => {
+  it.each([1.234, '1.234', 1234.56789, '1234.56789'])('preserves transport decimal %s without BRL magnitude conversion', async amount => {
+    response = { ...offer, disbursed_issue_amount: amount, issue_amount: amount, installment_value: amount };
+    const rows = await run();
+    expect(rows[0]).toMatchObject({ state: 'OFFER', amount: Number(amount), contractAmount: Number(amount), installment: Number(amount) });
+  });
+  it('uses the decimal margin format shown by the official CLT webhook', async () => {
+    consultations[0].availableMarginValue = '350.00';
+    expect((await run({}, 'REFRESH'))[0]).toMatchObject({ state: 'DATA', data: { margin: { available_balance: 350 } } });
+  });
+  it('keeps the unambiguous comma-formatted legacy compatibility case separate from contract fixtures', async () => {
+    consultations[0].availableMarginValue = '1.900,00';
+    expect((await run({}, 'REFRESH'))[0]).toMatchObject({ data: { margin: { available_balance: 1900 } } });
+  });
+  it('does not infer rate units, alter monetary scale or add an undocumented configs query', async () => {
+    tables[0].monthly_interest_rate = '1.8';
+    response = { ...offer, monthly_interest_rate: 0.018 };
+    const rows = await run();
+    expect(rows[0].rate).toBeUndefined();
+    const configsRequest = fetchMock.mock.calls.find(([url]) => String(url).includes('/simulation/configs'))!;
+    expect(String(configsRequest[0])).toBe('https://bff.v8sistema.com/private-consignment/simulation/configs');
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).installment_face_value).toBe(1423.98);
+  });
+  it('returns a selectable consultation with decimal margin but no invented employer/matricula', async () => {
     const rows = await run({}, 'REFRESH');
     expect(rows[0]).toMatchObject({ state: 'DATA', data: { v8: { consultId, promoterId: 'promoter-a' }, margin: { available_balance: 1900 } } });
     expect((rows[0].data as any).employment).toBeUndefined(); expect(fetchMock).toHaveBeenCalledOnce();

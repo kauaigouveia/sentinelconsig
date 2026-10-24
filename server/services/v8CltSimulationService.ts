@@ -8,8 +8,19 @@ import { cltPublicMessage, type CltOutcome } from '../../src/lib/cltSimulationOu
 const BASE = 'https://bff.v8sistema.com';
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 const number = (value: unknown) => {
-  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
-  const parsed = normalizeBrlInput(String(value));
+  // JSON numbers and documented decimal strings are transport values, not BRL form entries.
+  // Never interpret their decimal point as a thousands separator or round provider precision.
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const decimal = value.trim();
+  if (/^-?\d+(?:\.\d+)?$/.test(decimal)) {
+    const parsed = Number(decimal);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  // Preserve the previous, explicitly comma-formatted compatibility case. This is not
+  // evidence that the bank contract accepts localized financial values in requests.
+  if (!decimal.includes(',')) return undefined;
+  const parsed = normalizeBrlInput(decimal);
   return parsed !== null && parsed !== '' ? Number(parsed) : undefined;
 };
 const row = (outcome: CltOutcome, message: string, extra: Partial<ProductSimulationRow> = {}): ProductSimulationRow => ({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: outcome === 'TECHNICAL_ERROR' ? 'ERROR' : 'PENDING', outcome, message, ...extra });
@@ -76,7 +87,7 @@ export class V8CltSimulationService {
           }
           if (!(input.value > 0) || !Number.isFinite(input.value)) { rows.push(row('MISSING_DATA', 'Informe um valor positivo para simular na V8.')); continue; }
           if (input.mode === 'Payment' && input.value > margin) { rows.push(row('INELIGIBLE', 'A parcela desejada supera a margem disponível informada nesta consulta V8.')); continue; }
-          const configs = await this.request(db, tenantId, promoterId, '/private-consignment/simulation/configs?provider=QI');
+          const configs = await this.request(db, tenantId, promoterId, '/private-consignment/simulation/configs');
           if (!Array.isArray(configs.configs)) throw new V8CltError(200, 'CONFIG_SCHEMA');
           let attempted = false;
           for (const table of configs.configs) {
