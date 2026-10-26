@@ -23,6 +23,8 @@ import { formatCpf, normalizeCpf, isValidCpf } from '../../lib/utils';
 interface HappyCltSimulationModalProps {
   isOpen: boolean;
   embedded?: boolean;
+  sharedIdentity?: boolean;
+  onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void;
   initialData?: { cpf?: string; name?: string; phone?: string; birthDate?: string; benefit?: string; partnerId?: string };
   onClose: () => void;
   onBack?: () => void;
@@ -35,6 +37,8 @@ type CltStep = 'CLIENTE' | 'DATAPREV' | 'SIMULACAO' | 'RESULTADO';
 export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = ({
   isOpen,
   embedded = false,
+  sharedIdentity = false,
+  onProgress,
   initialData,
   onClose,
   onBack,
@@ -49,7 +53,9 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   const [nome, setNome] = useState(initialData?.name || '');
   const [telefone, setTelefone] = useState(initialData?.phone || '');
   const [cpf, setCpf] = useState(initialData?.cpf || '');
+  const [consentConfirmed, setConsentConfirmed] = useState(false);
   const [dataAutorizacaoDataprev, setDataAutorizacaoDataprev] = useState(() => {
+    if (sharedIdentity) return '';
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${pad(d.getDate())}${pad(d.getMonth() + 1)}${d.getFullYear()}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
@@ -72,6 +78,11 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
 
   // Resultado
   const [simulationResult, setSimulationResult] = useState<any>(null);
+  useEffect(() => {
+    if (!loading && !error && !simulationResult) return;
+    const amount = Number(simulationResult?.valor_liquido ?? simulationResult?.valor_cliente), installment = Number(simulationResult?.valor_parcela), term = Number(simulationResult?.quantidade_parcelas);
+    onProgress?.({ busy: loading, message: error || (simulationResult ? 'Condição retornada pela Happy.' : ''), offers: amount > 0 && installment > 0 && term > 0 ? [{ amount, installment, term, id: simulationId }] : [] });
+  }, [loading, error, simulationResult, simulationId, onProgress]);
 
   useEffect(() => { if (embedded && step === 'CLIENTE') { if (initialData?.name) setNome(initialData.name); if (initialData?.phone) setTelefone(initialData.phone); if (initialData?.cpf) setCpf(initialData.cpf); } }, [embedded, step, initialData?.name, initialData?.phone, initialData?.cpf, initialData?.birthDate]);
 
@@ -95,6 +106,11 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
 
     if (!nome.trim() || !telefone.trim()) {
       setError('Nome e telefone são obrigatórios.');
+      return;
+    }
+
+    if (sharedIdentity && (!consentConfirmed || !/^\d{14}$/.test(dataAutorizacaoDataprev))) {
+      setError('Informe a data/hora da autorização Dataprev já concedida pelo cliente e confirme a disponibilidade da evidência. Nenhum aceite será registrado pelo Sentinel.');
       return;
     }
 
@@ -334,7 +350,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
           {/* PASSO 1: DADOS CLIENTE CLT */}
           {step === 'CLIENTE' && (
             <form onSubmit={handleCadastrarClienteEConsultar} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div hidden={sharedIdentity} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     CPF DO CLIENTE <span className="text-rose-500">*</span>
@@ -364,7 +380,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                 </div>
               </div>
 
-              <div>
+              <div hidden={sharedIdentity}>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   NOME COMPLETO <span className="text-rose-500">*</span>
                 </label>
@@ -385,12 +401,14 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   </label>
                   <input
                     type="text"
+                    aria-label="Data e hora da autorização Dataprev"
+                    required={sharedIdentity}
                     value={dataAutorizacaoDataprev}
                     onChange={(e) => setDataAutorizacaoDataprev(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
                   />
                   <span className="text-[10px] text-slate-400">
-                    Preenchido automaticamente no padrão Happy
+                    {sharedIdentity ? 'Informe a data/hora da autorização real, sem estimar ou registrar aceite em nome do cliente.' : 'Preenchido automaticamente no padrão Happy'}
                   </span>
                 </div>
 
@@ -429,6 +447,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                 </span>
               </div>
 
+              {sharedIdentity && <label className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" checked={consentConfirmed} onChange={event => setConsentConfirmed(event.target.checked)} />A autorização Dataprev já foi concedida pelo cliente e sua evidência está disponível.</label>}
               <div className="pt-4 flex justify-end">
                 <button
                   type="submit"

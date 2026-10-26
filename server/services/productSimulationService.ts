@@ -26,7 +26,7 @@ const positive = (value: unknown) => value !== null && value !== '' && Number.is
 const safeLink = (value: unknown) => typeof value === 'string' && /^https:\/\//i.test(value) ? value : undefined;
 
 export class ProductSimulationService {
-  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput, onRows?: (rows: ProductSimulationRow[]) => Promise<void>) {
+  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput, onRows?: (rows: ProductSimulationRow[]) => Promise<void>, providers?: readonly string[]) {
     const factaInput = input;
     // FACTA can return an eight-digit employer registration. Other providers
     // require a full CNPJ, so discover their employment records automatically.
@@ -146,11 +146,13 @@ export class ProductSimulationService {
                   rows.push({ provider: 'Nossa Fintech', institution: service, table: table.name, state: 'PENDING', message: 'A API retornou outro prazo para esta tabela. Compare todos os prazos para visualizar essa condição.' }); continue;
                 }
                 rows.push({ provider: 'Nossa Fintech', institution: service, table: `${table.name || table.cod_tabela} · ${cnpj}`, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.schedule?.[0]?.payment), term: positive(result.num_periods), rate: positive(result.interest_rate) ? Number(result.interest_rate) * 100 : undefined, simulationId: result.simulation_key, data: result, message: amount ? undefined : 'A instituição não retornou valor liberado válido.' });
+                await publishRows();
               } catch (error) { failure('Nossa Fintech', service, error); }
             }
             if (!seen.size) rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: 'Nenhuma tabela elegível para este vínculo e prazo.' });
           }
         } catch (error) { failure('Nossa Fintech', service, error); }
+        finally { await publishRows(); }
       }));
     };
     const finanto = async () => {
@@ -187,9 +189,11 @@ export class ProductSimulationService {
               });
               const amount = positive(result.netValue);
               rows.push({ provider: 'FINANTO', institution: provider.name, table: item.rule?.name || item.ruleId, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.installmentValue), term: positive(result.term), rate: positive(result.rate), simulationId: simulation.id, data: result, message: amount ? undefined : 'A instituição não retornou valor líquido válido.' });
+              await publishRows();
             } catch (error) { failure('FINANTO', provider.name, error); }
           }
         } catch (error) { failure('FINANTO', provider.name, error); }
+        finally { await publishRows(); }
       }));
     };
     const facta = async () => {
@@ -221,11 +225,11 @@ export class ProductSimulationService {
     };
     const publishRows = async () => { normalizeRows(); if (onRows) await onRows([...rows]); };
     await Promise.all([
-      nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows),
-      finanto().catch(error => failure('FINANTO', product, error)).then(publishRows),
-      facta().catch(error => failure('FACTA', product, error)).then(publishRows),
-      bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows),
-      v8().catch(() => { rows.push({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'ERROR', outcome: 'TECHNICAL_ERROR', message: 'Não foi possível consultar as conexões V8 desta empresa.' }); return true; }).then(async changed => { if (changed) await publishRows(); }),
+      ...(!providers || providers.includes('nossa') ? [nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows)] : []),
+      ...(!providers || providers.includes('finanto') ? [finanto().catch(error => failure('FINANTO', product, error)).then(publishRows)] : []),
+      ...(!providers || providers.includes('facta') ? [facta().catch(error => failure('FACTA', product, error)).then(publishRows)] : []),
+      ...(!providers || providers.includes('bmg') ? [bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows)] : []),
+      ...(!providers || providers.includes('v8') ? [v8().catch(() => { rows.push({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'ERROR', outcome: 'TECHNICAL_ERROR', message: 'Não foi possível consultar as conexões V8 desta empresa.' }); return true; }).then(async changed => { if (changed) await publishRows(); })] : []),
     ]);
     normalizeRows();
     return { rows, message: rows.length ? undefined : configured ? 'Nenhuma condição elegível retornada para os dados informados.' : 'Nenhuma integração habilitada e configurada para este produto.' };

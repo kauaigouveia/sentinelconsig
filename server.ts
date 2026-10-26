@@ -149,6 +149,7 @@ import { registerWorkbankRoutes, decorateWorkbankProposals } from './server/serv
 import { registerParanaRoutes } from './server/services/paranaRoutes.js';
 import { fgtsOfferReceipt, registerFgtsOfferSelection } from './server/services/fgtsOfferSelection.js';
 import { registerV8Routes } from './server/services/v8Routes.js';
+import { registerCltJourneyRoutes } from './server/services/cltJourneyRoutes.js';
 import { registerPresencaRoutes } from './server/services/presencaRoutes.js';
 import { registerBankPlaybookRoutes } from './server/services/bankPlaybookRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
@@ -2122,6 +2123,7 @@ async function auditAndEnsureMasterUser() {
   registerParanaRoutes(app, prisma, getAuthSession);
   registerPresencaRoutes(app, prisma, getAuthSession);
   registerV8Routes(app, prisma, getAuthSession);
+  registerCltJourneyRoutes(app, prisma, getAuthSession);
   registerFgtsOfferSelection(app, prisma, getAuthSession);
   registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);

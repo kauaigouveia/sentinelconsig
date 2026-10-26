@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { SimulationOfferCard } from './SimulationOfferCard';
 
-type Props = { cpf: string; name: string; phone: string };
+type Props = { cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
 type Consent = { link: string; receipt: string };
 type Choice = { employer: string; registration: string; receipt: string };
 type Offer = { id: number; name: string; amount: number; installment: number; term: number; rate: number; insuranceAmount: number | null };
@@ -15,6 +15,7 @@ export function PresencaCltSimulation(props: Props) {
   const [consents, setConsents] = useState<Consent[]>([]), [confirmed, setConfirmed] = useState(false), [choices, setChoices] = useState<Choice[]>([]), [selected, setSelected] = useState('');
   const [margin, setMargin] = useState<number | null>(null), [receipt, setReceipt] = useState(''), [installment, setInstallment] = useState(''), [email, setEmail] = useState(''), [offers, setOffers] = useState<Offer[]>([]);
   const current = useRef<AbortController | null>(null);
+  useEffect(() => { if (busy || message || offers.length) props.onProgress?.({ busy, message, offers }); }, [busy, message, offers, props.onProgress]);
   useEffect(() => {
     const request = new AbortController(); current.current = request;
     setCheckingAvailability(true); setAvailabilityError('');

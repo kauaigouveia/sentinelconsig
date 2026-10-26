@@ -1,0 +1,22 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { CltJourneyService } from '../server/services/cltJourneyService';
+import { NossaFintechService } from '../server/services/nossaFintechService';
+import { FinantoService } from '../server/services/finantoService';
+import { FactaBankService } from '../server/services/factaBankService';
+import { BmgBankService } from '../server/services/bmgBankService';
+import * as store from '../server/services/bankPromoterConfig';
+afterEach(() => vi.restoreAllMocks());
+it('discovers Happy from private CLT credentials without requiring public INSS credentials, respecting tenant flags', async () => {
+  vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
+  vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: false } as any);
+  vi.spyOn(FactaBankService, 'getTenantConfig').mockResolvedValue({ isConfigured: false } as any);
+  vi.spyOn(BmgBankService, 'config').mockResolvedValue({ enabled: false } as any);
+  const findMany = vi.fn(async () => ['client_id', 'secret', 'usuario', 'senha'].map(field => ({ configKey: `happy_clt_${field}`, configValue: 'synthetic' })).concat([{ configKey: 'happy_ativo', configValue: 'true' }]));
+  vi.spyOn(store, 'integrationConfigStore').mockResolvedValue({ findMany } as any);
+  const flags = { simulationAccessEnabled: true, happySimulationAccessEnabled: true };
+  const db = { systemConfig: { findMany: async () => [] }, promoter: { findMany: async () => [] }, tenant: { findUnique: async () => flags } };
+  const service = new CltJourneyService();
+  expect(await service.available(db, 'tenant-synthetic')).toEqual([{ id: 'happy', name: 'Happy CLT', contextual: true }]);
+  flags.happySimulationAccessEnabled = false;
+  expect(await service.available(db, 'tenant-synthetic')).toEqual([]);
+});
