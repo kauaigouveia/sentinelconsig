@@ -1,3 +1,4 @@
+import { journeyFetch } from './cltJourneyDeadline.js';
 import { V8BankService } from './v8BankService.js';
 import { currentIntegrationPromoter } from './bankPromoterConfig.js';
 import { logger } from '../logger.js';
@@ -29,14 +30,17 @@ class V8CltError extends Error {
 }
 
 export class V8CltSimulationService {
+  // Deliberately closed until bank homologation is approved; not controlled by a client flag.
+  static canSimulate() { return false; }
   static async request(db: any, tenantId: string, promoterId: string, path: string, body?: unknown) {
     // No arbitrary paths, consent acceptance, operation creation or external Azure host.
     if (!['/private-consignment/consult', '/private-consignment/simulation/configs', '/private-consignment/simulation'].includes(path.split('?')[0])
       || (body !== undefined && path !== '/private-consignment/simulation')) throw new V8CltError(0, 'METHOD_NOT_ALLOWED');
+    if (path === '/private-consignment/simulation' && !this.canSimulate()) throw new V8CltError(0, 'HOMOLOGATION_REQUIRED');
     const { token } = await V8BankService.token(db, tenantId, promoterId, 'production');
     let response: Response;
     try {
-      response = await fetch(BASE + path, { method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
+      response = await journeyFetch(BASE + path, { method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body: body === undefined ? undefined : JSON.stringify(body) });
     } catch { throw new V8CltError(0, 'NETWORK'); }
     const data = await response.json().catch(() => null);
@@ -45,6 +49,8 @@ export class V8CltSimulationService {
   }
 
   static async run(db: any, tenantId: string, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE', input: ProductSimulationInput): Promise<ProductSimulationRow[]> {
+    // Backend gate covers the unified journey, legacy simulator and partner portal.
+    // No environment switch can accidentally enable an unhomologated financial operation.
     const stored = await db.systemConfig?.findMany?.({ where: { tenantId, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } }) || [];
     const scoped = currentIntegrationPromoter();
     const promoters = [...new Set<string>(stored.map((item: any) => /^integration:v8:(.+):config$/.exec(item.configKey)?.[1]).filter((id: any) => id && (!scoped || id === scoped)))];
@@ -59,6 +65,7 @@ export class V8CltSimulationService {
         if (!config.cltEnabled) { rows.push(row('UNSUPPORTED', 'CLT não está habilitado nesta conexão V8. Confira a habilitação com o administrador.')); continue; }
         if (config.environment !== 'production') { rows.push(row('UNSUPPORTED', 'O endereço de homologação V8 ainda não foi confirmado.')); continue; }
         if (!V8BankService.metadata(config).hasCredentials) { rows.push(row('MISSING_DATA', 'As credenciais da conexão V8 estão incompletas. Solicite a configuração ao administrador.')); continue; }
+        if (action === 'SIMULATE' && !this.canSimulate()) { rows.push(row('UNSUPPORTED', 'A simulação CLT V8 aguarda homologação bancária. As demais integrações continuam disponíveis.')); continue; }
         if (action === 'AUTHORIZE') { rows.push(row('AUTHORIZATION_REQUIRED', 'A V8 exige termo e aceite real do trabalhador. Conclua o consentimento no fluxo autorizado V8 e atualize os dados. O Sentinel não registra aceite pelo operador.')); continue; }
         const endDate = new Date(), startDate = new Date(endDate.getTime() - 30 * 86400000);
         const consultations: any[] = [];

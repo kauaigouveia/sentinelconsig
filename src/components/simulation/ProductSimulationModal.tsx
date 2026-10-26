@@ -33,7 +33,7 @@ export const ProductSimulationModal: React.FC<Props> = ({ isOpen, product, onClo
     if(action==='simulate' || action==='authorize')setStep(2);
     setLoading(true); setRows([]); setSelectedOffer(null); setSaved(false); setMessage('');
     try {
-      const response = await fetch(`/api/simulations/products/${product.toLowerCase()}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, employerDocument: action === 'refresh' ? '' : form.employerDocument, factaRegistration: action === 'refresh' ? '' : form.factaRegistration, v8ConsultId: action === 'refresh' ? '' : form.v8ConsultId, v8PromoterId: action === 'refresh' ? '' : form.v8PromoterId, term: Number(form.term), value: Number(form.value) }) });
+      const response = await fetch(`/api/simulations/products/${product.toLowerCase()}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, employerDocument: action === 'refresh' ? '' : form.employerDocument, factaRegistration: action === 'refresh' ? '' : form.factaRegistration, v8ConsultId: action === 'refresh' ? undefined : form.v8ConsultId || undefined, v8PromoterId: action === 'refresh' ? undefined : form.v8PromoterId || undefined, term: Number(form.term), value: Number(form.value) }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível concluir a consulta.');
       const returned: Row[] = result.rows || [];

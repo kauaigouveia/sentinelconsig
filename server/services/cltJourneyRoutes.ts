@@ -20,7 +20,7 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
     res.setHeader('Cache-Control', 'no-store');
     try {
       const c = await context(req); if (c.status) return res.status(c.status).json({ error: 'Acesso à simulação não autorizado.' });
-      const entry = service.get(c.tenant!, c.actor!, req.params.id);
+      const entry = await service.get(db, c.tenant!, c.actor!, req.params.id);
       if (!entry) return res.status(404).json({ error: 'Execução indisponível. Não repita a consulta sem conferir o estado.' });
       return res.json(entry.snapshot);
     } catch { return res.status(503).json({ error: 'Não foi possível recuperar a execução.' }); }
@@ -34,15 +34,20 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
       const id = b.executionId, action = b.action || 'SIMULATE', provider = b.provider as JourneyProvider | undefined;
       if (typeof id !== 'string' || !/^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(id) || !isValidCpf(cpf) || !name || name.length > 200 || !/^\d{10,11}$/.test(phone) || !Number.isInteger(term) || term < 0 || term > 120 || !Number.isFinite(value) || value <= 0 || !['Payment', 'Liquid'].includes(b.mode) || employerDocument && ![8, 14].includes(employerDocument.length) || !['SIMULATE', 'REFRESH', 'AUTHORIZE'].includes(action) || provider && !journeyProviders.includes(provider) || action === 'AUTHORIZE' && (!provider || !['nossa', 'finanto', 'facta'].includes(provider))) return res.status(400).json({ error: 'Revise os dados, condições e ação específica da instituição.' });
       for (const key of ['factaRegistration', 'v8ConsultId', 'v8PromoterId']) if (b[key] !== undefined && (typeof b[key] !== 'string' || b[key].length > 100 || /[\u0000-\u001f\u007f]/.test(b[key]))) return res.status(400).json({ error: 'Seleção de vínculo inválida.' });
-      const entry = await service.start(db, c.tenant!, c.actor!, id, { cpf, phone, name, term, value, employerDocument, mode: b.mode, eligibility: true, factaRegistration: b.factaRegistration, v8ConsultId: b.v8ConsultId, v8PromoterId: b.v8PromoterId }, provider, action);
+      const input = { cpf, phone, name, term, value, employerDocument, mode: b.mode, eligibility: true, factaRegistration: b.factaRegistration, v8ConsultId: b.v8ConsultId, v8PromoterId: b.v8PromoterId };
+      const entry = await service.start(db, c.tenant!, c.actor!, id, input, provider, action);
       res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
       res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders();
       let closed = false;
       const listener = (snapshot: JourneySnapshot) => { if (!closed && !res.writableEnded) { res.write(JSON.stringify(snapshot) + '\n'); if (!snapshot.running) res.end(); } };
-      const timer = setTimeout(() => { if (!res.writableEnded) res.end(); }, 90000);
-      res.on('close', () => { closed = true; clearTimeout(timer); entry.listeners.delete(listener); });
+
+      res.on('close', () => { closed = true; entry.listeners.delete(listener); });
       entry.listeners.add(listener); listener(entry.snapshot);
+      // Await every external operation inside this invocation, never detach work after returning.
+      await service.execute(db, c.tenant!, c.actor!, entry, input, action);
+      listener(entry.snapshot);
+      if (!res.writableEnded) res.end();
     } catch (error) {
       if (!res.headersSent) return res.status(error instanceof Error && error.message === 'EXECUTION_CONFLICT' ? 409 : 503).json({ error: 'Não foi possível iniciar esta execução. Confira seu estado antes de repetir.' });
       res.end();

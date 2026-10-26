@@ -1,3 +1,4 @@
+import { journeyFetch } from './cltJourneyDeadline.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
@@ -47,7 +48,7 @@ export class BmgBankService {
     if (!config.enabled || !config.username || !config.password) throw new Error('Cadastre e habilite as credenciais BMG da empresa.');
     const fingerprint = createHash('sha256').update(JSON.stringify([config.environment, config.username, config.password])).digest('hex');
     const cached = tokens.get(integrationCacheKey(tenantId)); if (cached && cached.fingerprint === fingerprint && cached.expires > Date.now()) return cached.value;
-    const response = await fetch(`${BASES[config.environment]}/v1/token`, { method: 'POST', headers: { Authorization: `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`, Accept: 'application/json' }, signal: AbortSignal.timeout(15000), redirect: 'error' });
+    const response = await journeyFetch(`${BASES[config.environment]}/v1/token`, { method: 'POST', headers: { Authorization: `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`, Accept: 'application/json' }, signal: AbortSignal.timeout(15000), redirect: 'error' });
     const data = await response.json().catch(() => null);
     if (!response.ok || !data?.access_token) throw new Error(`BMG não autenticou o usuário de integração (HTTP ${response.status}).`);
     const expiry = Number(data.expires_in); if (Number.isFinite(expiry) && expiry > 60) tokens.set(integrationCacheKey(tenantId), { value: data.access_token, expires: Date.now() + (expiry - 60) * 1000, fingerprint });
@@ -56,7 +57,7 @@ export class BmgBankService {
   static async request(prisma: PrismaClient, tenantId: string, method: string, path: string, body?: any, headers: Record<string, string> = {}) {
     const config = await this.config(prisma, tenantId), token = await this.token(prisma, tenantId);
     if (!/^\/v1\/(sms\/otp|sms\/validar|ofertas(?:\/elegiveis|\/simulacoes)?|in100|consignado-privado\/(?:elegibilidade|simulacao|propostas)|propostas\/[^/?]+|link-formalizacao)(?:\?|$)/.test(path)) throw new Error('Operação BMG não autorizada.');
-    const response = await fetch(`${BASES[config.environment]}${path}`, { method, headers: { ...headers, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: body === undefined ? undefined : requestBody(body), signal: AbortSignal.timeout(20000), redirect: 'error' });
+    const response = await journeyFetch(`${BASES[config.environment]}${path}`, { method, headers: { ...headers, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: body === undefined ? undefined : requestBody(body), signal: AbortSignal.timeout(20000), redirect: 'error' });
     const text = await response.text(); let data: any; try { data = parseResponse(text); } catch { throw new Error(`BMG retornou uma resposta incompatível (HTTP ${response.status}).`); }
     if (!response.ok || (data?.statusCode && Number(data.statusCode) >= 400) || (typeof data?.status === 'number' && data.status >= 400) || data?.erro === true || (typeof data?.erro === 'string' && data.erro.length > 0)) throw new Error(`BMG não concluiu a operação (HTTP ${response.status}${data?.statusCode ? ` / ${data.statusCode}` : ''}). Confira os dados e a liberação comercial.`);
     return data;

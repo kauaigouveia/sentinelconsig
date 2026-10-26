@@ -18,6 +18,8 @@ const config = { environment: 'production' as const, enabled: true, cltEnabled: 
 const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
 let consultations: any[], tables: any[], response: any, db: any, fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
+  // Contract fixtures exercise dormant code under a mocked policy, never bank homologation.
+  vi.spyOn(V8CltSimulationService, 'canSimulate').mockReturnValue(true);
   vi.clearAllMocks(); consultations = [{ ...consultation }]; tables = [{ id: configId, slug: 'CLT sintético', number_of_installments: ['24'] }]; response = { ...offer };
   db = { systemConfig: { findMany: vi.fn(async (query: any) => query.where.tenantId === 'tenant-a' ? [{ configKey: 'integration:v8:promoter-a:config' }] : []) } };
   vi.spyOn(V8BankService, 'config').mockImplementation(async (_db, tenant, promoter) => { if (tenant !== 'tenant-a' || promoter !== 'promoter-a') throw Error('Invalid scope'); return config; });
@@ -210,4 +212,13 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     values.find(row => row.tenantId === 'tenant-b' && row.configKey.endsWith(':config')).configValue = source.configValue;
     await expect(V8BankService.config(memory, 'tenant-b', 'promoter-b')).rejects.toThrow('credenciais V8');
   });
+});
+
+it('blocks every real V8 simulation entry point before OAuth or bank requests', async () => {
+  vi.mocked(V8CltSimulationService.canSimulate).mockRestore();
+  const rows = await V8CltSimulationService.run(db, 'tenant-a', 'SIMULATE', input);
+  expect(rows[0].outcome).toBe('UNSUPPORTED'); expect(fetchMock).not.toHaveBeenCalled();
+  expect(V8BankService.token).not.toHaveBeenCalled();
+  await expect(V8CltSimulationService.request(db, 'tenant-a', 'promoter-a', '/private-consignment/simulation', {})).rejects.toThrow();
+  expect(fetchMock).not.toHaveBeenCalled();
 });

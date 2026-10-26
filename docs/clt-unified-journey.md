@@ -1,5 +1,7 @@
 # Jornada CLT unificada — mapeamento antes da implementação
 
+> Registro histórico da implementação inicial. A preparação posterior do PR #1 substituiu a recuperação em memória por persistência cifrada, resolveu os conflitos com a main, bloqueou simulação V8 também no backend legado e retirou o acompanhamento de 90 segundos. Estado atual, testes, limites e impedimentos: [preparação do PR #1](pr1-publication-readiness.md). Os números e limitações descritos abaixo pertencem às etapas anteriores.
+
 26/10/2026. Branch codex/clt-unified-journey, derivada do trabalho V8, sem publicação. Alterações V8 anteriores preservadas. Referência disponível: pedido textual; três imagens mencionadas não estavam no diretório do anexo.
 
 ## Contratos preservados

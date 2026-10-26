@@ -1,8 +1,9 @@
+import { journeyFetch } from './cltJourneyDeadline.js';
 /** All FACTA requests share the same optional fixed-egress transport. */
 export async function factaFetch(target: string | URL, init: RequestInit = {}): Promise<Response> {
   const gateway = process.env.FACTA_GATEWAY_URL?.trim();
   const secret = process.env.FACTA_GATEWAY_SECRET?.trim();
-  if (!gateway && !secret) return fetch(target, init);
+  if (!gateway && !secret) return journeyFetch(target, init);
   if (!gateway || !secret) throw new Error('Configure FACTA_GATEWAY_URL e FACTA_GATEWAY_SECRET juntas.');
   const endpoint = new URL(gateway);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || endpoint.pathname !== '/facta') {
@@ -19,7 +20,7 @@ export async function factaFetch(target: string | URL, init: RequestInit = {}): 
     const value = headers.get(name);
     if (value) forwardedHeaders[name] = value;
   }
-  const response = await fetch(endpoint, {
+  const response = await journeyFetch(endpoint, {
     method: 'POST', signal: init.signal, redirect: 'error',
     headers: { 'Content-Type': 'application/json', 'X-Gateway-Key': secret },
     body: JSON.stringify({ url: url.href, method: init.method || 'GET', headers: forwardedHeaders, body: init.body }),

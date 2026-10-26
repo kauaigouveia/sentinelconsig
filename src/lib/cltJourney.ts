@@ -6,6 +6,7 @@ export function journeyStatus(result: JourneySnapshot['results'][string]) {
   const offers = result.rows.filter(row => row.state === 'OFFER');
   if (offers.length) return 'Ofertas disponíveis';
   if (result.contractPending) return 'Pendência contratual';
+  if (result.status === 'UNKNOWN') return 'Resultado incerto · conferir no banco';
   if (result.status === 'QUERYING') return 'Consultando';
   if (result.status === 'ERROR') return 'Erro na consulta';
   if (result.status === 'CONTEXTUAL') return 'Ação específica necessária';

@@ -38,7 +38,7 @@ export function PartnerSimulationsView() {
     if(action==='simulate' || action==='authorize')setStep(2);
     setBusy(true); setError(''); setMessage(''); setRows([]);
     try {
-      const response = await fetch(`/api/partner-portal/simulations/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form,...portabilityContext, employerDocument: action === 'refresh' ? '' : form.employerDocument, factaRegistration: action === 'refresh' ? '' : form.factaRegistration, v8ConsultId: action === 'refresh' ? '' : form.v8ConsultId, v8PromoterId: action === 'refresh' ? '' : form.v8PromoterId, attemptKey: crypto.randomUUID() }) });
+      const response = await fetch(`/api/partner-portal/simulations/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form,...portabilityContext, employerDocument: action === 'refresh' ? '' : form.employerDocument, factaRegistration: action === 'refresh' ? '' : form.factaRegistration, v8ConsultId: action === 'refresh' ? undefined : form.v8ConsultId || undefined, v8PromoterId: action === 'refresh' ? undefined : form.v8PromoterId || undefined, attemptKey: crypto.randomUUID() }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a consulta.');
       if (action === 'contracts') setContracts(data.contracts || []);

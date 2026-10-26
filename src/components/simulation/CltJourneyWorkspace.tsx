@@ -27,7 +27,19 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   const uncertainTransport = useRef(false);
   currentScope.current = scope;
   const dialog = useRef<HTMLDivElement>(null), previous = useRef<HTMLElement | null>(null);
-  useEffect(() => { active.current?.abort(); last.current = null; locked.current = false; setForm(blank); setSnapshot(null); setPage('CLIENT'); setBusy(false); setError(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase(''); }, [scope]);
+  useEffect(() => { active.current?.abort(); last.current = null; locked.current = false; uncertainTransport.current = false; setForm(blank); setSnapshot(null); setPage('CLIENT'); setBusy(false); setError(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase('');   try {
+      const id = sessionStorage.getItem('sentinel:clt-execution:' + scope);
+      if (id && /^[a-f\d-]{36}$/i.test(id)) {
+        last.current = { id, fingerprint: '' }; uncertainTransport.current = true; setPage('TRACKING');
+        const requestedScope = scope, recovery = new AbortController(); active.current = recovery;
+        void fetch('/api/simulations/clt/journey/' + id, { cache: 'no-store', credentials: 'include', signal: recovery.signal }).then(async r => {
+          if (!r.ok) throw Error('Não foi possível recuperar a execução. Nenhuma operação será repetida automaticamente.');
+          const saved = await r.json(); if (currentScope.current !== requestedScope || recovery.signal.aborted) return;
+          setSnapshot(saved); uncertainTransport.current = saved.running || Object.values(saved.results).some((r: any) => r.status === 'UNKNOWN');
+        }).catch(() => { if (currentScope.current === requestedScope && !recovery.signal.aborted) setError('Recuperação indisponível. Confira o estado antes de outra operação.'); });
+      }
+    } catch { /* Storage disabled: current execution still uses the persistent backend. */ }
+  }, [scope]);
   useEffect(() => () => active.current?.abort(), []);
   useEffect(() => { if (!isOpen) return; previous.current = document.activeElement as HTMLElement; dialog.current?.focus(); return () => previous.current?.focus(); }, [isOpen]);
   const merge = useCallback((next: JourneySnapshot) => setSnapshot(old => {
@@ -54,7 +66,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     try {
       const response = await fetch(`/api/simulations/clt/journey/${last.current.id}`, { cache: 'no-store', credentials: 'include' });
       const data = await response.json(); if (currentScope.current !== requestedScope) return;
-      if (!response.ok) throw new Error(data.error || 'Execução indisponível.'); merge(data); uncertainTransport.current = data.running === true;
+      if (!response.ok) throw new Error(data.error || 'Execução indisponível.'); merge(data); uncertainTransport.current = data.running === true || Object.values(data.results).some((r: any) => r.status === 'UNKNOWN');
     } catch (e) { if (currentScope.current === requestedScope) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha no acompanhamento.') || 'Falha no acompanhamento.'); }
     finally { if (currentScope.current === requestedScope) { locked.current = false; setBusy(false); } }
   }
@@ -67,6 +79,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     const fingerprint = JSON.stringify(body);
     if (!provider && last.current?.fingerprint === fingerprint) { setPage('TRACKING'); await recover(); return; }
     const executionId = crypto.randomUUID(); last.current = { id: executionId, fingerprint };
+    try { sessionStorage.setItem('sentinel:clt-execution:' + scope, executionId); } catch { /* No customer data is stored in the browser. */ }
     locked.current = true; setBusy(true); setError(''); setPage('TRACKING'); if (!provider) { setSnapshot(null); setSelectedBank(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase(''); }
     active.current?.abort(); const controller = new AbortController(); active.current = controller; const requestedScope = scope;
     let rejectedBeforeExecution = false;
@@ -75,7 +88,10 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
       const response = await fetch('/api/simulations/clt/journey', { method: 'POST', credentials: 'include', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, executionId }), signal: controller.signal });
       rejectedBeforeExecution = !response.ok && response.status < 500 && response.status !== 409;
       let finished = false;
-      await readJourneyStream(response, next => { if (currentScope.current !== requestedScope || controller.signal.aborted) return; finished = !next.running; merge(next); });
+      await readJourneyStream(response, next => { if (currentScope.current !== requestedScope || controller.signal.aborted) return; finished = !next.running && !Object.values(next.results).some(r => r.status === 'UNKNOWN');
+        last.current = { id: next.executionId, fingerprint };
+        try { sessionStorage.setItem('sentinel:clt-execution:' + scope, next.executionId); } catch { /* Storage is optional. */ }
+        merge(next); });
       if (finished) uncertainTransport.current = false;
       if (!finished && !controller.signal.aborted) setError('A conexão de acompanhamento terminou. Recupere o estado da execução; não repita operações bancárias.');
     } catch (e) { if (rejectedBeforeExecution) uncertainTransport.current = false; if (!controller.signal.aborted && currentScope.current === requestedScope) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha na consulta. Confira o estado antes de repetir.') || 'Falha no acompanhamento.'); }

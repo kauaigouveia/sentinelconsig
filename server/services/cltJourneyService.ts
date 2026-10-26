@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto';
+import { CltJourneyStore, journeyFingerprint, type JourneyRecord } from './cltJourneyStore.js';
+import { withinJourneyDeadline } from './cltJourneyDeadline.js';
 import { ProductSimulationService, type ProductSimulationInput, type ProductSimulationRow } from './productSimulationService.js';
 import { NossaFintechService } from './nossaFintechService.js';
 import { FinantoService } from './finantoService.js';
@@ -13,17 +14,24 @@ import { cltPublicMessage } from '../../src/lib/cltSimulationOutcome.js';
 export const journeyProviders = ['nossa', 'finanto', 'facta', 'bmg', 'v8', 'parana', 'presenca', 'happy'] as const;
 export type JourneyProvider = typeof journeyProviders[number];
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
-export type JourneySnapshot = { executionId: string; running: boolean; banks: JourneyBank[]; results: Record<string, { status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL'; rows: ProductSimulationRow[]; message?: string; contractPending?: boolean; executionId?: string }> };
-type Entry = { fingerprint: string; updated: number; snapshot: JourneySnapshot; listeners: Set<(snapshot: JourneySnapshot) => void> };
+export type JourneySnapshot = { executionId: string; running: boolean; banks: JourneyBank[]; results: Record<string, { status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; rows: ProductSimulationRow[]; message?: string; contractPending?: boolean; executionId?: string }> };
+type Entry = { raw: string; record: JourneyRecord; snapshot: JourneySnapshot; store: CltJourneyStore; listeners: Set<(snapshot: JourneySnapshot) => void> };
 
-// Process-local deduplication only. Never retry a POST automatically after an uncertain outcome.
 export class CltJourneyService {
-  private entries = new Map<string, Entry>();
-  private key(tenant: string, actor: string, id: string) { return JSON.stringify([tenant, actor, id]); }
-  get(tenant: string, actor: string, id: string) {
-    const key = this.key(tenant, actor, id), entry = this.entries.get(key);
-    if (entry && !entry.snapshot.running && Date.now() - entry.updated > 1800000) { this.entries.delete(key); return undefined; }
-    return entry;
+  async get(db: any, tenant: string, actor: string, id: string): Promise<Entry | undefined> {
+    const store = new CltJourneyStore(db, tenant, actor), saved = await store.read(id);
+    if (!saved) return undefined;
+    const { record } = saved;
+    let raw = saved.raw;
+    if (record.phase === 'RUNNING' && Date.now() >= record.deadline) {
+      record.phase = 'UNKNOWN'; record.snapshot.running = false;
+      for (const result of Object.values(record.snapshot.results)) if (result.status === 'QUERYING') {
+        result.status = 'UNKNOWN'; result.message = 'Resultado incerto após interrupção. Confira o estado no banco; nenhuma repetição automática.';
+      }
+      try { raw = await store.compareAndSet(record.snapshot.executionId, raw, record); }
+      catch { return this.get(db, tenant, actor, id); }
+    }
+    return { raw, record, snapshot: record.snapshot, store, listeners: new Set() };
   }
   async available(db: any, tenant: string): Promise<JourneyBank[]> {
     const banks: JourneyBank[] = [];
@@ -64,39 +72,52 @@ export class CltJourneyService {
     return banks.sort((a, b) => journeyProviders.indexOf(a.id) - journeyProviders.indexOf(b.id));
   }
   async start(db: any, tenant: string, actor: string, id: string, input: ProductSimulationInput, provider?: JourneyProvider, action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' = 'SIMULATE') {
-    const key = this.key(tenant, actor, id), fingerprint = createHash('sha256').update(JSON.stringify({ input, provider, action })).digest('hex');
-    const previous = this.entries.get(key);
-    if (previous) { if (previous.fingerprint !== fingerprint) throw new Error('EXECUTION_CONFLICT'); return previous; }
-    for (const [k, e] of this.entries) if (!e.snapshot.running && Date.now() - e.updated > 1800000) this.entries.delete(k);
-    if (this.entries.size >= 500) throw new Error('EXECUTION_CAPACITY');
-    // Reserve before awaiting discovery, preventing concurrent duplicates.
-    const entry: Entry = { fingerprint, updated: Date.now(), snapshot: { executionId: id, running: true, banks: [], results: {} }, listeners: new Set() };
-    this.entries.set(key, entry);
-    const publish = () => { entry.updated = Date.now(); for (const listener of entry.listeners) listener(entry.snapshot); };
-    void (async () => {
-      try {
-        const all = await this.available(db, tenant);
-        const banks = provider ? all.filter(bank => bank.id === provider) : all;
-        entry.snapshot.banks = banks;
-        for (const bank of banks) entry.snapshot.results[bank.id] = { executionId: id, status: bank.contextual ? 'CONTEXTUAL' : 'QUERYING', rows: [], message: bank.error ? 'Não foi possível verificar a configuração. Nenhuma consulta foi iniciada.' : bank.contextual ? 'Etapa específica disponível neste cartão. Nenhuma autorização enviada.' : undefined };
-        publish();
-        await Promise.all(banks.filter(bank => !bank.contextual).map(async bank => {
-          const result = entry.snapshot.results[bank.id];
-          try {
-            // Contract gate: never simulate V8 from the unified journey until pre-calculation is resolved.
-            const effectiveAction = bank.id === 'v8' ? 'REFRESH' : action;
-            const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); publish(); };
-            const response = await ProductSimulationService.run(db, tenant, 'CLT', effectiveAction, { ...input, bmgActorId: actor }, update, [bank.id]);
-            result.rows = response.rows.map(projectRow); result.status = 'RETURNED';
-            if (bank.id === 'v8') { result.contractPending = true; result.message = 'Pré-cálculo V8 pendente de confirmação contratual. Somente consentimento e margem consultados.'; }
-            else if (!result.rows.length) result.message = 'Sem ofertas retornadas nesta consulta.';
-          } catch { result.status = 'ERROR'; result.message = 'Consulta não concluída. Confira o estado antes de tentar novamente.'; }
-          publish();
-        }));
-      } catch { entry.snapshot.results.system = { status: 'ERROR', rows: [], message: 'Não foi possível preparar as integrações. Nenhuma repetição automática.' }; }
-      finally { entry.snapshot.running = false; publish(); }
-    })();
+    const fingerprint = journeyFingerprint({ input, provider, action });
+    const previous = await this.get(db, tenant, actor, id);
+    if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return previous; }
+    const all = await this.available(db, tenant), banks = provider ? all.filter(bank => bank.id === provider) : all;
+    const snapshot: JourneySnapshot = { executionId: id, running: true, banks, results: {} };
+    for (const bank of banks) snapshot.results[bank.id] = { executionId: id, status: bank.contextual ? 'CONTEXTUAL' : 'QUERYING', rows: [], message: bank.error ? 'Não foi possível verificar a configuração. Nenhuma consulta foi iniciada.' : bank.contextual ? 'Etapa específica disponível neste cartão. Nenhuma autorização enviada.' : undefined };
+    const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot };
+    const store = new CltJourneyStore(db, tenant, actor), canonical = await store.create(id, record);
+    const entry = await this.get(db, tenant, actor, canonical);
+    if (!entry || entry.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT');
     return entry;
+  }
+  async execute(db: any, tenant: string, actor: string, entry: Entry, input: ProductSimulationInput, action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' = 'SIMULATE') {
+    if (entry.record.phase !== 'READY') return;
+    const { record, store, snapshot } = entry, id = snapshot.executionId;
+    record.phase = 'RUNNING'; record.deadline = Date.now() + 50000;
+    try { entry.raw = await store.compareAndSet(id, entry.raw, record); }
+    catch { const current = await this.get(db, tenant, actor, id); if (current) Object.assign(entry, current); return; }
+    const stop = new AbortController(), signal = AbortSignal.any([stop.signal, AbortSignal.timeout(40000)]);
+    let writes = Promise.resolve();
+    const publish = () => {
+      // Serialize writes, but use CAS as the distributed authority. Partial results are durable before broadcast.
+      const copy = structuredClone(record);
+      writes = writes.then(async () => { entry.raw = await store.compareAndSet(id, entry.raw, copy); for (const listener of entry.listeners) listener(copy.snapshot); });
+      writes = writes.catch(error => { stop.abort(); throw error; });
+      return writes;
+    };
+    await withinJourneyDeadline(signal, async () => {
+      const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => !bank.contextual).map(async bank => {
+        const result = snapshot.results[bank.id];
+        try {
+          const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); await publish(); };
+          const response = await ProductSimulationService.run(db, tenant, 'CLT', bank.id === 'v8' ? 'REFRESH' : action, { ...input, bmgActorId: actor }, update, [bank.id]);
+          result.rows = response.rows.map(projectRow); result.status = 'RETURNED';
+          if (bank.id === 'v8') { result.contractPending = true; result.message = 'Simulação V8 pendente de homologação. Somente consentimento e margem consultados.'; }
+          else if (!result.rows.length) result.message = 'Sem ofertas retornadas nesta consulta.';
+        } catch { result.status = 'UNKNOWN'; result.message = 'Resultado incerto. Confira o estado antes de outra operação; nenhuma repetição automática.'; }
+        if (signal.aborted) { result.status = 'UNKNOWN'; result.message = 'Prazo da consulta encerrado. Confira o estado no banco antes de outra operação.'; }
+        await publish();
+      }));
+      if (outcomes.some(result => result.status === 'rejected')) throw Error('EXECUTION_PERSISTENCE_FAILED');
+    });
+    snapshot.running = false;
+    record.phase = Object.values(snapshot.results).some(r => r.status === 'UNKNOWN') ? 'UNKNOWN' : 'DONE';
+    record.deadline = Date.now();
+    await publish();
   }
 }
 

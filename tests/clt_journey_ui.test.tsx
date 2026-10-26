@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 vi.mock('../src/components/simulation/BmgCustomerAuthorization', () => ({ BmgCustomerAuthorization: () => null }));
 import { CltJourneyWorkspace } from '../src/components/simulation/CltJourneyWorkspace';
 import { readJourneyStream } from '../src/lib/cltJourney';
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); sessionStorage.clear(); vi.unstubAllGlobals(); });
 const snapshot = { executionId: 'synthetic-execution', running: false, banks: [{ id: 'facta', name: 'FACTA' }, { id: 'nossa', name: 'Nossa Fintech' }], results: { facta: { status: 'RETURNED', rows: [{ provider: 'FACTA', institution: 'FACTA', table: 'A', state: 'OFFER', amount: 12000, installment: 1423.98, term: 24 }, { provider: 'FACTA', institution: 'FACTA', table: 'B', state: 'OFFER', amount: 13000, installment: 1423.98, term: 36 }] }, nossa: { status: 'RETURNED', rows: [{ provider: 'Nossa Fintech', institution: 'QI', state: 'PENDING', outcome: 'AUTHORIZATION_REQUIRED' }] } } };
 it('uses a single primary action, displays offers independently, compares conditions and reopens without POST', async () => {
   const fetcher = vi.fn(async (_url, options) => options?.method === 'POST' ? new Response(JSON.stringify(snapshot) + '\n', { headers: { 'content-type': 'application/x-ndjson' } }) : new Response(JSON.stringify(snapshot)));
@@ -55,4 +55,17 @@ it('requires state recovery after an incomplete transport, without issuing anoth
   fireEvent.click(screen.getByRole('button', { name: 'Recuperar acompanhamento' }));
   await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
   expect(fetcher.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
+});
+
+it('recovers after a full remount using only an opaque tenant/actor-scoped identifier and a read request', async () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  sessionStorage.setItem('sentinel:clt-execution:tenant-a:user-a', id);
+  const fetcher = vi.fn(async (_url: string, _options: RequestInit) => new Response(JSON.stringify({ ...snapshot, executionId: id })));
+  vi.stubGlobal('fetch', fetcher);
+  render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
+  await screen.findByText('Ofertas disponíveis');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0][0]).toBe('/api/simulations/clt/journey/' + id);
+  expect(fetcher.mock.calls[0][1].method).toBeUndefined();
+  expect(sessionStorage.getItem('sentinel:clt-execution:tenant-a:user-a')).toBe(id);
 });
