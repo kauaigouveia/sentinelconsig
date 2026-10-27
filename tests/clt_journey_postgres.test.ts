@@ -47,6 +47,12 @@ describe.skipIf(process.env.SENTINEL_CLT_REAL_POSTGRES_TEST !== '1')('CLT persis
   it('survives a new store instance', async () => {
     expect((await new CltJourneyStore(db, tenant.id, actor).read(id))?.record.phase).toBe('READY');
   });
+  it('recovers all six customer fields from the encrypted tenant/actor-scoped snapshot',async()=>{
+    const ownTenant=await db.tenant.create({data:{name:'Synthetic customer fields',slug:'synthetic-customer-'+randomUUID()}});
+    const service=new CltJourneyService();const available=vi.spyOn(service,'available').mockResolvedValue([]);
+    const execution=randomUUID(),customer={cpf:'52998224725',name:'Pessoa sintética',phone:'11999999999',v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'female' as const,value:0,term:0,mode:'Payment' as const,eligibility:true};
+    try{await service.start(db,ownTenant.id,actor,execution,customer);const recovered=await new CltJourneyService().get(db,ownTenant.id,actor,execution);expect(recovered?.snapshot.customer).toMatchObject(customer);expect(await service.get(db,ownTenant.id,'other-actor',execution)).toBeUndefined();const rows=await db.systemConfig.findMany({where:{tenantId:ownTenant.id}});for(const value of [customer.cpf,customer.phone,customer.v8BirthDate,customer.v8Email])expect(JSON.stringify(rows)).not.toContain(value);}finally{available.mockRestore();await db.systemConfig.deleteMany({where:{tenantId:ownTenant.id}});await db.tenant.delete({where:{id:ownTenant.id}});}
+  });
   it('atomically reserves a duplicate execution', async () => {
     expect(await store.create(id, record)).toBe(id);
   });

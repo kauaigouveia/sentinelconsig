@@ -6,6 +6,7 @@ import type { Express, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { hasPermission } from '../../src/lib/permissions.js';
 import { isValidCpf } from '../../src/lib/utils.js';
+import { isCltBirthDate, isCltEmail, isCltGender } from '../../src/lib/cltCustomerData.js';
 import { CltJourneyService, journeyProviders, type JourneyAction, type JourneyProvider, type JourneySnapshot } from './cltJourneyService.js';
 
 export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req: Request) => Promise<any>, service = new CltJourneyService()) {
@@ -72,8 +73,9 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
       if (typeof id !== 'string' || !/^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(id) || !isValidCpf(cpf) || !name || name.length > 200 || !/^\d{10,11}$/.test(phone) || !Number.isInteger(term) || term < 0 || term > 120 || !Number.isFinite(value) || value < 0 || !['Payment', 'Liquid'].includes(mode) || employerDocument && ![8, 14].includes(employerDocument.length) || !['SIMULATE', 'REFRESH', 'AUTHORIZE', 'CREATE_CONSULT'].includes(action) || provider && !journeyProviders.includes(provider) || action === 'SIMULATE' && !provider || action === 'CREATE_CONSULT' && provider !== 'v8' || action === 'AUTHORIZE' && (!provider || !['nossa', 'finanto', 'facta'].includes(provider))) return res.status(400).json({ error: 'Revise os dados do cliente e a ação específica da instituição. Inicie pela consulta dos bancos.' });
       for (const key of ['factaRegistration', 'v8ConsultId', 'v8PromoterId']) if (b[key] !== undefined && (typeof b[key] !== 'string' || b[key].length > 100 || /[\u0000-\u001f\u007f]/.test(b[key]))) return res.status(400).json({ error: 'Seleção de vínculo inválida.' });
       if (b.parentExecutionId !== undefined && (typeof b.parentExecutionId !== 'string' || !/^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(b.parentExecutionId))) return res.status(400).json({ error: 'Acompanhamento anterior inválido.' });
-      if (action === 'CREATE_CONSULT' && (!/^\d{4}-\d{2}-\d{2}$/.test(b.v8BirthDate || '') || !Number.isFinite(Date.parse(b.v8BirthDate)) || new Date(b.v8BirthDate).toISOString().slice(0, 10) !== b.v8BirthDate || Date.parse(b.v8BirthDate) >= Date.now() || !['male', 'female'].includes(b.v8Gender) || typeof b.v8Email !== 'string' || b.v8Email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.v8Email))) return res.status(400).json({ error: 'A V8 exige nascimento válido, sexo e e-mail do trabalhador para criar a consulta. Isso não registra aceite.' });
-      const input = { cpf, phone, name, term, value, employerDocument, mode: value ? mode : 'Payment', autoConditions: !value, eligibility: true, factaRegistration: b.factaRegistration, v8ConsultId: b.v8ConsultId, v8PromoterId: b.v8PromoterId, ...(action === 'CREATE_CONSULT' ? { v8BirthDate: b.v8BirthDate, v8Gender: b.v8Gender, v8Email: b.v8Email } : {}) };
+      const email = typeof b.v8Email === 'string' ? b.v8Email.trim() : b.v8Email;
+      if (!isCltBirthDate(b.v8BirthDate) || !isCltEmail(email) || !isCltGender(b.v8Gender)) return res.status(400).json({ error: 'Preencha nascimento válido, e-mail e sexo informado pelo trabalhador na primeira etapa. Parcela e prazo não são exigidos para consultar.' });
+      const input = { cpf, phone, name, term, value, employerDocument, mode: value ? mode : 'Payment', autoConditions: !value, eligibility: true, factaRegistration: b.factaRegistration, v8ConsultId: b.v8ConsultId, v8PromoterId: b.v8PromoterId, v8BirthDate: b.v8BirthDate, v8Gender: b.v8Gender, v8Email: email };
       const entry = await service.start(db, c.tenant!, c.actor!, id, input, provider, action, b.parentExecutionId);
       res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
       res.setHeader('X-Accel-Buffering', 'no');

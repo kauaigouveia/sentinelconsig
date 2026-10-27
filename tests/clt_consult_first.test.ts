@@ -10,7 +10,7 @@ import { NossaFintechService } from '../server/services/nossaFintechService';
 import { FinantoService } from '../server/services/finantoService';
 
 const id = '00000000-0000-4000-8000-000000000031';
-const input = { cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', term: 0, value: 0, mode: 'Payment' as const, eligibility: true };
+const input = { v8BirthDate: '1990-02-28', v8Email: 'synthetic@example.invalid', v8Gender: 'male' as const, cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', term: 0, value: 0, mode: 'Payment' as const, eligibility: true };
 it('observes only an owned V8 reference without authorizing or pricing and preserves other banks', async () => {
   const db=journeyDatabase(), service=new CltJourneyService();
   vi.spyOn(service,'available').mockResolvedValue([{id:'v8',name:'V8 DIGITAL'},{id:'facta',name:'FACTA'}]);
@@ -38,12 +38,12 @@ it('accepts identity-only HTTP input with Happy disabled, but keeps RBAC, active
   const access = { status: 'ACTIVE', simulationAccessEnabled: false, happySimulationAccessEnabled: false };
   let session: any = { user: { id: 'u', role: 'MASTER' }, effectiveTenantId: 'tenant-a' };
   const app = express(); app.use(express.json()); registerCltJourneyRoutes(app, { ...db, tenant: { findUnique: async () => access } }, async () => session, service);
-  const body = { executionId: id, cpf: input.cpf, name: input.name, phone: input.phone };
+  const body = { executionId: id, cpf: input.cpf, name: input.name, phone: input.phone, v8BirthDate: input.v8BirthDate, v8Email: input.v8Email, v8Gender: input.v8Gender };
   const first = await request(app).post('/api/simulations/clt/journey').send(body);
   expect(first.status).toBe(200); expect(first.text).toContain('"autoConditions":true');
   expect((await request(app).post('/api/simulations/clt/journey').send({ ...body, action: 'SIMULATE' })).status).toBe(400);
   expect((await request(app).post('/api/simulations/clt/journey').send({ ...body, action: 'AUTHORIZE', provider: 'v8' })).status).toBe(400);
-  expect((await request(app).post('/api/simulations/clt/journey').send({ ...body, action: 'CREATE_CONSULT', provider: 'v8' })).status).toBe(400);
+  expect((await request(app).post('/api/simulations/clt/journey').send({ ...body, action: 'CREATE_CONSULT', provider: 'v8', v8BirthDate: '' })).status).toBe(400);
   session.partnerId = 'partner-a'; expect((await request(app).post('/api/simulations/clt/journey').send(body)).status).toBe(403);
   delete session.partnerId; session.user.role = 'VIEWER'; expect((await request(app).post('/api/simulations/clt/journey').send(body)).status).toBe(403);
   session.user.role = 'MASTER'; access.status = 'SUSPENDED'; expect((await request(app).post('/api/simulations/clt/journey').send(body)).status).toBe(403);

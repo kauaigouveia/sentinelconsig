@@ -8,6 +8,11 @@ import { V8CltConsultation } from '../src/components/simulation/V8CltConsultatio
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const ref = { consultId: 'synthetic-consult', promoterId: 'synthetic-promoter', consentRecorded: true, status: 'CONSENT_APPROVED' };
+it('uses first-step data to create V8 consultations without rendering duplicate personal inputs',()=>{
+ const start=vi.fn();render(<V8CltActions capabilities={{connections:[{promoterId:'synthetic-promoter'}]}} form={{v8BirthDate:'28/02/1990',v8Email:'synthetic@example.invalid',v8Gender:'male'}} setForm={vi.fn()} start={start} busy={false} executionId="synthetic" rows={[]} onSnapshot={vi.fn()}/>);
+ expect(screen.queryByText(/Criar consulta · dados adicionais/)).toBeNull();expect(screen.queryByLabelText(/Nascimento|E-mail|Sexo/)).toBeNull();
+ fireEvent.click(screen.getByText('Criar consulta V8'));expect(start).toHaveBeenCalledWith('v8','CREATE_CONSULT');expect(screen.queryByRole('checkbox')).toBeNull();
+});
 it('presents the proven net amount and fractional monthly rate without inventing CET', () => {
   render(<V8CltConsultation selected onSelect={() => {}} row={{ state:'OFFER', amount:2350.44, installment:300, term:12, data:{v8:{...ref,monthlyInterestRate:0.0498,iofAmount:64.94,isInsured:false,insuranceAmount:0,requestedProvider:'QI',returnedProvider:'CELCOIN',firstInstallmentDate:'2027-01-28'}} }} />);
   expect(screen.getByText(/Valor liberado:/).textContent).toContain('2.350,44');
