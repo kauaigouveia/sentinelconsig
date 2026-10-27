@@ -1,3 +1,4 @@
+import { V8CltConsentAudit } from '../server/services/v8CltConsentAudit';
 import { V8CltContract } from '../server/services/v8CltContract';
 import { V8CltPilot } from '../server/services/v8CltPilot';
 import { journeyDatabase } from './helpers/cltJourneyDatabase';
@@ -18,7 +19,7 @@ const configId = '00000000-0000-4000-8000-000000000003', simulationId = '0000000
 const input = { cpf: '00000000000', name: 'Pessoa sintética', phone: '11999999999', employerDocument: '12345678000100', factaRegistration: '000FACTA01', value: 1423.98, term: 24, mode: 'Payment' as const, eligibility: true };
 const consultation = { id: consultId, documentNumber: input.cpf, status: 'SUCCESS', name: input.name, availableMarginValue: '1900.00' };
 const config = { environment: 'production' as const, enabled: true, cltEnabled: true, fgtsEnabled: false, username: 'synthetic-user', password: 'synthetic-secret', clientId: 'synthetic-client', audience: 'synthetic-audience' };
-const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
+const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, disbursement_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
 let consultations: any[], tables: any[], response: any, db: any, fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.stubEnv('JWT_SECRET', 'synthetic-v8-consult-reservation-key');
@@ -27,6 +28,7 @@ beforeEach(() => {
   vi.spyOn(V8CltSimulationService, 'canSimulate').mockResolvedValue(true);
   vi.spyOn(V8CltContract, 'read').mockResolvedValue({ simulationReady: true, consentReady: false, rateUnit: 'unconfirmed', reasons: [] });
   vi.spyOn(V8CltSimulationService, 'ownsConsult').mockResolvedValue(true);
+  vi.spyOn(V8CltConsentAudit, 'recorded').mockResolvedValue(true);
   vi.clearAllMocks(); consultations = [{ ...consultation }]; tables = [{ id: configId, slug: 'CLT sintético', number_of_installments: ['24'] }]; response = { ...offer };
   const state = journeyDatabase();
   db = { ...state, systemConfig: { ...state.systemConfig, findMany: vi.fn(async (query: any) => query.where.tenantId === 'tenant-a' ? [{ configKey: 'integration:v8:promoter-a:config' }] : []) } };
@@ -45,6 +47,25 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(
 const run = (extra: any = {}, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' = 'SIMULATE', tenant = 'tenant-a') => V8CltSimulationService.run(db, tenant, action, { ...input, ...extra });
 
 describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not homologated', () => {
+  it('normalizes the supplied real response contract with synthetic IDs and keeps requested and returned providers distinct', async () => {
+    consultations[0].availableMarginValue = '1008.80';
+    tables = [{ id: configId, slug: 'Tabela sintética dinâmica', number_of_installments: [12] }];
+    response = { id_simulation: simulationId, installment_value: 300, number_of_installments: 12, operation_amount: 3600, issue_amount: 2415.38, disbursement_option: { iof_amount: 64.94 }, iof_amount: 64.94, monthly_interest_rate: 0.0498, disbursed_issue_amount: 2350.44, disbursement_amount: 2350.44, first_installment_date: '2027-01-28', is_insured: false, insurance_amount: 0, provider: 'CELCOIN', simulation_config_id: configId, simulation_config_slug: 'Tabela sintética dinâmica' };
+    const rows = await run({ value: 300, term: 12 });
+    expect(rows[0]).toMatchObject({ state: 'OFFER', amount: 2350.44, installment: 300, term: 12, contractAmount: 2415.38, simulationId });
+    expect(rows[0].rate).toBeUndefined(); expect(rows[0].cetMonthly).toBeUndefined();
+    expect(rows[0].data).toMatchObject({ v8: { monthlyInterestRate: 0.0498, operationAmount: 3600, iofAmount: 64.94, isInsured: false, insuranceAmount: 0, requestedProvider: 'QI', returnedProvider: 'CELCOIN', firstInstallmentDate: '2027-01-28' } });
+    expect(JSON.parse(fetchMock.mock.calls.find(([, o]) => o.method === 'POST')![1].body)).toEqual({ consult_id: consultId, config_id: configId, installment_face_value: 300, number_of_installments: 12, provider: 'QI' });
+  });
+  it('uses the actual disbursement, never emission or the similarly named alias as net cash', async () => {
+    response = { ...offer, disbursement_amount: 2350.44, disbursed_issue_amount: 2300, issue_amount: 2415.38 };
+    expect((await run())[0].amount).toBe(2350.44);
+  });
+  it('does not treat SUCCESS or HTTP 200 alone as an audited worker acceptance', async () => {
+    vi.mocked(V8CltConsentAudit.recorded).mockResolvedValue(false);
+    const data = await run({}, 'REFRESH'); expect((data[0].data as any).v8.simulationReady).toBe(false); expect((data[0].data as any).margin.available_balance).toBe(1900);
+    expect((await run())[0].outcome).toBe('MISSING_DATA'); expect(fetchMock.mock.calls.some(([, o]) => o.method === 'POST')).toBe(false);
+  });
   it('reuses the financial operation across requests without another bank POST', async () => {
     const first = await run(); const second = await run();
     expect(first[0].state).toBe('OFFER'); expect(second[0].state).toBe('OFFER');
@@ -118,7 +139,7 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     expect(body).toMatchObject({ disbursed_amount: 5000 }); expect(body).not.toHaveProperty('installment_face_value');
   });
   it.each([1.234, '1.234', 1234.56789, '1234.56789'])('preserves transport decimal %s without BRL magnitude conversion', async amount => {
-    response = { ...offer, disbursed_issue_amount: amount, issue_amount: amount, installment_value: amount };
+    response = { ...offer, disbursement_amount: amount, disbursed_issue_amount: amount, issue_amount: amount, installment_value: amount };
     const rows = await run();
     expect(rows[0]).toMatchObject({ state: 'OFFER', amount: Number(amount), contractAmount: Number(amount), installment: Number(amount) });
   });
@@ -215,7 +236,7 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     expect(JSON.stringify(rows)).not.toContain('DO-NOT-EXPOSE');
     expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain(input.cpf);
   });
-  it.each([null, {}, { ...offer, number_of_installments: 36 }, { ...offer, disbursed_issue_amount: 0 }])('rejects an invalid or empty simulation response', async value => {
+  it.each([null, {}, { ...offer, number_of_installments: 36 }, { ...offer, disbursement_amount: 0 }])('rejects an invalid or empty simulation response', async value => {
     response = value; expect((await run())[0].outcome).toBe('TECHNICAL_ERROR');
   });
   it('handles pagination without using the first record from another CPF', async () => {

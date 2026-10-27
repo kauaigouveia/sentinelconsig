@@ -20,6 +20,17 @@ export type JourneySnapshot = { executionId: string; running: boolean; customer?
 type Entry = { raw: string; record: JourneyRecord; snapshot: JourneySnapshot; store: CltJourneyStore; listeners: Set<(snapshot: JourneySnapshot) => void> };
 
 export class CltJourneyService {
+  async refreshV8(db: any, tenant: string, actor: string, id: string, consultId: string, promoterId: string) {
+    const entry = await this.get(db, tenant, actor, id);
+    const own = entry?.snapshot.results.v8?.rows.some(row => (row.data as any)?.v8?.consultId === consultId && (row.data as any)?.v8?.promoterId === promoterId);
+    if (!entry || entry.record.phase !== 'DONE' || !entry.snapshot.customer || !own) return undefined;
+    // Observation only: this endpoint never invokes SIMULATE or AUTHORIZE.
+    const response = await withinJourneyDeadline(AbortSignal.timeout(25000), () => ProductSimulationService.run(db, tenant, 'CLT', 'REFRESH', { ...entry.snapshot.customer!, v8ConsultId: consultId, v8PromoterId: promoterId, bmgActorId: actor }, undefined, ['v8']));
+    if (response.rows.some(row => row.state === 'ERROR' && (row.data as any)?.v8?.status !== 'FAILED')) throw Error('V8_STATUS_UNAVAILABLE');
+    entry.snapshot.results.v8 = { ...entry.snapshot.results.v8, status: 'RETURNED', rows: response.rows.map(projectRow) };
+    await entry.store.compareAndSet(id, entry.raw, entry.record);
+    return entry.snapshot;
+  }
   async get(db: any, tenant: string, actor: string, id: string): Promise<Entry | undefined> {
     const store = new CltJourneyStore(db, tenant, actor), saved = await store.read(id);
     if (!saved) return undefined;
@@ -147,7 +158,7 @@ function projectRow(row: ProductSimulationRow): ProductSimulationRow {
       borrower: data.borrower ? { name: data.borrower.name } : undefined,
       items: Array.isArray(data.items) ? data.items.slice(0, 500).map((item: any) => ({ employerDocument: item.employerDocument, employerName: item.employerName, registrationNumber: item.registrationNumber, term: item.term, rate: item.rate, netValue: item.netValue, installmentValue: item.installmentValue, maxInstallmentValue: item.maxInstallmentValue })) : undefined,
       margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, utilizable_balance: data.margin.utilizable_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
-      v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId, status: data.v8.status, rawCet: data.v8.rawCet, firstInstallmentDate: data.v8.firstInstallmentDate, iofAmount: data.v8.iofAmount, cached: data.v8.cached === true, calculatedAt: data.v8.calculatedAt, simulationReady: data.v8.simulationReady, consentReady: data.v8.consentReady, ownershipConfirmed: data.v8.ownershipConfirmed, contractReasons: safeReasons(data.v8.contractReasons), rawMonthlyRate: data.v8.rawMonthlyRate, configurations: Array.isArray(data.v8.configurations) ? data.v8.configurations.map((c: any) => ({ id: c.id, name: c.name, terms: c.terms, rawMonthlyRate: c.rawMonthlyRate })) : undefined } : undefined } : undefined };
+      v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId, status: data.v8.status, consentRecorded: data.v8.consentRecorded, monthlyInterestRate: data.v8.monthlyInterestRate, operationAmount: data.v8.operationAmount, issueAmount: data.v8.issueAmount, disbursedIssueAmount: data.v8.disbursedIssueAmount, requestedProvider: data.v8.requestedProvider, returnedProvider: data.v8.returnedProvider, simulationConfigId: data.v8.simulationConfigId, isInsured: data.v8.isInsured, insuranceAmount: data.v8.insuranceAmount, rawCet: data.v8.rawCet, firstInstallmentDate: data.v8.firstInstallmentDate, iofAmount: data.v8.iofAmount, cached: data.v8.cached === true, calculatedAt: data.v8.calculatedAt, simulationReady: data.v8.simulationReady, consentReady: data.v8.consentReady, ownershipConfirmed: data.v8.ownershipConfirmed, contractReasons: safeReasons(data.v8.contractReasons), rawMonthlyRate: data.v8.rawMonthlyRate, configurations: Array.isArray(data.v8.configurations) ? data.v8.configurations.map((c: any) => ({ id: c.id, name: c.name, terms: c.terms, rawMonthlyRate: c.rawMonthlyRate })) : undefined } : undefined } : undefined };
 }
 
 function mayCalculate(bank: JourneyProvider, rows: ProductSimulationRow[]) {

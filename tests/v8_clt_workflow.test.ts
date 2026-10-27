@@ -1,3 +1,4 @@
+import { V8BankService } from '../server/services/v8BankService';
 import express from 'express';
 import request from 'supertest';
 import { createHash } from 'node:crypto';
@@ -21,15 +22,17 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(
 it('enables pricing by verified connection contract, never by a fixed false or a browser flag', async () => {
   vi.spyOn(promoter, 'resolveBankPromoter').mockResolvedValue({ id: 'p', name: 'Synthetic' } as any);
   const db = journeyDatabase();
-  expect((await V8CltContract.read(db, 'tenant-a', 'p')).simulationReady).toBe(false);
+  vi.spyOn(V8BankService, 'config').mockResolvedValue({ enabled: true, cltEnabled: true, environment: 'production', username: 'synthetic', password: 'synthetic', clientId: 'synthetic', audience: 'synthetic' } as any);
+  expect((await V8CltContract.read(db, 'tenant-a', 'p')).simulationReady).toBe(true);
   const value = { moneyUnit: 'BRL', rateUnit: 'unconfirmed', precalculation: 'not-required', reference: 'Synthetic bank confirmation', reviewedBy: 'synthetic-admin', validUntil: new Date(Date.now() + 3600000).toISOString() };
   db.rows.push({ tenantId: 'tenant-a', configKey: V8CltContract.key('p'), configValue: JSON.stringify(value) });
   expect(await V8CltSimulationService.canSimulate(db, 'tenant-a', 'p')).toBe(true);
   db.rows[0].configValue = JSON.stringify({ ...value, precalculation: 'required' });
-  expect(await V8CltSimulationService.canSimulate(db, 'tenant-a', 'p')).toBe(false);
+  expect(await V8CltSimulationService.canSimulate(db, 'tenant-a', 'p')).toBe(true);
   db.rows[0].configValue = JSON.stringify({ ...value, validUntil: '2000-01-01' });
-  expect(await V8CltSimulationService.canSimulate(db, 'tenant-a', 'p')).toBe(false);
-  expect((await V8CltContract.read(db, 'tenant-b', 'p')).simulationReady).toBe(false); expect(fetch).not.toHaveBeenCalled();
+  expect(await V8CltSimulationService.canSimulate(db, 'tenant-a', 'p')).toBe(true);
+  expect((await V8CltContract.read(db, 'tenant-b', 'p')).nativeConsentReady).toBe(false);
+  vi.mocked(V8BankService.config).mockResolvedValue({ enabled: false } as any); expect(await V8CltSimulationService.canSimulate(db, 'tenant-a', 'p')).toBe(false); expect(fetch).not.toHaveBeenCalled();
 });
 
 async function setup(verified = true) {

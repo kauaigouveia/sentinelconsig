@@ -1,4 +1,5 @@
 import { V8CltContract } from './v8CltContract.js';
+import { V8CltConsentAudit } from './v8CltConsentAudit.js';
 import { v8CltOperation } from './v8CltOperation.js';
 import { V8CltPilot } from './v8CltPilot.js';
 import { journeyFetch } from './cltJourneyDeadline.js';
@@ -36,13 +37,17 @@ class V8CltError extends Error {
 
 export class V8CltSimulationService {
   // A reviewed integration contract replaces the former unconditional pilot flag.
-  static async canSimulate(db: any, tenant: string, promoter: string) { return (await V8CltContract.read(db, tenant, promoter)).simulationReady; }
+  static async canSimulate(db: any, tenant: string, promoter: string) {
+    const c = await V8BankService.config(db, tenant, promoter);
+    return c.enabled && c.cltEnabled && c.environment === 'production' && V8BankService.metadata(c).hasCredentials && (await V8CltContract.read(db, tenant, promoter)).simulationReady;
+  }
   static async request(db: any, tenantId: string, promoterId: string, path: string, body?: unknown) {
     if (!V8CltPilot.permitsRequest(tenantId)) throw new V8CltError(0, 'OPERATIONAL_SCOPE_REQUIRED');
     // No arbitrary paths, consent acceptance, operation creation or external Azure host.
     const consentId = /^\/private-consignment\/consult\/([a-f\d-]{36})\/authorize$/i.exec(path)?.[1];
     if (consentId) {
-      if (!V8CltPilot.permitsConsent(tenantId, consentId) || !(await V8CltContract.read(db, tenantId, promoterId)).consentReady || body === undefined) throw new V8CltError(0, 'WORKER_CONSENT_REQUIRED');
+      const policy = await V8CltContract.read(db, tenantId, promoterId);
+      if (!V8CltPilot.permitsConsent(tenantId, consentId) || !(policy.consentReady || policy.nativeConsentReady) || body === undefined) throw new V8CltError(0, 'WORKER_CONSENT_REQUIRED');
     } else if (!['/private-consignment/consult', '/private-consignment/simulation/configs', '/private-consignment/simulation'].includes(path.split('?')[0])
       || (body !== undefined && !['/private-consignment/simulation', '/private-consignment/consult'].includes(path))) throw new V8CltError(0, 'METHOD_NOT_ALLOWED');
     if (path === '/private-consignment/simulation' && !await this.canSimulate(db, tenantId, promoterId)) throw new V8CltError(0, 'HOMOLOGATION_REQUIRED');
@@ -108,7 +113,8 @@ export class V8CltSimulationService {
         for (const consult of selected) {
           if (!uuid(consult.id)) throw new V8CltError(200, 'CONSULT_ID');
           if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Crie uma consulta própria para obter o consentimento legítimo; os dados externos não foram expostos.')); continue; }
-          const reference = { data: { v8: { consultId: consult.id, promoterId, status: consult.status } } };
+          const consentRecorded = await V8CltConsentAudit.recorded(db, tenantId, promoterId, input.cpf, consult.id);
+          const reference = { data: { v8: { consultId: consult.id, promoterId, status: consult.status, consentRecorded } } };
           const description = typeof (consult.description ?? consult.Description) === 'string' ? cltPublicMessage(consult.description ?? consult.Description) : undefined;
           if (consult.status === 'REJECTED') { rows.push(row('INELIGIBLE', description || 'A V8 informou que o cliente não é elegível nesta consulta.', reference)); continue; }
           if (consult.status === 'FAILED') { rows.push(row('TECHNICAL_ERROR', description || 'A consulta V8 falhou. Atualize os dados ou confira a conexão.', reference)); continue; }
@@ -122,8 +128,9 @@ export class V8CltSimulationService {
             if (!Array.isArray(configs.configs)) throw new V8CltError(200, 'CONFIG_SCHEMA');
             const ownershipConfirmed = await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id);
             const configurations = configs.configs.filter((c: any) => uuid(c.id) && Array.isArray(c.number_of_installments)).map((c: any) => ({ id: c.id, name: typeof c.slug === 'string' ? c.slug.slice(0, 100) : 'Configuração CLT', terms: c.number_of_installments.map(Number).filter((t: number) => Number.isInteger(t) && t > 0 && t <= 120), rawMonthlyRate: typeof c.monthly_interest_rate === 'string' || typeof c.monthly_interest_rate === 'number' ? c.monthly_interest_rate : undefined }));
-            rows.push(row('PENDING', 'Consulta autorizada V8 disponível. A API não informa matrícula e empregador neste retorno.', { state: 'DATA', data: { v8: { consultId: consult.id, promoterId, status: 'SUCCESS', configurations, ownershipConfirmed, simulationReady: ownershipConfirmed && contract.simulationReady, consentReady: contract.consentReady, contractReasons: contract.reasons }, margin: { name: consult.name, available_balance: margin, can_continue: true } } })); continue;
+            rows.push(row('PENDING', consentRecorded ? 'Margem disponível; simulação habilitada.' : 'Margem disponível. Falta evidência auditável do consentimento no Sentinel; HTTP 200 não substitui o aceite.', { state: 'DATA', data: { v8: { consultId: consult.id, promoterId, status: 'SUCCESS', configurations, ownershipConfirmed, consentRecorded, simulationReady: ownershipConfirmed && consentRecorded && contract.simulationReady, consentReady: contract.nativeConsentReady, contractReasons: contract.reasons }, margin: { name: consult.name, available_balance: margin, can_continue: true } } })); continue;
           }
+          if (!consentRecorded) { rows.push(row('MISSING_DATA', 'Registre a evidência legítima do consentimento antes de simular. A consulta e a margem continuam disponíveis.', reference)); continue; }
           if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Não será reutilizada para cálculo.', reference)); continue; }
           if (!input.autoConditions && (!(input.value > 0) || !Number.isFinite(input.value))) { rows.push(row('MISSING_DATA', 'Informe um valor positivo para simular na V8.')); continue; }
           if (!input.autoConditions && input.mode === 'Payment' && input.value > margin) { rows.push(row('INELIGIBLE', 'A parcela desejada supera a margem disponível informada nesta consulta V8.')); continue; }
@@ -139,12 +146,13 @@ export class V8CltSimulationService {
                 const payload = this.simulationPayload(consult, table, term, input);
                 const operation = await v8CltOperation(db, tenantId, promoterId, ['SIMULATE', input.cpf, payload, table.updated_at ?? null, contract.reviewedAt ?? null], async () => {
                 const result = await this.request(db, tenantId, promoterId, '/private-consignment/simulation', payload);
-                const amount = number(result.disbursed_issue_amount), installment = number(result.installment_value);
+                const amount = number(result.disbursement_amount), installment = number(result.installment_value);
                 if (!uuid(result.id_simulation) || !amount || amount <= 0 || !installment || installment <= 0 || installment > margin || Number(result.number_of_installments) !== term) throw new V8CltError(200, 'SIMULATION_SCHEMA');
                 const contractAmount = number(result.issue_amount);
+                if (result.simulation_config_id !== undefined && result.simulation_config_id !== table.id) throw new V8CltError(200, 'CONFIG_MISMATCH');
                 const rawRate = number(result.monthly_interest_rate);
                 const rawCet = ['cet', 'monthly_cet', 'annual_cet', 'cet_monthly', 'cet_annual', 'cet_mensal', 'cet_anual'].filter(k => number(result[k]) !== undefined).map(k => ({ field: k, value: result[k] }));
-                return [row('OFFER', 'Oferta calculada pela V8.', { state: 'OFFER', table: typeof table.slug === 'string' ? table.slug.slice(0, 100) : 'V8 CLT', amount, contractAmount: contractAmount && contractAmount > 0 ? contractAmount : undefined, installment, term, simulationId: result.id_simulation, rate: rawRate === undefined ? undefined : contract.rateUnit === 'fraction' ? rawRate * 100 : contract.rateUnit === 'percent' ? rawRate : undefined, data: { v8: { consultId: consult.id, promoterId, status: 'SUCCESS', rawCet, firstInstallmentDate: typeof result.first_installment_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(result.first_installment_date) ? result.first_installment_date.slice(0, 10) : undefined, iofAmount: number(result.iof_amount), calculatedAt: new Date().toISOString(), rawMonthlyRate: typeof result.monthly_interest_rate === 'string' || typeof result.monthly_interest_rate === 'number' ? result.monthly_interest_rate : undefined } } })];
+                return [row('OFFER', 'Oferta calculada pela V8.', { state: 'OFFER', table: typeof result.simulation_config_slug === 'string' ? result.simulation_config_slug.slice(0, 100) : typeof table.slug === 'string' ? table.slug.slice(0, 100) : 'V8 CLT', amount, contractAmount: contractAmount && contractAmount > 0 ? contractAmount : undefined, installment, term, simulationId: result.id_simulation, data: { v8: { consultId: consult.id, promoterId, status: 'SUCCESS', rawCet, operationAmount: number(result.operation_amount), issueAmount: contractAmount, disbursedIssueAmount: number(result.disbursed_issue_amount), requestedProvider: 'QI', returnedProvider: typeof result.provider === 'string' ? result.provider.slice(0, 50) : undefined, simulationConfigId: table.id, isInsured: typeof result.is_insured === 'boolean' ? result.is_insured : undefined, insuranceAmount: number(result.insurance_amount), monthlyInterestRate: rawRate, firstInstallmentDate: typeof result.first_installment_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(result.first_installment_date) ? result.first_installment_date.slice(0, 10) : undefined, iofAmount: number(result.iof_amount) ?? number(result.disbursement_option?.iof_amount), calculatedAt: new Date().toISOString(), rawMonthlyRate: rawRate } } })];
                 });
                 rows.push(...operation);
               } catch (error) { rows.push(this.failure(error, tenantId, promoterId)); return rows; }

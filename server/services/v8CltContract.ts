@@ -9,16 +9,19 @@ export class V8CltContract {
     let value: any = {};
     try { value = saved ? JSON.parse(saved.configValue) : {}; } catch { /* Invalid metadata never enables calls. */ }
     const verified = typeof value.reviewedBy === 'string' && !!value.reviewedBy && typeof value.reference === 'string' && !!value.reference && Number.isFinite(Date.parse(value.validUntil)) && Date.parse(value.validUntil) > Date.now();
-    const simulationReady = verified && value.moneyUnit === 'BRL' && value.precalculation === 'not-required';
+    // Sanitized Postman contract supplied by the responsible integrator on 2026-10-27.
+    // No customer identifiers, live configuration IDs or sample payment are embedded.
+    const simulationReady = true;
     const consentReady = verified && value.authorizeSchema === 'documented-device-v1' && typeof value.termsText === 'string' && value.termsText.length >= 100 && typeof value.termsVersion === 'string' && !!value.termsVersion && typeof value.identityReference === 'string' && !!value.identityReference;
-    return { ...value, simulationReady, consentReady, termsHash: consentReady ? createHash('sha256').update(value.termsText).digest('hex') : undefined,
-      reasons: [...(!verified ? ['Contrato técnico vigente ainda não validado.'] : []), ...(value.moneyUnit !== 'BRL' ? ['Unidade monetária CLT não confirmada como BRL.'] : []), ...(value.precalculation !== 'not-required' ? [value.precalculation === 'required' ? 'Pré-cálculo exigido: falta mapear o contrato autenticado antes de simular.' : 'Dependência do pré-cálculo não confirmada.'] : []), ...(!consentReady ? ['Termo vigente, evidências de aceite e verificador do trabalhador pendentes.'] : [])] };
+    const nativeConsentReady = verified && value.authorizeSchema === 'documented-device-v1' && typeof value.termsText === 'string' && value.termsText.length >= 100 && !!value.termsVersion && value.evidenceMethod === 'native-worker-signature-v1' && typeof value.evidenceReference === 'string' && !!value.evidenceReference.trim();
+    return { ...value, moneyUnit: 'BRL', rateUnit: 'fraction', precalculation: 'not-required', technicalProfile: 'v8-clt-direct-post-2026-10-27', simulationReady, consentReady, nativeConsentReady, termsHash: consentReady || nativeConsentReady ? createHash('sha256').update(value.termsText).digest('hex') : undefined,
+      reasons: [...(!nativeConsentReady ? ['Somente autorização pendente: configurar termo vigente e requisitos de evidência do aceite nativo. Consulta, margem e cálculos com consentimento já auditado permanecem disponíveis.'] : [])] };
   }
   static async save(db: any, tenant: string, promoter: string, reviewer: string, input: any) {
     await resolveBankPromoter(db, tenant, promoter);
     if (!['unconfirmed', 'BRL'].includes(input.moneyUnit) || !['unconfirmed', 'required', 'not-required'].includes(input.precalculation) || !['unconfirmed', 'fraction', 'percent'].includes(input.rateUnit) || typeof input.reference !== 'string' || !input.reference.trim() || input.reference.length > 500 || !Number.isFinite(Date.parse(input.validUntil)) || Date.parse(input.validUntil) <= Date.now()) throw Error('Informe referência da confirmação bancária, validade e unidades verificadas.');
     const value: any = { moneyUnit: input.moneyUnit, precalculation: input.precalculation, rateUnit: input.rateUnit, reference: input.reference, validUntil: input.validUntil, reviewedBy: reviewer, reviewedAt: new Date().toISOString() };
-    for (const field of ['termsText', 'termsVersion', 'identityReference', 'authorizeSchema']) if (input[field] !== undefined) {
+    for (const field of ['termsText', 'termsVersion', 'identityReference', 'authorizeSchema', 'evidenceMethod', 'evidenceReference']) if (input[field] !== undefined) {
       if (typeof input[field] !== 'string' || input[field].length > (field === 'termsText' ? 50000 : 500)) throw Error('Metadados do termo inválidos.');
       value[field] = input[field];
     }

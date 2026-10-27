@@ -11,6 +11,19 @@ import { FinantoService } from '../server/services/finantoService';
 
 const id = '00000000-0000-4000-8000-000000000031';
 const input = { cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', term: 0, value: 0, mode: 'Payment' as const, eligibility: true };
+it('observes only an owned V8 reference without authorizing or pricing and preserves other banks', async () => {
+  const db=journeyDatabase(), service=new CltJourneyService();
+  vi.spyOn(service,'available').mockResolvedValue([{id:'v8',name:'V8 DIGITAL'},{id:'facta',name:'FACTA'}]);
+  const run=vi.spyOn(ProductSimulationService,'run').mockImplementation(async(_db,_tenant,_product,action,_input,_rows,providers)=>({rows: providers?.[0]==='v8'?[{provider:'V8 DIGITAL',institution:'V8',state:'PENDING',data:{v8:{consultId:'synthetic-consult',promoterId:'synthetic-promoter',status:'WAITING_CONSENT'}}}]:[{provider:'FACTA',institution:'FACTA',state:'PENDING'}],message:undefined}));
+  const entry=await service.start(db,'tenant-a','user:a',id,input); await service.execute(db,'tenant-a','user:a',entry,input);
+  run.mockClear(); run.mockResolvedValue({rows:[{provider:'V8 DIGITAL',institution:'V8',state:'ERROR',outcome:'TECHNICAL_ERROR',data:{v8:{consultId:'synthetic-consult',promoterId:'synthetic-promoter',status:'FAILED'}}}],message:undefined});
+  expect(await service.refreshV8(db,'tenant-b','user:a',id,'synthetic-consult','synthetic-promoter')).toBeUndefined();
+  expect(await service.refreshV8(db,'tenant-a','user:b',id,'synthetic-consult','synthetic-promoter')).toBeUndefined();
+  expect(await service.refreshV8(db,'tenant-a','user:a',id,'other-consult','synthetic-promoter')).toBeUndefined();
+  expect(run).not.toHaveBeenCalled();
+  const result=await service.refreshV8(db,'tenant-a','user:a',id,'synthetic-consult','synthetic-promoter');
+  expect(run).toHaveBeenCalledOnce();expect(run.mock.calls[0][3]).toBe('REFRESH');expect((result?.results.v8.rows[0].data as any)?.v8.status).toBe('FAILED');expect(result?.results.facta.rows[0].provider).toBe('FACTA');
+});
 beforeEach(() => { vi.stubEnv('JWT_SECRET', 'synthetic-only-secret'); vi.stubGlobal('fetch', vi.fn(() => { throw Error('Real banking forbidden'); })); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
