@@ -1,3 +1,4 @@
+import { VctexCltActions } from './VctexCltActions';
 import { cltRatePercent } from '../../lib/v8CltDisplay';
 import { V8CltActions } from './V8CltActions';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -32,19 +33,12 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   const uncertainTransport = useRef(false);
   currentScope.current = scope;
   const dialog = useRef<HTMLDivElement>(null), previous = useRef<HTMLElement | null>(null);
-  useEffect(() => { active.current?.abort(); last.current = null; locked.current = false; uncertainTransport.current = false; setForm(blank); setSnapshot(null); setPage('CLIENT'); setBusy(false); setError(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase('');   try {
-      const id = sessionStorage.getItem('sentinel:clt-execution:' + scope);
-      if (id && /^[a-f\d-]{36}$/i.test(id)) {
-        last.current = { id, fingerprint: '' }; uncertainTransport.current = true; setPage('TRACKING');
-        const requestedScope = scope, recovery = new AbortController(); active.current = recovery;
-        void fetch('/api/simulations/clt/journey/' + id, { cache: 'no-store', credentials: 'include', signal: recovery.signal }).then(async r => {
-          if (!r.ok) throw Error('Não foi possível recuperar a execução. Nenhuma operação será repetida automaticamente.');
-          const saved = await r.json(); if (currentScope.current !== requestedScope || recovery.signal.aborted) return;
-          setSnapshot(saved); restoreCustomer(saved); uncertainTransport.current = saved.running || Object.values(saved.results).some((r: any) => r.status === 'UNKNOWN');
-        }).catch(() => { if (currentScope.current === requestedScope && !recovery.signal.aborted) setError('Recuperação indisponível. Confira o estado antes de outra operação.'); });
-      }
-    } catch { /* Storage disabled: current execution still uses the persistent backend. */ }
-  }, [scope]);
+  const generation = useRef(0);
+  useEffect(() => {
+    generation.current++; active.current?.abort(); last.current = null; locked.current=false; uncertainTransport.current=false;
+    setForm(blank);setSnapshot(null);setPage('CLIENT');setBusy(false);setError('');setCompared([]);setCompareMode(false);setOpenedPanels([]);setSelectedOffer('');setSelectedBank('');setBmgMessage('');setBmgPhase('');
+    return () => { generation.current++; active.current?.abort(); };
+  }, [scope,isOpen]);
   useEffect(() => () => active.current?.abort(), []);
   useEffect(() => { if (!isOpen) return; const overflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = overflow; }; }, [isOpen]);
   useEffect(() => { if (!isOpen) return; previous.current = document.activeElement as HTMLElement; dialog.current?.focus(); return () => previous.current?.focus(); }, [isOpen]);
@@ -64,6 +58,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   const contextProgress = useCallback((id: string, name: string, progress: { busy: boolean; message: string; offers: any[] }) => setSnapshot(old => old ? { ...old, results: { ...old.results, [id]: { executionId: old.results[id]?.executionId, status: progress.busy ? 'QUERYING' : 'RETURNED', message: cltPublicMessage(progress.message), rows: progress.offers.map(offer => ({ provider: name, institution: name, state: 'OFFER', table: offer.name, amount: offer.amount, installment: offer.installment, term: offer.term, rate: offer.rate, cetMonthly: typeof offer.cetMonthly === 'number' && Number.isFinite(offer.cetMonthly) ? offer.cetMonthly : undefined, cetAnnual: typeof offer.cetAnnual === 'number' && Number.isFinite(offer.cetAnnual) ? offer.cetAnnual : undefined, simulationId: String(offer.id || '') })) } } } : old), []);
   const paranaProgress = useCallback((progress: { busy: boolean; message: string; offers: any[] }) => contextProgress('parana', 'Paraná Banco', progress), [contextProgress]);
   const presencaProgress = useCallback((progress: { busy: boolean; message: string; offers: any[] }) => contextProgress('presenca', 'Presença Bank', progress), [contextProgress]);
+  const vctexRows = useCallback((rows:any[]) => setSnapshot(old => old ? {...old,results:{...old.results,vctex:{executionId:old.executionId,status:'RETURNED',rows}}}:old),[]);
   const happyProgress = useCallback((progress: { busy: boolean; message: string; offers: any[] }) => contextProgress('happy', 'Happy CLT', progress), [contextProgress]);
 
   function restoreCustomer(saved: JourneySnapshot) {
@@ -71,14 +66,17 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     if (c) setForm(old => ({ ...old, cpf: formatCpf(c.cpf), name: c.name, phone: c.phone, employerDocument: c.employerDocument || '', value: c.value ? String(c.value) : '', term: String(c.term || 0), mode: c.mode, factaRegistration: c.factaRegistration || '', v8ConsultId: c.v8ConsultId || '', v8PromoterId: c.v8PromoterId || '', v8BirthDate: displayCltBirthDate(c.v8BirthDate || ''), v8Email: c.v8Email || '', v8Gender: c.v8Gender || '' }));
   }
   async function recover() {
-    if (!last.current || locked.current) return;
-    locked.current = true; setBusy(true); setError(''); const requestedScope = scope;
+    if (locked.current) return;
+    if(!last.current){try{const id=sessionStorage.getItem('sentinel:clt-execution:'+scope);if(id&&/^[a-f\d-]{36}$/i.test(id))last.current={id,fingerprint:''};}catch{}}
+    if(!last.current)return;
+    locked.current = true; setBusy(true); setError(''); const requestedScope = scope, requestedGeneration = generation.current;
+    active.current?.abort();const recoveryController=new AbortController();active.current=recoveryController;
     try {
-      const response = await fetch(`/api/simulations/clt/journey/${last.current.id}`, { cache: 'no-store', credentials: 'include' });
-      const data = await response.json(); if (currentScope.current !== requestedScope) return;
+      const response = await fetch(`/api/simulations/clt/journey/${last.current.id}`, { cache: 'no-store', credentials: 'include', signal:recoveryController.signal });
+      const data = await response.json(); if ((currentScope.current !== requestedScope || generation.current !== requestedGeneration)) return;
       if (!response.ok) throw new Error(data.error || 'Execução indisponível.'); merge(data); restoreCustomer(data); uncertainTransport.current = data.running === true || Object.values(data.results).some((r: any) => r.status === 'UNKNOWN');
-    } catch (e) { if (currentScope.current === requestedScope) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha no acompanhamento.') || 'Falha no acompanhamento.'); }
-    finally { if (currentScope.current === requestedScope) { locked.current = false; setBusy(false); } }
+    } catch (e) { if ((currentScope.current === requestedScope && generation.current === requestedGeneration)) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha no acompanhamento.') || 'Falha no acompanhamento.'); }
+    finally { if ((currentScope.current === requestedScope && generation.current === requestedGeneration)) { locked.current = false; setBusy(false); } }
   }
   async function start(provider?: JourneyProvider, action = 'REFRESH', selection?: { v8ConsultId: string; v8PromoterId: string }) {
     if (locked.current) return;
@@ -96,21 +94,22 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     const executionId = crypto.randomUUID(); last.current = { id: executionId, fingerprint };
     try { sessionStorage.setItem('sentinel:clt-execution:' + scope, executionId); } catch { /* No customer data is stored in the browser. */ }
     locked.current = true; setBusy(true); setError(''); setPage('TRACKING'); if (!provider) { setSnapshot(null); setSelectedBank(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase(''); }
-    active.current?.abort(); const controller = new AbortController(); active.current = controller; const requestedScope = scope;
+    active.current?.abort(); const controller = new AbortController(); active.current = controller; const requestedScope = scope, requestedGeneration = generation.current;
     let rejectedBeforeExecution = false;
     uncertainTransport.current = true;
     try {
       const response = await fetch('/api/simulations/clt/journey', { method: 'POST', credentials: 'include', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, executionId, parentExecutionId }), signal: controller.signal });
       rejectedBeforeExecution = !response.ok && response.status < 500 && response.status !== 409;
       let finished = false;
-      await readJourneyStream(response, next => { if (currentScope.current !== requestedScope || controller.signal.aborted) return; finished = !next.running && !Object.values(next.results).some(r => r.status === 'UNKNOWN');
+      await readJourneyStream(response, next => { if ((currentScope.current !== requestedScope || generation.current !== requestedGeneration) || controller.signal.aborted) return; finished = !next.running && !Object.values(next.results).some(r => r.status === 'UNKNOWN');
         last.current = { id: next.executionId, fingerprint };
         try { sessionStorage.setItem('sentinel:clt-execution:' + scope, next.executionId); } catch { /* Storage is optional. */ }
         merge(next); });
+      if(generation.current!==requestedGeneration||currentScope.current!==requestedScope)return;
       if (finished) uncertainTransport.current = false;
       if (!finished && !controller.signal.aborted) setError('A conexão de acompanhamento terminou. Recupere o estado da execução; não repita operações bancárias.');
-    } catch (e) { if (rejectedBeforeExecution) { uncertainTransport.current = false; last.current = null; try { sessionStorage.removeItem('sentinel:clt-execution:' + scope); } catch { /* Optional storage. */ } } if (!controller.signal.aborted && currentScope.current === requestedScope) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha na consulta. Confira o estado antes de repetir.') || 'Falha no acompanhamento.'); }
-    finally { if (currentScope.current === requestedScope) { locked.current = false; setBusy(false); } }
+    } catch (e) { if(generation.current!==requestedGeneration||currentScope.current!==requestedScope)return; if (rejectedBeforeExecution) { uncertainTransport.current = false; last.current = null; try { sessionStorage.removeItem('sentinel:clt-execution:' + scope); } catch { /* Optional storage. */ } } if (!controller.signal.aborted && (currentScope.current === requestedScope && generation.current === requestedGeneration)) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha na consulta. Confira o estado antes de repetir.') || 'Falha no acompanhamento.'); }
+    finally { if ((currentScope.current === requestedScope && generation.current === requestedGeneration)) { locked.current = false; setBusy(false); } }
   }
   useEffect(() => {
     setV8Pilot(null);
@@ -141,6 +140,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
         {error && <p role="alert" className="mb-4 rounded-xl border border-amber-400/50 bg-amber-500/10 p-3 text-sm">{error}</p>}
         {page === 'CLIENT' ? <form className="mx-auto max-w-4xl space-y-6" onSubmit={event => { event.preventDefault(); void start(); }}>
           <div><h2 className="text-xl font-semibold">Consulte os bancos com um cadastro</h2><p className="mt-2 text-sm text-slate-500">Primeiro, consulta e autorização. Após margem e elegibilidade válidas, calculamos as condições disponíveis de cada instituição.</p></div>
+          <button type="button" className="text-xs text-cyan-700" onClick={()=>{setPage('TRACKING');void recover();}}>Recuperar explicitamente o último acompanhamento desta sessão</button>
           <fieldset disabled={busy} className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2">
             <legend className="px-2 text-sm font-semibold">Dados do cliente</legend>
             {([['cpf', 'CPF'], ['name', 'Nome completo'], ['phone', 'Telefone com DDD']] as const).map(([key, title]) => <label key={key} className="text-xs font-semibold">{title}<input required maxLength={key === 'name' ? 200 : 20} inputMode={key === 'name' ? 'text' : 'tel'} className={control} value={form[key]} onChange={event => setForm(old => ({ ...old, [key]: key === 'cpf' ? formatCpf(event.target.value) : event.target.value, factaRegistration: '', v8ConsultId: '', v8PromoterId: '' }))} /></label>)}
@@ -166,6 +166,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
             </section>
             <section aria-label="Ofertas e ações da instituição" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{compareMode ? 'Comparação de condições' : focused?.name || 'Ofertas disponíveis'}</h2><div className="flex gap-3">{compared.length > 1 && !compareMode && <button className="text-xs text-cyan-700 dark:text-cyan-300" onClick={() => setCompareMode(true)}>Comparar selecionadas ({compared.length})</button>}{compared.length > 0 && <button className="text-xs text-cyan-700 dark:text-cyan-300" onClick={() => { setCompared([]); setCompareMode(false); }}>Limpar comparação</button>}</div></div>
+              {snapshot?.banks.some(b=>b.id==='vctex') && !snapshot.running && <div hidden={selectedBank!=='vctex'}><VctexCltActions key={scope+':'+snapshot.executionId} scope={scope} executionId={snapshot.executionId} active={isOpen} onRows={vctexRows} /></div>}
               {selectedBank === 'v8' && <V8CltActions key={scope + ':' + (snapshot?.executionId || '')} capabilities={v8Pilot} form={form} setForm={setForm} start={start} busy={busy} executionId={snapshot?.executionId} rows={focusedResult?.rows || []} onSnapshot={merge} />}
               {focusedResult?.rows.filter(row => row.provider === 'V8 DIGITAL').map((row, i) => <V8CltConsultation key={i} row={row} selected={form.v8ConsultId === (row.data as any)?.v8?.consultId && form.v8PromoterId === (row.data as any)?.v8?.promoterId} onSelect={() => setForm(old => ({ ...old, v8ConsultId: (row.data as any).v8.consultId, v8PromoterId: (row.data as any).v8.promoterId }))} />)}
               {focusedResult?.rows.some(row => row.state !== 'OFFER' && row.state !== 'DATA') && <ul aria-label="Retornos por instituição" className="mb-4 space-y-2">{focusedResult.rows.filter(row => row.state !== 'OFFER' && row.state !== 'DATA').map((row, index) => <li key={index} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"><strong>{row.institution}</strong><span className="ml-2 text-xs text-slate-500">{cltOutcomeLabels[cltOutcome(row)]}</span>{row.message && <p className="mt-1 text-xs text-slate-500">{row.message}</p>}</li>)}</ul>}

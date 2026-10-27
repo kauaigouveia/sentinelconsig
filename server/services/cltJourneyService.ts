@@ -10,9 +10,10 @@ import { ParanaBankService } from './paranaBankService.js';
 import { PresencaBankService } from './presencaBankService.js';
 import { integrationConfigStore } from './bankPromoterConfig.js';
 import { cltPublicMessage } from '../../src/lib/cltSimulationOutcome.js';
+import { VctexBankService } from './vctexBankService.js';
 import { cltPaymentLimit } from './cltFinancialPolicy.js';
 
-export const journeyProviders = ['nossa', 'finanto', 'facta', 'bmg', 'v8', 'parana', 'presenca', 'happy'] as const;
+export const journeyProviders = ['nossa', 'finanto', 'facta', 'bmg', 'v8', 'parana', 'presenca', 'happy', 'vctex'] as const;
 export type JourneyProvider = typeof journeyProviders[number];
 export type JourneyAction = 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT';
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
@@ -53,6 +54,10 @@ export class CltJourneyService {
       catch { banks.push({ id, name, contextual: true, error: true }); }
     };
     await Promise.all([
+      check('vctex', 'VCTEX DIGITAL', async () => {
+        const promoters = await db.promoter.findMany({where:{tenantId:tenant,status:'ATIVO'},select:{id:true}});
+        for(const p of promoters){const c=await VctexBankService.config(db,tenant,p.id);if(c.enabled&&c.cpf&&c.password)return true;}return false;
+      }, true),
       check('nossa', 'Nossa Fintech · instituições CLT', async () => { const c = await NossaFintechService.getConfig(db, tenant); return c.enabled && c.isConfigured; }),
       check('finanto', 'FINANTO · instituições CLT', async () => { const c = await FinantoService.getConfig(db, tenant); return c.enabled && c.isConfigured; }),
       check('facta', 'FACTA', async () => { const c = await FactaBankService.getTenantConfig(db, tenant); return c.isConfigured && c.simulationEnabled; }),

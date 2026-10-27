@@ -1,3 +1,4 @@
+import { registerVctexRoutes } from './server/services/vctexRoutes.js';
 import { registerV8WorkerConsent } from './server/services/v8CltConsent.js';
 import { registerPartnerSupportRealtime } from './server/services/partnerSupportRealtime.js';
 import { createProposalEntityResolvers, InvalidProposalReference } from './server/services/proposalEntityResolution.js';
@@ -2132,6 +2133,7 @@ async function auditAndEnsureMasterUser() {
   registerBankPlaybookRoutes(app, prisma, req => PartnerPortalService.getPartnerSession(req, prisma));
   registerPartnerSupportRealtime(app, req => PartnerPortalService.getPartnerSession(req, prisma));
   registerBmgRoutes(app, prisma, getAuthSession);
+  registerVctexRoutes(app, prisma, getAuthSession);
   registerDaycovalRoutes(app, prisma, getAuthSession);
   app.get('/api/simulations', async (req, res) => {
     try {

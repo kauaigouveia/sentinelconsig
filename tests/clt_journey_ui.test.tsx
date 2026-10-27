@@ -72,12 +72,15 @@ it('requires state recovery after an incomplete transport, without issuing anoth
   expect(fetcher.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
 });
 
-it('recovers after a full remount using only an opaque tenant/actor-scoped identifier and a read request', async () => {
+it('requires explicit selection to recover after a full remount using only an opaque tenant/actor-scoped identifier and a read request', async () => {
   const id = '00000000-0000-4000-8000-000000000001';
   sessionStorage.setItem('sentinel:clt-execution:tenant-a:user-a', id);
   const fetcher = vi.fn(async (_url: string, _options: RequestInit) => new Response(JSON.stringify({ ...snapshot, executionId: id })));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
+  expect(fetcher).not.toHaveBeenCalled();
+  expect((screen.getByLabelText('CPF') as HTMLInputElement).value).toBe('');
+  fireEvent.click(screen.getByRole('button',{name:'Recuperar explicitamente o último acompanhamento desta sessão'}));
   await screen.findByText('Ofertas disponíveis');
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher.mock.calls[0][0]).toBe('/api/simulations/clt/journey/' + id);
@@ -91,6 +94,7 @@ it('restores the authorized customer from the encrypted server snapshot without 
   const fetcher = vi.fn(async () => new Response(JSON.stringify({ ...snapshot, executionId: id, customer: { v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male', cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 0, term: 0, mode: 'Payment' } })));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
+  expect(fetcher).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Recuperar explicitamente o último acompanhamento desta sessão'}));
   await screen.findByText('Ofertas disponíveis'); fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }));
   expect((screen.getByLabelText('CPF') as HTMLInputElement).value.replace(/\D/g, '')).toBe('52998224725');
   expect((screen.getByLabelText('Telefone com DDD') as HTMLInputElement).value).toBe('11999999999');
