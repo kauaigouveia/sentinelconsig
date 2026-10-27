@@ -1,3 +1,4 @@
+import { registerV8WorkerConsent } from './server/services/v8CltConsent.js';
 import { registerPartnerSupportRealtime } from './server/services/partnerSupportRealtime.js';
 import { createProposalEntityResolvers, InvalidProposalReference } from './server/services/proposalEntityResolution.js';
 import { simulationPortabilityCheck, portabilityReviewMetadata } from './src/lib/portabilitySimulationPolicy.js';
@@ -2124,6 +2125,7 @@ async function auditAndEnsureMasterUser() {
   registerPresencaRoutes(app, prisma, getAuthSession);
   registerV8Routes(app, prisma, getAuthSession);
   registerCltJourneyRoutes(app, prisma, getAuthSession);
+  registerV8WorkerConsent(app, prisma, getAuthSession);
   registerFgtsOfferSelection(app, prisma, getAuthSession);
   registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);
@@ -14745,10 +14747,11 @@ async function auditAndEnsureMasterUser() {
       const v8ConsultId = req.body?.v8ConsultId, v8PromoterId = req.body?.v8PromoterId;
       if ([v8ConsultId, v8PromoterId].some(value => value !== undefined && (typeof value !== 'string' || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value)))) return res.status(400).json({ error: 'Seleção V8 inválida.' });
       if (factaRegistration !== undefined && (typeof factaRegistration !== 'string' || factaRegistration.length > 100 || /[\u0000-\u001f\u007f]/.test(factaRegistration))) return res.status(400).json({ error: 'Matrícula FACTA inválida.' });
-      const term = Number(req.body?.term);
-      const value = Number(req.body?.value);
-      const mode = req.body?.mode;
-      const eligibility = req.body?.eligibility;
+      const queryOnly = product === 'CLT' && action !== 'SIMULATE';
+      const term = Number(req.body?.term ?? (queryOnly ? 0 : undefined));
+      const value = Number(req.body?.value ?? (queryOnly ? 0 : undefined));
+      const mode = req.body?.mode ?? (queryOnly ? 'Payment' : undefined);
+      const eligibility = req.body?.eligibility ?? (queryOnly ? true : undefined);
       if (!isValidCpf(cpf) || !Number.isInteger(term) || term < 0 || term > 120 || (product === 'FGTS' && term < 1) ||
           !['Payment', 'Liquid'].includes(mode) || typeof eligibility !== 'boolean' ||
           (product === 'CLT' && (!name || !/^\d{10,11}$/.test(phone) || (employerDocument && ![8, 14].includes(employerDocument.length)) || (action === 'SIMULATE' && (!Number.isFinite(value) || value <= 0))))) {

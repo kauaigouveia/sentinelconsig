@@ -1,5 +1,6 @@
 import { isJourneyExecution } from './cltJourneyDeadline.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
+import { cltPaymentLimit } from './cltFinancialPolicy.js';
 import type { PrismaClient } from '@prisma/client';
 import { FactaBankService } from './factaBankService';
 import { factaFetch } from './factaTransport.js';
@@ -200,8 +201,10 @@ export class FactaSimulationService {
       const registration = registrationOf(worker.matricula);
       if (!registration.trim() || registration.length > 100) { rows.push(row({ state: 'PENDING', message: 'A FACTA não informou uma matrícula válida para este vínculo. Atualize os dados antes de consultar ofertas.' })); continue; }
       if (!worker.dataNascimento || !factaNumber(worker.valorTotalVencimentos)) { rows.push(row({ state: 'PENDING', message: 'O banco não informou nascimento e renda necessários à simulação deste vínculo.' })); continue; }
+      const requested = input.autoConditions ? cltPaymentLimit(marginNumber(worker.valorMargemDisponivel)) : input.value;
+      if (!requested) { rows.push(row({ state: 'PENDING', outcome: 'MISSING_DATA', message: 'A FACTA não retornou margem positiva válida para esta matrícula. Nenhuma simulação foi enviada.' })); continue; }
       try {
-        const tables = await this.request(prisma, tenantId, '/proposta/operacoes-disponiveis', { produto: 'D', tipo_operacao: 13, averbador: 10010, convenio: 3, opcao_valor: input.mode === 'Payment' ? 2 : 1, ...(input.mode === 'Payment' ? { valor_parcela: input.value } : { valor: input.value }), ...(input.term ? { prazo: input.term } : {}), cpf: input.cpf, data_nascimento: date(worker.dataNascimento), valor_renda: factaNumber(worker.valorTotalVencimentos) });
+        const tables = await this.request(prisma, tenantId, '/proposta/operacoes-disponiveis', { produto: 'D', tipo_operacao: 13, averbador: 10010, convenio: 3, opcao_valor: input.autoConditions || input.mode === 'Payment' ? 2 : 1, ...(input.autoConditions || input.mode === 'Payment' ? { valor_parcela: requested } : { valor: requested }), ...(input.term ? { prazo: input.term } : {}), cpf: input.cpf, data_nascimento: date(worker.dataNascimento), valor_renda: factaNumber(worker.valorTotalVencimentos) });
         for (const table of list(tables.tabelas)) {
           if (table.idAverbador != null && Number(table.idAverbador) !== 10010) {
             rows.push(row({ state: 'ERROR', message: 'FACTA retornou tabela de outro produto na consulta CLT. A condição não foi utilizada.' })); continue;

@@ -1,4 +1,7 @@
+import { V8CltConsentAudit } from '../server/services/v8CltConsentAudit';
+import { V8CltContract } from '../server/services/v8CltContract';
 import { V8CltPilot } from '../server/services/v8CltPilot';
+import { journeyDatabase } from './helpers/cltJourneyDatabase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../server/logger.js', () => ({ logger: { warn: vi.fn() } }));
 import { logger } from '../server/logger.js';
@@ -16,14 +19,19 @@ const configId = '00000000-0000-4000-8000-000000000003', simulationId = '0000000
 const input = { cpf: '00000000000', name: 'Pessoa sintética', phone: '11999999999', employerDocument: '12345678000100', factaRegistration: '000FACTA01', value: 1423.98, term: 24, mode: 'Payment' as const, eligibility: true };
 const consultation = { id: consultId, documentNumber: input.cpf, status: 'SUCCESS', name: input.name, availableMarginValue: '1900.00' };
 const config = { environment: 'production' as const, enabled: true, cltEnabled: true, fgtsEnabled: false, username: 'synthetic-user', password: 'synthetic-secret', clientId: 'synthetic-client', audience: 'synthetic-audience' };
-const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
+const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, disbursement_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
 let consultations: any[], tables: any[], response: any, db: any, fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
+  vi.stubEnv('JWT_SECRET', 'synthetic-v8-consult-reservation-key');
   vi.spyOn(V8CltPilot, 'authorize').mockResolvedValue({ allowed: true, tenantId: 'tenant-a', userId: 'synthetic-pilot' });
   // Contract fixtures exercise dormant code under a mocked policy, never bank homologation.
-  vi.spyOn(V8CltSimulationService, 'canSimulate').mockReturnValue(true);
+  vi.spyOn(V8CltSimulationService, 'canSimulate').mockResolvedValue(true);
+  vi.spyOn(V8CltContract, 'read').mockResolvedValue({ simulationReady: true, consentReady: false, rateUnit: 'unconfirmed', reasons: [] });
+  vi.spyOn(V8CltSimulationService, 'ownsConsult').mockResolvedValue(true);
+  vi.spyOn(V8CltConsentAudit, 'recorded').mockResolvedValue(true);
   vi.clearAllMocks(); consultations = [{ ...consultation }]; tables = [{ id: configId, slug: 'CLT sintético', number_of_installments: ['24'] }]; response = { ...offer };
-  db = { systemConfig: { findMany: vi.fn(async (query: any) => query.where.tenantId === 'tenant-a' ? [{ configKey: 'integration:v8:promoter-a:config' }] : []) } };
+  const state = journeyDatabase();
+  db = { ...state, systemConfig: { ...state.systemConfig, findMany: vi.fn(async (query: any) => query.where.tenantId === 'tenant-a' ? [{ configKey: 'integration:v8:promoter-a:config' }] : []) } };
   vi.spyOn(V8BankService, 'config').mockImplementation(async (_db, tenant, promoter) => { if (tenant !== 'tenant-a' || promoter !== 'promoter-a') throw Error('Invalid scope'); return config; });
   vi.spyOn(V8BankService, 'token').mockResolvedValue({ token: 'synthetic-token', config });
   fetchMock = vi.fn(async (target: any, options?: any) => {
@@ -39,20 +47,99 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(
 const run = (extra: any = {}, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' = 'SIMULATE', tenant = 'tenant-a') => V8CltSimulationService.run(db, tenant, action, { ...input, ...extra });
 
 describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not homologated', () => {
-  it('uses documented field names and the current inactive-zero choice without FACTA fields', async () => {
+  it('normalizes the supplied real response contract with synthetic IDs and keeps requested and returned providers distinct', async () => {
+    consultations[0].availableMarginValue = '1008.80';
+    tables = [{ id: configId, slug: 'Tabela sintética dinâmica', number_of_installments: [12] }];
+    response = { id_simulation: simulationId, installment_value: 300, number_of_installments: 12, operation_amount: 3600, issue_amount: 2415.38, disbursement_option: { iof_amount: 64.94 }, iof_amount: 64.94, monthly_interest_rate: 0.0498, disbursed_issue_amount: 2350.44, disbursement_amount: 2350.44, first_installment_date: '2027-01-28', is_insured: false, insurance_amount: 0, provider: 'CELCOIN', simulation_config_id: configId, simulation_config_slug: 'Tabela sintética dinâmica' };
+    const rows = await run({ value: 300, term: 12 });
+    expect(rows[0]).toMatchObject({ state: 'OFFER', amount: 2350.44, installment: 300, term: 12, contractAmount: 2415.38, simulationId });
+    expect(rows[0].rate).toBeUndefined(); expect(rows[0].cetMonthly).toBeUndefined();
+    expect(rows[0].data).toMatchObject({ v8: { monthlyInterestRate: 0.0498, operationAmount: 3600, iofAmount: 64.94, isInsured: false, insuranceAmount: 0, requestedProvider: 'QI', returnedProvider: 'CELCOIN', firstInstallmentDate: '2027-01-28' } });
+    expect(JSON.parse(fetchMock.mock.calls.find(([, o]) => o.method === 'POST')![1].body)).toEqual({ consult_id: consultId, config_id: configId, installment_face_value: 300, number_of_installments: 12, provider: 'QI' });
+  });
+  it('uses the actual disbursement, never emission or the similarly named alias as net cash', async () => {
+    response = { ...offer, disbursement_amount: 2350.44, disbursed_issue_amount: 2300, issue_amount: 2415.38 };
+    expect((await run())[0].amount).toBe(2350.44);
+  });
+  it('does not treat SUCCESS or HTTP 200 alone as an audited worker acceptance', async () => {
+    vi.mocked(V8CltConsentAudit.recorded).mockResolvedValue(false);
+    const data = await run({}, 'REFRESH'); expect((data[0].data as any).v8.simulationReady).toBe(false); expect((data[0].data as any).margin.available_balance).toBe(1900);
+    expect((await run())[0].outcome).toBe('MISSING_DATA'); expect(fetchMock.mock.calls.some(([, o]) => o.method === 'POST')).toBe(false);
+  });
+  it('reuses the financial operation across requests without another bank POST', async () => {
+    const first = await run(); const second = await run();
+    expect(first[0].state).toBe('OFFER'); expect(second[0].state).toBe('OFFER');
+    expect((second[0].data as any).v8.cached).toBe(true);
+    expect(fetchMock.mock.calls.filter(([, o]) => o.method === 'POST')).toHaveLength(1);
+  });
+  it('never simulates a consultation not bound to this tenant and connection', async () => {
+    vi.mocked(V8CltSimulationService.ownsConsult).mockResolvedValue(false);
+    expect((await run())[0].outcome).toBe('MISSING_DATA');
+    const refreshed = await run({}, 'REFRESH');
+    expect(JSON.stringify(refreshed)).not.toContain(consultId); expect(JSON.stringify(refreshed)).not.toContain('1900');
+    expect(fetchMock.mock.calls.some(([, o]) => o.method === 'POST')).toBe(false);
+  });
+  it.each([
+    ['WAITING_CONSENT', 'AUTHORIZATION_REQUIRED', 'autorização'], ['CONSENT_APPROVED', 'PENDING', 'processamento'],
+    ['WAITING_CONSULT', 'PENDING', 'base competente'], ['WAITING_CREDIT_ANALYSIS', 'PENDING', 'análise'],
+    ['REJECTED', 'INELIGIBLE', 'vínculo'], ['FAILED', 'TECHNICAL_ERROR', 'falhou'],
+  ])('preserves consultation identity and correctly handles %s without simulation', async (status, outcome, message) => {
+    consultations[0] = { ...consultation, status, ...(status === 'REJECTED' ? { description: 'Trabalhador não possui vínculo empregatício ativo para realização de consulta.' } : {}) };
+    const rows = await run({}, 'REFRESH'); expect(rows[0].outcome).toBe(outcome); expect(rows[0].message).toContain(message);
+    expect(rows[0].data).toMatchObject({ v8: { consultId, promoterId: 'promoter-a', status } });
+    expect(fetchMock.mock.calls.some(([, opts]) => opts.method === 'POST')).toBe(false);
+  });
+  it('reads configurations dynamically, preserving the raw rate rather than inferring a percentage', async () => {
+    tables[0] = { id: configId, slug: 'Tabela sintética sem seguro', number_of_installments: [6, 8, 10, 12, 18, 24, 36, 38, 46], monthly_interest_rate: '0.049800' };
+    const rows = await run({}, 'REFRESH');
+    expect(rows[0].data).toMatchObject({ v8: { configurations: [{ id: configId, name: 'Tabela sintética sem seguro', terms: [6, 8, 10, 12, 18, 24, 36, 38, 46], rawMonthlyRate: '0.049800' }] } });
+    expect(rows[0].rate).toBeUndefined();
+  });
+  it('creates a consultation with the documented borrower/signatory fields, without accepting terms', async () => {
+    const extra = { v8BirthDate: '1980-01-02', v8Gender: 'female', v8Email: 'synthetic@example.invalid' };
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: consultId })));
+    const rows = await V8CltSimulationService.run(db, 'tenant-a', 'CREATE_CONSULT', { ...input, ...extra, v8Gender: 'female' });
+    expect(rows[0]).toMatchObject({ outcome: 'AUTHORIZATION_REQUIRED', data: { v8: { consultId, status: 'WAITING_CONSENT' } } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ borrowerDocumentNumber: input.cpf, gender: 'female', birthDate: extra.v8BirthDate, signerName: input.name, signerEmail: extra.v8Email, signerPhone: { phoneNumber: '999999999', areaCode: '11', countryCode: '55' }, provider: 'QI' });
+    expect(fetchMock).toHaveBeenCalledTimes(1); expect(String(fetchMock.mock.calls[0][0])).not.toContain('authorize');
+    const repeated = await V8CltSimulationService.run(db, 'tenant-a', 'CREATE_CONSULT', { ...input, ...extra, name: 'Nome sintético corrigido', v8Gender: 'female' });
+    expect(repeated[0].data).toMatchObject({ v8: { consultId } }); expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(db.rows)).not.toContain(extra.v8Email);
+    await expect(V8CltSimulationService.request(db, 'tenant-a', 'promoter-a', `/private-consignment/consult/${consultId}/authorize`, {})).rejects.toThrow();
+  });
+  it('reserves consultation creation across simultaneous requests and never replays an uncertain POST', async () => {
+    const data = { ...input, v8BirthDate: '1980-01-02', v8Gender: 'female' as const, v8Email: 'synthetic@example.invalid' };
+    fetchMock.mockRejectedValue(Error('synthetic timeout'));
+    const results = await Promise.all([V8CltSimulationService.run(db, 'tenant-a', 'CREATE_CONSULT', data), V8CltSimulationService.run(db, 'tenant-a', 'CREATE_CONSULT', data)]);
+    expect(results.flat().every(r => r.outcome === 'TECHNICAL_ERROR')).toBe(true); expect(fetchMock).toHaveBeenCalledTimes(1);
+    await V8CltSimulationService.run(db, 'tenant-a', 'CREATE_CONSULT', data); expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it('does not invent the additional data required to create a consultation', async () => {
+    const rows = await V8CltSimulationService.run(db, 'tenant-a', 'CREATE_CONSULT', input);
+    expect(rows[0].outcome).toBe('MISSING_DATA'); expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('derives a payment only from SUCCESS margin and sends exactly one financial field', () => {
+    const config = { id: configId, number_of_installments: [12] };
+    const body = V8CltSimulationService.simulationPayload({ ...consultation, availableMarginValue: '300.009' }, config, 12, { ...input, value: 0, autoConditions: true });
+    expect(body).toEqual({ consult_id: consultId, config_id: configId, installment_face_value: 300, number_of_installments: 12, provider: 'QI' });
+    expect(() => V8CltSimulationService.simulationPayload({ ...consultation, status: 'REJECTED' }, config, 12, input)).toThrow();
+    expect(() => V8CltSimulationService.simulationPayload(consultation, config, 46, input)).toThrow();
+  });
+  it('sends only the selected financial field, omitting the inactive field without FACTA fields', async () => {
     const rows = await run();
     expect(rows[0]).toMatchObject({ state: 'OFFER', amount: 12000, contractAmount: 13000, installment: 1423.98, simulationId });
     const call = fetchMock.mock.calls.find(([, options]) => options.method === 'POST')!;
-    expect(JSON.parse(call[1].body)).toEqual({ consult_id: consultId, config_id: configId, installment_face_value: 1423.98, disbursed_amount: 0, number_of_installments: 24, provider: 'QI' });
+    expect(JSON.parse(call[1].body)).toEqual({ consult_id: consultId, config_id: configId, installment_face_value: 1423.98, number_of_installments: 24, provider: 'QI' });
     expect(call[1].headers.Authorization).toBe('Bearer synthetic-token');
     expect(rows[0].rate).toBeUndefined();
   });
   it('uses the disbursement field in Liquid mode, separately from margin', async () => {
     await run({ mode: 'Liquid', value: 5000 });
-    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toMatchObject({ installment_face_value: 0, disbursed_amount: 5000 });
+    const body = JSON.parse(fetchMock.mock.calls.at(-1)![1].body);
+    expect(body).toMatchObject({ disbursed_amount: 5000 }); expect(body).not.toHaveProperty('installment_face_value');
   });
   it.each([1.234, '1.234', 1234.56789, '1234.56789'])('preserves transport decimal %s without BRL magnitude conversion', async amount => {
-    response = { ...offer, disbursed_issue_amount: amount, issue_amount: amount, installment_value: amount };
+    response = { ...offer, disbursement_amount: amount, disbursed_issue_amount: amount, issue_amount: amount, installment_value: amount };
     const rows = await run();
     expect(rows[0]).toMatchObject({ state: 'OFFER', amount: Number(amount), contractAmount: Number(amount), installment: Number(amount) });
   });
@@ -66,17 +153,18 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
   });
   it('does not infer rate units, alter monetary scale or add an undocumented configs query', async () => {
     tables[0].monthly_interest_rate = '1.8';
-    response = { ...offer, monthly_interest_rate: 0.018 };
+    response = { ...offer, monthly_interest_rate: 0.018, monthly_cet: '0.02', first_installment_date: '2027-01-15', iof_amount: '100.00' };
     const rows = await run();
     expect(rows[0].rate).toBeUndefined();
+    expect(rows[0].data).toMatchObject({ v8: { rawCet: [{ field: 'monthly_cet', value: '0.02' }], firstInstallmentDate: '2027-01-15', iofAmount: 100 } });
     const configsRequest = fetchMock.mock.calls.find(([url]) => String(url).includes('/simulation/configs'))!;
-    expect(String(configsRequest[0])).toBe('https://bff.v8sistema.com/private-consignment/simulation/configs');
+    expect(String(configsRequest[0])).toBe('https://bff.v8sistema.com/private-consignment/simulation/configs?provider=QI');
     expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).installment_face_value).toBe(1423.98);
   });
   it('returns a selectable consultation with decimal margin but no invented employer/matricula', async () => {
     const rows = await run({}, 'REFRESH');
     expect(rows[0]).toMatchObject({ state: 'DATA', data: { v8: { consultId, promoterId: 'promoter-a' }, margin: { available_balance: 1900 } } });
-    expect((rows[0].data as any).employment).toBeUndefined(); expect(fetchMock).toHaveBeenCalledOnce();
+    expect((rows[0].data as any).employment).toBeUndefined(); expect(fetchMock).toHaveBeenCalledTimes(2);
   });
   it('requires explicit selection for multiple consultations', async () => {
     consultations.push({ ...consultation, id: secondId });
@@ -148,7 +236,7 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     expect(JSON.stringify(rows)).not.toContain('DO-NOT-EXPOSE');
     expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain(input.cpf);
   });
-  it.each([null, {}, { ...offer, number_of_installments: 36 }, { ...offer, disbursed_issue_amount: 0 }])('rejects an invalid or empty simulation response', async value => {
+  it.each([null, {}, { ...offer, number_of_installments: 36 }, { ...offer, disbursement_amount: 0 }])('rejects an invalid or empty simulation response', async value => {
     response = value; expect((await run())[0].outcome).toBe('TECHNICAL_ERROR');
   });
   it('handles pagination without using the first record from another CPF', async () => {
@@ -218,8 +306,9 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
 
 it('blocks every real V8 simulation entry point before OAuth or bank requests', async () => {
   vi.mocked(V8CltSimulationService.canSimulate).mockRestore();
+  vi.mocked(V8CltContract.read).mockResolvedValue({ simulationReady: false, consentReady: false, reasons: ['Pré-cálculo não confirmado.'] });
   const rows = await V8CltSimulationService.run(db, 'tenant-a', 'SIMULATE', input);
-  expect(rows[0].outcome).toBe('UNSUPPORTED'); expect(fetchMock).not.toHaveBeenCalled();
+  expect(rows[0].outcome).toBe('MISSING_DATA'); expect(fetchMock).not.toHaveBeenCalled();
   expect(V8BankService.token).not.toHaveBeenCalled();
   await expect(V8CltSimulationService.request(db, 'tenant-a', 'promoter-a', '/private-consignment/simulation', {})).rejects.toThrow();
   expect(fetchMock).not.toHaveBeenCalled();

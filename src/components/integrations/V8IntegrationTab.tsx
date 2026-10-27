@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { V8CltContractPanel } from './V8CltContractPanel';
 import { StorageService } from '../../services/storageService';
 import { hasPermission } from '../../lib/permissions';
 import { promoterApiUrl } from './BankPromoterConnection';
@@ -46,7 +47,7 @@ export function V8IntegrationTab({ promoterId }: { promoterId: string }) {
   }
   const dirty = unsaved || Object.values(values).some(Boolean);
   return <section className="space-y-4" aria-label="Integração V8 Digital">
-    <header><h2 className="text-xl font-bold">V8 Digital · FGTS e Crédito Trabalhador</h2><p className="mt-1 text-sm text-slate-500">Configure a conexão e confira o acesso às tabelas. O simulador CLT consulta consentimentos V8 já autorizados. O cálculo de ofertas está bloqueado no backend até a homologação bancária. A criação e o aceite de novos termos e a contratação não estão disponíveis neste fluxo.</p></header>
+    <header><h2 className="text-xl font-bold">V8 Digital · FGTS e Crédito Trabalhador</h2><p className="mt-1 text-sm text-slate-500">Configure a conexão e confira o acesso às tabelas. O CLT consulta margem e elegibilidade antes do cálculo. Simulações dependem do contrato técnico validado; aceite depende da identificação independente do trabalhador. Não há contratação automática.</p></header>
     {loading && <p role="status">Carregando conexão V8…</p>}{error && <p role="alert" className="rounded-lg border border-rose-500 p-3 text-rose-500">{error}</p>}{message && <p role="status" className="rounded-lg border border-cyan-500 p-3">{message}</p>}
     <fieldset disabled={loading || busy || !canManage} className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700"><legend className="px-2 font-bold">Credenciais da conexão</legend>
       <div className="grid gap-4 sm:grid-cols-2"><label>Ambiente<select className={control} value={config.environment} onChange={e => void load(e.target.value)}><option value="production">Produção</option><option value="homologation">Homologação · endereço pendente</option></select></label><p className="self-end text-sm text-slate-500">Ambiente ativo: {active === 'production' ? 'Produção' : 'Homologação'}. A seleção só é ativada ao salvar.</p>
@@ -59,6 +60,7 @@ export function V8IntegrationTab({ promoterId }: { promoterId: string }) {
       <p className="text-xs text-slate-500">Campos vazios preservam os valores já cadastrados neste ambiente. O teste usa a configuração salva e não cria propostas.</p>
     </fieldset>
     {checks.length > 0 && <table className="w-full text-left text-sm"><caption className="mb-2 text-left font-bold">Disponibilidade retornada pela V8</caption><thead><tr><th className="p-2">Produto</th><th className="p-2">Resultado</th><th className="p-2">Tabelas</th></tr></thead><tbody>{checks.map(check => <tr key={check.product}><td className="p-2">{check.product}</td><td className="p-2">{check.available ? 'Consulta concluída' : `${check.accessDenied ? 'Sem permissão na V8' : 'Não confirmado'}${check.httpStatus ? ` · HTTP ${check.httpStatus}` : ' · sem resposta'}`}{check.reason && <span className="mt-1 block text-xs text-slate-500">{check.reason}</span>}</td><td className="p-2">{check.available ? check.tableCount : '—'}</td></tr>)}</tbody></table>}
+    <V8CltContractPanel key={promoterId} promoterId={promoterId} canReview={hasPermission(user?.role, user?.customPermissions, 'integrations.admin')} />
     {!canManage && <p className="text-sm text-slate-500">Solicite a permissão de gerenciar integrações para configurar a V8.</p>}
   </section>;
 }

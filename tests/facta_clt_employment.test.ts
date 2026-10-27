@@ -24,6 +24,18 @@ function bank(workers: any[], policy: any = { aprovado: '1' }) {
 }
 
 describe('FACTA CLT employment selection, synthetic only', () => {
+  it('derives the automatic payment from the selected bank-returned margin, preserving exact registration', async () => {
+    const request = bank([{ ...worker, valorMargemDisponivel: '300.009' }]);
+    await FactaSimulationService.product(prisma, 'tenant-a', 'CLT', 'SIMULATE', { ...input, value: 0, term: 0, autoConditions: true, factaRegistration: worker.matricula });
+    expect(request.mock.calls[1][3]).toMatchObject({ opcao_valor: 2, valor_parcela: 300 });
+    expect(request.mock.calls[1][3]).not.toHaveProperty('prazo');
+    expect(request.mock.calls[2][3]).toMatchObject({ matricula: worker.matricula, prazo: 24 });
+  });
+  it.each([undefined, '0', '-1', 'invalid'])('refuses automatic calculation without a valid returned margin %s', async margin => {
+    const request = bank([{ ...worker, valorMargemDisponivel: margin }]);
+    const rows = await FactaSimulationService.product(prisma, 'tenant-a', 'CLT', 'SIMULATE', { ...input, value: 0, autoConditions: true });
+    expect(request).toHaveBeenCalledOnce(); expect(rows[0].state).not.toBe('OFFER');
+  });
   it.each(['001', 'A-01/B', '00017000310042', '1', 42])('preserves returned registration %s in policy', async matricula => {
     const request = bank([{ ...worker, matricula }]);
     const result = await FactaSimulationService.product(prisma, 'tenant-a', 'CLT', 'SIMULATE', { ...input, factaRegistration: String(matricula) });
