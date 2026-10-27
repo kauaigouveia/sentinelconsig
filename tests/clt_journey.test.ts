@@ -52,7 +52,7 @@ it('isolates provider failure, never sends V8 simulate/authorize, and does not i
 it('enforces HTTP authentication, permission, tenant ownership and refuses unscoped authorization', async () => {
   const service = new CltJourneyService(), db = journeyDatabase(); vi.spyOn(service, 'available').mockResolvedValue([]);
   let session: any = null;
-  const access = { simulationAccessEnabled: true };
+  const access = { simulationAccessEnabled: true, status: 'ACTIVE', deletedAt: null };
   const app = express(); app.use(express.json()); registerCltJourneyRoutes(app, { ...db, tenant: { findUnique: async () => access } }, async () => session, service);
   expect((await request(app).post('/api/simulations/clt/journey').send({ ...input, executionId: id })).status).toBe(401);
   session = { user: { id: 'a', role: 'VIEWER' }, effectiveTenantId: 'tenant-a', activePermissions: [] };
@@ -63,7 +63,8 @@ it('enforces HTTP authentication, permission, tenant ownership and refuses unsco
   expect(result.status).toBe(200); expect(result.headers['content-type']).toContain('ndjson');
   expect((await request(app).get(`/api/simulations/clt/journey/${id}`)).status).toBe(200);
   session.effectiveTenantId = 'tenant-b'; expect((await request(app).get(`/api/simulations/clt/journey/${id}`)).status).toBe(404);
-  access.simulationAccessEnabled = false; expect((await request(app).post('/api/simulations/clt/journey').send({ ...input, executionId: id })).status).toBe(403);
+  access.simulationAccessEnabled = false; expect((await request(app).post('/api/simulations/clt/journey').send({ ...input, executionId: id })).status).toBe(200);
+  access.status = 'SUSPENDED'; expect((await request(app).post('/api/simulations/clt/journey').send({ ...input, executionId: id })).status).toBe(403);
 });
 
 it('deduplicates different UUIDs across instances and recovers durable partial results without repeating calls', async () => {

@@ -16,12 +16,11 @@ it('uses a single primary action, displays offers independently, compares condit
   fireEvent.change(screen.getByLabelText('CPF'), { target: { value: '52998224725' } });
   fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Pessoa sintética' } });
   fireEvent.change(screen.getByLabelText('Telefone com DDD'), { target: { value: '11999999999' } });
-  fireEvent.change(screen.getByLabelText('Parcela desejada (R$)'), { target: { value: '1.423,98' } });
-  fireEvent.blur(screen.getByLabelText('Parcela desejada (R$)'));
-  fireEvent.click(screen.getByRole('button', { name: 'SOLICITAR AUTORIZAÇÃO / SIMULAR' }));
+  expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES' }));
   await screen.findByText('Ofertas disponíveis'); await screen.findByText('Aguardando autorização do cliente');
   expect(fetcher).toHaveBeenCalledTimes(1);
-  const sent = JSON.parse(fetcher.mock.calls[0][1].body); expect(sent.value).toBe(1423.98); expect(sent.phone).toBe('11999999999');
+  const sent = JSON.parse(fetcher.mock.calls[0][1].body); expect(sent.value).toBeUndefined(); expect(sent.term).toBeUndefined(); expect(sent.action).toBe('REFRESH'); expect(sent.phone).toBe('11999999999');
   fireEvent.click(screen.getByLabelText('Comparar A')); fireEvent.click(screen.getByLabelText('Comparar B'));
   fireEvent.click(screen.getByRole('button', { name: 'Comparar selecionadas (2)' }));
   expect(screen.getByText('Comparação de condições')).toBeTruthy();
@@ -44,12 +43,11 @@ it('requires state recovery after an incomplete transport, without issuing anoth
   const fetcher = vi.fn(async (_url, options) => new Response(options?.method === 'POST' ? JSON.stringify({ ...snapshot, running: true }) + '\n' : JSON.stringify(snapshot)));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
-  for (const [label, value] of [['CPF', '52998224725'], ['Nome completo', 'Pessoa sintética'], ['Telefone com DDD', '11999999999'], ['Parcela desejada (R$)', '1423,98']]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
-  fireEvent.blur(screen.getByLabelText('Parcela desejada (R$)'));
-  fireEvent.click(screen.getByRole('button', { name: 'SOLICITAR AUTORIZAÇÃO / SIMULAR' }));
+  for (const [label, value] of [['CPF', '52998224725'], ['Nome completo', 'Pessoa sintética'], ['Telefone com DDD', '11999999999']]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.click(screen.getByRole('button', { name: 'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES' }));
   await screen.findByText(/A conexão de acompanhamento terminou/);
   fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }));
-  fireEvent.click(screen.getByRole('button', { name: 'SOLICITAR AUTORIZAÇÃO / SIMULAR' }));
+  fireEvent.click(screen.getByRole('button', { name: 'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES' }));
   await screen.findByText('Recupere o acompanhamento e confira o estado antes de iniciar outra operação.');
   expect(fetcher).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: 'Recuperar acompanhamento' }));
@@ -68,4 +66,25 @@ it('recovers after a full remount using only an opaque tenant/actor-scoped ident
   expect(fetcher.mock.calls[0][0]).toBe('/api/simulations/clt/journey/' + id);
   expect(fetcher.mock.calls[0][1].method).toBeUndefined();
   expect(sessionStorage.getItem('sentinel:clt-execution:tenant-a:user-a')).toBe(id);
+});
+
+it('restores the authorized customer from the encrypted server snapshot without financial parameters or another POST', async () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  sessionStorage.setItem('sentinel:clt-execution:tenant-a:user-a', id);
+  const fetcher = vi.fn(async () => new Response(JSON.stringify({ ...snapshot, executionId: id, customer: { cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 0, term: 0, mode: 'Payment' } })));
+  vi.stubGlobal('fetch', fetcher);
+  render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
+  await screen.findByText('Ofertas disponíveis'); fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }));
+  expect((screen.getByLabelText('CPF') as HTMLInputElement).value.replace(/\D/g, '')).toBe('52998224725');
+  expect((screen.getByLabelText('Telefone com DDD') as HTMLInputElement).value).toBe('11999999999');
+  expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull(); expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('uses a bounded modal, internal scroll and restores background scroll on close', () => {
+  const close = vi.fn(), props = { isOpen: true, scope: 'tenant-a:user-a', onClose: close };
+  const rendered = render(<CltJourneyWorkspace {...props} />), dialog = screen.getByRole('dialog');
+  expect(dialog.className).toContain('max-w-6xl'); expect(dialog.className).toContain('max-h-[92dvh]');
+  expect(dialog.querySelector('main')?.className).toContain('overflow-y-auto');
+  expect(document.body.style.overflow).toBe('hidden'); fireEvent.keyDown(dialog, { key: 'Escape' }); expect(close).toHaveBeenCalledOnce();
+  rendered.rerender(<CltJourneyWorkspace {...props} isOpen={false} />); expect(document.body.style.overflow).not.toBe('hidden');
 });

@@ -10,11 +10,13 @@ import { ParanaBankService } from './paranaBankService.js';
 import { PresencaBankService } from './presencaBankService.js';
 import { integrationConfigStore } from './bankPromoterConfig.js';
 import { cltPublicMessage } from '../../src/lib/cltSimulationOutcome.js';
+import { cltPaymentLimit } from './cltFinancialPolicy.js';
 
 export const journeyProviders = ['nossa', 'finanto', 'facta', 'bmg', 'v8', 'parana', 'presenca', 'happy'] as const;
 export type JourneyProvider = typeof journeyProviders[number];
+export type JourneyAction = 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT';
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
-export type JourneySnapshot = { executionId: string; running: boolean; banks: JourneyBank[]; results: Record<string, { status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; rows: ProductSimulationRow[]; message?: string; contractPending?: boolean; executionId?: string }> };
+export type JourneySnapshot = { executionId: string; running: boolean; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; contractPending?: boolean; executionId?: string }> };
 type Entry = { raw: string; record: JourneyRecord; snapshot: JourneySnapshot; store: CltJourneyStore; listeners: Set<(snapshot: JourneySnapshot) => void> };
 
 export class CltJourneyService {
@@ -43,7 +45,7 @@ export class CltJourneyService {
       check('nossa', 'Nossa Fintech · instituições CLT', async () => { const c = await NossaFintechService.getConfig(db, tenant); return c.enabled && c.isConfigured; }),
       check('finanto', 'FINANTO · instituições CLT', async () => { const c = await FinantoService.getConfig(db, tenant); return c.enabled && c.isConfigured; }),
       check('facta', 'FACTA', async () => { const c = await FactaBankService.getTenantConfig(db, tenant); return c.isConfigured && c.simulationEnabled; }),
-      check('bmg', 'BMG', async () => { const c = await BmgBankService.config(db, tenant); return c.enabled; }),
+      check('bmg', 'BMG', async () => { const c = await BmgBankService.config(db, tenant); return c.enabled; }, true),
       check('v8', 'V8 DIGITAL', async () => {
         const rows = await db.systemConfig.findMany({ where: { tenantId: tenant, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } });
         for (const row of rows) { const promoter = /^integration:v8:(.+):config$/.exec(row.configKey)?.[1]; if (promoter) { const c = await V8BankService.config(db, tenant, promoter); if (c.enabled && c.cltEnabled) return true; } }
@@ -71,12 +73,14 @@ export class CltJourneyService {
     ]);
     return banks.sort((a, b) => journeyProviders.indexOf(a.id) - journeyProviders.indexOf(b.id));
   }
-  async start(db: any, tenant: string, actor: string, id: string, input: ProductSimulationInput, provider?: JourneyProvider, action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' = 'SIMULATE') {
+  async start(db: any, tenant: string, actor: string, id: string, input: ProductSimulationInput, provider?: JourneyProvider, action: JourneyAction = 'REFRESH', parentId?: string) {
     const fingerprint = journeyFingerprint({ input, provider, action });
     const previous = await this.get(db, tenant, actor, id);
     if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return previous; }
     const all = await this.available(db, tenant), banks = provider ? all.filter(bank => bank.id === provider).map(bank => bank.id === 'v8' ? { ...bank, contextual: false } : bank) : all;
-    const snapshot: JourneySnapshot = { executionId: id, running: true, banks, results: {} };
+    const parent = parentId ? await this.get(db, tenant, actor, parentId) : undefined;
+    if (parentId && (!provider || !parent || parent.record.phase !== 'DONE' || parent.snapshot.customer?.cpf !== input.cpf)) throw Error('EXECUTION_CONFLICT');
+    const snapshot: JourneySnapshot = { executionId: id, running: true, customer: { ...input }, banks: parent ? [...new Map([...parent.snapshot.banks, ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(parent.snapshot.results) : {} };
     for (const bank of banks) snapshot.results[bank.id] = { executionId: id, status: bank.contextual ? 'CONTEXTUAL' : 'QUERYING', rows: [], message: bank.error ? 'Não foi possível verificar a configuração. Nenhuma consulta foi iniciada.' : bank.contextual ? 'Etapa específica disponível neste cartão. Nenhuma autorização enviada.' : undefined };
     const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot };
     const store = new CltJourneyStore(db, tenant, actor), canonical = await store.create(id, record);
@@ -84,7 +88,7 @@ export class CltJourneyService {
     if (!entry || entry.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT');
     return entry;
   }
-  async execute(db: any, tenant: string, actor: string, entry: Entry, input: ProductSimulationInput, action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' = 'SIMULATE', provider?: JourneyProvider) {
+  async execute(db: any, tenant: string, actor: string, entry: Entry, input: ProductSimulationInput, action: JourneyAction = 'REFRESH', provider?: JourneyProvider) {
     if (entry.record.phase !== 'READY') return;
     const { record, store, snapshot } = entry, id = snapshot.executionId;
     record.phase = 'RUNNING'; record.deadline = Date.now() + 50000;
@@ -100,13 +104,25 @@ export class CltJourneyService {
       return writes;
     };
     await withinJourneyDeadline(signal, async () => {
-      const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => !bank.contextual).map(async bank => {
+      const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => !bank.contextual && (!provider || bank.id === provider)).map(async bank => {
         const result = snapshot.results[bank.id];
         try {
           const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); await publish(); };
-          const response = await ProductSimulationService.run(db, tenant, 'CLT', bank.id === 'v8' && provider !== 'v8' ? 'REFRESH' : action, { ...input, bmgActorId: actor }, update, [bank.id]);
-          result.rows = response.rows.map(projectRow); result.status = result.rows.some(row => row.state === 'ERROR' || row.outcome === 'TECHNICAL_ERROR') ? 'UNKNOWN' : 'RETURNED';
-          if (bank.id === 'v8') { result.contractPending = true; result.message = 'Simulação V8 pendente de homologação. Nenhuma simulação V8 é enviada sem liberação do caso e confirmação contratual.'; }
+          result.stage = action === 'AUTHORIZE' || action === 'CREATE_CONSULT' ? 'CONSENT' : 'CONSULTATION';
+          let response = await ProductSimulationService.run(db, tenant, 'CLT', action, { ...input, bmgActorId: actor }, update, [bank.id]);
+          result.rows = response.rows.map(projectRow);
+          // Publish eligibility/margin before calculating. Each adapter revalidates the bank
+          // response and derives its own payment; no browser-supplied margin is trusted.
+          if (action === 'REFRESH' && bank.id !== 'v8' && mayCalculate(bank.id, response.rows)) {
+            result.stage = 'MARGIN'; await publish();
+            result.stage = 'SIMULATION'; await publish();
+            const offers = await ProductSimulationService.run(db, tenant, 'CLT', 'SIMULATE', { ...input, autoConditions: !input.value, bmgActorId: actor }, undefined, [bank.id]);
+            response = { ...offers, rows: [...response.rows, ...offers.rows] };
+            result.rows = response.rows.map(projectRow);
+          }
+          result.status = result.rows.some(row => row.state === 'ERROR' || row.outcome === 'TECHNICAL_ERROR') ? 'UNKNOWN' : 'RETURNED';
+          result.stage = 'RESULT';
+          if (bank.id === 'v8') { result.contractPending = true; result.message = 'Aceite V8 depende do termo e da evidência legítima do trabalhador; simulação depende da confirmação do pré-cálculo e da unidade monetária.'; }
           else if (!result.rows.length) result.message = 'Sem ofertas retornadas nesta consulta.';
         } catch { result.status = 'UNKNOWN'; result.message = 'Resultado incerto. Confira o estado antes de outra operação; nenhuma repetição automática.'; }
         if (signal.aborted) { result.status = 'UNKNOWN'; result.message = 'Prazo da consulta encerrado. Confira o estado no banco antes de outra operação.'; }
@@ -123,15 +139,26 @@ export class CltJourneyService {
 
 function projectRow(row: ProductSimulationRow): ProductSimulationRow {
   const data = row.data as any;
-  return { provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, simulationId: row.simulationId,
+  return { provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, cetMonthly: row.cetMonthly, cetAnnual: row.cetAnnual, simulationId: row.simulationId,
     link: typeof row.link === 'string' && /^https:\/\//i.test(row.link) ? row.link : undefined,
     data: data ? { employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
       eligible: typeof data.eligible === 'boolean' ? data.eligible : undefined,
       restrictions: safeReasons(data.restrictions),
       borrower: data.borrower ? { name: data.borrower.name } : undefined,
       items: Array.isArray(data.items) ? data.items.slice(0, 500).map((item: any) => ({ employerDocument: item.employerDocument, employerName: item.employerName, registrationNumber: item.registrationNumber, term: item.term, rate: item.rate, netValue: item.netValue, installmentValue: item.installmentValue, maxInstallmentValue: item.maxInstallmentValue })) : undefined,
-      margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
-      v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId } : undefined } : undefined };
+      margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, utilizable_balance: data.margin.utilizable_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
+      v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId, status: data.v8.status, configurations: Array.isArray(data.v8.configurations) ? data.v8.configurations.map((c: any) => ({ id: c.id, name: c.name, terms: c.terms, rawMonthlyRate: c.rawMonthlyRate })) : undefined } : undefined } : undefined };
+}
+
+function mayCalculate(bank: JourneyProvider, rows: ProductSimulationRow[]) {
+  const eligible = rows.filter(row => {
+    const d = row.data as any;
+    return row.state === 'DATA' && d && !d.restrictions?.length && !d.margin?.restrictions?.length && (bank === 'finanto'
+      ? d.eligible === true && d.items?.some((i: any) => cltPaymentLimit(i.maxInstallmentValue))
+      : d.margin?.can_continue === true && !!cltPaymentLimit(d.margin.available_balance, d.margin.utilizable_balance));
+  });
+  // Multiple FACTA registrations require an explicit selection, never the first row.
+  return ['nossa', 'finanto', 'facta'].includes(bank) && eligible.length > 0 && (bank !== 'facta' || eligible.length === 1 && rows.filter(r => r.state === 'DATA').length === 1);
 }
 
 function safeReasons(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 30).map(v => cltPublicMessage(v)).filter(Boolean) : undefined; }

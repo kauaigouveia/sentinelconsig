@@ -8,16 +8,19 @@ import { cltResponseReasons } from '../../src/lib/cltRestrictions';
 import { V8CltSimulationService } from './v8CltSimulationService.js';
 import { cltOutcome, cltPublicMessage, type CltOutcome } from '../../src/lib/cltSimulationOutcome.js';
 import { logger } from '../logger.js';
+import { cltPaymentLimit } from './cltFinancialPolicy.js';
 
 export type ProductSimulationInput = {
   cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string; v8ConsultId?: string; v8PromoterId?: string;
   term: number; value: number; mode: 'Payment' | 'Liquid'; eligibility: boolean;
   bmgActorId?: string;
+  autoConditions?: boolean;
+  v8BirthDate?: string; v8Gender?: 'male' | 'female'; v8Email?: string;
 };
 export type ProductSimulationRow = {
   provider: string; institution: string; table?: string; state: 'OFFER' | 'PENDING' | 'ERROR' | 'DATA';
   message?: string; link?: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number;
-  simulationId?: string; data?: unknown;
+  simulationId?: string; data?: unknown; cetMonthly?: number; cetAnnual?: number;
   outcome?: CltOutcome;
 };
 const unwrap = (value: any) => value?.data && !value.key && (value.success !== undefined || value.status === undefined) ? value.data : value;
@@ -26,7 +29,8 @@ const positive = (value: unknown) => value !== null && value !== '' && Number.is
 const safeLink = (value: unknown) => typeof value === 'string' && /^https:\/\//i.test(value) ? value : undefined;
 
 export class ProductSimulationService {
-  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput, onRows?: (rows: ProductSimulationRow[]) => Promise<void>, providers?: readonly string[]) {
+  static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' | 'CREATE_CONSULT', input: ProductSimulationInput, onRows?: (rows: ProductSimulationRow[]) => Promise<void>, providers?: readonly string[]) {
+    if (action === 'CREATE_CONSULT') return { rows: product === 'CLT' && providers?.length === 1 && providers[0] === 'v8' ? await V8CltSimulationService.run(prisma, tenantId, action, input) : [], message: undefined };
     const factaInput = input;
     // FACTA can return an eight-digit employer registration. Other providers
     // require a full CNPJ, so discover their employment records automatically.
@@ -132,6 +136,8 @@ export class ProductSimulationService {
               rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: cltResponseReasons(margin).join(' · ') || `Sem margem elegível para o vínculo ${cnpj}. O banco não informou o motivo.` }); continue;
             }
             const tables = array(await nossaCall('GET', `/clt-loan/v1/list-rebates?service_type=${encodeURIComponent(service)}&margin_key=${encodeURIComponent(margin.margin_key)}`));
+            const requested = input.autoConditions ? cltPaymentLimit(margin.available_balance, margin.utilizable_balance) : input.value;
+            if (!requested) { rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', outcome: 'MISSING_DATA', message: 'A instituição não retornou limite de parcela válido. Nenhuma simulação foi enviada.' }); continue; }
             const seen = new Set<string>();
             for (const table of tables) {
               const term = Number(table.number_of_installments);
@@ -140,7 +146,7 @@ export class ProductSimulationService {
               if (!table.cod_tabela || (input.term && term !== input.term) || seen.has(key)) continue;
               seen.add(key);
               try {
-                const result = await nossaCall('POST', '/clt-loan/v1/simulate-loan', { margin_key: margin.margin_key, simulation_type: input.mode, employer_document: cnpj, requested_amount: input.value, service_type: service, cod_tabela: String(table.cod_tabela) });
+                const result = await nossaCall('POST', '/clt-loan/v1/simulate-loan', { margin_key: margin.margin_key, simulation_type: input.autoConditions ? 'Payment' : input.mode, employer_document: cnpj, requested_amount: requested, service_type: service, cod_tabela: String(table.cod_tabela) });
                 const amount = positive(result.disbursement_amount);
                 if (input.term && Number(result.num_periods) !== input.term) {
                   rows.push({ provider: 'Nossa Fintech', institution: service, table: table.name, state: 'PENDING', message: 'A API retornou outro prazo para esta tabela. Compare todos os prazos para visualizar essa condição.' }); continue;
@@ -181,10 +187,14 @@ export class ProductSimulationService {
           const items = array(simulation.items).filter(item => (!input.term || Number(item.term) === input.term) && (!input.employerDocument || item.employerDocument === input.employerDocument));
           if (!items.length) rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', message: 'Nenhuma condição elegível. Confira autorização, vínculo e prazo.' });
           for (const item of items) {
+            const requested = input.autoConditions ? cltPaymentLimit(item.maxInstallmentValue) : input.value;
+            if (!requested || input.autoConditions && (!Number.isFinite(Number(item.rate)) || Number(item.rate) <= 0 || !Number.isInteger(Number(item.term)) || Number(item.term) <= 0 || !(item.rule?.id || item.ruleId))) {
+              rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', outcome: 'MISSING_DATA', message: 'A FINANTO não retornou parcela máxima, taxa, regra e prazo válidos. Nenhum cálculo foi enviado.' }); continue;
+            }
             try {
               const result = await finantoCall(`/v3/loan-private-payroll-simulations/${encodeURIComponent(simulation.id)}/calculation`, {
-                type: input.mode === 'Payment' ? 1 : 2, identity: input.cpf, ruleId: item.rule?.id || item.ruleId, term: Number(item.term), rate: Number(item.rate),
-                ...(input.mode === 'Payment' ? { installmentValue: input.value } : { disbursementValue: input.value }),
+                type: input.autoConditions || input.mode === 'Payment' ? 1 : 2, identity: input.cpf, ruleId: item.rule?.id || item.ruleId, term: Number(item.term), rate: Number(item.rate),
+                ...(input.autoConditions || input.mode === 'Payment' ? { installmentValue: requested } : { disbursementValue: requested }),
                 registrationNumber: item.registrationNumber, employerDocument: item.employerDocument, employerName: item.employerName, hasInsurance: Boolean(item.hasInsurance), isInitialCalculation: true, selected: true,
               });
               const amount = positive(result.netValue);
