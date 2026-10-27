@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { SimulationOfferCard } from './SimulationOfferCard';
 import { normalizeCpf } from '../../lib/utils';
-type Props = { cpf: string; name: string; phone: string };
+type Props = { cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-transparent p-2 text-sm dark:border-slate-700';
 function options(min: number, max: number, scale = 1) { const first = Math.ceil(min * scale), last = Math.floor(max * scale); return Number.isFinite(first) && Number.isFinite(last) && last >= first && last - first <= 2000 ? Array.from({ length: last - first + 1 }, (_, index) => (first + index) / scale) : []; }
 export function ParanaCltSimulation(props: Props) {
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [links, setLinks] = useState<string[]>([]), [requests, setRequests] = useState<string[]>([]), [choices, setChoices] = useState<any[]>([]), [selected, setSelected] = useState(''), [offers, setOffers] = useState<any[]>([]);
   const [term, setTerm] = useState(''), [rate, setRate] = useState(''), [rule, setRule] = useState(''), [mode, setMode] = useState('INSTALLMENT'), [value, setValue] = useState(''), [margin, setMargin] = useState(''), [insurance, setInsurance] = useState(false);
   const controller = useRef<AbortController | null>(null);
+  useEffect(() => { if (busy || message || offers.length) props.onProgress?.({ busy, message, offers }); }, [busy, message, offers, props.onProgress]);
   useEffect(() => () => controller.current?.abort(), []);
   const choice = choices.find(row => row.receipt === selected), limits = choice?.limits;
   async function api(action: string, body: any, signal: AbortSignal) {

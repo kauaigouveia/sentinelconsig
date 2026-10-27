@@ -149,6 +149,7 @@ import { registerWorkbankRoutes, decorateWorkbankProposals } from './server/serv
 import { registerParanaRoutes } from './server/services/paranaRoutes.js';
 import { fgtsOfferReceipt, registerFgtsOfferSelection } from './server/services/fgtsOfferSelection.js';
 import { registerV8Routes } from './server/services/v8Routes.js';
+import { registerCltJourneyRoutes } from './server/services/cltJourneyRoutes.js';
 import { registerPresencaRoutes } from './server/services/presencaRoutes.js';
 import { registerBankPlaybookRoutes } from './server/services/bankPlaybookRoutes.js';
 import { openImportCredentials } from './server/services/partnerImportCredentials.js';
@@ -2122,6 +2123,7 @@ async function auditAndEnsureMasterUser() {
   registerParanaRoutes(app, prisma, getAuthSession);
   registerPresencaRoutes(app, prisma, getAuthSession);
   registerV8Routes(app, prisma, getAuthSession);
+  registerCltJourneyRoutes(app, prisma, getAuthSession);
   registerFgtsOfferSelection(app, prisma, getAuthSession);
   registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);
@@ -14740,6 +14742,8 @@ async function auditAndEnsureMasterUser() {
       const phone = String(req.body?.phone || '').replace(/\D/g, '');
       const employerDocument = String(req.body?.employerDocument || '').replace(/\D/g, '');
       const factaRegistration = req.body?.factaRegistration;
+      const v8ConsultId = req.body?.v8ConsultId, v8PromoterId = req.body?.v8PromoterId;
+      if ([v8ConsultId, v8PromoterId].some(value => value !== undefined && (typeof value !== 'string' || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value)))) return res.status(400).json({ error: 'Seleção V8 inválida.' });
       if (factaRegistration !== undefined && (typeof factaRegistration !== 'string' || factaRegistration.length > 100 || /[\u0000-\u001f\u007f]/.test(factaRegistration))) return res.status(400).json({ error: 'Matrícula FACTA inválida.' });
       const term = Number(req.body?.term);
       const value = Number(req.body?.value);
@@ -14750,7 +14754,7 @@ async function auditAndEnsureMasterUser() {
           (product === 'CLT' && (!name || !/^\d{10,11}$/.test(phone) || (employerDocument && ![8, 14].includes(employerDocument.length)) || (action === 'SIMULATE' && (!Number.isFinite(value) || value <= 0))))) {
         return res.status(400).json({ error: 'Revise CPF, dados do cliente, prazo e valor da simulação.' });
       }
-      const result = await ProductSimulationService.run(prisma, tenantId, product as 'CLT' | 'FGTS', action as 'AUTHORIZE' | 'SIMULATE' | 'REFRESH', { cpf, name, phone, employerDocument, factaRegistration, term, value, mode, eligibility, bmgActorId: `user:${session.user.id}` });
+      const result = await ProductSimulationService.run(prisma, tenantId, product as 'CLT' | 'FGTS', action as 'AUTHORIZE' | 'SIMULATE' | 'REFRESH', { cpf, name, phone, employerDocument, factaRegistration, v8ConsultId, v8PromoterId, term, value, mode, eligibility, bmgActorId: `user:${session.user.id}` });
       if (product === 'FGTS' && action === 'SIMULATE' && result.rows.some(row => row.state === 'OFFER')) {
         const promoter = await resolveBankPromoter(prisma, tenantId);
         return res.json({ ...result, rows: result.rows.map(row => row.state === 'OFFER' && Number(row.amount) > 0 ? { ...row, selectionReceipt: fgtsOfferReceipt(tenantId, session.user.id, cpf, promoter.id, row) } : row) });
@@ -18119,9 +18123,10 @@ async function auditAndEnsureMasterUser() {
       const action = req.params.action.toUpperCase();
       if (!['SIMULATE', 'REFRESH', 'AUTHORIZE', 'CONTRACTS'].includes(action)) return res.status(400).json({ error: 'Ação inválida.' });
       const raw = req.body || {};
+      if ([raw.v8ConsultId, raw.v8PromoterId].some(value => value !== undefined && (typeof value !== 'string' || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value)))) return res.status(400).json({ error: 'Seleção V8 inválida.' });
       if (raw.factaRegistration !== undefined && (typeof raw.factaRegistration !== 'string' || raw.factaRegistration.length > 100 || /[\u0000-\u001f\u007f]/.test(raw.factaRegistration))) return res.status(400).json({ error: 'Matrícula FACTA inválida.' });
       if (action === 'CONTRACTS' && raw.product !== 'INSS') return res.status(400).json({ error: 'Consulta de contratos disponível somente para INSS.' });
-      const input = { illiterate:portabilityReviewMetadata(raw).illiterate,state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:String(raw.sex||'').slice(0,1),originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10),product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, bmgActorId: "partner:" + context.access.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), factaRegistration: raw.factaRegistration as string | undefined, eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
+      const input = { illiterate:portabilityReviewMetadata(raw).illiterate,state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:String(raw.sex||'').slice(0,1),originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10),product: String(raw.product), operation: String(raw.operation || 'NEW'), cpf: String(raw.cpf || '').replace(/\D/g, ''), name: String(raw.name || '').trim().slice(0, 200), phone: String(raw.phone || '').replace(/\D/g, ''), birthDate: String(raw.birthDate || ''), benefitNumber: String(raw.benefitNumber || '').replace(/\D/g, ''), benefitType: Number(raw.benefitType), mode: raw.mode, term: Number(raw.term), value: Number(raw.value), rate: raw.rate ? Number(raw.rate) : undefined, debt: Number(raw.debt), originalTerm: Number(raw.originalTerm), remainingTerm: Number(raw.remainingTerm), originalInstallment: Number(raw.originalInstallment), originalBank: String(raw.originalBank || ''), originalContract: String(raw.originalContract || '').trim().slice(0, 100), happyPlan: String(raw.happyPlan || '').slice(0, 100), partnerId: context.partner.id, bmgActorId: "partner:" + context.access.id, c6Contract: String(raw.c6Contract || "").trim().slice(0, 100), income: Number(raw.income), contract: String(raw.contract || ''), employerDocument: String(raw.employerDocument || '').replace(/\D/g, ''), factaRegistration: raw.factaRegistration as string | undefined, v8ConsultId: raw.v8ConsultId as string | undefined, v8PromoterId: raw.v8PromoterId as string | undefined, eligibility: true, legalRepresentative: raw.legalRepresentative === true, hasInsurance: raw.hasInsurance === true };
       if (!isValidCpf(input.cpf) || !['INSS', 'CLT', 'FGTS'].includes(input.product) || !['Payment', 'Liquid'].includes(input.mode) || !Number.isInteger(input.term) || input.term < (input.product === 'CLT' ? 0 : 1) || input.term > 120) return res.status(400).json({ error: 'Informe CPF, produto e prazo válidos.' });
       if (action === 'SIMULATE' && input.product !== 'FGTS' && (!Number.isFinite(input.value) || input.value <= 0)) return res.status(400).json({ error: 'Informe um valor positivo para simular.' });
       if (input.product === 'CLT' && (!input.name || !/^\d{10,11}$/.test(input.phone) || (input.employerDocument && ![8, 14].includes(input.employerDocument.length)))) return res.status(400).json({ error: 'Informe nome, telefone e inscrição do empregador válidos.' });
@@ -18140,7 +18145,7 @@ async function auditAndEnsureMasterUser() {
         const existing = await prisma.simulationRequest.findUnique({ where: { portalAttemptKey: `${context.tenant.id}:${context.partner.id}:${attemptKey}` } });
         if (existing) {
           const saved = existing.customerData as any;
-          if (['cpf', 'product', 'operation', 'mode', 'term', 'value', 'benefitNumber', 'employerDocument', 'factaRegistration'].some(key => saved?.[key] !== (input as any)[key])) return res.status(409).json({ error: 'Identificador já utilizado para outra simulação. Faça uma nova consulta.' });
+          if (['cpf', 'product', 'operation', 'mode', 'term', 'value', 'benefitNumber', 'employerDocument', 'factaRegistration', 'v8ConsultId', 'v8PromoterId'].some(key => saved?.[key] !== (input as any)[key])) return res.status(409).json({ error: 'Identificador já utilizado para outra simulação. Faça uma nova consulta.' });
           return res.json({ rows: saved?.offers || [], simulationId: existing.id, message: 'Simulação já registrada.' });
         }
       }

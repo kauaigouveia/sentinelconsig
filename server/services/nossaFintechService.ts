@@ -1,3 +1,4 @@
+import { isJourneyExecution, journeyFetch } from './cltJourneyDeadline.js';
 import { decodeDaycoval } from './daycovalWorkbook.js';
 import { NOSSA_WORKBOOK_KEY, nossaWorkbookTables, simulateNossaWorkbook } from './nossaFintechWorkbook.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
@@ -104,7 +105,7 @@ export class NossaFintechService {
     const cached = tokenCache.get(integrationCacheKey(tenantId));
     if (!refresh && cached && cached.expiresAt > Date.now()) return cached.token;
     const credentials = await this.credentials(prisma, tenantId);
-    const response = await fetch(`${API_BASE}/auth/login`, {
+    const response = await journeyFetch(`${API_BASE}/auth/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ cpf: credentials.cpf, promot_id: credentials.promoterId, password: credentials.password }),
       signal: AbortSignal.timeout(30_000),
@@ -137,7 +138,7 @@ export class NossaFintechService {
     this.validateEndpoint(endpoint);
     const hasBody = normalizedMethod !== 'GET' && body !== undefined;
     const send = async (token: string) => {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await journeyFetch(`${API_BASE}${endpoint}`, {
         method: normalizedMethod,
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(hasBody ? { 'Content-Type': 'application/json' } : {}) },
         ...(hasBody ? { body: JSON.stringify(body) } : {}),
@@ -147,7 +148,7 @@ export class NossaFintechService {
     };
     let token = await this.token(prisma, tenantId);
     let result = await send(token);
-    if (result.response.status === 401) {
+    if (result.response.status === 401 && !isJourneyExecution()) {
       tokenCache.delete(integrationCacheKey(tenantId));
       token = await this.token(prisma, tenantId, true);
       result = await send(token);

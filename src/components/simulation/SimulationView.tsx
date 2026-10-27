@@ -43,6 +43,7 @@ import { PartnerSimulationMonthlyReport } from './PartnerSimulationMonthlyReport
 import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
 import { SpreadsheetPortRefinWorkspace } from './SpreadsheetPortRefinWorkspace';
 import { ProductSimulationModal } from './ProductSimulationModal';
+import { CltJourneyWorkspace } from './CltJourneyWorkspace';
 import { HappyInssSimulationModal } from './HappyInssSimulationModal';
 import { HappyCltSimulationModal } from './HappyCltSimulationModal';
 import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
@@ -65,6 +66,7 @@ const toLocalDateKey = (value: string): string => {
 
 const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDetail, premium = false }) => {
   const activeUser = StorageService.getActiveUser();
+  const journeyScope = `${StorageService.getCurrentTenantId()}:${activeUser?.id || ''}`;
   const canSetInitialStatus = hasPermission(activeUser?.role, activeUser?.customPermissions, 'simulations.update');
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
   const [presentation, setPresentation] = useState<RecordPresentation>('cards');
@@ -2572,7 +2574,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         }}
       />
 
-      {(['CLT','FGTS'] as const).map(product => <ProductSimulationModal key={product} partners={partners} onSuccess={async () => { await loadData(); }} product={product} isOpen={multiProduct===product} onBack={()=>setIsFlowSelectorOpen(true)} onClose={() => setMultiProduct(null)} onHappyClt={happySimulationAccessEnabled ? () => { setMultiProduct(null); setIsHappyCltModalOpen(true); } : undefined} />)}
+      <CltJourneyWorkspace key={journeyScope} scope={journeyScope} partners={partners} happyEnabled={happySimulationAccessEnabled} onSuccess={async () => { await loadData(); }} isOpen={multiProduct === 'CLT'} onBack={() => { setMultiProduct(null); setIsFlowSelectorOpen(true); }} onClose={() => setMultiProduct(null)} />
+      <ProductSimulationModal partners={partners} onSuccess={async () => { await loadData(); }} product="FGTS" isOpen={multiProduct === 'FGTS'} onBack={() => setIsFlowSelectorOpen(true)} onClose={() => setMultiProduct(null)} />
 
       {/* Modal Simulação Happy INSS */}
       <HappyInssSimulationModal

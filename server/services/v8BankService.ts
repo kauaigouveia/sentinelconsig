@@ -1,3 +1,4 @@
+import { journeyFetch } from './cltJourneyDeadline.js';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { bankPromoterConfigKey, resolveBankPromoter } from './bankPromoterConfig.js';
 
@@ -74,7 +75,7 @@ export class V8BankService {
     if (!force && cached && cached.expires > Date.now()) return { token: cached.token, config };
     let response: Response;
     try {
-      response = await fetch(AUTH, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000), headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      response = await journeyFetch(AUTH, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000), headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
         body: new URLSearchParams({ grant_type: 'password', username: config.username, password: config.password, audience: config.audience, scope: 'offline_access', client_id: config.clientId }) });
     } catch { throw new Error('Não foi possível alcançar a autenticação V8. Tente novamente em instantes.'); }
     const data = await response.json().catch(() => null), ttl = Number(data?.expires_in);
@@ -91,7 +92,7 @@ export class V8BankService {
       ...(config.cltEnabled ? [{ product: 'CLT', path: '/private-consignment/simulation/configs?provider=QI', field: 'configs' }] : []),
     ]).map(async check => {
       try {
-        const response = await fetch(`${BASE}${check.path}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20000) });
+        const response = await journeyFetch(`${BASE}${check.path}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20000) });
         const data = await response.json().catch(() => null);
         const rows = Array.isArray(data) ? data : data?.[check.field] ?? data?.data?.[check.field];
         const detail = JSON.stringify(data?.errors || data?.detail || data?.message || '').toLowerCase();

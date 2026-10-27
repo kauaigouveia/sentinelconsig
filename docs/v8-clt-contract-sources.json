@@ -1,0 +1,364 @@
+{
+  "checkedOn": "2026-10-24",
+  "method": "Public official HTML via HTTPS, parsed without scripts; documentation connector used as a second index; no bank calls",
+  "pages": [
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/termo-de-consentimento",
+      "status": 200,
+      "title": "Termo de Consentimento",
+      "sha256": "ca2cef088e075325a6c3e09ce51b9a38cbb2813dbabedc6a4f1e93e74bd44a31",
+      "headings": [
+        {
+          "id": "como-esta-etapa-entra-no-fluxo",
+          "text": "Como esta etapa entra no fluxo"
+        },
+        {
+          "id": "o-que-guardar",
+          "text": "O que guardar"
+        },
+        {
+          "id": "endpoint-para-gerar-o-termo-de-consentimento",
+          "text": "Endpoint para gerar o termo de consentimento"
+        },
+        {
+          "id": "body-da-requisição",
+          "text": "Body da Requisição"
+        },
+        {
+          "id": "parâmetros-da-requisição",
+          "text": "Parâmetros da Requisição"
+        },
+        {
+          "id": "resposta",
+          "text": "Resposta"
+        },
+        {
+          "id": "endpoint-para-listar-os-termos-de-consentimento-gerados-pelo-usuário",
+          "text": "Endpoint para listar os termos de consentimento gerados pelo usuário"
+        },
+        {
+          "id": "parâmetros-da-requisição-1",
+          "text": "Parâmetros da Requisição:"
+        },
+        {
+          "id": "resposta-1",
+          "text": "Resposta"
+        },
+        {
+          "id": "parâmetros-da-resposta",
+          "text": "Parâmetros da Resposta:"
+        },
+        {
+          "id": "endpoint-para-autorizar-o-termo-de-consentimento",
+          "text": "Endpoint para autorizar o termo de consentimento"
+        },
+        {
+          "id": "parâmetros-da-requisição-2",
+          "text": "Parâmetros da Requisição"
+        },
+        {
+          "id": "resposta-2",
+          "text": "Resposta"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/criação-da-proposta-crédito-clt",
+      "status": 200,
+      "title": "Criação da Proposta Crédito CLT",
+      "sha256": "0c096dc734793c6723f38e430f88da5a0b8efdae970b8b09a912f62f54e85492",
+      "headings": [
+        {
+          "id": "como-esta-etapa-entra-no-fluxo",
+          "text": "Como esta etapa entra no fluxo"
+        },
+        {
+          "id": "pré-requisitos",
+          "text": "Pré-requisitos"
+        },
+        {
+          "id": "o-que-guardar",
+          "text": "O que guardar"
+        },
+        {
+          "id": "endpoint-para-criar-operação-crédito-clt",
+          "text": "Endpoint para criar operação crédito CLT"
+        },
+        {
+          "id": "body-da-requisição",
+          "text": "Body da Requisição"
+        },
+        {
+          "id": "parâmetros-da-requisição",
+          "text": "Parâmetros da Requisição"
+        },
+        {
+          "id": "resposta",
+          "text": "Resposta"
+        },
+        {
+          "id": "parâmetros-da-response",
+          "text": "Parâmetros da Response"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/visão-geral-do-fluxo-clt",
+      "status": 200,
+      "title": "Visão geral do fluxo CLT",
+      "sha256": "c4d5adfc752ff27613222bb616498ffc3a857e78a2f542e08a4550913b981991",
+      "headings": [
+        {
+          "id": "fluxo-recomendado",
+          "text": "Fluxo recomendado"
+        },
+        {
+          "id": "antes-de-começar",
+          "text": "Antes de começar"
+        },
+        {
+          "id": "passo-a-passo-da-integração",
+          "text": "Passo a passo da integração"
+        },
+        {
+          "id": "regra-mais-importante-do-clt",
+          "text": "Regra mais importante do CLT"
+        },
+        {
+          "id": "status-do-consentimento",
+          "text": "Status do consentimento"
+        },
+        {
+          "id": "próximas-páginas",
+          "text": "Próximas páginas"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/checklist-de-integração-clt",
+      "status": 200,
+      "title": "Checklist de integração CLT",
+      "sha256": "5ed6f218d193f582d4b188e873c9e0e5964404f226ab7c8d00aa85af7f7166dd",
+      "headings": [
+        {
+          "id": "credenciais-e-autenticação",
+          "text": "Credenciais e autenticação"
+        },
+        {
+          "id": "webhooks",
+          "text": "Webhooks"
+        },
+        {
+          "id": "consentimento-e-margem",
+          "text": "Consentimento e margem"
+        },
+        {
+          "id": "simulação",
+          "text": "Simulação"
+        },
+        {
+          "id": "criação-da-operação",
+          "text": "Criação da operação"
+        },
+        {
+          "id": "pós-criação",
+          "text": "Pós-criação"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/autenticação",
+      "status": 200,
+      "title": "Autenticação",
+      "sha256": "6b39fd36a2f3d31991af2054af2cde866cb526be4df41fe14f5c90ec05b24ecb",
+      "headings": [
+        {
+          "id": "parâmetros-requeridos",
+          "text": "Parâmetros Requeridos"
+        },
+        {
+          "id": "processo-de-obtenção-das-credenciais",
+          "text": "Processo de Obtenção das Credenciais"
+        },
+        {
+          "id": "exemplo-de-requisição-de-autenticação",
+          "text": "Exemplo de Requisição de Autenticação"
+        },
+        {
+          "id": "resposta-de-autenticação",
+          "text": "Resposta de Autenticação"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/webhooks",
+      "status": 200,
+      "title": "Webhooks",
+      "sha256": "98975fc7da843bada1412510230eb1d5d3295564daa9e4c833ac855d3c4b8cfc",
+      "headings": []
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/simulação-crédito-clt",
+      "status": 200,
+      "title": "Simulação Crédito CLT",
+      "sha256": "70a5a861c4de026dca5a08b28cfe6dc0a0ade1b93fd78585ecd980376ca7c838",
+      "headings": [
+        {
+          "id": "como-esta-etapa-entra-no-fluxo",
+          "text": "Como esta etapa entra no fluxo"
+        },
+        {
+          "id": "pré-requisitos",
+          "text": "Pré-requisitos"
+        },
+        {
+          "id": "o-que-guardar",
+          "text": "O que guardar"
+        },
+        {
+          "id": "endpoint-consultar-as-taxas-disponiveis",
+          "text": "Endpoint consultar as taxas disponiveis"
+        },
+        {
+          "id": "resposta",
+          "text": "Resposta"
+        },
+        {
+          "id": "parâmetros-da-response",
+          "text": "Parâmetros da Response"
+        },
+        {
+          "id": "endpoint-pré-calcular-parcelas",
+          "text": "Endpoint pré-calcular parcelas"
+        },
+        {
+          "id": "body-da-requisição",
+          "text": "Body da Requisição"
+        },
+        {
+          "id": "parâmetros-da-requisição",
+          "text": "Parâmetros da Requisição"
+        },
+        {
+          "id": "uso-no-fluxo",
+          "text": "Uso no fluxo"
+        },
+        {
+          "id": "endpoint-criar-simulação",
+          "text": "Endpoint criar simulação"
+        },
+        {
+          "id": "body-da-requisição-1",
+          "text": "Body da Requisição"
+        },
+        {
+          "id": "parâmetros-da-requisição-1",
+          "text": "Parâmetros da Requisição"
+        },
+        {
+          "id": "resposta-1",
+          "text": "Resposta"
+        },
+        {
+          "id": "parâmetros-da-response-1",
+          "text": "Parâmetros da Response"
+        },
+        {
+          "id": "próximo-passo",
+          "text": "Próximo passo"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/listar-operações-crédito-clt",
+      "status": 200,
+      "title": "Listar Operações Crédito CLT",
+      "sha256": "10c7af5abba931c7746f83807a8b5b28862441195d4a73fbf118469e984f86db",
+      "headings": [
+        {
+          "id": "endpoint-para-listar-operações-de-crédito-clt",
+          "text": "Endpoint para listar operações de crédito CLT"
+        },
+        {
+          "id": "exemplo-de-requisição",
+          "text": "Exemplo de requisição"
+        },
+        {
+          "id": "parâmetros-da-requisição",
+          "text": "Parâmetros da Requisição"
+        },
+        {
+          "id": "resposta",
+          "text": "Resposta"
+        },
+        {
+          "id": "endpoint-para-visualizar-os-dados-de-uma-operação-crédito-clt",
+          "text": "Endpoint para visualizar os dados de uma operação crédito CLT"
+        },
+        {
+          "id": "resposta-1",
+          "text": "Resposta"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/resolvendo-pendências",
+      "status": 200,
+      "title": "Resolvendo pendências",
+      "sha256": "6cd13c1ea96fb9b01e955f9cc1f257b029e0cff99589f6849a1180cf35f5e5b7",
+      "headings": []
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/cancelar-operação-clt",
+      "status": 200,
+      "title": "Cancelar Operação CLT",
+      "sha256": "07aaf4f92869996136c3a846e1fc16cda018b38d73b58b335cd5299444e8cec4",
+      "headings": [
+        {
+          "id": "como-esta-etapa-entra-no-fluxo",
+          "text": "Como esta etapa entra no fluxo"
+        },
+        {
+          "id": "antes-de-cancelar",
+          "text": "Antes de cancelar"
+        },
+        {
+          "id": "endpoint-para-cancelar-operação-de-crédito-clt",
+          "text": "Endpoint para cancelar operação de crédito CLT"
+        },
+        {
+          "id": "exemplo-de-requisição",
+          "text": "Exemplo de requisição"
+        },
+        {
+          "id": "parâmetros-da-requisição",
+          "text": "Parâmetros da Requisição"
+        }
+      ]
+    },
+    {
+      "url": "https://docs.v8sistema.com/guide/crédito-privado-clt/referência-de-status-e-webhooks-clt",
+      "status": 200,
+      "title": "Referência de status e webhooks CLT",
+      "sha256": "6ac1304aadff15144da83478ccbd8c6d7c0f966607bac4be5a06ad5225689f2c",
+      "headings": [
+        {
+          "id": "webhook-de-consultamargem",
+          "text": "Webhook de consulta/margem"
+        },
+        {
+          "id": "status-de-consentimento-e-margem",
+          "text": "Status de consentimento e margem"
+        },
+        {
+          "id": "webhook-de-operação",
+          "text": "Webhook de operação"
+        },
+        {
+          "id": "status-de-operação",
+          "text": "Status de operação"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # V8 Digital — conexão inicial
 
+Atualização CLT de 23/10/2026: consulte [auditoria FACTA/V8](clt-facta-v8-audit.md). A branch de correção acrescenta consulta de consentimentos já autorizados e simulação CLT ao fluxo compartilhado. A jornada de criação/aceite de novos termos e a contratação permanecem pendentes; as seções abaixo registram a entrega inicial e diagnósticos históricos, sem provar habilitação atual da conta.
+
 ## Entrega
 
 Aba em Bancos & Promotoras → V8 Digital. Configuração por empresa, promotora e ambiente; credenciais criptografadas com AES-256-GCM e contexto autenticado da empresa/promotora. Senhas, client_id, audience e tokens não retornam ao navegador. Campos vazios preservam somente o valor do ambiente selecionado.

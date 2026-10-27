@@ -1,3 +1,4 @@
+import { isJourneyExecution } from './cltJourneyDeadline.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import type { PrismaClient } from '@prisma/client';
 import { FactaBankService } from './factaBankService';
@@ -45,7 +46,7 @@ export class FactaSimulationService {
         body: body === undefined ? undefined : form ? new URLSearchParams(body as Record<string, string>).toString() : JSON.stringify(body),
       });
       // Only read requests can be safely repeated; authorization sends a message.
-      if (response.status === 401 && retry && body === undefined) {
+      if (response.status === 401 && retry && body === undefined && !isJourneyExecution()) {
         FactaBankService.invalidateTokenCache(tenantId);
         return await this.request(prisma, tenantId, path, query, undefined, false, false);
       }

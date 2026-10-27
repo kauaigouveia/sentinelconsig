@@ -74,4 +74,19 @@ describe('FACTA CLT client → conditions → results', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     expect(screen.queryByRole('button', { name: 'Vínculo selecionado' })).toBeNull();
   });
+  it('keeps V8 consent selection separate from FACTA registration across steps', async () => {
+    refreshRows = [...employments, ...['consult-a', 'consult-b'].map(consultId => ({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'DATA', data: { v8: { consultId, promoterId: 'promoter-v8' }, margin: { name: 'Pessoa sintética', available_balance: 1900 } } }))];
+    await prepare();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usar este vínculo na simulação' })[1]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usar esta consulta V8' })[1]);
+    fireEvent.change(screen.getByLabelText('Parcela desejada (R$)'), { target: { value: '1.423,98' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar ao cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByRole('button', { name: 'Consulta V8 selecionada' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vínculo selecionado' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Consultar ofertas' }));
+    await screen.findByText('Matrícula recusada pelo banco');
+    expect(requests.at(-1).body).toMatchObject({ v8ConsultId: 'consult-b', v8PromoterId: 'promoter-v8', factaRegistration: '00017000310042', value: 1423.98 });
+    expect(screen.getByText('Oferta disponível')).toBeTruthy();
+  });
 });

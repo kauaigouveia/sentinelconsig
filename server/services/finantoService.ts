@@ -1,3 +1,4 @@
+import { journeyFetch } from './cltJourneyDeadline.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import crypto from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
@@ -179,7 +180,7 @@ export class FinantoService {
     const apiKey = await this.getApiKey(prisma, tenantId);
     const isFileApi = endpoint.startsWith('/v3/files/');
     const url = `${isFileApi ? FILES_BASE : API_BASE}${endpoint}`;
-    const response = await fetch(url, {
+    const response = await journeyFetch(url, {
       method: normalizedMethod,
       headers: { apikey: apiKey, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       ...(body === undefined ? {} : { body: JSON.stringify(finantoCalculationBody(endpoint, body)) }),

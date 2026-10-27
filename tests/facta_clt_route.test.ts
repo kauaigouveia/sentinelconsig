@@ -17,7 +17,7 @@ function callback(route: string, dependencies: Record<string, any>) {
   const js = ts.transpileModule(`(${text})`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   return new Function(...Object.keys(dependencies), `return ${js}`)(...Object.values(dependencies));
 }
-const payload = { product: 'CLT', cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', employerDocument: '12345678000100', factaRegistration: '00017000310042', mode: 'Payment', value: 1423.98, term: 24, eligibility: true, attemptKey: 'synthetic-attempt-00001' };
+const payload = { product: 'CLT', cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', employerDocument: '12345678000100', factaRegistration: '00017000310042', v8ConsultId: '00000000-0000-4000-8000-000000000001', v8PromoterId: 'v8-promoter', mode: 'Payment', value: 1423.98, term: 24, eligibility: true, attemptKey: 'synthetic-attempt-00001' };
 let session: any, permitted: boolean, run: ReturnType<typeof vi.fn>, record: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   session = { user: { id: 'user-a', role: 'SUPORTE', tenantId: 'tenant-a' }, effectiveTenantId: 'tenant-a' }; permitted = true;
@@ -38,7 +38,7 @@ describe('CLT route forwarding over HTTP, all business dependencies mocked', () 
   it.each(['/api/simulations/products/clt/simulate', '/api/partner-portal/simulations/simulate'])('forwards registration and requested installment at %s', async path => {
     expect((await request(app()).post(path).send(payload)).status).toBe(200);
     const selected = path.includes('partner-portal') ? run.mock.calls[0][2] : run.mock.calls[0][4];
-    expect(selected).toMatchObject({ employerDocument: payload.employerDocument, factaRegistration: payload.factaRegistration, value: 1423.98, mode: 'Payment' });
+    expect(selected).toMatchObject({ employerDocument: payload.employerDocument, factaRegistration: payload.factaRegistration, v8ConsultId: payload.v8ConsultId, v8PromoterId: payload.v8PromoterId, value: 1423.98, mode: 'Payment' });
     expect(run.mock.calls[0][1]).toBe('tenant-a');
   });
   it.each([1, {}, 'A'.repeat(101), 'bad\nidentifier'])('rejects malformed registration %s before providers/persistence', async factaRegistration => {
@@ -51,5 +51,9 @@ describe('CLT route forwarding over HTTP, all business dependencies mocked', () 
     session = { user: { id: 'user-a' } }; permitted = false;
     expect((await request(app()).post('/api/simulations/products/clt/simulate').send(payload)).status).toBe(403);
     expect(run).not.toHaveBeenCalled();
+  });
+  it.each(['v8ConsultId', 'v8PromoterId'])('rejects malformed %s before provider dispatch', async field => {
+    for (const path of ['/api/simulations/products/clt/simulate', '/api/partner-portal/simulations/simulate']) expect((await request(app()).post(path).send({ ...payload, [field]: { injected: true } })).status).toBe(400);
+    expect(run).not.toHaveBeenCalled(); expect(record).not.toHaveBeenCalled();
   });
 });
