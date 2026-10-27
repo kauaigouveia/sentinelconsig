@@ -6,7 +6,7 @@ import { CltJourneyService } from '../server/services/cltJourneyService';
 import { registerCltJourneyRoutes } from '../server/services/cltJourneyRoutes';
 import { ProductSimulationService } from '../server/services/productSimulationService';
 const id = '00000000-0000-4000-8000-000000000001';
-const input = { cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 1423.98, term: 24, mode: 'Payment' as const, eligibility: true };
+const input = { v8BirthDate: '1990-02-28', v8Email: 'synthetic@example.invalid', v8Gender: 'male' as const, cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 1423.98, term: 24, mode: 'Payment' as const, eligibility: true };
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 import { beforeEach } from 'vitest';
 beforeEach(() => vi.stubEnv('JWT_SECRET', 'synthetic-journey-secret'));

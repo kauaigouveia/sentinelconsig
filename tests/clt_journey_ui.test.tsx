@@ -11,9 +11,10 @@ it.each([390,1440])('submits the actual CLT form at width %s with only identity,
   vi.stubGlobal('innerWidth',width);
   const fetcher=vi.fn(async(_url:string,_options:any)=>new Response(JSON.stringify(snapshot)+'\n',{headers:{'content-type':'application/x-ndjson'}}));vi.stubGlobal('fetch',fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-synthetic:user-synthetic" onClose={()=>{}}/>);
-  for(const [label,value] of [['CPF','52998224725'],['Nome completo','Pessoa sintética'],['Telefone com DDD','11999999999']]) fireEvent.change(screen.getByLabelText(label),{target:{value}});
+  for(const [label,value] of [['CPF','52998224725'],['Nome completo','Pessoa sintética'],['Telefone com DDD','11999999999'],['Data de nascimento','28021990'],['E-mail do trabalhador','synthetic@example.invalid']]) fireEvent.change(screen.getByLabelText(label),{target:{value}});
+  fireEvent.change(screen.getByLabelText('Sexo informado pelo trabalhador'),{target:{value:'male'}});
   const button=screen.getByRole('button',{name:'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES'}),form=button.closest('form')!;
-  expect(form.checkValidity()).toBe(true);expect(form.querySelectorAll('[required]')).toHaveLength(3);
+  expect(form.checkValidity()).toBe(true);expect(form.querySelectorAll('[required]')).toHaveLength(6);
   expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull();expect(screen.queryByLabelText('Prazo (meses)')).toBeNull();
   fireEvent.click(button);await screen.findByText('Ofertas disponíveis');
   const body=JSON.parse(fetcher.mock.calls[0][1].body);expect(body.action).toBe('REFRESH');expect(body.value).toBeUndefined();expect(body.term).toBeUndefined();
@@ -27,11 +28,15 @@ it('uses a single primary action, displays offers independently, compares condit
   fireEvent.change(screen.getByLabelText('CPF'), { target: { value: '52998224725' } });
   fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Pessoa sintética' } });
   fireEvent.change(screen.getByLabelText('Telefone com DDD'), { target: { value: '11999999999' } });
+  fireEvent.change(screen.getByLabelText('Data de nascimento'),{target:{value:'28021990'}});
+  fireEvent.change(screen.getByLabelText('E-mail do trabalhador'),{target:{value:'synthetic@example.invalid'}});
+  fireEvent.change(screen.getByLabelText('Sexo informado pelo trabalhador'),{target:{value:'male'}});
   expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES' }));
   await screen.findByText('Ofertas disponíveis'); await screen.findByText('Aguardando autorização do cliente');
   expect(fetcher).toHaveBeenCalledTimes(1);
   const sent = JSON.parse(fetcher.mock.calls[0][1].body); expect(sent.value).toBeUndefined(); expect(sent.term).toBeUndefined(); expect(sent.action).toBe('REFRESH'); expect(sent.phone).toBe('11999999999');
+  expect(sent).toMatchObject({v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male'});
   fireEvent.click(screen.getByLabelText('Comparar A')); fireEvent.click(screen.getByLabelText('Comparar B'));
   fireEvent.click(screen.getByRole('button', { name: 'Comparar selecionadas (2)' }));
   expect(screen.getByText('Comparação de condições')).toBeTruthy();
@@ -54,7 +59,8 @@ it('requires state recovery after an incomplete transport, without issuing anoth
   const fetcher = vi.fn(async (_url, options) => new Response(options?.method === 'POST' ? JSON.stringify({ ...snapshot, running: true }) + '\n' : JSON.stringify(snapshot)));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
-  for (const [label, value] of [['CPF', '52998224725'], ['Nome completo', 'Pessoa sintética'], ['Telefone com DDD', '11999999999']]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  for (const [label, value] of [['CPF', '52998224725'], ['Nome completo', 'Pessoa sintética'], ['Telefone com DDD', '11999999999'], ['Data de nascimento', '28021990'], ['E-mail do trabalhador', 'synthetic@example.invalid']]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.change(screen.getByLabelText('Sexo informado pelo trabalhador'),{target:{value:'male'}});
   fireEvent.click(screen.getByRole('button', { name: 'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES' }));
   await screen.findByText(/A conexão de acompanhamento terminou/);
   fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }));
@@ -82,12 +88,13 @@ it('recovers after a full remount using only an opaque tenant/actor-scoped ident
 it('restores the authorized customer from the encrypted server snapshot without financial parameters or another POST', async () => {
   const id = '00000000-0000-4000-8000-000000000001';
   sessionStorage.setItem('sentinel:clt-execution:tenant-a:user-a', id);
-  const fetcher = vi.fn(async () => new Response(JSON.stringify({ ...snapshot, executionId: id, customer: { cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 0, term: 0, mode: 'Payment' } })));
+  const fetcher = vi.fn(async () => new Response(JSON.stringify({ ...snapshot, executionId: id, customer: { v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male', cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 0, term: 0, mode: 'Payment' } })));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
   await screen.findByText('Ofertas disponíveis'); fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }));
   expect((screen.getByLabelText('CPF') as HTMLInputElement).value.replace(/\D/g, '')).toBe('52998224725');
   expect((screen.getByLabelText('Telefone com DDD') as HTMLInputElement).value).toBe('11999999999');
+  expect((screen.getByLabelText('Data de nascimento') as HTMLInputElement).value).toBe('28/02/1990');expect((screen.getByLabelText('E-mail do trabalhador') as HTMLInputElement).value).toBe('synthetic@example.invalid');expect((screen.getByLabelText('Sexo informado pelo trabalhador') as HTMLSelectElement).value).toBe('male');
   expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull(); expect(fetcher).toHaveBeenCalledTimes(1);
 });
 

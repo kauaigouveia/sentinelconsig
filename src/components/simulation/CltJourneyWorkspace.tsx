@@ -3,6 +3,7 @@ import { V8CltActions } from './V8CltActions';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Clock, ShieldCheck, X } from 'lucide-react';
 import { CurrencyInput } from '../common/CurrencyInput';
+import { parseCltBirthDate, displayCltBirthDate, maskCltBirthDate, isCltEmail, isCltGender } from '../../lib/cltCustomerData';
 import { formatCpf, isValidCpf } from '../../lib/utils';
 import { journeyStatus, readJourneyStream, type JourneySnapshot, type JourneyProvider } from '../../lib/cltJourney';
 import { cltPublicMessage, cltOutcome, cltOutcomeLabels } from '../../lib/cltSimulationOutcome';
@@ -67,7 +68,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
 
   function restoreCustomer(saved: JourneySnapshot) {
     const c = saved.customer;
-    if (c) setForm(old => ({ ...old, cpf: formatCpf(c.cpf), name: c.name, phone: c.phone, employerDocument: c.employerDocument || '', value: c.value ? String(c.value) : '', term: String(c.term || 0), mode: c.mode, factaRegistration: c.factaRegistration || '', v8ConsultId: c.v8ConsultId || '', v8PromoterId: c.v8PromoterId || '' }));
+    if (c) setForm(old => ({ ...old, cpf: formatCpf(c.cpf), name: c.name, phone: c.phone, employerDocument: c.employerDocument || '', value: c.value ? String(c.value) : '', term: String(c.term || 0), mode: c.mode, factaRegistration: c.factaRegistration || '', v8ConsultId: c.v8ConsultId || '', v8PromoterId: c.v8PromoterId || '', v8BirthDate: displayCltBirthDate(c.v8BirthDate || ''), v8Email: c.v8Email || '', v8Gender: c.v8Gender || '' }));
   }
   async function recover() {
     if (!last.current || locked.current) return;
@@ -83,9 +84,12 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     if (locked.current) return;
     if (uncertainTransport.current) { setPage('TRACKING'); setError('Recupere o acompanhamento e confira o estado antes de iniciar outra operação.'); return; }
     const cpf = form.cpf.replace(/\D/g, ''), phone = form.phone.replace(/\D/g, '');
+    const birthDate = parseCltBirthDate(form.v8BirthDate);
+    if (!birthDate) { setError('Informe uma data de nascimento real em DD/MM/AAAA.'); setPage('CLIENT'); return; }
+    if (!isCltEmail(form.v8Email.trim()) || !isCltGender(form.v8Gender)) { setError('Preencha o e-mail válido e o sexo informado pelo trabalhador.'); setPage('CLIENT'); return; }
     const financial = action === 'SIMULATE';
     if (!isValidCpf(cpf) || !form.name.trim() || !/^\d{10,11}$/.test(phone) || financial && form.value && (!Number.isFinite(Number(form.value)) || Number(form.value) <= 0) || form.employerDocument && ![8, 14].includes(form.employerDocument.replace(/\D/g, '').length)) { setError('Revise CPF, nome, telefone e empregador. Se informar um filtro de valor para calcular, use um valor positivo.'); return; }
-    const body = { ...form, ...selection, cpf, phone, name: form.name.trim(), employerDocument: form.employerDocument.replace(/\D/g, ''), value: financial && form.value ? Number(form.value) : undefined, term: financial ? Number(form.term) || undefined : undefined, provider, action };
+    const body = { ...form, ...selection, cpf, phone, name: form.name.trim(), v8BirthDate: birthDate, v8Email: form.v8Email.trim(), employerDocument: form.employerDocument.replace(/\D/g, ''), value: financial && form.value ? Number(form.value) : undefined, term: financial ? Number(form.term) || undefined : undefined, provider, action };
     const fingerprint = JSON.stringify(body);
     if (!provider && last.current?.fingerprint === fingerprint) { setPage('TRACKING'); await recover(); return; }
     const parentExecutionId = provider ? last.current?.id : undefined;
@@ -121,7 +125,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   const allOffers = Object.entries(snapshot?.results || {}).flatMap(([bank, result]) => result.rows.filter(row => row.state === 'OFFER').map((row, i) => ({ bank, row, key: `${bank}:${row.simulationId || row.table || ''}:${i}` })));
   const offers = compareMode ? allOffers.filter(item => compared.includes(item.key)) : allOffers.filter(item => !selectedBank || item.bank === selectedBank);
   const focused = snapshot?.banks.find(bank => bank.id === selectedBank), focusedResult = snapshot?.results[selectedBank];
-  const clientInput = { ...form, cpf: form.cpf.replace(/\D/g, ''), phone: form.phone.replace(/\D/g, ''), term: Number(form.term), value: Number(form.value), product: 'CLT', eligibility: true };
+  const clientInput = { cpf: form.cpf.replace(/\D/g, ''), name: form.name, phone: form.phone.replace(/\D/g, ''), employerDocument: form.employerDocument, factaRegistration: form.factaRegistration, mode: form.mode, term: Number(form.term), value: Number(form.value), product: 'CLT', eligibility: true };
   if (!isOpen) return null;
   return <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/70 p-2 text-slate-900 backdrop-blur-sm dark:text-slate-100 sm:p-5">
     <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="clt-journey-title" tabIndex={-1} className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-950" onKeyDown={event => {
@@ -139,7 +143,11 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
           <div><h2 className="text-xl font-semibold">Consulte os bancos com um cadastro</h2><p className="mt-2 text-sm text-slate-500">Primeiro, consulta e autorização. Após margem e elegibilidade válidas, calculamos as condições disponíveis de cada instituição.</p></div>
           <fieldset disabled={busy} className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2">
             <legend className="px-2 text-sm font-semibold">Dados do cliente</legend>
-            {([['cpf', 'CPF'], ['name', 'Nome completo'], ['phone', 'Telefone com DDD'], ['employerDocument', 'CNPJ do empregador (quando aplicável)']] as const).map(([key, title]) => <label key={key} className="text-xs font-semibold">{title}<input required={key !== 'employerDocument'} maxLength={key === 'name' ? 200 : 20} inputMode={key === 'name' ? 'text' : 'tel'} className={control} value={form[key]} onChange={event => setForm(old => ({ ...old, [key]: key === 'cpf' ? formatCpf(event.target.value) : event.target.value, factaRegistration: '', v8ConsultId: '', v8PromoterId: '' }))} /></label>)}
+            {([['cpf', 'CPF'], ['name', 'Nome completo'], ['phone', 'Telefone com DDD']] as const).map(([key, title]) => <label key={key} className="text-xs font-semibold">{title}<input required maxLength={key === 'name' ? 200 : 20} inputMode={key === 'name' ? 'text' : 'tel'} className={control} value={form[key]} onChange={event => setForm(old => ({ ...old, [key]: key === 'cpf' ? formatCpf(event.target.value) : event.target.value, factaRegistration: '', v8ConsultId: '', v8PromoterId: '' }))} /></label>)}
+            <label className="text-xs font-semibold">Data de nascimento<input required inputMode="numeric" placeholder="DD/MM/AAAA" maxLength={10} pattern="\d{2}/\d{2}/\d{4}" className={control} value={form.v8BirthDate} onChange={event => setForm(old => ({ ...old, v8BirthDate: maskCltBirthDate(event.target.value) }))} /></label>
+            <label className="text-xs font-semibold">E-mail do trabalhador<input required type="email" maxLength={254} autoComplete="email" className={control} value={form.v8Email} onChange={event => setForm(old => ({ ...old, v8Email: event.target.value }))} /></label>
+            <label className="text-xs font-semibold">Sexo informado pelo trabalhador<select required className={control} value={form.v8Gender} onChange={event => setForm(old => ({ ...old, v8Gender: event.target.value }))}><option value="">Selecione</option><option value="male">Masculino</option><option value="female">Feminino</option></select></label>
+            <label className="text-xs font-semibold sm:col-span-2">CNPJ do empregador (quando aplicável)<input maxLength={20} inputMode="numeric" className={control} value={form.employerDocument} onChange={event => setForm(old => ({ ...old, employerDocument: event.target.value, factaRegistration: '' }))} /></label>
           </fieldset>
           <p className="flex items-start gap-2 text-xs text-slate-500"><ShieldCheck size={16} className="shrink-0" />Consultar não significa aprovar crédito. SMS, termos e outras autorizações exigem ação específica; nenhuma contratação será iniciada.</p>
           <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" disabled={busy} onClick={onBack || onClose} className="flex items-center gap-2 text-sm"><ArrowLeft size={16} />Voltar</button><button disabled={busy} className="rounded-xl bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-cyan-600 disabled:opacity-50">CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES</button></div>
@@ -174,7 +182,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
               <Suspense fallback={<p role="status" className="p-3 text-sm">Abrindo etapa específica…</p>}>
                 {openedPanels.includes('parana') && <div hidden={selectedBank !== 'parana'}><Parana cpf={form.cpf} name={form.name} phone={form.phone} onProgress={paranaProgress} /></div>}
                 {openedPanels.includes('presenca') && <div hidden={selectedBank !== 'presenca'}><Presenca cpf={form.cpf} name={form.name} phone={form.phone} onProgress={presencaProgress} /></div>}
-                {openedPanels.includes('happy') && happyEnabled && <div hidden={selectedBank !== 'happy'}><Happy embedded sharedIdentity isOpen initialData={form} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} onProgress={happyProgress} /></div>}
+                {openedPanels.includes('happy') && happyEnabled && <div hidden={selectedBank !== 'happy'}><Happy embedded sharedIdentity isOpen initialData={{ cpf: form.cpf, name: form.name, phone: form.phone }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} onProgress={happyProgress} /></div>}
               </Suspense>
               {!offers.length && <p className="py-8 text-center text-sm text-slate-500">{busy ? 'As ofertas aparecerão assim que cada instituição responder.' : 'Nenhuma oferta disponível nesta seleção. Confira os retornos e ações da instituição.'}</p>}
               {offers.length > 0 && <div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="mb-3 text-left text-xs text-slate-500">Selecione até três condições para comparar. Selecionar não contrata.</caption><thead><tr className="border-b border-slate-200 text-xs text-slate-500 dark:border-slate-700">{['Comparar', 'Instituição / tabela', 'Liberado', 'Parcela', 'Prazo', 'Taxa', 'CET mensal', 'CET anual', 'Seleção'].map(label => <th key={label} className="px-2 py-3">{label}</th>)}</tr></thead><tbody>{offers.map(({ row, key }) => <tr key={key} className="border-b border-slate-100 dark:border-slate-800">

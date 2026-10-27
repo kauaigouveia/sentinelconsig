@@ -120,14 +120,16 @@ export class CltJourneyService {
         try {
           const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); await publish(); };
           result.stage = action === 'AUTHORIZE' || action === 'CREATE_CONSULT' ? 'CONSENT' : 'CONSULTATION';
-          let response = await ProductSimulationService.run(db, tenant, 'CLT', action, { ...input, bmgActorId: actor }, update, [bank.id]);
+          const bankInput = { ...input, bmgActorId: actor };
+          if (bank.id !== 'v8') { delete bankInput.v8BirthDate; delete bankInput.v8Email; delete bankInput.v8Gender; }
+          let response = await ProductSimulationService.run(db, tenant, 'CLT', action, bankInput, update, [bank.id]);
           result.rows = response.rows.map(projectRow);
           // Publish eligibility/margin before calculating. Each adapter revalidates the bank
           // response and derives its own payment; no browser-supplied margin is trusted.
           if (action === 'REFRESH' && mayCalculate(bank.id, response.rows)) {
             result.stage = 'MARGIN'; await publish();
             result.stage = 'SIMULATION'; await publish();
-            const offers = await ProductSimulationService.run(db, tenant, 'CLT', 'SIMULATE', { ...input, autoConditions: !input.value, bmgActorId: actor }, undefined, [bank.id]);
+            const offers = await ProductSimulationService.run(db, tenant, 'CLT', 'SIMULATE', { ...bankInput, autoConditions: !input.value }, undefined, [bank.id]);
             response = { ...offers, rows: [...response.rows, ...offers.rows] };
             result.rows = response.rows.map(projectRow);
           }
