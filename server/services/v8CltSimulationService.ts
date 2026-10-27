@@ -1,3 +1,4 @@
+import { V8CltPilot } from './v8CltPilot.js';
 import { journeyFetch } from './cltJourneyDeadline.js';
 import { V8BankService } from './v8BankService.js';
 import { currentIntegrationPromoter } from './bankPromoterConfig.js';
@@ -33,6 +34,7 @@ export class V8CltSimulationService {
   // Deliberately closed until bank homologation is approved; not controlled by a client flag.
   static canSimulate() { return false; }
   static async request(db: any, tenantId: string, promoterId: string, path: string, body?: unknown) {
+    if (!V8CltPilot.permitsRequest(tenantId)) throw new V8CltError(0, 'PILOT_SCOPE_REQUIRED');
     // No arbitrary paths, consent acceptance, operation creation or external Azure host.
     if (!['/private-consignment/consult', '/private-consignment/simulation/configs', '/private-consignment/simulation'].includes(path.split('?')[0])
       || (body !== undefined && path !== '/private-consignment/simulation')) throw new V8CltError(0, 'METHOD_NOT_ALLOWED');
@@ -49,6 +51,14 @@ export class V8CltSimulationService {
   }
 
   static async run(db: any, tenantId: string, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE', input: ProductSimulationInput): Promise<ProductSimulationRow[]> {
+    const permit = await V8CltPilot.authorize(db, tenantId, input);
+    if ('reason' in permit) return [row('UNSUPPORTED', permit.reason === 'CASE_REQUIRED'
+      ? 'Teste V8 restrito: falta confirmar a referência segura do caso autorizado. Nenhuma consulta foi enviada.'
+      : 'V8 CLT disponível somente ao usuário e à empresa autorizados para homologação. Nenhuma consulta foi enviada.')];
+    if (action === 'SIMULATE' && !this.canSimulate()) return [row('UNSUPPORTED', 'Simulação V8 bloqueada: confirmar pré-cálculo, unidade financeira e campo inativo com a V8 antes de enviar o POST. A taxa não é exigida como entrada.')];
+    return V8CltPilot.within(permit, () => this.runAuthorized(db, tenantId, action, input));
+  }
+  private static async runAuthorized(db: any, tenantId: string, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE', input: ProductSimulationInput): Promise<ProductSimulationRow[]> {
     // Backend gate covers the unified journey, legacy simulator and partner portal.
     // No environment switch can accidentally enable an unhomologated financial operation.
     const stored = await db.systemConfig?.findMany?.({ where: { tenantId, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } }) || [];

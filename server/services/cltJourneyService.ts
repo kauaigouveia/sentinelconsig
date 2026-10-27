@@ -23,7 +23,7 @@ export class CltJourneyService {
     if (!saved) return undefined;
     const { record } = saved;
     let raw = saved.raw;
-    if (record.phase === 'RUNNING' && Date.now() >= record.deadline) {
+    if ((record.phase === 'RUNNING' || record.phase === 'READY') && Date.now() >= record.deadline) {
       record.phase = 'UNKNOWN'; record.snapshot.running = false;
       for (const result of Object.values(record.snapshot.results)) if (result.status === 'QUERYING') {
         result.status = 'UNKNOWN'; result.message = 'Resultado incerto após interrupção. Confira o estado no banco; nenhuma repetição automática.';
@@ -48,7 +48,7 @@ export class CltJourneyService {
         const rows = await db.systemConfig.findMany({ where: { tenantId: tenant, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } });
         for (const row of rows) { const promoter = /^integration:v8:(.+):config$/.exec(row.configKey)?.[1]; if (promoter) { const c = await V8BankService.config(db, tenant, promoter); if (c.enabled && c.cltEnabled) return true; } }
         return false;
-      }),
+      }, true),
       check('parana', 'Paraná Banco', async () => {
         const promoters = await db.promoter.findMany({ where: { tenantId: tenant, status: 'ATIVO' }, select: { id: true } });
         for (const p of promoters) { const c = await ParanaBankService.config(db, tenant, p.id); if (c.enabled && c.clientId && c.clientSecret) return true; }
@@ -75,7 +75,7 @@ export class CltJourneyService {
     const fingerprint = journeyFingerprint({ input, provider, action });
     const previous = await this.get(db, tenant, actor, id);
     if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return previous; }
-    const all = await this.available(db, tenant), banks = provider ? all.filter(bank => bank.id === provider) : all;
+    const all = await this.available(db, tenant), banks = provider ? all.filter(bank => bank.id === provider).map(bank => bank.id === 'v8' ? { ...bank, contextual: false } : bank) : all;
     const snapshot: JourneySnapshot = { executionId: id, running: true, banks, results: {} };
     for (const bank of banks) snapshot.results[bank.id] = { executionId: id, status: bank.contextual ? 'CONTEXTUAL' : 'QUERYING', rows: [], message: bank.error ? 'Não foi possível verificar a configuração. Nenhuma consulta foi iniciada.' : bank.contextual ? 'Etapa específica disponível neste cartão. Nenhuma autorização enviada.' : undefined };
     const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot };
@@ -84,7 +84,7 @@ export class CltJourneyService {
     if (!entry || entry.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT');
     return entry;
   }
-  async execute(db: any, tenant: string, actor: string, entry: Entry, input: ProductSimulationInput, action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' = 'SIMULATE') {
+  async execute(db: any, tenant: string, actor: string, entry: Entry, input: ProductSimulationInput, action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' = 'SIMULATE', provider?: JourneyProvider) {
     if (entry.record.phase !== 'READY') return;
     const { record, store, snapshot } = entry, id = snapshot.executionId;
     record.phase = 'RUNNING'; record.deadline = Date.now() + 50000;
@@ -104,9 +104,9 @@ export class CltJourneyService {
         const result = snapshot.results[bank.id];
         try {
           const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); await publish(); };
-          const response = await ProductSimulationService.run(db, tenant, 'CLT', bank.id === 'v8' ? 'REFRESH' : action, { ...input, bmgActorId: actor }, update, [bank.id]);
-          result.rows = response.rows.map(projectRow); result.status = 'RETURNED';
-          if (bank.id === 'v8') { result.contractPending = true; result.message = 'Simulação V8 pendente de homologação. Somente consentimento e margem consultados.'; }
+          const response = await ProductSimulationService.run(db, tenant, 'CLT', bank.id === 'v8' && provider !== 'v8' ? 'REFRESH' : action, { ...input, bmgActorId: actor }, update, [bank.id]);
+          result.rows = response.rows.map(projectRow); result.status = result.rows.some(row => row.state === 'ERROR' || row.outcome === 'TECHNICAL_ERROR') ? 'UNKNOWN' : 'RETURNED';
+          if (bank.id === 'v8') { result.contractPending = true; result.message = 'Simulação V8 pendente de homologação. Nenhuma simulação V8 é enviada sem liberação do caso e confirmação contratual.'; }
           else if (!result.rows.length) result.message = 'Sem ofertas retornadas nesta consulta.';
         } catch { result.status = 'UNKNOWN'; result.message = 'Resultado incerto. Confira o estado antes de outra operação; nenhuma repetição automática.'; }
         if (signal.aborted) { result.status = 'UNKNOWN'; result.message = 'Prazo da consulta encerrado. Confira o estado no banco antes de outra operação.'; }
@@ -126,6 +126,12 @@ function projectRow(row: ProductSimulationRow): ProductSimulationRow {
   return { provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, simulationId: row.simulationId,
     link: typeof row.link === 'string' && /^https:\/\//i.test(row.link) ? row.link : undefined,
     data: data ? { employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
-      margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
+      eligible: typeof data.eligible === 'boolean' ? data.eligible : undefined,
+      restrictions: safeReasons(data.restrictions),
+      borrower: data.borrower ? { name: data.borrower.name } : undefined,
+      items: Array.isArray(data.items) ? data.items.slice(0, 500).map((item: any) => ({ employerDocument: item.employerDocument, employerName: item.employerName, registrationNumber: item.registrationNumber, term: item.term, rate: item.rate, netValue: item.netValue, installmentValue: item.installmentValue, maxInstallmentValue: item.maxInstallmentValue })) : undefined,
+      margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
       v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId } : undefined } : undefined };
 }
+
+function safeReasons(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 30).map(v => cltPublicMessage(v)).filter(Boolean) : undefined; }

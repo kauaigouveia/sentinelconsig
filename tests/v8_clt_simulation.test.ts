@@ -1,3 +1,4 @@
+import { V8CltPilot } from '../server/services/v8CltPilot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../server/logger.js', () => ({ logger: { warn: vi.fn() } }));
 import { logger } from '../server/logger.js';
@@ -18,6 +19,7 @@ const config = { environment: 'production' as const, enabled: true, cltEnabled: 
 const offer = { id_simulation: simulationId, number_of_installments: 24, disbursed_issue_amount: 12000, installment_value: 1423.98, issue_amount: 13000 };
 let consultations: any[], tables: any[], response: any, db: any, fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
+  vi.spyOn(V8CltPilot, 'authorize').mockResolvedValue({ allowed: true, tenantId: 'tenant-a', userId: 'synthetic-pilot' });
   // Contract fixtures exercise dormant code under a mocked policy, never bank homologation.
   vi.spyOn(V8CltSimulationService, 'canSimulate').mockReturnValue(true);
   vi.clearAllMocks(); consultations = [{ ...consultation }]; tables = [{ id: configId, slug: 'CLT sintético', number_of_installments: ['24'] }]; response = { ...offer };

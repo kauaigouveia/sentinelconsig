@@ -1,3 +1,5 @@
+import { V8CltPilot } from './v8CltPilot.js';
+import { V8CltSimulationService } from './v8CltSimulationService.js';
 import type { Express, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { hasPermission } from '../../src/lib/permissions.js';
@@ -16,6 +18,13 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
     if (access?.simulationAccessEnabled === false) return { status: 403 };
     return { tenant, actor: `user:${s.user.id}` };
   }
+  app.get('/api/simulations/clt/v8/pilot', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const c = await context(req); if (c.status) return res.status(c.status).json({ error: 'Acesso não autorizado.' });
+      return res.json({ allowed: V8CltPilot.matches(c.tenant!, c.actor!), caseReady: V8CltPilot.matches(c.tenant!, c.actor!) && V8CltPilot.caseReady(), contractReady: V8CltSimulationService.canSimulate() });
+    } catch { return res.status(503).json({ error: 'Não foi possível conferir a habilitação do teste.' }); }
+  });
   app.get(`${path}/:id`, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -45,7 +54,7 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
       res.on('close', () => { closed = true; entry.listeners.delete(listener); });
       entry.listeners.add(listener); listener(entry.snapshot);
       // Await every external operation inside this invocation, never detach work after returning.
-      await service.execute(db, c.tenant!, c.actor!, entry, input, action);
+      await service.execute(db, c.tenant!, c.actor!, entry, input, action, provider);
       listener(entry.snapshot);
       if (!res.writableEnded) res.end();
     } catch (error) {

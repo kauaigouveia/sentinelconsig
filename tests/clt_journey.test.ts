@@ -36,7 +36,7 @@ it('delivers an early offer before a slower bank, reserves duplicate execution a
 
 it('isolates provider failure, never sends V8 simulate/authorize, and does not invoke contextual adapters', async () => {
   const service = new CltJourneyService(), db = journeyDatabase();
-  vi.spyOn(service, 'available').mockResolvedValue([{ id: 'v8', name: 'V8' }, { id: 'facta', name: 'FACTA' }, { id: 'parana', name: 'Paraná', contextual: true }]);
+  vi.spyOn(service, 'available').mockResolvedValue([{ id: 'v8', name: 'V8', contextual: true }, { id: 'facta', name: 'FACTA' }, { id: 'parana', name: 'Paraná', contextual: true }]);
   const run = vi.spyOn(ProductSimulationService, 'run').mockImplementation(async (_db, _tenant, _product, action, _input, _callback, providers) => {
     if (providers?.includes('facta')) throw Error('private payload');
     expect(action).toBe('REFRESH'); return { message: undefined, rows: [{ provider: 'V8 DIGITAL', institution: 'V8', state: 'DATA', data: { access_token: 'DO-NOT-EXPOSE', v8: { consultId: id, promoterId: 'p' } } }] };
@@ -44,8 +44,8 @@ it('isolates provider failure, never sends V8 simulate/authorize, and does not i
   const entry = await service.start(db, 'tenant-a', 'user:a', id, input);
   await service.execute(db, 'tenant-a', 'user:a', entry, input);
   const snapshot = entry.snapshot;
-  expect(snapshot.results.facta.status).toBe('UNKNOWN'); expect(snapshot.results.v8.rows[0].state).toBe('DATA');
-  expect(snapshot.results.parana.status).toBe('CONTEXTUAL'); expect(run).toHaveBeenCalledTimes(2);
+  expect(snapshot.results.facta.status).toBe('UNKNOWN'); expect(snapshot.results.v8.status).toBe('CONTEXTUAL');
+  expect(snapshot.results.parana.status).toBe('CONTEXTUAL'); expect(run).toHaveBeenCalledTimes(1);
   expect(JSON.stringify(snapshot)).not.toContain('DO-NOT-EXPOSE'); expect(JSON.stringify(snapshot)).not.toContain('private payload');
 });
 
@@ -106,4 +106,27 @@ it('retains uncertain intent indefinitely but allows a new explicit attempt afte
   await entry.store.compareAndSet(id, entry.raw, entry.record);
   const fresh = '00000000-0000-4000-8000-000000000003';
   expect((await service.start(db, 'tenant-a', 'user:a', fresh, input)).snapshot.executionId).toBe(fresh);
+});
+
+it('preserves enrollment choices and eligibility while removing nested provider credentials', async () => {
+  const db = journeyDatabase(), service = new CltJourneyService();
+  vi.spyOn(service, 'available').mockResolvedValue([{ id: 'finanto', name: 'FINANTO' }]);
+  vi.spyOn(ProductSimulationService, 'run').mockResolvedValue({ rows: [{ provider: 'FINANTO', institution: 'QI', state: 'DATA', data: { eligible: false, restrictions: ['Vínculo não elegível'], access_token: 'SECRET', borrower: { name: 'Pessoa sintética', password: 'SECRET' }, items: [{ employerDocument: '12345678000100', registrationNumber: '000A', employerName: 'Empresa fictícia', term: 24, apiKey: 'SECRET' }], margin: { can_continue: false, restrictions: ['Vínculo não elegível'], password: 'SECRET' } } }], message: undefined });
+  const entry = await service.start(db, 'tenant-a', 'user:a', id, input);
+  await service.execute(db, 'tenant-a', 'user:a', entry, input);
+  const projected: any = entry.snapshot.results.finanto.rows[0].data;
+  expect(projected.eligible).toBe(false); expect(projected.margin.can_continue).toBe(false);
+  expect(projected.items[0].registrationNumber).toBe('000A'); expect(projected.restrictions).toEqual(['Vínculo não elegível']);
+  expect(JSON.stringify(projected)).not.toContain('SECRET');
+});
+it('marks interrupted READY and technical bank errors UNKNOWN without permitting an automatic retry', async () => {
+  const db = journeyDatabase(), service = new CltJourneyService();
+  vi.spyOn(service, 'available').mockResolvedValue([{ id: 'facta', name: 'FACTA' }]);
+  const entry = await service.start(db, 'tenant-a', 'user:a', id, input);
+  entry.record.deadline = Date.now() - 1; await entry.store.compareAndSet(id, entry.raw, entry.record);
+  expect((await service.get(db, 'tenant-a', 'user:a', id))?.snapshot.results.facta.status).toBe('UNKNOWN');
+  const other = await service.start(db, 'tenant-a', 'user:a', '00000000-0000-4000-8000-000000000003', { ...input, value: 1 });
+  vi.spyOn(ProductSimulationService, 'run').mockResolvedValue({ rows: [{ provider: 'FACTA', institution: 'FACTA', state: 'ERROR', outcome: 'TECHNICAL_ERROR' }], message: undefined });
+  await service.execute(db, 'tenant-a', 'user:a', other, input);
+  expect(other.record.phase).toBe('UNKNOWN');
 });

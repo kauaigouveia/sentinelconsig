@@ -20,6 +20,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   const [form, setForm] = useState(blank), [page, setPage] = useState<'CLIENT' | 'TRACKING'>('CLIENT');
   const [snapshot, setSnapshot] = useState<JourneySnapshot | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [selectedBank, setSelectedBank] = useState(''), [compared, setCompared] = useState<string[]>([]), [selectedOffer, setSelectedOffer] = useState(''), [compareMode, setCompareMode] = useState(false);
+  const [v8Pilot, setV8Pilot] = useState<{ allowed: boolean; caseReady: boolean; contractReady: boolean } | null>(null);
   const [bmgMessage, setBmgMessage] = useState('');
   const [bmgPhase, setBmgPhase] = useState('');
   const [openedPanels, setOpenedPanels] = useState<string[]>([]);
@@ -97,6 +98,16 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     } catch (e) { if (rejectedBeforeExecution) uncertainTransport.current = false; if (!controller.signal.aborted && currentScope.current === requestedScope) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha na consulta. Confira o estado antes de repetir.') || 'Falha no acompanhamento.'); }
     finally { if (currentScope.current === requestedScope) { locked.current = false; setBusy(false); } }
   }
+  useEffect(() => {
+    setV8Pilot(null);
+    if (selectedBank !== 'v8' || !isOpen) return;
+    const controller = new AbortController();
+    void fetch('/api/simulations/clt/v8/pilot', { credentials: 'include', cache: 'no-store', signal: controller.signal }).then(async response => {
+      if (!response.ok) throw Error('Unavailable');
+      const data = await response.json(); if (!controller.signal.aborted) setV8Pilot({ allowed: data.allowed === true, caseReady: data.caseReady === true, contractReady: data.contractReady === true });
+    }).catch(() => { if (!controller.signal.aborted) setV8Pilot(null); });
+    return () => controller.abort();
+  }, [selectedBank, scope, isOpen]);
   const allOffers = Object.entries(snapshot?.results || {}).flatMap(([bank, result]) => result.rows.filter(row => row.state === 'OFFER').map((row, i) => ({ bank, row, key: `${bank}:${row.simulationId || row.table || ''}:${i}` })));
   const offers = compareMode ? allOffers.filter(item => compared.includes(item.key)) : allOffers.filter(item => !selectedBank || item.bank === selectedBank);
   const focused = snapshot?.banks.find(bank => bank.id === selectedBank), focusedResult = snapshot?.results[selectedBank];
@@ -142,7 +153,8 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
             </section>
             <section aria-label="Ofertas e ações da instituição" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{compareMode ? 'Comparação de condições' : focused?.name || 'Ofertas disponíveis'}</h2><div className="flex gap-3">{compared.length > 1 && !compareMode && <button className="text-xs text-cyan-700 dark:text-cyan-300" onClick={() => setCompareMode(true)}>Comparar selecionadas ({compared.length})</button>}{compared.length > 0 && <button className="text-xs text-cyan-700 dark:text-cyan-300" onClick={() => { setCompared([]); setCompareMode(false); }}>Limpar comparação</button>}</div></div>
-              {selectedBank === 'v8' && <p className="mb-3 rounded-lg bg-amber-500/10 p-3 text-sm">Pré-cálculo pendente de confirmação com a V8. Esta jornada consulta somente consentimento e margem.</p>}
+              {selectedBank === 'v8' && <p className="mb-3 rounded-lg bg-amber-500/10 p-3 text-sm">V8 CLT restrita a homologação individual. Nenhuma consulta é enviada automaticamente pela jornada.</p>}
+              {selectedBank === 'v8' && <section className="mb-4 space-y-3 rounded-lg border border-amber-400/40 p-3 text-sm"><p>{v8Pilot?.allowed ? 'Seu usuário e empresa estão no escopo de teste V8.' : 'V8 bloqueada para este operador ou empresa.'}</p>{v8Pilot?.allowed && <><p>{v8Pilot.caseReady ? 'Caso autorizado configurado; consentimento e margem serão conferidos no banco somente por ação explícita.' : 'Aguardando referência segura do caso de teste autorizado. Não utilize CPF de cliente.'}</p><button type="button" disabled={busy || !v8Pilot.caseReady} onClick={() => void start('v8', 'REFRESH')} className="rounded-lg border px-3 py-2 text-xs disabled:opacity-50">Conferir caso V8 autorizado</button><button type="button" disabled={busy || !v8Pilot.caseReady || !v8Pilot.contractReady} onClick={() => void start('v8', 'SIMULATE')} className="ml-2 rounded-lg border px-3 py-2 text-xs disabled:opacity-50">Simular caso V8 autorizado</button>{!v8Pilot.contractReady && <p>POST V8 bloqueado: confirmar pré-cálculo, unidade dos valores e regra do campo financeiro inativo. Juros não são exigidos como entrada.</p>}</>}</section>}
               {focusedResult?.rows.some(row => row.state !== 'OFFER' && row.state !== 'DATA') && <ul aria-label="Retornos por instituição" className="mb-4 space-y-2">{focusedResult.rows.filter(row => row.state !== 'OFFER' && row.state !== 'DATA').map((row, index) => <li key={index} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"><strong>{row.institution}</strong><span className="ml-2 text-xs text-slate-500">{cltOutcomeLabels[cltOutcome(row)]}</span>{row.message && <p className="mt-1 text-xs text-slate-500">{row.message}</p>}</li>)}</ul>}
               {focusedResult?.rows.filter(row => row.state === 'DATA').map((row, i) => <CltCustomerDataCard key={i} row={row} selectedEmployer={form.employerDocument} selectedFactaRegistration={form.factaRegistration} selectedV8ConsultId={form.v8ConsultId} selectedV8PromoterId={form.v8PromoterId} onSelectEmployer={(doc, registration) => setForm(old => ({ ...old, employerDocument: doc, factaRegistration: registration || '' }))} onSelectV8={(id, promoter) => setForm(old => ({ ...old, v8ConsultId: id, v8PromoterId: promoter }))} />)}
               {focusedResult?.rows.map((row, i) => row.link && /^https:\/\//i.test(row.link) ? <a key={i} href={row.link} target="_blank" rel="noopener noreferrer" className="my-3 block text-sm text-cyan-700 underline dark:text-cyan-300">Abrir autorização oficial · {row.institution}</a> : null)}

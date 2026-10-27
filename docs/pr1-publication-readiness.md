@@ -1,6 +1,8 @@
 # PR #1 — preparação para revisão, 26/10/2026
 
-**NÃO APTO PARA MERGE. PR deve permanecer em rascunho.** A ausência de preview isolado foi confirmada pelo responsável. Não foi realizada homologação autenticada na Vercel com banco sintético e bancos simulados. A validação local não substitui essa etapa.
+> Registro histórico: o responsável posteriormente autorizou publicação direta na infraestrutura existente. O escopo atual e os bloqueios V8 preservados estão em [publicação controlada](clt-production-release.md). A homologação isolada abaixo continua não executada.
+
+**Parecer da etapa anterior: NÃO APTO PARA MERGE; PR em rascunho.** A ausência de preview isolado foi confirmada pelo responsável. Não foi realizada homologação autenticada na Vercel com banco sintético e bancos simulados. A validação local não substitui essa etapa.
 
 ## Integração da main
 
