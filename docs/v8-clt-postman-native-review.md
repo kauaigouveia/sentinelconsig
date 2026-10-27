@@ -1,61 +1,51 @@
-# V8 CLT — contrato comprovado e autorização nativa
+# V8 CLT — autorização pela API e simulação direta
 
-## Evidência e escopo
+## Fonte e revisão do fluxo
 
-Em 27/10/2026 o responsável forneceu evidência de HTTP 200 no Postman para autorização e simulação direta. Os identificadores de cliente, consulta, configuração e simulação dessa evidência não foram incorporados ao repositório. Os testes reproduzem os valores financeiros com identificadores e pessoas sintéticas. Não executamos chamadas bancárias nesta implementação.
+Em 27/10/2026 o responsável forneceu respostas reais do Postman e confirmou ter consultado a equipe interna do banco sobre o processamento do termo por `/authorize`, sem confirmação adicional do trabalhador na interface. Esta é uma orientação operacional fornecida pelo responsável; não representa uma nova homologação bancária executada pelo Codex.
 
-Contrato documental complementar:
+Esta revisão substitui a interface de assinatura assistida do commit `793b99f`. Não é exigido termo cadastrado, assinatura, checkbox do trabalhador, SMS, OTP, link externo ou aprovação administrativa por consulta para o caminho nativo. O caminho público anterior permanece por compatibilidade e conserva suas verificações próprias.
 
-- https://docs.v8sistema.com/guide/crédito-privado-clt/termo-de-consentimento
-- https://docs.v8sistema.com/guide/crédito-privado-clt/simulação-crédito-clt
+Não incorporamos ao repositório os documentos, nomes, contatos ou identificadores reais fornecidos. Fixtures usam exclusivamente pessoas e identificadores sintéticos.
 
-## Fluxo implementado
+## Sequência
 
-1. A sessão existente valida permissão de simulação e empresa ativa. A conexão V8 deve estar ativa, habilitada para CLT e possuir credenciais existentes.
-2. Criação de consulta própria com reserva persistente antes do POST. A consulta fica vinculada à empresa, conexão e documento em armazenamento criptografado.
-3. No cartão V8, apresentar o termo oficial vigente configurado. O operador entrega os controles ao trabalhador, que informa o nome, assina e aceita explicitamente. O dispositivo real é informado; o User-Agent é observado pelo backend e somente seu hash integra a auditoria.
-4. O backend verifica desafio assinado, prazo, sessão, empresa, versão/hash do termo, assinatura e vínculo da consulta; registra evidência criptografada antes do POST `/private-consignment/consult/{consult_id}/authorize`. Reserva distribuída impede reenvio após resultado incerto.
-5. O acompanhamento consulta somente GET, com intervalo de oito segundos, limite por etapa e cancelamento na troca de contexto. SUCCESS elegível permite calcular uma vez; REJECTED e FAILED encerram o acompanhamento.
-6. Revalidar SUCCESS, consentimento auditado, margem positiva e configurações retornadas pela API no momento do cálculo. Usar os IDs e prazos retornados, sem tabela fixa, taxa de entrada ou valor de parcela fixo. A API continua sendo a autoridade sobre vigência e limites adicionais que não estejam descritos no contrato disponível.
-7. O payload final contém `consult_id`, `config_id`, **somente** `installment_face_value` **ou** `disbursed_amount`, `number_of_installments` e `provider: QI`. O modo automático deriva a parcela admissível da margem retornada; o primeiro clique não exige parcela.
+1. Sessão autenticada, permissão de simulação, empresa ativa e conexão V8 ativa/habilitada para CLT com suas credenciais existentes.
+2. POST `/private-consignment/consult`: documento, gênero, nascimento, nome, e-mail, telefone e provider QI. Reserva persistente anterior ao POST e vínculo consulta/empresa/conexão/documento.
+3. Ação **Autorizar consulta V8** no cartão. O operador informa os dados reais do dispositivo que o navegador não disponibiliza. O backend revalida sessão/ator, empresa, vínculo da consulta e estado bancário antes de POST `/private-consignment/consult/{consult_id}/authorize`.
+4. Body de autorização exclusivamente `consult_id`, `operationalSystem`, `deviceModel`, `deviceName`, `deviceType`. A auditoria criptografada registra `BANK_API_AUTHORIZATION`, ator, dispositivo, horários e resultado, com `humanAcceptanceCollected: false` e `independentlyVerifiedIdentity: false`. Não fabrica assinatura ou aceite humano. Uma autorização já registrada não gera novo POST, inclusive após atualização do contrato local.
+5. Acompanhamento GET paginado, limitado e cancelável ao trocar de contexto. A resposta do POST não é convertida artificialmente em SUCCESS: aguardar o status efetivamente retornado. REJECTED/FAILED interrompem o cálculo. Timeout/incerteza não permite reenvio automático de POST.
+6. Em SUCCESS, margem positiva e autorização auditada: consultar `/private-consignment/simulation/configs?provider=QI`, usar configuração/prazos retornados e enviar a simulação direta. Não há parcela fixa ou taxa de entrada. O primeiro clique da jornada não exige parcela; o modo automático deriva a parcela admissível da margem da consulta.
+7. POST `/private-consignment/simulation` com `consult_id`, `config_id`, `number_of_installments`, `provider: QI` e **somente** `installment_face_value` **ou** `disbursed_amount`.
 
-Não há contratação, criação de proposta ou aceite automático. SMS, OTP e link externo não são requisitos do caminho nativo. O caminho público anterior permanece por compatibilidade, com sua própria verificação de identidade.
+Configurações são obtidas novamente no cálculo, sem IDs fixos. A API permanece autoridade sobre vigência e limites adicionais não documentados. A jornada não cria proposta, contratação ou formalização.
 
-## Normalização financeira
+## Normalização financeira preservada
 
-| Campo V8 | Uso |
+| Campo | Significado |
 | --- | --- |
-| `disbursement_amount` | Valor líquido liberado, sem substituição por emissão ou alias |
-| `installment_value` / `number_of_installments` | Parcela mensal / prazo |
+| `disbursement_amount` | Valor líquido efetivamente liberado |
+| `installment_value` / `number_of_installments` | Parcela / prazo |
 | `operation_amount` | Total nominal das parcelas |
 | `issue_amount` | Emissão antes do desconto apresentado |
-| `iof_amount` | IOF; alternativa documentada no objeto `disbursement_option` |
-| `monthly_interest_rate` | Fração mensal preservada; multiplicação por 100 apenas na apresentação |
+| `iof_amount` | IOF, com alternativa no objeto `disbursement_option` |
+| `monthly_interest_rate` | Fração mensal; multiplicação por 100 somente na tela |
+| `is_insured` / `insurance_amount` | Seguro e valor, incluindo zero |
 | `first_installment_date` | Primeiro vencimento |
-| `is_insured` / `insurance_amount` | Indicador / valor do seguro, incluindo zero |
-| `id_simulation` | Referência bancária da oferta |
-| provider solicitado / retornado | Campos separados, inclusive QI / CELCOIN |
+| `id_simulation` | Referência bancária |
 
-CET ausente aparece como **Não informado**. Não é deduzido da taxa nominal. A unidade de taxa em configurações continua identificada como não confirmada; isso não bloqueia a requisição e não é usada em cálculo.
+Provider solicitado QI e retornado CELCOIN são mantidos separados. Não calcular CET a partir da taxa nominal; ausência = **Não informado**. A unidade da taxa em configurações não é presumida nem bloqueia o POST.
 
-## Pendência documental delimitada
+## Validação
 
-Não foi fornecido o texto oficial vigente nem confirmação de que a instituição aceita a evidência de assinatura assistida adotada. A apresentação do termo e esse método precisam ser configurados e referenciados uma vez por conexão. Não existe aprovação administrativa adicional por consulta elegível.
+Testes sintéticos cobrem autorização direta, cinco campos do payload, ausência de assinatura/aceite fabricados, permissões, isolamento de ator/empresa, referência própria, timeout, concorrência, recuperação e normalização financeira. Integrações externas são simuladas.
 
-O fluxo assistido registra o ato declarado do trabalhador, mas **não comprova independentemente sua identidade** nem impede materialmente a personificação pelo operador. Essa limitação é registrada na própria auditoria (`independentlyVerifiedIdentity: false`). Não deve ser apresentado como autenticação biométrica ou identidade bancária verificada. Se a V8 exigir evidência diferente, somente `/authorize` permanece indisponível até atender o contrato; não se inventam exigências ou atestados.
+A persistência é validada somente no cluster PostgreSQL descartável identificado pelo guard (diretório, identidade, porta, usuário e banco), sem migrations. Resultados exatos estão no PR. A falha histórica do seletor Happy/INSS permanece explicitamente identificada, sem alteração no teste ou componente em relação à main.
 
-Consultas SUCCESS sem evidência auditável no Sentinel permitem observação de consulta, margem e configurações, mas não habilitam POST financeiro. O HTTP 200 obtido externamente não importa um consentimento automaticamente.
+Resultados desta revisão: regressão ampliada 260/261 aprovada (uma falha histórica Happy/INSS); PostgreSQL/Prisma descartável 12/12; interface final 7/7, incluindo a seleção da consulta após autorização. Os testes de interface se sobrepõem à regressão, não devem ser somados como casos independentes. TypeScript, build frontend/backend e `git diff --check` aprovados. O aviso de chunks grandes no build permanece.
 
-## Validação e limites operacionais
+## Limites e próxima validação
 
-Testes de contrato e interface usam mocks de banco, dados sintéticos e nenhum serviço financeiro real. A suíte de persistência opt-in usa exclusivamente o cluster PostgreSQL descartável identificado por guard (identidade, diretório, porta, usuário e banco).
+Nenhuma chamada bancária real foi executada no desenvolvimento. O teste completo no Sentinel com a API real ainda depende de execução autorizada, caso de teste e acesso operacional válidos. As respostas do Postman comprovam o caminho executado pelo responsável, não todos os cenários do sistema.
 
-- Regressão ampliada: 254 testes, 253 aprovados e uma falha histórica no seletor Happy/INSS (`happy_embedded.test.tsx`, expectativa “INSS Novo”). Teste e componente do seletor permanecem idênticos à main; nenhuma nova falha.
-- Subconjunto focado de contrato, consentimento e interface: 118/118 aprovados (contido na regressão; não somar os totais).
-- Persistência com Prisma/PostgreSQL real descartável: 11/11 aprovados, com chamadas bancárias simuladas.
-- TypeScript, build frontend/backend e `git diff --check` aprovados. O build mantém o aviso de chunks grandes.
-- Homologação bancária executada pelo Codex: nenhuma. A evidência Postman é fornecida pelo responsável, não uma chamada realizada por esta suíte.
-
-Não houve alteração de schema, migration, credencial, configuração de produção ou FACTA. O commit é destinado somente à branch de revisão; merge e publicação não estão autorizados.
-
-Para reversão do pacote, reverter seu commit em uma branch de revisão. Não apagar registros operacionais ou evidências de consentimento. Nenhuma reversão de banco é necessária.
+Não houve alteração de FACTA, schema, migrations, credenciais ou configurações de produção. Merge e publicação continuam sem autorização. Para reversão, reverter o commit desta revisão em branch de revisão, preservando registros operacionais e auditoria; nenhuma reversão de banco é necessária.

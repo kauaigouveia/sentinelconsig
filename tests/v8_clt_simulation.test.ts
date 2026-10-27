@@ -80,7 +80,7 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     expect(fetchMock.mock.calls.some(([, o]) => o.method === 'POST')).toBe(false);
   });
   it.each([
-    ['WAITING_CONSENT', 'AUTHORIZATION_REQUIRED', 'consentimento'], ['CONSENT_APPROVED', 'PENDING', 'processamento'],
+    ['WAITING_CONSENT', 'AUTHORIZATION_REQUIRED', 'autorização'], ['CONSENT_APPROVED', 'PENDING', 'processamento'],
     ['WAITING_CONSULT', 'PENDING', 'base competente'], ['WAITING_CREDIT_ANALYSIS', 'PENDING', 'análise'],
     ['REJECTED', 'INELIGIBLE', 'vínculo'], ['FAILED', 'TECHNICAL_ERROR', 'falhou'],
   ])('preserves consultation identity and correctly handles %s without simulation', async (status, outcome, message) => {

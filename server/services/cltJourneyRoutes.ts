@@ -1,7 +1,7 @@
 import { V8CltPilot } from './v8CltPilot.js';
 import { V8CltSimulationService } from './v8CltSimulationService.js';
 import { V8CltContract } from './v8CltContract.js';
-import { registerV8NativeConsent, V8CltConsent } from './v8CltConsent.js';
+import { registerV8ApiAuthorization, V8CltConsent } from './v8CltConsent.js';
 import type { Express, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { hasPermission } from '../../src/lib/permissions.js';
@@ -23,7 +23,7 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
     if (!access || access.deletedAt || access.status && access.status !== 'ACTIVE') return { status: 403, error: 'A empresa selecionada está indisponível para operações. Confira o contexto da sessão.' };
     return { tenant, actor: `user:${s.user.id}` };
   }
-  registerV8NativeConsent(app, db, context, service);
+  registerV8ApiAuthorization(app, db, context, service);
   app.get('/api/simulations/clt/v8/consultations/:executionId', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -39,7 +39,7 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
       const c = await context(req); if (c.status) return res.status(c.status).json({ error: c.error || 'Seu perfil não possui permissão de simulação nesta empresa.' });
       const stored = await db.systemConfig.findMany({ where: { tenantId: c.tenant, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } });
       const connections = [];
-      for (const item of stored) { const promoterId = /^integration:v8:(.+):config$/.exec(item.configKey)?.[1]; if (promoterId) { const p = await V8CltContract.read(db, c.tenant!, promoterId); connections.push({ promoterId, simulationReady: p.simulationReady, consentReady: p.nativeConsentReady, reasons: p.reasons }); } }
+      for (const item of stored) { const promoterId = /^integration:v8:(.+):config$/.exec(item.configKey)?.[1]; if (promoterId) { const p = await V8CltContract.read(db, c.tenant!, promoterId); connections.push({ promoterId, simulationReady: await V8CltSimulationService.canSimulate(db, c.tenant!, promoterId), authorizationReady: p.apiAuthorizationReady, reasons: p.reasons }); } }
       return res.json({ allowed: true, connections });
     } catch { return res.status(503).json({ error: 'Não foi possível conferir a habilitação do teste.' }); }
   });

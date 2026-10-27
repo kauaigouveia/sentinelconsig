@@ -17,5 +17,5 @@ it('displays live configurations and raw rates without a guessed percent, and se
 });
 it('clearly describes waiting consent rather than a successful authorization', () => {
   render(<V8CltConsultation row={{ data: { v8: { ...reference, status: 'WAITING_CONSENT' } } }} selected onSelect={() => {}} />);
-  expect(screen.getByText('Aguardando consentimento do trabalhador')).toBeTruthy(); expect(screen.queryByRole('button', { name: /Aceitar/ })).toBeNull();
+  expect(screen.getByText('Aguardando autorização da consulta V8')).toBeTruthy(); expect(screen.queryByRole('button', { name: /Aceitar/ })).toBeNull();
 });

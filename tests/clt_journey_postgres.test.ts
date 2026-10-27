@@ -9,6 +9,7 @@ import { V8CltSimulationService } from '../server/services/v8CltSimulationServic
 import { V8BankService } from '../server/services/v8BankService';
 import { V8CltPilot } from '../server/services/v8CltPilot';
 import { v8CltOperation } from '../server/services/v8CltOperation';
+import { V8CltConsentAudit } from '../server/services/v8CltConsentAudit';
 
 // Explicit opt-in only. This guard verifies data_directory, system identifier,
 // address, port, role, database and cluster marker before any fixture is written.
@@ -111,6 +112,15 @@ describe.skipIf(process.env.SENTINEL_CLT_REAL_POSTGRES_TEST !== '1')('CLT persis
       const rows = await db.systemConfig.findMany({ where: { tenantId: tenant.id } });
       expect(JSON.stringify(rows)).not.toContain(input.cpf);
     } finally { permit.mockRestore(); configuration.mockRestore(); token.mockRestore(); vi.unstubAllGlobals(); }
+  });
+  it('persists bank API authorization without inventing human acceptance and keeps its audit tenant-scoped', async () => {
+    const promoter = `synthetic-${randomUUID()}`, consult = randomUUID(), document = 'synthetic-document';
+    await V8CltConsentAudit.record(db, tenant.id, promoter, document, consult, { method: 'BANK_API_AUTHORIZATION', humanAcceptanceCollected: false });
+    expect(await V8CltConsentAudit.recorded(db, tenant.id, promoter, document, consult)).toBe(true);
+    expect(await V8CltConsentAudit.recorded(db, 'synthetic-other-tenant', promoter, document, consult)).toBe(false);
+    const data = await db.systemConfig.findMany({ where: { tenantId: tenant.id } });
+    expect(JSON.stringify(data)).not.toContain('BANK_API_AUTHORIZATION');
+    expect(JSON.stringify(data)).not.toContain(document);
   });
   it('persists a financial UNKNOWN and never repeats its mocked bank POST across Prisma instances', async () => {
     const promoter = `synthetic-${randomUUID()}`, intent = ['SIMULATE', randomUUID(), 300, 12];

@@ -47,7 +47,7 @@ export class V8CltSimulationService {
     const consentId = /^\/private-consignment\/consult\/([a-f\d-]{36})\/authorize$/i.exec(path)?.[1];
     if (consentId) {
       const policy = await V8CltContract.read(db, tenantId, promoterId);
-      if (!V8CltPilot.permitsConsent(tenantId, consentId) || !(policy.consentReady || policy.nativeConsentReady) || body === undefined) throw new V8CltError(0, 'WORKER_CONSENT_REQUIRED');
+      if (!V8CltPilot.permitsConsent(tenantId, consentId) || !(policy.apiAuthorizationReady || policy.consentReady || policy.nativeConsentReady) || body === undefined) throw new V8CltError(0, 'AUTHORIZATION_SCOPE_REQUIRED');
     } else if (!['/private-consignment/consult', '/private-consignment/simulation/configs', '/private-consignment/simulation'].includes(path.split('?')[0])
       || (body !== undefined && !['/private-consignment/simulation', '/private-consignment/consult'].includes(path))) throw new V8CltError(0, 'METHOD_NOT_ALLOWED');
     if (path === '/private-consignment/simulation' && !await this.canSimulate(db, tenantId, promoterId)) throw new V8CltError(0, 'HOMOLOGATION_REQUIRED');
@@ -89,7 +89,7 @@ export class V8CltSimulationService {
         if (!V8BankService.metadata(config).hasCredentials) { rows.push(row('MISSING_DATA', 'As credenciais da conexão V8 estão incompletas. Solicite a configuração ao administrador.')); continue; }
         const contract = action === 'CREATE_CONSULT' || action === 'AUTHORIZE' ? undefined : await V8CltContract.read(db, tenantId, promoterId);
         if (action === 'SIMULATE' && !contract.simulationReady) { rows.push(row('MISSING_DATA', contract.reasons.join(' '))); continue; }
-        if (action === 'AUTHORIZE') { rows.push(row('AUTHORIZATION_REQUIRED', 'A V8 exige termo e aceite real do trabalhador. Conclua o consentimento no fluxo autorizado V8 e atualize os dados. O Sentinel não registra aceite pelo operador.')); continue; }
+        if (action === 'AUTHORIZE') { rows.push(row('AUTHORIZATION_REQUIRED', 'Use Autorizar consulta V8 no cartão da consulta. A operação dedicada valida sessão, empresa, consulta e dispositivo antes de acessar a API.')); continue; }
         if (action === 'CREATE_CONSULT') {
           const body = this.consultationPayload(input);
           if (!body) { rows.push(row('MISSING_DATA', 'Informe nascimento, sexo e e-mail válidos do trabalhador para criar a consulta V8.')); continue; }
@@ -109,16 +109,16 @@ export class V8CltSimulationService {
         }
         let selected = input.v8ConsultId ? consultations.filter(item => item.id === input.v8ConsultId) : consultations;
         if (action === 'SIMULATE' && selected.length > 1) { rows.push(row('MISSING_DATA', 'A V8 retornou múltiplas consultas. Atualize os dados e selecione a consulta autorizada que deseja usar.')); continue; }
-        if (!selected.length) { rows.push(row(input.v8ConsultId ? 'MISSING_DATA' : 'AUTHORIZATION_REQUIRED', input.v8ConsultId ? 'Consulta V8 selecionada não encontrada para este cliente e conexão. Atualize e selecione novamente.' : 'Nenhuma consulta V8 encontrada nos últimos 30 dias. É necessário concluir o consentimento do trabalhador na V8.')); continue; }
+        if (!selected.length) { rows.push(row(input.v8ConsultId ? 'MISSING_DATA' : 'AUTHORIZATION_REQUIRED', input.v8ConsultId ? 'Consulta V8 selecionada não encontrada para este cliente e conexão. Atualize e selecione novamente.' : 'Nenhuma consulta V8 encontrada nos últimos 30 dias. Crie e autorize uma consulta pela API V8.')); continue; }
         for (const consult of selected) {
           if (!uuid(consult.id)) throw new V8CltError(200, 'CONSULT_ID');
-          if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Crie uma consulta própria para obter o consentimento legítimo; os dados externos não foram expostos.')); continue; }
+          if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Crie e autorize uma consulta própria; os dados externos não foram expostos.')); continue; }
           const consentRecorded = await V8CltConsentAudit.recorded(db, tenantId, promoterId, input.cpf, consult.id);
           const reference = { data: { v8: { consultId: consult.id, promoterId, status: consult.status, consentRecorded } } };
           const description = typeof (consult.description ?? consult.Description) === 'string' ? cltPublicMessage(consult.description ?? consult.Description) : undefined;
           if (consult.status === 'REJECTED') { rows.push(row('INELIGIBLE', description || 'A V8 informou que o cliente não é elegível nesta consulta.', reference)); continue; }
           if (consult.status === 'FAILED') { rows.push(row('TECHNICAL_ERROR', description || 'A consulta V8 falhou. Atualize os dados ou confira a conexão.', reference)); continue; }
-          const pending: Record<string, string> = { WAITING_CONSENT: 'Aguardando consentimento do trabalhador.', CONSENT_APPROVED: 'Consentimento registrado; aguardando processamento.', WAITING_CONSULT: 'Aguardando consulta à base competente.', WAITING_CREDIT_ANALYSIS: 'Aguardando análise de crédito.' };
+          const pending: Record<string, string> = { WAITING_CONSENT: 'Aguardando autorização da consulta pela API V8.', CONSENT_APPROVED: 'Autorização processada; aguardando processamento.', WAITING_CONSULT: 'Aguardando consulta à base competente.', WAITING_CREDIT_ANALYSIS: 'Aguardando análise de crédito.' };
           if (consult.status !== 'SUCCESS') { rows.push(row(consult.status === 'WAITING_CONSENT' ? 'AUTHORIZATION_REQUIRED' : 'PENDING', pending[consult.status] || 'Status V8 desconhecido. Nenhuma simulação foi enviada.', reference)); continue; }
           const margin = number(consult.availableMarginValue);
           if (margin === undefined) { rows.push(row('MISSING_DATA', 'A V8 não informou a margem disponível nesta consulta. Atualize os dados.', reference)); continue; }
@@ -128,9 +128,9 @@ export class V8CltSimulationService {
             if (!Array.isArray(configs.configs)) throw new V8CltError(200, 'CONFIG_SCHEMA');
             const ownershipConfirmed = await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id);
             const configurations = configs.configs.filter((c: any) => uuid(c.id) && Array.isArray(c.number_of_installments)).map((c: any) => ({ id: c.id, name: typeof c.slug === 'string' ? c.slug.slice(0, 100) : 'Configuração CLT', terms: c.number_of_installments.map(Number).filter((t: number) => Number.isInteger(t) && t > 0 && t <= 120), rawMonthlyRate: typeof c.monthly_interest_rate === 'string' || typeof c.monthly_interest_rate === 'number' ? c.monthly_interest_rate : undefined }));
-            rows.push(row('PENDING', consentRecorded ? 'Margem disponível; simulação habilitada.' : 'Margem disponível. Falta evidência auditável do consentimento no Sentinel; HTTP 200 não substitui o aceite.', { state: 'DATA', data: { v8: { consultId: consult.id, promoterId, status: 'SUCCESS', configurations, ownershipConfirmed, consentRecorded, simulationReady: ownershipConfirmed && consentRecorded && contract.simulationReady, consentReady: contract.nativeConsentReady, contractReasons: contract.reasons }, margin: { name: consult.name, available_balance: margin, can_continue: true } } })); continue;
+            rows.push(row('PENDING', consentRecorded ? 'Margem disponível; simulação habilitada.' : 'Margem disponível. Falta registrar a autorização desta consulta pela API V8.', { state: 'DATA', data: { v8: { consultId: consult.id, promoterId, status: 'SUCCESS', configurations, ownershipConfirmed, consentRecorded, simulationReady: ownershipConfirmed && consentRecorded && contract.simulationReady, authorizationReady: contract.apiAuthorizationReady, contractReasons: contract.reasons }, margin: { name: consult.name, available_balance: margin, can_continue: true } } })); continue;
           }
-          if (!consentRecorded) { rows.push(row('MISSING_DATA', 'Registre a evidência legítima do consentimento antes de simular. A consulta e a margem continuam disponíveis.', reference)); continue; }
+          if (!consentRecorded) { rows.push(row('MISSING_DATA', 'Autorize esta consulta pela API V8 antes de simular. A consulta e a margem continuam disponíveis.', reference)); continue; }
           if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Não será reutilizada para cálculo.', reference)); continue; }
           if (!input.autoConditions && (!(input.value > 0) || !Number.isFinite(input.value))) { rows.push(row('MISSING_DATA', 'Informe um valor positivo para simular na V8.')); continue; }
           if (!input.autoConditions && input.mode === 'Payment' && input.value > margin) { rows.push(row('INELIGIBLE', 'A parcela desejada supera a margem disponível informada nesta consulta V8.')); continue; }
@@ -186,7 +186,7 @@ export class V8CltSimulationService {
     try {
       const created = await this.request(db, tenantId, promoterId, '/private-consignment/consult', body);
       if (!uuid(created.id)) throw new V8CltError(200, 'CONSULT_SCHEMA');
-      const result = row('AUTHORIZATION_REQUIRED', 'Consulta V8 criada. Aguarde o aceite legítimo do trabalhador; criar a consulta não autoriza acesso à margem.', { data: { v8: { consultId: created.id, promoterId, status: 'WAITING_CONSENT' } } });
+      const result = row('AUTHORIZATION_REQUIRED', 'Consulta V8 criada. Autorize a consulta pela API V8 para prosseguir.', { data: { v8: { consultId: created.id, promoterId, status: 'WAITING_CONSENT' } } });
       record.phase = 'DONE'; record.snapshot.running = false; record.snapshot.results.v8 = { status: 'RETURNED', rows: [result] };
       await store.compareAndSet(id, raw, record);
       return [result];

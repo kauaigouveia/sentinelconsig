@@ -2,7 +2,7 @@ import React from 'react';
 import { cltRatePercent } from '../../lib/v8CltDisplay';
 
 const statuses: Record<string, string> = {
-  WAITING_CONSENT: 'Aguardando consentimento do trabalhador', CONSENT_APPROVED: 'Consentimento registrado; aguardando processamento',
+  WAITING_CONSENT: 'Aguardando autorização da consulta V8', CONSENT_APPROVED: 'Autorização processada; aguardando processamento',
   WAITING_CONSULT: 'Aguardando consulta à base competente', WAITING_CREDIT_ANALYSIS: 'Aguardando análise de crédito',
   SUCCESS: 'Consulta concluída', REJECTED: 'Cliente não elegível', FAILED: 'Falha na consulta',
 };

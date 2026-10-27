@@ -40,49 +40,50 @@ export class V8CltConsent {
 }
 
 async function authorizeWithEvidence(db: any, c: WorkerScope & { policy: any }, device: any, evidence: any) {
-  return v8CltOperation(db, c.tenant, c.promoter, ['AUTHORIZE', c.consult, c.policy.termsHash], async () => {
+  if (await V8CltConsentAudit.recorded(db, c.tenant, c.promoter, c.cpf, c.consult)) return [{ provider: 'V8 DIGITAL', institution: 'V8', state: 'PENDING' as const, outcome: 'PENDING' as const, message: 'Autorização já registrada. Atualize o acompanhamento; nenhum POST foi repetido.' }];
+  return v8CltOperation(db, c.tenant, c.promoter, ['AUTHORIZE', c.consult], async () => {
     await V8CltPilot.withinConsent(c.tenant, c.consult, async () => {
       if (!await V8CltSimulationService.ownsConsult(db, c.tenant, c.promoter, c.cpf, c.consult)) throw Error('CONSENT_UNAVAILABLE');
       const end = new Date(), query = new URLSearchParams({ startDate: new Date(end.getTime() - 30 * 86400000).toISOString(), endDate: end.toISOString(), limit: '50', page: '1', search: c.cpf, provider: 'QI' });
-      const state = await V8CltSimulationService.request(db, c.tenant, c.promoter, `/private-consignment/consult?${query}`);
-      const current = Array.isArray(state.data) ? state.data.find((item: any) => item.id === c.consult && String(item.documentNumber || '').replace(/\D/g, '') === c.cpf) : undefined;
+      let current: any;
+      for (let page = 1; page <= 10; page++) {
+        query.set('page', String(page));
+        const state = await V8CltSimulationService.request(db, c.tenant, c.promoter, `/private-consignment/consult?${query}`);
+        if (!Array.isArray(state.data)) throw Error('CONSULT_UNAVAILABLE');
+        current = state.data.find((item: any) => item.id === c.consult && String(item.documentNumber || '').replace(/\D/g, '') === c.cpf);
+        if (current || !state.pages?.hasNext) break;
+      }
       if (!current || !['WAITING_CONSENT', 'CONSENT_APPROVED', 'WAITING_CONSULT', 'WAITING_CREDIT_ANALYSIS', 'SUCCESS'].includes(current.status)) throw Error('CONSENT_UNAVAILABLE');
       if (current.status === 'WAITING_CONSENT') await V8CltSimulationService.request(db, c.tenant, c.promoter, `/private-consignment/consult/${c.consult}/authorize`, device);
-      // Proof of the worker's act is distinct from the provider's HTTP response.
-      await V8CltConsentAudit.record(db, c.tenant, c.promoter, c.cpf, c.consult, { ...evidence, observedBankStatus: current.status });
+      // Preserve whether this was a bank API operation or a separately collected human act.
+      await V8CltConsentAudit.record(db, c.tenant, c.promoter, c.cpf, c.consult, { ...evidence, processedAt: new Date().toISOString(), authorizationAction: current.status === 'WAITING_CONSENT' ? 'POST_AUTHORIZE' : 'OBSERVED_BANK_AUTHORIZED', observedBankStatus: current.status });
     });
-    return [{ provider: 'V8 DIGITAL', institution: 'V8', state: 'PENDING', outcome: 'PENDING', message: 'Consentimento registrado. Atualize o acompanhamento para obter o estado do banco.' }];
+    return [{ provider: 'V8 DIGITAL', institution: 'V8', state: 'PENDING', outcome: 'PENDING', message: 'Autorização processada pela API V8. Atualize o acompanhamento para obter o estado do banco.' }];
   }, evidence);
 }
 
-export function registerV8NativeConsent(app: Express, db: any, context: (req: Request) => Promise<any>, service: CltJourneyService) {
-  const path = '/api/simulations/clt/v8/consent/native';
+// Bank-mediated authorization confirmed by the integration owner. This records
+// the API operation, never a fabricated signature or an independently verified person.
+export function registerV8ApiAuthorization(app: Express, db: any, context: (req: Request) => Promise<any>, service: CltJourneyService) {
+  const path = '/api/simulations/clt/v8/authorize';
   app.use(path, rateLimit({ windowMs: 60000, limit: 12, standardHeaders: true, legacyHeaders: false }));
-  for (const action of ['prepare', 'accept'] as const) app.post(`${path}/${action}`, async (req, res) => {
+  app.post(path, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
       const actor = await context(req); if (actor.status) return res.status(actor.status).json({ error: actor.error || 'Acesso não autorizado.' });
-      if (action === 'prepare') {
-        const entry = typeof req.body.executionId === 'string' ? await service.get(db, actor.tenant, actor.actor, req.body.executionId) : undefined;
-        const v8 = entry?.snapshot.results.v8?.rows.map(r => (r.data as any)?.v8).find(v => v?.consultId === req.body.consultId && v?.promoterId === req.body.promoterId);
-        if (!entry?.snapshot.customer || entry.record.phase !== 'DONE' || !v8 || !['WAITING_CONSENT', 'CONSENT_APPROVED', 'WAITING_CONSULT', 'WAITING_CREDIT_ANALYSIS', 'SUCCESS'].includes(v8.status)) return res.status(404).json({ error: 'Consulta própria disponível para consentimento não encontrada.' });
-        const policy = await V8CltContract.read(db, actor.tenant, v8.promoterId);
-        if (!policy.nativeConsentReady) return res.status(409).json({ error: 'Somente /authorize está bloqueado: falta termo oficial vigente e requisitos documentais do aceite nativo. Não é exigido SMS, OTP ou link externo.' });
-        const issued = await V8CltConsent.issue(db, actor.tenant, v8.promoterId, v8.consultId, { ...entry.snapshot.customer, bmgActorId: actor.actor });
-        return res.json({ challengeToken: issued.path.split('#')[1], terms: policy.termsText, termsHash: policy.termsHash, version: policy.termsVersion, workerName: entry.snapshot.customer.name, consultId: v8.consultId });
-      }
-      const c = await V8CltConsent.read(db, req.body.challengeToken), b = req.body;
-      if (!c.policy.nativeConsentReady || c.tenant !== actor.tenant || c.nativeActor !== actor.actor) return res.status(403).json({ error: 'Atendimento de consentimento não pertence à sessão e empresa atuais.' });
-      const normalize = (s: unknown) => typeof s === 'string' ? s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR') : '';
-      const signature = b.signature;
-      if (b.accepted !== true || b.workerTookControl !== true || b.termsHash !== c.policy.termsHash || normalize(b.workerName) !== normalize(c.workerName) || !Array.isArray(signature) || signature.length < 4 || signature.length > 512 || signature.some((p: any) => !Array.isArray(p) || p.length !== 2 || p.some((n: any) => typeof n !== 'number' || !Number.isFinite(n) || n < 0 || n > 1)) || new Set(signature.map((p: number[]) => p.join(':'))).size < 4 || !['mobile', 'desktop', 'tablet'].includes(b.deviceType) || ['operationalSystem', 'deviceModel', 'deviceName'].some(k => typeof b[k] !== 'string' || !b[k].trim() || b[k].length > 200) || !req.get('user-agent')) return res.status(400).json({ error: 'O trabalhador deve ler o termo, assumir os controles, preencher seu nome, assinar e informar os dados reais do dispositivo. Um checkbox do operador não registra consentimento.' });
-      const device = { consult_id: c.consult, operationalSystem: b.operationalSystem, deviceModel: b.deviceModel, deviceName: b.deviceName, deviceType: b.deviceType };
-      const rows = await authorizeWithEvidence(db, c, device, { method: 'NATIVE_ASSISTED_WORKER_SIGNATURE', independentlyVerifiedIdentity: false, operatorActor: actor.actor, presentedAt: c.presentedAt, acceptedAt: new Date().toISOString(), termsVersion: c.policy.termsVersion, termsHash: c.policy.termsHash, workerName: c.workerName, signature, device, userAgentHash: createHash('sha256').update(req.get('user-agent')!).digest('hex') });
-      return res.json({ status: 'CONSENT_APPROVED', message: rows[0].message });
-    } catch { return res.status(409).json({ error: 'Consentimento indisponível ou resultado incerto. Confira o acompanhamento; /authorize não será repetido automaticamente.' }); }
+      const b = req.body || {};
+      const entry = typeof b.executionId === 'string' ? await service.get(db, actor.tenant, actor.actor, b.executionId) : undefined;
+      const v8 = entry?.snapshot.results.v8?.rows.map(r => (r.data as any)?.v8).find(v => v?.consultId === b.consultId && v?.promoterId === b.promoterId);
+      if (!entry?.snapshot.customer || entry.record.phase !== 'DONE' || !v8 || !['WAITING_CONSENT', 'CONSENT_APPROVED', 'WAITING_CONSULT', 'WAITING_CREDIT_ANALYSIS', 'SUCCESS'].includes(v8.status)) return res.status(404).json({ error: 'Consulta própria disponível para autorização não encontrada.' });
+      if (!['mobile', 'desktop', 'tablet'].includes(b.deviceType) || ['operationalSystem', 'deviceModel', 'deviceName'].some(k => typeof b[k] !== 'string' || !b[k].trim() || b[k].length > 200) || !req.get('user-agent')) return res.status(400).json({ error: 'Informe os dados reais do dispositivo utilizado para autorizar a consulta.' });
+      const permit = await V8CltPilot.authorize(db, actor.tenant, { ...entry.snapshot.customer, bmgActorId: actor.actor });
+      if ('reason' in permit) return res.status(403).json({ error: 'Sem permissão operacional V8 nesta empresa.' });
+      const device = { consult_id: v8.consultId, operationalSystem: b.operationalSystem, deviceModel: b.deviceModel, deviceName: b.deviceName, deviceType: b.deviceType };
+      const rows = await authorizeWithEvidence(db, { tenant: actor.tenant, promoter: v8.promoterId, cpf: entry.snapshot.customer.cpf, consult: v8.consultId, policy: { authorizationMode: 'bank-api' } }, device, { method: 'BANK_API_AUTHORIZATION', authorizationSource: 'V8_AUTHORIZE', humanAcceptanceCollected: false, independentlyVerifiedIdentity: false, operatorActor: actor.actor, requestedAt: new Date().toISOString(), device, userAgentHash: createHash('sha256').update(req.get('user-agent')!).digest('hex') });
+      return res.json({ authorizationRecorded: true, message: rows[0].message });
+    } catch { return res.status(409).json({ error: 'Autorização indisponível ou resultado incerto. Confira o acompanhamento; /authorize não será repetido automaticamente.' }); }
   });
 }
-
 export function registerV8WorkerConsent(app: Express, db: any, getOperatorSession: (req: Request) => Promise<any>, verifyIdentity: WorkerIdentityVerifier = async () => null) {
   const path = '/api/public/v8/clt/consent';
   app.use(path, rateLimit({ windowMs: 60000, limit: 12, standardHeaders: true, legacyHeaders: false }));

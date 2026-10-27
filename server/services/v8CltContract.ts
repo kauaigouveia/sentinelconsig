@@ -14,8 +14,8 @@ export class V8CltContract {
     const simulationReady = true;
     const consentReady = verified && value.authorizeSchema === 'documented-device-v1' && typeof value.termsText === 'string' && value.termsText.length >= 100 && typeof value.termsVersion === 'string' && !!value.termsVersion && typeof value.identityReference === 'string' && !!value.identityReference;
     const nativeConsentReady = verified && value.authorizeSchema === 'documented-device-v1' && typeof value.termsText === 'string' && value.termsText.length >= 100 && !!value.termsVersion && value.evidenceMethod === 'native-worker-signature-v1' && typeof value.evidenceReference === 'string' && !!value.evidenceReference.trim();
-    return { ...value, moneyUnit: 'BRL', rateUnit: 'fraction', precalculation: 'not-required', technicalProfile: 'v8-clt-direct-post-2026-10-27', simulationReady, consentReady, nativeConsentReady, termsHash: consentReady || nativeConsentReady ? createHash('sha256').update(value.termsText).digest('hex') : undefined,
-      reasons: [...(!nativeConsentReady ? ['Somente autorização pendente: configurar termo vigente e requisitos de evidência do aceite nativo. Consulta, margem e cálculos com consentimento já auditado permanecem disponíveis.'] : [])] };
+    return { ...value, moneyUnit: 'BRL', rateUnit: 'fraction', precalculation: 'not-required', technicalProfile: 'v8-clt-direct-post-2026-10-27', simulationReady, apiAuthorizationReady: true, consentReady, nativeConsentReady, termsHash: consentReady || nativeConsentReady ? createHash('sha256').update(value.termsText).digest('hex') : undefined,
+      reasons: [] };
   }
   static async save(db: any, tenant: string, promoter: string, reviewer: string, input: any) {
     await resolveBankPromoter(db, tenant, promoter);
