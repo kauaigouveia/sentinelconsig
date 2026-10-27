@@ -50,7 +50,7 @@ export class CltJourneyService {
         const rows = await db.systemConfig.findMany({ where: { tenantId: tenant, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } });
         for (const row of rows) { const promoter = /^integration:v8:(.+):config$/.exec(row.configKey)?.[1]; if (promoter) { const c = await V8BankService.config(db, tenant, promoter); if (c.enabled && c.cltEnabled) return true; } }
         return false;
-      }, true),
+      }),
       check('parana', 'Paraná Banco', async () => {
         const promoters = await db.promoter.findMany({ where: { tenantId: tenant, status: 'ATIVO' }, select: { id: true } });
         for (const p of promoters) { const c = await ParanaBankService.config(db, tenant, p.id); if (c.enabled && c.clientId && c.clientSecret) return true; }
@@ -113,7 +113,7 @@ export class CltJourneyService {
           result.rows = response.rows.map(projectRow);
           // Publish eligibility/margin before calculating. Each adapter revalidates the bank
           // response and derives its own payment; no browser-supplied margin is trusted.
-          if (action === 'REFRESH' && bank.id !== 'v8' && mayCalculate(bank.id, response.rows)) {
+          if (action === 'REFRESH' && mayCalculate(bank.id, response.rows)) {
             result.stage = 'MARGIN'; await publish();
             result.stage = 'SIMULATION'; await publish();
             const offers = await ProductSimulationService.run(db, tenant, 'CLT', 'SIMULATE', { ...input, autoConditions: !input.value, bmgActorId: actor }, undefined, [bank.id]);
@@ -122,7 +122,7 @@ export class CltJourneyService {
           }
           result.status = result.rows.some(row => row.state === 'ERROR' || row.outcome === 'TECHNICAL_ERROR') ? 'UNKNOWN' : 'RETURNED';
           result.stage = 'RESULT';
-          if (bank.id === 'v8') { result.contractPending = true; result.message = 'Aceite V8 depende do termo e da evidência legítima do trabalhador; simulação depende da confirmação do pré-cálculo e da unidade monetária.'; }
+          if (bank.id === 'v8') { result.contractPending = !result.rows.some(r => r.state === 'OFFER'); result.message = result.rows.some(r => r.state === 'OFFER') ? undefined : 'Confira o estado da consulta e as pendências específicas da conexão V8.'; }
           else if (!result.rows.length) result.message = 'Sem ofertas retornadas nesta consulta.';
         } catch { result.status = 'UNKNOWN'; result.message = 'Resultado incerto. Confira o estado antes de outra operação; nenhuma repetição automática.'; }
         if (signal.aborted) { result.status = 'UNKNOWN'; result.message = 'Prazo da consulta encerrado. Confira o estado no banco antes de outra operação.'; }
@@ -147,18 +147,18 @@ function projectRow(row: ProductSimulationRow): ProductSimulationRow {
       borrower: data.borrower ? { name: data.borrower.name } : undefined,
       items: Array.isArray(data.items) ? data.items.slice(0, 500).map((item: any) => ({ employerDocument: item.employerDocument, employerName: item.employerName, registrationNumber: item.registrationNumber, term: item.term, rate: item.rate, netValue: item.netValue, installmentValue: item.installmentValue, maxInstallmentValue: item.maxInstallmentValue })) : undefined,
       margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, utilizable_balance: data.margin.utilizable_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
-      v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId, status: data.v8.status, configurations: Array.isArray(data.v8.configurations) ? data.v8.configurations.map((c: any) => ({ id: c.id, name: c.name, terms: c.terms, rawMonthlyRate: c.rawMonthlyRate })) : undefined } : undefined } : undefined };
+      v8: data.v8 ? { consultId: data.v8.consultId, promoterId: data.v8.promoterId, status: data.v8.status, rawCet: data.v8.rawCet, firstInstallmentDate: data.v8.firstInstallmentDate, iofAmount: data.v8.iofAmount, cached: data.v8.cached === true, calculatedAt: data.v8.calculatedAt, simulationReady: data.v8.simulationReady, consentReady: data.v8.consentReady, ownershipConfirmed: data.v8.ownershipConfirmed, contractReasons: safeReasons(data.v8.contractReasons), rawMonthlyRate: data.v8.rawMonthlyRate, configurations: Array.isArray(data.v8.configurations) ? data.v8.configurations.map((c: any) => ({ id: c.id, name: c.name, terms: c.terms, rawMonthlyRate: c.rawMonthlyRate })) : undefined } : undefined } : undefined };
 }
 
 function mayCalculate(bank: JourneyProvider, rows: ProductSimulationRow[]) {
   const eligible = rows.filter(row => {
     const d = row.data as any;
-    return row.state === 'DATA' && d && !d.restrictions?.length && !d.margin?.restrictions?.length && (bank === 'finanto'
+    return row.state === 'DATA' && d && (bank !== 'v8' || d.v8?.simulationReady === true) && !d.restrictions?.length && !d.margin?.restrictions?.length && (bank === 'finanto'
       ? d.eligible === true && d.items?.some((i: any) => cltPaymentLimit(i.maxInstallmentValue))
       : d.margin?.can_continue === true && !!cltPaymentLimit(d.margin.available_balance, d.margin.utilizable_balance));
   });
   // Multiple FACTA registrations require an explicit selection, never the first row.
-  return ['nossa', 'finanto', 'facta'].includes(bank) && eligible.length > 0 && (bank !== 'facta' || eligible.length === 1 && rows.filter(r => r.state === 'DATA').length === 1);
+  return ['nossa', 'finanto', 'facta', 'v8'].includes(bank) && eligible.length > 0 && (bank !== 'facta' || eligible.length === 1 && rows.filter(r => r.state === 'DATA').length === 1);
 }
 
 function safeReasons(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 30).map(v => cltPublicMessage(v)).filter(Boolean) : undefined; }

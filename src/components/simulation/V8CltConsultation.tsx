@@ -11,6 +11,9 @@ export function V8CltConsultation({ row, selected, onSelect }: { row: any; selec
   return <article className="mb-3 space-y-2 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
     <h3 className="font-semibold">{statuses[v8.status] || 'Status V8 não reconhecido'}</h3>
     <p className="break-all text-xs text-slate-500">Consulta: {v8.consultId}</p>
+    {v8.firstInstallmentDate && <p className="text-xs">Primeiro vencimento informado: {v8.firstInstallmentDate}</p>}
+    {v8.iofAmount !== undefined && <p className="text-xs">IOF retornado: {v8.iofAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+    {v8.rawCet?.length > 0 && <ul className="text-xs">{v8.rawCet.map((c: any) => <li key={c.field}>CET retornado ({c.field}): {c.value} · valor bruto, unidade não confirmada</li>)}</ul>}
     {row.data?.margin?.available_balance !== undefined && <p>Margem disponível: {Number(row.data.margin.available_balance).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
     <button type="button" onClick={onSelect} className="rounded-lg border px-3 py-2 text-xs">{selected ? 'Consulta V8 selecionada' : 'Selecionar consulta para acompanhamento'}</button>
     {v8.configurations?.length > 0 && <details><summary className="cursor-pointer text-xs font-semibold">Configurações retornadas pela V8</summary><ul className="mt-2 space-y-2">{v8.configurations.map((c: any) => <li key={c.id} className="rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800"><strong>{c.name}</strong><p className="break-all">ID: {c.id}</p><p>Prazos: {c.terms.join(', ')} parcelas</p><p>Taxa mensal bruta: {c.rawMonthlyRate ?? 'Não informada'} · unidade não confirmada</p></li>)}</ul></details>}

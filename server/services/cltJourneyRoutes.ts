@@ -1,5 +1,7 @@
 import { V8CltPilot } from './v8CltPilot.js';
 import { V8CltSimulationService } from './v8CltSimulationService.js';
+import { V8CltContract } from './v8CltContract.js';
+import { V8CltConsent } from './v8CltConsent.js';
 import type { Express, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { hasPermission } from '../../src/lib/permissions.js';
@@ -21,12 +23,25 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
     if (!access || access.deletedAt || access.status && access.status !== 'ACTIVE') return { status: 403, error: 'A empresa selecionada está indisponível para operações. Confira o contexto da sessão.' };
     return { tenant, actor: `user:${s.user.id}` };
   }
-  app.get('/api/simulations/clt/v8/pilot', async (req, res) => {
+  app.get(['/api/simulations/clt/v8/pilot', '/api/simulations/clt/v8/capabilities'], async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
       const c = await context(req); if (c.status) return res.status(c.status).json({ error: c.error || 'Seu perfil não possui permissão de simulação nesta empresa.' });
-      return res.json({ allowed: V8CltPilot.matches(c.tenant!, c.actor!), caseReady: V8CltPilot.matches(c.tenant!, c.actor!) && V8CltPilot.caseReady(), contractReady: V8CltSimulationService.canSimulate() });
+      const stored = await db.systemConfig.findMany({ where: { tenantId: c.tenant, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } });
+      const connections = [];
+      for (const item of stored) { const promoterId = /^integration:v8:(.+):config$/.exec(item.configKey)?.[1]; if (promoterId) { const p = await V8CltContract.read(db, c.tenant!, promoterId); connections.push({ promoterId, simulationReady: p.simulationReady, consentReady: p.consentReady, reasons: p.reasons }); } }
+      return res.json({ allowed: true, connections });
     } catch { return res.status(503).json({ error: 'Não foi possível conferir a habilitação do teste.' }); }
+  });
+  app.post('/api/simulations/clt/v8/consent-link', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const c = await context(req); if (c.status) return res.status(c.status).json({ error: c.error || 'Acesso não autorizado.' });
+      const entry = typeof req.body?.executionId === 'string' ? await service.get(db, c.tenant!, c.actor!, req.body.executionId) : undefined;
+      const reference = entry?.snapshot.results.v8?.rows.map(r => (r.data as any)?.v8).find(v => v?.consultId === req.body.consultId && v?.promoterId === req.body.promoterId);
+      if (!entry || entry.record.phase !== 'DONE' || !entry.snapshot.customer || !reference || reference.status !== 'WAITING_CONSENT') return res.status(404).json({ error: 'Consulta aguardando consentimento não encontrada neste acompanhamento.' });
+      return res.json(await V8CltConsent.issue(db, c.tenant!, reference.promoterId, reference.consultId, entry.snapshot.customer));
+    } catch { return res.status(409).json({ error: 'Termo vigente, verificação do trabalhador ou vínculo da consulta ainda não estão confirmados.' }); }
   });
   app.get(`${path}/:id`, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

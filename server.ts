@@ -1,3 +1,4 @@
+import { registerV8WorkerConsent } from './server/services/v8CltConsent.js';
 import { registerPartnerSupportRealtime } from './server/services/partnerSupportRealtime.js';
 import { createProposalEntityResolvers, InvalidProposalReference } from './server/services/proposalEntityResolution.js';
 import { simulationPortabilityCheck, portabilityReviewMetadata } from './src/lib/portabilitySimulationPolicy.js';
@@ -2124,6 +2125,7 @@ async function auditAndEnsureMasterUser() {
   registerPresencaRoutes(app, prisma, getAuthSession);
   registerV8Routes(app, prisma, getAuthSession);
   registerCltJourneyRoutes(app, prisma, getAuthSession);
+  registerV8WorkerConsent(app, prisma, getAuthSession);
   registerFgtsOfferSelection(app, prisma, getAuthSession);
   registerC6CltRoutes(app, prisma, getAuthSession);
   registerBankPlaybookCatalog(app, prisma, getAuthSession);

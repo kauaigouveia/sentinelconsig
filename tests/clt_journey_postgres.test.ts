@@ -8,6 +8,7 @@ import { ProductSimulationService } from '../server/services/productSimulationSe
 import { V8CltSimulationService } from '../server/services/v8CltSimulationService';
 import { V8BankService } from '../server/services/v8BankService';
 import { V8CltPilot } from '../server/services/v8CltPilot';
+import { v8CltOperation } from '../server/services/v8CltOperation';
 
 // Explicit opt-in only. This guard verifies data_directory, system identifier,
 // address, port, role, database and cluster marker before any fixture is written.
@@ -110,5 +111,12 @@ describe.skipIf(process.env.SENTINEL_CLT_REAL_POSTGRES_TEST !== '1')('CLT persis
       const rows = await db.systemConfig.findMany({ where: { tenantId: tenant.id } });
       expect(JSON.stringify(rows)).not.toContain(input.cpf);
     } finally { permit.mockRestore(); configuration.mockRestore(); token.mockRestore(); vi.unstubAllGlobals(); }
+  });
+  it('persists a financial UNKNOWN and never repeats its mocked bank POST across Prisma instances', async () => {
+    const promoter = `synthetic-${randomUUID()}`, intent = ['SIMULATE', randomUUID(), 300, 12];
+    let calls = 0;
+    const bank = async () => { calls++; throw Error('synthetic timeout'); };
+    await Promise.allSettled([v8CltOperation(db, tenant.id, promoter, intent, bank), v8CltOperation(db, tenant.id, promoter, intent, bank)]);
+    await expect(v8CltOperation(db, tenant.id, promoter, intent, bank)).rejects.toThrow(); expect(calls).toBe(1);
   });
 });

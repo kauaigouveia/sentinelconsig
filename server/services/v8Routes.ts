@@ -4,6 +4,7 @@ import { hasPermission } from '../../src/lib/permissions.js';
 import { resolveBankPromoter } from './bankPromoterConfig.js';
 import { AuditLogService } from './auditLogService.js';
 import { V8BankService } from './v8BankService.js';
+import { V8CltContract } from './v8CltContract.js';
 
 export function registerV8Routes(app: Express, db: any, getSession: (req: Request) => Promise<any>) {
   app.use('/api/integrations/v8', rateLimit({ windowMs: 60000, limit: 15, standardHeaders: true, legacyHeaders: false, message: { error: 'Aguarde um minuto antes de tentar novamente.' } }));
@@ -24,6 +25,12 @@ export function registerV8Routes(app: Express, db: any, getSession: (req: Reques
     }
   };
   app.get('/api/integrations/v8/config', wrap('integrations.view', async (req, c) => ({ ...V8BankService.metadata(await V8BankService.config(db, c.tenantId, c.promoterId, req.query.environment)), activeEnvironment: (await V8BankService.config(db, c.tenantId, c.promoterId)).environment })));
+  app.get('/api/integrations/v8/clt-contract', wrap('integrations.view', async (_req, c) => V8CltContract.read(db, c.tenantId, c.promoterId)));
+  app.put('/api/integrations/v8/clt-contract', wrap('integrations.admin', async (req, c) => {
+    const result = await V8CltContract.save(db, c.tenantId, c.promoterId, c.userId, req.body || {});
+    await AuditLogService.record(db, { tenantId: c.tenantId, userId: c.userId, action: 'V8_CLT_CONTRACT_REVIEWED', entity: 'SystemConfig', entityId: c.promoterId, newData: { simulationReady: result.simulationReady, consentReady: result.consentReady } });
+    return result;
+  }));
   app.put('/api/integrations/v8/config', wrap('integrations.manage', async (req, c) => {
     const result = await V8BankService.save(db, c.tenantId, c.promoterId, req.body || {});
     await AuditLogService.record(db, { tenantId: c.tenantId, userId: c.userId, action: 'V8_CONFIG_UPDATED', entity: 'SystemConfig', entityId: c.promoterId, newData: { environment: result.environment, enabled: result.enabled, fgtsEnabled: result.fgtsEnabled, cltEnabled: result.cltEnabled }, req });
