@@ -7,6 +7,17 @@ import { CltJourneyWorkspace } from '../src/components/simulation/CltJourneyWork
 import { readJourneyStream } from '../src/lib/cltJourney';
 afterEach(() => { cleanup(); sessionStorage.clear(); vi.unstubAllGlobals(); });
 const snapshot = { executionId: 'synthetic-execution', running: false, banks: [{ id: 'facta', name: 'FACTA' }, { id: 'nossa', name: 'Nossa Fintech' }], results: { facta: { status: 'RETURNED', rows: [{ provider: 'FACTA', institution: 'FACTA', table: 'A', state: 'OFFER', amount: 12000, installment: 1423.98, term: 24 }, { provider: 'FACTA', institution: 'FACTA', table: 'B', state: 'OFFER', amount: 13000, installment: 1423.98, term: 36 }] }, nossa: { status: 'RETURNED', rows: [{ provider: 'Nossa Fintech', institution: 'QI', state: 'PENDING', outcome: 'AUTHORIZATION_REQUIRED' }] } } };
+it.each([390,1440])('submits the actual CLT form at width %s with only identity, no hidden financial constraint or financial payload', async width => {
+  vi.stubGlobal('innerWidth',width);
+  const fetcher=vi.fn(async(_url:string,_options:any)=>new Response(JSON.stringify(snapshot)+'\n',{headers:{'content-type':'application/x-ndjson'}}));vi.stubGlobal('fetch',fetcher);
+  render(<CltJourneyWorkspace isOpen scope="tenant-synthetic:user-synthetic" onClose={()=>{}}/>);
+  for(const [label,value] of [['CPF','52998224725'],['Nome completo','Pessoa sintética'],['Telefone com DDD','11999999999']]) fireEvent.change(screen.getByLabelText(label),{target:{value}});
+  const button=screen.getByRole('button',{name:'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES'}),form=button.closest('form')!;
+  expect(form.checkValidity()).toBe(true);expect(form.querySelectorAll('[required]')).toHaveLength(3);
+  expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull();expect(screen.queryByLabelText('Prazo (meses)')).toBeNull();
+  fireEvent.click(button);await screen.findByText('Ofertas disponíveis');
+  const body=JSON.parse(fetcher.mock.calls[0][1].body);expect(body.action).toBe('REFRESH');expect(body.value).toBeUndefined();expect(body.term).toBeUndefined();
+});
 it('uses a single primary action, displays offers independently, compares conditions and reopens without POST', async () => {
   const fetcher = vi.fn(async (_url, options) => options?.method === 'POST' ? new Response(JSON.stringify(snapshot) + '\n', { headers: { 'content-type': 'application/x-ndjson' } }) : new Response(JSON.stringify(snapshot)));
   vi.stubGlobal('fetch', fetcher);

@@ -83,8 +83,9 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     if (locked.current) return;
     if (uncertainTransport.current) { setPage('TRACKING'); setError('Recupere o acompanhamento e confira o estado antes de iniciar outra operação.'); return; }
     const cpf = form.cpf.replace(/\D/g, ''), phone = form.phone.replace(/\D/g, '');
-    if (!isValidCpf(cpf) || !form.name.trim() || !/^\d{10,11}$/.test(phone) || form.value && (!Number.isFinite(Number(form.value)) || Number(form.value) <= 0) || form.employerDocument && ![8, 14].includes(form.employerDocument.replace(/\D/g, '').length)) { setError('Revise CPF, nome, telefone e empregador. Se informar um filtro de valor, use um valor positivo.'); return; }
-    const body = { ...form, ...selection, cpf, phone, name: form.name.trim(), employerDocument: form.employerDocument.replace(/\D/g, ''), value: form.value ? Number(form.value) : undefined, term: Number(form.term) || undefined, provider, action };
+    const financial = action === 'SIMULATE';
+    if (!isValidCpf(cpf) || !form.name.trim() || !/^\d{10,11}$/.test(phone) || financial && form.value && (!Number.isFinite(Number(form.value)) || Number(form.value) <= 0) || form.employerDocument && ![8, 14].includes(form.employerDocument.replace(/\D/g, '').length)) { setError('Revise CPF, nome, telefone e empregador. Se informar um filtro de valor para calcular, use um valor positivo.'); return; }
+    const body = { ...form, ...selection, cpf, phone, name: form.name.trim(), employerDocument: form.employerDocument.replace(/\D/g, ''), value: financial && form.value ? Number(form.value) : undefined, term: financial ? Number(form.term) || undefined : undefined, provider, action };
     const fingerprint = JSON.stringify(body);
     if (!provider && last.current?.fingerprint === fingerprint) { setPage('TRACKING'); await recover(); return; }
     const parentExecutionId = provider ? last.current?.id : undefined;

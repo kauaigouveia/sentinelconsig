@@ -37,6 +37,20 @@ async function prepare() {
 }
 
 describe('FACTA CLT client → conditions → results', () => {
+  it('queries from the legacy client form without native financial requirements, but validates financial calculation later', async () => {
+    render(<ProductSimulationModal isOpen product="CLT" onClose={() => {}} />);
+    for(const [label,value] of [['CPF','52998224725'],['Nome completo','Pessoa sintética'],['Telefone com DDD','11999999999']]) fireEvent.change(screen.getByLabelText(label),{target:{value}});
+    const payment=screen.getByLabelText('Parcela desejada (R$)') as HTMLInputElement;
+    expect(payment.required).toBe(false);expect(payment.value).toBe('');
+    expect(payment.closest('form')!.checkValidity()).toBe(true);
+    fireEvent.click(screen.getByRole('button',{name:'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES'}));
+    await screen.findByText('Empresa A');
+    expect(requests).toHaveLength(1);expect(requests[0].url).toBe('/api/simulations/products/clt/refresh');
+    expect(requests[0].body.value).toBeUndefined();expect(requests[0].body.term).toBeUndefined();
+    fireEvent.click(screen.getByRole('button',{name:'Consultar ofertas'}));
+    await screen.findByText(/Informe uma parcela ou valor liberado positivo/);
+    expect(requests).toHaveLength(1);
+  });
   it.each(['1423,98', '1.423,98', '1423.98', 'R$ 1.423,98'])('preserves manually entered %s and the selected opaque registration across steps', async raw => {
     await prepare();
     fireEvent.click(screen.getAllByRole('button', { name: 'Usar este vínculo na simulação' })[1]);

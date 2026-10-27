@@ -35,6 +35,16 @@ function app() {
   return app;
 }
 describe('CLT route forwarding over HTTP, all business dependencies mocked', () => {
+  it('accepts REFRESH with identity only while keeping financial SIMULATE validation', async () => {
+    const identity = { cpf: payload.cpf, name: payload.name, phone: payload.phone };
+    expect((await request(app()).post('/api/simulations/products/clt/refresh').send(identity)).status).toBe(200);
+    expect(run.mock.calls[0].slice(1,4)).toEqual(['tenant-a','CLT','REFRESH']);
+    expect(run.mock.calls[0][4]).toMatchObject({ value:0,term:0,mode:'Payment',eligibility:true });
+    run.mockClear();
+    expect((await request(app()).post('/api/simulations/products/clt/simulate').send(identity)).status).toBe(400);
+    expect((await request(app()).post('/api/simulations/products/clt/simulate').send({...payload,value:0})).status).toBe(400);
+    expect(run).not.toHaveBeenCalled();
+  });
   it.each(['/api/simulations/products/clt/simulate', '/api/partner-portal/simulations/simulate'])('forwards registration and requested installment at %s', async path => {
     expect((await request(app()).post(path).send(payload)).status).toBe(200);
     const selected = path.includes('partner-portal') ? run.mock.calls[0][2] : run.mock.calls[0][4];
