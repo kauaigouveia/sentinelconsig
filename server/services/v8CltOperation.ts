@@ -7,13 +7,13 @@ export async function v8CltOperation(db: any, tenant: string, promoter: string, 
   const store = new CltJourneyStore(db, tenant, `bank:v8:${promoter}`);
   const prior = await store.read(id);
   if (prior?.record.phase === 'DONE') return prior.record.snapshot.results.v8.rows.map(row => row.state === 'OFFER' ? { ...row, message: 'Resultado recuperado, sem novo POST. Confira a validade da oferta com o banco.', data: { ...(row.data as any), v8: { ...(row.data as any)?.v8, cached: true } } } : row);
-  if (prior) throw Error('V8_OPERATION_UNCERTAIN');
+  if (prior) throw Object.assign(Error('V8_OPERATION_UNCERTAIN'),{writeUncertain:true});
   const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot: { executionId: id, running: true, banks: [], results: { v8: { status: 'QUERYING', rows: [] } } } };
   // Evidence remains encrypted and is committed before the provider write.
   if (audit) (record as JourneyRecord & { audit: unknown }).audit = audit;
   await store.create(id, record);
   const saved = await store.read(id);
-  if (!saved || saved.record.phase !== 'READY') throw Error('V8_OPERATION_UNCERTAIN');
+  if (!saved || saved.record.phase !== 'READY') throw Object.assign(Error('V8_OPERATION_UNCERTAIN'),{writeUncertain:true});
   record.phase = 'RUNNING';
   const raw = await store.compareAndSet(id, saved.raw, record);
   try {
@@ -24,6 +24,6 @@ export async function v8CltOperation(db: any, tenant: string, promoter: string, 
   } catch (error) {
     record.phase = 'UNKNOWN'; record.snapshot.running = false;
     await store.compareAndSet(id, raw, record).catch(() => {});
-    throw error;
+    throw Object.assign(error instanceof Error?error:Error('V8_OPERATION_UNCERTAIN'),{writeUncertain:true});
   }
 }

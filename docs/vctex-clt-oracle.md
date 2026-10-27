@@ -4,7 +4,7 @@ Fonte: **Documentação de API VCTEX CLT, 1.0.11, 30/09/2026, 47 páginas**, for
 
 ## Limites da entrega
 
-Código preparado para revisão, **não homologação bancária**. Nenhuma consulta de CPF, criação de termo, simulação ou contratação real foi executada. Não há migrations, schema, novas dependências ou infraestrutura contratada. As alterações CLT não concluídas em `codex/clt-consult-first` permanecem em seu checkout, fora deste pacote. Base: `396136fd6bf4e20dfa28ffb62b3a7af2cd361bc7`.
+Código preparado para revisão, **não homologação bancária**. Nenhuma consulta de CPF, criação de termo, simulação ou contratação real foi executada. Não há migrations, schema, novas dependências ou infraestrutura contratada. As correções operacionais CLT foram incorporadas posteriormente neste PR, preservando o checkout original; ver `clt-multibank-priority-review.md`. Base: `396136fd6bf4e20dfa28ffb62b3a7af2cd361bc7`.
 
 O host Oracle respondeu **404** à única requisição de conectividade `POST https://gateway.sentinelconsig.com.br/vctex`, **sem chave, credenciais ou destino bancário**. Isso não comprova a instalação da rota nem sua autenticação. Não houve login VCTEX real: a rota precisa estar instalada e as credenciais autorizadas disponíveis no backend. Não foram extraídas credenciais de produção nem alteradas configurações remotas.
 
@@ -20,7 +20,7 @@ O host Oracle respondeu **404** à única requisição de conectividade `POST ht
 8. Depois de elegível, calcula automaticamente **uma** oferta ativa do primeiro vínculo com taxas, sem inventar valores/prazos nem multiplicar combinações. Mais vínculos/tabelas e simulação personalizada são escolhas explícitas. Seguro acompanha a oferta; prazo/parcela personalizados são validados com limites e margem antes do POST.
 9. Reservas de criação/cálculo usam a tabela existente `SystemConfig`, transação/unique e CAS cifrado. Não há dependência de mutex em memória para idempotência. POSTs não são repetidos automaticamente. Respostas 4xx definitivas ficam registradas sem replay; falha de rede/5xx mantém `UNKNOWN`. Criação 409/incerta tenta reconciliar por CPF, sem novo POST de criação. Novo ciclo após expiração conhecida exige ação explícita.
 10. Polling cliente sequencial de 10 até 60 segundos, interrompido no terminal, ao sair ou após falha. Não há recálculo recorrente de ofertas. Conexões múltiplas exigem seleção, sem escolher credenciais arbitrariamente.
-11. Ofertas persistidas são calculadas pelo servidor e anexadas ao histórico cifrado da execução, com comparação multibancos. Fechar/trocar contexto limpa o cadastro visual, cancela leitura e invalida respostas atrasadas. Recuperação do último ID desta sessão é **explícita**, sem restauração automática de CPF. Não exclui histórico durável.
+11. Ofertas persistidas são calculadas pelo servidor e anexadas ao histórico cifrado da execução, com comparação multibancos. Fechar/trocar contexto limpa o cadastro visual, cancela leitura e invalida respostas atrasadas. Recuperação pela lista de histórico próprio é **explícita**, sem restauração automática de CPF. Não exclui histórico durável.
 
 ## Endpoints do contrato utilizados
 
@@ -85,7 +85,7 @@ O diagnóstico retorna somente HTTP e nomes de campos, mais indicação de recon
 - As páginas 18–47 foram revisadas para separar formalização: criação de operação, KYC, documentos, mudança de conta, cancelamento, averbação e pagamento **não estão expostos no adapter/gateway desta entrega**. Não há contratação automática.
 - Divergência futura do PDF: p. 28 menciona PATCH de conta bancária; p. 29 documenta POST `change-bank-account`. P. 25 também apresenta KYC como não exposto e enumera subestados. Não implementar essas operações por suposição.
 - Timeout/criação não reconciliada exige investigação; não apaga reservas nem autoriza reenvio. Não há rotina de expurgo nova. Histórico permanece cifrado sob a política existente de retenção.
-- Recuperação visual lista apenas o último ID da sessão atual; uma listagem completa de histórico pertence ao trabalho multibancos separado ainda preservado.
+- A recuperação visual agora oferece seleção explícita do histórico próprio no backend, com metadados e snapshot cifrado; ver `clt-multibank-priority-review.md`.
 
 ## Reversão
 
@@ -93,6 +93,6 @@ Não houve implantação remota. Reverter este commit/PR em branch própria remo
 
 ## Validação
 
-Regressão: **269 testes aprovados, zero reprovados, em 22 arquivos**, sequenciais com `--maxWorkers=1 --no-file-parallelism`. Destes, 41 testes são de contrato/serviço/gateway VCTEX e três da interface VCTEX. Os demais cobrem cadastro/consulta sem parcela, jornada, persistência em mock, discovery, deadlines, progresso, telefone BMG, conexões por promotora, FACTA e V8. TypeScript (`npm run lint`) e `git diff --check` aprovados. Gateway Node passou em `node --check`; instalador passou em `bash -n` sem execução. Build final (`npm run build`) aprovado: Prisma Client gerado, frontend Vite e servidor esbuild compilados, sem conexão a banco (URLs sintéticas locais não operacionais). Avisos Vite de chunks grandes permanecem como limitação de empacotamento do projeto.
+Validação original do commit 79f4b36 (a validação posterior está no relatório multibancos e no PR): **269 testes aprovados, zero reprovados, em 22 arquivos**, sequenciais com `--maxWorkers=1 --no-file-parallelism`. Destes, 41 testes são de contrato/serviço/gateway VCTEX e três da interface VCTEX. Os demais cobrem cadastro/consulta sem parcela, jornada, persistência em mock, discovery, deadlines, progresso, telefone BMG, conexões por promotora, FACTA e V8. TypeScript (`npm run lint`) e `git diff --check` aprovados. Gateway Node passou em `node --check`; instalador passou em `bash -n` sem execução. Build final (`npm run build`) aprovado: Prisma Client gerado, frontend Vite e servidor esbuild compilados, sem conexão a banco (URLs sintéticas locais não operacionais). Avisos Vite de chunks grandes permanecem como limitação de empacotamento do projeto.
 
 Testes usam exclusivamente HTTP simulado, armazenamento transacional em mock e fixtures sintéticas. Não foi executada validação VCTEX com PostgreSQL real ou APIs bancárias reais. A verificação Oracle sem chave é conectividade real; não é autenticação VCTEX nem homologação bancária. TypeScript/build não comprovam tráfego upstream real. Nenhuma migration, seed, banco operacional, merge, deploy ou alteração de credenciais foi executada.

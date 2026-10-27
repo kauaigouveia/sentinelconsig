@@ -75,31 +75,36 @@ it('requires state recovery after an incomplete transport, without issuing anoth
 it('requires explicit selection to recover after a full remount using only an opaque tenant/actor-scoped identifier and a read request', async () => {
   const id = '00000000-0000-4000-8000-000000000001';
   sessionStorage.setItem('sentinel:clt-execution:tenant-a:user-a', id);
-  const fetcher = vi.fn(async (_url: string, _options: RequestInit) => new Response(JSON.stringify({ ...snapshot, executionId: id })));
+  const fetcher = vi.fn(async (url: string, _options: RequestInit) => Response.json(url.endsWith('/history')?{executions:[{executionId:id,banks:['FACTA']}]}:{...snapshot,executionId:id}));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
   expect(fetcher).not.toHaveBeenCalled();
   expect((screen.getByLabelText('CPF') as HTMLInputElement).value).toBe('');
-  fireEvent.click(screen.getByRole('button',{name:'Recuperar explicitamente o último acompanhamento desta sessão'}));
+  fireEvent.click(screen.getByText('Recuperar acompanhamento',{selector:'summary'}));
+  await vi.waitFor(()=>expect((screen.getByLabelText('Execução para recuperar') as HTMLSelectElement).options.length).toBe(2));
+  fireEvent.change(screen.getByLabelText('Execução para recuperar'),{target:{value:id}});
+  fireEvent.click(screen.getByRole('button',{name:'Recuperar acompanhamento selecionado'}));
   await screen.findByText('Ofertas disponíveis');
-  expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(fetcher.mock.calls[0][0]).toBe('/api/simulations/clt/journey/' + id);
-  expect(fetcher.mock.calls[0][1].method).toBeUndefined();
-  expect(sessionStorage.getItem('sentinel:clt-execution:tenant-a:user-a')).toBe(id);
+  expect(fetcher.mock.calls.some(([url])=>url==='/api/simulations/clt/journey/'+id)).toBe(true);
+  expect(fetcher.mock.calls.some(([,options])=>options?.method==='POST')).toBe(false);
+  expect(sessionStorage.getItem('sentinel:clt-execution:tenant-a:user-a')).toBeNull();
 });
 
 it('restores the authorized customer from the encrypted server snapshot without financial parameters or another POST', async () => {
   const id = '00000000-0000-4000-8000-000000000001';
   sessionStorage.setItem('sentinel:clt-execution:tenant-a:user-a', id);
-  const fetcher = vi.fn(async () => new Response(JSON.stringify({ ...snapshot, executionId: id, customer: { v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male', cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 0, term: 0, mode: 'Payment' } })));
+  const fetcher = vi.fn(async (url:string) => new Response(JSON.stringify(url.endsWith('/history')?{executions:[{executionId:id,banks:['FACTA']}]}:{ ...snapshot, executionId: id, customer: { v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male', cpf: '52998224725', name: 'Pessoa sintética', phone: '11999999999', value: 0, term: 0, mode: 'Payment' } })));
   vi.stubGlobal('fetch', fetcher);
   render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={() => {}} />);
-  expect(fetcher).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Recuperar explicitamente o último acompanhamento desta sessão'}));
+  expect(fetcher).not.toHaveBeenCalled();fireEvent.click(screen.getByText('Recuperar acompanhamento',{selector:'summary'}));
+  await vi.waitFor(()=>expect((screen.getByLabelText('Execução para recuperar') as HTMLSelectElement).options.length).toBe(2));
+  fireEvent.change(screen.getByLabelText('Execução para recuperar'),{target:{value:id}});
+  fireEvent.click(screen.getByRole('button',{name:'Recuperar acompanhamento selecionado'}));
   await screen.findByText('Ofertas disponíveis'); fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }));
   expect((screen.getByLabelText('CPF') as HTMLInputElement).value.replace(/\D/g, '')).toBe('52998224725');
   expect((screen.getByLabelText('Telefone com DDD') as HTMLInputElement).value).toBe('11999999999');
   expect((screen.getByLabelText('Data de nascimento') as HTMLInputElement).value).toBe('28/02/1990');expect((screen.getByLabelText('E-mail do trabalhador') as HTMLInputElement).value).toBe('synthetic@example.invalid');expect((screen.getByLabelText('Sexo informado pelo trabalhador') as HTMLSelectElement).value).toBe('male');
-  expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull(); expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull();expect(fetcher.mock.calls.some(([url])=>url.includes('/observe'))).toBe(true);
 });
 
 it('uses a bounded modal, internal scroll and restores background scroll on close', () => {

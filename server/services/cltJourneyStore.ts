@@ -27,6 +27,18 @@ function open(value: string, aad: string): JourneyRecord {
 // No external operation is allowed until its RUNNING claim is committed.
 export class CltJourneyStore {
   constructor(private db: any, private tenant: string, private actor: string) {}
+  async remember(id: string) {
+    const configKey=prefix+'history:'+journeyFingerprint(this.actor)+':'+journeyFingerprint(id);
+    const data={tenantId:this.tenant,configKey,configValue:seal({id},identity(this.tenant,this.actor,configKey)),isSecret:true};
+    await this.db.systemConfig.upsert({where:{tenantId_configKey:{tenantId:this.tenant,configKey}},create:data,update:{configValue:data.configValue,isSecret:true}});
+  }
+  async history() {
+    const rows=await this.db.systemConfig.findMany({where:{tenantId:this.tenant,configKey:{startsWith:prefix+'history:'+journeyFingerprint(this.actor)+':'}},orderBy:{updatedAt:'desc'},take:30});
+    const legacy=await this.db.systemConfig.findMany({where:{tenantId:this.tenant,configKey:{startsWith:prefix+'intent:'}},orderBy:{updatedAt:'desc'},take:200});
+    const results:any[]=[],seen=new Set<string>();
+    for(const row of [...rows,...legacy].sort((a,b)=>new Date(b.updatedAt||0).getTime()-new Date(a.updatedAt||0).getTime()))try{const value=open(row.configValue,identity(this.tenant,this.actor,row.configKey)) as unknown as {id:string};if(!value.id||seen.has(value.id))continue;const saved=await this.read(value.id);if(!saved?.record.snapshot.customer)continue;seen.add(value.id);results.push({executionId:saved.record.snapshot.executionId,updatedAt:row.updatedAt,phase:saved.record.phase,banks:saved.record.snapshot.banks.map(b=>b.name)});if(results.length>=30)break;}catch{/* Invalid or other-actor entries never disclose customer data. */}
+    return results;
+  }
   async read(id: string) {
     const row = await this.db.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId: this.tenant, configKey: configKey(this.actor, id) } } });
     if (!row) return undefined;

@@ -109,10 +109,10 @@ export class V8CltSimulationService {
         }
         let selected = input.v8ConsultId ? consultations.filter(item => item.id === input.v8ConsultId) : consultations;
         if (action === 'SIMULATE' && selected.length > 1) { rows.push(row('MISSING_DATA', 'A V8 retornou múltiplas consultas. Atualize os dados e selecione a consulta autorizada que deseja usar.')); continue; }
-        if (!selected.length) { rows.push(row(input.v8ConsultId ? 'MISSING_DATA' : 'AUTHORIZATION_REQUIRED', input.v8ConsultId ? 'Consulta V8 selecionada não encontrada para este cliente e conexão. Atualize e selecione novamente.' : 'Nenhuma consulta V8 encontrada nos últimos 30 dias. Crie e autorize uma consulta pela API V8.')); continue; }
+        if (!selected.length) { rows.push(row(input.v8ConsultId ? 'MISSING_DATA' : 'AUTHORIZATION_REQUIRED', input.v8ConsultId ? 'Consulta V8 selecionada não encontrada para este cliente e conexão. Atualize e selecione novamente.' : 'Nenhuma consulta V8 encontrada nos últimos 30 dias. Crie e autorize uma consulta pela API V8.', input.v8ConsultId ? {} : {data:{v8:{promoterId,nextAction:'CREATE_CONSULT'}}})); continue; }
         for (const consult of selected) {
           if (!uuid(consult.id)) throw new V8CltError(200, 'CONSULT_ID');
-          if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Crie e autorize uma consulta própria; os dados externos não foram expostos.')); continue; }
+          if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Crie e autorize uma consulta própria; os dados externos não foram expostos.',{data:{v8:{promoterId,nextAction:'CREATE_CONSULT'}}})); continue; }
           const consentRecorded = await V8CltConsentAudit.recorded(db, tenantId, promoterId, input.cpf, consult.id);
           const reference = { data: { v8: { consultId: consult.id, promoterId, status: consult.status, consentRecorded } } };
           const description = typeof (consult.description ?? consult.Description) === 'string' ? cltPublicMessage(consult.description ?? consult.Description) : undefined;
@@ -193,7 +193,7 @@ export class V8CltSimulationService {
     } catch (error) {
       record.phase = 'UNKNOWN'; record.snapshot.running = false; record.snapshot.results.v8 = { status: 'UNKNOWN', rows: [] };
       await store.compareAndSet(id, raw, record).catch(() => {});
-      throw error;
+      throw Object.assign(error instanceof Error?error:Error('CONSULT_UNCERTAIN'),{writeUncertain:true});
     }
   }
 
@@ -218,6 +218,7 @@ export class V8CltSimulationService {
   private static failure(error: unknown, tenantId: string, promoterId: string) {
     const code = error instanceof V8CltError ? error.code : 'CONNECTION';
     logger.warn({ tenantId, promoterId, provider: 'V8', code, httpStatus: error instanceof V8CltError ? error.status : undefined }, '[CLT] V8 consultation unavailable');
-    return row('TECHNICAL_ERROR', code === 'CONSULT_UNCERTAIN' ? 'Já existe uma criação V8 em andamento ou com resultado incerto. Confira a consulta na V8; o POST não será repetido.' : code === 'PERMISSION_DENIED' ? 'A V8 não liberou as permissões CLT desta conexão. Solicite a habilitação ao suporte V8.' : 'Não foi possível concluir a consulta CLT V8. Atualize os dados ou confira a conexão com o administrador.');
+    const uncertain=code==='CONSULT_UNCERTAIN'||(error as any)?.writeUncertain===true;
+    return row('TECHNICAL_ERROR', code === 'CONSULT_UNCERTAIN' ? 'Já existe uma criação V8 em andamento ou com resultado incerto. Confira a consulta na V8; o POST não será repetido.' : code === 'PERMISSION_DENIED' ? 'A V8 não liberou as permissões CLT desta conexão. Solicite a habilitação ao suporte V8.' : 'Não foi possível concluir a consulta CLT V8. Atualize os dados ou confira a conexão com o administrador.',uncertain?{data:{writeUncertain:true}}:{});
   }
 }

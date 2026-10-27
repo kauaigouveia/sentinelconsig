@@ -54,6 +54,12 @@ export function registerCltJourneyRoutes(app: Express, db: any, getSession: (req
       return res.json(await V8CltConsent.issue(db, c.tenant!, reference.promoterId, reference.consultId, entry.snapshot.customer));
     } catch { return res.status(409).json({ error: 'Termo vigente, verificação do trabalhador ou vínculo da consulta ainda não estão confirmados.' }); }
   });
+  app.get(`${path}/history`,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');try{const c=await context(req);if(c.status)return res.status(c.status).json({error:c.error||'Acesso não autorizado.'});return res.json({executions:await service.history(db,c.tenant!,c.actor!)});}catch{return res.status(503).json({error:'Histórico temporariamente indisponível.'});}
+  });
+  app.get(`${path}/:id/observe`,async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');try{const c=await context(req);if(c.status)return res.status(c.status).json({error:c.error||'Acesso não autorizado.'});const provider=req.query.provider;if(provider!==undefined&&(typeof provider!=='string'||!journeyProviders.includes(provider as JourneyProvider)))return res.status(400).json({error:'Instituição inválida.'});const snapshot=await service.observe(db,c.tenant!,c.actor!,req.params.id,provider as JourneyProvider|undefined,req.query.manual==='1');return snapshot?res.json(snapshot):res.status(404).json({error:'Execução não encontrada nesta empresa e usuário.'});}catch{return res.status(503).json({error:'Acompanhamento temporariamente indisponível. Nenhuma solicitação foi reenviada.'});}
+  });
   app.get(`${path}/:id`, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {

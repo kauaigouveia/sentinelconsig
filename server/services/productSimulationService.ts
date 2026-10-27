@@ -9,6 +9,8 @@ import { V8CltSimulationService } from './v8CltSimulationService.js';
 import { cltOutcome, cltPublicMessage, type CltOutcome } from '../../src/lib/cltSimulationOutcome.js';
 import { logger } from '../logger.js';
 import { cltPaymentLimit } from './cltFinancialPolicy.js';
+import { cltBankOnce, missingCltAuthorization } from './cltBankOperation.js';
+import { isJourneyExecution } from './cltJourneyDeadline.js';
 
 export type ProductSimulationInput = {
   cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string; v8ConsultId?: string; v8PromoterId?: string;
@@ -16,6 +18,7 @@ export type ProductSimulationInput = {
   bmgActorId?: string;
   autoConditions?: boolean;
   v8BirthDate?: string; v8Gender?: 'male' | 'female'; v8Email?: string;
+  journeyId?: string; automaticAuthorization?: boolean; observeOnly?: boolean; calculationKey?: string;
 };
 export type ProductSimulationRow = {
   provider: string; institution: string; table?: string; state: 'OFFER' | 'PENDING' | 'ERROR' | 'DATA';
@@ -30,6 +33,7 @@ const safeLink = (value: unknown) => typeof value === 'string' && /^https:\/\//i
 
 export class ProductSimulationService {
   static async run(prisma: PrismaClient, tenantId: string, product: 'FGTS' | 'CLT', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH' | 'CREATE_CONSULT', input: ProductSimulationInput, onRows?: (rows: ProductSimulationRow[]) => Promise<void>, providers?: readonly string[]) {
+    if(product==='CLT'&&!isJourneyExecution()) input={...input,journeyId:undefined,automaticAuthorization:false,observeOnly:false,calculationKey:undefined};
     if (action === 'CREATE_CONSULT') return { rows: product === 'CLT' && providers?.length === 1 && providers[0] === 'v8' ? await V8CltSimulationService.run(prisma, tenantId, action, input) : [], message: undefined };
     const factaInput = input;
     // FACTA can return an eight-digit employer registration. Other providers
@@ -38,9 +42,10 @@ export class ProductSimulationService {
     const rows: ProductSimulationRow[] = [];
     let configured = false;
     const failure = (provider: string, institution: string, error: any) => {
-      const detail = error?.message || 'Não foi possível consultar esta instituição.';
+      const detail = error?.writeUncertain?'Resultado incerto após envio à instituição. Atualize o estado antes de outra operação; nenhuma solicitação será repetida automaticamente.':/fetch failed|ECONN|ETIMEDOUT|ENOTFOUND/i.test(error?.message||'')?'Falha de comunicação com a instituição. Atualize a consulta; as demais instituições continuam disponíveis.':error?.message || 'Não foi possível consultar esta instituição.';
+      if(product==='CLT'&&missingCltAuthorization(detail)){rows.push({provider,institution,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{authorization:{status:'MISSING'},writeUncertain:!!error?.writeUncertain,trackingUnsupported:provider==='FINANTO'},message:detail});return;}
       const j17Timeout = provider === 'Nossa Fintech' && institution === 'J17' && /curl error 28|connection timed out|timeout|timedout/i.test(detail);
-      rows.push({ provider, institution, state: 'ERROR', message: j17Timeout
+      rows.push({ provider, institution, state: 'ERROR', data: error?.writeUncertain?{writeUncertain:true}:undefined, message: j17Timeout
         ? 'J17 não respondeu à Nossa Fintech dentro do prazo. Tente novamente mais tarde. As demais instituições continuam disponíveis.'
         : detail });
     };
@@ -59,7 +64,7 @@ export class ProductSimulationService {
     const finantoCall = async (endpoint: string, body: unknown) => {
       const result = await FinantoService.request(prisma, tenantId, 'POST', endpoint, body);
       const payload = result.data as any;
-      if (!result.success || payload?.messages?.length) throw new Error(cltResponseReasons(payload).join(' · ') || payload?.message || 'FINANTO não concluiu a consulta.');
+      if (!result.success || payload?.messages?.length && typeof payload?.eligible !== 'boolean') throw new Error(cltResponseReasons(payload).join(' · ') || payload?.message || 'FINANTO não concluiu a consulta.');
       return payload;
     };
     const nossa = async () => {
@@ -96,11 +101,20 @@ export class ProductSimulationService {
       await Promise.all(institutions.map(async service => {
         try {
           const identity = { document_number: input.cpf, service_type: service };
-          const authorization = await nossaCall('POST', action === 'AUTHORIZE' ? '/clt-loan/v1/request-authorization' : '/clt-loan/v1/check-authorization', action === 'AUTHORIZE' ? {
-            ...identity, person_name: input.name, country_code: '55', area_code: input.phone.slice(0, 2), phone_number: input.phone.slice(2), notification_method: 'sms',
-          } : identity);
-          if (action === 'AUTHORIZE' || authorization?.status !== 'AUTHORIZED') {
-            rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', link: safeLink(authorization?.authorization_link), message: authorization?.status === 'AUTHORIZED' ? 'Cliente autorizado. Clique em simular para consultar as condições.' : 'Aguardando autorização do cliente.' });
+          const requestAuthorization = async (confirmedMissing=false) => {
+            const send = () => nossaCall('POST', '/clt-loan/v1/request-authorization', { ...identity, person_name: input.name, country_code: '55', area_code: input.phone.slice(0, 2), phone_number: input.phone.slice(2), notification_method: 'sms' });
+            return input.journeyId ? cltBankOnce(prisma, tenantId, 'nossa', ['AUTHORIZE', input.cpf, service], send,{root:input.journeyId,confirmedMissing}) : send();
+          };
+          let authorization: any;
+          if (action === 'AUTHORIZE') authorization = await requestAuthorization();
+          else try { authorization = await nossaCall('POST', '/clt-loan/v1/check-authorization', identity); }
+          catch (error) { if (!missingCltAuthorization(error instanceof Error ? error.message : '')) throw error; authorization = { status: 'NOT_FOUND' }; }
+          const missing = ['NOT_FOUND','NOT_REQUESTED','NONE'].includes(authorization?.status);
+          let requested = action === 'AUTHORIZE';
+          if (missing && input.automaticAuthorization && !input.observeOnly) { authorization = await requestAuthorization(true); requested = true; }
+          if (requested || authorization?.status !== 'AUTHORIZED') {
+            const rejected = ['REJECTED','DENIED'].includes(authorization?.status);
+            rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', outcome: rejected ? 'INELIGIBLE' : 'AUTHORIZATION_REQUIRED', link: safeLink(authorization?.authorization_link), data: { authorization: { status: rejected ? 'REJECTED' : requested ? 'REQUESTED' : 'PENDING', mechanism: 'BANK_CHANNEL' } }, message: rejected ? 'Autorização recusada pelo cliente ou instituição.' : requested ? authorization?.operationCached?'Solicitação anterior já registrada. Nenhum novo envio foi realizado; aguardando aceite do cliente.':'Solicitação enviada. Aguardando aceite do cliente no canal da instituição.' : 'Aguardando autorização do cliente.' });
             return;
           }
           const employers = input.employerDocument ? [{ employer_cnpj: input.employerDocument }] : array(await nossaCall('POST', '/clt-loan/v1/check-employee-enrollment', identity));
@@ -129,7 +143,7 @@ export class ProductSimulationService {
             catch (error) { failure('Nossa Fintech', service, error); continue; }
             if (action === 'REFRESH') {
               const restrictions = cltResponseReasons(margin);
-              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'DATA', message: margin?.can_continue === false ? restrictions.join(' · ') || 'Vínculo não elegível. O banco não informou o motivo da restrição.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin, restrictions } });
+              rows.push({ provider: 'Nossa Fintech', institution: service, state: margin?.can_continue===false?'PENDING':'DATA', outcome:margin?.can_continue===false?'INELIGIBLE':undefined, message: margin?.can_continue === false ? restrictions.join(' · ') || 'Vínculo não elegível. O banco não informou o motivo da restrição.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin, restrictions } });
               continue;
             }
             if (margin?.can_continue === false || cltResponseReasons(margin).length > 0 || !margin?.margin_key) {
@@ -146,7 +160,8 @@ export class ProductSimulationService {
               if (!table.cod_tabela || (input.term && term !== input.term) || seen.has(key)) continue;
               seen.add(key);
               try {
-                const result = await nossaCall('POST', '/clt-loan/v1/simulate-loan', { margin_key: margin.margin_key, simulation_type: input.autoConditions ? 'Payment' : input.mode, employer_document: cnpj, requested_amount: requested, service_type: service, cod_tabela: String(table.cod_tabela) });
+                const calculate = () => nossaCall('POST', '/clt-loan/v1/simulate-loan', { margin_key: margin.margin_key, simulation_type: input.autoConditions ? 'Payment' : input.mode, employer_document: cnpj, requested_amount: requested, service_type: service, cod_tabela: String(table.cod_tabela) });
+                const result = input.journeyId ? await cltBankOnce(prisma,tenantId,'nossa',['CALCULATE',input.journeyId,input.bmgActorId,input.cpf,service,cnpj,String(table.cod_tabela),requested,input.mode],calculate) : await calculate();
                 const amount = positive(result.disbursement_amount);
                 if (input.term && Number(result.num_periods) !== input.term) {
                   rows.push({ provider: 'Nossa Fintech', institution: service, table: table.name, state: 'PENDING', message: 'A API retornou outro prazo para esta tabela. Compare todos os prazos para visualizar essa condição.' }); continue;
@@ -166,18 +181,18 @@ export class ProductSimulationService {
       const config = await FinantoService.getConfig(prisma, tenantId);
       if (!config.enabled || !config.isConfigured) return;
       configured = true;
-      if (action === 'AUTHORIZE') {
-        const term = await finantoCall('/v3/authorization-terms', { type: { code: 'auth_loan_private_payroll_term', name: 'Termo de Autorização para Empréstimo de Consignado Privado' }, identity: input.cpf, signer: { type: { code: 'person', name: 'Pessoa' }, name: input.name, identity: input.cpf, phone: input.phone } });
-        rows.push({ provider: 'FINANTO', institution: 'CLT', state: 'PENDING', link: safeLink(term.url || term.signature?.url), message: 'Termo criado. O cliente deve assinar pelo canal da instituição antes de simular.', simulationId: term.id });
-        return;
-      }
+      let pendingTerm: Promise<any> | undefined;
+      const ensureTerm = (confirmedMissing=false) => pendingTerm ||= (async()=>{const createTerm=()=>finantoCall('/v3/authorization-terms',{type:{code:'auth_loan_private_payroll_term',name:'Termo de Autorização para Empréstimo de Consignado Privado'},identity:input.cpf,signer:{type:{code:'person',name:'Pessoa'},name:input.name,identity:input.cpf,phone:input.phone}});return input.journeyId?cltBankOnce(prisma,tenantId,'finanto',['AUTHORIZE',input.cpf],createTerm,{root:input.journeyId,confirmedMissing}):createTerm();})();
+      if(action==='AUTHORIZE'){const term=await ensureTerm();rows.push({provider:'FINANTO',institution:'CLT',state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',link:safeLink(term.url||term.signature?.url),simulationId:term.id,data:{authorization:{status:'REQUESTED'},trackingUnsupported:true},message:'Solicitação enviada. O cliente deve assinar o termo no canal da instituição.'});return;}
+      if(input.observeOnly){rows.push({provider:'FINANTO',institution:'CLT',state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{trackingUnsupported:true},message:'FINANTO: acompanhamento sem novo POST ainda depende de endpoint de leitura ou webhook de autorização validado. Nenhuma solicitação foi repetida.'});return;}
       await Promise.all([{ code: 950002, name: 'QI Tech' }, { code: 950703, name: '321 Bank' }].map(async provider => {
         try {
-          const simulation = await finantoCall(`/v3/loan-private-payroll-simulations/providers/${provider.code}`, { borrower: { name: input.name, identity: input.cpf, phone: input.phone }, step: { code: 1, name: 'Simulação de Proposta' }, originCode: 3 });
+          const create = () => finantoCall(`/v3/loan-private-payroll-simulations/providers/${provider.code}`, { borrower: { name: input.name, identity: input.cpf, phone: input.phone }, step: { code: 1, name: 'Simulação de Proposta' }, originCode: 3 });
+          const simulation = input.journeyId ? await cltBankOnce(prisma, tenantId, 'finanto', ['CONSULT',input.journeyId,input.bmgActorId,input.cpf,provider.code],create) : await create();
           if (action === 'REFRESH') {
             const restrictions = cltResponseReasons(simulation);
             const hasItems = array(simulation.items).length > 0;
-            rows.push({ provider: 'FINANTO', institution: provider.name, state: 'DATA', simulationId: simulation.id, message: restrictions.join(' · ') || (simulation.eligible === false ? 'Cliente não elegível. O banco não informou o motivo da restrição.' : hasItems ? 'Dados e condições disponíveis atualizados.' : 'Nenhuma condição de crédito retornada. O banco não informou o motivo.'), data: { borrower: simulation.borrower, items: simulation.items, eligible: simulation.eligible, messages: simulation.messages, restrictions } });
+            rows.push({ provider: 'FINANTO', institution: provider.name, state: simulation.eligible===false?'PENDING':'DATA', outcome:simulation.eligible===false?'INELIGIBLE':undefined, simulationId: simulation.id, message: restrictions.join(' · ') || (simulation.eligible === false ? 'Cliente não elegível. O banco não informou o motivo da restrição.' : hasItems ? 'Dados e condições disponíveis atualizados.' : 'Nenhuma condição de crédito retornada. O banco não informou o motivo.'), data: { borrower: simulation.borrower, items: simulation.items, eligible: simulation.eligible, messages: simulation.messages, restrictions } });
             return;
           }
           if (simulation.eligible === false || cltResponseReasons(simulation).length > 0) {
@@ -200,9 +215,9 @@ export class ProductSimulationService {
               const amount = positive(result.netValue);
               rows.push({ provider: 'FINANTO', institution: provider.name, table: item.rule?.name || item.ruleId, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.installmentValue), term: positive(result.term), rate: positive(result.rate), simulationId: simulation.id, data: result, message: amount ? undefined : 'A instituição não retornou valor líquido válido.' });
               await publishRows();
-            } catch (error) { failure('FINANTO', provider.name, error); }
+            } catch (error) { if(input.automaticAuthorization&&!input.observeOnly&&missingCltAuthorization(error instanceof Error?error.message:'')){try{const term=await ensureTerm(true);rows.push({provider:'FINANTO',institution:provider.name,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',link:safeLink(term.url||term.signature?.url),data:{authorization:{status:'REQUESTED'},trackingUnsupported:true},message:'Solicitação enviada. Aguardando assinatura do cliente; acompanhamento por leitura ainda depende de contrato confirmado.'});}catch(requestError){failure('FINANTO',provider.name,requestError);}}else failure('FINANTO', provider.name, error); }
           }
-        } catch (error) { failure('FINANTO', provider.name, error); }
+        } catch (error) { if(input.automaticAuthorization&&!input.observeOnly&&missingCltAuthorization(error instanceof Error?error.message:'')){try{const term=await ensureTerm(true);rows.push({provider:'FINANTO',institution:provider.name,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',link:safeLink(term.url||term.signature?.url),data:{authorization:{status:'REQUESTED'},trackingUnsupported:true},message:'Solicitação enviada. Aguardando assinatura do cliente; acompanhamento por leitura ainda depende de contrato confirmado.'});}catch(requestError){failure('FINANTO',provider.name,requestError);}}else failure('FINANTO', provider.name, error); }
         finally { await publishRows(); }
       }));
     };
@@ -213,12 +228,17 @@ export class ProductSimulationService {
       rows.push(...await FactaSimulationService.product(prisma, tenantId, product, action, factaInput));
     };
     const bmg = async () => {
-      if (product !== 'CLT' || action !== 'SIMULATE' || !input.bmgActorId) return;
+      if (product !== 'CLT' || !input.bmgActorId) return;
+      if(action==='REFRESH') {const authorization=await BmgBankService.cltAuthorization(prisma,tenantId,input.bmgActorId,input,!!input.automaticAuthorization&&!input.observeOnly);rows.push({provider:'BMG',institution:'BMG',state:authorization.ready?'DATA':'PENDING',outcome:authorization.status==='APPROVED'&&!authorization.ready?'INELIGIBLE':authorization.ready?'PENDING':'AUTHORIZATION_REQUIRED',data:{authorization},message:authorization.ready?'Autorização aprovada. Elegibilidade confirmada.':authorization.status==='APPROVED'?authorization.reason||'Cliente não elegível no BMG.':authorization.status==='WAITING_OTP'?'Solicitação enviada. Aguardando SMS/OTP do cliente.':'Autorização SMS ausente ou expirada. Use a recuperação no cartão BMG.'});return;}
+      if(action!=='SIMULATE')return;
       rows.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, { ...input, product }));
     };
     const v8 = async () => {
       if (product !== 'CLT') return false;
       const v8Rows = await V8CltSimulationService.run(prisma, tenantId, action, input);
+      if(action==='REFRESH'&&input.automaticAuthorization&&!input.observeOnly&&v8Rows.some(r=>r.outcome==='AUTHORIZATION_REQUIRED'||(r.data as any)?.v8?.nextAction==='CREATE_CONSULT')&&!v8Rows.some(r=>(r.data as any)?.v8?.consultId)) {
+        rows.push(...await V8CltSimulationService.run(prisma,tenantId,'CREATE_CONSULT',input));configured=true;return true;
+      }
       if (!v8Rows.length) return false;
       configured = true;
       rows.push(...v8Rows);

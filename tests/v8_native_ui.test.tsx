@@ -33,15 +33,10 @@ it('calls bank-mediated authorization only on explicit action, without worker si
   expect(fetcher).toHaveBeenCalledTimes(1);expect(fetcher.mock.calls[0][0]).toBe('/api/simulations/clt/v8/authorize');expect(recorded).toHaveBeenCalledOnce();
   const body=JSON.parse(fetcher.mock.calls[0][1].body);expect(body.consultId).toBe(ref.consultId);expect(body.signature).toBeUndefined();expect(body.accepted).toBeUndefined();
 });
-it.each(['SUCCESS','REJECTED','FAILED'])('polls only observations and stops at %s; only eligible SUCCESS starts pricing once', async status => {
-  vi.useFakeTimers(); const start=vi.fn(),snapshot=vi.fn();
-  const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({results:{v8:{rows:[{data:{v8:{...ref,status,simulationReady:status==='SUCCESS'}}}]}}})});vi.stubGlobal('fetch',fetcher);
-  const {unmount}=render(<V8CltActions capabilities={{connections:[]}} form={{}} setForm={vi.fn()} start={start} busy={false} executionId="synthetic" rows={[{data:{v8:ref}}]} onSnapshot={snapshot}/>);
-  await act(async()=>{await vi.advanceTimersByTimeAsync(8000);});
-  expect(fetcher).toHaveBeenCalledTimes(1);expect(fetcher.mock.calls[0][1].method).toBeUndefined();
-  expect(start).toHaveBeenCalledTimes(status==='SUCCESS'?1:0);
-  await act(async()=>{await vi.advanceTimersByTimeAsync(80000);});expect(fetcher).toHaveBeenCalledTimes(1);
-  unmount();
+it.each(['SUCCESS','REJECTED','FAILED'])('delegates polling to the parent journey and never independently replays a calculation at %s', async status => {
+  vi.useFakeTimers();const start=vi.fn(),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+  render(<V8CltActions capabilities={{connections:[]}} form={{}} setForm={vi.fn()} start={start} busy={false} executionId="synthetic" rows={[{data:{v8:{...ref,status}}}]} onSnapshot={vi.fn()}/>);
+  await act(async()=>{await vi.advanceTimersByTimeAsync(90000);});expect(fetcher).not.toHaveBeenCalled();expect(start).not.toHaveBeenCalled();
 });
 it('cancels observation on unmount without starting a bank operation', async()=>{
   vi.useFakeTimers();const start=vi.fn(),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);

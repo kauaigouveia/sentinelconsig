@@ -120,7 +120,7 @@ it('preserves enrollment choices and eligibility while removing nested provider 
   expect(projected.items[0].registrationNumber).toBe('000A'); expect(projected.restrictions).toEqual(['Vínculo não elegível']);
   expect(JSON.stringify(projected)).not.toContain('SECRET');
 });
-it('marks interrupted READY and technical bank errors UNKNOWN without permitting an automatic retry', async () => {
+it('marks interrupted work UNKNOWN but keeps a failed read retryable without inventing an uncertain write', async () => {
   const db = journeyDatabase(), service = new CltJourneyService();
   vi.spyOn(service, 'available').mockResolvedValue([{ id: 'facta', name: 'FACTA' }]);
   const entry = await service.start(db, 'tenant-a', 'user:a', id, input);
@@ -129,5 +129,5 @@ it('marks interrupted READY and technical bank errors UNKNOWN without permitting
   const other = await service.start(db, 'tenant-a', 'user:a', '00000000-0000-4000-8000-000000000003', { ...input, value: 1 });
   vi.spyOn(ProductSimulationService, 'run').mockResolvedValue({ rows: [{ provider: 'FACTA', institution: 'FACTA', state: 'ERROR', outcome: 'TECHNICAL_ERROR' }], message: undefined });
   await service.execute(db, 'tenant-a', 'user:a', other, input);
-  expect(other.record.phase).toBe('UNKNOWN');
+  expect(other.record.phase).toBe('DONE');expect(other.snapshot.results.facta.rows[0].outcome).toBe('TECHNICAL_ERROR');
 });
