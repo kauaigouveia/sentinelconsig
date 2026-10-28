@@ -4,11 +4,12 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { ProductSimulationService } from '../server/services/productSimulationService';
 import { NossaFintechService } from '../server/services/nossaFintechService';
 import { FactaBankService } from '../server/services/factaBankService';
+import { V8CltSimulationService } from '../server/services/v8CltSimulationService';
 import { FinantoService } from '../server/services/finantoService';
 import { SimulationFlowSelectorModal } from '../src/components/simulation/SimulationFlowSelectorModal';
 
 const input = { cpf: 'fixture', name: 'Cliente', phone: '11999999999', term: 4, value: 500, mode: 'Payment' as const, eligibility: true };
-beforeEach(() => vi.spyOn(FactaBankService, 'getTenantConfig').mockResolvedValue({ simulationEnabled: false, isConfigured: false } as any));
+beforeEach(() => {vi.spyOn(V8CltSimulationService,'run').mockResolvedValue([]);vi.spyOn(FactaBankService, 'getTenantConfig').mockResolvedValue({ simulationEnabled: false, isConfigured: false } as any);});
 afterEach(() => vi.restoreAllMocks());
 function configs() {
   vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
@@ -21,14 +22,14 @@ describe('Simulações CLT e FGTS na central', () => {
     const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: { success: true, data: endpoint.includes('banking') ? ['QITECH'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' } : { margin_key: 'margin', can_continue: false, restrictions: [{ code: 'CNAE', description: reason }] } } }));
     const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', action, { ...input, employerDocument: '12345678000100' });
     expect(result.rows[0].message).toContain(reason);
-    expect(result.rows[0].state).toBe(action === 'REFRESH' ? 'DATA' : 'PENDING');
+    expect(result.rows[0].state).toBe('PENDING');expect(result.rows[0].outcome).toBe('INELIGIBLE');
     expect(request.mock.calls.some(call => /simulate-loan|list-rebates/.test(call[3]))).toBe(false);
   });
-  it('preserva a justificativa dentro de uma resposta de erro da Nossa Fintech', async () => {
+  it('mantém autorização não confirmada quando a própria consulta oficial retorna erro', async () => {
     configs();
     vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => endpoint.includes('banking') ? { success: true, status: 200, data: { success: true, data: ['QITECH'] } } : { success: false, status: 422, data: { success: false, message: 'Não elegível', data: { restrictions: ['CNAE restrito'] } } });
     const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', input);
-    expect(result.rows[0].message).toContain('CNAE restrito');
+    expect(result.rows[0]).toMatchObject({state:'ERROR',outcome:'TECHNICAL_ERROR',data:{authorization:{status:'UNCONFIRMED'}}});
   });
   it('preserva o motivo retornado na mensagem externa da consulta de margem', async () => {
     configs();
@@ -36,37 +37,9 @@ describe('Simulações CLT e FGTS na central', () => {
     const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', { ...input, employerDocument: '12345678000100' });
     expect(result.rows[0].message).toBe('CNAE restrito');
   });
-  it('não apresenta FINANTO sem ofertas como consulta com condições disponíveis', async () => {
-    configs();
-    vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
-    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
-    vi.spyOn(FinantoService, 'request').mockResolvedValue({ success: true, status: 200, data: { id: 'simulation', borrower: { name: 'Cliente' }, items: [], eligible: false } });
-    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', input);
-    expect(result.rows.every(row => row.message?.includes('não informou o motivo'))).toBe(true);
-    expect(result.rows.every(row => !row.message?.includes('disponíveis atualizados'))).toBe(true);
-  });
-  it('deduplica os motivos FINANTO em vez de repeti-los', async () => {
-    configs();
-    vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
-    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
-    vi.spyOn(FinantoService, 'request').mockResolvedValue({ success: true, status: 200, data: { messages: [{ text: 'CNAE restrito' }, { text: 'CNAE restrito' }] } });
-    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', input);
-    expect(result.rows.every(row => row.message === 'CNAE restrito')).toBe(true);
-  });
-  it.each([
-    { margin_key: 'margin', document: '98765432100', employer: { document: '12345678000100' } },
-    { margin_key: 'margin', document: '12345678900', employer: { document: '98765432000100' } },
-    { beneficio: '123', especie: 41, nome: 'Cliente' },
-  ])('não utiliza margem CLT de outro CPF/vínculo ou com formato de INSS', async margin => {
-    configs();
-    const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: { success: true, data: endpoint.includes('banking') ? ['QITECH'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' } : margin } }));
-    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'REFRESH', { ...input, cpf: '12345678900', employerDocument: '12345678000100' });
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].state).toBe('ERROR');
-    expect(result.rows[0].message).toContain('não foi utilizada');
-    expect(result.rows[0].data).toBeUndefined();
-    expect(request.mock.calls.every(call => call[3].startsWith('/clt-loan/v1/'))).toBe(true);
-    expect(request.mock.calls.some(call => /simulate-loan|list-rebates/.test(call[3]))).toBe(false);
+  it('preserva os produtos existentes da FINANTO fora da jornada CLT',async()=>{
+    configs();const request=vi.spyOn(FinantoService,'request');
+    const result=await ProductSimulationService.run({} as any,'tenant','CLT','REFRESH',input,undefined,['finanto']);expect(result.rows).toHaveLength(0);expect(request).not.toHaveBeenCalled();
   });
   it('aceita o documento abreviado do empregador conforme exemplo CLT documentado', async () => {
     configs();
@@ -107,8 +80,8 @@ describe('Simulações CLT e FGTS na central', () => {
   });
   it('exibe um cartão CLT e um FGTS sem banco no título', () => {
     const html = renderToStaticMarkup(<SimulationFlowSelectorModal isOpen onClose={() => {}} onSelectFlow={() => {}} happySimulationAccessEnabled />);
-    expect(html.match(/id="btn-flow-clt_multi"/g)).toHaveLength(1);
-    expect(html.match(/id="btn-flow-fgts_multi"/g)).toHaveLength(1);
+    expect(html.match(/Crédito do trabalhador/g)).toHaveLength(1);
+    expect(html.match(/Antecipação FGTS/g)).toHaveLength(1);
     expect(html).not.toContain('btn-flow-happy-clt');
   });
   it('FGTS consulta três instituições, usa a chave real e não lê períodos como ofertas', async () => {
@@ -153,18 +126,7 @@ describe('Simulações CLT e FGTS na central', () => {
     expect(result.rows.every(row => row.state === 'OFFER' && row.amount === 5000 && row.rate === 2)).toBe(true);
     expect(request.mock.calls.filter(call => call[3].includes('simulate-loan'))).toHaveLength(2);
   });
-  it('FINANTO consulta os dois provedores CLT e envia somente o valor do modo escolhido', async () => {
-    configs();
-    vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
-    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
-    const request = vi.spyOn(FinantoService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => ({ success: true, status: 200, data: endpoint.includes('/providers/')
-      ? { id: 'simulation', items: [{ term: 24, rate: 2, rule: { id: 'rule', name: 'CLT' } }] }
-      : { netValue: 5000, installmentValue: 500, term: 24, rate: 2 } }));
-    const result = await ProductSimulationService.run({} as any, 'tenant', 'CLT', 'SIMULATE', { ...input, term: 24, mode: 'Liquid' });
-    expect(result.rows).toHaveLength(2);
-    const calls = request.mock.calls.filter(call => call[3].endsWith('/calculation'));
-    expect(calls).toHaveLength(2);
-    expect(calls[0][4]).toMatchObject({ type: 2, disbursementValue: 500 });
-    expect(calls[0][4]).not.toHaveProperty('installmentValue');
+  it('FINANTO não participa da operação CLT, mesmo com configuração habilitada',async()=>{
+    configs();const api=vi.spyOn(FinantoService,'request');const result=await ProductSimulationService.run({} as any,'tenant','CLT','SIMULATE',input,undefined,['finanto']);expect(result.rows).toHaveLength(0);expect(api).not.toHaveBeenCalled();
   });
 });

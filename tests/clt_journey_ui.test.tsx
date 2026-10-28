@@ -87,7 +87,7 @@ it('requires explicit selection to recover after a full remount using only an op
   await screen.findByText('Ofertas disponíveis');
   expect(fetcher.mock.calls.some(([url])=>url==='/api/simulations/clt/journey/'+id)).toBe(true);
   expect(fetcher.mock.calls.some(([,options])=>options?.method==='POST')).toBe(false);
-  expect(sessionStorage.getItem('sentinel:clt-execution:tenant-a:user-a')).toBeNull();
+  expect(sessionStorage.getItem('sentinel:clt-execution:tenant-a:user-a')).toBe(id);
 });
 
 it('restores the authorized customer from the encrypted server snapshot without financial parameters or another POST', async () => {

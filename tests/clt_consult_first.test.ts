@@ -117,16 +117,8 @@ it('uses Nossa margin and utilizable limit, without a manual installment or fina
   expect(result.rows.some(r => r.state === 'OFFER')).toBe(true);
 });
 
-it('derives FINANTO calculation from the returned maximum and rule only after eligibility, never from a guessed installment', async () => {
-  vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
-  let eligible = false;
-  const bank = vi.spyOn(FinantoService, 'request').mockImplementation(async (_db, _tenant, _method, path, body: any) => {
-    if (path.endsWith('/calculation')) { expect(body).toMatchObject({ installmentValue: 250.01, term: 12, rate: 2.5, ruleId: 'synthetic-rule', type: 1 }); return { success: true, data: { netValue: 2000 } } as any; }
-    return { success: true, data: { id: 'synthetic', eligible, items: [{ term: 12, rate: 2.5, ruleId: 'synthetic-rule', maxInstallmentValue: 250.019, employerDocument: '12345678000100', registrationNumber: '000F' }] } } as any;
-  });
-  await ProductSimulationService.run({} as any, 'tenant-a', 'CLT', 'SIMULATE', { ...input, autoConditions: true }, undefined, ['finanto']);
-  expect(bank.mock.calls.some(c => c[3].endsWith('/calculation'))).toBe(false);
-  eligible = true;
-  const result = await ProductSimulationService.run({} as any, 'tenant-a', 'CLT', 'SIMULATE', { ...input, autoConditions: true }, undefined, ['finanto']);
-  expect(result.rows.filter(r => r.state === 'OFFER')).toHaveLength(2);
+it('rejects retired FINANTO CLT dispatch without reading credentials or making calls',async()=>{
+ const config=vi.spyOn(FinantoService,'getConfig');const bank=vi.spyOn(FinantoService,'request');
+ for(const action of ['REFRESH','SIMULATE','AUTHORIZE'] as const){const result=await ProductSimulationService.run({} as any,'tenant-a','CLT',action,input,undefined,['finanto']);expect(result.rows).toHaveLength(0);}
+ expect(config).not.toHaveBeenCalled();expect(bank).not.toHaveBeenCalled();
 });

@@ -1,9 +1,9 @@
 import {CltAuthorizationFollowup} from './cltAuthorizationFollowup.js';
+import {uniqueV8Reference,v8References} from '../../src/lib/cltV8Selection.js';
 import { CltJourneyStore, journeyFingerprint, type JourneyRecord } from './cltJourneyStore.js';
 import { withinJourneyDeadline } from './cltJourneyDeadline.js';
 import { ProductSimulationService, type ProductSimulationInput, type ProductSimulationRow } from './productSimulationService.js';
 import { NossaFintechService } from './nossaFintechService.js';
-import { FinantoService } from './finantoService.js';
 import { FactaBankService } from './factaBankService.js';
 import { BmgBankService } from './bmgBankService.js';
 import { V8BankService } from './v8BankService.js';
@@ -16,6 +16,8 @@ import { VctexBankService } from './vctexBankService.js';
 import { cltPaymentLimit } from './cltFinancialPolicy.js';
 
 export const journeyProviders = ['nossa', 'finanto', 'facta', 'bmg', 'v8', 'parana', 'presenca', 'happy', 'vctex'] as const;
+// Legacy identifiers remain readable in history, but cannot start or resume bank operations.
+export const activeJourneyProviders = journeyProviders.filter(id => id !== 'finanto');
 export type JourneyProvider = typeof journeyProviders[number];
 export type JourneyAction = 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT';
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
@@ -38,6 +40,7 @@ export class CltJourneyService {
   }
   async history(db:any,tenant:string,actor:string){return new CltJourneyStore(db,tenant,actor).history();}
   async observe(db:any,tenant:string,actor:string,id:string,provider?:JourneyProvider,manual=false) {
+    if(provider==='finanto')return undefined;
     const entry=await this.get(db,tenant,actor,id);if(!entry?.snapshot.customer)return undefined;
     if(['READY','RUNNING'].includes(entry.record.phase))return entry.snapshot;
     if(entry.snapshot.rootExecutionId&&entry.snapshot.rootExecutionId!==id){const root=await this.get(db,tenant,actor,entry.snapshot.rootExecutionId);if(root?.snapshot.customer?.cpf===entry.snapshot.customer.cpf)entry.snapshot.results={...entry.snapshot.results,...root.snapshot.results};}
@@ -47,7 +50,7 @@ export class CltJourneyService {
     try{entry.raw=await entry.store.compareAndSet(id,entry.raw,record);}catch{return(await this.get(db,tenant,actor,id))?.snapshot;}
     try {
       await withinJourneyDeadline(AbortSignal.timeout(25000),async()=>{
-        const banks=entry.snapshot.banks.filter(bank=>!bank.contextual&&(!provider||provider===bank.id));
+        const banks=entry.snapshot.banks.filter(bank=>bank.id!=='finanto'&&!bank.contextual&&(!provider||provider===bank.id));
         for(let offset=0;offset<banks.length;offset+=3)await Promise.all(banks.slice(offset,offset+3).map(async bank=>{
           const old=entry.snapshot.results[bank.id];
           if(!provider&&old.rows.length&&old.rows.every(r=>r.outcome==='INELIGIBLE'||r.outcome==='UNSUPPORTED'))return;
@@ -63,6 +66,7 @@ export class CltJourneyService {
           }catch {entry.snapshot.results[bank.id]={...old,message:'Não foi possível atualizar o estado deste banco. Nenhuma solicitação foi reenviada.'};}
         }));
       });
+      bindV8(entry.snapshot);
       entry.snapshot.observedAt=new Date().toISOString();
     } finally {record.observingUntil=0;record.observeAfter=Date.now()+10000;await entry.store.compareAndSet(id,entry.raw,record);}
     return entry.snapshot;
@@ -105,7 +109,6 @@ export class CltJourneyService {
         for(const p of promoters){const c=await VctexBankService.config(db,tenant,p.id);if(c.enabled&&c.cpf&&c.password)return true;}return false;
       },true),
       check('nossa', 'Nossa Fintech · instituições CLT', async () => { const c = await NossaFintechService.getConfig(db, tenant); return c.enabled && c.isConfigured; }),
-      check('finanto', 'FINANTO · instituições CLT', async () => { const c = await FinantoService.getConfig(db, tenant); return c.enabled && c.isConfigured; }),
       check('facta', 'FACTA', async () => { const c = await FactaBankService.getTenantConfig(db, tenant); return c.isConfigured && c.simulationEnabled; }),
       check('bmg', 'BMG', async () => { const c = await BmgBankService.config(db, tenant); return c.enabled; }),
       check('v8', 'V8 DIGITAL', async () => {
@@ -136,14 +139,15 @@ export class CltJourneyService {
     return banks.sort((a, b) => journeyProviders.indexOf(a.id) - journeyProviders.indexOf(b.id));
   }
   async start(db: any, tenant: string, actor: string, id: string, input: ProductSimulationInput, provider?: JourneyProvider, action: JourneyAction = 'REFRESH', parentId?: string) {
+    if(provider==='finanto')throw Error('CLT_PROVIDER_RETIRED');
     if(action==='SIMULATE'&&provider&&parentId){const parent=await this.get(db,tenant,actor,parentId);input={...input,calculationKey:parent?.snapshot.results[provider]?.readyKey};}
     const fingerprint = journeyFingerprint({ input, provider, action });
     const previous = await this.get(db, tenant, actor, id);
     if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return previous; }
-    const all = await this.available(db, tenant), banks = provider ? all.filter(bank => bank.id === provider).map(bank => bank.id === 'v8' ? { ...bank, contextual: false } : bank) : all;
+    const all = (await this.available(db, tenant)).filter(bank=>bank.id!=='finanto'), banks = provider ? all.filter(bank => bank.id === provider).map(bank => bank.id === 'v8' ? { ...bank, contextual: false } : bank) : all;
     const parent = parentId ? await this.get(db, tenant, actor, parentId) : undefined;
     if (parentId && (!provider || !parent || !(['DONE','UNKNOWN'].includes(parent.record.phase)) || parent?.record.phase==='UNKNOWN' && parent?.snapshot.results[provider!]?.status==='UNKNOWN' && !(provider==='nossa'&&action==='SIMULATE'&&parent.snapshot.results.nossa.readyToSimulate) || parent.snapshot.customer?.cpf !== input.cpf)) throw Error('EXECUTION_CONFLICT');
-    const snapshot: JourneySnapshot = { executionId: id, rootExecutionId: parent?.snapshot.rootExecutionId || parent?.snapshot.executionId || id, automaticEnabled: parent?.snapshot.automaticEnabled ?? (!provider && action === 'REFRESH'), running: true, customer: { ...input }, banks: parent ? [...new Map([...parent.snapshot.banks, ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(parent.snapshot.results) : {} };
+    const snapshot: JourneySnapshot = { executionId: id, rootExecutionId: parent?.snapshot.rootExecutionId || parent?.snapshot.executionId || id, automaticEnabled: parent?.snapshot.automaticEnabled ?? (!provider && action === 'REFRESH'), running: true, customer: { ...input }, banks: parent ? [...new Map([...parent.snapshot.banks.filter(bank=>bank.id!=='finanto'), ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(Object.fromEntries(Object.entries(parent.snapshot.results).filter(([bank])=>bank!=='finanto'))) : {} };
     for (const bank of banks) snapshot.results[bank.id] = { executionId: id, status: bank.contextual ? 'CONTEXTUAL' : 'QUERYING', rows: [], message: bank.error ? 'Não foi possível verificar a configuração. Nenhuma consulta foi iniciada.' : bank.contextual ? 'Etapa específica disponível neste cartão. Nenhuma autorização enviada.' : undefined };
     const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot };
     const store = new CltJourneyStore(db, tenant, actor), canonical = await store.create(id, record);
@@ -169,7 +173,7 @@ export class CltJourneyService {
       return writes;
     };
     await withinJourneyDeadline(signal, async () => {
-      const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => !bank.contextual && (!provider || bank.id === provider)).map(async bank => {
+      const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => bank.id!=='finanto' && !bank.contextual && (!provider || bank.id === provider)).map(async bank => {
         const result = snapshot.results[bank.id];
         try {
           const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); await publish(); };
@@ -179,6 +183,7 @@ export class CltJourneyService {
           const run = () => ProductSimulationService.run(db, tenant, 'CLT', action, bankInput, update, [bank.id]);
           let response = action === 'SIMULATE' ? await cltBankOnce(db,tenant,bank.id,['SIMULATE',bankInput.journeyId,actor,input.cpf,input.employerDocument||null,input.factaRegistration||null,input.value,input.term,input.mode,input.calculationKey||null],run) : await run();
           result.rows = response.rows.map(projectRow);
+          if(bank.id==='v8')bindV8(snapshot);
           // Publish eligibility/margin before calculating. Each adapter revalidates the bank
           // response and derives its own payment; no browser-supplied margin is trusted.
           if (action === 'REFRESH' && mayCalculate(bank.id, response.rows)) {
@@ -224,16 +229,18 @@ function projectRow(row: ProductSimulationRow): ProductSimulationRow {
 }
 
 export function mayCalculate(bank: JourneyProvider, rows: ProductSimulationRow[]) {
+  if(bank==='finanto')return false;
+  if(bank==='v8'&&v8References(rows).length>1)return false;
   const eligible = rows.filter(row => {
     const d = row.data as any;
     if(bank === 'bmg')return row.state === 'DATA' && d?.authorization?.ready === true;
-    return row.state === 'DATA' && d && (bank !== 'v8' || d.v8?.simulationReady === true) && !d.restrictions?.length && !d.margin?.restrictions?.length && (bank === 'finanto'
-      ? d.eligible === true && d.items?.some((i: any) => cltPaymentLimit(i.maxInstallmentValue))
-      : d.margin?.can_continue === true && !!cltPaymentLimit(d.margin.available_balance, d.margin.utilizable_balance));
+    return row.state === 'DATA' && d && (bank !== 'v8' || d.v8?.simulationReady === true) && !d.restrictions?.length && !d.margin?.restrictions?.length && d.margin?.can_continue === true && !!cltPaymentLimit(d.margin.available_balance, d.margin.utilizable_balance);
   });
   // Multiple FACTA registrations require an explicit selection, never the first row.
-  return ['nossa', 'finanto', 'facta', 'v8', 'bmg'].includes(bank) && eligible.length > 0 && (bank !== 'facta' || eligible.length === 1 && rows.filter(r => r.state === 'DATA').length === 1);
+  return ['nossa', 'facta', 'v8', 'bmg'].includes(bank) && eligible.length > 0 && (bank !== 'facta' || eligible.length === 1 && rows.filter(r => r.state === 'DATA').length === 1);
 }
+
+function bindV8(snapshot:JourneySnapshot){const ref=uniqueV8Reference(snapshot.results.v8?.rows);if(ref&&snapshot.customer){snapshot.customer.v8ConsultId=ref.consultId;snapshot.customer.v8PromoterId=ref.promoterId;}}
 
 function safeReasons(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 30).map(v => cltPublicMessage(v)).filter(Boolean) : undefined; }
 

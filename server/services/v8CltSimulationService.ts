@@ -108,6 +108,11 @@ export class V8CltSimulationService {
           if (page === 10) throw new V8CltError(200, 'PAGINATION_LIMIT');
         }
         let selected = input.v8ConsultId ? consultations.filter(item => item.id === input.v8ConsultId) : consultations;
+        if(!input.v8ConsultId){
+          const owned=[];for(const item of selected)if(await this.ownsConsult(db,tenantId,promoterId,input.cpf,item.id))owned.push(item);
+          const active=owned.filter(item=>!['FAILED','REJECTED'].includes(item.status));
+          if(owned.length)selected=active.length?active:owned;
+        }
         if (action === 'SIMULATE' && selected.length > 1) { rows.push(row('MISSING_DATA', 'A V8 retornou múltiplas consultas. Atualize os dados e selecione a consulta autorizada que deseja usar.')); continue; }
         if (!selected.length) { rows.push(row(input.v8ConsultId ? 'MISSING_DATA' : 'AUTHORIZATION_REQUIRED', input.v8ConsultId ? 'Consulta V8 selecionada não encontrada para este cliente e conexão. Atualize e selecione novamente.' : 'Nenhuma consulta V8 encontrada nos últimos 30 dias. Crie e autorize uma consulta pela API V8.', input.v8ConsultId ? {} : {data:{v8:{promoterId,nextAction:'CREATE_CONSULT'}}})); continue; }
         for (const consult of selected) {

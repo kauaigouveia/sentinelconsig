@@ -69,9 +69,8 @@ it('never creates a V8 consultation during a read-only refresh or from a raw unt
   const db:any=journeyDatabase(),spy=vi.spyOn(V8,'run').mockResolvedValue([{provider:'V8',institution:'V8',state:'PENDING',outcome:'AUTHORIZATION_REQUIRED'}]);
   await run(()=>Sim.run(db,'tenant-a','CLT','REFRESH',{...customer,observeOnly:true},undefined,['v8']));await Sim.run(db,'tenant-a','CLT','REFRESH',customer,undefined,['v8']);expect(spy.mock.calls.map(c=>c[2])).toEqual(['REFRESH','REFRESH']);
 });
-it('preserves confirmed FINANTO ineligibility and its reason without requesting a term or financial calculation',async()=>{
-  const db:any=journeyDatabase();vi.spyOn(Finanto,'getConfig').mockResolvedValue({enabled:true,isConfigured:true} as any);const spy=vi.spyOn(Finanto,'request').mockResolvedValue({success:true,data:{id:'synthetic-simulation',eligible:false,messages:['Vínculo inelegível por política bancária']}} as any);
-  const response=await run(()=>Sim.run(db,'tenant-a','CLT','REFRESH',customer,undefined,['finanto']));expect(response.rows).toHaveLength(2);expect(response.rows.every((r:any)=>r.outcome==='INELIGIBLE'&&r.message.includes('política'))).toBe(true);expect(spy.mock.calls.every(c=>c[3].includes('/providers/'))).toBe(true);
+it('never creates FINANTO terms or queries CLT after retirement',async()=>{
+ const spy=vi.spyOn(Finanto,'request');const response=await Sim.run(journeyDatabase() as any,'tenant-a','CLT','REFRESH',customer,undefined,['finanto']);expect(response.rows).toHaveLength(0);expect(spy).not.toHaveBeenCalled();
 });
 it('sends BMG SMS once with the initial phone and waits for the actual OTP before eligibility',async()=>{
   const db:any=journeyDatabase();db.promoter={findMany:async()=>[{id:'dg',name:'DG'}]};vi.spyOn(Bmg,'config').mockResolvedValue({enabled:true} as any);

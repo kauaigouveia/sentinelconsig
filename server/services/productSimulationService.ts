@@ -1,7 +1,6 @@
 import {nossaAuthorization,rememberNossaAuthorization} from './nossaCltAuthorization.js';
 import type { PrismaClient } from '@prisma/client';
 import { NossaFintechService } from './nossaFintechService';
-import { FinantoService } from './finantoService';
 import { FactaBankService } from './factaBankService';
 import { FactaSimulationService } from './factaSimulationService';
 import { BmgBankService } from './bmgBankService.js';
@@ -61,12 +60,6 @@ export class ProductSimulationService {
         if (reasons.length) return { ...data, restrictions: reasons };
       }
       return data;
-    };
-    const finantoCall = async (endpoint: string, body: unknown) => {
-      const result = await FinantoService.request(prisma, tenantId, 'POST', endpoint, body);
-      const payload = result.data as any;
-      if (!result.success || payload?.messages?.length && typeof payload?.eligible !== 'boolean') throw new Error(cltResponseReasons(payload).join(' · ') || payload?.message || 'FINANTO não concluiu a consulta.');
-      return payload;
     };
     const nossa = async () => {
       const config = await NossaFintechService.getConfig(prisma, tenantId);
@@ -188,51 +181,6 @@ export class ProductSimulationService {
         finally { await publishRows(); }
       }));
     };
-    const finanto = async () => {
-      if (product !== 'CLT') return;
-      const config = await FinantoService.getConfig(prisma, tenantId);
-      if (!config.enabled || !config.isConfigured) return;
-      configured = true;
-      let pendingTerm: Promise<any> | undefined;
-      const ensureTerm = (confirmedMissing=false) => pendingTerm ||= (async()=>{const createTerm=()=>finantoCall('/v3/authorization-terms',{type:{code:'auth_loan_private_payroll_term',name:'Termo de Autorização para Empréstimo de Consignado Privado'},identity:input.cpf,signer:{type:{code:'person',name:'Pessoa'},name:input.name,identity:input.cpf,phone:input.phone}});return input.journeyId?cltBankOnce(prisma,tenantId,'finanto',['AUTHORIZE',input.cpf],createTerm,{root:input.journeyId,confirmedMissing}):createTerm();})();
-      if(action==='AUTHORIZE'){const term=await ensureTerm();rows.push({provider:'FINANTO',institution:'CLT',state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',link:safeLink(term.url||term.signature?.url),simulationId:term.id,data:{authorization:{status:'REQUESTED'},trackingUnsupported:true},message:'Solicitação enviada. O cliente deve assinar o termo no canal da instituição.'});return;}
-      if(input.observeOnly){rows.push({provider:'FINANTO',institution:'CLT',state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{trackingUnsupported:true},message:'FINANTO: acompanhamento sem novo POST ainda depende de endpoint de leitura ou webhook de autorização validado. Nenhuma solicitação foi repetida.'});return;}
-      await Promise.all([{ code: 950002, name: 'QI Tech' }, { code: 950703, name: '321 Bank' }].map(async provider => {
-        try {
-          const create = () => finantoCall(`/v3/loan-private-payroll-simulations/providers/${provider.code}`, { borrower: { name: input.name, identity: input.cpf, phone: input.phone }, step: { code: 1, name: 'Simulação de Proposta' }, originCode: 3 });
-          const simulation = input.journeyId ? await cltBankOnce(prisma, tenantId, 'finanto', ['CONSULT',input.journeyId,input.bmgActorId,input.cpf,provider.code],create) : await create();
-          if (action === 'REFRESH') {
-            const restrictions = cltResponseReasons(simulation);
-            const hasItems = array(simulation.items).length > 0;
-            rows.push({ provider: 'FINANTO', institution: provider.name, state: simulation.eligible===false?'PENDING':'DATA', outcome:simulation.eligible===false?'INELIGIBLE':undefined, simulationId: simulation.id, message: restrictions.join(' · ') || (simulation.eligible === false ? 'Cliente não elegível. O banco não informou o motivo da restrição.' : hasItems ? 'Dados e condições disponíveis atualizados.' : 'Nenhuma condição de crédito retornada. O banco não informou o motivo.'), data: { borrower: simulation.borrower, items: simulation.items, eligible: simulation.eligible, messages: simulation.messages, restrictions } });
-            return;
-          }
-          if (simulation.eligible === false || cltResponseReasons(simulation).length > 0) {
-            rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', message: cltResponseReasons(simulation).join(' · ') || 'Cliente não elegível. O banco não informou o motivo da restrição.' });
-            return;
-          }
-          const items = array(simulation.items).filter(item => (!input.term || Number(item.term) === input.term) && (!input.employerDocument || item.employerDocument === input.employerDocument));
-          if (!items.length) rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', message: 'Nenhuma condição elegível. Confira autorização, vínculo e prazo.' });
-          for (const item of items) {
-            const requested = input.autoConditions ? cltPaymentLimit(item.maxInstallmentValue) : input.value;
-            if (!requested || input.autoConditions && (!Number.isFinite(Number(item.rate)) || Number(item.rate) <= 0 || !Number.isInteger(Number(item.term)) || Number(item.term) <= 0 || !(item.rule?.id || item.ruleId))) {
-              rows.push({ provider: 'FINANTO', institution: provider.name, state: 'PENDING', outcome: 'MISSING_DATA', message: 'A FINANTO não retornou parcela máxima, taxa, regra e prazo válidos. Nenhum cálculo foi enviado.' }); continue;
-            }
-            try {
-              const result = await finantoCall(`/v3/loan-private-payroll-simulations/${encodeURIComponent(simulation.id)}/calculation`, {
-                type: input.autoConditions || input.mode === 'Payment' ? 1 : 2, identity: input.cpf, ruleId: item.rule?.id || item.ruleId, term: Number(item.term), rate: Number(item.rate),
-                ...(input.autoConditions || input.mode === 'Payment' ? { installmentValue: requested } : { disbursementValue: requested }),
-                registrationNumber: item.registrationNumber, employerDocument: item.employerDocument, employerName: item.employerName, hasInsurance: Boolean(item.hasInsurance), isInitialCalculation: true, selected: true,
-              });
-              const amount = positive(result.netValue);
-              rows.push({ provider: 'FINANTO', institution: provider.name, table: item.rule?.name || item.ruleId, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.installmentValue), term: positive(result.term), rate: positive(result.rate), simulationId: simulation.id, data: result, message: amount ? undefined : 'A instituição não retornou valor líquido válido.' });
-              await publishRows();
-            } catch (error) { if(input.automaticAuthorization&&!input.observeOnly&&missingCltAuthorization(error instanceof Error?error.message:'')){try{const term=await ensureTerm(true);rows.push({provider:'FINANTO',institution:provider.name,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',link:safeLink(term.url||term.signature?.url),data:{authorization:{status:'REQUESTED'},trackingUnsupported:true},message:'Solicitação enviada. Aguardando assinatura do cliente; acompanhamento por leitura ainda depende de contrato confirmado.'});}catch(requestError){failure('FINANTO',provider.name,requestError);}}else failure('FINANTO', provider.name, error); }
-          }
-        } catch (error) { if(input.automaticAuthorization&&!input.observeOnly&&missingCltAuthorization(error instanceof Error?error.message:'')){try{const term=await ensureTerm(true);rows.push({provider:'FINANTO',institution:provider.name,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',link:safeLink(term.url||term.signature?.url),data:{authorization:{status:'REQUESTED'},trackingUnsupported:true},message:'Solicitação enviada. Aguardando assinatura do cliente; acompanhamento por leitura ainda depende de contrato confirmado.'});}catch(requestError){failure('FINANTO',provider.name,requestError);}}else failure('FINANTO', provider.name, error); }
-        finally { await publishRows(); }
-      }));
-    };
     const facta = async () => {
       const config = await FactaBankService.getTenantConfig(prisma, tenantId);
       if (!config.isConfigured || !config.simulationEnabled) return;
@@ -268,7 +216,6 @@ export class ProductSimulationService {
     const publishRows = async () => { normalizeRows(); if (onRows) await onRows([...rows]); };
     await Promise.all([
       ...(!providers || providers.includes('nossa') ? [nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows)] : []),
-      ...(!providers || providers.includes('finanto') ? [finanto().catch(error => failure('FINANTO', product, error)).then(publishRows)] : []),
       ...(!providers || providers.includes('facta') ? [facta().catch(error => failure('FACTA', product, error)).then(publishRows)] : []),
       ...(!providers || providers.includes('bmg') ? [bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows)] : []),
       ...(!providers || providers.includes('v8') ? [v8().catch(() => { rows.push({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'ERROR', outcome: 'TECHNICAL_ERROR', message: 'Não foi possível consultar as conexões V8 desta empresa.' }); return true; }).then(async changed => { if (changed) await publishRows(); })] : []),

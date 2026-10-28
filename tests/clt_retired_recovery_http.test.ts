@@ -1,0 +1,46 @@
+import express from 'express';
+import request from 'supertest';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {journeyDatabase} from './helpers/cltJourneyDatabase';
+import {CltJourneyService} from '../server/services/cltJourneyService';
+import {registerCltJourneyRoutes} from '../server/services/cltJourneyRoutes';
+import {FinantoService} from '../server/services/finantoService';
+import {NossaFintechService as Nossa} from '../server/services/nossaFintechService';
+import {FactaBankService} from '../server/services/factaBankService';
+import {BmgBankService} from '../server/services/bmgBankService';
+import {V8CltSimulationService as V8} from '../server/services/v8CltSimulationService';
+const id='00000000-0000-4000-8000-000000000091',child='00000000-0000-4000-8000-000000000092';
+const customer={cpf:'52998224725',name:'Pessoa sintética',phone:'11999999999',v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male',eligibility:true,mode:'Payment',value:0,term:0};
+beforeEach(()=>{vi.stubEnv('JWT_SECRET','synthetic-http-recovery');vi.stubGlobal('fetch',vi.fn(()=>{throw Error('No real banking allowed');}));});
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();vi.unstubAllEnvs();});
+it('uses real HTTP routes and orchestration with simulated APIs: no FINANTO, independent QI/UY3 recovery, margin and reserved offers',async()=>{
+ const state=journeyDatabase(),db:any={...state,tenant:{findUnique:async()=>({status:'ACTIVE',happySimulationAccessEnabled:false})},promoter:{findMany:async()=>[]}};
+ vi.spyOn(FinantoService,'getConfig').mockResolvedValue({enabled:true,isConfigured:true,hasApiKey:true});const retired=vi.spyOn(FinantoService,'request');
+ vi.spyOn(FactaBankService,'getTenantConfig').mockResolvedValue({isConfigured:false} as any);vi.spyOn(BmgBankService,'config').mockResolvedValue({enabled:false} as any);
+ vi.spyOn(Nossa,'getConfig').mockResolvedValue({enabled:true,isConfigured:true});let approved=false;
+ const bank=vi.spyOn(Nossa,'request').mockImplementation(async(_db,_tenant,_method,path,body:any)=>{
+  const institution=body?.service_type||new URLSearchParams(path.split('?')[1]).get('service_type');
+  const data=path.endsWith('banking-institutions')?['qi','uy3']:path.endsWith('check-authorization')?{status:approved&&institution==='qi'?'AUTHORIZED':'PENDING'}:path.endsWith('check-employee-enrollment')?[{employer_cnpj:'00000000000191'}]:path.endsWith('get-margin')?{margin_key:'synthetic-margin',available_balance:300,can_continue:true}:path.includes('list-rebates')?[{cod_tabela:'synthetic',number_of_installments:12}]:{simulation_key:'synthetic-offer',disbursement_amount:1000,num_periods:12,schedule:[{payment:300}]};
+  return {success:true,status:200,data} as any;
+ });
+ const service=new CltJourneyService();let tenant='tenant-a';const app=express();app.use(express.json());registerCltJourneyRoutes(app,db,async()=>({user:{id:'a',role:'MASTER'},effectiveTenantId:tenant}),service);
+ const initial=await request(app).post('/api/simulations/clt/journey').send({...customer,executionId:id});expect(initial.status).toBe(200);
+ const frames=initial.text.trim().split('\n').map(s=>JSON.parse(s));expect(frames.at(-1).banks.map((b:any)=>b.id)).toEqual(['nossa']);
+ approved=true;
+ const observed=await request(app).get(`/api/simulations/clt/journey/${id}/observe?manual=1`);expect(observed.status).toBe(200);
+ expect(observed.body.results.nossa.readyToSimulate).toBe(true);expect(observed.body.results.nossa.rows.find((r:any)=>r.institution==='qi')).toMatchObject({provider:'Nossa Fintech',state:'DATA',data:{authorization:{status:'AUTHORIZED'},margin:{available_balance:300}}});
+ expect(observed.body.results.nossa.rows.find((r:any)=>r.institution==='uy3').data.authorization.status).toBe('PENDING');
+ const calculated=await request(app).post('/api/simulations/clt/journey').send({...customer,executionId:child,parentExecutionId:id,provider:'nossa',action:'SIMULATE'});expect(calculated.status).toBe(200);
+ const final=JSON.parse(calculated.text.trim().split('\n').at(-1)!);expect(final.results.nossa.rows.some((r:any)=>r.state==='OFFER'&&r.institution==='qi'&&r.provider==='Nossa Fintech')).toBe(true);
+ for(let i=0;i<2;i++)expect((await request(app).get(`/api/simulations/clt/journey/${id}`)).status).toBe(200);
+ expect(bank.mock.calls.filter(c=>c[3].endsWith('simulate-loan'))).toHaveLength(1);expect(bank.mock.calls.some(c=>c[3].endsWith('request-authorization'))).toBe(false);expect(retired).not.toHaveBeenCalled();
+ expect((await request(app).post('/api/simulations/clt/journey').send({...customer,executionId:id,provider:'finanto'})).status).toBe(400);
+ tenant='tenant-b';expect((await request(app).get(`/api/simulations/clt/journey/${id}`)).status).toBe(404);expect(fetch).not.toHaveBeenCalled();
+});
+it('preserves legacy FINANTO history while refusing to resume or consolidate it',async()=>{
+ const db=journeyDatabase(),service=new CltJourneyService();vi.spyOn(service,'available').mockResolvedValue([{id:'finanto',name:'FINANTO'}]);
+ const entry=await service.start(db,'t','user:a',id,customer as any);expect(entry.snapshot.banks).toEqual([]);
+ entry.snapshot.banks=[{id:'finanto',name:'FINANTO'}];entry.snapshot.results.finanto={status:'RETURNED',rows:[{provider:'FINANTO',institution:'QI',state:'OFFER',amount:1000}]};entry.record.phase='DONE';await entry.store.compareAndSet(id,entry.raw,entry.record);
+ const bank=vi.spyOn(FinantoService,'request');await service.observe(db,'t','user:a',id,undefined,true);
+ expect((await service.get(db,'t','user:a',id))?.snapshot.results.finanto.rows[0].amount).toBe(1000);expect(bank).not.toHaveBeenCalled();const resumed=await service.start(db,'t','user:a',child,customer as any,'nossa','REFRESH',id);expect(resumed.snapshot.banks.some(b=>b.id==='finanto')).toBe(false);expect(resumed.snapshot.results.finanto).toBeUndefined();expect((await service.get(db,'t','user:a',id))?.snapshot.results.finanto.rows[0].amount).toBe(1000);await expect(service.start(db,'t','user:a',child,customer as any,'finanto')).rejects.toThrow('RETIRED');
+});

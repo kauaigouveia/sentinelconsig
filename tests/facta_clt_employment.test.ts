@@ -3,7 +3,7 @@ import { FactaSimulationService } from '../server/services/factaSimulationServic
 import { FactaBankService } from '../server/services/factaBankService';
 import { ProductSimulationService } from '../server/services/productSimulationService';
 import { NossaFintechService } from '../server/services/nossaFintechService';
-import { FinantoService } from '../server/services/finantoService';
+import { V8CltSimulationService } from '../server/services/v8CltSimulationService';
 
 const prisma = {} as any;
 const input = { cpf: '00000000000', name: 'Pessoa sintética', phone: '11999999999', employerDocument: '12345678000100', term: 24, value: 1423.98, mode: 'Payment' as const, eligibility: true };
@@ -111,13 +111,10 @@ describe('FACTA CLT employment selection, synthetic only', () => {
   });
   it('retains other providers when FACTA fails', async () => {
     vi.spyOn(NossaFintechService, 'getConfig').mockResolvedValue({ enabled: false } as any);
-    vi.spyOn(FinantoService, 'getConfig').mockResolvedValue({ enabled: true, isConfigured: true } as any);
-    vi.spyOn(FinantoService, 'request').mockImplementation(async (...args: any[]) => ({ success: true, data: String(args[3]).endsWith('/calculation')
-      ? { netValue: 5000, installmentValue: 1423.98, term: 24, rate: 2 }
-      : { id: 'synthetic-simulation', eligible: true, items: [{ term: 24, rate: 2, employerDocument: input.employerDocument, registrationNumber: 'FINANTO-01', ruleId: 'synthetic-rule' }] } } as any));
+    vi.spyOn(V8CltSimulationService,'run').mockResolvedValue([{provider:'V8 DIGITAL',institution:'V8',state:'OFFER',amount:5000}]);
     vi.spyOn(FactaSimulationService, 'product').mockRejectedValue(Error('Matrícula FACTA recusada'));
     const result = await ProductSimulationService.run(prisma, 'tenant-a', 'CLT', 'SIMULATE', input);
-    expect(result.rows.some(row => row.provider === 'FINANTO' && row.state === 'OFFER' && row.amount === 5000)).toBe(true);
+    expect(result.rows.some(row => row.provider === 'V8 DIGITAL' && row.state === 'OFFER' && row.amount === 5000)).toBe(true);
     expect(result.rows).toContainEqual(expect.objectContaining({ provider: 'FACTA', state: 'ERROR', message: 'Matrícula FACTA recusada' }));
   });
 });

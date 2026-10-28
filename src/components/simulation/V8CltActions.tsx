@@ -1,9 +1,11 @@
 import { V8ApiAuthorization } from './V8ApiAuthorization';
+import {uniqueV8Reference,v8References} from '../../lib/cltV8Selection';
 import React from 'react';
 import {isCltBirthDate,isCltEmail,isCltGender,parseCltBirthDate} from '../../lib/cltCustomerData';
 
 export function V8CltActions({ capabilities, form, setForm, start, busy, executionId, rows, onCompleteData }: any) {
-  const connections = capabilities?.connections || [], selected = connections.find((c: any) => c.promoterId === form.v8PromoterId) || (connections.length === 1 ? connections[0] : null);
+  const references=v8References(rows),unique=uniqueV8Reference(rows);
+  const connections = capabilities?.connections || [], selected = connections.find((c: any) => c.promoterId === (unique?.promoterId||form.v8PromoterId)) || (connections.length === 1 ? connections[0] : null);
   const missing=[!(parseCltBirthDate(form.v8BirthDate||'')||isCltBirthDate(form.v8BirthDate))&&'nascimento válido',!isCltEmail(form.v8Email||'')&&'e-mail válido',!isCltGender(form.v8Gender)&&'sexo informado pelo trabalhador'].filter(Boolean);
   const createReasons=[busy&&'Aguarde a consulta em andamento.',missing.length&&`Complete na etapa Cliente: ${missing.join(', ')}.`,!selected&&(connections.length>1?'Selecione a conexão V8 autorizada.':'Aguarde a conferência das conexões V8 disponíveis.')].filter(Boolean);
   const simulateReasons=[busy&&'Aguarde a consulta em andamento.',!selected?.simulationReady&&'A conexão ainda não está habilitada para cálculo; confira as pendências abaixo.',!rows?.some((r:any)=>r.data?.v8?.simulationReady)&&'Aguarde consulta própria SUCCESS, autorização registrada, margem positiva e configurações elegíveis.'].filter(Boolean);
@@ -13,9 +15,9 @@ export function V8CltActions({ capabilities, form, setForm, start, busy, executi
     {simulateReasons.length>0&&<p className="text-xs text-slate-500">{simulateReasons.join(' ')}</p>}
 
     {selected?.reasons?.length > 0 && <ul className="list-inside list-disc text-xs">{selected.reasons.map((reason: string) => <li key={reason}>{reason}</li>)}</ul>}
-    <button type="button" title={createReasons.join(' ')} disabled={createReasons.length>0} onClick={() => start('v8', 'CREATE_CONSULT')} className="rounded border p-2">Criar consulta V8</button>
+    {!references.length&&<button type="button" title={createReasons.join(' ')} disabled={createReasons.length>0} onClick={() => start('v8', 'CREATE_CONSULT')} className="rounded border p-2">Criar consulta V8</button>}
     {createReasons.length>0&&<p className="text-xs text-slate-500">{createReasons.join(' ')}</p>}
     {missing.length>0&&onCompleteData&&<button type="button" disabled={busy} onClick={onCompleteData} className="rounded border p-2">Completar dados na etapa Cliente</button>}
-    {rows?.map((r: any, i: number) => r.data?.v8 && !r.data.v8.consentRecorded && ['WAITING_CONSENT', 'CONSENT_APPROVED', 'WAITING_CONSULT', 'WAITING_CREDIT_ANALYSIS', 'SUCCESS'].includes(r.data.v8.status) && <V8ApiAuthorization key={r.data.v8.consultId + ':' + i} executionId={executionId} reference={r.data.v8} onRecorded={() => start('v8', 'REFRESH', { v8ConsultId: r.data.v8.consultId, v8PromoterId: r.data.v8.promoterId })} />)}
+    {references.map(v=>!v.consentRecorded&&v.status==='WAITING_CONSENT'&&<V8ApiAuthorization key={v.promoterId+':'+v.consultId} executionId={executionId} reference={v} onRecorded={() => start('v8', 'REFRESH', { v8ConsultId: v.consultId, v8PromoterId: v.promoterId })} />)}
   </section>;
 }

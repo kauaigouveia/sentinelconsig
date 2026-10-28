@@ -111,11 +111,11 @@ it('retains uncertain intent indefinitely but allows a new explicit attempt afte
 
 it('preserves enrollment choices and eligibility while removing nested provider credentials', async () => {
   const db = journeyDatabase(), service = new CltJourneyService();
-  vi.spyOn(service, 'available').mockResolvedValue([{ id: 'finanto', name: 'FINANTO' }]);
-  vi.spyOn(ProductSimulationService, 'run').mockResolvedValue({ rows: [{ provider: 'FINANTO', institution: 'QI', state: 'DATA', data: { eligible: false, restrictions: ['Vínculo não elegível'], access_token: 'SECRET', borrower: { name: 'Pessoa sintética', password: 'SECRET' }, items: [{ employerDocument: '12345678000100', registrationNumber: '000A', employerName: 'Empresa fictícia', term: 24, apiKey: 'SECRET' }], margin: { can_continue: false, restrictions: ['Vínculo não elegível'], password: 'SECRET' } } }], message: undefined });
+  vi.spyOn(service, 'available').mockResolvedValue([{ id: 'nossa', name: 'Nossa Fintech' }]);
+  vi.spyOn(ProductSimulationService, 'run').mockResolvedValue({ rows: [{ provider: 'Nossa Fintech', institution: 'QI', state: 'DATA', data: { eligible: false, restrictions: ['Vínculo não elegível'], access_token: 'SECRET', borrower: { name: 'Pessoa sintética', password: 'SECRET' }, items: [{ employerDocument: '12345678000100', registrationNumber: '000A', employerName: 'Empresa fictícia', term: 24, apiKey: 'SECRET' }], margin: { can_continue: false, restrictions: ['Vínculo não elegível'], password: 'SECRET' } } }], message: undefined });
   const entry = await service.start(db, 'tenant-a', 'user:a', id, input);
   await service.execute(db, 'tenant-a', 'user:a', entry, input);
-  const projected: any = entry.snapshot.results.finanto.rows[0].data;
+  const projected: any = entry.snapshot.results.nossa.rows[0].data;
   expect(projected.eligible).toBe(false); expect(projected.margin.can_continue).toBe(false);
   expect(projected.items[0].registrationNumber).toBe('000A'); expect(projected.restrictions).toEqual(['Vínculo não elegível']);
   expect(JSON.stringify(projected)).not.toContain('SECRET');

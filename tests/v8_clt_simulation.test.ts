@@ -47,6 +47,11 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(
 const run = (extra: any = {}, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' = 'SIMULATE', tenant = 'tenant-a') => V8CltSimulationService.run(db, tenant, action, { ...input, ...extra });
 
 describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not homologated', () => {
+  it('automatically reuses the single owned active consultation among unrelated bank records',async()=>{
+    consultations=[{...consultation,id:secondId},consultation];vi.mocked(V8CltSimulationService.ownsConsult).mockImplementation(async(_db,_tenant,_promoter,_cpf,id)=>id===consultId);
+    const data=await run({},'REFRESH');expect((data[0].data as any).v8.consultId).toBe(consultId);expect(JSON.stringify(data)).not.toContain(secondId);
+    expect((await run())[0].state).toBe('OFFER');expect(fetchMock.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(1);
+  });
   it('normalizes the supplied real response contract with synthetic IDs and keeps requested and returned providers distinct', async () => {
     consultations[0].availableMarginValue = '1008.80';
     tables = [{ id: configId, slug: 'Tabela sintética dinâmica', number_of_installments: [12] }];
