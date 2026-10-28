@@ -1,3 +1,5 @@
+import { cltResponseReasons } from '../../src/lib/cltRestrictions.js';
+import { cltBankOnce, reserveCltSms } from './cltBankOperation.js';
 import { journeyFetch } from './cltJourneyDeadline.js';
 import { integrationConfigStore, integrationCacheKey, currentIntegrationPromoter, withIntegrationPromoter, resolveBankPromoter } from './bankPromoterConfig.js';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
@@ -75,6 +77,17 @@ export class BmgBankService {
     if (!data?.verificationToken) throw new Error('BMG não retornou a identificação da autorização.');
     await this.saveSession(prisma, tenantId, actorId, cpf, { phone, verificationToken: data.verificationToken, expires: Date.now() + 300000 });
     return { message: 'Código enviado ao cliente. Informe o código recebido por SMS em até 5 minutos.' };
+  }
+  static async cltAuthorization(prisma: PrismaClient, tenantId: string, actorId: string, input: {cpf:string;phone:string}, initiate: boolean) {
+    const saved=await this.session(prisma,tenantId,actorId,input.cpf),session=saved.data;
+    if(session?.token&&session.expires>Date.now()) {
+      const eligible=await this.request(prisma,tenantId,'GET','/v1/consignado-privado/elegibilidade?canal=WEBSERVICE',undefined,{cpf:input.cpf,'session-token':session.token});
+      if(typeof eligible?.elegivel!=='boolean')throw Error('BMG retornou formato incompatível para elegibilidade. Nenhuma simulação foi enviada.');
+      return {status:'APPROVED',ready:eligible.elegivel,reason:cltResponseReasons(eligible).join(' · ')||undefined};
+    }
+    if(session?.verificationToken&&session.expires>Date.now())return {status:'WAITING_OTP',ready:false};
+    if(initiate) {await cltBankOnce(prisma,tenantId,'bmg',['OTP',actorId,input.cpf,session?.expires||0],async()=>{await reserveCltSms(prisma,tenantId,actorId);return this.sendOtp(prisma,tenantId,actorId,input.cpf,input.phone);});return {status:'WAITING_OTP',ready:false};}
+    return {status:session?'EXPIRED':'MISSING',ready:false};
   }
   static async verifyOtp(prisma: PrismaClient, tenantId: string, actorId: string, cpf: string, code: string) {
     const session = await this.session(prisma, tenantId, actorId, cpf);

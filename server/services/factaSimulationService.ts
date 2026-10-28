@@ -1,4 +1,4 @@
-import { isJourneyExecution } from './cltJourneyDeadline.js';
+import { cltBankOnce, missingCltAuthorization } from './cltBankOperation.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { cltPaymentLimit } from './cltFinancialPolicy.js';
 import type { PrismaClient } from '@prisma/client';
@@ -47,17 +47,18 @@ export class FactaSimulationService {
         body: body === undefined ? undefined : form ? new URLSearchParams(body as Record<string, string>).toString() : JSON.stringify(body),
       });
       // Only read requests can be safely repeated; authorization sends a message.
-      if (response.status === 401 && retry && body === undefined && !isJourneyExecution()) {
+      if (response.status === 401 && retry && body === undefined) {
         FactaBankService.invalidateTokenCache(tenantId);
         return await this.request(prisma, tenantId, path, query, undefined, false, false);
       }
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload || payload.erro === true || payload.erro === 'true' || payload.error) {
-        throw new Error(payload?.mensagem || payload?.msg || payload?.message || `FACTA não concluiu a consulta (HTTP ${response.status}).`);
+        throw Object.assign(new Error(payload?.mensagem || payload?.msg || payload?.message || `FACTA não concluiu a consulta (HTTP ${response.status}).`),{writeUncertain:body!==undefined&&(response.status>=500||response.ok&&!payload)});
       }
       return payload;
     } catch (error: any) {
-      if (error.name === 'AbortError') throw new Error('FACTA não respondeu dentro de 30 segundos. Consulte novamente.');
+      if (body!==undefined&&!(error instanceof Error&&'writeUncertain' in error))error=Object.assign(error instanceof Error?error:Error('Falha de transporte FACTA.'),{writeUncertain:true});
+      if (error.name === 'AbortError') throw Object.assign(new Error('FACTA não respondeu no prazo. Atualize o estado antes de reenviar.'),{writeUncertain:body!==undefined});
       throw error;
     } finally { clearTimeout(timer); }
   }
@@ -150,7 +151,7 @@ export class FactaSimulationService {
     });
   }
 
-  static async product(prisma: PrismaClient, tenantId: string, product: 'CLT' | 'FGTS', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput): Promise<ProductSimulationRow[]> {
+  static async product(prisma: PrismaClient, tenantId: string, product: 'CLT' | 'FGTS', action: 'SIMULATE' | 'AUTHORIZE' | 'REFRESH', input: ProductSimulationInput, confirmedMissing=false): Promise<ProductSimulationRow[]> {
     const rows: ProductSimulationRow[] = [];
     const row = (item: Omit<ProductSimulationRow, 'provider' | 'institution'>): ProductSimulationRow => ({ provider: 'FACTA', institution: 'FACTA', ...item });
     if (product === 'FGTS') {
@@ -170,16 +171,23 @@ export class FactaSimulationService {
           const amount = factaNumber(result.valor_liquido);
           const approved = String(result.permitido || '').trim().toUpperCase() === 'SIM';
           rows.push(row({ table: result.tabela || table.TABELA, state: approved && amount ? 'OFFER' : 'PENDING', amount: approved ? amount : undefined, term: factaNumber(result.parcelas_selecionadas), rate: factaNumber(result.taxa), simulationId: result.simulacao_fgts, message: approved && amount ? undefined : result.msg || result.mensagem || 'Antecipação não permitida nesta tabela.' }));
-        } catch (error: any) { rows.push(row({ table: table.TABELA, state: 'ERROR', message: error.message })); }
+        } catch (error: any) { rows.push(row({ table: table.TABELA, state: 'ERROR', data:error.writeUncertain?{writeUncertain:true}:undefined, message: error.message })); }
       }
       return rows.length ? rows : [row({ state: 'PENDING', message: 'Nenhuma tabela FGTS retornada.' })];
     }
     if (action === 'AUTHORIZE') {
       const phone = input.phone.length === 11 ? `(${input.phone.slice(0, 2)}) ${input.phone.slice(2, 7)}-${input.phone.slice(7)}` : `(${input.phone.slice(0, 2)}) ${input.phone.slice(2, 6)}-${input.phone.slice(6)}`;
-      const result = await this.request(prisma, tenantId, '/solicita-autorizacao-consulta', {}, { averbador: '10010', nome: input.name, cpf: input.cpf, celular: phone, tipo_envio: 'SMS' }, true);
-      return [row({ state: 'PENDING', message: result.mensagem || 'Solicitação enviada. Aguarde a autorização do cliente por SMS.' })];
+      const send = () => this.request(prisma, tenantId, '/solicita-autorizacao-consulta', {}, { averbador: '10010', nome: input.name, cpf: input.cpf, celular: phone, tipo_envio: 'SMS' }, true);
+      const result = input.journeyId ? await cltBankOnce(prisma, tenantId, 'facta', ['AUTHORIZE', input.cpf], send,{root:input.journeyId,confirmedMissing}) : await send();
+      return [row({ state: 'PENDING', outcome: 'AUTHORIZATION_REQUIRED', data: { authorization: { status: 'REQUESTED', mechanism: 'SMS' } }, message: result.operationCached?'Solicitação anterior já registrada. Nenhum novo SMS foi enviado. Atualize o estado após o aceite do cliente.':result.mensagem || 'Solicitação enviada. Aguarde a autorização do cliente por SMS.' })];
     }
-    const result = await this.request(prisma, tenantId, '/consignado-trabalhador/autoriza-consulta', { cpf: input.cpf });
+    let result: any;
+    try { result = await this.request(prisma, tenantId, '/consignado-trabalhador/autoriza-consulta', { cpf: input.cpf }); }
+    catch (error) {
+      if (!missingCltAuthorization(error instanceof Error ? error.message : '')) throw error;
+      if (input.automaticAuthorization && !input.observeOnly) return this.product(prisma, tenantId, product, 'AUTHORIZE', input,true);
+      return [row({state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{authorization:{status:'PENDING',mechanism:'SMS'}},message:'Aguardando autorização da consulta FACTA pelo cliente. Nenhuma nova solicitação foi enviada nesta atualização.'})];
+    }
     if (!Array.isArray(result.dados_trabalhador?.dados)) throw new Error('FACTA retornou uma resposta incompatível com a consulta de vínculos CLT. A resposta não foi utilizada.');
     const registrationOf = (value: unknown): string => typeof value === 'string' ? value : typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? String(value) : '';
     let workers = list(result.dados_trabalhador?.dados).filter(worker => !input.employerDocument || digits(worker.numeroInscricaoEmpregador) === input.employerDocument);
@@ -220,9 +228,9 @@ export class FactaSimulationService {
             if (String(policy.aprovado) !== '1') { rows.push(row({ table: offer.name, state: 'PENDING', message: policy.mensagem || 'Vínculo recusado pela política de crédito.' })); continue; }
 
             rows.push(row({ table: `${offer.name} · ${worker.nomeEmpregador || worker.numeroInscricaoEmpregador}`, state: offer.amount ? 'OFFER' : 'PENDING', amount: offer.amount, installment: offer.installment, term: offer.term, rate: offer.rate, message: offer.amount ? undefined : 'O banco não informou valor líquido para esta condição.' }));
-          } catch (error: any) { rows.push(row({ table: offer.name, state: 'ERROR', message: error.message })); }
+          } catch (error: any) { rows.push(row({ table: offer.name, state: 'ERROR', data:error.writeUncertain?{writeUncertain:true}:undefined, message: error.message })); }
         }
-      } catch (error: any) { rows.push(row({ state: 'ERROR', message: error.message })); }
+      } catch (error: any) { rows.push(row({ state: 'ERROR', data:error.writeUncertain?{writeUncertain:true}:undefined, message: error.message })); }
     }
     return rows.length ? rows : [row({ state: 'PENDING', message: 'Nenhum vínculo ou condição elegível retornado para os dados informados.' })];
   }

@@ -2,6 +2,8 @@
 export function journeyDatabase() {
   const rows: any[] = [];
   const systemConfig = {
+    findMany: async ({where,take}:any) => rows.filter(r=>r.tenantId===where.tenantId&&(!where.configKey?.startsWith||r.configKey.startsWith(where.configKey.startsWith))).slice(0,take||rows.length),
+    upsert: async ({where,create,update}:any) => {const found=rows.find(r=>r.tenantId===where.tenantId_configKey.tenantId&&r.configKey===where.tenantId_configKey.configKey);if(found){Object.assign(found,update);return found;}const row={...create};rows.push(row);return row;},
     findUnique: async ({ where }: any) => rows.find(r => r.tenantId === where.tenantId_configKey.tenantId && r.configKey === where.tenantId_configKey.configKey) || null,
     create: async ({ data }: any) => {
       if (rows.some(r => r.tenantId === data.tenantId && r.configKey === data.configKey)) throw Object.assign(Error('unique'), { code: 'P2002' });

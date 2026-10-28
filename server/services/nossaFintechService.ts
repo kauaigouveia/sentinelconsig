@@ -148,7 +148,8 @@ export class NossaFintechService {
     };
     let token = await this.token(prisma, tenantId);
     let result = await send(token);
-    if (result.response.status === 401 && !isJourneyExecution()) {
+    const readOnlyClt = normalizedMethod === 'GET' || normalizedMethod === 'POST' && ['/clt-loan/v1/check-authorization','/clt-loan/v1/check-employee-enrollment','/clt-loan/v1/get-margin'].includes(endpoint);
+    if (result.response.status === 401 && (!isJourneyExecution() || readOnlyClt)) {
       tokenCache.delete(integrationCacheKey(tenantId));
       token = await this.token(prisma, tenantId, true);
       result = await send(token);
