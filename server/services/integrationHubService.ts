@@ -7,6 +7,7 @@ import { FactaBankService } from './factaBankService.js';
 import { HappyBankService } from './happyBankService.js';
 import { HappyTokenManager } from './happyTokenManager.js';
 import { v4 as uuidv4 } from 'uuid';
+import { VctexBankService } from './vctexBankService.js';
 
 export type IntegrationSlug = 'c6' | 'facta' | 'bmg' | 'happy';
 
@@ -14,7 +15,7 @@ export interface IntegrationDefinition {
   id: string;
   name: string;
   code: string;
-  slug: IntegrationSlug;
+  slug: IntegrationSlug | 'vctex';
   type: 'BANK' | 'FINTECH';
   protocol: string;
   environment: 'production' | 'staging' | 'homologation';
@@ -36,6 +37,7 @@ export interface IntegrationDefinition {
   successRate24h?: number;
   totalRequests24h?: number;
   errorCount24h?: number;
+  metricsPartial?: boolean;
 }
 
 export interface HealthStats {
@@ -211,8 +213,11 @@ export class IntegrationHubService {
       offline: number;
       disabled: number;
       errors24h: number;
+      requests24h: number;
+      metricsPartial: boolean;
     };
   }> {
+    if (!tenantId) throw new Error('Empresa obrigatória para consultar integrações.');
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Carregar configurações de cada banco para o tenant
@@ -316,7 +321,7 @@ export class IntegrationHubService {
       const totalReqs = bankLogs24h.length;
       const errors = bankLogs24h.filter((l) => !l.success).length;
       totalErrors24h += errors;
-      const successRate = totalReqs > 0 ? Math.round(((totalReqs - errors) / totalReqs) * 100) : 100;
+      const successRate = totalReqs > 0 ? Math.round(((totalReqs - errors) / totalReqs) * 100) : undefined;
 
       // Último Health Check
       const lastCheck = healthLogs.find((l) => l.bank.toUpperCase() === bankUpper);
@@ -339,7 +344,10 @@ export class IntegrationHubService {
           status = 'ATTENTION';
           attentionCount++;
         }
-      } else if (totalReqs > 0 && errors > 0 && successRate < 90) {
+      } else if (!lastCheck || Date.now() - lastCheck.timestamp.getTime() > 86400000) {
+        status = 'ATTENTION';
+        attentionCount++;
+      } else if (totalReqs > 0 && errors > 0 && successRate! < 90) {
         status = 'ATTENTION';
         attentionCount++;
       } else {
@@ -376,13 +384,25 @@ export class IntegrationHubService {
             }
           : null,
         lastSyncAt,
-        tokenStatus: isActive ? 'VALID' : 'UNCONFIGURED',
+        tokenStatus: !isActive ? 'UNCONFIGURED' : undefined,
         successRate24h: successRate,
         totalRequests24h: totalReqs,
         errorCount24h: errors,
       });
     }
 
+    // Read the exact existing tenant/promoter configuration; never authenticate during catalog reads.
+    const promoters = await prisma.promoter.findMany({where:{tenantId,status:'ATIVO'},select:{id:true}});
+    const connections = await Promise.all(promoters.map(p=>VctexBankService.status(prisma,tenantId,p.id)));
+    const active = connections.filter(c=>c.enabled);
+    const status = !active.length ? 'DISABLED' : active.some(c=>c.status==='OFFLINE') ? 'OFFLINE' : active.every(c=>c.status==='ONLINE') ? 'ONLINE' : 'ATTENTION';
+    if(status==='DISABLED')disabledCount++;else if(status==='OFFLINE')offlineCount++;else if(status==='ONLINE')onlineCount++;else attentionCount++;
+    const diagnostics=connections.flatMap(c=>c.history).sort((a,b)=>b.timestamp.localeCompare(a.timestamp)),last=diagnostics[0];
+    const errors=connections.reduce((n,c)=>n+c.metrics.errors24h,0),requests=connections.reduce((n,c)=>n+c.metrics.requests24h,0);
+    totalErrors24h+=errors;
+    integrations.push({id:'vctex',name:'VCTEX CLT',code:'VCTEX',slug:'vctex',type:'FINTECH',protocol:'REST via Oracle',environment:'production',active:!!active.length,status,
+      maskedBaseUrl:'Oracle · /vctex',capabilities:['AUTH','CLT'],lastHealthCheck:last?{timestamp:last.timestamp,success:last.authenticationRecognized,latencyMs:last.latencyMs,httpStatus:last.httpStatus,errorMessage:last.error}:null,
+      totalRequests24h:requests,errorCount24h:errors,successRate24h:requests?Math.round((requests-errors)*100/requests):undefined,metricsPartial:connections.some(c=>!c.metrics.complete)});
     return {
       integrations,
       summary: {
@@ -392,6 +412,8 @@ export class IntegrationHubService {
         offline: offlineCount,
         disabled: disabledCount,
         errors24h: totalErrors24h,
+        requests24h: stats24h.length + requests,
+        metricsPartial: connections.some(c=>!c.metrics.complete),
       },
     };
   }

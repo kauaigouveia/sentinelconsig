@@ -57,7 +57,7 @@ interface BankMeta {
 }
 
 const BANKS_META: BankMeta[] = [
-  {id:'vctex',name:'VCTEX DIGITAL',code:'VCTEX',tagline:'CLT via Oracle · assinatura pelo trabalhador',status:'pending',products:['CLT · consulta e simulação']},
+  {id:'vctex',name:'VCTEX CLT',code:'VCTEX',tagline:'CLT via Oracle · assinatura pelo trabalhador',status:'pending',products:['CLT · consulta e simulação']},
   { id: 'v8', name: 'V8 Digital', code: 'V8', tagline: 'FGTS e Crédito Trabalhador', status: 'pending', products: ['Conexão FGTS e CLT'] },
   { id: 'presenca', name: 'Presença Bank', code: 'PB', tagline: 'CLT e antecipação FGTS', status: 'pending', products: ['CLT · consulta e simulação', 'FGTS · tabelas e valores liberados'] },
   { id: 'parana', name: 'Paraná Banco · API', code: '254', tagline: 'Consulta e atualização de propostas', status: 'pending', products: ['Consignado e cartão · acompanhamento'] },

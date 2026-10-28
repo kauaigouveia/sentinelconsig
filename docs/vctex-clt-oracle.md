@@ -62,7 +62,11 @@ Erros documentados: 400 CPF inexistente/óbito; 404 pré-operação ausente; 409
 
 Valor líquido = `finalDisbursedAmount`, bruto = `issueAmount`, intermediário = `disbursedIssueAmount`, IOF = `iof`, seguro = `insuranceAmount`. Não recalcula líquido, taxa ou CET. CET anual somente de `cet` retornado; CET mensal ausente aparece como “Não informado”. Datas e indicação de seguro são preservadas. Os exemplos sintéticos não são defaults financeiros.
 
-## Diagnóstico do login
+## Atualização do contrato de login e Hub
+
+O responsável confirmou posteriormente HTTP 200 pela Oracle com `token.accessToken`. O parser e o Hub foram atualizados; ver `vctex-auth-hub.md`. Os resultados 404 e o parser provisório abaixo documentam a entrega original, não uma nova verificação do ambiente atual.
+
+## Diagnóstico do login (entrega original)
 
 O PDF não contém o JSON de resposta do login. O parser está isolado, aceita um único token reconhecível (`access_token`, `accessToken`, `token`, na raiz ou em `data`) e rejeita ausências/ambiguidades. Isso é compatibilidade provisória, **não confirmação documental desses nomes**. Cache de token é breve e separado por tenant/conexão/credenciais; não existe endpoint de refresh inventado. Somente GET por ID pode renovar autenticação uma vez após 401; POST e lookup por CPF não são repetidos.
 

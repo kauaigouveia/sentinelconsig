@@ -35,7 +35,7 @@ export function registerVctexRoutes(app:Express,db:any,getSession:(req:Request)=
     const rows=await db.promoter.findMany({where:{tenantId:c.tenant,status:'ATIVO'},select:{id:true,name:true}}),out=[];
     for(const p of rows){const config=await VctexBankService.config(db,c.tenant,p.id);if(config.enabled&&config.cpf&&config.password)out.push({id:p.id,name:p.name});}return out;
   }));
-  app.get(base+'/config',wrap('integrations.manage',async(_req,c)=>VctexBankService.metadata(await VctexBankService.config(db,c.tenant,c.promoter))));
+  app.get(base+'/config',wrap('integrations.manage',async(_req,c)=>VctexBankService.status(db,c.tenant,c.promoter)));
   app.put(base+'/config',wrap('integrations.manage',async(req,c)=>{
     const result=await VctexBankService.save(db,c.tenant,c.promoter,req.body||{});
     await AuditLogService.record(db,{tenantId:c.tenant,userId:c.user,action:'VCTEX_CONFIG_UPDATED',entity:'SystemConfig',entityId:c.promoter,newData:{enabled:result.enabled,environment:result.environment},req});return result;

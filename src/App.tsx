@@ -835,7 +835,7 @@ function AppMainContent() {
                 <CentralAutomacoes />
               )}
               {(effectiveView === 'hub-integracoes' || effectiveView === 'integracoes-hub') && (
-                <HubIntegracoes premium={newUI} />
+                <HubIntegracoes key={preferenceKey} premium={newUI} />
               )}
               {(effectiveView === 'command-center' || effectiveView === 'command') && (
                 <CommandCenterView />

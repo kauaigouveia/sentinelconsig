@@ -17659,8 +17659,8 @@ async function auditAndEnsureMasterUser() {
       const session = await getAuthSession(req);
       if (!session) return res.status(401).json({ error: 'Não autenticado.' });
 
-      const userRole = session.user.role as Role;
-      const userCustomPerms = session.user.customPermissions || [];
+      const userRole = (session.activeRole || session.user.role) as Role;
+      const userCustomPerms = session.activePermissions || session.user.customPermissions || [];
       const isPlatformMaster = userRole === 'PLATFORM_MASTER';
 
       if (!isPlatformMaster && !hasPermission(userRole, userCustomPerms, 'integrations.view')) {
@@ -17668,6 +17668,8 @@ async function auditAndEnsureMasterUser() {
       }
 
       const effectiveTenantId = session.effectiveTenantId || session.user.tenantId;
+      if (!effectiveTenantId) return res.status(400).json({error:'Selecione uma empresa.'});
+      res.setHeader('Cache-Control','no-store');
       const catalogResult = await IntegrationHubService.getCatalog(prisma, effectiveTenantId);
 
       return res.json({
