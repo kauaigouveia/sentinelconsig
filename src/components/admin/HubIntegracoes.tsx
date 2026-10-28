@@ -37,13 +37,13 @@ import { PremiumContent } from '../redesign/PremiumContent';
 import { TelegramIntegrationSettings } from '../integrations/TelegramIntegrationSettings';
 import { StorageService } from '../../services/storageService';
 
-export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'v8' | 'health' | 'incidents' | 'logs';
+export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'v8' | 'vctex' | 'health' | 'incidents' | 'logs';
 
 export interface IntegrationDefinition {
   id: string;
   name: string;
   code: string;
-  slug: 'c6' | 'facta' | 'bmg' | 'happy';
+  slug: 'c6' | 'facta' | 'bmg' | 'happy' | 'vctex';
   type: 'BANK' | 'FINTECH';
   protocol: string;
   environment: 'production' | 'staging' | 'homologation';
@@ -64,6 +64,7 @@ export interface IntegrationDefinition {
   successRate24h?: number;
   totalRequests24h?: number;
   errorCount24h?: number;
+  metricsPartial?: boolean;
 }
 
 export interface HubSummary {
@@ -73,6 +74,8 @@ export interface HubSummary {
   offline: number;
   disabled: number;
   errors24h: number;
+  requests24h?: number;
+  metricsPartial?: boolean;
 }
 
 export interface HealthStats {
@@ -146,6 +149,8 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   });
   const [overallStatus, setOverallStatus] = useState<string>('CHECKING');
   const [isLoading, setIsLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
+  const catalogController = useRef<AbortController | null>(null);
 
   // Ações de teste e diagnóstico
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -188,29 +193,27 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
   // Carregar status do catálogo unificado
   const fetchHealthCatalog = useCallback(async () => {
-    setIsLoading(true);
+    catalogController.current?.abort();
+    const controller = new AbortController(); catalogController.current = controller;
+    setIsLoading(true); setCatalogError('');
     try {
-      const res = await fetch('/api/integrations/health');
-      if (res.ok) {
-        const data = await res.json();
-        setIntegrations(data.integrations || []);
-        if (data.summary) {
-          setSummary(data.summary);
-        }
-        setOverallStatus(data.overallStatus || 'UNKNOWN');
-      } else {
-        setOverallStatus('UNKNOWN');
-      }
-    } catch (err) {
-      console.error('Erro ao verificar saúde das integrações:', err);
-      setOverallStatus('UNKNOWN');
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await fetch('/api/integrations/health', {cache:'no-store',signal:controller.signal});
+      if (!res.ok) throw Error('CATALOG_UNAVAILABLE');
+      const data = await res.json();
+      if (!Array.isArray(data.integrations) || !data.summary || data.summary.total < 1) throw Error('CATALOG_INCOMPLETE');
+      if(controller.signal.aborted)return;
+      setIntegrations(data.integrations); setSummary(data.summary); setOverallStatus(data.overallStatus || 'UNKNOWN');
+    } catch {
+      if(controller.signal.aborted)return;
+      setIntegrations([]);setCatalogError('Catálogo indisponível ou incompleto. Confira a empresa e sua permissão; atualize para tentar novamente.');setOverallStatus('UNKNOWN');
+    } finally {if(!controller.signal.aborted)setIsLoading(false);}
   }, []);
 
   useEffect(() => {
-    fetchHealthCatalog();
+    void fetchHealthCatalog();
+    const refresh = () => { void fetchHealthCatalog(); };
+    window.addEventListener('sentinel-integration-status-updated', refresh);
+    return () => {catalogController.current?.abort();window.removeEventListener('sentinel-integration-status-updated',refresh);};
   }, [fetchHealthCatalog]);
 
   // Carregar Estatísticas de Saúde quando a aba ou filtros mudam
@@ -414,6 +417,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
     { id: 'parana', label: 'Paraná Banco · API', icon: Landmark },
     { id: 'presenca', label: 'Presença Bank', icon: Landmark },
     { id: 'v8', label: 'V8 Digital', icon: Plug },
+    { id: 'vctex', label: 'VCTEX CLT', icon: Plug },
     { id: 'health', label: 'Saúde das APIs', icon: Activity },
     { id: 'incidents', label: 'Incidentes', icon: AlertTriangle },
     { id: 'logs', label: 'Logs & Auditoria', icon: History },
@@ -435,7 +439,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
               </span>
             </div>
             <p className="text-sm text-slate-400">
-              Central unificada para monitorar, diagnosticar, auditar, medir e testar integrações (C6, FACTA, BMG, Happy).
+              Central unificada para monitorar, diagnosticar, auditar, medir e testar integrações bancárias e conexões CLT por empresa.
             </p>
           </div>
         </div>
@@ -474,6 +478,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
         </div>
       </div>
 
+      {catalogError && <p role="alert" className="text-sm text-amber-600 dark:text-amber-300">{catalogError}</p>}
       {/* Cards de Métricas e Contadores no Topo */}
       <div className={`grid grid-cols-2 md:grid-cols-5 gap-3 ${premium ? 'p2-integration-metrics' : ''}`}>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -482,7 +487,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <Layers className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold text-white">
-            {summary.total - summary.disabled} <span className="text-xs text-slate-500 font-normal">/ {summary.total}</span>
+            {isLoading || catalogError ? <span className="text-sm">{isLoading ? 'Carregando…' : 'Indisponível'}</span> : <>{summary.total - summary.disabled} <span className="text-xs text-slate-500 font-normal">/ {summary.total}</span></>}
           </div>
         </div>
 
@@ -491,7 +496,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <span>ONLINE</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400">{summary.online}</div>
+          <div className="text-2xl font-bold text-emerald-400">{isLoading || catalogError ? '—' : summary.online}</div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -499,7 +504,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <span>ATENÇÃO</span>
             <AlertTriangle className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-2xl font-bold text-amber-400">{summary.attention}</div>
+          <div className="text-2xl font-bold text-amber-400">{isLoading || catalogError ? '—' : summary.attention}</div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -507,7 +512,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <span>OFFLINE</span>
             <AlertCircle className="w-4 h-4 text-rose-400" />
           </div>
-          <div className="text-2xl font-bold text-rose-400">{summary.offline}</div>
+          <div className="text-2xl font-bold text-rose-400">{isLoading || catalogError ? '—' : summary.offline}</div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 col-span-2 md:col-span-1">
@@ -516,7 +521,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <ShieldAlert className="w-4 h-4 text-slate-400" />
           </div>
           <div className={`text-2xl font-bold ${summary.errors24h > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
-            {summary.errors24h}
+            {isLoading || catalogError ? '—' : summary.requests24h===0 ? 'Sem amostra' : summary.errors24h}{!isLoading&&!catalogError&&summary.metricsPartial?' (parcial)':''}
           </div>
         </div>
       </div>
@@ -657,7 +662,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                             : 'text-rose-400'
                         }`}
                       >
-                        {bank.successRate24h ?? 100}% ({bank.totalRequests24h ?? 0} reqs)
+                        {bank.successRate24h === undefined ? 'Sem amostra' : `${bank.successRate24h}% (${bank.totalRequests24h ?? 0} reqs)`}{bank.metricsPartial ? ' · parcial' : ''}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-slate-400">
@@ -701,7 +706,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     <span className="text-slate-700">|</span>
                     <button
                       onClick={() => handleTriggerSync(bank.slug)}
-                      disabled={isSyncing}
+                      disabled={isSyncing || bank.slug==='vctex'} title={bank.slug==='vctex'?'Sincronização não disponível nesta integração':undefined}
                       className="text-xs text-slate-400 hover:text-slate-200 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} /> Sincronizar
@@ -710,14 +715,14 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleOpenDiagnostics(bank.slug, bank.name)}
+                      onClick={() => bank.slug==='vctex'?setActiveTab('vctex'):handleOpenDiagnostics(bank.slug, bank.name)}
                       className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <Activity className="w-3.5 h-3.5 text-amber-400" /> Diagnóstico
                     </button>
 
                     <button
-                      onClick={() => handleRunHealthCheck(bank.slug)}
+                      onClick={() => bank.slug==='vctex'?setActiveTab('vctex'):handleRunHealthCheck(bank.slug)}
                       disabled={isChecking}
                       className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
@@ -754,6 +759,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       {activeTab === 'parana' && <BankIntegrationsView initialTab="parana" />}
       {activeTab === 'presenca' && <BankIntegrationsView initialTab="presenca" />}
       {activeTab === 'v8' && <BankIntegrationsView initialTab="v8" />}
+      {activeTab === 'vctex' && <BankIntegrationsView initialTab="vctex" />}
 
       {/* ABA FINANTO / JOINBANK */}
       {activeTab === 'finanto' && <FinantoIntegrationTab />}

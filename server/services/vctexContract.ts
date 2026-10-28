@@ -14,10 +14,11 @@ export function parseVctexRates(body:unknown):VctexRate[]{
     .map((r:any)=>({id:r.id,name:r.name,description:typeof r.description==='string'?r.description:undefined,withInsurance:r.withInsurance,fee:r.fee,isActive:true,allowedInstallments:r.allowedInstallments,minInstallmentAmount:r.minInstallmentAmount,maxInstallmentAmount:r.maxInstallmentAmount,maxAllowedLoanAmount:r.maxAllowedLoanAmount}));
 }
 export function parseVctexToken(body: unknown) {
-  // Isolated compatibility parser, not a claim about the undocumented login response.
+  // Nested format confirmed by the bank login; retain legacy aliases, reject conflicting values.
   const b = body as any;
-  const candidates = [b?.access_token,b?.accessToken,b?.token,b?.data?.access_token,b?.data?.accessToken,b?.data?.token]
-    .filter((v):v is string => typeof v === 'string' && v.length > 10 && v.length <= 8192 && !/\s/.test(v));
+  const candidates = [b?.access_token,b?.accessToken,typeof b?.token==='object'?undefined:b?.token,b?.token?.accessToken,b?.data?.access_token,b?.data?.accessToken,b?.data?.token]
+    .filter(v => v !== undefined && v !== null);
+  if(candidates.some(v=>typeof v!=='string'||v.length<=10||v.length>8192||/\s/.test(v)))throw Error('Contrato do token VCTEX inválido.');
   const unique = [...new Set(candidates)];
   if (unique.length !== 1) throw Error('Contrato do token VCTEX não reconhecido. Consulte o diagnóstico sanitizado.');
   return unique[0];
@@ -28,7 +29,7 @@ export function vctexFieldNames(body: unknown): string[] {
     if (!value || typeof value !== 'object' || Array.isArray(value) || depth > 3) return;
     for (const [key,v] of Object.entries(value).slice(0,50)) {
       // Reject dynamic keys (including CPF, e-mail and tokens) rather than reporting them.
-      if (!/^[A-Za-z_][A-Za-z_]{0,39}$/.test(key)) continue;
+      if (!['token','accessToken','access_token','expires','type','access','restrictedAccess','restrictions','data','permissions','products','consignado','role','error','message','code'].includes(key)) continue;
       const p = prefix ? `${prefix}.${key}` : key; paths.push(p); visit(v,p,depth+1);
     }
   }

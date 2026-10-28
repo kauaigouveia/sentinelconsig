@@ -5,6 +5,11 @@ import {
 } from '../../server/services/integrationHubService.js';
 import { CentralEventBus } from '../../server/services/eventBus.js';
 import { hasPermission } from '../../src/lib/permissions.js';
+// Keep legacy incident regression isolated even if external event credentials exist locally.
+vi.mock('../../server/services/eventBus.js', () => {
+  const bus = {publish: vi.fn().mockResolvedValue(undefined)};
+  return {CentralEventBus: {getInstance: () => bus}, eventBus: bus, centralEventBus: bus, domainEventBus: bus};
+});
 
 describe('Phase 4 — Hub de Integrações Bancárias (C6, FACTA, BMG, HAPPY)', () => {
   let mockPrisma: any;
@@ -30,6 +35,7 @@ describe('Phase 4 — Hub de Integrações Bancárias (C6, FACTA, BMG, HAPPY)', 
     }));
 
     mockPrisma = {
+      promoter: {findMany: vi.fn().mockResolvedValue([])},
       systemConfig: {
         findUnique: vi.fn().mockResolvedValue(null),
         findMany: vi.fn().mockResolvedValue([
@@ -112,7 +118,7 @@ describe('Phase 4 — Hub de Integrações Bancárias (C6, FACTA, BMG, HAPPY)', 
     expect(catalog).toBeDefined();
     expect(catalog.integrations).toBeInstanceOf(Array);
     expect(catalog.summary).toBeDefined();
-    expect(catalog.summary.total).toBe(4);
+    expect(catalog.summary.total).toBe(5);
   });
 
   // 2. C6 aparece no catálogo

@@ -5,6 +5,7 @@ import {vctexFetch,VCTEX_ORIGIN,vctexGateway} from './vctexTransport.js';
 import {parseVctexToken,parseVctexRates,vctexFieldNames,vctexStates,vctexTerminal,normalizeVctexQuote,validateVctexInstallments,type VctexRate} from './vctexContract.js';
 import {isValidCpf} from '../../src/lib/utils.js';
 import {isCltEmail} from '../../src/lib/cltCustomerData.js';
+import {vctexPermissions,vctexConnectionStatus,type VctexDiagnostic} from './vctexDiagnostic.js';
 
 type Config={enabled:boolean;environment:'production';cpf:string;password:string};
 export type VctexIdentity={cpf:string;name:string;phone:string;email:string};
@@ -38,9 +39,42 @@ export class VctexBankService{
   }
   static async diagnostic(db:any,tenant:string,promoter:string){
     const c=await this.config(db,tenant,promoter);if(!c.cpf||!c.password)throw Error('Cadastre credenciais autorizadas antes do diagnóstico.');
-    const r=await this.login(c);let recognized=false;try{parseVctexToken(r.body);recognized=r.ok;}catch{}
-    // Values, token length, token claims and provider error text are never returned/logged.
-    return {httpStatus:r.status,fields:vctexFieldNames(r.body),authenticationRecognized:recognized,permissionsVerified:false,transport:'Oracle'};
+    const started=Date.now();
+    const result:VctexDiagnostic={timestamp:new Date().toISOString(),latencyMs:0,httpStatus:null,fields:[],authenticationSucceeded:false,tokenRecognized:false,authenticationRecognized:false,permissionsClt:'UNPROVEN',permissionsVerified:false,transportAvailable:false,transport:'Oracle',error:null};
+    try {
+      const r=await this.login(c);
+      result.httpStatus=r.status;result.fields=vctexFieldNames(r.body);
+      result.transportAvailable=!!r.body&&typeof r.body==='object'&&r.status!==404&&r.status<500;
+      result.authenticationSucceeded=r.ok;
+      try{parseVctexToken(r.body);result.tokenRecognized=true;}catch{}
+      result.authenticationRecognized=r.ok&&result.tokenRecognized;
+      if(result.authenticationRecognized)result.permissionsClt=vctexPermissions(r.body);
+      result.permissionsVerified=result.permissionsClt==='CONFIRMED';
+      result.error=!r.ok?'Autenticação não validada. Confira as credenciais e o transporte Oracle.':!result.tokenRecognized?'Formato do token ausente, inválido ou ambíguo.':null;
+    } catch {
+      result.error='Transporte Oracle indisponível ou resposta inválida. Verifique o gateway; nenhuma consulta de trabalhador foi realizada.';
+    }
+    // Append-only encrypted records prevent concurrent diagnostics overwriting one another.
+    // Bind evidence to credentials/transport without returning their fingerprint or values.
+    result.latencyMs=Date.now()-started;
+    const configKey=bankPromoterConfigKey('vctex',promoter,`diagnostic:${Date.now()}:${randomBytes(12).toString('hex')}`);
+    const value={fingerprint:this.diagnosticFingerprint(c),result};
+    await db.systemConfig.create({data:{tenantId:tenant,configKey,configValue:seal(value,JSON.stringify([tenant,promoter,configKey])),isSecret:true}});
+    return result;
+  }
+  private static diagnosticFingerprint(c:Config){return journeyFingerprint([c,process.env.VCTEX_GATEWAY_URL,process.env.VCTEX_GATEWAY_SECRET]);}
+  static async status(db:any,tenant:string,promoter:string){
+    const c=await this.config(db,tenant,promoter),meta=this.metadata(c),fingerprint=this.diagnosticFingerprint(c);
+    const rows=await db.systemConfig.findMany({where:{tenantId:tenant,configKey:{startsWith:bankPromoterConfigKey('vctex',promoter,'diagnostic:')}},orderBy:{createdAt:'desc'},take:101});
+    const history:VctexDiagnostic[]=[];
+    for(const row of rows.slice(0,100)){
+      try{const saved=open(row.configValue,JSON.stringify([tenant,promoter,row.configKey]));if(saved.fingerprint===fingerprint)history.push(saved.result);}catch{}
+    }
+    history.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+    const lastDiagnostic=history[0]||null,recent=history.filter(r=>Date.parse(r.timestamp)>=Date.now()-86400000);
+    return {...meta,status:vctexConnectionStatus(meta,lastDiagnostic),lastDiagnostic,history:history.slice(0,30),
+      metrics:{requests24h:recent.length,errors24h:recent.filter(r=>!r.authenticationRecognized||!r.transportAvailable).length,complete:rows.length<=100},
+      permissionsVerified:lastDiagnostic?.permissionsVerified===true};
   }
   private static async call(db:any,tenant:string,promoter:string,method:string,path:string,body?:unknown){
     const c=await this.config(db,tenant,promoter);if(!c.enabled||!c.cpf||!c.password)throw Error('Conexão VCTEX inativa ou sem credenciais.');
