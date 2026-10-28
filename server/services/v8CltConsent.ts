@@ -73,8 +73,8 @@ export function registerV8ApiAuthorization(app: Express, db: any, context: (req:
       const actor = await context(req); if (actor.status) return res.status(actor.status).json({ error: actor.error || 'Acesso não autorizado.' });
       const b = req.body || {};
       const entry = typeof b.executionId === 'string' ? await service.get(db, actor.tenant, actor.actor, b.executionId) : undefined;
-      const v8 = entry?.snapshot.results.v8?.rows.map(r => (r.data as any)?.v8).find(v => v?.consultId === b.consultId && v?.promoterId === b.promoterId);
-      if (!entry?.snapshot.customer || entry.record.phase !== 'DONE' || !v8 || !['WAITING_CONSENT', 'CONSENT_APPROVED', 'WAITING_CONSULT', 'WAITING_CREDIT_ANALYSIS', 'SUCCESS'].includes(v8.status)) return res.status(404).json({ error: 'Consulta própria disponível para autorização não encontrada.' });
+      const v8 = {consultId:b.consultId,promoterId:b.promoterId};
+      if (!entry?.snapshot.customer || !['DONE','UNKNOWN'].includes(entry.record.phase) || !entry.snapshot.banks.some(bank=>bank.id==='v8') || typeof b.consultId!=='string' || typeof b.promoterId!=='string' || !await V8CltSimulationService.ownsConsult(db,actor.tenant,b.promoterId,entry.snapshot.customer.cpf,b.consultId)) return res.status(404).json({ error: 'Consulta própria disponível para autorização não encontrada.' });
       if (!['mobile', 'desktop', 'tablet'].includes(b.deviceType) || ['operationalSystem', 'deviceModel', 'deviceName'].some(k => typeof b[k] !== 'string' || !b[k].trim() || b[k].length > 200) || !req.get('user-agent')) return res.status(400).json({ error: 'Informe os dados reais do dispositivo utilizado para autorizar a consulta.' });
       const permit = await V8CltPilot.authorize(db, actor.tenant, { ...entry.snapshot.customer, bmgActorId: actor.actor });
       if ('reason' in permit) return res.status(403).json({ error: 'Sem permissão operacional V8 nesta empresa.' });

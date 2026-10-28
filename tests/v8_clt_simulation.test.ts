@@ -61,10 +61,12 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     response = { ...offer, disbursement_amount: 2350.44, disbursed_issue_amount: 2300, issue_amount: 2415.38 };
     expect((await run())[0].amount).toBe(2350.44);
   });
-  it('does not treat SUCCESS or HTTP 200 alone as an audited worker acceptance', async () => {
+  it('recovers official SUCCESS for an owned consultation without claiming worker acceptance', async () => {
     vi.mocked(V8CltConsentAudit.recorded).mockResolvedValue(false);
-    const data = await run({}, 'REFRESH'); expect((data[0].data as any).v8.simulationReady).toBe(false); expect((data[0].data as any).margin.available_balance).toBe(1900);
-    expect((await run())[0].outcome).toBe('MISSING_DATA'); expect(fetchMock.mock.calls.some(([, o]) => o.method === 'POST')).toBe(false);
+    const record=vi.spyOn(V8CltConsentAudit,'record');
+    const data = await run({}, 'REFRESH'); expect((data[0].data as any).v8.simulationReady).toBe(true); expect((data[0].data as any).margin.available_balance).toBe(1900);
+    expect(record).toHaveBeenCalledWith(expect.anything(),'tenant-a','promoter-a',input.cpf,consultId,expect.objectContaining({method:'BANK_STATUS_API',humanAcceptanceCollected:false,observedBankStatus:'SUCCESS'}));
+    expect(fetchMock.mock.calls.some(([, o]) => o.method === 'POST')).toBe(false);
   });
   it('reuses the financial operation across requests without another bank POST', async () => {
     const first = await run(); const second = await run();

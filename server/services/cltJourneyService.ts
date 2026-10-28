@@ -1,3 +1,4 @@
+import {CltAuthorizationFollowup} from './cltAuthorizationFollowup.js';
 import { CltJourneyStore, journeyFingerprint, type JourneyRecord } from './cltJourneyStore.js';
 import { withinJourneyDeadline } from './cltJourneyDeadline.js';
 import { ProductSimulationService, type ProductSimulationInput, type ProductSimulationRow } from './productSimulationService.js';
@@ -69,7 +70,7 @@ export class CltJourneyService {
   async refreshV8(db: any, tenant: string, actor: string, id: string, consultId: string, promoterId: string) {
     const entry = await this.get(db, tenant, actor, id);
     const own = entry?.snapshot.results.v8?.rows.some(row => (row.data as any)?.v8?.consultId === consultId && (row.data as any)?.v8?.promoterId === promoterId);
-    if (!entry || entry.record.phase !== 'DONE' || !entry.snapshot.customer || !own) return undefined;
+    if (!entry || !['DONE','UNKNOWN'].includes(entry.record.phase) || !entry.snapshot.customer || !own) return undefined;
     // Observation only: this endpoint never invokes SIMULATE or AUTHORIZE.
     const response = await withinJourneyDeadline(AbortSignal.timeout(25000), () => ProductSimulationService.run(db, tenant, 'CLT', 'REFRESH', { ...entry.snapshot.customer!, v8ConsultId: consultId, v8PromoterId: promoterId, bmgActorId: actor }, undefined, ['v8']));
     if (response.rows.some(row => row.state === 'ERROR' && (row.data as any)?.v8?.status !== 'FAILED')) throw Error('V8_STATUS_UNAVAILABLE');
@@ -205,6 +206,7 @@ export class CltJourneyService {
     record.deadline = Date.now();
     await publish();
     if(provider)await this.syncRoot(db,tenant,actor,snapshot,provider);
+    await CltAuthorizationFollowup.schedule(db,tenant,actor,snapshot);
   }
 }
 
@@ -212,7 +214,7 @@ function projectRow(row: ProductSimulationRow): ProductSimulationRow {
   const data = row.data as any;
   return { provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, cetMonthly: row.cetMonthly, cetAnnual: row.cetAnnual, simulationId: row.simulationId,
     link: typeof row.link === 'string' && /^https:\/\//i.test(row.link) ? row.link : undefined,
-    data: data ? { operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
+    data: data ? { operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
       eligible: typeof data.eligible === 'boolean' ? data.eligible : undefined,
       restrictions: safeReasons(data.restrictions),
       borrower: data.borrower ? { name: data.borrower.name } : undefined,
@@ -235,4 +237,4 @@ export function mayCalculate(bank: JourneyProvider, rows: ProductSimulationRow[]
 
 function safeReasons(value: unknown) { return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 30).map(v => cltPublicMessage(v)).filter(Boolean) : undefined; }
 
-function calculationKey(rows:ProductSimulationRow[]){return journeyFingerprint(rows.filter(r=>r.state==='DATA').map(r=>{const d=r.data as any;return {institution:r.institution,employment:d?.employment,margin:d?.margin?{available:d.margin.available_balance,utilizable:d.margin.utilizable_balance,eligible:d.margin.can_continue}:undefined,items:d?.items,v8:d?.v8?{consultId:d.v8.consultId,configurations:d.v8.configurations,simulationReady:d.v8.simulationReady}:undefined,authorization:d?.authorization};}));}
+function calculationKey(rows:ProductSimulationRow[]){return journeyFingerprint(rows.filter(r=>r.state==='DATA').map(r=>{const d=r.data as any;return {institution:r.institution,employment:d?.employment,margin:d?.margin?{available:d.margin.available_balance,utilizable:d.margin.utilizable_balance,eligible:d.margin.can_continue}:undefined,items:d?.items,v8:d?.v8?{consultId:d.v8.consultId,configurations:d.v8.configurations,simulationReady:d.v8.simulationReady}:undefined,authorization:d?.authorization?{status:d.authorization.status,ready:d.authorization.ready}:undefined};}));}

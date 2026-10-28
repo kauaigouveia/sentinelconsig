@@ -19,10 +19,10 @@ async function setup() {
   const permit=vi.spyOn(V8CltPilot,'authorize').mockResolvedValue({allowed:true,userId:'synthetic-operator',tenantId:tenant});
   const owns=vi.spyOn(V8CltSimulationService, 'ownsConsult').mockResolvedValue(true);
   const bank = vi.spyOn(V8CltSimulationService, 'request').mockImplementation(async (_db, _tenant, _promoter, endpoint) => endpoint.includes('?') ? { data: [{ id: consult, documentNumber: input.cpf, status: 'WAITING_CONSENT' }] } : {});
-  const service = { get: vi.fn(async (_db,t,a,id) => t===tenant&&a==='user:synthetic-operator'&&id===consult?({ record: { phase: 'DONE' }, snapshot: { customer: input, results: { v8: { rows: [{ data: { v8: { consultId: consult, promoterId: promoter, status: 'WAITING_CONSENT' } } }] } } } }):undefined) };
+  const service = { get: vi.fn(async (_db,t,a,id) => t===tenant&&a==='user:synthetic-operator'&&id===consult?({ record: { phase: 'DONE' }, snapshot: { banks:[{id:'v8',name:'V8'}], customer: input, results: { v8: { rows: [{ data: { v8: { consultId: consult, promoterId: promoter, status: 'WAITING_CONSENT' } } }] } } } }):undefined) };
   const app = express(); app.use(express.json()); registerV8ApiAuthorization(app, db, async () => actor, service as any);
   const body = { executionId:consult,consultId:consult,promoterId:promoter, operationalSystem: 'Synthetic OS', deviceModel: 'Synthetic device model', deviceName: 'Synthetic operator device', deviceType: 'desktop' };
-  return { app, db, bank, body,permit,owns, switchActor: (value: any) => { actor = value; } };
+  return { app, db, bank, body,permit,owns,service, switchActor: (value: any) => { actor = value; } };
 }
 it('authorizes directly with the documented five fields, without a human acceptance or a per-case administrative approval', async () => {
   const c = await setup();
@@ -59,7 +59,13 @@ it('reserves simultaneous authorization requests before a single bank POST',asyn
   const c=await setup();await Promise.all([request(c.app).post(path).set('User-Agent','SyntheticDevice/1').send(c.body),request(c.app).post(path).set('User-Agent','SyntheticDevice/1').send(c.body)]);expect(c.bank.mock.calls.filter(call=>call[3].endsWith('/authorize'))).toHaveLength(1);
 });
 it('does not reuse an unowned bank reference',async()=>{
-  const c=await setup();c.owns.mockResolvedValue(false);expect((await request(c.app).post(path).set('User-Agent','SyntheticDevice/1').send(c.body)).status).toBe(409);expect(c.bank).not.toHaveBeenCalled();
+  const c=await setup();c.owns.mockResolvedValue(false);expect((await request(c.app).post(path).set('User-Agent','SyntheticDevice/1').send(c.body)).status).toBe(404);expect(c.bank).not.toHaveBeenCalled();
+});
+it('recovers an owned V8 reference despite a stale row and an uncertain result from another bank',async()=>{
+  const c=await setup();const entry:any=await c.service.get(null,tenant,'user:synthetic-operator',consult);
+  entry.record.phase='UNKNOWN';entry.snapshot.results={};c.service.get.mockResolvedValue(entry);
+  expect((await request(c.app).post(path).set('User-Agent','SyntheticDevice/1').send(c.body)).status).toBe(200);
+  expect(c.bank.mock.calls.filter(call=>call[3].endsWith('/authorize'))).toHaveLength(1);
 });
 it('observes an already SUCCESS consultation without replaying authorize or claiming a human act',async()=>{
   const c=await setup();c.bank.mockResolvedValue({data:[{id:consult,documentNumber:input.cpf,status:'SUCCESS'}]});

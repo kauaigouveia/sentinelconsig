@@ -1,3 +1,5 @@
+import {CltJourneyService} from './server/services/cltJourneyService.js';
+import {CltAuthorizationFollowup} from './server/services/cltAuthorizationFollowup.js';
 import { registerVctexRoutes } from './server/services/vctexRoutes.js';
 import { registerV8WorkerConsent } from './server/services/v8CltConsent.js';
 import { registerPartnerSupportRealtime } from './server/services/partnerSupportRealtime.js';
@@ -13278,7 +13280,9 @@ async function auditAndEnsureMasterUser() {
     const expected = Buffer.from(`Bearer ${secret}`);
     if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return res.status(401).json({ error: 'Não autorizado.' });
     try {
+      const reconciliationStarted=Date.now();
       for (const tenant of await prisma.tenant.findMany({ select: { id: true } })) await PartnerSimulationTracking.reconcile(prisma, tenant.id);
+      if(Date.now()-reconciliationStarted<10000)await CltAuthorizationFollowup.run(prisma,new CltJourneyService());
       return res.json({ status: 'ok' });
     } catch (error) {
       logger.error({ error }, 'Falha ao atualizar simulações dos parceiros');

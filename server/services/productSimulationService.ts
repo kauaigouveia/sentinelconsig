@@ -1,3 +1,4 @@
+import {nossaAuthorization,rememberNossaAuthorization} from './nossaCltAuthorization.js';
 import type { PrismaClient } from '@prisma/client';
 import { NossaFintechService } from './nossaFintechService';
 import { FinantoService } from './finantoService';
@@ -103,19 +104,30 @@ export class ProductSimulationService {
           const identity = { document_number: input.cpf, service_type: service };
           const requestAuthorization = async (confirmedMissing=false) => {
             const send = () => nossaCall('POST', '/clt-loan/v1/request-authorization', { ...identity, person_name: input.name, country_code: '55', area_code: input.phone.slice(0, 2), phone_number: input.phone.slice(2), notification_method: 'sms' });
+            // Preserve historical reservation keys: changing them would bypass prior UNKNOWN writes.
             return input.journeyId ? cltBankOnce(prisma, tenantId, 'nossa', ['AUTHORIZE', input.cpf, service], send,{root:input.journeyId,confirmedMissing}) : send();
           };
-          let authorization: any;
-          if (action === 'AUTHORIZE') authorization = await requestAuthorization();
-          else try { authorization = await nossaCall('POST', '/clt-loan/v1/check-authorization', identity); }
-          catch (error) { if (!missingCltAuthorization(error instanceof Error ? error.message : '')) throw error; authorization = { status: 'NOT_FOUND' }; }
-          const missing = ['NOT_FOUND','NOT_REQUESTED','NONE'].includes(authorization?.status);
-          let requested = action === 'AUTHORIZE';
-          if (missing && input.automaticAuthorization && !input.observeOnly) { authorization = await requestAuthorization(true); requested = true; }
-          if (requested || authorization?.status !== 'AUTHORIZED') {
-            const rejected = ['REJECTED','DENIED'].includes(authorization?.status);
-            rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', outcome: rejected ? 'INELIGIBLE' : 'AUTHORIZATION_REQUIRED', link: safeLink(authorization?.authorization_link), data: { authorization: { status: rejected ? 'REJECTED' : requested ? 'REQUESTED' : 'PENDING', mechanism: 'BANK_CHANNEL' } }, message: rejected ? 'Autorização recusada pelo cliente ou instituição.' : requested ? authorization?.operationCached?'Solicitação anterior já registrada. Nenhum novo envio foi realizado; aguardando aceite do cliente.':'Solicitação enviada. Aguardando aceite do cliente no canal da instituição.' : 'Aguardando autorização do cliente.' });
-            return;
+          // Always re-check official state, including explicit AUTHORIZE. Never replace a valid consent.
+          let rawAuthorization: any;
+          try { rawAuthorization = await nossaCall('POST', '/clt-loan/v1/check-authorization', identity); }
+          catch (error) {
+            if(!missingCltAuthorization(error instanceof Error?error.message:'')){
+              rows.push({provider:'Nossa Fintech',institution:service,state:'ERROR',outcome:'TECHNICAL_ERROR',data:{authorization:{status:'UNCONFIRMED',source:'API',observedAt:new Date().toISOString()}},message:'Estado da autorização não confirmado pela API. Nenhum novo link foi solicitado.'});return;
+            }
+            rawAuthorization={status:'NOT_FOUND'};
+          }
+          let authorization=await rememberNossaAuthorization(prisma,tenantId,input.bmgActorId,identity,nossaAuthorization(rawAuthorization,identity));
+          const missing=['NOT_FOUND','NOT_REQUESTED','NONE','EXPIRED'].includes(authorization.status);
+          let requested=false;
+          if(missing && !input.observeOnly && (input.automaticAuthorization||action==='AUTHORIZE')) {
+            const requestedResult=await requestAuthorization(true);
+            authorization=await rememberNossaAuthorization(prisma,tenantId,input.bmgActorId,identity,{...nossaAuthorization(requestedResult,identity),status:'REQUESTED'},'REQUEST');requested=true;
+          }
+          if(authorization.status!=='AUTHORIZED'){
+            const rejected=['REJECTED','DENIED'].includes(authorization.status);
+            rows.push({provider:'Nossa Fintech',institution:service,state:'PENDING',outcome:rejected?'INELIGIBLE':'AUTHORIZATION_REQUIRED',link:authorization.authorization_link,
+              data:{authorization:{status:authorization.status,mechanism:'BANK_CHANNEL',source:authorization.source,observedAt:authorization.observedAt,previousStatus:authorization.previousStatus,authorizationId:authorization.authorizationId}},
+              message:rejected?'Autorização recusada pelo cliente ou instituição.':authorization.status==='EXPIRED'?'Autorização expirada. Uma nova solicitação exige ação explícita.':authorization.status==='UNCONFIRMED'?'Estado não confirmado. A API não retornou um estado de autorização reconhecido; nenhum novo link foi solicitado.':requested?'Solicitação registrada. Aguardando aceite do cliente no canal da instituição.':'Aguardando autorização do cliente.'});return;
           }
           const employers = input.employerDocument ? [{ employer_cnpj: input.employerDocument }] : array(await nossaCall('POST', '/clt-loan/v1/check-employee-enrollment', identity));
           if (!employers.length) rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: 'Nenhum vínculo empregatício elegível.' });
@@ -141,7 +153,7 @@ export class ProductSimulationService {
               }
             }
             catch (error) { failure('Nossa Fintech', service, error); continue; }
-            if (action === 'REFRESH') {
+            if (action !== 'SIMULATE') {
               const restrictions = cltResponseReasons(margin);
               rows.push({ provider: 'Nossa Fintech', institution: service, state: margin?.can_continue===false?'PENDING':'DATA', outcome:margin?.can_continue===false?'INELIGIBLE':undefined, message: margin?.can_continue === false ? restrictions.join(' · ') || 'Vínculo não elegível. O banco não informou o motivo da restrição.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin, restrictions } });
               continue;

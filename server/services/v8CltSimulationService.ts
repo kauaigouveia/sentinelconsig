@@ -113,7 +113,11 @@ export class V8CltSimulationService {
         for (const consult of selected) {
           if (!uuid(consult.id)) throw new V8CltError(200, 'CONSULT_ID');
           if (!await this.ownsConsult(db, tenantId, promoterId, input.cpf, consult.id)) { rows.push(row('MISSING_DATA', 'Consulta não registrada nesta empresa e conexão. Crie e autorize uma consulta própria; os dados externos não foram expostos.',{data:{v8:{promoterId,nextAction:'CREATE_CONSULT'}}})); continue; }
-          const consentRecorded = await V8CltConsentAudit.recorded(db, tenantId, promoterId, input.cpf, consult.id);
+          let consentRecorded = await V8CltConsentAudit.recorded(db, tenantId, promoterId, input.cpf, consult.id);
+          if(!consentRecorded && ['CONSENT_APPROVED','WAITING_CONSULT','WAITING_CREDIT_ANALYSIS','SUCCESS'].includes(consult.status)){
+            await V8CltConsentAudit.record(db,tenantId,promoterId,input.cpf,consult.id,{method:'BANK_STATUS_API',source:'V8_CONSULT',humanAcceptanceCollected:false,observedBankStatus:consult.status,observedAt:new Date().toISOString()});
+            consentRecorded=true;
+          }
           const reference = { data: { v8: { consultId: consult.id, promoterId, status: consult.status, consentRecorded } } };
           const description = typeof (consult.description ?? consult.Description) === 'string' ? cltPublicMessage(consult.description ?? consult.Description) : undefined;
           if (consult.status === 'REJECTED') { rows.push(row('INELIGIBLE', description || 'A V8 informou que o cliente não é elegível nesta consulta.', reference)); continue; }

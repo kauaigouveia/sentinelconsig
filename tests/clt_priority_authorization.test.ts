@@ -117,3 +117,19 @@ it('observes live bank state without authorization POSTs and exposes only owned 
   const result=await service.observe(db,'tenant-a','user:a',id,'facta',true);expect(result?.results.facta.readyToSimulate).toBe(true);expect(api.mock.calls.at(-1)?.[4]).toMatchObject({observeOnly:true,automaticAuthorization:false});expect(api.mock.calls.every(c=>c[3]==='REFRESH')).toBe(true);
   expect(await service.history(db,'tenant-a','user:b')).toEqual([]);expect(await service.history(db,'tenant-b','user:a')).toEqual([]);const history=await service.history(db,'tenant-a','user:a');expect(history).toHaveLength(1);expect(JSON.stringify(history)).not.toContain(customer.cpf);expect(JSON.stringify(db.rows)).not.toContain(customer.v8Email);
 });
+it.each(['qi','uy3'])('reuses %s official authorization even on an explicit AUTHORIZE action and retrieves margin',async institution=>{
+ const db:any=journeyDatabase();vi.spyOn(Nossa,'getConfig').mockResolvedValue({enabled:true,isConfigured:true} as any);
+ const api=vi.spyOn(Nossa,'request').mockImplementation(async(_db,_tenant,_method,path)=>({success:true,status:200,data:path.endsWith('banking-institutions')?[institution]:path.endsWith('check-authorization')?{data:{status:' authorized '}}:path.endsWith('check-employee-enrollment')?[{employer_cnpj:'00000000000191'}]:{margin_key:'synthetic-margin',can_continue:true,available_balance:300}} as any));
+ const result=await run(()=>Sim.run(db,'tenant-a','CLT','AUTHORIZE',customer,undefined,['nossa']));
+ expect(result.rows.some(r=>r.state==='DATA')).toBe(true);expect(api.mock.calls.some(c=>c[3].endsWith('get-margin'))).toBe(true);expect(api.mock.calls.some(c=>c[3].endsWith('request-authorization'))).toBe(false);
+});
+it('does not create another link when official status is unavailable',async()=>{
+ const db:any=journeyDatabase();vi.spyOn(Nossa,'getConfig').mockResolvedValue({enabled:true,isConfigured:true} as any);
+ const api=vi.spyOn(Nossa,'request').mockImplementation(async(_db,_tenant,_method,path)=>path.endsWith('banking-institutions')?{success:true,status:200,data:['qi','uy3']}:{success:false,status:404,error:'Unavailable'} as any);
+ const result=await run(()=>Sim.run(db,'tenant-a','CLT','AUTHORIZE',customer,undefined,['nossa']));expect(result.rows).toHaveLength(2);expect(result.rows.every(r=>(r.data as any).authorization.status==='UNCONFIRMED')).toBe(true);expect(api.mock.calls.some(c=>c[3].endsWith('request-authorization'))).toBe(false);
+});
+it('preserves historical Nossa UNKNOWN reservations across this release and does not resend',async()=>{
+ const db:any=journeyDatabase();await expect(cltBankOnce(db,'tenant-a','nossa',['AUTHORIZE',customer.cpf,'qi'],async()=>{throw Error('old timeout');})).rejects.toThrow();
+ vi.spyOn(Nossa,'getConfig').mockResolvedValue({enabled:true,isConfigured:true} as any);const api=vi.spyOn(Nossa,'request').mockImplementation(async(_db,_tenant,_method,path)=>({success:true,status:200,data:path.endsWith('banking-institutions')?['qi']:{status:'NOT_FOUND'}} as any));
+ await run(()=>Sim.run(db,'tenant-a','CLT','AUTHORIZE',customer,undefined,['nossa']));expect(api.mock.calls.some(c=>c[3].endsWith('request-authorization'))).toBe(false);
+});
