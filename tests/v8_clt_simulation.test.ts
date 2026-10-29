@@ -1,3 +1,5 @@
+import {cltRatePercent} from '../src/lib/v8CltDisplay';
+import {applyBankRows,normalizeBankRows} from '../src/lib/cltBankState';
 import { V8CltConsentAudit } from '../server/services/v8CltConsentAudit';
 import { V8CltContract } from '../server/services/v8CltContract';
 import { V8CltPilot } from '../server/services/v8CltPilot';
@@ -338,3 +340,35 @@ it.each([['Payment',150],['Liquid',3000]] as const)('keeps the real V8 %s financ
  expect((rows[0].data as any).calculationDiagnostics[0]).toMatchObject({requestedValue:value,httpStatus:200,receivedOffers:1,acceptedOffers:1});
 });
 it('distinguishes an empty V8 array from an invalid financial schema',async()=>{response=[];const rows=await run();expect(rows.some(r=>r.state==='OFFER')).toBe(false);expect((rows[0].data as any).calculationDiagnostics[0].code).toBe('API_ZERO_OFFERS');});
+
+it.each([['Payment',150],['Liquid',3000]] as const)('never replaces explicit %s input with full margin even with a stale automatic flag',async(mode,value)=>{
+ const payload=V8CltSimulationService.simulationPayload({...consultation,availableMarginValue:'529.93'},{id:configId,number_of_installments:[36]},36,{...input,mode,value,autoConditions:true});expect(payload).toEqual({consult_id:consultId,config_id:configId,[mode==='Payment'?'installment_face_value':'disbursed_amount']:value,number_of_installments:36,provider:'QI'});
+});
+it('uses only the selected official V8 configuration, not the first or another table',async()=>{
+ const other='00000000-0000-4000-8000-000000000099';tables=[{id:other,number_of_installments:[36]},{id:configId,number_of_installments:[36]}];response={...offer,installment_value:205.23,number_of_installments:36,disbursement_amount:3000,simulation_config_id:configId};
+ const rows=await run({mode:'Liquid',value:3000,term:36,v8ConfigId:configId});expect(rows.filter(r=>r.state==='OFFER')).toHaveLength(1);const posts=fetchMock.mock.calls.filter(([,o])=>o.method==='POST');expect(posts).toHaveLength(1);expect(JSON.parse(posts[0][1].body).config_id).toBe(configId);
+});
+
+it.each([['Liquid',3000,205.23,3000],['Payment',529.93,529.93,7746.43]] as const)('maps the Postman %s contract faithfully with synthetic identifiers',async(mode,value,installment,amount)=>{
+ consultations[0].availableMarginValue='529.93';tables=[{id:configId,slug:'CLT Acelera',number_of_installments:[12,36]}];response={id_simulation:simulationId,installment_value:installment,disbursement_amount:amount,number_of_installments:36,monthly_interest_rate:0.0498,provider:'CELCOIN',simulation_config_id:configId,simulation_config_slug:'CLT Acelera'};
+ const margins=await run({},'REFRESH');const rows=await run({mode,value,term:36,v8ConfigId:configId,autoConditions:true});const quote=rows.find(r=>r.state==='OFFER')!;
+ expect(quote).toMatchObject({amount,installment,term:36,table:'CLT Acelera',simulationId});expect(cltRatePercent(quote)).toBeCloseTo(4.98);expect((quote.data as any).v8).toMatchObject({requestedProvider:'QI',returnedProvider:'CELCOIN',requestedMode:mode,requestedValue:value,simulationConfigId:configId});expect((margins[0].data as any).margin.available_balance).toBe(529.93);
+ const posts=fetchMock.mock.calls.filter(([,o])=>o.method==='POST');expect(posts).toHaveLength(1);expect(new URL(String(posts[0][0])).pathname).toBe('/private-consignment/simulation');expect(JSON.parse(posts[0][1].body)).toEqual({consult_id:consultId,config_id:configId,[mode==='Payment'?'installment_face_value':'disbursed_amount']:value,number_of_installments:36,provider:'QI'});
+});
+it('preserves original V8 quotes and official margin while keeping distinct modalities and suppressing exact duplicates',()=>{
+ const margin:any={provider:'V8 DIGITAL',institution:'V8',state:'DATA',data:{v8:{consultId,promoterId:'p',status:'SUCCESS'},margin:{available_balance:529.93,can_continue:true}}};const original:any={provider:'V8 DIGITAL',institution:'V8',state:'OFFER',amount:7746.43,installment:529.93,term:36,simulationId,data:{v8:{consultId,promoterId:'p',simulationConfigId:configId,requestedMode:'Payment',requestedValue:529.93}}};const result:any={rows:[margin],request:{value:0}};
+ applyBankRows('v8',result,[margin,original],true);result.request={value:3000};const liquid={...original,amount:3000,installment:205.23,data:{v8:{...original.data.v8,requestedMode:'Liquid',requestedValue:3000}}};applyBankRows('v8',result,[liquid,liquid],true);expect(result.originalOffers).toEqual([original]);expect(result.rows.filter((r:any)=>r.state==='OFFER')).toEqual([liquid]);expect(result.consultations[0].data.margin.available_balance).toBe(529.93);
+ const alternative={...liquid,data:{v8:{...liquid.data.v8,requestedMode:'Payment',requestedValue:205.23}}};expect(normalizeBankRows('v8',[liquid,alternative,liquid])).toHaveLength(2);
+});
+it('does not use another financial total when disbursement_amount is absent',async()=>{response={...offer,disbursement_amount:undefined,issue_amount:3000,operation_amount:6000,disbursed_issue_amount:2999};expect((await run()).some(r=>r.state==='OFFER')).toBe(false);});
+it('rejects an unavailable selected configuration without silently pricing another one',async()=>{const rows=await run({v8ConfigId:secondId});expect(rows.some(r=>r.state==='OFFER')).toBe(false);expect(rows[0].message).toContain('configuração V8 selecionada');expect(fetchMock.mock.calls.some(([,o])=>o.method==='POST')).toBe(false);});
+
+it('keeps the sanitized bank rejection reason, without exposing payload data or reusing a previous offer',async()=>{
+ consultations[0].availableMarginValue='529.93';tables=[{id:configId,number_of_installments:[36]}];const original=fetchMock.getMockImplementation()! as (...args:any[])=>Promise<Response>;fetchMock.mockImplementation(async(url:any,o:any)=>String(url).endsWith('/simulation')?Response.json({message:'Prazo indisponível para synthetic@example.invalid',payload:{password:'NEVER-EXPOSE'}},{status:422}):original(url,o));
+ const rows=await run({value:150,term:36});expect(rows.some(r=>r.state==='OFFER')).toBe(false);expect(rows[0].message).toContain('Prazo indisponível');expect(JSON.stringify(rows)).not.toContain('synthetic@example.invalid');expect(JSON.stringify(rows)).not.toContain('NEVER-EXPOSE');expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain('synthetic@example.invalid');
+});
+
+it('expands all terms only from the selected official configuration and never sends zero',async()=>{
+ consultations[0].availableMarginValue='529.93';tables=[{id:secondId,number_of_installments:[24]},{id:configId,number_of_installments:[0,12,36,36,999]}];const original=fetchMock.getMockImplementation()! as (...args:any[])=>Promise<Response>;
+ fetchMock.mockImplementation(async(url:any,o:any)=>{if(String(url).endsWith('/simulation')){const b=JSON.parse(o.body);return Response.json({...offer,id_simulation:b.number_of_installments===12?simulationId:secondId,installment_value:150,number_of_installments:b.number_of_installments,simulation_config_id:configId});}return original(url,o);});const rows=await run({value:150,term:0,v8ConfigId:configId});expect(rows.filter(r=>r.state==='OFFER').map(r=>r.term)).toEqual([12,36]);expect(fetchMock.mock.calls.filter(([,o])=>o.method==='POST').map(([,o])=>JSON.parse(o.body).number_of_installments)).toEqual([12,36]);
+});

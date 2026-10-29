@@ -13,7 +13,7 @@ export function presentedOffers(snapshot:JourneySnapshot|null):PresentedOffer[]{
     for(const row of rowsOfBank(snapshot,bank).filter(r=>r.state==='OFFER')){
       const d=row.data as any,f=d?.v8||d?.vctex||d?.financial||{};
       const offer:PresentedOffer={key:'',bank,row,rate:cltRatePercent(row),insurance:typeof f.isInsured==='boolean'?f.isInsured:typeof f.withInsurance==='boolean'?f.withInsurance:undefined,insuranceAmount:reportedNumber(f.insuranceAmount),iof:reportedNumber(f.iofAmount??f.iof),issueAmount:reportedNumber(f.issueAmount)??row.contractAmount,nominalTotal:reportedNumber(f.operationAmount??f.totalAmount),firstDueDate:f.firstInstallmentDate||f.firstDueDate};
-      offer.key=JSON.stringify([row.origin?.executionId||state.executionId||snapshot?.rootExecutionId||snapshot?.executionId,bank,row.origin?.subInstitutionId||row.institution,row.origin?.connectionId,row.origin?.consultationId,row.simulationId,row.table,row.term,row.amount,row.installment,offer.rate,offer.insurance,row.cetMonthly,row.cetAnnual]);
+      offer.key=JSON.stringify([row.origin?.executionId||state.executionId||snapshot?.rootExecutionId||snapshot?.executionId,bank,row.origin?.subInstitutionId||row.institution,row.origin?.connectionId,row.origin?.consultationId,row.simulationId,row.table,row.term,row.amount,row.installment,offer.rate,offer.insurance,row.cetMonthly,row.cetAnnual,...(bank==='v8'?[d?.v8?.requestedMode,d?.v8?.requestedValue]:[])]);
       if(!result.has(offer.key))result.set(offer.key,offer);
     }
   }return [...result.values()];

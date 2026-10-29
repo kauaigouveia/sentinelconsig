@@ -7,7 +7,7 @@ function eligibleQuote(bank:string,row:ProductSimulationRow,queries:ProductSimul
 export function normalizeBankRows(bank:string,rows:ProductSimulationRow[]){
  const seen=new Map<string,ProductSimulationRow>();
  rows.forEach((row,index)=>{const d=row.data as any,ref=reference(bank,row);let key:string;
- if(row.state==='OFFER')key=JSON.stringify(['offer',...ref,row.origin?.executionId,row.simulationId,d?.v8?.simulationConfigId||d?.vctex?.offerId||row.table,row.term,row.installment,row.amount,row.rate,d?.v8?.monthlyInterestRate,row.cetMonthly,row.cetAnnual,d?.v8?.isInsured??d?.vctex?.withInsurance,d?.v8?.insuranceAmount??d?.vctex?.insuranceAmount]);
+ if(row.state==='OFFER')key=JSON.stringify(['offer',...ref,row.origin?.executionId,row.simulationId,d?.v8?.simulationConfigId||d?.vctex?.offerId||row.table,row.term,row.installment,row.amount,row.rate,d?.v8?.monthlyInterestRate,row.cetMonthly,row.cetAnnual,...(bank==='v8'?[d?.v8?.requestedMode,d?.v8?.requestedValue]:[]),d?.v8?.isInsured??d?.vctex?.withInsurance,d?.v8?.insuranceAmount??d?.vctex?.insuranceAmount]);
  else if(row.state==='DATA'&&(bank==='v8'?!!ref[3]:bank==='vctex'?!!ref[3]&&!!ref[4]:!!ref[4]||!!ref[3]))key=JSON.stringify(['query',...ref]);
  else key=JSON.stringify(['other',index]);
  seen.set(key,row);});return [...seen.values()];

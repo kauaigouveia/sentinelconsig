@@ -16,7 +16,7 @@ import { cltBankOnce, missingCltAuthorization } from './cltBankOperation.js';
 import { isJourneyExecution } from './cltJourneyDeadline.js';
 
 export type ProductSimulationInput = {
-  cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string; v8ConsultId?: string; v8PromoterId?: string;
+  cpf: string; name: string; phone: string; employerDocument?: string; factaRegistration?: string; v8ConsultId?: string; v8PromoterId?: string; v8ConfigId?: string;
   term: number; value: number; mode: 'Payment' | 'Liquid'; eligibility: boolean;
   bmgActorId?: string;
   autoConditions?: boolean;

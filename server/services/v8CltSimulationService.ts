@@ -33,8 +33,13 @@ const number = (value: unknown) => {
   return parsed !== null && parsed !== '' ? Number(parsed) : undefined;
 };
 const row = (outcome: CltOutcome, message: string, extra: Partial<ProductSimulationRow> = {}): ProductSimulationRow => ({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: outcome === 'TECHNICAL_ERROR' ? 'ERROR' : 'PENDING', outcome, message, ...extra });
+function v8PublicReason(data:any):string|undefined {
+ const message=[data?.description,data?.message,typeof data?.error==='string'?data.error:undefined].find(v=>typeof v==='string'&&v.trim());
+ if(!message||/access.?token|refresh.?token|password|senha|credential|secret|api.?key|[A-Za-z0-9_-]{40,}/i.test(message))return undefined;
+ return cltPublicMessage(message)?.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[e-mail omitido]').replace(/(?:\+55\s*)?\(?\d{2}\)?[ .-]?\d{4,5}[ .-]?\d{4}\b/g,'[telefone omitido]');
+}
 class V8CltError extends Error {
-  constructor(public status: number, public code: string) { super('Falha na consulta CLT V8.'); }
+  constructor(public status: number, public code: string, public officialReason?:string) { super('Falha na consulta CLT V8.'); }
 }
 
 export class V8CltSimulationService {
@@ -62,7 +67,7 @@ export class V8CltSimulationService {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body: body === undefined ? undefined : JSON.stringify(body) });
     } catch { throw new V8CltError(0, 'NETWORK'); }
     const data = consentId && response.ok ? {} : await response.json().catch(() => null);
-    if (!response.ok || !data || data.error || data.type === 'permission_denied') throw new V8CltError(response.status, data?.type === 'permission_denied' || response.status === 403 ? 'PERMISSION_DENIED' : 'PROVIDER_RESPONSE');
+    if (!response.ok || !data || data.error || data.type === 'permission_denied') throw new V8CltError(response.status, data?.type === 'permission_denied' || response.status === 403 ? 'PERMISSION_DENIED' : 'PROVIDER_RESPONSE',v8PublicReason(data));
     if(data&&typeof data==='object')Object.defineProperty(data,responseHttpStatus,{value:response.status});
     return data;
   }
@@ -73,6 +78,8 @@ export class V8CltSimulationService {
     return V8CltPilot.within(permit, () => this.runAuthorized(db, tenantId, action, input));
   }
   private static async runAuthorized(db: any, tenantId: string, action: 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT', input: ProductSimulationInput): Promise<ProductSimulationRow[]> {
+    // An explicit amount always wins over a stale automatic-calculation hint.
+    input={...input,autoConditions:input.autoConditions===true&&(input.value==null||input.value===0)};
     // Backend gate covers the unified journey, legacy simulator and partner portal.
     // No environment switch can accidentally enable an unhomologated financial operation.
     const stored = await db.systemConfig?.findMany?.({ where: { tenantId, configKey: { startsWith: 'integration:v8:' } }, select: { configKey: true } }) || [];
@@ -148,8 +155,11 @@ export class V8CltSimulationService {
           if (!input.autoConditions && input.mode === 'Payment' && input.value > margin) { rows.push(row('INELIGIBLE', 'A parcela desejada supera a margem disponível informada nesta consulta V8.')); continue; }
           const configs = await this.request(db, tenantId, promoterId, '/private-consignment/simulation/configs?provider=QI');
           if (!Array.isArray(configs.configs)) throw new V8CltError(200, 'CONFIG_SCHEMA');
+          if(input.v8ConfigId&&!uuid(input.v8ConfigId)){rows.push(row('MISSING_DATA','Selecione uma configuração V8 válida.'));continue;}
+          const eligibleConfigs=input.v8ConfigId?configs.configs.filter((c:any)=>c.id===input.v8ConfigId):configs.configs;
+          if(input.v8ConfigId&&!eligibleConfigs.length){rows.push(row('MISSING_DATA','A configuração V8 selecionada não está disponível nesta conexão. Atualize as configurações.'));continue;}
           let attempted = false;
-          for (const table of configs.configs) {
+          for (const table of eligibleConfigs) {
             if (!uuid(table.id) || !Array.isArray(table.number_of_installments)) throw new V8CltError(200, 'CONFIG_SCHEMA');
             const terms = [...new Set<number>(table.number_of_installments.map(Number).filter((term: number) => Number.isInteger(term) && term > 0 && term <= 120 && (!input.term || term === input.term)))];
             for (const term of terms) {
@@ -163,7 +173,7 @@ export class V8CltSimulationService {
                 try{result=await this.request(db, tenantId, promoterId, '/private-consignment/simulation', payload);}catch(error){
                   // A definitive financial rejection is a completed result, not an UNKNOWN write.
                   // Persist it inside the existing reservation so it cannot be replayed on recovery.
-                  if(error instanceof V8CltError&&[400,422].includes(error.status)&&error.code!=='PERMISSION_DENIED')return [row('PENDING','A V8 rejeitou esta condição. Outras configurações elegíveis continuam sendo verificadas.',{data:{calculationDiagnostics:[calculationDiagnostic('v8',financialInput,term,'BANK_REJECTED',error.status)]}})];
+                  if(error instanceof V8CltError&&[400,422].includes(error.status)&&error.code!=='PERMISSION_DENIED')return [row('PENDING',error.officialReason?`V8: ${error.officialReason}`:'A V8 rejeitou esta condição. Outras configurações elegíveis continuam sendo verificadas.',{data:{calculationDiagnostics:[calculationDiagnostic('v8',financialInput,term,'BANK_REJECTED',error.status)]}})];
                   throw error;
                 }
                 if(Array.isArray(result)&&result.length===0)return [row('PENDING','A V8 retornou uma resposta vazia, sem ofertas para esta condição.',{data:{calculationDiagnostics:[calculationDiagnostic('v8',financialInput,term,'API_ZERO_OFFERS',result[responseHttpStatus])]}})];
@@ -173,9 +183,9 @@ export class V8CltSimulationService {
                 if (result.simulation_config_id !== undefined && result.simulation_config_id !== table.id) throw new V8CltError(200, 'CONFIG_MISMATCH');
                 const rawRate = number(result.monthly_interest_rate);
                 const rawCet = ['cet', 'monthly_cet', 'annual_cet', 'cet_monthly', 'cet_annual', 'cet_mensal', 'cet_anual'].filter(k => number(result[k]) !== undefined).map(k => ({ field: k, value: result[k] }));
-                return [row('OFFER', 'Oferta calculada pela V8.', { state: 'OFFER', table: typeof result.simulation_config_slug === 'string' ? result.simulation_config_slug.slice(0, 100) : typeof table.slug === 'string' ? table.slug.slice(0, 100) : 'V8 CLT', amount, contractAmount: contractAmount && contractAmount > 0 ? contractAmount : undefined, installment, term, simulationId: result.id_simulation, data: { calculationDiagnostics:[calculationDiagnostic('v8',financialInput,term,'OFFER',result[responseHttpStatus],1,1)],v8: { consultId: consult.id, promoterId, status: 'SUCCESS', rawCet, operationAmount: number(result.operation_amount), issueAmount: contractAmount, disbursedIssueAmount: number(result.disbursed_issue_amount), requestedProvider: 'QI', returnedProvider: typeof result.provider === 'string' ? result.provider.slice(0, 50) : undefined, simulationConfigId: table.id, isInsured: typeof result.is_insured === 'boolean' ? result.is_insured : undefined, insuranceAmount: number(result.insurance_amount), monthlyInterestRate: rawRate, firstInstallmentDate: typeof result.first_installment_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(result.first_installment_date) ? result.first_installment_date.slice(0, 10) : undefined, iofAmount: number(result.iof_amount) ?? number(result.disbursement_option?.iof_amount), calculatedAt: new Date().toISOString(), rawMonthlyRate: rawRate } } })];
+                return [row('OFFER', 'Oferta calculada pela V8.', { state: 'OFFER', table: typeof result.simulation_config_slug === 'string' ? result.simulation_config_slug.slice(0, 100) : typeof table.slug === 'string' ? table.slug.slice(0, 100) : 'V8 CLT', amount, contractAmount: contractAmount && contractAmount > 0 ? contractAmount : undefined, installment, term, simulationId: result.id_simulation, data: { calculationDiagnostics:[calculationDiagnostic('v8',financialInput,term,'OFFER',result[responseHttpStatus],1,1)],v8: { consultId: consult.id, promoterId, status: 'SUCCESS', rawCet, operationAmount: number(result.operation_amount), issueAmount: contractAmount, disbursedIssueAmount: number(result.disbursed_issue_amount), requestedMode:financialInput.mode,requestedValue:financialInput.value,requestedProvider: 'QI', returnedProvider: typeof result.provider === 'string' ? result.provider.slice(0, 50) : undefined, simulationConfigId: table.id, isInsured: typeof result.is_insured === 'boolean' ? result.is_insured : undefined, insuranceAmount: number(result.insurance_amount), monthlyInterestRate: rawRate, firstInstallmentDate: typeof result.first_installment_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(result.first_installment_date) ? result.first_installment_date.slice(0, 10) : undefined, iofAmount: number(result.iof_amount) ?? number(result.disbursement_option?.iof_amount), calculatedAt: new Date().toISOString(), rawMonthlyRate: rawRate } } })];
                 });
-                rows.push(...operation);
+                rows.push(...operation.map(quote=>quote.state==='OFFER'?{...quote,data:{...(quote.data as Record<string,unknown>||{}),v8:{...(quote.data as any)?.v8,requestedMode:financialInput.mode,requestedValue:financialInput.value}}}:quote));
               } catch (error) { const diagnostic=calculationDiagnostic('v8',financialInput,term,error instanceof V8CltError&&[400,422].includes(error.status)&&error.code!=='PERMISSION_DENIED'?'BANK_REJECTED':error instanceof V8CltError&&error.code==='SIMULATION_SCHEMA'?'BACKEND_DISCARDED':'API_ERROR',error instanceof V8CltError?error.status:undefined,error instanceof V8CltError&&error.code==='SIMULATION_SCHEMA'?1:0); const failed=this.failure(error, tenantId, promoterId);rows.push({...failed,data:{...(failed.data as Record<string,unknown>||{}),calculationDiagnostics:[diagnostic]}});return rows; }
             }
           }
@@ -231,9 +241,10 @@ export class V8CltSimulationService {
   }
   // Pure contract builder. The real POST also requires operational scope and a reviewed contract.
   static simulationPayload(consult: any, config: any, term: number, input: ProductSimulationInput) {
-    const margin = number(consult.availableMarginValue), value = input.autoConditions ? cltPaymentLimit(margin) : input.value;
-    if (consult.status !== 'SUCCESS' || String(consult.documentNumber || '').replace(/\D/g, '') !== input.cpf || !uuid(consult.id) || !uuid(config.id) || !config.number_of_installments?.map(Number).includes(term) || !Number.isInteger(term) || term <= 0 || term > 120 || !margin || margin <= 0 || !value || !Number.isFinite(value) || value <= 0 || ((input.autoConditions || input.mode === 'Payment') && value > margin)) throw new V8CltError(0, 'SIMULATION_PARAMETERS');
-    return { consult_id: consult.id, config_id: config.id, ...(input.autoConditions || input.mode === 'Payment' ? { installment_face_value: value } : { disbursed_amount: value }), number_of_installments: term, provider: 'QI' };
+    const automatic=input.autoConditions===true&&(input.value==null||input.value===0);
+    const margin = number(consult.availableMarginValue), value = automatic ? cltPaymentLimit(margin) : input.value;
+    if (consult.status !== 'SUCCESS' || String(consult.documentNumber || '').replace(/\D/g, '') !== input.cpf || !uuid(consult.id) || !uuid(config.id) || !config.number_of_installments?.map(Number).includes(term) || !Number.isInteger(term) || term <= 0 || term > 120 || !margin || margin <= 0 || !value || !Number.isFinite(value) || value <= 0 || ((automatic || input.mode === 'Payment') && value > margin)) throw new V8CltError(0, 'SIMULATION_PARAMETERS');
+    return { consult_id: consult.id, config_id: config.id, ...(automatic || input.mode === 'Payment' ? { installment_face_value: value } : { disbursed_amount: value }), number_of_installments: term, provider: 'QI' };
   }
 
   private static failure(error: unknown, tenantId: string, promoterId: string) {
@@ -241,6 +252,6 @@ export class V8CltSimulationService {
     logger.warn({ tenantId, promoterId, provider: 'V8', code, httpStatus: error instanceof V8CltError ? error.status : undefined }, '[CLT] V8 consultation unavailable');
     const uncertain=code==='CONSULT_UNCERTAIN'||(error as any)?.writeUncertain===true;
     if(error instanceof V8CltError&&[400,422].includes(error.status)&&error.code!=='PERMISSION_DENIED')return row('PENDING','A V8 rejeitou esta condição. Outras configurações elegíveis continuam sendo verificadas.');
-    return row('TECHNICAL_ERROR', code === 'CONSULT_UNCERTAIN' ? 'Já existe uma criação V8 em andamento ou com resultado incerto. Confira a consulta na V8; o POST não será repetido.' : code === 'PERMISSION_DENIED' ? 'A V8 não liberou as permissões CLT desta conexão. Solicite a habilitação ao suporte V8.' : 'Não foi possível concluir a consulta CLT V8. Atualize os dados ou confira a conexão com o administrador.',uncertain?{data:{writeUncertain:true}}:{});
+    return row('TECHNICAL_ERROR', code === 'CONSULT_UNCERTAIN' ? 'Já existe uma criação V8 em andamento ou com resultado incerto. Confira a consulta na V8; o POST não será repetido.' : code === 'PERMISSION_DENIED' ? 'A V8 não liberou as permissões CLT desta conexão. Solicite a habilitação ao suporte V8.' : error instanceof V8CltError&&error.officialReason?`V8: ${error.officialReason}`:'Não foi possível concluir a consulta CLT V8. Atualize os dados ou confira a conexão com o administrador.',uncertain?{data:{writeUncertain:true}}:{});
   }
 }

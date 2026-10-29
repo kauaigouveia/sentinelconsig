@@ -49,3 +49,8 @@ it('binds authorization to its own reference instead of a different form selecti
  for(const [label,value]of [['Sistema operacional do dispositivo','Synthetic OS'],['Modelo do dispositivo','Synthetic model'],['Nome do dispositivo','Synthetic device'],['Tipo do dispositivo','desktop']])fireEvent.change(screen.getByLabelText(label),{target:{value}});
  await act(async()=>fireEvent.click(screen.getByText('Autorizar consulta V8')));expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({consultId:ref.consultId,promoterId:ref.promoterId});expect(done).toHaveBeenCalledOnce();
 });
+
+it('offers only configurations from the selected V8 consultation and forwards the explicit choice',()=>{
+ const setForm=vi.fn(),start=vi.fn();const rows=[{state:'DATA',data:{v8:{consultId:'c',promoterId:'p',configurations:[{id:'config-36',name:'CLT Acelera',terms:[12,36]}]}}},{state:'DATA',data:{v8:{consultId:'other',promoterId:'p',configurations:[{id:'other-config',name:'Outra consulta',terms:[24]}]}}}];
+ render(<V8CltActions capabilities={{connections:[{promoterId:'p'}]}} form={{v8ConsultId:'c',v8PromoterId:'p',v8Email:'synthetic@example.invalid',v8BirthDate:'28/02/1990',v8Gender:'male'}} setForm={setForm} start={start} rows={rows}/>);const select=screen.getByLabelText('Configuração V8');expect(select.textContent).toContain('CLT Acelera');expect(select.textContent).not.toContain('Outra consulta');fireEvent.change(select,{target:{value:'config-36'}});expect(setForm.mock.calls[0][0]({v8ConsultId:'c'})).toMatchObject({v8ConfigId:'config-36'});expect(start).not.toHaveBeenCalled();
+});
