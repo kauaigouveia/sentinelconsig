@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { SimulationOfferCard } from './SimulationOfferCard';
 import { normalizeCpf } from '../../lib/utils';
-type Props = { sharedResults?:boolean; cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
+type Props = {visible?:boolean; sharedResults?:boolean; cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-transparent p-2 text-sm dark:border-slate-700';
 function options(min: number, max: number, scale = 1) { const first = Math.ceil(min * scale), last = Math.floor(max * scale); return Number.isFinite(first) && Number.isFinite(last) && last >= first && last - first <= 2000 ? Array.from({ length: last - first + 1 }, (_, index) => (first + index) / scale) : []; }
 export function ParanaCltSimulation(props: Props) {
@@ -39,6 +39,7 @@ export function ParanaCltSimulation(props: Props) {
     finally { if (!current.signal.aborted) setBusy(false); }
   }
   const ready = normalizeCpf(props.cpf).length === 11;
+  if(props.visible===false)return null;
   return <section className="mt-5 space-y-3 rounded-xl border border-blue-200 p-4 dark:border-blue-900" aria-label="Paraná Crédito Trabalhador"><h3 className="font-bold">Paraná Banco · Crédito Trabalhador</h3><p className="text-xs text-slate-500">Gere o consentimento, acompanhe o aceite e solicite a elegibilidade. O Paraná valida a autorização e retorna os vínculos e limites disponíveis. Não há envio automático de SMS.</p>
     <div className="flex flex-wrap gap-2">{[['consent', 'Gerar consentimento CLT'], ['status', 'Consultar status do consentimento'], ['eligibility', 'Solicitar elegibilidade CLT'], ['assessment', 'Atualizar elegibilidade CLT']].map(([action, title]) => <button key={action} type="button" disabled={busy || !ready || action === 'consent' && (!props.name.trim() || props.phone.replace(/\D/g, '').length !== 11) || action === 'assessment' && !requests.length} onClick={() => run(action)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">{title}</button>)}</div>
     {links.map((url, index) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-500 underline">Abrir consentimento CLT{links.length > 1 ? ` · ${index + 1}` : ''}</a>)}

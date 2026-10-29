@@ -1,9 +1,9 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {CurrencyInput} from '../common/CurrencyInput';
 import type {ProductSimulationRow} from '../../../server/services/productSimulationService';
-type Props={executionId:string;scope:string;active:boolean;onRows:(rows:ProductSimulationRow[])=>void};
+type Props={visible?:boolean;managedPricing?:boolean;pricingLocked?:boolean;executionId:string;scope:string;active:boolean;onRows:(rows:ProductSimulationRow[])=>void};
 const control='rounded-lg border border-slate-300 bg-white p-2 text-sm dark:border-slate-700 dark:bg-slate-900';
-export function VctexCltActions({executionId,scope,active,onRows}:Props){
+export function VctexCltActions({executionId,scope,active,onRows,visible=true,managedPricing=false,pricingLocked=false}:Props){
   const [connections,setConnections]=useState<{id:string;name:string}[]>([]),[promoter,setPromoter]=useState(''),[data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const [employment,setEmployment]=useState(''),[rate,setRate]=useState(''),[term,setTerm]=useState(''),[amount,setAmount]=useState(''),[copied,setCopied]=useState(false);
   const lifecycle=useRef(0),controller=useRef<AbortController|null>(null),lock=useRef(false),auto=useRef(new Set<string>()),rowsCallback=useRef(onRows);
@@ -39,13 +39,13 @@ export function VctexCltActions({executionId,scope,active,onRows}:Props){
   },[data?.status,data?.preOperationId,active,promoter,error]);
   useEffect(()=>{
     if(!data)return;
-    rowsCallback.current([...(data.offers||[]),...(data.employments||[]).map((e:any)=>({provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:'DATA' as const,data:{margin:{available_balance:e.availableMarginValue,can_continue:e.eligible},vctex:{preOperationId:data.preOperationId,employmentId:e.employmentId},authorization:{status:data.authorizationValid?'AUTHORIZED':undefined},observedAt:new Date().toISOString()}})),{provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:error?'ERROR':'PENDING',message:error||data.label,link:data.link,outcome:error?'TECHNICAL_ERROR':data.status==='awaiting_signature'?'AUTHORIZATION_REQUIRED':['eligibility_denied_by_provider','ineligible_by_internal_policy'].includes(data.status)?'INELIGIBLE':'PENDING',data:{vctex:{preOperationId:data.preOperationId,uncertain:/incerto/i.test(error)},authorization:{status:data.authorizationValid?'AUTHORIZED':data.status==='awaiting_signature'?'PENDING':undefined},observedAt:new Date().toISOString()}}]);
+    rowsCallback.current([...(data.offers||[]),...(data.employments||[]).map((e:any)=>({provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:'DATA' as const,data:{margin:{available_balance:e.availableMarginValue,can_continue:e.eligible},vctex:{preOperationId:data.preOperationId,employmentId:e.employmentId},authorization:{status:data.authorizationValid?'AUTHORIZED':undefined},observedAt:new Date().toISOString()}})),{provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:error?'ERROR':'PENDING',message:error||data.label,link:data.link,outcome:error?'TECHNICAL_ERROR':data.status==='awaiting_signature'?'AUTHORIZATION_REQUIRED':['eligibility_denied_by_provider','ineligible_by_internal_policy'].includes(data.status)?'INELIGIBLE':'PENDING',data:{vctex:{preOperationId:data.preOperationId,uncertain:/incerto/i.test(error)},authorization:{status:data.authorizationValid?'AUTHORIZED':data.status==='awaiting_signature'?'PENDING':undefined},observedAt:new Date().toISOString()}}].map(row=>({...row,origin:{providerId:'vctex',connectionId:promoter,consultationId:data.preOperationId,executionId}})));
     const eligible=data.employments?.find((e:any)=>e.eligible&&e.rates?.length),first=eligible?.rates[0];
-    if(!eligible||!first||data.status!=='finished'||busy||error)return;
+    if(pricingLocked||!eligible||!first||data.status!=='finished'||busy||error)return;
     const key=[data.preOperationId,eligible.employmentId,first.id].join(':');
     if(auto.current.has(key)||(data.offers||[]).some((q:any)=>q.data?.vctex?.employmentId===eligible.employmentId&&q.data?.vctex?.offerId===first.id))return;
     auto.current.add(key);void request('simulate',{employmentId:eligible.employmentId,offerId:first.id});
-  },[data,busy,error]);
+  },[data,busy,error,pricingLocked]);
   useEffect(()=>{
     const selected=data?.employments?.find((e:any)=>e.employmentId===employment);
     if(!active||!promoter||!selected?.eligible||selected.rates?.length||data.status!=='finished')return;
@@ -55,6 +55,7 @@ export function VctexCltActions({executionId,scope,active,onRows}:Props){
     return()=>abort.abort();
   },[employment,promoter,executionId,active,data?.status]);
   const selected=data?.employments?.find((e:any)=>e.employmentId===employment),selectedRate=selected?.rates?.find((r:any)=>r.id===rate);
+  if(!visible)return null;
   return <section aria-label="Acompanhamento VCTEX" className="mb-4 space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
     <p className="text-xs text-slate-500">VCTEX DIGITAL · Consulta pela Oracle · A assinatura do termo cabe ao trabalhador. Nenhuma proposta será criada.</p>
     {connections.length>1&&<label className="block text-xs">Conexão autorizada<select aria-label="Conexão VCTEX" className={control} disabled={busy} value={promoter} onChange={e=>{lifecycle.current++;controller.current?.abort();lock.current=false;setData(null);setPromoter(e.target.value);}}><option value="">Selecione</option>{connections.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
@@ -65,7 +66,7 @@ export function VctexCltActions({executionId,scope,active,onRows}:Props){
     {data?.preOperationId&&<button type="button" className={control} disabled={busy} onClick={()=>void request('observe')}>Atualizar consulta pelo ID</button>}
     {data?.employments?.map((e:any)=><article key={e.employmentId} className="rounded-lg border border-slate-200 p-2 text-xs dark:border-slate-700"><strong>{e.employer?.name||'Empregador'}</strong><p>{e.eligible?'Elegível':'Inelegível'} · Margem {Number(e.availableMarginValue).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>{e.ineligibilityReason&&<p>{e.ineligibilityReason}</p>}</article>)}
 
-    {data?.status==='finished'&&<details><summary className="cursor-pointer text-xs">Calcular outra condição VCTEX</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">
+    {!managedPricing&&data?.status==='finished'&&<details><summary className="cursor-pointer text-xs">Calcular outra condição VCTEX</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">
       <label className="text-xs">Vínculo<select className={control} value={employment} onChange={e=>{setEmployment(e.target.value);setRate('');}}>{data.employments?.filter((e:any)=>e.eligible).map((e:any)=><option key={e.employmentId} value={e.employmentId}>{e.employer?.name||e.employmentId}</option>)}</select></label>
       <label className="text-xs">Oferta<select className={control} value={rate} onChange={e=>setRate(e.target.value)}><option value="">Selecione</option>{selected?.rates?.map((r:any)=><option key={r.id} value={r.id}>{r.name} · {(r.fee*100).toLocaleString('pt-BR')}% a.m. · {r.withInsurance?'com seguro':'sem seguro'}</option>)}</select></label>
       <label className="text-xs">Prazo opcional<select className={control} value={term} onChange={e=>setTerm(e.target.value)}><option value="">Simulação full</option>{selectedRate?.allowedInstallments?.map((n:number)=><option key={n} value={n}>{n}</option>)}</select></label>

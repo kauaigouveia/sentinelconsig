@@ -1,10 +1,12 @@
+import {canonicalNossaInstitution} from '../../src/lib/cltInstitution.js';
 import {CltJourneyStore,journeyFingerprint,type JourneyRecord} from './cltJourneyStore.js';
 import {currentIntegrationPromoter} from './bankPromoterConfig.js';
+function sameInstitution(a:unknown,b:string){return a===b||!!canonicalNossaInstitution(a)&&canonicalNossaInstitution(a)===canonicalNossaInstitution(b);}
 export function nossaAuthorization(raw:any,identity:{document_number:string;service_type:string}) {
   const root=raw?.data&&typeof raw.data==='object'&&typeof raw.data.status==='string'?raw.data:raw;
   if(root!==raw&&typeof raw?.status==='string'&&raw.status.trim().toUpperCase()!==root.status.trim().toUpperCase())throw Error('Estado de autorização ambíguo. Atualize a consulta oficial.');
-  if(root!==raw&&(raw?.document_number&&String(raw.document_number).replace(/\D/g,'')!==identity.document_number||raw?.service_type&&raw.service_type!==identity.service_type))throw Error('Autorização retornada para outra identidade ou instituição.');
-  if(root?.document_number&&String(root.document_number).replace(/\D/g,'')!==identity.document_number||root?.service_type&&root.service_type!==identity.service_type)throw Error('Autorização retornada para outra identidade ou instituição.');
+  if(root!==raw&&(raw?.document_number&&String(raw.document_number).replace(/\D/g,'')!==identity.document_number||raw?.service_type&&!sameInstitution(raw.service_type,identity.service_type)))throw Error('Autorização retornada para outra identidade ou instituição.');
+  if(root?.document_number&&String(root.document_number).replace(/\D/g,'')!==identity.document_number||root?.service_type&&!sameInstitution(root.service_type,identity.service_type))throw Error('Autorização retornada para outra identidade ou instituição.');
   const status=typeof root?.status==='string'?root.status.trim().toUpperCase():'UNCONFIRMED';
   const recognized=['AUTHORIZED','PENDING','REQUESTED','REJECTED','DENIED','EXPIRED','NOT_FOUND','NOT_REQUESTED','NONE'].includes(status)?status:'UNCONFIRMED';
   return {status:recognized,authorization_link:typeof root?.authorization_link==='string'&&/^https:\/\//i.test(root.authorization_link)?root.authorization_link:undefined,

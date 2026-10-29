@@ -37,11 +37,12 @@ it('uses a single primary action, displays offers independently, compares condit
   expect(fetcher).toHaveBeenCalledTimes(1);
   const sent = JSON.parse(fetcher.mock.calls[0][1].body); expect(sent.value).toBeUndefined(); expect(sent.term).toBeUndefined(); expect(sent.action).toBe('REFRESH'); expect(sent.phone).toBe('11999999999');
   expect(sent).toMatchObject({v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male'});
-  fireEvent.click(screen.getByLabelText('Comparar A')); fireEvent.click(screen.getByLabelText('Comparar B'));
+  fireEvent.click(screen.getByRole('button',{name:'Comparar todos os bancos'}));
+  await screen.findByLabelText('Comparar A');fireEvent.click(screen.getByLabelText('Comparar A')); fireEvent.click(screen.getByLabelText('Comparar B'));
   fireEvent.click(screen.getByRole('button', { name: 'Comparar selecionadas (2)' }));
   expect(screen.getByText('Comparação de condições')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Limpar comparação' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Abrir detalhes' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Selecionar Nossa Fintech' }));
   expect(screen.getByRole('list', { name: 'Retornos por instituição' }).textContent).toContain('QI');
   expect(screen.getByText('A solicitação abrange as instituições retornadas por esta integração. O aceite cabe ao cliente.')).toBeTruthy();
   rendered.rerender(<CltJourneyWorkspace {...props} isOpen={false} />); rendered.rerender(<CltJourneyWorkspace {...props} />);

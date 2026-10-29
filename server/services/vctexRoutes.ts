@@ -47,7 +47,7 @@ export function registerVctexRoutes(app:Express,db:any,getSession:(req:Request)=
     const entry=await journeys.get(db,c.tenant,c.actor,executionId);
     if(!entry?.snapshot.customer||!['DONE','UNKNOWN'].includes(entry.record.phase)||!entry.snapshot.banks.some(b=>b.id==='vctex'))throw Error('VCTEX_NOT_FOUND');
     const customer=entry.snapshot.customer;
-    return {executionId,identity:{cpf:customer.cpf,name:customer.name,phone:customer.phone,email:customer.v8Email||''}};
+    return {executionId,request:entry.snapshot.results.vctex?.request,identity:{cpf:customer.cpf,name:customer.name,phone:customer.phone,email:customer.v8Email||''}};
   }
   app.post(base+'/start',wrap('simulations.create',async(req,c)=>{const own=await owned(req,c);return VctexBankService.refresh(db,c.tenant,c.actor,c.promoter,own.identity,true);}));
   // This route only follows the previously stored bank ID. No CPF lookup, consent creation or financial POST.
@@ -56,12 +56,14 @@ export function registerVctexRoutes(app:Express,db:any,getSession:(req:Request)=
   app.post(base+'/simulate',wrap('simulations.create',async(req,c)=>{
     const own=await owned(req,c),b=req.body||{};
     if(typeof b.employmentId!=='string'||typeof b.offerId!=='string'||b.term!==undefined&&typeof b.term!=='number'||b.installment!==undefined&&typeof b.installment!=='number')throw Error('Referência VCTEX inválida.');
+    if(own.request?.value>0&&(b.installment!==own.request.value||own.request.term&&b.term!==own.request.term))throw Error('Simulação VCTEX não corresponde aos parâmetros atuais. Use Simular condições.');
     const quote=await VctexBankService.simulate(db,c.tenant,c.actor,c.promoter,own.identity,{employmentId:b.employmentId,offerId:b.offerId,term:b.term,installment:b.installment});
     // The server derives every financial field; the browser cannot inject offers into history.
     for(let attempt=0;attempt<3;attempt++){
       const entry=await journeys.get(db,c.tenant,c.actor,own.executionId);if(!entry)throw Error('Execução indisponível.');
       const old=entry.snapshot.results.vctex;
-      entry.snapshot.results.vctex={...old,status:'RETURNED',stage:'RESULT',rows:[...(old?.rows||[]).filter(r=>r.simulationId!==quote.simulationId),quote]};
+      if(old?.request?.mode==='Payment'&&old.request.value>0&&(b.installment!==old.request.value||quote.installment>old.request.value+0.005||old.request.term&&quote.term!==old.request.term))throw Error('Simulação VCTEX pertence a parâmetros anteriores. Recupere o acompanhamento atual.');
+      entry.snapshot.results.vctex={...old,status:'RETURNED',stage:'RESULT',rows:[...(old?.rows||[]).filter(r=>r.simulationId!==quote.simulationId),{...quote,origin:{providerId:'vctex',connectionId:c.promoter,consultationId:quote.data.vctex.preOperationId,executionId:own.executionId}}]};
       try{await entry.store.compareAndSet(own.executionId,entry.raw,entry.record);return {quote};}catch{}
     }throw Error('VCTEX_RESULT_UNKNOWN');
   }));

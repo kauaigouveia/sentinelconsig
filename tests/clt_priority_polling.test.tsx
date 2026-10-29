@@ -21,7 +21,7 @@ it.each([false,true])('polls the real observation route and issues at most one c
   await act(async()=>{fill();});await act(async()=>{await vi.advanceTimersByTimeAsync(10000);});
   expect(posts).toBe(2);expect(fetcher.mock.calls.some(([u])=>u.includes('/observe'))).toBe(true);
   await act(async()=>{await vi.advanceTimersByTimeAsync(90000);});expect(posts).toBe(2);
-  expect(screen.getByText('Oferta preservada')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Selecionar Nossa Fintech'}));expect(screen.getByText('Oferta preservada')).toBeTruthy();
   ui.rerender(<CltJourneyWorkspace isOpen={false} scope="tenant-a:user-a" onClose={()=>{}}/>);ui.rerender(<CltJourneyWorkspace isOpen scope="tenant-b:user-a" onClose={()=>{}}/>);
   expect((screen.getByLabelText('CPF') as HTMLInputElement).value).toBe('');const count=fetcher.mock.calls.length;await act(async()=>{await vi.advanceTimersByTimeAsync(120000);});expect(fetcher).toHaveBeenCalledTimes(count);
 });

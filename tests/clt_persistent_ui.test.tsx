@@ -14,9 +14,9 @@ it('binds one consultation without a manual choice and excludes historical FINAN
  render(<CltJourneyWorkspace isOpen scope="tenant-a:user-a" onClose={()=>{}}/>);
  for(const [label,value]of [['CPF','52998224725'],['Nome completo','Pessoa sintética'],['Telefone com DDD','11999999999'],['Data de nascimento','28021990'],['E-mail do trabalhador','synthetic@example.invalid']])fireEvent.change(screen.getByLabelText(label),{target:{value}});fireEvent.change(screen.getByLabelText('Sexo informado pelo trabalhador'),{target:{value:'male'}});
  await act(async()=>{fireEvent.click(screen.getByText('CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES'));});
- const details=screen.getAllByRole('button',{name:'Abrir detalhes'});expect(details).toHaveLength(1);await act(async()=>fireEvent.click(details[0]));
+ const details=screen.getAllByRole('button',{name:'Selecionar V8 DIGITAL'});expect(details).toHaveLength(1);await act(async()=>fireEvent.click(details[0]));
  expect(screen.getByText('Consulta vinculada automaticamente ao acompanhamento.')).toBeTruthy();expect(screen.queryByRole('button',{name:/Selecionar consulta para acompanhamento/})).toBeNull();expect(screen.queryByText('FINANTO')).toBeNull();expect(screen.queryByText('Oferta histórica FINANTO')).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Simular condições elegíveis V8'}));await act(async()=>{});
+ fireEvent.change(screen.getByLabelText('Parcela desejada (R$)'),{target:{value:'100,00'}});fireEvent.click(screen.getByRole('button',{name:'SIMULAR CONDIÇÕES'}));await act(async()=>{});
  const posts=fetcher.mock.calls.filter(([,o])=>o?.method==='POST');expect(JSON.parse(String(posts.at(-1)?.[1]?.body))).toMatchObject({v8ConsultId:reference.consultId,v8PromoterId:reference.promoterId,provider:'v8',action:'SIMULATE'});
 });
 it.each([false,true])('recovers an opaque execution on a real page reload through GET only, scoped to the same actor and tenant, initially open=%s',async(initiallyOpen)=>{

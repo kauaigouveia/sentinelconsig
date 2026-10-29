@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {readV8Device} from '../../lib/v8Device';
 
-export function V8ApiAuthorization({ executionId, reference, onRecorded, automatic=false }: { automatic?:boolean; executionId: string; reference: any; onRecorded: () => void }) {
+export function V8ApiAuthorization({ executionId, reference, onRecorded, automatic=false,visible=true }: { visible?:boolean;automatic?:boolean; executionId: string; reference: any; onRecorded: () => void }) {
   const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
   const [device, setDevice] = useState({ operationalSystem: navigator.platform || '', deviceModel: '', deviceName: '', deviceType: '' });
   const lock = useRef(false), alive = useRef(true);
@@ -22,6 +22,7 @@ export function V8ApiAuthorization({ executionId, reference, onRecorded, automat
     } catch (e) { if (alive.current) setMessage(e instanceof Error ? e.message : 'Resultado incerto. Confira o acompanhamento antes de repetir.'); }
     finally { lock.current = false; if (alive.current) setBusy(false); }
   }
+  if(!visible)return null;
   return <section className="space-y-3 rounded-lg border p-3 text-sm" aria-label="Autorização V8 pela API">
     <p>Dados técnicos preparados a partir do navegador. Modelo e nome genéricos descrevem a classe do ambiente; não são identificação do equipamento nem assinatura do trabalhador.</p>
     <fieldset hidden={automatic&&deviceReady&&Object.values(device).every(v=>v.trim())} disabled={busy} className="grid gap-3 sm:grid-cols-2">

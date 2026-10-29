@@ -1,4 +1,6 @@
 import {nossaAuthorization,rememberNossaAuthorization} from './nossaCltAuthorization.js';
+import {canonicalNossaInstitution} from '../../src/lib/cltInstitution.js';
+import {currentIntegrationPromoter} from './bankPromoterConfig.js';
 import {calculateVctexConditions,observeVctexConditions} from './vctexCltCalculation.js';
 import type { PrismaClient } from '@prisma/client';
 import { NossaFintechService } from './nossaFintechService';
@@ -22,6 +24,7 @@ export type ProductSimulationInput = {
   journeyId?: string; automaticAuthorization?: boolean; observeOnly?: boolean; calculationKey?: string;
 };
 export type ProductSimulationRow = {
+  origin?:{providerId:string;subInstitutionId?:string;connectionId?:string;consultationId?:string;executionId?:string};
   provider: string; institution: string; table?: string; state: 'OFFER' | 'PENDING' | 'ERROR' | 'DATA';
   message?: string; link?: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number;
   simulationId?: string; data?: unknown; cetMonthly?: number; cetAnnual?: number;
@@ -42,11 +45,11 @@ export class ProductSimulationService {
     if (product === 'CLT' && input.employerDocument?.length === 8) input = { ...input, employerDocument: undefined };
     const rows: ProductSimulationRow[] = [];
     let configured = false;
-    const failure = (provider: string, institution: string, error: any) => {
+    const failure = (provider: string, institution: string, error: any,origin?:ProductSimulationRow['origin']) => {
       const detail = error?.writeUncertain?'Resultado incerto após envio à instituição. Atualize o estado antes de outra operação; nenhuma solicitação será repetida automaticamente.':/fetch failed|ECONN|ETIMEDOUT|ENOTFOUND/i.test(error?.message||'')?'Falha de comunicação com a instituição. Atualize a consulta; as demais instituições continuam disponíveis.':error?.message || 'Não foi possível consultar esta instituição.';
-      if(product==='CLT'&&missingCltAuthorization(detail)){rows.push({provider,institution,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{authorization:{status:'MISSING'},writeUncertain:!!error?.writeUncertain,trackingUnsupported:provider==='FINANTO'},message:detail});return;}
+      if(product==='CLT'&&missingCltAuthorization(detail)){rows.push({provider,institution,origin,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{authorization:{status:'MISSING'},writeUncertain:!!error?.writeUncertain,trackingUnsupported:provider==='FINANTO'},message:detail});return;}
       const j17Timeout = provider === 'Nossa Fintech' && institution === 'J17' && /curl error 28|connection timed out|timeout|timedout/i.test(detail);
-      rows.push({ provider, institution, state: 'ERROR', data: error?.writeUncertain?{writeUncertain:true}:undefined, message: j17Timeout
+      rows.push({ provider, institution,origin, state: 'ERROR', data: error?.writeUncertain?{writeUncertain:true}:undefined, message: j17Timeout
         ? 'J17 não respondeu à Nossa Fintech dentro do prazo. Tente novamente mais tarde. As demais instituições continuam disponíveis.'
         : detail });
     };
@@ -91,9 +94,13 @@ export class ProductSimulationService {
         }));
         return;
       }
-      const institutions = [...new Set(array(await nossaCall('GET', '/clt-loan/v1/banking-institutions')).filter(item => typeof item === 'string'))];
+      const catalogue=array(await nossaCall('GET','/clt-loan/v1/banking-institutions')).filter((item):item is string=>typeof item==='string');
+      const uniqueInstitutions=new Map<string,string>();for(const service of catalogue){const id=canonicalNossaInstitution(service)||'service:'+service;if(!uniqueInstitutions.has(id))uniqueInstitutions.set(id,service);}
+      const institutions=[...uniqueInstitutions.values()];
       if (!institutions.length) rows.push({ provider: 'Nossa Fintech', institution: 'CLT', state: 'PENDING', message: 'Nenhuma instituição CLT disponível para esta empresa.' });
       await Promise.all(institutions.map(async service => {
+        const origin={providerId:'nossa',subInstitutionId:canonicalNossaInstitution(service)||'service:'+service,connectionId:currentIntegrationPromoter()};
+        const addRows=(...values:ProductSimulationRow[])=>rows.push(...values.map(row=>({...row,origin})));
         try {
           const identity = { document_number: input.cpf, service_type: service };
           const requestAuthorization = async (confirmedMissing=false) => {
@@ -106,7 +113,7 @@ export class ProductSimulationService {
           try { rawAuthorization = await nossaCall('POST', '/clt-loan/v1/check-authorization', identity); }
           catch (error) {
             if(!missingCltAuthorization(error instanceof Error?error.message:'')){
-              rows.push({provider:'Nossa Fintech',institution:service,state:'ERROR',outcome:'TECHNICAL_ERROR',data:{authorization:{status:'UNCONFIRMED',source:'API',observedAt:new Date().toISOString()}},message:'Estado da autorização não confirmado pela API. Nenhum novo link foi solicitado.'});return;
+              addRows({provider:'Nossa Fintech',institution:service,state:'ERROR',outcome:'TECHNICAL_ERROR',data:{authorization:{status:'UNCONFIRMED',source:'API',observedAt:new Date().toISOString()}},message:'Estado da autorização não confirmado pela API. Nenhum novo link foi solicitado.'});return;
             }
             rawAuthorization={status:'NOT_FOUND'};
           }
@@ -119,12 +126,12 @@ export class ProductSimulationService {
           }
           if(authorization.status!=='AUTHORIZED'){
             const rejected=['REJECTED','DENIED'].includes(authorization.status);
-            rows.push({provider:'Nossa Fintech',institution:service,state:'PENDING',outcome:rejected?'INELIGIBLE':'AUTHORIZATION_REQUIRED',link:authorization.authorization_link,
+            addRows({provider:'Nossa Fintech',institution:service,state:'PENDING',outcome:rejected?'INELIGIBLE':'AUTHORIZATION_REQUIRED',link:authorization.authorization_link,
               data:{authorization:{status:authorization.status,mechanism:'BANK_CHANNEL',source:authorization.source,observedAt:authorization.observedAt,previousStatus:authorization.previousStatus,authorizationId:authorization.authorizationId}},
               message:rejected?'Autorização recusada pelo cliente ou instituição.':authorization.status==='EXPIRED'?'Autorização expirada. Uma nova solicitação exige ação explícita.':authorization.status==='UNCONFIRMED'?'Estado não confirmado. A API não retornou um estado de autorização reconhecido; nenhum novo link foi solicitado.':requested?'Solicitação registrada. Aguardando aceite do cliente no canal da instituição.':'Aguardando autorização do cliente.'});return;
           }
           const employers = input.employerDocument ? [{ employer_cnpj: input.employerDocument }] : array(await nossaCall('POST', '/clt-loan/v1/check-employee-enrollment', identity));
-          if (!employers.length) rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: 'Nenhum vínculo empregatício elegível.' });
+          if (!employers.length) addRows({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: 'Nenhum vínculo empregatício elegível.' });
           for (const employer of employers) {
             const cnpj = String(employer.employer_cnpj || '').replace(/\D/g, '');
             if (cnpj.length !== 14) continue;
@@ -146,19 +153,19 @@ export class ProductSimulationService {
                 throw new Error('A Nossa Fintech retornou margem de outro vínculo empregatício. A resposta não foi utilizada. Consulte novamente e, se persistir, contate o suporte da integração.');
               }
             }
-            catch (error) { failure('Nossa Fintech', service, error); continue; }
+            catch (error) { failure('Nossa Fintech', service, error,origin); continue; }
             if (action !== 'SIMULATE') {
               const restrictions = cltResponseReasons(margin);
-              rows.push({ provider: 'Nossa Fintech', institution: service, state: margin?.can_continue===false?'PENDING':'DATA', outcome:margin?.can_continue===false?'INELIGIBLE':undefined, message: margin?.can_continue === false ? restrictions.join(' · ') || 'Vínculo não elegível. O banco não informou o motivo da restrição.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin, restrictions } });
+              addRows({ provider: 'Nossa Fintech', institution: service, state: margin?.can_continue===false?'PENDING':'DATA', outcome:margin?.can_continue===false?'INELIGIBLE':undefined, message: margin?.can_continue === false ? restrictions.join(' · ') || 'Vínculo não elegível. O banco não informou o motivo da restrição.' : 'Dados do vínculo e margem atualizados.', data: { authorization, employment: employer, margin, restrictions } });
               continue;
             }
             if (margin?.can_continue === false || cltResponseReasons(margin).length > 0 || !margin?.margin_key) {
-              rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: cltResponseReasons(margin).join(' · ') || `Sem margem elegível para o vínculo ${cnpj}. O banco não informou o motivo.` }); continue;
+              addRows({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: cltResponseReasons(margin).join(' · ') || `Sem margem elegível para o vínculo ${cnpj}. O banco não informou o motivo.` }); continue;
             }
             const tables = array(await nossaCall('GET', `/clt-loan/v1/list-rebates?service_type=${encodeURIComponent(service)}&margin_key=${encodeURIComponent(margin.margin_key)}`));
             const requested = input.autoConditions ? cltPaymentLimit(margin.available_balance, margin.utilizable_balance) : input.value;
-            if(input.mode==='Payment'&&requested>(cltPaymentLimit(margin.available_balance,margin.utilizable_balance)||0)){rows.push({provider:'Nossa Fintech',institution:service,state:'PENDING',outcome:'INELIGIBLE',message:'A parcela solicitada supera a margem oficial deste vínculo.'});continue;}
-            if (!requested) { rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', outcome: 'MISSING_DATA', message: 'A instituição não retornou limite de parcela válido. Nenhuma simulação foi enviada.' }); continue; }
+            if(input.mode==='Payment'&&requested>(cltPaymentLimit(margin.available_balance,margin.utilizable_balance)||0)){addRows({provider:'Nossa Fintech',institution:service,state:'PENDING',outcome:'INELIGIBLE',message:'A parcela solicitada supera a margem oficial deste vínculo.'});continue;}
+            if (!requested) { addRows({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', outcome: 'MISSING_DATA', message: 'A instituição não retornou limite de parcela válido. Nenhuma simulação foi enviada.' }); continue; }
             const seen = new Set<string>();
             for (const table of tables) {
               const term = Number(table.number_of_installments);
@@ -171,16 +178,16 @@ export class ProductSimulationService {
                 const result = input.journeyId ? await cltBankOnce(prisma,tenantId,'nossa',['CALCULATE',input.journeyId,input.bmgActorId,input.cpf,service,cnpj,String(table.cod_tabela),requested,input.mode],calculate) : await calculate();
                 const amount = positive(result.disbursement_amount);
                 if (input.term && Number(result.num_periods) !== input.term) {
-                  rows.push({ provider: 'Nossa Fintech', institution: service, table: table.name, state: 'PENDING', message: 'A API retornou outro prazo para esta tabela. Compare todos os prazos para visualizar essa condição.' }); continue;
+                  addRows({ provider: 'Nossa Fintech', institution: service, table: table.name, state: 'PENDING', message: 'A API retornou outro prazo para esta tabela. Compare todos os prazos para visualizar essa condição.' }); continue;
                 }
                 if((input.autoConditions||input.mode==='Payment')&&(positive(result.schedule?.[0]?.payment)||0)>requested+0.005)throw Error('A instituição retornou parcela superior ao limite solicitado. A oferta não foi utilizada.');
-                rows.push({ provider: 'Nossa Fintech', institution: service, table: `${table.name || table.cod_tabela} · ${cnpj}`, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.schedule?.[0]?.payment), term: positive(result.num_periods), rate: positive(result.interest_rate) ? Number(result.interest_rate) * 100 : undefined, simulationId: result.simulation_key, data: result, message: amount ? undefined : 'A instituição não retornou valor liberado válido.' });
+                addRows({ provider: 'Nossa Fintech', institution: service, table: `${table.name || table.cod_tabela} · ${cnpj}`, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.schedule?.[0]?.payment), term: positive(result.num_periods), rate: positive(result.interest_rate) ? Number(result.interest_rate) * 100 : undefined, simulationId: result.simulation_key, data: result, message: amount ? undefined : 'A instituição não retornou valor liberado válido.' });
                 await publishRows();
-              } catch (error) { failure('Nossa Fintech', service, error); }
+              } catch (error) { failure('Nossa Fintech', service, error,origin); }
             }
-            if (!seen.size) rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: 'Nenhuma tabela elegível para este vínculo e prazo.' });
+            if (!seen.size) addRows({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', message: 'Nenhuma tabela elegível para este vínculo e prazo.' });
           }
-        } catch (error) { failure('Nossa Fintech', service, error); }
+        } catch (error) { failure('Nossa Fintech', service, error,origin); }
         finally { await publishRows(); }
       }));
     };

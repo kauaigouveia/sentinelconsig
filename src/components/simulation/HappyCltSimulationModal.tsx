@@ -24,6 +24,7 @@ interface HappyCltSimulationModalProps {
   isOpen: boolean;
   embedded?: boolean;
   sharedResults?:boolean;
+  visible?:boolean;
   sharedIdentity?: boolean;
   onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void;
   initialData?: { cpf?: string; name?: string; phone?: string; birthDate?: string; benefit?: string; partnerId?: string };
@@ -39,6 +40,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   isOpen,
   embedded = false,
   sharedResults = false,
+  visible = true,
   sharedIdentity = false,
   onProgress,
   initialData,
@@ -88,7 +90,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
 
   useEffect(() => { if (embedded && step === 'CLIENTE') { if (initialData?.name) setNome(initialData.name); if (initialData?.phone) setTelefone(initialData.phone); if (initialData?.cpf) setCpf(initialData.cpf); } }, [embedded, step, initialData?.name, initialData?.phone, initialData?.cpf, initialData?.birthDate]);
 
-  if (!isOpen) return null;
+  if (!isOpen||!visible) return null;
 
   const cleanCpf = normalizeCpf(cpf);
 

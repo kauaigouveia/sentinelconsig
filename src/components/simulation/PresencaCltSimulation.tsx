@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { SimulationOfferCard } from './SimulationOfferCard';
 
-type Props = { sharedResults?:boolean; cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => void };
+type Props = {visible?:boolean; sharedResults?:boolean; cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => void };
 type Consent = { link: string; receipt: string };
 type Choice = { employer: string; registration: string; receipt: string };
 type Offer = { id: number; name: string; amount: number; installment: number; term: number; rate: number; insuranceAmount: number | null };
@@ -62,6 +62,7 @@ export function PresencaCltSimulation(props: Props) {
     finally { if (!request.signal.aborted) setBusy(false); }
   }
   if (!available) return availabilityError ? <div className="mt-5 space-y-2 text-sm"><p role="alert" className="text-amber-600 dark:text-amber-300">{availabilityError}</p><button type="button" onClick={() => setAvailabilityAttempt(value => value + 1)} className="rounded-lg border px-3 py-2">Verificar Presença novamente</button></div> : checkingAvailability && availabilityAttempt > 0 ? <p role="status">Verificando disponibilidade Presença…</p> : null;
+  if(props.visible===false)return null;
   return <section className="mt-5 space-y-3 rounded-xl border border-cyan-200 p-4 dark:border-cyan-900" aria-label="Presença CLT">
     <h3 className="font-bold">Presença Bank · CLT</h3><p className="text-xs text-slate-500">Consentimento → vínculos → margem → ofertas. Consulta disponível nas conexões habilitadas da empresa. Não realiza contratação nem registra assinatura pelo cliente.</p>
     <fieldset disabled={busy} className="space-y-3">

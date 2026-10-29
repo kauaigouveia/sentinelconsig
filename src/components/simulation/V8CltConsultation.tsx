@@ -6,9 +6,10 @@ const statuses: Record<string, string> = {
   WAITING_CONSULT: 'Aguardando consulta à base competente', WAITING_CREDIT_ANALYSIS: 'Aguardando análise de crédito',
   SUCCESS: 'Consulta concluída', REJECTED: 'Cliente não elegível', FAILED: 'Falha na consulta',
 };
-export function V8CltConsultation({ row, selected, onSelect, automatic=false }: { row: any; selected: boolean; onSelect: () => void; automatic?:boolean }) {
+export function V8CltConsultation({ row, selected, onSelect, automatic=false,compact=false }: {compact?:boolean; row: any; selected: boolean; onSelect: () => void; automatic?:boolean }) {
   const v8 = row.data?.v8;
   if (!v8?.consultId) return null;
+  if(compact)return <div className="mb-3 space-y-2 text-xs"><p>{automatic?'Consulta vinculada automaticamente ao acompanhamento.':'Escolha a consulta própria para este cálculo.'}</p>{!automatic&&<button type="button" onClick={onSelect} className="rounded border p-2">{selected?'Consulta V8 selecionada':'Selecionar consulta para acompanhamento'}</button>}{v8.configurations?.length>0&&<details><summary className="cursor-pointer">Configurações V8 disponíveis</summary><ul>{v8.configurations.map((c:any)=><li key={c.id} className="mt-2">{c.name} · Prazos: {c.terms.join(', ')} · Taxa bruta: {c.rawMonthlyRate??'Não informado'}</li>)}</ul></details>}</div>;
   return <article className="mb-3 space-y-2 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
     <h3 className="font-semibold">{row.state === 'OFFER' ? 'Oferta disponível' : v8.status === 'SUCCESS' && v8.simulationReady ? 'Margem disponível · Simulação habilitada' : statuses[v8.status] || 'Status V8 não reconhecido'}</h3>
     <p className="break-all text-xs text-slate-500">Consulta: {v8.consultId}</p>
