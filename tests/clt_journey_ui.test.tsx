@@ -33,11 +33,11 @@ it('uses a single primary action, displays offers independently, compares condit
   fireEvent.change(screen.getByLabelText('Sexo informado pelo trabalhador'),{target:{value:'male'}});
   expect(screen.queryByLabelText('Parcela desejada (R$)')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'CONSULTAR BANCOS / SOLICITAR AUTORIZAÇÕES' }));
-  await screen.findByText('Ofertas disponíveis'); await screen.findAllByText('Aguardando autorização do cliente');
+  await screen.findByText('Ofertas disponíveis'); expect((await screen.findByRole('button',{name:'Selecionar Nossa Fintech'})).textContent).toContain('Aguardando autorização');
   expect(fetcher).toHaveBeenCalledTimes(1);
   const sent = JSON.parse(fetcher.mock.calls[0][1].body); expect(sent.value).toBeUndefined(); expect(sent.term).toBeUndefined(); expect(sent.action).toBe('REFRESH'); expect(sent.phone).toBe('11999999999');
   expect(sent).toMatchObject({v8BirthDate:'1990-02-28',v8Email:'synthetic@example.invalid',v8Gender:'male'});
-  fireEvent.click(screen.getByRole('button',{name:'Comparar todos os bancos'}));
+  fireEvent.click(screen.getByRole('button',{name:'Todos os bancos'}));
   await screen.findByLabelText('Comparar A');fireEvent.click(screen.getByLabelText('Comparar A')); fireEvent.click(screen.getByLabelText('Comparar B'));
   fireEvent.click(screen.getByRole('button', { name: 'Comparar selecionadas (2)' }));
   expect(screen.getByText('Comparação de condições')).toBeTruthy();

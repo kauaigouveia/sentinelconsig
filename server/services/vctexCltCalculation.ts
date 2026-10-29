@@ -1,4 +1,4 @@
-import {currentVctexEmployments} from '../../src/lib/vctexCurrentState.js';
+import {currentVctexEmployments,vctexConsultationRows} from '../../src/lib/vctexCurrentState.js';
 import {validateVctexInstallments} from './vctexContract.js';
 import {VctexBankService} from './vctexBankService.js';
 import type {ProductSimulationInput,ProductSimulationRow} from './productSimulationService.js';
@@ -7,9 +7,8 @@ export async function observeVctexConditions(db:any,tenant:string,input:ProductS
   const rows:ProductSimulationRow[]=[];
   for(const p of await db.promoter.findMany({where:{tenantId:tenant,status:'ATIVO'},select:{id:true}})){
     const c=await VctexBankService.config(db,tenant,p.id);if(!c.enabled||!c.cpf||!c.password)continue;
-    const value=await VctexBankService.refresh(db,tenant,input.bmgActorId,p.id,{cpf:input.cpf,name:input.name,phone:input.phone,email:input.v8Email},false);
-    rows.push({provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:'PENDING',outcome:value.authorizationValid?'PENDING':'AUTHORIZATION_REQUIRED',message:value.label,data:{vctex:{connectionId:p.id,preOperationId:value.preOperationId},authorization:{status:value.authorizationValid?'AUTHORIZED':undefined},observedAt:new Date().toISOString()}});
-    for(const e of currentVctexEmployments<any>(value.employments))rows.push({provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:'DATA',data:{margin:{available_balance:e.availableMarginValue,can_continue:e.eligible},vctex:{connectionId:p.id,preOperationId:value.preOperationId,employmentId:e.employmentId,employerName:e.employer?.name,registrationNumber:e.registrationNumber},authorization:{status:value.authorizationValid?'AUTHORIZED':undefined},observedAt:new Date().toISOString()}});
+    const value=await VctexBankService.refresh(db,tenant,input.bmgActorId,p.id,{cpf:input.cpf,name:input.name,phone:input.phone,email:input.v8Email},false,true);
+    rows.push(...vctexConsultationRows(value,p.id));
   }return rows;
 }
 export async function calculateVctexConditions(db:any,tenant:string,input:ProductSimulationInput):Promise<ProductSimulationRow[]>{
@@ -41,7 +40,7 @@ export async function calculateVctexConditions(db:any,tenant:string,input:Produc
 
             const quote=await VctexBankService.simulate(db,tenant,input.bmgActorId,promoter.id,identity,{employmentId:employment.employmentId,offerId:rate.id,term,installment:input.value});
             if(quote.installment>input.value+0.005||quote.term!==term)throw Error('Oferta VCTEX fora dos parâmetros solicitados.');
-            rows.push(quote);
+            rows.push({...quote,origin:{providerId:'vctex',connectionId:promoter.id,consultationId:current.preOperationId}});
           }catch(e){
             if(e instanceof Error&&/^Prazo ou parcela fora dos limites/.test(e.message)){rejected.push({connectionId:promoter.id,consultationId:current.preOperationId,employmentId:employment.employmentId,offerId:rate.id,term,installment:input.value,code:'OUTSIDE_LIMITS'});continue;}
             const uncertain=(e as any)?.writeUncertain===true||e instanceof Error&&/UNKNOWN|incerto/i.test(e.message);

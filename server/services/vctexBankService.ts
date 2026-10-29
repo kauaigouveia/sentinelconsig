@@ -112,19 +112,22 @@ export class VctexBankService{
     const id='vctex-case:'+journeyFingerprint([actor,scope,cpf]),store=new CltJourneyStore(db,tenant,actor);
     return {cpf,phone,scope,id,store};
   }
-  static async refresh(db:any,tenant:string,actor:string,promoter:string,identity:VctexIdentity,create=false){
+  static async refresh(db:any,tenant:string,actor:string,promoter:string,identity:VctexIdentity,create=false,recoverExisting=false){
     const {cpf,phone,scope,id,store}=await this.caseContext(db,tenant,actor,promoter,identity);
     let saved=await store.read(id),value:Case=(saved?.record as Stored)?.value||{cpf,status:'not_found',label:'Autorização necessária',employments:[],offers:[]};
     const previousId=value.preOperationId;
     const renew=create&&previousId&&typeof value.expiresAt==='string'&&Date.parse(value.expiresAt)<=Date.now();
-    if(!value.preOperationId||renew){
-      // Called only on an explicit initial/recovery action; periodic observation never looks up CPF.
-      if(!create)return {...value,caseId:id,promoterId:promoter};
+    const recover=recoverExisting&&(!previousId||typeof value.expiresAt==='string'&&Date.parse(value.expiresAt)<=Date.now());
+    if(!value.preOperationId||renew||recover){
+      // Only recover the known identity; a lookup-only observation cannot create or renew a term.
+      if(!create&&!recoverExisting)return {...value,cpf:undefined,caseId:id,promoterId:promoter};
       let found:any;
-      try{found=await this.once(db,tenant,scope,['LOOKUP',cpf,renew?previousId:null],async()=>{try{return await this.call(db,tenant,promoter,'GET','/pre-operation/document-number/'+cpf);}catch(e){if(e instanceof VctexError&&e.status===404)return {condition:'not_found'};throw e;}});}
+      const lookup=async()=>{try{return await this.call(db,tenant,promoter,'GET','/pre-operation/document-number/'+cpf);}catch(e){if(e instanceof VctexError&&e.status===404)return {condition:'not_found'};throw e;}};
+      try{found=create?await this.once(db,tenant,scope,['LOOKUP',cpf,renew?previousId:null],lookup):await lookup();}
       catch(e){if(e instanceof VctexError&&e.status===404)found={condition:'not_found'};else throw e;}
       if(found.preOperationId)value.preOperationId=idPath(found.preOperationId);
       else if(found.condition==='not_found'){
+        if(!create)return {...value,cpf:undefined,authorizationValid:false,employments:[],status:previousId?'authorization_failure':'not_found',label:previousId?'Consulta anterior expirada. Nenhuma nova autorização foi solicitada.':'Nenhuma consulta existente. Solicite a consulta para iniciar o fluxo oficial.',caseId:id,promoterId:promoter,terminal:true};
         // A 409 or uncertain POST is reconciled by exact CPF lookup, never by another POST.
         value.preOperationId=undefined;
         try{const created=await this.once(db,tenant,scope,['CREATE',cpf,previousId||null],()=>this.call(db,tenant,promoter,'POST','/pre-operation',{worker:{name:identity.name,documentNumber:cpf,email:identity.email,phoneNumber:'+55'+phone}}));value.preOperationId=idPath(created.preOperationId);}
@@ -163,7 +166,7 @@ export class VctexBankService{
     // Preserve concurrent quote additions instead of overwriting them with stale observation.
     value.offers=(latest.record as Stored).value?.offers||[];
     await store.compareAndSet(id,latest.raw,{...latest.record,value} as Stored);
-    return {...value,cpf:undefined,caseId:id,promoterId:promoter,terminal:vctexTerminal.has(value.status)};
+    return {...value,cpf:undefined,...(previousId&&previousId!==value.preOperationId?{expiredPreOperationId:previousId}:{}),caseId:id,promoterId:promoter,terminal:vctexTerminal.has(value.status)};
   }
   static async simulate(db:any,tenant:string,actor:string,promoter:string,identity:VctexIdentity,selection:{employmentId:string;offerId:string;term?:number;installment?:number}){
     const current=await this.refresh(db,tenant,actor,promoter,identity,false);

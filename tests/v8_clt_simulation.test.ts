@@ -62,7 +62,7 @@ describe('V8 CLT adapter with mocked HTTP; unresolved contract choices are not h
     expect(rows[0].data).toMatchObject({ v8: { monthlyInterestRate: 0.0498, operationAmount: 3600, iofAmount: 64.94, isInsured: false, insuranceAmount: 0, requestedProvider: 'QI', returnedProvider: 'CELCOIN', firstInstallmentDate: '2027-01-28' } });
     expect(JSON.parse(fetchMock.mock.calls.find(([, o]) => o.method === 'POST')![1].body)).toEqual({ consult_id: consultId, config_id: configId, installment_face_value: 300, number_of_installments: 12, provider: 'QI' });
   });
-  it.each([200,529.93])('keeps the requested payment %s and expands term zero to documented terms without repeating POST',async value=>{
+  it.each([150,200,300,529.93])('keeps the requested payment %s and expands term zero to documented terms without repeating POST',async value=>{
     consultations[0].availableMarginValue='529.93';tables=[{id:configId,slug:'Sintética',number_of_installments:[12]}];response={...offer,installment_value:value,number_of_installments:12};
     expect((await run({value,term:0}))[0].state).toBe('OFFER');expect((await run({value,term:0}))[0].state).toBe('OFFER');
     const posts=fetchMock.mock.calls.filter(([,options])=>options.method==='POST');expect(posts).toHaveLength(1);expect(JSON.parse(posts[0][1].body)).toMatchObject({consult_id:consultId,installment_face_value:value,number_of_installments:12});expect(posts.some(([url])=>String(url).includes('/authorize'))).toBe(false);

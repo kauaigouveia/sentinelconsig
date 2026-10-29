@@ -1,3 +1,4 @@
+import {vctexConsultationRows} from '../../src/lib/vctexCurrentState.js';
 import type {Express,Request} from 'express';
 import rateLimit from 'express-rate-limit';
 import {hasPermission} from '../../src/lib/permissions.js';
@@ -45,13 +46,13 @@ export function registerVctexRoutes(app:Express,db:any,getSession:(req:Request)=
     if(typeof req.body?.executionId!=='string'&&typeof req.query.executionId!=='string')throw Error('Execução obrigatória.');
     const executionId=req.body?.executionId||req.query.executionId;
     const entry=await journeys.get(db,c.tenant,c.actor,executionId);
-    if(!entry?.snapshot.customer||!['DONE','UNKNOWN'].includes(entry.record.phase)||!entry.snapshot.banks.some(b=>b.id==='vctex'))throw Error('VCTEX_NOT_FOUND');
+    if(!entry?.snapshot.customer||entry.snapshot.historical||!['DONE','UNKNOWN'].includes(entry.record.phase)||!entry.snapshot.banks.some(b=>b.id==='vctex'))throw Error('VCTEX_NOT_FOUND');
     const customer=entry.snapshot.customer;
     return {executionId,request:entry.snapshot.results.vctex?.request,identity:{cpf:customer.cpf,name:customer.name,phone:customer.phone,email:customer.v8Email||''}};
   }
-  app.post(base+'/start',wrap('simulations.create',async(req,c)=>{const own=await owned(req,c);return VctexBankService.refresh(db,c.tenant,c.actor,c.promoter,own.identity,true);}));
-  // This route only follows the previously stored bank ID. No CPF lookup, consent creation or financial POST.
-  app.get(base+'/observe',wrap('simulations.create',async(req,c)=>{const own=await owned(req,c);return VctexBankService.refresh(db,c.tenant,c.actor,c.promoter,own.identity,false);}));
+  app.post(base+'/start',wrap('simulations.create',async(req,c)=>{const own=await owned(req,c);const value=await VctexBankService.refresh(db,c.tenant,c.actor,c.promoter,own.identity,true);const journeyResult=await journeys.recordObservation(db,c.tenant,c.actor,own.executionId,own.identity.cpf,'vctex',vctexConsultationRows(value,c.promoter));return {...value,journeyResult};}));
+  // Follow the stored ID, or recover an existing official ID by the owned CPF. Never create consent or a financial POST.
+  app.get(base+'/observe',wrap('simulations.create',async(req,c)=>{const own=await owned(req,c);const value=await VctexBankService.refresh(db,c.tenant,c.actor,c.promoter,own.identity,false,true);const journeyResult=await journeys.recordObservation(db,c.tenant,c.actor,own.executionId,own.identity.cpf,'vctex',vctexConsultationRows(value,c.promoter));return {...value,journeyResult};}));
   app.get(base+'/rates',wrap('simulations.create',async(req,c)=>{const own=await owned(req,c);if(typeof req.query.employmentId!=='string')throw Error('Referência VCTEX inválida.');return VctexBankService.rates(db,c.tenant,c.actor,c.promoter,own.identity,req.query.employmentId);}));
   app.post(base+'/simulate',wrap('simulations.create',async(req,c)=>{
     const own=await owned(req,c),b=req.body||{};

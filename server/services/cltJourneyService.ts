@@ -1,3 +1,4 @@
+import {applyBankRows,normalizeBankRows,keepNewerConsultations} from '../../src/lib/cltBankState.js';
 import {currentVctexRows} from '../../src/lib/vctexCurrentState.js';
 import {CltAuthorizationFollowup} from './cltAuthorizationFollowup.js';
 import {uniqueV8Reference,v8References} from '../../src/lib/cltV8Selection.js';
@@ -23,28 +24,46 @@ export type JourneyProvider = typeof journeyProviders[number];
 export type JourneyAction = 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT';
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
 export type JourneyCalculation = Pick<ProductSimulationInput,'value'|'term'|'mode'|'employerDocument'|'factaRegistration'|'v8ConsultId'|'v8PromoterId'|'calculationKey'> & {requestedAt:string};
-export type JourneySnapshot = { calculation?:{value:number;term:number;mode:'Payment'|'Liquid';requestedAt:string;banks:string[];sourceExecutionId:string}; executionId: string; running: boolean; rootExecutionId?: string; automaticEnabled?: boolean; observedAt?: string; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { simulation?:{status:'RUNNING'|'OFFERS'|'NO_OFFERS'|'FAILED'|'UNKNOWN';message?:string}; request?:JourneyCalculation; status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; readyToSimulate?: boolean; readyKey?: string; contractPending?: boolean; executionId?: string }> };
+export type JourneySnapshot = { action?:JourneyAction; historical?:boolean; calculation?:{value:number;term:number;mode:'Payment'|'Liquid';requestedAt:string;banks:string[];sourceExecutionId:string}; executionId: string; running: boolean; rootExecutionId?: string; automaticEnabled?: boolean; observedAt?: string; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { generation?:number; consultationRevision?:number; consultations?:ProductSimulationRow[]; simulation?:{status:'RUNNING'|'OFFERS'|'NO_OFFERS'|'FAILED'|'UNKNOWN';message?:string}; request?:JourneyCalculation; status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; readyToSimulate?: boolean; readyKey?: string; contractPending?: boolean; executionId?: string }> };
 type Entry = { raw: string; record: JourneyRecord; snapshot: JourneySnapshot; store: CltJourneyStore; listeners: Set<(snapshot: JourneySnapshot) => void> };
 
 export class CltJourneyService {
   async syncRoot(db:any,tenant:string,actor:string,snapshot:JourneySnapshot,provider:JourneyProvider){
     if(!snapshot.rootExecutionId||snapshot.rootExecutionId===snapshot.executionId)return;
-    for(let attempt=0;attempt<4;attempt++){const root=await this.get(db,tenant,actor,snapshot.rootExecutionId);if(!root||root.snapshot.customer?.cpf!==snapshot.customer?.cpf||root.record.phase==='RUNNING')return;root.snapshot.results[provider]=structuredClone(snapshot.results[provider]);root.record.phase=Object.values(root.snapshot.results).some(r=>r.status==='UNKNOWN')?'UNKNOWN':'DONE';try{await root.store.compareAndSet(snapshot.rootExecutionId,root.raw,root.record);await root.store.remember(snapshot.rootExecutionId);return;}catch{}}
+    for(let attempt=0;attempt<4;attempt++){const root=await this.get(db,tenant,actor,snapshot.rootExecutionId);if(!root||root.snapshot.customer?.cpf!==snapshot.customer?.cpf||root.record.phase==='RUNNING')return;if((root.snapshot.results[provider]?.generation||0)>(snapshot.results[provider]?.generation||0))return;const combined=structuredClone(snapshot.results[provider]);keepNewerConsultations(provider,combined,root.snapshot.results[provider]);root.snapshot.results[provider]=combined;root.record.phase=Object.values(root.snapshot.results).some(r=>r.status==='UNKNOWN')?'UNKNOWN':'DONE';try{await root.store.compareAndSet(snapshot.rootExecutionId,root.raw,root.record);await root.store.remember(snapshot.rootExecutionId);return;}catch{}}
     throw Error('A consolidação do acompanhamento está concorrente. Recupere a execução registrada.');
+  }
+  private async prepareCalculation(db:any,tenant:string,actor:string,entry:Entry,provider:JourneyProvider){
+    const rootId=entry.snapshot.rootExecutionId;if(!rootId||rootId===entry.snapshot.executionId)return entry;
+    for(let attempt=0;attempt<4;attempt++){
+      const root=await this.get(db,tenant,actor,rootId);if(!root||root.snapshot.customer?.cpf!==entry.snapshot.customer?.cpf)throw Error('EXECUTION_CONFLICT');
+      const latest=root.snapshot.results[provider],result=entry.snapshot.results[provider];if(!latest||!result)throw Error('EXECUTION_CONFLICT');
+      if((latest.generation||0)>(result.generation||0)&&latest.executionId!==entry.snapshot.executionId)throw Error('EXECUTION_SUPERSEDED');
+      result.generation=latest.executionId===entry.snapshot.executionId?latest.generation:Math.max(result.generation||1,(latest.generation||0)+1);
+      keepNewerConsultations(provider,result,latest);result.simulation={status:'RUNNING'};
+      if(latest.executionId!==entry.snapshot.executionId){root.snapshot.results[provider]=structuredClone(result);try{await root.store.compareAndSet(rootId,root.raw,root.record);}catch{continue;}}
+      try{entry.raw=await entry.store.compareAndSet(entry.snapshot.executionId,entry.raw,entry.record);return entry;}catch{const fresh=await this.get(db,tenant,actor,entry.snapshot.executionId);if(!fresh)throw Error('EXECUTION_CONFLICT');entry=fresh;}
+    }throw Error('EXECUTION_CONFLICT');
   }
   async bindProvider(db:any,tenant:string,actor:string,id:unknown,cpf:string){
     if(typeof id!=='string')throw Error('Execução inválida.');const entry=await this.get(db,tenant,actor,id);
-    if(!entry||entry.snapshot.customer?.cpf!==cpf||!['DONE','UNKNOWN'].includes(entry.record.phase))throw Error('Execução indisponível para este cliente, usuário ou empresa.');return entry;
+    if(!entry||entry.snapshot.historical||entry.snapshot.customer?.cpf!==cpf||!['DONE','UNKNOWN'].includes(entry.record.phase))throw Error('Execução indisponível para este cliente, usuário ou empresa.');return entry;
   }
   async recordProvider(db:any,tenant:string,actor:string,id:string,cpf:string,provider:JourneyProvider,rows:ProductSimulationRow[]){
-    for(let attempt=0;attempt<3;attempt++){const entry=await this.bindProvider(db,tenant,actor,id,cpf),old=entry.snapshot.results[provider];if(!old)throw Error('Instituição não vinculada à execução.');if(old.request?.value&&old.executionId!==id&&rows.some(r=>r.state==='OFFER'))throw Error('A condição pertence a uma execução anterior. Recupere o acompanhamento atual.');if(old.request?.mode==='Payment'&&old.request.value>0&&rows.some(r=>r.state==='OFFER'&&(!(r.installment!>0)||r.installment!>old.request!.value+0.005||old.request!.term&&r.term!==old.request!.term)))throw Error('A condição pertence a parâmetros anteriores. Recupere o acompanhamento atual.');entry.snapshot.results[provider]={...old,status:'RETURNED',stage:'RESULT',readyToSimulate:false,rows:[...old.rows.filter(r=>r.state!=='OFFER'),...rows.map(row=>projectRow(row,provider,id))]};entry.record.phase=Object.values(entry.snapshot.results).some(r=>r.status==='UNKNOWN')?'UNKNOWN':'DONE';try{await entry.store.compareAndSet(id,entry.raw,entry.record);await entry.store.remember(id);await this.syncRoot(db,tenant,actor,entry.snapshot,provider);return;}catch{}}
+    for(let attempt=0;attempt<3;attempt++){const entry=await this.bindProvider(db,tenant,actor,id,cpf),old=entry.snapshot.results[provider];if(!old)throw Error('Instituição não vinculada à execução.');if(old.request?.value&&old.executionId!==id&&rows.some(r=>r.state==='OFFER'))throw Error('A condição pertence a uma execução anterior. Recupere o acompanhamento atual.');if(old.request?.mode==='Payment'&&old.request.value>0&&rows.some(r=>r.state==='OFFER'&&(!(r.installment!>0)||r.installment!>old.request!.value+0.005||old.request!.term&&r.term!==old.request!.term)))throw Error('A condição pertence a parâmetros anteriores. Recupere o acompanhamento atual.');entry.snapshot.results[provider]={...old,status:'RETURNED',stage:'RESULT',readyToSimulate:false,rows:normalizeBankRows(provider,[...old.rows.filter(r=>r.state!=='OFFER'),...rows.map(row=>projectRow(row,provider,id))])};entry.record.phase=Object.values(entry.snapshot.results).some(r=>r.status==='UNKNOWN')?'UNKNOWN':'DONE';try{await entry.store.compareAndSet(id,entry.raw,entry.record);await entry.store.remember(id);await this.syncRoot(db,tenant,actor,entry.snapshot,provider);return;}catch{}}
     throw Error('Resultado bancário preservado na reserva. Recupere o acompanhamento antes de solicitar novamente.');
+  }
+  async recordObservation(db:any,tenant:string,actor:string,id:string,cpf:string,provider:JourneyProvider,rows:ProductSimulationRow[]){
+    for(let attempt=0;attempt<4;attempt++){const entry=await this.bindProvider(db,tenant,actor,id,cpf),old=entry.snapshot.results[provider];if(!old)throw Error('EXECUTION_CONFLICT');
+      const result={...old};applyBankRows(provider,result,[...old.rows.filter(r=>r.state==='OFFER'||(r.data as any)?.vctex?.conditionRejections),...rows.filter(r=>r.state!=='OFFER').map(row=>projectRow(row,provider,old.executionId||id))]);entry.snapshot.results[provider]=result;
+      try{await entry.store.compareAndSet(id,entry.raw,entry.record);await this.syncRoot(db,tenant,actor,entry.snapshot,provider);return result;}catch{}}
+    throw Error('EXECUTION_PERSISTENCE_FAILED');
   }
   async history(db:any,tenant:string,actor:string){return new CltJourneyStore(db,tenant,actor).history();}
   async observe(db:any,tenant:string,actor:string,id:string,provider?:JourneyProvider,manual=false) {
     if(provider==='finanto')return undefined;
     const entry=await this.get(db,tenant,actor,id);if(!entry?.snapshot.customer)return undefined;
-    if(['READY','RUNNING'].includes(entry.record.phase))return entry.snapshot;
+    if(entry.snapshot.historical||['READY','RUNNING'].includes(entry.record.phase))return entry.snapshot;
     if(entry.snapshot.rootExecutionId&&entry.snapshot.rootExecutionId!==id){const root=await this.get(db,tenant,actor,entry.snapshot.rootExecutionId);if(root?.snapshot.customer?.cpf===entry.snapshot.customer.cpf)entry.snapshot.results={...entry.snapshot.results,...root.snapshot.results};}
     const record=entry.record as JourneyRecord & {observingUntil?:number;observeAfter?:number};
     if((record.observingUntil||0)>Date.now()||(!manual&&(record.observeAfter||0)>Date.now()))return entry.snapshot;
@@ -65,7 +84,8 @@ export class CltJourneyService {
             const unsupported=rows.some(r=>(r.data as any)?.trackingUnsupported);
             if(unsupported&&old.rows.length&&old.rows.every(r=>r.outcome==='INELIGIBLE')){entry.snapshot.results[bank.id]={...old,message:'Inelegibilidade preservada. Não há endpoint de leitura de acompanhamento confirmado para esta integração.'};return;}
             const recoveredV8=bank.id==='v8'&&mayCalculate('v8',rows)&&old.simulation?.status!=='UNKNOWN'&&old.stage!=='SIMULATION'&&!old.rows.some(r=>(r.data as any)?.writeUncertain);
-            entry.snapshot.results[bank.id]={...old,rows:[...old.rows.filter(r=>(r.state==='OFFER'&&!rows.some(n=>n.institution===r.institution&&n.outcome==='INELIGIBLE'))||(r.data as any)?.vctex?.conditionRejections||(unsupported&&(r.link||r.outcome==='INELIGIBLE'))),...rows],status:old.status==='UNKNOWN'&&!recoveredV8?'UNKNOWN':'RETURNED',message:unsupported?rows[0]?.message:undefined,readyToSimulate:(old.status!=='UNKNOWN'||bank.id==='nossa'||recoveredV8)&&mayCalculate(bank.id,rows)&&!old.rows.some(r=>r.state==='OFFER')&&old.simulation?.status!=='UNKNOWN'&&(!old.simulation||old.readyKey!==calculationKey(rows)),readyKey:calculationKey(rows)};
+            entry.snapshot.results[bank.id]={...old,rows:[...old.rows.filter(r=>(r.state==='OFFER'&&!rows.some(n=>n.institution===r.institution&&n.outcome==='INELIGIBLE'))||(r.data as any)?.vctex?.conditionRejections||(unsupported&&(r.link||r.outcome==='INELIGIBLE'))),...rows],status:old.status==='UNKNOWN'&&!recoveredV8?'UNKNOWN':'RETURNED',message:unsupported?rows[0]?.message:undefined,readyToSimulate:(old.status!=='UNKNOWN'||bank.id==='nossa'||recoveredV8)&&mayCalculate(bank.id,rows)&&!old.rows.some(r=>r.state==='OFFER')&&old.simulation?.status!=='UNKNOWN'&&!old.simulation,readyKey:calculationKey(rows)};
+            applyBankRows(bank.id,entry.snapshot.results[bank.id],entry.snapshot.results[bank.id].rows);
           }catch {entry.snapshot.results[bank.id]={...old,message:'Não foi possível atualizar o estado deste banco. Nenhuma solicitação foi reenviada.'};}
         }));
       });
@@ -77,7 +97,7 @@ export class CltJourneyService {
   async refreshV8(db: any, tenant: string, actor: string, id: string, consultId: string, promoterId: string) {
     const entry = await this.get(db, tenant, actor, id);
     const own = entry?.snapshot.results.v8?.rows.some(row => (row.data as any)?.v8?.consultId === consultId && (row.data as any)?.v8?.promoterId === promoterId);
-    if (!entry || !['DONE','UNKNOWN'].includes(entry.record.phase) || !entry.snapshot.customer || !own) return undefined;
+    if (!entry || entry.snapshot.historical || !['DONE','UNKNOWN'].includes(entry.record.phase) || !entry.snapshot.customer || !own) return undefined;
     // Observation only: this endpoint never invokes SIMULATE or AUTHORIZE.
     const response = await withinJourneyDeadline(AbortSignal.timeout(25000), () => ProductSimulationService.run(db, tenant, 'CLT', 'REFRESH', { ...entry.snapshot.customer!, v8ConsultId: consultId, v8PromoterId: promoterId, bmgActorId: actor }, undefined, ['v8']));
     if (response.rows.some(row => row.state === 'ERROR' && (row.data as any)?.v8?.status !== 'FAILED')) throw Error('V8_STATUS_UNAVAILABLE');
@@ -86,6 +106,7 @@ export class CltJourneyService {
     // A status GET must not erase simulations or other consultations in this execution.
     const retained=old.rows.filter(row=>{const v=(row.data as any)?.v8;return row.state==='OFFER'?!(rejected&&v?.consultId===consultId&&v?.promoterId===promoterId):v?.consultId!==consultId||v?.promoterId!==promoterId;});
     entry.snapshot.results.v8 = { ...old, status: 'RETURNED', rows: [...retained,...response.rows.map(row=>projectRow(row,'v8',old.executionId||id))] };
+    applyBankRows('v8',entry.snapshot.results.v8,entry.snapshot.results.v8.rows);
     entry.snapshot.results.v8.readyToSimulate=!old.rows.some(r=>r.state==='OFFER')&&old.simulation?.status!=='UNKNOWN'&&!old.rows.some(r=>(r.data as any)?.writeUncertain)&&mayCalculate('v8',entry.snapshot.results.v8.rows);
     entry.snapshot.results.v8.readyKey=calculationKey(entry.snapshot.results.v8.rows);
     bindV8(entry.snapshot);
@@ -106,7 +127,13 @@ export class CltJourneyService {
       try { raw = await store.compareAndSet(record.snapshot.executionId, raw, record); }
       catch { return this.get(db, tenant, actor, id); }
     }
-    return { raw, record, snapshot: record.snapshot, store, listeners: new Set() };
+    const snapshot=record.snapshot;
+    if(snapshot.rootExecutionId&&snapshot.rootExecutionId!==id&&!['READY','RUNNING'].includes(record.phase)){
+      const root=await store.read(snapshot.rootExecutionId);
+      if(root?.record.snapshot.customer?.cpf===snapshot.customer?.cpf){snapshot.historical=Object.entries(snapshot.results).some(([bank,result])=>result.executionId===id&&root.record.snapshot.results[bank]?.executionId!==id&&(root.record.snapshot.results[bank]?.generation||0)>=(result.generation||0)&&(snapshot.action==='SIMULATE'||!snapshot.action&&(!!result.request||result.rows.some(r=>r.state==='OFFER'))));
+        if(snapshot.historical){snapshot.automaticEnabled=false;snapshot.running=false;}}
+    }
+    return { raw, record, snapshot, store, listeners: new Set() };
   }
   async available(db: any, tenant: string): Promise<JourneyBank[]> {
     const banks: JourneyBank[] = [];
@@ -154,35 +181,37 @@ export class CltJourneyService {
     if(action==='SIMULATE'&&provider&&parentId){const parent=await this.get(db,tenant,actor,parentId);input={...input,calculationKey:parent?.snapshot.results[provider]?.readyKey};}
     const fingerprint = journeyFingerprint({ input, provider, action,...(action==='SIMULATE'?{parentId}: {}) });
     const previous = await this.get(db, tenant, actor, id);
-    if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return previous; }
+    if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return provider&&action==='SIMULATE'&&previous.record.phase==='READY'?this.prepareCalculation(db,tenant,actor,previous,provider):previous; }
     const all = (await this.available(db, tenant)).filter(bank=>bank.id!=='finanto'), banks = provider ? all.filter(bank => bank.id === provider).map(bank => ['v8','vctex'].includes(bank.id) ? { ...bank, contextual: false } : bank) : all;
     const parent = parentId ? await this.get(db, tenant, actor, parentId) : undefined;
+    if(parent?.snapshot.rootExecutionId&&parent.snapshot.rootExecutionId!==parent.snapshot.executionId){const root=await this.get(db,tenant,actor,parent.snapshot.rootExecutionId);if(root?.snapshot.customer?.cpf===input.cpf)parent.snapshot.results={...parent.snapshot.results,...root.snapshot.results};}
     const batch=action==='SIMULATE'&&!provider;
     const parameterView=batch;
     if(batch&&(!parent||!(input.value>0)))throw Error('EXECUTION_CONFLICT');
     if (parentId && (!provider&&!batch || !parent || !(['DONE','UNKNOWN'].includes(parent.record.phase)) || provider&&parent?.record.phase==='UNKNOWN' && parent?.snapshot.results[provider]?.status==='UNKNOWN' && !(provider==='nossa'&&action==='SIMULATE'&&parent.snapshot.results.nossa.readyToSimulate) || parent.snapshot.customer?.cpf !== input.cpf)) throw Error('EXECUTION_CONFLICT');
-    const snapshot: JourneySnapshot = { executionId: id, rootExecutionId: parameterView?id:parent?.snapshot.rootExecutionId || parent?.snapshot.executionId || id, automaticEnabled: parameterView?false:parent?.snapshot.automaticEnabled ?? (!provider && action === 'REFRESH'), running: true, customer: provider&&action==='SIMULATE'&&parent?structuredClone(parent.snapshot.customer):{ ...input }, banks: parent ? [...new Map([...parent.snapshot.banks.filter(bank=>bank.id!=='finanto'), ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(Object.fromEntries(Object.entries(parent.snapshot.results).filter(([bank])=>bank!=='finanto'))) : {} };
+    const snapshot: JourneySnapshot = { action,executionId: id, rootExecutionId: parameterView?id:parent?.snapshot.rootExecutionId || parent?.snapshot.executionId || id, automaticEnabled: parameterView?false:parent?.snapshot.automaticEnabled ?? (!provider && action === 'REFRESH'), running: true, customer: provider&&action==='SIMULATE'&&parent?structuredClone(parent.snapshot.customer):{ ...input }, banks: parent ? [...new Map([...parent.snapshot.banks.filter(bank=>bank.id!=='finanto'), ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(Object.fromEntries(Object.entries(parent.snapshot.results).filter(([bank])=>bank!=='finanto'))) : {} };
     if(parameterView){
       snapshot.calculation={value:input.value,term:input.term,mode:input.mode,requestedAt:new Date().toISOString(),banks:banks.map(b=>b.id),sourceExecutionId:parentId!};
       snapshot.results={};snapshot.banks=(batch?banks:snapshot.banks).filter(b=>parent!.snapshot.banks.some(old=>old.id===b.id)).map(b=>({...b,contextual:b.id==='vctex'?false:b.contextual}));snapshot.calculation.banks=(batch?snapshot.banks:banks).map(b=>b.id);
     }
     for (const bank of (parameterView?snapshot.banks:banks)) {
       const previous=parent?.snapshot.results[bank.id];
-      const margins=previous?.rows.filter(r=>r.state==='DATA')||[];
+      const margins=previous?.consultations||previous?.rows.filter(r=>r.state==='DATA')||[];
       const uncertain=parameterView&&previous?.status==='UNKNOWN';
       const marginOnly=parameterView&&provider&&bank.id!==provider;
       if(uncertain)bank.contextual=true;
-      snapshot.results[bank.id]={request:action==='SIMULATE'?{value:input.value,term:input.term,mode:input.mode,employerDocument:input.employerDocument,factaRegistration:input.factaRegistration,v8ConsultId:input.v8ConsultId,v8PromoterId:input.v8PromoterId,calculationKey:input.calculationKey,requestedAt:new Date().toISOString()}:previous?.request,executionId:id,status:uncertain?'UNKNOWN':marginOnly?'RETURNED':bank.contextual?'CONTEXTUAL':'QUERYING',rows:action==='SIMULATE'?margins:[],message:uncertain?'Resultado anterior incerto. Nenhum POST foi repetido.':bank.contextual?'Esta integração exige parâmetros próprios; o cálculo com estes filtros não possui contrato confirmado.':undefined};
+      snapshot.results[bank.id]={consultationRevision:previous?.consultationRevision||0,generation:action==='SIMULATE'?(previous?.generation||0)+1:previous?.generation||0,consultations:structuredClone(margins),request:action==='SIMULATE'?{value:input.value,term:input.term,mode:input.mode,employerDocument:input.employerDocument,factaRegistration:input.factaRegistration,v8ConsultId:input.v8ConsultId,v8PromoterId:input.v8PromoterId,calculationKey:input.calculationKey,requestedAt:new Date().toISOString()}:previous?.request,executionId:id,status:uncertain?'UNKNOWN':marginOnly?'RETURNED':bank.contextual?'CONTEXTUAL':'QUERYING',rows:action==='SIMULATE'?margins:[],message:uncertain?'Resultado anterior incerto. Nenhum POST foi repetido.':bank.contextual?'Esta integração exige parâmetros próprios; o cálculo com estes filtros não possui contrato confirmado.':undefined};
     }
     const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot };
     const store = new CltJourneyStore(db, tenant, actor), canonical = await store.create(id, record);
     await store.remember(canonical);
     const entry = await this.get(db, tenant, actor, canonical);
     if (!entry || entry.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT');
-    return entry;
+    return provider&&action==='SIMULATE'?this.prepareCalculation(db,tenant,actor,entry,provider):entry;
   }
   async execute(db: any, tenant: string, actor: string, entry: Entry, input: ProductSimulationInput, action: JourneyAction = 'REFRESH', provider?: JourneyProvider) {
     if (entry.record.phase !== 'READY') return;
+    if(provider&&action==='SIMULATE'&&entry.snapshot.rootExecutionId!==entry.snapshot.executionId){const root=await this.get(db,tenant,actor,entry.snapshot.rootExecutionId!);if(root?.snapshot.results[provider]?.executionId!==entry.snapshot.executionId)throw Error('EXECUTION_SUPERSEDED');}
     input={...input,calculationKey:provider?entry.snapshot.results[provider]?.request?.calculationKey:entry.snapshot.customer?.calculationKey};
     const { record, store, snapshot } = entry, id = snapshot.executionId;
     record.phase = 'RUNNING'; record.deadline = Date.now() + 50000;
@@ -192,6 +221,7 @@ export class CltJourneyService {
     let writes = Promise.resolve();
     const publish = () => {
       // Serialize writes, but use CAS as the distributed authority. Partial results are durable before broadcast.
+      for(const [bank,result]of Object.entries(snapshot.results))result.rows=normalizeBankRows(bank,result.rows);
       const copy = structuredClone(record);
       writes = writes.then(async () => { entry.raw = await store.compareAndSet(id, entry.raw, copy); for (const listener of entry.listeners) listener(copy.snapshot); });
       writes = writes.catch(error => { stop.abort(); throw error; });
@@ -201,15 +231,14 @@ export class CltJourneyService {
       const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => bank.id!=='finanto' && !bank.contextual && (!provider || bank.id === provider)).map(async bank => {
         const result = snapshot.results[bank.id];
         try {
-          const previousMargins=action==='SIMULATE'?result.rows.filter(r=>r.state==='DATA'):[];
-          const update = async (rows: ProductSimulationRow[]) => { result.rows = [...previousMargins,...rows.map(row=>projectRow(row,bank.id,id))];if(bank.id==='vctex')result.rows=currentVctexRows(result.rows); await publish(); };
+          const update = async (rows: ProductSimulationRow[]) => { applyBankRows(bank.id,result,rows.map(row=>projectRow(row,bank.id,id)),action==='SIMULATE'); await publish(); };
           result.stage = action === 'AUTHORIZE' || action === 'CREATE_CONSULT' ? 'CONSENT' : 'CONSULTATION';
           const bankInput = { ...input, bmgActorId: actor, journeyId: snapshot.rootExecutionId || id, automaticAuthorization: action === 'REFRESH' && !provider, observeOnly: false };
           if (!['v8','vctex'].includes(bank.id)) { delete bankInput.v8BirthDate; delete bankInput.v8Email; delete bankInput.v8Gender; }
           const run = () => ProductSimulationService.run(db, tenant, 'CLT', action, bankInput, update, [bank.id]);
           if(action==='SIMULATE'&&['v8','vctex'].includes(bank.id))result.simulation={status:'RUNNING'};
           let response = action === 'SIMULATE' ? await cltBankOnce(db,tenant,bank.id,['SIMULATE',bankInput.journeyId,actor,input.cpf,input.employerDocument||null,input.factaRegistration||null,input.value,input.term,input.mode,input.calculationKey||null],run) : await run();
-          result.rows = [...previousMargins,...response.rows.map(row=>projectRow(row,bank.id,id))];
+          applyBankRows(bank.id,result,response.rows.map(row=>projectRow(row,bank.id,id)),action==='SIMULATE');
           if(bank.id==='vctex')result.rows=currentVctexRows(result.rows);
           if(bank.id==='v8')bindV8(snapshot);
           // Publish eligibility/margin before calculating. Each adapter revalidates the bank
@@ -219,7 +248,7 @@ export class CltJourneyService {
             result.stage = 'SIMULATION';if(bank.id==='v8')result.simulation={status:'RUNNING'}; await publish();
             const offers = await cltBankOnce(db,tenant,bank.id,['SIMULATE',bankInput.journeyId,actor,input.cpf,input.employerDocument||null,input.factaRegistration||null,input.value,input.term,input.mode,calculationKey(result.rows)],()=>ProductSimulationService.run(db, tenant, 'CLT', 'SIMULATE', { ...bankInput, autoConditions: !input.value, automaticAuthorization:false }, undefined, [bank.id]));
             response = { ...offers, rows: [...response.rows, ...offers.rows] };
-            result.rows = response.rows.map(row=>projectRow(row,bank.id,id));
+            applyBankRows(bank.id,result,response.rows.map(row=>projectRow(row,bank.id,id)),true);
           }
           result.status = result.rows.some(row => (row.data as any)?.writeUncertain === true) ? 'UNKNOWN' : 'RETURNED';
           if(result.status==='UNKNOWN')result.message='Há solicitação com resultado incerto nesta integração. Atualize o estado; nenhuma repetição automática será realizada.';
@@ -249,7 +278,7 @@ function projectRow(row: ProductSimulationRow,providerId?:string,executionId?:st
   const data = row.data as any;
   return { origin:{...row.origin,providerId:providerId||row.origin?.providerId||'unknown',connectionId:row.origin?.connectionId||data?.v8?.promoterId||data?.vctex?.connectionId,consultationId:row.origin?.consultationId||data?.v8?.consultId||data?.vctex?.preOperationId,executionId:executionId||row.origin?.executionId},provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, cetMonthly: row.cetMonthly, cetAnnual: row.cetAnnual, simulationId: row.simulationId,
     link: typeof row.link === 'string' && /^https:\/\//i.test(row.link) ? row.link : undefined,
-    data: data ? { observedAt:data.observedAt, financial:data.financial?Object.fromEntries(['isInsured','insuranceAmount','iofAmount','issueAmount','operationAmount','firstInstallmentDate'].filter(k=>data.financial[k]!==undefined).map(k=>[k,data.financial[k]])):undefined,vctex:data.vctex?{...Object.fromEntries(['connectionId','employerName','registrationNumber','preOperationId','employmentId','offerId','rawFee','rawMonthlyRate','iof','insuranceAmount','withInsurance','issueAmount','disbursedIssueAmount','finalDisbursedAmount','totalAmount','firstDueDate','lastDueDate','disbursementDate','uncertain'].filter(k=>data.vctex[k]!==undefined).map(k=>[k,data.vctex[k]])),conditionRejections:Array.isArray(data.vctex.conditionRejections)?data.vctex.conditionRejections.map((r:any)=>({connectionId:r.connectionId,consultationId:r.consultationId,employmentId:r.employmentId,offerId:r.offerId,term:r.term,installment:r.installment,code:r.code==='OUTSIDE_LIMITS'?'OUTSIDE_LIMITS':'REJECTED'})):undefined}:undefined, operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
+    data: data ? { observedAt:data.observedAt, financial:data.financial?Object.fromEntries(['isInsured','insuranceAmount','iofAmount','issueAmount','operationAmount','firstInstallmentDate'].filter(k=>data.financial[k]!==undefined).map(k=>[k,data.financial[k]])):undefined,vctex:data.vctex?{...Object.fromEntries(['authorizationValid','connectionId','employerName','registrationNumber','preOperationId','employmentId','offerId','rawFee','rawMonthlyRate','iof','insuranceAmount','withInsurance','issueAmount','disbursedIssueAmount','finalDisbursedAmount','totalAmount','firstDueDate','lastDueDate','disbursementDate','uncertain'].filter(k=>data.vctex[k]!==undefined).map(k=>[k,data.vctex[k]])),conditionRejections:Array.isArray(data.vctex.conditionRejections)?data.vctex.conditionRejections.map((r:any)=>({connectionId:r.connectionId,consultationId:r.consultationId,employmentId:r.employmentId,offerId:r.offerId,term:r.term,installment:r.installment,code:r.code==='OUTSIDE_LIMITS'?'OUTSIDE_LIMITS':'REJECTED'})):undefined}:undefined, operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
       eligible: typeof data.eligible === 'boolean' ? data.eligible : undefined,
       restrictions: safeReasons(data.restrictions),
       borrower: data.borrower ? { name: data.borrower.name } : undefined,
