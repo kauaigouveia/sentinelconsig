@@ -22,7 +22,7 @@ it.each([0,12])('reprices all enabled banks with the exact requested 200 and ter
  const body={...customer,executionId:id,parentExecutionId:root,action:'SIMULATE',value:200,term};
  const response=await request(app).post('/api/simulations/clt/journey').send(body);expect(response.status).toBe(200);const final=JSON.parse(response.text.trim().split('\n').at(-1)!);
  expect(final.calculation).toMatchObject({value:200,term,sourceExecutionId:root});expect(final.rootExecutionId).toBe(id);expect(final.results.facta.status).toBe('UNKNOWN');
- expect(JSON.stringify(final)).not.toContain('old-');expect(final.results.nossa.rows.some((r:any)=>r.state==='OFFER'&&r.installment===200)).toBe(true);expect(final.results.nossa.rows.some((r:any)=>r.data?.margin?.available_balance===529.93)).toBe(true);
+ expect(JSON.stringify(Object.values(final.results).map((r:any)=>r.rows))).not.toContain('old-');expect(final.results.nossa.originalOffers.map((r:any)=>r.table)).toEqual(['old-nossa']);expect(final.results.nossa.rows.some((r:any)=>r.state==='OFFER'&&r.installment===200)).toBe(true);expect(final.results.nossa.rows.some((r:any)=>r.data?.margin?.available_balance===529.93)).toBe(true);
  expect((await service.get(db,'t','user:a',root))!.snapshot.results.nossa.rows.some(r=>r.table==='old-nossa')).toBe(true);
  await request(app).post('/api/simulations/clt/journey').send(body);expect(run).toHaveBeenCalledTimes(3);tenant='other';expect((await request(app).get('/api/simulations/clt/journey/'+id)).status).toBe(404);expect(fetch).not.toHaveBeenCalled();
 });

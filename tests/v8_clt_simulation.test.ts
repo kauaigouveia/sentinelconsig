@@ -325,3 +325,16 @@ it('blocks every real V8 simulation entry point before OAuth or bank requests', 
   await expect(V8CltSimulationService.request(db, 'tenant-a', 'promoter-a', '/private-consignment/simulation', {})).rejects.toThrow();
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it('continues distinct eligible V8 terms after a definitive bank rejection without replaying it',async()=>{
+ consultations[0].availableMarginValue='529.93';tables=[{id:configId,number_of_installments:[12,24]}];const original=fetchMock.getMockImplementation()! as (...args:any[])=>Promise<Response>;
+ fetchMock.mockImplementation(async(url:any,options:any)=>{if(String(url).endsWith('/simulation')&&options?.method==='POST'){const body=JSON.parse(options.body);if(body.number_of_installments===12)return Response.json({message:'Condição indisponível'},{status:422});return Response.json({...offer,installment_value:150,number_of_installments:24});}return original(url,options);});
+ const rows=await run({value:150,term:0});expect(rows.filter(r=>r.state==='OFFER')).toHaveLength(1);expect(fetchMock.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(2);await run({value:150,term:0});expect(fetchMock.mock.calls.filter(([,o])=>o.method==='POST')).toHaveLength(2);
+});
+
+it.each([['Payment',150],['Liquid',3000]] as const)('keeps the real V8 %s financial field separate from margin',async(mode,value)=>{
+ consultations[0].availableMarginValue='529.93';tables=[{id:configId,number_of_installments:[12]}];response={...offer,number_of_installments:12,installment_value:150,disbursement_amount:3000};const rows=await run({mode,value,term:0});expect(rows.filter(r=>r.state==='OFFER')).toHaveLength(1);
+ const body=JSON.parse(fetchMock.mock.calls.find(([,o])=>o.method==='POST')![1].body);expect(body[mode==='Payment'?'installment_face_value':'disbursed_amount']).toBe(value);expect(body).not.toHaveProperty(mode==='Payment'?'disbursed_amount':'installment_face_value');expect(body).not.toHaveProperty('monthly_interest_rate');
+ expect((rows[0].data as any).calculationDiagnostics[0]).toMatchObject({requestedValue:value,httpStatus:200,receivedOffers:1,acceptedOffers:1});
+});
+it('distinguishes an empty V8 array from an invalid financial schema',async()=>{response=[];const rows=await run();expect(rows.some(r=>r.state==='OFFER')).toBe(false);expect((rows[0].data as any).calculationDiagnostics[0].code).toBe('API_ZERO_OFFERS');});

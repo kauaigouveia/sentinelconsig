@@ -1,0 +1,9 @@
+/** Allowlisted operational evidence only: never payloads, documents, names or bank error bodies. */
+export type CltCalculationDiagnostic={bank:'v8'|'vctex';mode:'Payment'|'Liquid';requestedValue:number;term:number;endpoint:string;httpStatus?:number;code:string;receivedOffers:number;acceptedOffers:number;limits?:{margin:number;minimum:number;maximum:number};parameters:Record<string,number|string|boolean>};
+export function calculationDiagnostic(bank:'v8'|'vctex',input:{mode:'Payment'|'Liquid';value:number},term:number,code:string,httpStatus?:number,receivedOffers=0,acceptedOffers=0):CltCalculationDiagnostic{
+ return {bank,mode:input.mode,requestedValue:input.value,term,endpoint:bank==='v8'?'/private-consignment/simulation':'/api/consignado/pre-operation/{id}/employment/{id}/simulate/installments',httpStatus,code,receivedOffers,acceptedOffers,parameters:bank==='v8'?{[input.mode==='Payment'?'installment_face_value':'disbursed_amount']:input.value,number_of_installments:term,provider:'QI'}:{installmentAmount:input.value,installments:term}};
+}
+export function publicCalculationDiagnostics(value:unknown):CltCalculationDiagnostic[]{
+ if(!Array.isArray(value))return [];
+ return value.slice(0,100).filter(d=>d&&['v8','vctex'].includes(d.bank)&&['Payment','Liquid'].includes(d.mode)&&Number.isFinite(d.requestedValue)&&Number.isInteger(d.term)&&/^[A-Z_]{1,50}$/.test(d.code)).map(d=>({...calculationDiagnostic(d.bank,{mode:d.mode,value:d.requestedValue},d.term,d.code,Number.isInteger(d.httpStatus)?d.httpStatus:undefined,Number.isInteger(d.receivedOffers)?d.receivedOffers:0,Number.isInteger(d.acceptedOffers)?d.acceptedOffers:0),limits:d.limits&&[d.limits.margin,d.limits.minimum,d.limits.maximum].every(Number.isFinite)?{margin:d.limits.margin,minimum:d.limits.minimum,maximum:d.limits.maximum}:undefined}));
+}

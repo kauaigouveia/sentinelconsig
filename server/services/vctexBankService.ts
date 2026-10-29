@@ -77,7 +77,7 @@ export class VctexBankService{
       metrics:{requests24h:recent.length,errors24h:recent.filter(r=>!r.authenticationRecognized||!r.transportAvailable).length,complete:rows.length<=100},
       permissionsVerified:lastDiagnostic?.permissionsVerified===true};
   }
-  private static async call(db:any,tenant:string,promoter:string,method:string,path:string,body?:unknown){
+  private static async call(db:any,tenant:string,promoter:string,method:string,path:string,body?:unknown,onStatus?:(status:number)=>void){
     const c=await this.config(db,tenant,promoter);if(!c.enabled||!c.cpf||!c.password)throw Error('Conexão VCTEX inativa ou sem credenciais.');
     const cacheKey=journeyFingerprint([tenant,promoter,c.cpf,c.password,process.env.VCTEX_GATEWAY_URL]);
     const authenticate=async()=>{const login=await this.login(c);if(!login.ok)throw new VctexError(login.status,'AUTHENTICATION_FAILED');const token=parseVctexToken(login.body);tokens.set(cacheKey,{token,until:Date.now()+60000});return token;};
@@ -86,7 +86,7 @@ export class VctexBankService{
     let r=await send(token.token);
     // No automatic POST replay. GET-by-CPF can create a pre-operation, so it is excluded too.
     if(r.status===401&&method==='GET'&&!path.startsWith('/pre-operation/document-number/'))r=await send(await authenticate());
-    const data=await r.json().catch(()=>null);
+    onStatus?.(r.status);const data=await r.json().catch(()=>null);
     if(!r.ok){const code=typeof data?.code==='string'&&/^[A-Za-z_]{1,90}$/.test(data.code)?data.code:'UPSTREAM_ERROR';throw new VctexError(r.status,code);}
     if(!data||typeof data!=='object')throw Error('Resposta VCTEX incompatível.');return data;
   }
@@ -180,8 +180,8 @@ export class VctexBankService{
     if(custom)validateVctexInstallments(rate,e.availableMarginValue,selection.term,selection.installment);
     const {scope,store,id}=await this.caseContext(db,tenant,actor,promoter,identity);
     const payload={offerId:rate.id,withInsurance:rate.withInsurance,...(custom?{installments:selection.term,installmentAmount:selection.installment}:{})};
-    const raw=await this.once(db,tenant,scope,['SIMULATE',current.preOperationId,e.employmentId,payload],()=>this.call(db,tenant,promoter,'POST',`/pre-operation/${idPath(current.preOperationId!)}/employment/${idPath(e.employmentId)}/simulate/${custom?'installments':'full'}`,payload));
-    const quote=normalizeVctexQuote(raw,rate,e.employmentId,current.preOperationId!);
+    let httpStatus:number|undefined;const raw=await this.once(db,tenant,scope,['SIMULATE',current.preOperationId,e.employmentId,payload],()=>this.call(db,tenant,promoter,'POST',`/pre-operation/${idPath(current.preOperationId!)}/employment/${idPath(e.employmentId)}/simulate/${custom?'installments':'full'}`,payload,status=>{httpStatus=status;}));
+    const parsed=normalizeVctexQuote(raw,rate,e.employmentId,current.preOperationId!);const quote={...parsed,data:{...parsed.data,transportStatus:httpStatus,operationCache:httpStatus===undefined?{cached:true}:undefined}};
     for(let attempt=0;attempt<4;attempt++){const saved=await store.read(id);if(!saved)throw Error('Histórico VCTEX indisponível.');const record=saved.record as Stored;record.value.offers=[...(record.value.offers||[]).filter((q:any)=>q.simulationId!==quote.simulationId),quote];try{await store.compareAndSet(id,saved.raw,record);return quote;}catch{}}
     throw Error('Oferta preservada na reserva. Recupere o acompanhamento antes de reenviar.');
   }

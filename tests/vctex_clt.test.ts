@@ -1,3 +1,4 @@
+import {calculateVctexConditions} from '../server/services/vctexCltCalculation';
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
 import express from 'express';
 import request from 'supertest';
@@ -81,4 +82,17 @@ it('recovers an already existing official pre-operation without local cache and 
 
 it('does not create a pre-operation or mark authorization valid after a lookup-only NOT_FOUND',async()=>{
  const db=await setup();http(path=>path.includes('/document-number/')?{condition:'not_found'}:undefined);const value=await Bank.refresh(db,'tenant-a','user:a','p-a',customer,false,true);expect(value.status).toBe('not_found');expect(value.authorizationValid).toBe(false);expect(value.employments).toHaveLength(0);expect(bankCalls().some((c:any)=>c.method==='POST'&&!c.url.endsWith('/login'))).toBe(false);
+});
+
+it('keeps VCTEX 150/200/300/529 requests independent through the Oracle adapter when the official table allows them',async()=>{
+ const db=await setup();http((path,input)=>{if(path.endsWith('/available-rates'))return [{...rate,maxInstallmentAmount:529.94}];if(path.includes('/simulate/')){const body=JSON.parse(input.body);return {...quote,id:'sim-'+body.installmentAmount,installmentAmount:body.installmentAmount,installmentsNumber:body.installments};}if(path.endsWith('/pre-1'))return detail('finished',{employments:[{employmentId:'job-1',eligible:true,availableMarginValue:529.94}]});});
+ await Bank.refresh(db,'tenant-a','user:a','p-a',customer,true);
+ for(const installment of [150,200,300,529]){const selection={employmentId:'job-1',offerId:rate.id,term:12,installment};const first=await Bank.simulate(db,'tenant-a','user:a','p-a',customer,selection);const again=await Bank.simulate(db,'tenant-a','user:a','p-a',customer,selection);expect(first.installment).toBe(installment);expect(again.simulationId).toBe(first.simulationId);}
+ expect(bankCalls().filter(c=>c.url.endsWith('/simulate/installments')).map(c=>JSON.parse(c.body).installmentAmount)).toEqual([150,200,300,529]);
+ expect((await Bank.refresh(db,'tenant-a','user:a','p-a',customer,false)).employments[0].availableMarginValue).toBe(529.94);
+});
+it('explains table rejection for 529 within a larger margin without sending a financial POST',async()=>{
+ const db=await setup();vi.spyOn(Bank,'refresh').mockResolvedValue({status:'finished',authorizationValid:true,preOperationId:'pre-1',employments:[{employmentId:'job-1',eligible:true,availableMarginValue:529.94}]} as any);vi.spyOn(Bank,'rates').mockResolvedValue([rate]);const post=vi.spyOn(Bank,'simulate');
+ const result=await calculateVctexConditions(db,'tenant-a',{cpf:customer.cpf,name:customer.name,phone:customer.phone,v8Email:customer.email,bmgActorId:'user:a',mode:'Payment',value:529,term:12} as any);
+ expect(post).not.toHaveBeenCalled();expect(result.some(r=>(r.data as any)?.calculationDiagnostics?.some((d:any)=>d.code==='OUTSIDE_LIMITS'&&d.requestedValue===529&&d.httpStatus===undefined))).toBe(true);expect(result.some(r=>r.state==='OFFER')).toBe(false);
 });

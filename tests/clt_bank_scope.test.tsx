@@ -72,3 +72,9 @@ it('manual query refresh cannot dispatch an automatic financial POST even when l
 it('does not offer an unsupported VCTEX liquid calculation or replace its parameters silently',async()=>{
  const fetcher=await open();fireEvent.click(screen.getByRole('button',{name:'Selecionar VCTEX DIGITAL'}));fireEvent.change(screen.getByLabelText('Simular por'),{target:{value:'Liquid'}});expect((screen.getByRole('button',{name:'SIMULAR CONDIÇÕES'}) as HTMLButtonElement).disabled).toBe(true);expect(screen.getByText(/VCTEX disponível calcula por parcela/)).toBeTruthy();expect(fetcher.mock.calls.filter(([,options])=>options?.method==='POST')).toHaveLength(1);
 });
+
+it('restores original V8 quotes without a bank request and never mixes custom quotes or another bank',async()=>{
+ const data=fixture();const original={...data.results.v8.rows[1],table:'Original preservada V8',simulationId:'original-v8',origin:{providerId:'v8',executionId:'original-execution'}};data.results.v8={...data.results.v8,request:{value:150,term:12,mode:'Payment',requestedAt:'2026-10-29T12:00:00Z'},originalOffers:[original],rows:[data.results.v8.rows[0],{...data.results.v8.rows[1],table:'Personalizada V8 150',installment:150}]} as any;
+ const fetcher=await open(data);fireEvent.click(screen.getByRole('button',{name:'Selecionar V8 DIGITAL'}));await screen.findByText('Personalizada V8 150');const before=fetcher.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Ver ofertas originais'}));
+ expect(screen.getByText('Original preservada V8')).toBeTruthy();expect(screen.queryByText('Personalizada V8 150')).toBeNull();expect(screen.queryByText('Oferta FACTA')).toBeNull();expect(fetcher.mock.calls).toHaveLength(before);fireEvent.click(screen.getByRole('button',{name:'Ver simulação personalizada'}));expect(screen.getByText('Personalizada V8 150')).toBeTruthy();
+});

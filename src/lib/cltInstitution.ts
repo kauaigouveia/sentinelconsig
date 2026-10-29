@@ -12,3 +12,9 @@ export function snapshotOfBank(snapshot:JourneySnapshot|null,bank:string):Journe
   if(!snapshot||!snapshot.banks.some(item=>item.id===bank))return null;
   return {...snapshot,banks:snapshot.banks.filter(item=>item.id===bank),results:{[bank]:{...snapshot.results[bank],rows:rowsOfBank(snapshot,bank)}}};
 }
+
+/** Deliberate read-only view of the original bank quotes; no re-pricing or bank request. */
+export function originalOffersSnapshot(snapshot:JourneySnapshot|null):JourneySnapshot|null{
+ if(!snapshot)return null;
+ return {...snapshot,results:Object.fromEntries(Object.entries(snapshot.results).map(([bank,result])=>[bank,{...result,executionId:undefined,rows:[...(result.consultations||result.rows.filter(r=>r.state==='DATA')),...(result.originalOffers||(!result.request?.value?result.rows.filter(r=>r.state==='OFFER'):[]))]}]))};
+}
