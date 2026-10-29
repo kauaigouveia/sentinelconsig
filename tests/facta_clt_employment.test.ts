@@ -16,14 +16,19 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function bank(workers: any[], policy: any = { aprovado: '1' }) {
-  return vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path) => {
+  return vi.spyOn(FactaSimulationService, 'request').mockImplementation(async (_p, _t, path, body) => {
     if (path.includes('autoriza-consulta')) return { dados_trabalhador: { dados: workers } };
-    if (path.includes('operacoes')) return { tabelas: [table] };
+    if (path.includes('operacoes')) return { tabelas: [{...table,parcela:body?.valor_parcela??table.parcela}] };
     return policy;
   });
 }
 
 describe('FACTA CLT employment selection, synthetic only', () => {
+  it('rejects a payment above the official margin before requesting operations or credit policy',async()=>{
+    const request=bank([{...worker,valorMargemDisponivel:'529.93'}]);
+    const result=await FactaSimulationService.product(prisma,'tenant-a','CLT','SIMULATE',{...input,value:600});
+    expect(result[0]).toMatchObject({outcome:'INELIGIBLE'});expect(request).toHaveBeenCalledOnce();
+  });
   it('derives the automatic payment from the selected bank-returned margin, preserving exact registration', async () => {
     const request = bank([{ ...worker, valorMargemDisponivel: '300.009' }]);
     await FactaSimulationService.product(prisma, 'tenant-a', 'CLT', 'SIMULATE', { ...input, value: 0, term: 0, autoConditions: true, factaRegistration: worker.matricula });
@@ -52,8 +57,8 @@ describe('FACTA CLT employment selection, synthetic only', () => {
   });
   it('does not replace requested installment with available margin', async () => {
     const request = bank([{ ...worker, valorMargemDisponivel: '800.00' }]);
-    await FactaSimulationService.product(prisma, 'tenant-a', 'CLT', 'SIMULATE', input);
-    expect(request.mock.calls[1][3]).toMatchObject({ opcao_valor: 2, valor_parcela: 1423.98 });
+    await FactaSimulationService.product(prisma, 'tenant-a', 'CLT', 'SIMULATE', {...input,value:200});
+    expect(request.mock.calls[1][3]).toMatchObject({ opcao_valor: 2, valor_parcela: 200 });
     expect(request.mock.calls[2][3]).toMatchObject({ matricula: worker.matricula });
   });
   it('uses only the selected registration when the employer has multiple employments', async () => {

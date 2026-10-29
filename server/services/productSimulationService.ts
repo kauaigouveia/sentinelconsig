@@ -1,4 +1,5 @@
 import {nossaAuthorization,rememberNossaAuthorization} from './nossaCltAuthorization.js';
+import {calculateVctexConditions,observeVctexConditions} from './vctexCltCalculation.js';
 import type { PrismaClient } from '@prisma/client';
 import { NossaFintechService } from './nossaFintechService';
 import { FactaBankService } from './factaBankService';
@@ -156,6 +157,7 @@ export class ProductSimulationService {
             }
             const tables = array(await nossaCall('GET', `/clt-loan/v1/list-rebates?service_type=${encodeURIComponent(service)}&margin_key=${encodeURIComponent(margin.margin_key)}`));
             const requested = input.autoConditions ? cltPaymentLimit(margin.available_balance, margin.utilizable_balance) : input.value;
+            if(input.mode==='Payment'&&requested>(cltPaymentLimit(margin.available_balance,margin.utilizable_balance)||0)){rows.push({provider:'Nossa Fintech',institution:service,state:'PENDING',outcome:'INELIGIBLE',message:'A parcela solicitada supera a margem oficial deste vínculo.'});continue;}
             if (!requested) { rows.push({ provider: 'Nossa Fintech', institution: service, state: 'PENDING', outcome: 'MISSING_DATA', message: 'A instituição não retornou limite de parcela válido. Nenhuma simulação foi enviada.' }); continue; }
             const seen = new Set<string>();
             for (const table of tables) {
@@ -171,6 +173,7 @@ export class ProductSimulationService {
                 if (input.term && Number(result.num_periods) !== input.term) {
                   rows.push({ provider: 'Nossa Fintech', institution: service, table: table.name, state: 'PENDING', message: 'A API retornou outro prazo para esta tabela. Compare todos os prazos para visualizar essa condição.' }); continue;
                 }
+                if((input.autoConditions||input.mode==='Payment')&&(positive(result.schedule?.[0]?.payment)||0)>requested+0.005)throw Error('A instituição retornou parcela superior ao limite solicitado. A oferta não foi utilizada.');
                 rows.push({ provider: 'Nossa Fintech', institution: service, table: `${table.name || table.cod_tabela} · ${cnpj}`, state: amount ? 'OFFER' : 'PENDING', amount, installment: positive(result.schedule?.[0]?.payment), term: positive(result.num_periods), rate: positive(result.interest_rate) ? Number(result.interest_rate) * 100 : undefined, simulationId: result.simulation_key, data: result, message: amount ? undefined : 'A instituição não retornou valor liberado válido.' });
                 await publishRows();
               } catch (error) { failure('Nossa Fintech', service, error); }
@@ -191,6 +194,7 @@ export class ProductSimulationService {
       if (product !== 'CLT' || !input.bmgActorId) return;
       if(action==='REFRESH') {const authorization=await BmgBankService.cltAuthorization(prisma,tenantId,input.bmgActorId,input,!!input.automaticAuthorization&&!input.observeOnly);rows.push({provider:'BMG',institution:'BMG',state:authorization.ready?'DATA':'PENDING',outcome:authorization.status==='APPROVED'&&!authorization.ready?'INELIGIBLE':authorization.ready?'PENDING':'AUTHORIZATION_REQUIRED',data:{authorization},message:authorization.ready?'Autorização aprovada. Elegibilidade confirmada.':authorization.status==='APPROVED'?authorization.reason||'Cliente não elegível no BMG.':authorization.status==='WAITING_OTP'?'Solicitação enviada. Aguardando SMS/OTP do cliente.':'Autorização SMS ausente ou expirada. Use a recuperação no cartão BMG.'});return;}
       if(action!=='SIMULATE')return;
+      if(input.value>0){rows.push({provider:'BMG',institution:'BMG',state:'PENDING',outcome:'UNSUPPORTED',message:'BMG: o contrato CLT implementado consulta ofertas sem parâmetro de parcela ou valor. O banco não receberá um parâmetro inventado; use o fluxo específico.'});return;}
       rows.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, { ...input, product }));
     };
     const v8 = async () => {
@@ -215,6 +219,8 @@ export class ProductSimulationService {
     };
     const publishRows = async () => { normalizeRows(); if (onRows) await onRows([...rows]); };
     await Promise.all([
+      ...(product==='CLT'&&action==='REFRESH'&&providers?.includes('vctex')?[observeVctexConditions(prisma,tenantId,input).then(found=>{configured=true;rows.push(...found);}).catch(error=>failure('VCTEX DIGITAL','VCTEX DIGITAL',error)).then(publishRows)]:[]),
+      ...(product==='CLT'&&action==='SIMULATE'&&providers?.includes('vctex')?[calculateVctexConditions(prisma,tenantId,input).then(found=>{configured=true;rows.push(...found);}).catch(error=>failure('VCTEX DIGITAL','VCTEX DIGITAL',error)).then(publishRows)]:[]),
       ...(!providers || providers.includes('nossa') ? [nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows)] : []),
       ...(!providers || providers.includes('facta') ? [facta().catch(error => failure('FACTA', product, error)).then(publishRows)] : []),
       ...(!providers || providers.includes('bmg') ? [bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows)] : []),

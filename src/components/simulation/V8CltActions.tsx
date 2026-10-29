@@ -18,6 +18,6 @@ export function V8CltActions({ capabilities, form, setForm, start, busy, executi
     {!references.length&&<button type="button" title={createReasons.join(' ')} disabled={createReasons.length>0} onClick={() => start('v8', 'CREATE_CONSULT')} className="rounded border p-2">Criar consulta V8</button>}
     {createReasons.length>0&&<p className="text-xs text-slate-500">{createReasons.join(' ')}</p>}
     {missing.length>0&&onCompleteData&&<button type="button" disabled={busy} onClick={onCompleteData} className="rounded border p-2">Completar dados na etapa Cliente</button>}
-    {references.map(v=>!v.consentRecorded&&v.status==='WAITING_CONSENT'&&<V8ApiAuthorization key={v.promoterId+':'+v.consultId} executionId={executionId} reference={v} onRecorded={() => start('v8', 'REFRESH', { v8ConsultId: v.consultId, v8PromoterId: v.promoterId })} />)}
+
   </section>;
 }

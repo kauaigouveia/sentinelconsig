@@ -211,6 +211,7 @@ export class FactaSimulationService {
       if (!worker.dataNascimento || !factaNumber(worker.valorTotalVencimentos)) { rows.push(row({ state: 'PENDING', message: 'O banco não informou nascimento e renda necessários à simulação deste vínculo.' })); continue; }
       const requested = input.autoConditions ? cltPaymentLimit(marginNumber(worker.valorMargemDisponivel)) : input.value;
       if (!requested) { rows.push(row({ state: 'PENDING', outcome: 'MISSING_DATA', message: 'A FACTA não retornou margem positiva válida para esta matrícula. Nenhuma simulação foi enviada.' })); continue; }
+      if(input.mode==='Payment'&&requested>(cltPaymentLimit(marginNumber(worker.valorMargemDisponivel))||0)){rows.push(row({state:'PENDING',outcome:'INELIGIBLE',message:'A parcela solicitada supera a margem oficial deste vínculo FACTA.'}));continue;}
       try {
         const tables = await this.request(prisma, tenantId, '/proposta/operacoes-disponiveis', { produto: 'D', tipo_operacao: 13, averbador: 10010, convenio: 3, opcao_valor: input.autoConditions || input.mode === 'Payment' ? 2 : 1, ...(input.autoConditions || input.mode === 'Payment' ? { valor_parcela: requested } : { valor: requested }), ...(input.term ? { prazo: input.term } : {}), cpf: input.cpf, data_nascimento: date(worker.dataNascimento), valor_renda: factaNumber(worker.valorTotalVencimentos) });
         for (const table of list(tables.tabelas)) {
@@ -218,6 +219,7 @@ export class FactaSimulationService {
             rows.push(row({ state: 'ERROR', message: 'FACTA retornou tabela de outro produto na consulta CLT. A condição não foi utilizada.' })); continue;
           }
           const offer = this.offer(table);
+          if((input.autoConditions||input.mode==='Payment')&&offer.installment>requested+0.005){rows.push(row({state:'ERROR',message:'FACTA retornou parcela superior ao limite solicitado. A oferta não foi utilizada.'}));continue;}
           if (input.term && offer.term !== input.term) continue;
           if (!offer.term || !offer.contractAmount || !worker.dataNascimento || !worker.dataAdmissao) {
             rows.push(row({ table: offer.name, state: 'PENDING', message: 'Dados insuficientes para validar a política de crédito deste vínculo.' })); continue;

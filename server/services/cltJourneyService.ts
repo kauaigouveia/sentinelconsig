@@ -21,7 +21,7 @@ export const activeJourneyProviders = journeyProviders.filter(id => id !== 'fina
 export type JourneyProvider = typeof journeyProviders[number];
 export type JourneyAction = 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT';
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
-export type JourneySnapshot = { executionId: string; running: boolean; rootExecutionId?: string; automaticEnabled?: boolean; observedAt?: string; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; readyToSimulate?: boolean; readyKey?: string; contractPending?: boolean; executionId?: string }> };
+export type JourneySnapshot = { calculation?:{value:number;term:number;mode:'Payment'|'Liquid';requestedAt:string;banks:string[];sourceExecutionId:string}; executionId: string; running: boolean; rootExecutionId?: string; automaticEnabled?: boolean; observedAt?: string; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; readyToSimulate?: boolean; readyKey?: string; contractPending?: boolean; executionId?: string }> };
 type Entry = { raw: string; record: JourneyRecord; snapshot: JourneySnapshot; store: CltJourneyStore; listeners: Set<(snapshot: JourneySnapshot) => void> };
 
 export class CltJourneyService {
@@ -57,7 +57,7 @@ export class CltJourneyService {
           if(!provider&&old.rows.some(r=>r.state==='OFFER')&&!old.rows.some(r=>r.outcome==='AUTHORIZATION_REQUIRED'||r.outcome==='PENDING'||r.outcome==='TECHNICAL_ERROR'))return;
           try {
             const input={...entry.snapshot.customer!,bmgActorId:actor,journeyId:entry.snapshot.rootExecutionId||id,observeOnly:true,automaticAuthorization:false};
-            if(bank.id!=='v8'){delete input.v8BirthDate;delete input.v8Email;delete input.v8Gender;}
+            if(!['v8','vctex'].includes(bank.id)){delete input.v8BirthDate;delete input.v8Email;delete input.v8Gender;}
             const response=await ProductSimulationService.run(db,tenant,'CLT','REFRESH',input,undefined,[bank.id]);
             const rows=response.rows.map(projectRow);
             const unsupported=rows.some(r=>(r.data as any)?.trackingUnsupported);
@@ -141,14 +141,29 @@ export class CltJourneyService {
   async start(db: any, tenant: string, actor: string, id: string, input: ProductSimulationInput, provider?: JourneyProvider, action: JourneyAction = 'REFRESH', parentId?: string) {
     if(provider==='finanto')throw Error('CLT_PROVIDER_RETIRED');
     if(action==='SIMULATE'&&provider&&parentId){const parent=await this.get(db,tenant,actor,parentId);input={...input,calculationKey:parent?.snapshot.results[provider]?.readyKey};}
-    const fingerprint = journeyFingerprint({ input, provider, action });
+    const fingerprint = journeyFingerprint({ input, provider, action,...(action==='SIMULATE'?{parentId}: {}) });
     const previous = await this.get(db, tenant, actor, id);
     if (previous) { if (previous.record.fingerprint !== fingerprint) throw Error('EXECUTION_CONFLICT'); return previous; }
     const all = (await this.available(db, tenant)).filter(bank=>bank.id!=='finanto'), banks = provider ? all.filter(bank => bank.id === provider).map(bank => bank.id === 'v8' ? { ...bank, contextual: false } : bank) : all;
     const parent = parentId ? await this.get(db, tenant, actor, parentId) : undefined;
-    if (parentId && (!provider || !parent || !(['DONE','UNKNOWN'].includes(parent.record.phase)) || parent?.record.phase==='UNKNOWN' && parent?.snapshot.results[provider!]?.status==='UNKNOWN' && !(provider==='nossa'&&action==='SIMULATE'&&parent.snapshot.results.nossa.readyToSimulate) || parent.snapshot.customer?.cpf !== input.cpf)) throw Error('EXECUTION_CONFLICT');
-    const snapshot: JourneySnapshot = { executionId: id, rootExecutionId: parent?.snapshot.rootExecutionId || parent?.snapshot.executionId || id, automaticEnabled: parent?.snapshot.automaticEnabled ?? (!provider && action === 'REFRESH'), running: true, customer: { ...input }, banks: parent ? [...new Map([...parent.snapshot.banks.filter(bank=>bank.id!=='finanto'), ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(Object.fromEntries(Object.entries(parent.snapshot.results).filter(([bank])=>bank!=='finanto'))) : {} };
-    for (const bank of banks) snapshot.results[bank.id] = { executionId: id, status: bank.contextual ? 'CONTEXTUAL' : 'QUERYING', rows: [], message: bank.error ? 'Não foi possível verificar a configuração. Nenhuma consulta foi iniciada.' : bank.contextual ? 'Etapa específica disponível neste cartão. Nenhuma autorização enviada.' : undefined };
+    const batch=action==='SIMULATE'&&!provider;
+    const newParameters=action==='SIMULATE'&&parent&&input.value>0&&(input.value!==parent.snapshot.customer?.value||input.term!==parent.snapshot.customer?.term||input.mode!==parent.snapshot.customer?.mode);
+    const parameterView=batch||newParameters;
+    if(batch&&(!parent||!(input.value>0)))throw Error('EXECUTION_CONFLICT');
+    if (parentId && (!provider&&!batch || !parent || !(['DONE','UNKNOWN'].includes(parent.record.phase)) || provider&&parent?.record.phase==='UNKNOWN' && parent?.snapshot.results[provider]?.status==='UNKNOWN' && !(provider==='nossa'&&action==='SIMULATE'&&parent.snapshot.results.nossa.readyToSimulate) || parent.snapshot.customer?.cpf !== input.cpf)) throw Error('EXECUTION_CONFLICT');
+    const snapshot: JourneySnapshot = { executionId: id, rootExecutionId: parameterView?id:parent?.snapshot.rootExecutionId || parent?.snapshot.executionId || id, automaticEnabled: parameterView?false:parent?.snapshot.automaticEnabled ?? (!provider && action === 'REFRESH'), running: true, customer: { ...input }, banks: parent ? [...new Map([...parent.snapshot.banks.filter(bank=>bank.id!=='finanto'), ...banks].map(b => [b.id, b])).values()] : banks, results: parent ? structuredClone(Object.fromEntries(Object.entries(parent.snapshot.results).filter(([bank])=>bank!=='finanto'))) : {} };
+    if(parameterView){
+      snapshot.calculation={value:input.value,term:input.term,mode:input.mode,requestedAt:new Date().toISOString(),banks:banks.map(b=>b.id),sourceExecutionId:parentId!};
+      snapshot.results={};snapshot.banks=(batch?banks:snapshot.banks).filter(b=>parent!.snapshot.banks.some(old=>old.id===b.id)).map(b=>({...b,contextual:b.id==='vctex'?false:b.contextual}));snapshot.calculation.banks=(batch?snapshot.banks:banks).map(b=>b.id);
+    }
+    for (const bank of (parameterView?snapshot.banks:banks)) {
+      const previous=parent?.snapshot.results[bank.id];
+      const margins=previous?.rows.filter(r=>r.state==='DATA')||[];
+      const uncertain=parameterView&&previous?.status==='UNKNOWN';
+      const marginOnly=parameterView&&provider&&bank.id!==provider;
+      if(uncertain)bank.contextual=true;
+      snapshot.results[bank.id]={executionId:id,status:uncertain?'UNKNOWN':marginOnly?'RETURNED':bank.contextual?'CONTEXTUAL':'QUERYING',rows:action==='SIMULATE'?margins:[],message:uncertain?'Resultado anterior incerto. Nenhum POST foi repetido.':bank.contextual?'Esta integração exige parâmetros próprios; o cálculo com estes filtros não possui contrato confirmado.':undefined};
+    }
     const record: JourneyRecord = { fingerprint, phase: 'READY', deadline: Date.now() + 50000, snapshot };
     const store = new CltJourneyStore(db, tenant, actor), canonical = await store.create(id, record);
     await store.remember(canonical);
@@ -176,13 +191,14 @@ export class CltJourneyService {
       const outcomes = await Promise.allSettled(snapshot.banks.filter(bank => bank.id!=='finanto' && !bank.contextual && (!provider || bank.id === provider)).map(async bank => {
         const result = snapshot.results[bank.id];
         try {
-          const update = async (rows: ProductSimulationRow[]) => { result.rows = rows.map(projectRow); await publish(); };
+          const previousMargins=action==='SIMULATE'?result.rows.filter(r=>r.state==='DATA'):[];
+          const update = async (rows: ProductSimulationRow[]) => { result.rows = [...previousMargins,...rows.map(projectRow)]; await publish(); };
           result.stage = action === 'AUTHORIZE' || action === 'CREATE_CONSULT' ? 'CONSENT' : 'CONSULTATION';
           const bankInput = { ...input, bmgActorId: actor, journeyId: snapshot.rootExecutionId || id, automaticAuthorization: action === 'REFRESH' && !provider, observeOnly: false };
-          if (bank.id !== 'v8') { delete bankInput.v8BirthDate; delete bankInput.v8Email; delete bankInput.v8Gender; }
+          if (!['v8','vctex'].includes(bank.id)) { delete bankInput.v8BirthDate; delete bankInput.v8Email; delete bankInput.v8Gender; }
           const run = () => ProductSimulationService.run(db, tenant, 'CLT', action, bankInput, update, [bank.id]);
           let response = action === 'SIMULATE' ? await cltBankOnce(db,tenant,bank.id,['SIMULATE',bankInput.journeyId,actor,input.cpf,input.employerDocument||null,input.factaRegistration||null,input.value,input.term,input.mode,input.calculationKey||null],run) : await run();
-          result.rows = response.rows.map(projectRow);
+          result.rows = [...previousMargins,...response.rows.map(projectRow)];
           if(bank.id==='v8')bindV8(snapshot);
           // Publish eligibility/margin before calculating. Each adapter revalidates the bank
           // response and derives its own payment; no browser-supplied margin is trusted.
@@ -219,12 +235,12 @@ function projectRow(row: ProductSimulationRow): ProductSimulationRow {
   const data = row.data as any;
   return { provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, cetMonthly: row.cetMonthly, cetAnnual: row.cetAnnual, simulationId: row.simulationId,
     link: typeof row.link === 'string' && /^https:\/\//i.test(row.link) ? row.link : undefined,
-    data: data ? { operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
+    data: data ? { observedAt:data.observedAt, financial:data.financial?Object.fromEntries(['isInsured','insuranceAmount','iofAmount','issueAmount','operationAmount','firstInstallmentDate'].filter(k=>data.financial[k]!==undefined).map(k=>[k,data.financial[k]])):undefined,vctex:data.vctex?Object.fromEntries(['preOperationId','employmentId','offerId','rawFee','rawMonthlyRate','iof','insuranceAmount','withInsurance','issueAmount','disbursedIssueAmount','finalDisbursedAmount','totalAmount','firstDueDate','lastDueDate','disbursementDate','uncertain'].filter(k=>data.vctex[k]!==undefined).map(k=>[k,data.vctex[k]])):undefined, operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
       eligible: typeof data.eligible === 'boolean' ? data.eligible : undefined,
       restrictions: safeReasons(data.restrictions),
       borrower: data.borrower ? { name: data.borrower.name } : undefined,
       items: Array.isArray(data.items) ? data.items.slice(0, 500).map((item: any) => ({ employerDocument: item.employerDocument, employerName: item.employerName, registrationNumber: item.registrationNumber, term: item.term, rate: item.rate, netValue: item.netValue, installmentValue: item.installmentValue, maxInstallmentValue: item.maxInstallmentValue })) : undefined,
-      margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, utilizable_balance: data.margin.utilizable_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
+      margin: data.margin ? { name: data.margin.name, available_balance: data.margin.available_balance, used_balance:data.margin.used_balance,residual_balance:data.margin.residual_balance, utilizable_balance: data.margin.utilizable_balance, can_continue: typeof data.margin.can_continue === 'boolean' ? data.margin.can_continue : undefined, restrictions: safeReasons(data.margin.restrictions), employer: data.margin.employer ? { name: data.margin.employer.name, document: data.margin.employer.document } : undefined } : undefined,
       v8: data.v8 ? { nextAction:data.v8.nextAction==='CREATE_CONSULT'?'CREATE_CONSULT':undefined, consultId: data.v8.consultId, promoterId: data.v8.promoterId, status: data.v8.status, consentRecorded: data.v8.consentRecorded, monthlyInterestRate: data.v8.monthlyInterestRate, operationAmount: data.v8.operationAmount, issueAmount: data.v8.issueAmount, disbursedIssueAmount: data.v8.disbursedIssueAmount, requestedProvider: data.v8.requestedProvider, returnedProvider: data.v8.returnedProvider, simulationConfigId: data.v8.simulationConfigId, isInsured: data.v8.isInsured, insuranceAmount: data.v8.insuranceAmount, rawCet: data.v8.rawCet, firstInstallmentDate: data.v8.firstInstallmentDate, iofAmount: data.v8.iofAmount, cached: data.v8.cached === true, calculatedAt: data.v8.calculatedAt, simulationReady: data.v8.simulationReady, consentReady: data.v8.consentReady, ownershipConfirmed: data.v8.ownershipConfirmed, contractReasons: safeReasons(data.v8.contractReasons), rawMonthlyRate: data.v8.rawMonthlyRate, configurations: Array.isArray(data.v8.configurations) ? data.v8.configurations.map((c: any) => ({ id: c.id, name: c.name, terms: c.terms, rawMonthlyRate: c.rawMonthlyRate })) : undefined } : undefined } : undefined };
 }
 

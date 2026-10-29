@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { SimulationOfferCard } from './SimulationOfferCard';
 import { normalizeCpf } from '../../lib/utils';
-type Props = { cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
+type Props = { sharedResults?:boolean; cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
 const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-transparent p-2 text-sm dark:border-slate-700';
 function options(min: number, max: number, scale = 1) { const first = Math.ceil(min * scale), last = Math.floor(max * scale); return Number.isFinite(first) && Number.isFinite(last) && last >= first && last - first <= 2000 ? Array.from({ length: last - first + 1 }, (_, index) => (first + index) / scale) : []; }
 export function ParanaCltSimulation(props: Props) {
@@ -54,6 +54,6 @@ export function ParanaCltSimulation(props: Props) {
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={insurance} onChange={event => { setInsurance(event.target.checked); setOffers([]); }} />Gerar com seguro</label>
       <button type="button" disabled={!term || !rate || !rule.trim() || !(Number(value) > 0) || mode === 'AMOUNT' && !(Number(margin) > 0)} onClick={() => run('simulate')} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Simular Paraná CLT</button>
     </fieldset>}
-    {offers.map((offer, index) => <SimulationOfferCard key={`${offer.id}-${index}`} name="Paraná · Novo CLT" description={`Simulação ${offer.id} · ${offer.insurance ? 'Com seguro' : 'Sem seguro'}`} amount={offer.amount} installment={offer.installment} term={offer.term} rate={offer.rate}><p className="mt-2 text-xs text-slate-500">CET mensal: {offer.cetMonthly ?? 'Não informado'}% · CET anual: {offer.cetAnnual ?? 'Não informado'}%</p></SimulationOfferCard>)}
+    {!props.sharedResults&&offers.map((offer, index) => <SimulationOfferCard key={`${offer.id}-${index}`} name="Paraná · Novo CLT" description={`Simulação ${offer.id} · ${offer.insurance ? 'Com seguro' : 'Sem seguro'}`} amount={offer.amount} installment={offer.installment} term={offer.term} rate={offer.rate}><p className="mt-2 text-xs text-slate-500">CET mensal: {offer.cetMonthly ?? 'Não informado'}% · CET anual: {offer.cetAnnual ?? 'Não informado'}%</p></SimulationOfferCard>)}
   </section>;
 }

@@ -43,13 +43,9 @@ it('cancels observation on unmount without starting a bank operation', async()=>
   const {unmount}=render(<V8CltActions capabilities={{connections:[]}} form={{}} setForm={vi.fn()} start={start} busy={false} executionId="synthetic" rows={[{data:{v8:ref}}]} onSnapshot={vi.fn()}/>);
   unmount();await act(async()=>{await vi.advanceTimersByTimeAsync(80000);});expect(fetcher).not.toHaveBeenCalled();expect(start).not.toHaveBeenCalled();
 });
-it('refreshes the reference just authorized rather than another selection in the form', async()=>{
-  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({authorizationRecorded:true})}));const start=vi.fn();
-  render(<V8CltActions capabilities={{connections:[]}} form={{v8ConsultId:'another-consult',v8PromoterId:'another-promoter'}} setForm={vi.fn()} start={start} busy={false} executionId="synthetic" rows={[{data:{v8:{...ref,consentRecorded:false,status:'WAITING_CONSENT'}}}]} onSnapshot={vi.fn()}/>);
-  fireEvent.change(screen.getByLabelText('Sistema operacional do dispositivo'),{target:{value:'Synthetic OS'}});
-  fireEvent.change(screen.getByLabelText('Modelo do dispositivo'),{target:{value:'Synthetic model'}});
-  fireEvent.change(screen.getByLabelText('Nome do dispositivo'),{target:{value:'Synthetic device'}});
-  fireEvent.change(screen.getByLabelText('Tipo do dispositivo'),{target:{value:'desktop'}});
-  await act(async()=>fireEvent.click(screen.getByText('Autorizar consulta V8')));
-  expect(start).toHaveBeenCalledWith('v8','REFRESH',{v8ConsultId:ref.consultId,v8PromoterId:ref.promoterId});
+it('binds authorization to its own reference instead of a different form selection',async()=>{
+ const request=vi.fn().mockResolvedValue({ok:true,json:async()=>({authorizationRecorded:true})});vi.stubGlobal('fetch',request);const done=vi.fn();
+ render(<V8ApiAuthorization executionId="synthetic" reference={{...ref,consentRecorded:false,status:'WAITING_CONSENT'}} onRecorded={done}/>);
+ for(const [label,value]of [['Sistema operacional do dispositivo','Synthetic OS'],['Modelo do dispositivo','Synthetic model'],['Nome do dispositivo','Synthetic device'],['Tipo do dispositivo','desktop']])fireEvent.change(screen.getByLabelText(label),{target:{value}});
+ await act(async()=>fireEvent.click(screen.getByText('Autorizar consulta V8')));expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({consultId:ref.consultId,promoterId:ref.promoterId});expect(done).toHaveBeenCalledOnce();
 });

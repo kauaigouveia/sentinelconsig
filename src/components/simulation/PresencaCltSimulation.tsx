@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CurrencyInput } from '../common/CurrencyInput';
 import { SimulationOfferCard } from './SimulationOfferCard';
 
-type Props = { cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void };
+type Props = { sharedResults?:boolean; cpf: string; name: string; phone: string; onProgress?: (progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => void };
 type Consent = { link: string; receipt: string };
 type Choice = { employer: string; registration: string; receipt: string };
 type Offer = { id: number; name: string; amount: number; installment: number; term: number; rate: number; insuranceAmount: number | null };
@@ -15,7 +15,7 @@ export function PresencaCltSimulation(props: Props) {
   const [consents, setConsents] = useState<Consent[]>([]), [confirmed, setConfirmed] = useState(false), [choices, setChoices] = useState<Choice[]>([]), [selected, setSelected] = useState('');
   const [margin, setMargin] = useState<number | null>(null), [receipt, setReceipt] = useState(''), [installment, setInstallment] = useState(''), [email, setEmail] = useState(''), [offers, setOffers] = useState<Offer[]>([]);
   const current = useRef<AbortController | null>(null);
-  useEffect(() => { if (busy || message || offers.length) props.onProgress?.({ busy, message, offers }); }, [busy, message, offers, props.onProgress]);
+  useEffect(() => { if (busy || message || offers.length) props.onProgress?.({ busy, message, offers,margin:margin??undefined,consultId:receipt||undefined }); }, [busy, message, offers, margin,receipt,props.onProgress]);
   useEffect(() => {
     const request = new AbortController(); current.current = request;
     setCheckingAvailability(true); setAvailabilityError('');
@@ -72,6 +72,6 @@ export function PresencaCltSimulation(props: Props) {
       {margin !== null && <><p className="text-sm">Margem disponível: <strong>{margin.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">E-mail do cliente<input className={control} type="email" value={email} onChange={event => { setEmail(event.target.value); setOffers([]); }} /></label><label className="text-sm">Parcela desejada (R$)<CurrencyInput className={control} value={installment} min={0.01} max={margin} onValueChange={value => { setInstallment(value); setOffers([]); }} /></label></div><button type="button" disabled={!receipt || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || Number(installment) <= 0 || Number(installment) > margin} onClick={() => void run('offers')} className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50">4. Consultar ofertas Presença</button></>}
     </fieldset>
     {busy && <p role="status">Consultando Presença…</p>}{message && <p role={failed ? 'alert' : 'status'} className="text-sm text-slate-500">{message}</p>}
-    {offers.map((offer, index) => <SimulationOfferCard key={`${offer.id}-${index}`} name={offer.name} description="Presença · CLT · condição retornada pelo banco" amount={offer.amount} installment={offer.installment} term={offer.term} rate={offer.rate}><p className="mt-2 text-xs text-slate-500">Seguro: {offer.insuranceAmount === null ? 'não informado' : offer.insuranceAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Contratação ainda não disponível nesta integração.</p></SimulationOfferCard>)}
+    {!props.sharedResults&&offers.map((offer, index) => <SimulationOfferCard key={`${offer.id}-${index}`} name={offer.name} description="Presença · CLT · condição retornada pelo banco" amount={offer.amount} installment={offer.installment} term={offer.term} rate={offer.rate}><p className="mt-2 text-xs text-slate-500">Seguro: {offer.insuranceAmount === null ? 'não informado' : offer.insuranceAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Contratação ainda não disponível nesta integração.</p></SimulationOfferCard>)}
   </section>;
 }

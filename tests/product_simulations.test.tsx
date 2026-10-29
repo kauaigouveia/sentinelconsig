@@ -116,7 +116,7 @@ describe('Simulações CLT e FGTS na central', () => {
     configs();
     const request = vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_p, _t, _m, endpoint) => {
       const data = endpoint.includes('banking') ? ['QITECH', 'UY3'] : endpoint.includes('check-authorization') ? { status: 'AUTHORIZED' }
-        : endpoint.includes('get-margin') ? { margin_key: 'margin', can_continue: true }
+        : endpoint.includes('get-margin') ? { margin_key: 'margin', can_continue: true, available_balance:600 }
           : endpoint.includes('list-rebates') ? [{ cod_tabela: 'a', name: 'Tabela A', number_of_installments: 24 }, { cod_tabela: 'a', number_of_installments: 12 }]
             : { simulation_key: 'simulation', disbursement_amount: 5000, num_periods: 24, schedule: [{ payment: 500 }], interest_rate: 0.02 };
       return { success: true, status: 200, data: { success: true, data } };

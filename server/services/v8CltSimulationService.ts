@@ -156,7 +156,7 @@ export class V8CltSimulationService {
                 const operation = await v8CltOperation(db, tenantId, promoterId, ['SIMULATE', input.cpf, payload, table.updated_at ?? null, contract.reviewedAt ?? null], async () => {
                 const result = await this.request(db, tenantId, promoterId, '/private-consignment/simulation', payload);
                 const amount = number(result.disbursement_amount), installment = number(result.installment_value);
-                if (!uuid(result.id_simulation) || !amount || amount <= 0 || !installment || installment <= 0 || installment > margin || Number(result.number_of_installments) !== term) throw new V8CltError(200, 'SIMULATION_SCHEMA');
+                if (!uuid(result.id_simulation) || !amount || amount <= 0 || !installment || installment <= 0 || installment > margin || !input.autoConditions&&input.mode==='Payment'&&installment>input.value+0.005 || Number(result.number_of_installments) !== term) throw new V8CltError(200, 'SIMULATION_SCHEMA');
                 const contractAmount = number(result.issue_amount);
                 if (result.simulation_config_id !== undefined && result.simulation_config_id !== table.id) throw new V8CltError(200, 'CONFIG_MISMATCH');
                 const rawRate = number(result.monthly_interest_rate);

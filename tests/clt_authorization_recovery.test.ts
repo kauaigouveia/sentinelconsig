@@ -8,11 +8,11 @@ import {withIntegrationPromoter} from '../server/services/bankPromoterConfig';
 const identity={document_number:'52998224725',service_type:'qi'};
 beforeEach(()=>{vi.stubEnv('JWT_SECRET','synthetic-recovery-secret-only');vi.stubGlobal('fetch',vi.fn(()=>{throw Error('Real banks forbidden');}));});
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();vi.useRealTimers();});
-it('captures only real client hints and never invents a hostname or model',async()=>{
- const result=await readV8Device({platform:'legacy-platform',userAgent:'synthetic',userAgentData:{getHighEntropyValues:async()=>({platform:'SyntheticOS',model:'SyntheticModel',formFactors:['Desktop']})}});expect(result).toEqual({operationalSystem:'SyntheticOS',deviceModel:'SyntheticModel',deviceType:'desktop',deviceName:''});
+it('uses real client hints plus a class description, without claiming a hostname',async()=>{
+ const result=await readV8Device({platform:'legacy-platform',userAgent:'synthetic',userAgentData:{getHighEntropyValues:async()=>({platform:'SyntheticOS',model:'SyntheticModel',formFactors:['Desktop']})}});expect(result).toEqual({operationalSystem:'SyntheticOS',deviceModel:'SyntheticModel',deviceType:'desktop',deviceName:'Computador SyntheticOS'});
 });
 it('requests only missing fields when client hints are unavailable or denied',async()=>{
- expect(await readV8Device({platform:'MacIntel',userAgent:'synthetic'})).toEqual({operationalSystem:'MacIntel',deviceModel:'',deviceName:'',deviceType:''});
+ expect(await readV8Device({platform:'MacIntel',userAgent:'synthetic'})).toEqual({operationalSystem:'macOS',deviceModel:'PC',deviceName:'Computador macOS',deviceType:'desktop'});
  expect((await readV8Device({platform:'',userAgent:'synthetic',userAgentData:{mobile:true,getHighEntropyValues:async()=>{throw Error('denied');}}})).deviceType).toBe('mobile');
 });
 it('recognizes the same official authorized state in root or data envelopes without treating success as consent',()=>{

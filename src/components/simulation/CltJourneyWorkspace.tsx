@@ -1,3 +1,6 @@
+import {CltMarginResults,CltOfferResults} from './CltResults';
+import {presentedOffers,presentedMargins} from '../../lib/cltPresentation';
+import {V8ApiAuthorization} from './V8ApiAuthorization';
 import { VctexCltActions } from './VctexCltActions';
 import { cltRatePercent } from '../../lib/v8CltDisplay';
 import { V8CltActions } from './V8CltActions';
@@ -26,6 +29,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   const [form, setForm] = useState(blank), [page, setPage] = useState<'CLIENT' | 'TRACKING'>('CLIENT');
   const [snapshot, setSnapshot] = useState<JourneySnapshot | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [selectedBank, setSelectedBank] = useState(''), [compared, setCompared] = useState<string[]>([]), [selectedOffer, setSelectedOffer] = useState(''), [compareMode, setCompareMode] = useState(false);
+  const pendingCalculation=useRef(false),calculationView=useRef(false);calculationView.current=pendingCalculation.current||!!snapshot?.calculation;
   const [v8Pilot, setV8Pilot] = useState<any>(null);
   const [bmgMessage, setBmgMessage] = useState('');
   const [bmgPhase, setBmgPhase] = useState('');
@@ -41,7 +45,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   currentScope.current = scope;
   const dialog = useRef<HTMLDivElement>(null), previous = useRef<HTMLElement | null>(null);
   const resetVisual = useCallback(() => {
-    epoch.current++;active.current?.abort();historyRead.current?.abort();observation.current?.abort();observation.current=null;last.current=null;locked.current=false;uncertainTransport.current=false;advanced.current.clear();
+    pendingCalculation.current=false;calculationView.current=false;epoch.current++;active.current?.abort();historyRead.current?.abort();observation.current?.abort();observation.current=null;last.current=null;locked.current=false;uncertainTransport.current=false;advanced.current.clear();
     setForm(blank);setSnapshot(null);setPage('CLIENT');setBusy(false);setError('');setSelectedBank('');setCompared([]);setCompareMode(false);setOpenedPanels([]);setSelectedOffer('');setBmgMessage('');setBmgPhase('');setHistory([]);setRecoveryId('');setV8Pilot(null);
     try{sessionStorage.removeItem('sentinel:clt-execution:'+scope);}catch{/* No history is deleted. */}
   },[scope]);
@@ -62,7 +66,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
   });}, [scope,viewEpoch]);
   useEffect(()=>{const ref=uniqueV8Reference(snapshot?.results.v8?.rows);if(ref)setForm(old=>old.v8ConsultId===ref.consultId&&old.v8PromoterId===ref.promoterId?old:{...old,v8ConsultId:ref.consultId,v8PromoterId:ref.promoterId});},[snapshot]);
   useEffect(()=>{if(!resumeId||!isOpen)return;const id=resumeId;setResumeId('');void recover(id);},[resumeId,isOpen,viewEpoch]);
-  const bmgRows = useCallback((rows: any[]) => { if (!isCurrent(scope,viewEpoch)||!rows.length) return; setSnapshot(old => old ? { ...old, results: { ...old.results, bmg: { executionId: old.results.bmg?.executionId, status: 'RETURNED', rows } } } : old); }, [scope,viewEpoch]);
+  const bmgRows = useCallback((rows: any[]) => { if (calculationView.current||!isCurrent(scope,viewEpoch)||!rows.length) return; setSnapshot(old => old ? { ...old, results: { ...old.results, bmg: { executionId: old.results.bmg?.executionId, status: 'RETURNED', rows } } } : old); }, [scope,viewEpoch]);
   const bmgStatus = useCallback((message: string, completedAction?: string) => {
     if(!isCurrent(scope,viewEpoch))return;
     setBmgMessage(cltPublicMessage(message) || '');
@@ -73,11 +77,11 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
       setSnapshot(old => old ? { ...old, results: { ...old.results, bmg: { executionId: old.results.bmg?.executionId, status: 'RETURNED', rows: [] } } } : old);
     }
   }, [scope,viewEpoch]);
-  const contextProgress = useCallback((id: string, name: string, progress: { busy: boolean; message: string; offers: any[] }) => {if(!isCurrent(scope,viewEpoch))return;setSnapshot(old => old ? { ...old, results: { ...old.results, [id]: { executionId: old.results[id]?.executionId, status: progress.busy ? 'QUERYING' : 'RETURNED', message: cltPublicMessage(progress.message), rows: [...(old.results[id]?.rows||[]).filter(r=>r.state!=='OFFER'), ...progress.offers.map(offer => ({ provider: name, institution: name, state: 'OFFER' as const, table: offer.name, amount: offer.amount, installment: offer.installment, term: offer.term, rate: offer.rate, cetMonthly: typeof offer.cetMonthly === 'number' && Number.isFinite(offer.cetMonthly) ? offer.cetMonthly : undefined, cetAnnual: typeof offer.cetAnnual === 'number' && Number.isFinite(offer.cetAnnual) ? offer.cetAnnual : undefined, simulationId: String(offer.id || '') }))] } } } : old);}, [scope,viewEpoch]);
-  const paranaProgress = useCallback((progress: { busy: boolean; message: string; offers: any[] }) => contextProgress('parana', 'Paraná Banco', progress), [contextProgress]);
-  const presencaProgress = useCallback((progress: { busy: boolean; message: string; offers: any[] }) => contextProgress('presenca', 'Presença Bank', progress), [contextProgress]);
-  const vctexRows = useCallback((rows:any[]) => {if(!isCurrent(scope,viewEpoch))return;setSnapshot(old => old ? {...old,results:{...old.results,vctex:{executionId:old.executionId,status:'RETURNED',rows}}}:old);},[scope,viewEpoch]);
-  const happyProgress = useCallback((progress: { busy: boolean; message: string; offers: any[] }) => contextProgress('happy', 'Happy CLT', progress), [contextProgress]);
+  const contextProgress = useCallback((id: string, name: string, progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => {if(calculationView.current||!isCurrent(scope,viewEpoch))return;setSnapshot(old => old ? { ...old, results: { ...old.results, [id]: { executionId: old.results[id]?.executionId, status: progress.busy ? 'QUERYING' : 'RETURNED', message: cltPublicMessage(progress.message), rows: [...(old.results[id]?.rows||[]).filter(r=>r.state!=='OFFER'&&(r.data as any)?.source!=='context-margin'), ...(progress.margin!==undefined?[{provider:name,institution:name,state:'DATA' as const,data:{source:'context-margin',margin:{available_balance:progress.margin},consultationId:progress.consultId,observedAt:new Date().toISOString()}}]:[]), ...progress.offers.map(offer => ({ provider: name, institution: name, state: 'OFFER' as const, table: offer.name, amount: offer.amount, installment: offer.installment, term: offer.term, rate: offer.rate, cetMonthly: typeof offer.cetMonthly === 'number' && Number.isFinite(offer.cetMonthly) ? offer.cetMonthly : undefined, cetAnnual: typeof offer.cetAnnual === 'number' && Number.isFinite(offer.cetAnnual) ? offer.cetAnnual : undefined, simulationId: String(offer.id || '') }))] } } } : old);}, [scope,viewEpoch]);
+  const paranaProgress = useCallback((progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => contextProgress('parana', 'Paraná Banco', progress), [contextProgress]);
+  const presencaProgress = useCallback((progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => contextProgress('presenca', 'Presença Bank', progress), [contextProgress]);
+  const vctexRows = useCallback((rows:any[]) => {if(calculationView.current||!isCurrent(scope,viewEpoch))return;setSnapshot(old => old ? {...old,results:{...old.results,vctex:{executionId:old.executionId,status:'RETURNED',rows}}}:old);},[scope,viewEpoch]);
+  const happyProgress = useCallback((progress: { busy: boolean; message: string; offers: any[];margin?:number;consultId?:string }) => contextProgress('happy', 'Happy CLT', progress), [contextProgress]);
 
   function restoreCustomer(saved: JourneySnapshot) {
     const c = saved.customer;
@@ -92,7 +96,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
       const data = await response.json(); if (!isCurrent(requestedScope,requestedEpoch)) return;
       if (!response.ok) throw new Error(data.error || 'Execução indisponível.'); merge(data); restoreCustomer(data);try{sessionStorage.setItem('sentinel:clt-execution:'+scope,data.executionId);}catch{}void observeBank(undefined,data.executionId);  uncertainTransport.current = data.running === true || Object.values(data.results).some((r: any) => r.status === 'UNKNOWN');
     } catch (e) { if (isCurrent(requestedScope,requestedEpoch)) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha no acompanhamento.') || 'Falha no acompanhamento.'); }
-    finally { if (isCurrent(requestedScope,requestedEpoch)) { locked.current = false; setBusy(false); } }
+    finally { if (isCurrent(requestedScope,requestedEpoch)) { pendingCalculation.current=false;locked.current = false; setBusy(false); } }
   }
   async function loadHistory(){
     if(busy)return;const requestedEpoch=epoch.current,requestedScope=scope;historyRead.current?.abort();const read=new AbortController();historyRead.current=read;
@@ -108,16 +112,16 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
       if(!response.ok)throw Error(data.error||'Não foi possível atualizar os bancos.');
       merge(data);
       const bank=data.banks.find((b:any)=>b.id!=='finanto'&&data.automaticEnabled&&data.results[b.id]?.readyToSimulate&&!advanced.current.has(`${data.rootExecutionId||data.executionId}:${b.id}:${data.results[b.id].readyKey}`));
-      if(bank&&!locked.current){advanced.current.add(`${data.rootExecutionId||data.executionId}:${bank.id}:${data.results[bank.id].readyKey}`);void start(bank.id,'SIMULATE');}
+      if(bank&&!locked.current){advanced.current.add(`${data.rootExecutionId||data.executionId}:${bank.id}:${data.results[bank.id].readyKey}`);void start(bank.id,'SIMULATE',undefined,true);}
       return data;
     }catch(e){if(isCurrent(requestedScope,requestedEpoch)&&!controller.signal.aborted)setError(cltPublicMessage(e instanceof Error?e.message:'Acompanhamento indisponível.')||'Acompanhamento indisponível.');}
     finally{if(observation.current===controller)observation.current=null;}
   }
-  async function start(provider?: JourneyProvider, action = 'REFRESH', selection?: { v8ConsultId: string; v8PromoterId: string }) {
+  async function start(provider?: JourneyProvider, action = 'REFRESH', selection?: { v8ConsultId: string; v8PromoterId: string },automaticCalculation=false) {
     if (locked.current) return;
     if(provider&&action==='REFRESH'){await observeBank(provider,undefined,true);setPollRevision(n=>n+1);return;}
     const target=snapshot?.results[provider||''];
-    const isolatedCalculation=provider&&action==='SIMULATE'&&!snapshot?.running&&target&&(target.status!=='UNKNOWN'||provider==='nossa'&&target.readyToSimulate);
+    const isolatedCalculation=!provider&&action==='SIMULATE'&&!snapshot?.running||provider&&action==='SIMULATE'&&!snapshot?.running&&target&&(target.status!=='UNKNOWN'||provider==='nossa'&&target.readyToSimulate);
     if (uncertainTransport.current && !isolatedCalculation) { setPage('TRACKING'); setError('Recupere o acompanhamento e confira o estado antes de iniciar outra operação.'); return; }
     const cpf = form.cpf.replace(/\D/g, ''), phone = form.phone.replace(/\D/g, '');
     const birthDate = parseCltBirthDate(form.v8BirthDate);
@@ -125,13 +129,14 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     if (!isCltEmail(form.v8Email.trim()) || !isCltGender(form.v8Gender)) { setError('Preencha o e-mail válido e o sexo informado pelo trabalhador.'); setPage('CLIENT'); return; }
     const financial = action === 'SIMULATE';
     if (!isValidCpf(cpf) || !form.name.trim() || !/^\d{10,11}$/.test(phone) || financial && form.value && (!Number.isFinite(Number(form.value)) || Number(form.value) <= 0) || form.employerDocument && ![8, 14].includes(form.employerDocument.replace(/\D/g, '').length)) { setError('Revise CPF, nome, telefone e empregador. Se informar um filtro de valor para calcular, use um valor positivo.'); return; }
-    const body = { ...form, ...selection, cpf, phone, name: form.name.trim(), v8BirthDate: birthDate, v8Email: form.v8Email.trim(), employerDocument: form.employerDocument.replace(/\D/g, ''), value: financial && form.value ? Number(form.value) : undefined, term: financial ? Number(form.term) || undefined : undefined, provider, action };
+    const body = { ...form, ...selection, cpf, phone, name: form.name.trim(), v8BirthDate: birthDate, v8Email: form.v8Email.trim(), employerDocument: form.employerDocument.replace(/\D/g, ''), value: financial ? automaticCalculation?snapshot?.customer?.value||undefined:form.value?Number(form.value):undefined : undefined, term: financial ? automaticCalculation?snapshot?.customer?.term||undefined:Number(form.term)||undefined : undefined, mode:automaticCalculation?snapshot?.customer?.mode||'Payment':form.mode, provider, action };
     const fingerprint = JSON.stringify(body);
     if (!provider && last.current?.fingerprint === fingerprint) { setPage('TRACKING'); await recover(); return; }
-    const parentExecutionId = provider ? last.current?.id : undefined;
+    const parentExecutionId = provider||action==='SIMULATE' ? last.current?.id : undefined;
     const executionId = crypto.randomUUID(); last.current = { id: executionId, fingerprint };
     try { sessionStorage.setItem('sentinel:clt-execution:' + scope, executionId); } catch { /* No customer data is stored in the browser. */ }
-    locked.current = true; setBusy(true); setError(''); setPage('TRACKING'); if (!provider) { setSnapshot(null); setSelectedBank(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase(''); }
+    locked.current = true; setBusy(true); setError(''); setPage('TRACKING'); if (!provider&&action!=='SIMULATE') { setSnapshot(null); setSelectedBank(''); setCompared([]); setCompareMode(false); setOpenedPanels([]); setSelectedOffer(''); setBmgMessage(''); setBmgPhase(''); }
+    if(!provider&&action==='SIMULATE'){pendingCalculation.current=true;calculationView.current=true;setCompared([]);setSelectedOffer('');setCompareMode(false);setSnapshot(old=>old?{...old,running:true,results:Object.fromEntries(Object.entries(old.results).map(([id,r])=>[id,{...r,rows:r.rows.filter(row=>row.state!=='OFFER')}]))}:old);}
     observation.current?.abort();active.current?.abort(); const controller = new AbortController(); active.current = controller; const requestedScope = scope, requestedEpoch=epoch.current;
     let rejectedBeforeExecution = false;
     uncertainTransport.current = true;
@@ -147,7 +152,7 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
       if (finished) uncertainTransport.current = false;
       if (!finished && !controller.signal.aborted) setError('A conexão de acompanhamento terminou. Recupere o estado da execução; não repita operações bancárias.');
     } catch (e) { if(!isCurrent(requestedScope,requestedEpoch))return; if (rejectedBeforeExecution) { uncertainTransport.current = false; last.current = null; try { sessionStorage.removeItem('sentinel:clt-execution:' + scope); } catch { /* Optional storage. */ } } if (!controller.signal.aborted && isCurrent(requestedScope,requestedEpoch)) setError(cltPublicMessage(e instanceof Error ? e.message : 'Falha na consulta. Confira o estado antes de repetir.') || 'Falha no acompanhamento.'); }
-    finally { if (isCurrent(requestedScope,requestedEpoch)) { locked.current = false; setBusy(false); } }
+    finally { if (isCurrent(requestedScope,requestedEpoch)) { pendingCalculation.current=false;locked.current = false; setBusy(false); } }
   }
   useEffect(()=>{
     if(!isOpen||busy||!snapshot||snapshot.running)return;
@@ -167,8 +172,11 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
     }).catch(() => { if (!controller.signal.aborted) setV8Pilot(null); });
     return () => controller.abort();
   }, [selectedBank, scope, isOpen]);
-  const allOffers = Object.entries(snapshot?.results || {}).filter(([bank])=>bank!=='finanto').flatMap(([bank, result]) => result.rows.filter(row => row.state === 'OFFER').map((row, i) => ({ bank, row, key: `${bank}:${row.simulationId || row.table || ''}:${i}` })));
-  const offers = compareMode ? allOffers.filter(item => compared.includes(item.key)) : allOffers.filter(item => !selectedBank || item.bank === selectedBank);
+  const knownMargins=presentedMargins(snapshot).map(r=>r.available).filter((v):v is number=>v!==undefined&&v>0);
+  const exceedsKnownMargins=form.mode==='Payment'&&knownMargins.length>0&&Number(form.value)>Math.max(...knownMargins);
+  const allOffers = presentedOffers(snapshot);
+  const offers = compareMode ? allOffers.filter(item => compared.includes(item.key)) : allOffers;
+  useEffect(()=>{const valid=new Set(presentedOffers(snapshot).map(o=>o.key));setCompared(old=>{const next=old.filter(k=>valid.has(k));return next.length===old.length?old:next;});setSelectedOffer(old=>valid.has(old)?old:'');},[snapshot]);
   const focused = snapshot?.banks.find(bank => bank.id === selectedBank), focusedResult = snapshot?.results[selectedBank];
   const clientInput = { cpf: form.cpf.replace(/\D/g, ''), name: form.name, phone: form.phone.replace(/\D/g, ''), employerDocument: form.employerDocument, factaRegistration: form.factaRegistration, mode: form.mode, term: Number(form.term), value: Number(form.value), product: 'CLT', eligibility: true };
   if (!isOpen) return null;
@@ -212,13 +220,15 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
               </article>; })}
             </section>
             <section aria-label="Ofertas e ações da instituição" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+              <CltMarginResults snapshot={snapshot}/>
+              {snapshot&&snapshot.automaticEnabled===true&&!snapshot.running&&uniqueV8Reference(snapshot.results.v8?.rows)?.consentRecorded!==true&&uniqueV8Reference(snapshot.results.v8?.rows)?.status==='WAITING_CONSENT'&&<V8ApiAuthorization automatic executionId={snapshot.executionId} reference={uniqueV8Reference(snapshot.results.v8?.rows)} onRecorded={()=>{void observeBank('v8',undefined,true);setPollRevision(n=>n+1);}}/>}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{compareMode ? 'Comparação de condições' : focused?.name || 'Ofertas disponíveis'}</h2><div className="flex gap-3">{compared.length > 1 && !compareMode && <button className="text-xs text-cyan-700 dark:text-cyan-300" onClick={() => setCompareMode(true)}>Comparar selecionadas ({compared.length})</button>}{compared.length > 0 && <button className="text-xs text-cyan-700 dark:text-cyan-300" onClick={() => { setCompared([]); setCompareMode(false); }}>Limpar comparação</button>}</div></div>
-              {snapshot?.banks.some(b=>b.id==='vctex') && !snapshot.running && <div hidden={selectedBank!=='vctex'}><VctexCltActions key={scope+':'+snapshot.executionId} scope={scope} executionId={snapshot.executionId} active={isOpen} onRows={vctexRows} /></div>}
+              {snapshot?.banks.some(b=>b.id==='vctex') && !snapshot.running&&!snapshot.calculation && <div hidden={selectedBank!=='vctex'}><VctexCltActions key={scope+':'+snapshot.executionId} scope={scope} executionId={snapshot.executionId} active={isOpen} onRows={vctexRows} /></div>}
               {selectedBank === 'v8' && <V8CltActions onCompleteData={()=>setPage('CLIENT')} key={scope + ':' + (snapshot?.executionId || '')} capabilities={v8Pilot} form={form} setForm={setForm} start={start} busy={busy} executionId={snapshot?.executionId} rows={focusedResult?.rows || []} onSnapshot={merge} />}
-              {focusedResult?.rows.filter(row => row.provider === 'V8 DIGITAL').map((row, i) => <V8CltConsultation key={i} row={row} automatic={v8References(focusedResult?.rows).length===1} selected={form.v8ConsultId === (row.data as any)?.v8?.consultId && form.v8PromoterId === (row.data as any)?.v8?.promoterId} onSelect={() => setForm(old => ({ ...old, v8ConsultId: (row.data as any).v8.consultId, v8PromoterId: (row.data as any).v8.promoterId }))} />)}
+              {focusedResult?.rows.filter(row => row.provider === 'V8 DIGITAL'&&row.state!=='OFFER').map((row, i) => <V8CltConsultation key={i} row={row} automatic={v8References(focusedResult?.rows).length===1} selected={form.v8ConsultId === (row.data as any)?.v8?.consultId && form.v8PromoterId === (row.data as any)?.v8?.promoterId} onSelect={() => setForm(old => ({ ...old, v8ConsultId: (row.data as any).v8.consultId, v8PromoterId: (row.data as any).v8.promoterId }))} />)}
               {focusedResult?.rows.some(row => row.state !== 'OFFER' && row.state !== 'DATA') && <ul aria-label="Retornos por instituição" className="mb-4 space-y-2">{focusedResult.rows.filter(row => row.state !== 'OFFER' && row.state !== 'DATA').map((row, index) => <li key={index} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"><strong>{row.institution}</strong><span className="ml-2 text-xs text-slate-500">{cltOutcomeLabels[cltOutcome(row)]}</span>{row.message && <p className="mt-1 text-xs text-slate-500">{row.message}</p>}</li>)}</ul>}
               {focusedResult?.rows.filter(row => row.state === 'DATA' && row.provider !== 'V8 DIGITAL').map((row, i) => <CltCustomerDataCard key={i} row={row} selectedEmployer={form.employerDocument} selectedFactaRegistration={form.factaRegistration} selectedV8ConsultId={form.v8ConsultId} selectedV8PromoterId={form.v8PromoterId} onSelectEmployer={(doc, registration) => setForm(old => ({ ...old, employerDocument: doc, factaRegistration: registration || '' }))} onSelectV8={(id, promoter) => setForm(old => ({ ...old, v8ConsultId: id, v8PromoterId: promoter }))} />)}
-              {focused && <details className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700"><summary className="cursor-pointer text-xs font-semibold">Filtros opcionais de simulação</summary><p className="my-2 text-xs text-slate-500">Sem valor informado, utilizamos somente o limite efetivamente retornado por cada banco. Prazos vêm das tabelas da instituição.</p><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs">Simular por<select className={control} value={form.mode} onChange={e => setForm(old => ({ ...old, mode: e.target.value }))}><option value="Payment">Valor da parcela</option><option value="Liquid">Valor liberado</option></select></label><label className="text-xs">{form.mode === 'Payment' ? 'Parcela desejada (R$)' : 'Valor liberado desejado (R$)'}<CurrencyInput min={0.01} className={control} value={form.value} onValueChange={value => setForm(old => ({ ...old, value }))} /></label><label className="text-xs">Prazo (meses)<input type="number" min="0" max="120" className={control} value={form.term} onChange={e => setForm(old => ({ ...old, term: e.target.value }))} /><span className="text-slate-500">0 = todos os prazos retornados</span></label></div></details>}
+              {snapshot && <details open className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700"><summary className="cursor-pointer text-xs font-semibold">Filtros opcionais de simulação</summary><p className="my-2 text-xs text-slate-500">Sem valor informado, utilizamos somente o limite efetivamente retornado por cada banco. Prazos vêm das tabelas da instituição.</p><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs">Simular por<select className={control} value={form.mode} onChange={e => setForm(old => ({ ...old, mode: e.target.value }))}><option value="Payment">Valor da parcela</option><option value="Liquid">Valor liberado</option></select></label><label className="text-xs">{form.mode === 'Payment' ? 'Parcela desejada (R$)' : 'Valor liberado desejado (R$)'}<CurrencyInput min={0.01} className={control} value={form.value} onValueChange={value => setForm(old => ({ ...old, value }))} /></label><label className="text-xs">Prazo (meses)<input type="number" min="0" max="120" className={control} value={form.term} onChange={e => setForm(old => ({ ...old, term: e.target.value }))} /><span className="text-slate-500">0 = todos os prazos retornados</span></label></div><button type="button" disabled={busy||snapshot.running||exceedsKnownMargins||!Number.isFinite(Number(form.value))||!(Number(form.value)>0)||!Number.isInteger(Number(form.term))||Number(form.term)<0||Number(form.term)>120} onClick={()=>void start(undefined,'SIMULATE')} className="mt-3 rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy?'Simulando...':'SIMULAR CONDIÇÕES'}</button>{exceedsKnownMargins&&<p role="alert" className="mt-2 text-xs text-amber-700 dark:text-amber-300">A parcela supera todas as margens disponíveis retornadas. Informe um valor dentro do limite.</p>}</details>}
               {focusedResult?.rows.map((row, i) => row.link && /^https:\/\//i.test(row.link) ? <a key={i} href={row.link} target="_blank" rel="noopener noreferrer" className="my-3 block text-sm text-cyan-700 underline dark:text-cyan-300">Abrir autorização oficial · {row.institution}</a> : null)}
               {focused && !focused.contextual && focused.id !== 'bmg' && <div className="mb-4 flex flex-wrap gap-2">
                 <button disabled={busy} onClick={() => void start(focused.id, 'REFRESH')} className="rounded-lg border border-slate-300 px-3 py-2 text-xs dark:border-slate-700">Atualizar consulta desta instituição</button>
@@ -228,15 +238,13 @@ export function CltJourneyWorkspace({ isOpen, scope, onClose, onBack, partners =
               {focused && focused.id==='nossa' && <p className="mb-3 text-xs text-slate-500">A solicitação abrange as instituições retornadas por esta integração. O aceite cabe ao cliente.</p>}
               {openedPanels.includes('bmg') && <div hidden={selectedBank !== 'bmg'}><fieldset disabled={busy}><BmgCustomerAuthorization onSimulate={()=>void start('bmg','SIMULATE')} simulationReady={snapshot?.results.bmg?.status!=='UNKNOWN'&&snapshot?.results.bmg?.rows.some(r=>(r.data as any)?.authorization?.ready===true)||false} requestUncertain={snapshot?.results.bmg?.status==='UNKNOWN'} otpRequested={snapshot?.results.bmg?.rows.some(r=>(r.data as any)?.authorization?.status==='WAITING_OTP')} input={clientInput} onRows={bmgRows} onStatus={bmgStatus} reusePhone allowProposal={false} /></fieldset></div>}
               <Suspense fallback={<p role="status" className="p-3 text-sm">Abrindo etapa específica…</p>}>
-                {openedPanels.includes('parana') && <div hidden={selectedBank !== 'parana'}><fieldset disabled={busy}><Parana cpf={form.cpf} name={form.name} phone={form.phone} onProgress={paranaProgress} /></fieldset></div>}
-                {openedPanels.includes('presenca') && <div hidden={selectedBank !== 'presenca'}><fieldset disabled={busy}><Presenca cpf={form.cpf} name={form.name} phone={form.phone} onProgress={presencaProgress} /></fieldset></div>}
-                {openedPanels.includes('happy') && happyEnabled && <div hidden={selectedBank !== 'happy'}><Happy embedded sharedIdentity isOpen initialData={{ cpf: form.cpf, name: form.name, phone: form.phone }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} onProgress={happyProgress} /></div>}
+                {openedPanels.includes('parana') && <div hidden={selectedBank !== 'parana'}><fieldset disabled={busy}><Parana sharedResults cpf={form.cpf} name={form.name} phone={form.phone} onProgress={paranaProgress} /></fieldset></div>}
+                {openedPanels.includes('presenca') && <div hidden={selectedBank !== 'presenca'}><fieldset disabled={busy}><Presenca sharedResults cpf={form.cpf} name={form.name} phone={form.phone} onProgress={presencaProgress} /></fieldset></div>}
+                {openedPanels.includes('happy') && happyEnabled && <div hidden={selectedBank !== 'happy'}><Happy sharedResults embedded sharedIdentity isOpen initialData={{ cpf: form.cpf, name: form.name, phone: form.phone }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} onProgress={happyProgress} /></div>}
               </Suspense>
               {!offers.length && <p className="py-8 text-center text-sm text-slate-500">{busy ? 'As ofertas aparecerão assim que cada instituição responder.' : 'Nenhuma oferta disponível nesta seleção. Confira os retornos e ações da instituição.'}</p>}
-              {offers.length > 0 && <div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="mb-3 text-left text-xs text-slate-500">Selecione até três condições para comparar. Selecionar não contrata.</caption><thead><tr className="border-b border-slate-200 text-xs text-slate-500 dark:border-slate-700">{['Comparar', 'Instituição / tabela', 'Liberado', 'Parcela', 'Prazo', 'Taxa', 'CET mensal', 'CET anual', 'Seleção'].map(label => <th key={label} className="px-2 py-3">{label}</th>)}</tr></thead><tbody>{offers.map(({ row, key }) => <tr key={key} className="border-b border-slate-100 dark:border-slate-800">
-                <td className="p-2"><input type="checkbox" aria-label={`Comparar ${row.table || row.institution}`} checked={compared.includes(key)} disabled={compared.length >= 3 && !compared.includes(key)} onChange={() => setCompared(old => old.includes(key) ? old.filter(item => item !== key) : [...old, key])} /></td>
-                <td className="p-2"><span className="block font-semibold">{row.institution}</span><span className="text-xs text-slate-500">{row.table || row.provider}</span>{((row.data as any)?.v8?.cached||(row.data as any)?.operationCache?.cached) && <p className="text-xs text-amber-600">Oferta recuperada; confirme a validade no banco.</p>}</td><td className="whitespace-nowrap p-2 font-semibold">{money(row.amount)}</td><td className="whitespace-nowrap p-2">{money(row.installment)}</td><td className="p-2">{row.term || '—'}</td><td className="p-2">{cltRatePercent(row) === undefined ? '—' : `${cltRatePercent(row)!.toLocaleString('pt-BR', { maximumFractionDigits: 8 })}%`}</td><td className="p-2">{row.cetMonthly === undefined ? 'Não informado' : `${row.cetMonthly.toLocaleString('pt-BR')}%`}</td><td className="p-2">{row.cetAnnual === undefined ? 'Não informado' : `${row.cetAnnual.toLocaleString('pt-BR')}%`}</td><td className="p-2"><button aria-pressed={selectedOffer === key} onClick={() => setSelectedOffer(key)} className="rounded-lg border border-cyan-600 px-2 py-1 text-xs text-cyan-700 dark:text-cyan-300">{selectedOffer === key ? 'Selecionada' : 'Selecionar'}</button></td>
-              </tr>)}</tbody></table></div>}
+              {snapshot?.calculation&&<p className="mb-3 text-xs text-slate-500">{snapshot.calculation.mode==='Payment'?'Parcela solicitada':'Valor liberado solicitado'}: {money(snapshot.calculation.value)} · Prazo solicitado: {snapshot.calculation.term||'todos'} · Bancos consultados: {snapshot.calculation.banks.join(', ')} · {new Date(snapshot.calculation.requestedAt).toLocaleString('pt-BR')}</p>}
+              {offers.length>0&&<CltOfferResults offers={offers} compared={compared} setCompared={setCompared} selected={selectedOffer} setSelected={setSelectedOffer}/>}
               {compared.length === 0 && allOffers.length > 0 && selectedBank && <button className="mt-3 text-xs text-cyan-700 dark:text-cyan-300" onClick={() => setSelectedBank('')}>Ver ofertas de todas as instituições</button>}
             </section>
           </div>

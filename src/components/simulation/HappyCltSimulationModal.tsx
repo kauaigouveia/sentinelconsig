@@ -23,6 +23,7 @@ import { formatCpf, normalizeCpf, isValidCpf } from '../../lib/utils';
 interface HappyCltSimulationModalProps {
   isOpen: boolean;
   embedded?: boolean;
+  sharedResults?:boolean;
   sharedIdentity?: boolean;
   onProgress?: (progress: { busy: boolean; message: string; offers: any[] }) => void;
   initialData?: { cpf?: string; name?: string; phone?: string; birthDate?: string; benefit?: string; partnerId?: string };
@@ -37,6 +38,7 @@ type CltStep = 'CLIENTE' | 'DATAPREV' | 'SIMULACAO' | 'RESULTADO';
 export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = ({
   isOpen,
   embedded = false,
+  sharedResults = false,
   sharedIdentity = false,
   onProgress,
   initialData,
@@ -677,7 +679,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   </span>
                 </div>
 
-                {simulationResult && (
+                {!sharedResults && simulationResult && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs font-mono">
                     <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
                       <span className="text-[10px] text-slate-400 block font-sans">Valor Parcela</span>
