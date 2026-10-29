@@ -39,3 +39,12 @@ it('VCTEX uses only an existing authorized pre-operation and every allowed insta
  calculate.mockClear();await calculateVctexConditions(db,'t',{...customer,bmgActorId:'user:a',mode:'Payment',value:600} as any);expect(calculate).not.toHaveBeenCalled();
  const unsupported=await calculateVctexConditions(db,'t',{...customer,bmgActorId:'user:a',mode:'Liquid',value:200} as any);expect(unsupported[0].outcome).toBe('UNSUPPORTED');
 });
+
+it('treats VCTEX limit refusals as condition outcomes, retains distinct equal-margin employments and persists one summarized diagnostic',async()=>{
+ const db:any={promoter:{findMany:vi.fn(async()=>[{id:'p'}])}};vi.spyOn(VctexBankService,'config').mockResolvedValue({enabled:true,cpf:'synthetic',password:'synthetic'} as any);
+ const employment={employmentId:'e-a',eligible:true,employer:{name:'Empresa sintética'},registrationNumber:'0001',availableMarginValue:529.94};
+ vi.spyOn(VctexBankService,'refresh').mockResolvedValue({status:'finished',authorizationValid:true,preOperationId:'query-a',employments:[employment,employment,{...employment,employmentId:'e-b',registrationNumber:'0002'}]} as any);
+ vi.spyOn(VctexBankService,'rates').mockResolvedValue([{id:'rate',allowedInstallments:[12,24],minInstallmentAmount:300,maxInstallmentAmount:500}] as any);const simulate=vi.spyOn(VctexBankService,'simulate');
+ const rows=await calculateVctexConditions(db,'t',{...customer,bmgActorId:'user:a',mode:'Payment',value:200} as any);
+ expect(simulate).not.toHaveBeenCalled();expect(rows.filter(r=>r.state==='DATA')).toHaveLength(2);expect(rows.some(r=>r.outcome==='TECHNICAL_ERROR'||r.state==='OFFER')).toBe(false);const summary=rows.filter(r=>(r.data as any)?.vctex?.conditionRejections);expect(summary).toHaveLength(1);expect(summary[0].message).toBe('Nenhuma oferta disponível para os parâmetros informados');expect((summary[0].data as any).vctex.conditionRejections).toHaveLength(4);
+});

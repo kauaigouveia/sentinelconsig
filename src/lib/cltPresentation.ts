@@ -1,6 +1,7 @@
 import type {JourneySnapshot} from './cltJourney';
 import type {ProductSimulationRow} from '../../server/services/productSimulationService';
 import {cltRatePercent} from './v8CltDisplay';
+import {currentVctexRows} from './vctexCurrentState';
 import {rowsOfBank,canonicalNossaInstitution,nossaInstitutionName} from './cltInstitution';
 import {journeyStatus} from './cltJourney';
 export const reportedNumber=(v:unknown):number|undefined=>typeof v==='number'&&Number.isFinite(v)?v:typeof v==='string'&&/^\d+(?:\.\d+)?$/.test(v)&&Number.isFinite(Number(v))?Number(v):undefined;
@@ -18,11 +19,11 @@ export function presentedOffers(snapshot:JourneySnapshot|null):PresentedOffer[]{
   }return [...result.values()];
 }
 export function presentedMargins(snapshot:JourneySnapshot|null){
-  const result=new Map<string,{key:string;bank:string;institution:string;status:string;authorization?:string;available?:number;used?:number;residual?:number;eligible?:boolean;consultId?:string;updatedAt?:string;subInstitutionId?:string;connectionId?:string;executionId?:string;explanation?:string}>();
+  const result=new Map<string,{key:string;bank:string;institution:string;status:string;authorization?:string;available?:number;used?:number;residual?:number;eligible?:boolean;consultId?:string;updatedAt?:string;subInstitutionId?:string;connectionId?:string;executionId?:string;explanation?:string;employmentId?:string;employerName?:string;registrationNumber?:string}>();
   for(const bank of snapshot?.banks||[]){
     if(bank.id==='finanto')continue;
     const state=snapshot!.results[bank.id];if(!state)continue;
-    const bankRows=rowsOfBank(snapshot,bank.id),rows=bankRows.filter(r=>r.state!=='OFFER');
+    const bankRows=bank.id==='vctex'?currentVctexRows(rowsOfBank(snapshot,bank.id)):rowsOfBank(snapshot,bank.id);const candidates=bankRows.filter(r=>r.state!=='OFFER'&&!(r.data as any)?.vctex?.conditionRejections);const rows=bank.id==='vctex'&&candidates.some(r=>r.state==='DATA')?candidates.filter(r=>r.state==='DATA'):candidates;
     for(const row of rows.length?rows:bank.id==='nossa'?[]:[undefined]){
       const d=row?.data as any,m=d?.margin||{},v=d?.v8||{},x=d?.vctex||{},institution=row?.institution||bank.name;
       if(bank.id==='vctex'&&!x.employmentId&&x.preOperationId&&rows.some(other=>{const detail=(other.data as any)?.vctex;return detail?.employmentId&&detail.preOperationId===x.preOperationId&&other.origin?.connectionId===row?.origin?.connectionId;}))continue;
@@ -30,7 +31,7 @@ export function presentedMargins(snapshot:JourneySnapshot|null){
       const key=JSON.stringify([bank.id,subInstitutionId||institution,row?.origin?.connectionId,row?.origin?.consultationId||v.consultId||x.preOperationId||d?.consultationId,d?.employment?.work_registration,d?.employment?.employer_cnpj,x.employmentId,v.consultId]);
       const previous=result.get(key), observed=d?.authorization?.observedAt||d?.observedAt;
       if(previous?.updatedAt&&observed&&Date.parse(previous.updatedAt)>Date.parse(observed))continue;
-      const next={key,bank:bank.id,institution:bank.id==='nossa'&&subInstitutionId?nossaInstitutionName(subInstitutionId):institution,subInstitutionId,connectionId:row?.origin?.connectionId,executionId:row?.origin?.executionId||state.executionId,status:row?(reportedNumber(m.available_balance)!>0&&m.can_continue!==false?'Margem disponível':journeyStatus({...state,status:'RETURNED',rows:[row]})):'Não informado',authorization:d?.authorization?.status||(v.consentRecorded===true?'Confirmada pela API':v.status==='WAITING_CONSENT'?'Aguardando autorização':undefined),available:reportedNumber(m.available_balance),used:reportedNumber(m.used_balance),residual:reportedNumber(m.residual_balance),eligible:typeof m.can_continue==='boolean'?m.can_continue:typeof d?.eligible==='boolean'?d.eligible:undefined,consultId:v.consultId||x.preOperationId||d?.consultationId,updatedAt:observed};
+      const next={employmentId:typeof x.employmentId==='string'?x.employmentId:undefined,employerName:typeof x.employerName==='string'?x.employerName:undefined,registrationNumber:typeof x.registrationNumber==='string'?x.registrationNumber:undefined,key,bank:bank.id,institution:bank.id==='nossa'&&subInstitutionId?nossaInstitutionName(subInstitutionId):institution,subInstitutionId,connectionId:row?.origin?.connectionId,executionId:row?.origin?.executionId||state.executionId,status:row?(reportedNumber(m.available_balance)!>0&&m.can_continue!==false?'Margem disponível':journeyStatus({...state,status:'RETURNED',rows:[row]})):'Não informado',authorization:d?.authorization?.status||(v.consentRecorded===true?'Confirmada pela API':v.status==='WAITING_CONSENT'?'Aguardando autorização':undefined),available:reportedNumber(m.available_balance),used:reportedNumber(m.used_balance),residual:reportedNumber(m.residual_balance),eligible:typeof m.can_continue==='boolean'?m.can_continue:typeof d?.eligible==='boolean'?d.eligible:undefined,consultId:v.consultId||x.preOperationId||d?.consultationId,updatedAt:observed};
       result.set(key,next);
     }
     if(bank.id==='nossa')for(const id of ['qi','uy3'])if(![...result.values()].some(r=>r.bank==='nossa'&&r.subInstitutionId===id)){

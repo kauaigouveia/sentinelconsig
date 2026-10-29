@@ -1,3 +1,4 @@
+import {currentVctexRows} from '../../src/lib/vctexCurrentState.js';
 import {CltAuthorizationFollowup} from './cltAuthorizationFollowup.js';
 import {uniqueV8Reference,v8References} from '../../src/lib/cltV8Selection.js';
 import { CltJourneyStore, journeyFingerprint, type JourneyRecord } from './cltJourneyStore.js';
@@ -22,7 +23,7 @@ export type JourneyProvider = typeof journeyProviders[number];
 export type JourneyAction = 'REFRESH' | 'SIMULATE' | 'AUTHORIZE' | 'CREATE_CONSULT';
 export type JourneyBank = { id: JourneyProvider; name: string; contextual?: boolean; error?: boolean };
 export type JourneyCalculation = Pick<ProductSimulationInput,'value'|'term'|'mode'|'employerDocument'|'factaRegistration'|'v8ConsultId'|'v8PromoterId'|'calculationKey'> & {requestedAt:string};
-export type JourneySnapshot = { calculation?:{value:number;term:number;mode:'Payment'|'Liquid';requestedAt:string;banks:string[];sourceExecutionId:string}; executionId: string; running: boolean; rootExecutionId?: string; automaticEnabled?: boolean; observedAt?: string; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { request?:JourneyCalculation; status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; readyToSimulate?: boolean; readyKey?: string; contractPending?: boolean; executionId?: string }> };
+export type JourneySnapshot = { calculation?:{value:number;term:number;mode:'Payment'|'Liquid';requestedAt:string;banks:string[];sourceExecutionId:string}; executionId: string; running: boolean; rootExecutionId?: string; automaticEnabled?: boolean; observedAt?: string; customer?: ProductSimulationInput; banks: JourneyBank[]; results: Record<string, { simulation?:{status:'RUNNING'|'OFFERS'|'NO_OFFERS'|'FAILED'|'UNKNOWN';message?:string}; request?:JourneyCalculation; status: 'QUERYING' | 'RETURNED' | 'ERROR' | 'CONTEXTUAL' | 'UNKNOWN'; stage?: 'CONSULTATION' | 'CONSENT' | 'MARGIN' | 'SIMULATION' | 'RESULT'; rows: ProductSimulationRow[]; message?: string; readyToSimulate?: boolean; readyKey?: string; contractPending?: boolean; executionId?: string }> };
 type Entry = { raw: string; record: JourneyRecord; snapshot: JourneySnapshot; store: CltJourneyStore; listeners: Set<(snapshot: JourneySnapshot) => void> };
 
 export class CltJourneyService {
@@ -63,7 +64,8 @@ export class CltJourneyService {
             const rows=response.rows.map(row=>projectRow(row,bank.id,entry.snapshot.executionId));
             const unsupported=rows.some(r=>(r.data as any)?.trackingUnsupported);
             if(unsupported&&old.rows.length&&old.rows.every(r=>r.outcome==='INELIGIBLE')){entry.snapshot.results[bank.id]={...old,message:'Inelegibilidade preservada. Não há endpoint de leitura de acompanhamento confirmado para esta integração.'};return;}
-            entry.snapshot.results[bank.id]={...old,rows:[...old.rows.filter(r=>(r.state==='OFFER'&&!rows.some(n=>n.institution===r.institution&&n.outcome==='INELIGIBLE'))||(unsupported&&(r.link||r.outcome==='INELIGIBLE'))),...rows],status:old.status==='UNKNOWN'?'UNKNOWN':'RETURNED',message:unsupported?rows[0]?.message:undefined,readyToSimulate:(old.status!=='UNKNOWN'||bank.id==='nossa')&&mayCalculate(bank.id,rows),readyKey:calculationKey(rows)};
+            const recoveredV8=bank.id==='v8'&&mayCalculate('v8',rows)&&old.simulation?.status!=='UNKNOWN'&&old.stage!=='SIMULATION'&&!old.rows.some(r=>(r.data as any)?.writeUncertain);
+            entry.snapshot.results[bank.id]={...old,rows:[...old.rows.filter(r=>(r.state==='OFFER'&&!rows.some(n=>n.institution===r.institution&&n.outcome==='INELIGIBLE'))||(r.data as any)?.vctex?.conditionRejections||(unsupported&&(r.link||r.outcome==='INELIGIBLE'))),...rows],status:old.status==='UNKNOWN'&&!recoveredV8?'UNKNOWN':'RETURNED',message:unsupported?rows[0]?.message:undefined,readyToSimulate:(old.status!=='UNKNOWN'||bank.id==='nossa'||recoveredV8)&&mayCalculate(bank.id,rows)&&!old.rows.some(r=>r.state==='OFFER')&&old.simulation?.status!=='UNKNOWN'&&(!old.simulation||old.readyKey!==calculationKey(rows)),readyKey:calculationKey(rows)};
           }catch {entry.snapshot.results[bank.id]={...old,message:'Não foi possível atualizar o estado deste banco. Nenhuma solicitação foi reenviada.'};}
         }));
       });
@@ -84,6 +86,9 @@ export class CltJourneyService {
     // A status GET must not erase simulations or other consultations in this execution.
     const retained=old.rows.filter(row=>{const v=(row.data as any)?.v8;return row.state==='OFFER'?!(rejected&&v?.consultId===consultId&&v?.promoterId===promoterId):v?.consultId!==consultId||v?.promoterId!==promoterId;});
     entry.snapshot.results.v8 = { ...old, status: 'RETURNED', rows: [...retained,...response.rows.map(row=>projectRow(row,'v8',old.executionId||id))] };
+    entry.snapshot.results.v8.readyToSimulate=!old.rows.some(r=>r.state==='OFFER')&&old.simulation?.status!=='UNKNOWN'&&!old.rows.some(r=>(r.data as any)?.writeUncertain)&&mayCalculate('v8',entry.snapshot.results.v8.rows);
+    entry.snapshot.results.v8.readyKey=calculationKey(entry.snapshot.results.v8.rows);
+    bindV8(entry.snapshot);
     await entry.store.compareAndSet(id, entry.raw, entry.record);
     await this.syncRoot(db,tenant,actor,entry.snapshot,'v8');
     return entry.snapshot;
@@ -197,19 +202,21 @@ export class CltJourneyService {
         const result = snapshot.results[bank.id];
         try {
           const previousMargins=action==='SIMULATE'?result.rows.filter(r=>r.state==='DATA'):[];
-          const update = async (rows: ProductSimulationRow[]) => { result.rows = [...previousMargins,...rows.map(row=>projectRow(row,bank.id,id))]; await publish(); };
+          const update = async (rows: ProductSimulationRow[]) => { result.rows = [...previousMargins,...rows.map(row=>projectRow(row,bank.id,id))];if(bank.id==='vctex')result.rows=currentVctexRows(result.rows); await publish(); };
           result.stage = action === 'AUTHORIZE' || action === 'CREATE_CONSULT' ? 'CONSENT' : 'CONSULTATION';
           const bankInput = { ...input, bmgActorId: actor, journeyId: snapshot.rootExecutionId || id, automaticAuthorization: action === 'REFRESH' && !provider, observeOnly: false };
           if (!['v8','vctex'].includes(bank.id)) { delete bankInput.v8BirthDate; delete bankInput.v8Email; delete bankInput.v8Gender; }
           const run = () => ProductSimulationService.run(db, tenant, 'CLT', action, bankInput, update, [bank.id]);
+          if(action==='SIMULATE'&&['v8','vctex'].includes(bank.id))result.simulation={status:'RUNNING'};
           let response = action === 'SIMULATE' ? await cltBankOnce(db,tenant,bank.id,['SIMULATE',bankInput.journeyId,actor,input.cpf,input.employerDocument||null,input.factaRegistration||null,input.value,input.term,input.mode,input.calculationKey||null],run) : await run();
           result.rows = [...previousMargins,...response.rows.map(row=>projectRow(row,bank.id,id))];
+          if(bank.id==='vctex')result.rows=currentVctexRows(result.rows);
           if(bank.id==='v8')bindV8(snapshot);
           // Publish eligibility/margin before calculating. Each adapter revalidates the bank
           // response and derives its own payment; no browser-supplied margin is trusted.
           if (action === 'REFRESH' && mayCalculate(bank.id, response.rows)) {
             result.stage = 'MARGIN'; await publish();
-            result.stage = 'SIMULATION'; await publish();
+            result.stage = 'SIMULATION';if(bank.id==='v8')result.simulation={status:'RUNNING'}; await publish();
             const offers = await cltBankOnce(db,tenant,bank.id,['SIMULATE',bankInput.journeyId,actor,input.cpf,input.employerDocument||null,input.factaRegistration||null,input.value,input.term,input.mode,calculationKey(result.rows)],()=>ProductSimulationService.run(db, tenant, 'CLT', 'SIMULATE', { ...bankInput, autoConditions: !input.value, automaticAuthorization:false }, undefined, [bank.id]));
             response = { ...offers, rows: [...response.rows, ...offers.rows] };
             result.rows = response.rows.map(row=>projectRow(row,bank.id,id));
@@ -217,11 +224,12 @@ export class CltJourneyService {
           result.status = result.rows.some(row => (row.data as any)?.writeUncertain === true) ? 'UNKNOWN' : 'RETURNED';
           if(result.status==='UNKNOWN')result.message='Há solicitação com resultado incerto nesta integração. Atualize o estado; nenhuma repetição automática será realizada.';
           result.readyKey = calculationKey(result.rows);
-          result.readyToSimulate = mayCalculate(bank.id,result.rows) && !result.rows.some(r=>r.state==='OFFER');
+          result.readyToSimulate = mayCalculate(bank.id,result.rows) && !result.rows.some(r=>r.state==='OFFER')&&result.simulation?.status!=='RUNNING';
+          if(result.simulation?.status==='RUNNING'){const count=result.rows.filter(r=>r.state==='OFFER').length;const uncertain=result.rows.some(r=>(r.data as any)?.writeUncertain);const failed=result.rows.some(r=>r.outcome==='TECHNICAL_ERROR');result.simulation={status:uncertain?'UNKNOWN':count?'OFFERS':failed?'FAILED':'NO_OFFERS',message:uncertain?'Resultado da simulação incerto. Nenhum reenvio automático.':count?undefined:failed?'Não foi possível concluir a simulação. A margem consultada foi preservada.':'Nenhuma oferta disponível para os parâmetros informados'};}
           result.stage = 'RESULT';
           if (bank.id === 'v8') { result.contractPending = !result.rows.some(r => r.state === 'OFFER'); result.message = result.rows.some(r => r.state === 'OFFER') ? undefined : 'Confira o estado da consulta e as pendências específicas da conexão V8.'; }
           else if (!result.rows.length) result.message = 'Sem ofertas retornadas nesta consulta.';
-        } catch { result.status = 'UNKNOWN'; result.message = 'Resultado incerto. Confira o estado antes de outra operação; nenhuma repetição automática.'; }
+        } catch { if(result.simulation?.status==='RUNNING')result.simulation={status:'UNKNOWN',message:'Resultado da simulação incerto. Nenhum reenvio automático.'};result.status = 'UNKNOWN'; result.message = 'Resultado incerto. Confira o estado antes de outra operação; nenhuma repetição automática.'; }
         if (signal.aborted) { result.status = 'UNKNOWN'; result.message = 'Prazo da consulta encerrado. Confira o estado no banco antes de outra operação.'; }
         await publish();
       }));
@@ -239,9 +247,9 @@ export class CltJourneyService {
 function projectRow(row: ProductSimulationRow,providerId?:string,executionId?:string): ProductSimulationRow {
   if(providerId&&row.origin?.providerId&&row.origin.providerId!==providerId)return {provider:providerId,institution:providerId,state:'ERROR',outcome:'TECHNICAL_ERROR',origin:{providerId,executionId},message:'A origem da resposta não corresponde à instituição desta execução. Os dados não foram utilizados.'};
   const data = row.data as any;
-  return { origin:{...row.origin,providerId:providerId||row.origin?.providerId||'unknown',connectionId:row.origin?.connectionId||data?.v8?.promoterId,consultationId:row.origin?.consultationId||data?.v8?.consultId||data?.vctex?.preOperationId,executionId:executionId||row.origin?.executionId},provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, cetMonthly: row.cetMonthly, cetAnnual: row.cetAnnual, simulationId: row.simulationId,
+  return { origin:{...row.origin,providerId:providerId||row.origin?.providerId||'unknown',connectionId:row.origin?.connectionId||data?.v8?.promoterId||data?.vctex?.connectionId,consultationId:row.origin?.consultationId||data?.v8?.consultId||data?.vctex?.preOperationId,executionId:executionId||row.origin?.executionId},provider: row.provider, institution: row.institution, table: row.table, state: row.state, outcome: row.outcome, message: cltPublicMessage(row.message), amount: row.amount, contractAmount: row.contractAmount, installment: row.installment, term: row.term, rate: row.rate, cetMonthly: row.cetMonthly, cetAnnual: row.cetAnnual, simulationId: row.simulationId,
     link: typeof row.link === 'string' && /^https:\/\//i.test(row.link) ? row.link : undefined,
-    data: data ? { observedAt:data.observedAt, financial:data.financial?Object.fromEntries(['isInsured','insuranceAmount','iofAmount','issueAmount','operationAmount','firstInstallmentDate'].filter(k=>data.financial[k]!==undefined).map(k=>[k,data.financial[k]])):undefined,vctex:data.vctex?Object.fromEntries(['preOperationId','employmentId','offerId','rawFee','rawMonthlyRate','iof','insuranceAmount','withInsurance','issueAmount','disbursedIssueAmount','finalDisbursedAmount','totalAmount','firstDueDate','lastDueDate','disbursementDate','uncertain'].filter(k=>data.vctex[k]!==undefined).map(k=>[k,data.vctex[k]])):undefined, operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
+    data: data ? { observedAt:data.observedAt, financial:data.financial?Object.fromEntries(['isInsured','insuranceAmount','iofAmount','issueAmount','operationAmount','firstInstallmentDate'].filter(k=>data.financial[k]!==undefined).map(k=>[k,data.financial[k]])):undefined,vctex:data.vctex?{...Object.fromEntries(['connectionId','employerName','registrationNumber','preOperationId','employmentId','offerId','rawFee','rawMonthlyRate','iof','insuranceAmount','withInsurance','issueAmount','disbursedIssueAmount','finalDisbursedAmount','totalAmount','firstDueDate','lastDueDate','disbursementDate','uncertain'].filter(k=>data.vctex[k]!==undefined).map(k=>[k,data.vctex[k]])),conditionRejections:Array.isArray(data.vctex.conditionRejections)?data.vctex.conditionRejections.map((r:any)=>({connectionId:r.connectionId,consultationId:r.consultationId,employmentId:r.employmentId,offerId:r.offerId,term:r.term,installment:r.installment,code:r.code==='OUTSIDE_LIMITS'?'OUTSIDE_LIMITS':'REJECTED'})):undefined}:undefined, operationCache:data.operationCache?.cached===true||data.operationCached===true?{cached:true,calculatedAt:data.operationCache?.calculatedAt||data.operationCalculatedAt}:undefined, writeUncertain: data.writeUncertain === true, authorization: data.authorization ? {status: data.authorization.status,mechanism: data.authorization.mechanism,ready:data.authorization.ready,source:data.authorization.source,observedAt:data.authorization.observedAt,previousStatus:data.authorization.previousStatus,authorizationId:data.authorization.authorizationId} : undefined, trackingUnsupported: data.trackingUnsupported === true, workflow: data.workflow ? {consents:Array.isArray(data.workflow.consents)?data.workflow.consents.map((c:any)=>({link:c.link,receipt:c.receipt})):undefined}:undefined, employment: data.employment ? { employer_cnpj: data.employment.employer_cnpj, work_registration: data.employment.work_registration } : undefined,
       eligible: typeof data.eligible === 'boolean' ? data.eligible : undefined,
       restrictions: safeReasons(data.restrictions),
       borrower: data.borrower ? { name: data.borrower.name } : undefined,

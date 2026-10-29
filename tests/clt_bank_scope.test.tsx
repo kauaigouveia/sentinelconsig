@@ -1,3 +1,4 @@
+import {CltMarginResults} from '../src/components/simulation/CltResults';
 // @vitest-environment jsdom
 import React from 'react';import {act,cleanup,fireEvent,render,screen,within} from '@testing-library/react';import {afterEach,expect,it,vi} from 'vitest';
 import {CltJourneyWorkspace} from '../src/components/simulation/CltJourneyWorkspace';
@@ -50,4 +51,9 @@ it('summarizes current V8 evidence even when aggregate status is UNKNOWN, withou
 });
 it('consolidates VCTEX events by connection and consultation, preserving separate queries and the source history',()=>{
  const data=fixture();const row={provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:'DATA',origin:{providerId:'vctex',connectionId:'p',executionId:id},data:{vctex:{preOperationId:'query-a'},margin:{available_balance:529.93},observedAt:'2026-10-29T10:00:00Z'}};data.results.vctex.rows=[{...row,data:{...row.data,margin:{available_balance:100},observedAt:'2026-10-29T09:00:00Z'}},row,{...row,data:{...row.data,vctex:{preOperationId:'query-b'}}}];const margins=presentedMargins(data).filter(r=>r.bank==='vctex');expect(margins).toHaveLength(2);expect(margins.find(r=>r.consultId==='query-a')?.available).toBe(529.93);expect(data.results.vctex.rows).toHaveLength(3);data.results.vctex.rows.push({...row,data:{...row.data,vctex:{preOperationId:'query-a',employmentId:'employment-a'}}});expect(presentedMargins(data).filter(r=>r.bank==='vctex')).toHaveLength(2);expect(data.results.vctex.rows).toHaveLength(4);
+});
+
+it('renders current VCTEX employments once with actual employer and registration, equal margins and zero valid offers',()=>{
+ const data=fixture();const link={provider:'VCTEX DIGITAL',institution:'VCTEX',state:'DATA',origin:{providerId:'vctex',connectionId:'p',executionId:id},data:{vctex:{preOperationId:'q',employmentId:'e-a',employerName:'Empresa sintética',registrationNumber:'0001'},authorization:{status:'AUTHORIZED'},margin:{available_balance:529.94,can_continue:true}}};data.banks=[data.banks.find((b:any)=>b.id==='vctex')];data.results={vctex:{status:'RETURNED',executionId:id,rows:[link,link,{...link,data:{...link.data,vctex:{...link.data.vctex,employmentId:'e-b',registrationNumber:'0002'}}},{provider:'VCTEX',institution:'VCTEX',state:'PENDING',data:{vctex:{conditionRejections:[{code:'OUTSIDE_LIMITS'}]}}}]}};
+ render(<CltMarginResults compact snapshot={data}/>);expect(screen.getAllByRole('row')).toHaveLength(3);expect(screen.getAllByText('Empresa sintética')).toHaveLength(2);expect(screen.getByText('Matrícula: 0001')).toBeTruthy();expect(screen.getByText('Matrícula: 0002')).toBeTruthy();expect(screen.getAllByText('Autorização: Confirmada')).toHaveLength(2);expect(bankSummary(data,'vctex')).toEqual({count:0,status:'Margem disponível'});expect(presentedOffers(data)).toHaveLength(0);
 });

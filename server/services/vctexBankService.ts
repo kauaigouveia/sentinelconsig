@@ -1,3 +1,4 @@
+import {currentVctexEmployments} from '../../src/lib/vctexCurrentState.js';
 import {createHash,createCipheriv,createDecipheriv,randomBytes} from 'node:crypto';
 import {resolveBankPromoter,bankPromoterConfigKey} from './bankPromoterConfig.js';
 import {CltJourneyStore,journeyFingerprint,type JourneyRecord} from './cltJourneyStore.js';
@@ -148,8 +149,8 @@ export class VctexBankService{
       try{const link=new URL(row?.onboardingURL);if(link.protocol==='https:'&&!link.username&&!link.password)value.link=link.href;}catch{}
     }else value.link=undefined;
     if(value.status==='finished'&&value.authorizationValid&&Date.parse(detail.authorizationTerm?.validUntil||'')>Date.now()&&Date.parse(value.expiresAt||'')>Date.now()){
-      for(const e of (Array.isArray(detail.employments)?detail.employments:[])){
-        const employment={employmentId:idPath(e.employmentId),employer:e.employer?{name:e.employer.name,documentNumber:e.employer.documentNumber}:undefined,admissionDate:e.admissionDate,terminationDate:e.terminationDate,eligible:e.eligible===true,ineligibilityReason:e.ineligibilityReason?.description,ineligibilitySource:e.ineligibilityReason?.source,expiresAt:value.expiresAt,availableMarginValue:e.availableMarginValue,rates:[] as VctexRate[]};
+      for(const e of currentVctexEmployments<any>(Array.isArray(detail.employments)?detail.employments:[])){
+        const employment={employmentId:idPath(e.employmentId),employer:e.employer?{name:e.employer.name,documentNumber:e.employer.documentNumber}:undefined,registrationNumber:typeof e.registrationNumber==='string'?e.registrationNumber:undefined,admissionDate:e.admissionDate,terminationDate:e.terminationDate,eligible:e.eligible===true,ineligibilityReason:e.ineligibilityReason?.description,ineligibilitySource:e.ineligibilityReason?.source,expiresAt:value.expiresAt,availableMarginValue:e.availableMarginValue,rates:[] as VctexRate[]};
         // At most one employment's rates per observation; additional links are selected explicitly.
         if(employment.eligible&&typeof e.availableMarginValue==='number'&&e.availableMarginValue>0&&value.employments.every(x=>!x.rates.length)){
           const rates=await this.call(db,tenant,promoter,'GET',`/pre-operation/${idPath(value.preOperationId!)}/employment/${employment.employmentId}/available-rates`);

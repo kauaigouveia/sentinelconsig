@@ -43,3 +43,10 @@ it('does not retry an uncertain financial POST automatically',async()=>{
   expect(fetcher.mock.calls.filter(([url])=>url.includes('/simulate?'))).toHaveLength(1);
   expect(screen.getByRole('alert').textContent).toContain('incerto');
 });
+
+it('publishes each stable employment once and renders no repeated employment cards in managed pricing',async()=>{
+ const duplicate={...eligible,employments:[eligible.employments[0],eligible.employments[0],{...eligible.employments[0],employmentId:'job-b'}]};
+ const rows=vi.fn();vi.stubGlobal('fetch',vi.fn(async(url:string)=>url.endsWith('/connections')?Response.json([{id:'p-a',name:'Sintética'}]):Response.json(duplicate)));
+ render(<VctexCltActions active managedPricing pricingLocked scope="tenant-a:user-a" executionId="run-a" onRows={rows}/>);
+ await waitFor(()=>expect(rows).toHaveBeenCalled());const latest=rows.mock.calls.at(-1)![0];expect(latest.filter((r:any)=>r.state==='DATA')).toHaveLength(2);expect(screen.queryByText('Empresa sintética')).toBeNull();
+});
