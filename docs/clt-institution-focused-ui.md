@@ -36,3 +36,18 @@ Testes de responsividade verificam a interface em larguras desktop/mobile. Isso 
 Push normal na main após testes, TypeScript, build e diff-check, conforme autorização. Nenhuma alteração em Oracle, credenciais, schema, migrations ou configuração de produção. A rota VCTEX recebeu somente proteção contra associação de preços a parâmetros antigos; transporte e contratos bancários permanecem os existentes.
 
 Reversão por commit de revert e publicação normal. Não remover registros de consultas, resultados ou reservas de idempotência.
+
+
+## Atualização — simplificação operacional em três regiões
+
+O pedido posterior substitui a disposição em dois painéis: bancos, margens e simulação ficam lado a lado no desktop e empilhados no mobile. As ofertas válidas de todos os bancos ocupam uma tabela consolidada abaixo; as ações específicas continuam restritas ao banco selecionado. A tabela principal usa nove colunas; seguro, IOF, emissão, total nominal, vencimento e referência continuam acessíveis em Detalhes, sem inventar CET.
+
+Causa adicional comprovada: refreshV8 substituía todas as linhas V8 por uma resposta de acompanhamento, apagando ofertas anteriormente calculadas. A atualização agora substitui somente os dados da consulta solicitada, preserva ofertas atuais e outras consultas da execução e sincroniza a raiz persistida. Rejeição/FAILED invalida ofertas da referência correspondente. O resumo conta ofertas canônicas da execução atual e reconhece margem válida mesmo com agregado antigo UNKNOWN; ofertas com origem explícita de outra execução são excluídas.
+
+A projeção das margens consolida eventos da mesma instituição, conexão, consulta e vínculo, preferindo o horário mais recente quando informado. Consultas diferentes permanecem separadas; o snapshot original não é alterado. Na VCTEX, o acompanhamento global inclui sua leitura existente, sem alterar gateway ou endpoints.
+
+Consultar / atualizar todas coordena a leitura das consultas existentes com os limites de concorrência e intervalos já implementados. O primeiro cadastro continua usando a criação idempotente existente; reabrir os mesmos dados não recria a execução. Uma falha bancária isolada não impede as demais leituras. Estados sem contrato de leitura ou autorização comprovada continuam exigindo a ação específica disponível; a interface não inventa endpoints nem transforma um GET de acompanhamento em nova autorização. Execuções UNKNOWN continuam sem repetição automática de POST.
+
+Os testes adicionais reproduzem V8 UNKNOWN com sete ofertas válidas, exclusão de oferta de execução antiga, preservação após refresh e reinício do serviço, acesso negado entre empresa/usuário, VCTEX com eventos duplicados e consultas distintas, atualização multibancos e falha independente. Toda a validação bancária desta alteração usa mocks e fixtures sintéticas; não comprova disponibilidade real das instituições.
+
+Regressão da atualização: 303 testes aprovados em 30 arquivos, com um worker por vez. Build final concluído. Nenhuma chamada bancária real foi executada.

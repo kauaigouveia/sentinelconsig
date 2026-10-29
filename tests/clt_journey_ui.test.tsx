@@ -43,7 +43,7 @@ it('uses a single primary action, displays offers independently, compares condit
   expect(screen.getByText('Comparação de condições')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Limpar comparação' }));
   fireEvent.click(screen.getByRole('button', { name: 'Selecionar Nossa Fintech' }));
-  expect(screen.getByRole('list', { name: 'Retornos por instituição' }).textContent).toContain('QI');
+  expect(screen.getByRole('region', { name: 'Consulta de margem' }).textContent).toContain('QI');
   expect(screen.getByText('A solicitação abrange as instituições retornadas por esta integração. O aceite cabe ao cliente.')).toBeTruthy();
   rendered.rerender(<CltJourneyWorkspace {...props} isOpen={false} />); rendered.rerender(<CltJourneyWorkspace {...props} />);
   expect(fetcher).toHaveBeenCalledTimes(1);
@@ -111,7 +111,7 @@ it('restores the authorized customer from the encrypted server snapshot without 
 it('uses a bounded modal, internal scroll and restores background scroll on close', () => {
   const close = vi.fn(), props = { isOpen: true, scope: 'tenant-a:user-a', onClose: close };
   const rendered = render(<CltJourneyWorkspace {...props} />), dialog = screen.getByRole('dialog');
-  expect(dialog.className).toContain('max-w-6xl'); expect(dialog.className).toContain('max-h-[92dvh]');
+  expect(dialog.className).toContain('max-w-[1800px]'); expect(dialog.className).toContain('max-h-[96dvh]');
   expect(dialog.querySelector('main')?.className).toContain('overflow-y-auto');
   expect(document.body.style.overflow).toBe('hidden'); fireEvent.keyDown(dialog, { key: 'Escape' }); expect(close).toHaveBeenCalledOnce();
   rendered.rerender(<CltJourneyWorkspace {...props} isOpen={false} />); expect(document.body.style.overflow).not.toBe('hidden');

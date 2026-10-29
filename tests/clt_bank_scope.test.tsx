@@ -2,7 +2,7 @@
 import React from 'react';import {act,cleanup,fireEvent,render,screen,within} from '@testing-library/react';import {afterEach,expect,it,vi} from 'vitest';
 import {CltJourneyWorkspace} from '../src/components/simulation/CltJourneyWorkspace';
 import {snapshotOfBank,canonicalNossaInstitution} from '../src/lib/cltInstitution';
-import {presentedMargins,presentedOffers} from '../src/lib/cltPresentation';
+import {presentedMargins,presentedOffers,bankSummary} from '../src/lib/cltPresentation';
 vi.mock('../src/components/simulation/BmgCustomerAuthorization',()=>({BmgCustomerAuthorization:()=>null}));
 vi.mock('../src/components/simulation/VctexCltActions',()=>({VctexCltActions:({visible=true}:any)=>visible?<div>Controles VCTEX</div>:null}));
 afterEach(()=>{cleanup();sessionStorage.clear();vi.unstubAllGlobals();vi.restoreAllMocks();});
@@ -24,23 +24,30 @@ it('uses exact canonical IDs and drops conflicting origin metadata without guess
  expect(canonicalNossaInstitution('QITECH')).toBe('qi');expect(canonicalNossaInstitution('empresa com qi tech')).toBeUndefined();const data=fixture();data.results.nossa.rows.push({...data.results.vctex.rows[0],provider:'Nossa Fintech',origin:{providerId:'vctex'}});
  const own=snapshotOfBank(data,'nossa');expect(presentedOffers(own).map(o=>o.row.table)).toEqual(['Oferta UY3']);expect(presentedMargins(own).some(r=>r.subInstitutionId==='qi')).toBe(true);expect(snapshotOfBank(data,'not-a-bank')).toBeNull();
 });
-it.each([390,1440])('shows only the selected institution at width %s and keeps QI pending visible next to UY3',async width=>{
+it.each([390,1440])('shows the three regions and consolidated offers at width %s, with selected-bank controls only',async width=>{
  vi.stubGlobal('innerWidth',width);await open();const margin=screen.getByRole('region',{name:'Consulta de margem'});expect(within(margin).getByText('QI Tech')).toBeTruthy();expect(within(margin).getByText('UY3')).toBeTruthy();
- const offers=screen.getByRole('table',{name:'Tabela consolidada de simulações'});expect(within(offers).getByText('Oferta UY3')).toBeTruthy();for(const title of ['Oferta VCTEX','Oferta V8','Oferta FACTA'])expect(within(offers).queryByText(title)).toBeNull();
- expect(screen.queryByText('Controles VCTEX')).toBeNull();expect(screen.queryByText('Ações específicas V8')).toBeNull();expect(screen.queryByLabelText('Modelo do dispositivo')).toBeNull();expect(screen.getAllByRole('button',{name:'Atualizar status'})).toHaveLength(1);expect(screen.getAllByRole('button',{name:'SIMULAR CONDIÇÕES'})).toHaveLength(1);
+ const offers=screen.getByRole('table',{name:'Tabela consolidada de simulações'});expect(within(offers).getByText('Oferta UY3')).toBeTruthy();for(const title of ['Oferta VCTEX','Oferta V8','Oferta FACTA'])expect(within(offers).getByText(title)).toBeTruthy();expect(screen.getByRole('region',{name:'Margens dos bancos'})).toBeTruthy();expect(offers.querySelectorAll('th')).toHaveLength(9);
+ expect(screen.queryByText('Controles VCTEX')).toBeNull();expect(screen.queryByText('Ações específicas V8')).toBeNull();expect(screen.queryByLabelText('Modelo do dispositivo')).toBeNull();expect(screen.getAllByRole('button',{name:'Consultar / atualizar todas'})).toHaveLength(1);expect(screen.getAllByRole('button',{name:'SIMULAR CONDIÇÕES'})).toHaveLength(1);
 });
 it('explains a missing QI response without creating a fictitious consultation',async()=>{
  const data=fixture();data.results.nossa.rows=data.results.nossa.rows.filter((r:any)=>r.institution!=='QITECH');const fetcher=await open(data);const margin=screen.getByRole('region',{name:'Consulta de margem'});expect(within(margin).getByText('QI Tech')).toBeTruthy();expect(within(margin).getByText('Não disponibilizada nesta resposta')).toBeTruthy();expect(within(margin).getByText(/Nenhuma consulta foi criada/)).toBeTruthy();expect(fetcher.mock.calls.filter(([,o])=>o?.method==='POST')).toHaveLength(1);
 });
 it('switches banks without restarting consultations or losing offers, and isolates the general comparison',async()=>{
- const fetcher=await open();fireEvent.click(screen.getByRole('button',{name:'Selecionar FACTA'}));expect(screen.getByRole('table',{name:'Tabela consolidada de simulações'}).textContent).toContain('Oferta FACTA');expect(screen.queryByText('Oferta UY3')).toBeNull();
+ const fetcher=await open();fireEvent.click(screen.getByRole('button',{name:'Selecionar FACTA'}));expect(screen.getByRole('table',{name:'Tabela consolidada de simulações'}).textContent).toContain('Oferta FACTA');expect(screen.getByText('Oferta UY3')).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Selecionar Nossa Fintech'}));expect(screen.getByText('Oferta UY3')).toBeTruthy();expect(fetcher.mock.calls.filter(([,o])=>o?.method==='POST')).toHaveLength(1);
- fireEvent.click(screen.getByRole('button',{name:'Comparar todos os bancos'}));const table=screen.getByRole('table',{name:'Tabela consolidada de simulações'});for(const title of ['Oferta UY3','Oferta FACTA','Oferta V8','Oferta VCTEX'])expect(within(table).getByText(title)).toBeTruthy();expect(screen.queryByRole('region',{name:'Consulta de margem'})).toBeNull();expect(screen.queryByRole('button',{name:'Atualizar status'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Comparar todos os bancos'}));const table=screen.getByRole('table',{name:'Tabela consolidada de simulações'});for(const title of ['Oferta UY3','Oferta FACTA','Oferta V8','Oferta VCTEX'])expect(within(table).getByText(title)).toBeTruthy();expect(screen.getByRole('region',{name:'Consulta de margem'})).toBeTruthy();expect(screen.getByRole('button',{name:'Consultar / atualizar todas'})).toBeTruthy();
  for(const title of ['Oferta UY3','Oferta FACTA','Oferta V8'])fireEvent.click(screen.getByLabelText('Comparar '+title));expect((screen.getByLabelText('Comparar Oferta VCTEX') as HTMLInputElement).disabled).toBe(true);
- fireEvent.click(screen.getByRole('button',{name:'Selecionar Nossa Fintech'}));expect(screen.queryByText('Oferta FACTA')).toBeNull();expect(screen.getByText('Oferta UY3')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Selecionar Nossa Fintech'}));expect(screen.getByText('Oferta FACTA')).toBeTruthy();expect(screen.getByText('Oferta UY3')).toBeTruthy();
 });
 it('reprices only Nossa with 200, updates status using GET only, and preserves other banks in the background',async()=>{
  const fetcher=await open();fireEvent.change(screen.getByLabelText('Parcela desejada (R$)'),{target:{value:'200,00'}});await act(async()=>fireEvent.click(screen.getByRole('button',{name:'SIMULAR CONDIÇÕES'})));expect(screen.getByText('Nova UY3 200')).toBeTruthy();expect(screen.queryByText('Oferta UY3')).toBeNull();
- await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Atualizar status'})));expect(fetcher.mock.calls.some(([u,o])=>u.includes('provider=nossa')&&o?.method===undefined)).toBe(true);expect(fetcher.mock.calls.filter(([,o])=>o?.method==='POST')).toHaveLength(2);
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Consultar / atualizar todas'})));expect(fetcher.mock.calls.some(([u,o])=>u.includes('/observe?manual=1')&&o?.method===undefined)).toBe(true);expect(fetcher.mock.calls.filter(([,o])=>o?.method==='POST')).toHaveLength(2);
  fireEvent.click(screen.getByRole('button',{name:'Selecionar FACTA'}));expect(screen.getByText('Oferta FACTA')).toBeTruthy();expect((screen.getByLabelText('Parcela desejada (R$)') as HTMLInputElement).value).toBe('');fireEvent.click(screen.getByRole('button',{name:'Selecionar Nossa Fintech'}));expect((screen.getByLabelText('Parcela desejada (R$)') as HTMLInputElement).value).toContain('200');
+});
+
+it('summarizes current V8 evidence even when aggregate status is UNKNOWN, without mixing old executions',()=>{
+ const data=fixture();data.results.v8.status='UNKNOWN';const offer=data.results.v8.rows[1];data.results.v8.rows=[data.results.v8.rows[0],...Array.from({length:7},(_,i)=>({...offer,simulationId:'s'+i,origin:{providerId:'v8',executionId:id}})),{...offer,simulationId:'old',origin:{providerId:'v8',executionId:'old-execution'}}];expect(bankSummary(data,'v8')).toEqual({count:7,status:'Ofertas disponíveis'});data.results.v8.rows=[data.results.v8.rows[0]];expect(bankSummary(data,'v8')).toEqual({count:0,status:'Margem disponível'});
+});
+it('consolidates VCTEX events by connection and consultation, preserving separate queries and the source history',()=>{
+ const data=fixture();const row={provider:'VCTEX DIGITAL',institution:'VCTEX DIGITAL',state:'DATA',origin:{providerId:'vctex',connectionId:'p',executionId:id},data:{vctex:{preOperationId:'query-a'},margin:{available_balance:529.93},observedAt:'2026-10-29T10:00:00Z'}};data.results.vctex.rows=[{...row,data:{...row.data,margin:{available_balance:100},observedAt:'2026-10-29T09:00:00Z'}},row,{...row,data:{...row.data,vctex:{preOperationId:'query-b'}}}];const margins=presentedMargins(data).filter(r=>r.bank==='vctex');expect(margins).toHaveLength(2);expect(margins.find(r=>r.consultId==='query-a')?.available).toBe(529.93);expect(data.results.vctex.rows).toHaveLength(3);data.results.vctex.rows.push({...row,data:{...row.data,vctex:{preOperationId:'query-a',employmentId:'employment-a'}}});expect(presentedMargins(data).filter(r=>r.bank==='vctex')).toHaveLength(2);expect(data.results.vctex.rows).toHaveLength(4);
 });

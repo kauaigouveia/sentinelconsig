@@ -51,7 +51,7 @@ export class CltJourneyService {
     try{entry.raw=await entry.store.compareAndSet(id,entry.raw,record);}catch{return(await this.get(db,tenant,actor,id))?.snapshot;}
     try {
       await withinJourneyDeadline(AbortSignal.timeout(25000),async()=>{
-        const banks=entry.snapshot.banks.filter(bank=>bank.id!=='finanto'&&(!bank.contextual||provider==='vctex'&&bank.id==='vctex')&&(!provider||provider===bank.id));
+        const banks=entry.snapshot.banks.filter(bank=>bank.id!=='finanto'&&(!bank.contextual||bank.id==='vctex')&&(!provider||provider===bank.id));
         for(let offset=0;offset<banks.length;offset+=3)await Promise.all(banks.slice(offset,offset+3).map(async bank=>{
           const old=entry.snapshot.results[bank.id];
           if(!provider&&old.rows.length&&old.rows.every(r=>r.outcome==='INELIGIBLE'||r.outcome==='UNSUPPORTED'))return;
@@ -79,8 +79,13 @@ export class CltJourneyService {
     // Observation only: this endpoint never invokes SIMULATE or AUTHORIZE.
     const response = await withinJourneyDeadline(AbortSignal.timeout(25000), () => ProductSimulationService.run(db, tenant, 'CLT', 'REFRESH', { ...entry.snapshot.customer!, v8ConsultId: consultId, v8PromoterId: promoterId, bmgActorId: actor }, undefined, ['v8']));
     if (response.rows.some(row => row.state === 'ERROR' && (row.data as any)?.v8?.status !== 'FAILED')) throw Error('V8_STATUS_UNAVAILABLE');
-    entry.snapshot.results.v8 = { ...entry.snapshot.results.v8, status: 'RETURNED', rows: response.rows.map(row=>projectRow(row,'v8',id)) };
+    const old=entry.snapshot.results.v8;
+    const rejected=response.rows.some(row=>(row.data as any)?.v8?.consultId===consultId&&['REJECTED','FAILED'].includes((row.data as any)?.v8?.status));
+    // A status GET must not erase simulations or other consultations in this execution.
+    const retained=old.rows.filter(row=>{const v=(row.data as any)?.v8;return row.state==='OFFER'?!(rejected&&v?.consultId===consultId&&v?.promoterId===promoterId):v?.consultId!==consultId||v?.promoterId!==promoterId;});
+    entry.snapshot.results.v8 = { ...old, status: 'RETURNED', rows: [...retained,...response.rows.map(row=>projectRow(row,'v8',old.executionId||id))] };
     await entry.store.compareAndSet(id, entry.raw, entry.record);
+    await this.syncRoot(db,tenant,actor,entry.snapshot,'v8');
     return entry.snapshot;
   }
   async get(db: any, tenant: string, actor: string, id: string): Promise<Entry | undefined> {
