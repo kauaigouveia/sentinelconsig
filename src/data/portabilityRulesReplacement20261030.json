@@ -1,0 +1,1612 @@
+{
+  "id": "INSS_PORTABILITY_20261030_REPLACEMENT",
+  "scope": {
+    "product": "INSS",
+    "operations": [
+      "PORT",
+      "PORT_REFIN"
+    ]
+  },
+  "source": "Documento substitutivo fornecido e priorizado expressamente pelo usuário",
+  "sourceFile": "Markdown colado(5).md",
+  "sourceSha256": "698c56ff3ca08b25f79beea0315206a0d9eb8350045a9e67239ddf8c0e41724b",
+  "receivedAt": "2026-10-30",
+  "effectiveAt": null,
+  "precedence": "REPLACES_ALL_DOCUMENTED_CRITERIA_FOR_LISTED_BANKS",
+  "banks": [
+    {
+      "id": "digio",
+      "name": "DIGIO",
+      "page": 2,
+      "criteria": {
+        "blocked": [
+          "237",
+          "041"
+        ],
+        "blockedNames": [
+          "Mais BB"
+        ],
+        "paid": {},
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 18,
+        "startMonthsByTerm": {
+          "108": 851
+        },
+        "invalidMinAge": 60,
+        "invalidStrictMin": true,
+        "pure": false,
+        "reduce": false,
+        "negative": false,
+        "aggregate": false,
+        "unify": false,
+        "srcc": true,
+        "portRateFixed": 1.42,
+        "refinRateFixed": 1.6,
+        "minInstallment": 70,
+        "minCash": 250,
+        "networkPaid": 0,
+        "corbanPaid": 15,
+        "formalizationConditional": false
+      },
+      "pending": {
+        "always": [
+          "Saldo mínimo não informado na fonte substitutiva.",
+          "Identificador da origem Mais BB não confirmado no cadastro STR."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 18 anos até 70 anos e 11 meses, no prazo de 108x"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Espécies 32 e 92 acima dos 60 anos"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não faz"
+        ],
+        [
+          "Portabilidade pura",
+          "Não faz"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não faz"
+        ],
+        [
+          "Redução de parcelas",
+          "Não permite"
+        ],
+        [
+          "Margem negativa",
+          "Não permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,42%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,60%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 70,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não informado"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 250,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos: seguindo a regra da autorregulação; bancos de rede: 0 pagas; canal CORBAN: 15.\n\nBancos não permitidos: Bradesco, Mais BB e Banrisul."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                   |\n| --------------------------- | ------------------------------------------------------------ |\n| Formalização                | Digital                                                      |\n| Limite de idade             | A partir de 18 anos até 70 anos e 11 meses, no prazo de 108x |\n| Regra espécie invalidez     | Espécies 32 e 92 acima dos 60 anos                           |\n| Ordem de pagamento          | Não faz                                                      |\n| Portabilidade pura          | Não faz                                                      |\n| Portabilidade LOAS          | Não faz                                                      |\n| Redução de parcelas         | Não permite                                                  |\n| Margem negativa             | Não permite                                                  |\n| Agrega margem               | Não permite                                                  |\n| Unificar parcelas           | Não permite                                                  |\n| Consulta SRCC               | Sim                                                          |\n| Taxa de portabilidade       | 1,42%                                                        |\n| Taxa refin da portabilidade | 1,60%                                                        |\n| Parcela mínima              | R$ 70,00                                                     |\n| Saldo mínimo                | Não informado                                                |\n| Mínimo liberado             | R$ 250,00                                                    |\n\nRegra de bancos: seguindo a regra da autorregulação; bancos de rede: 0 pagas; canal CORBAN: 15.\n\nBancos não permitidos: Bradesco, Mais BB e Banrisul."
+    },
+    {
+      "id": "c6",
+      "name": "C6 CONSIG",
+      "page": 3,
+      "criteria": {
+        "blocked": [
+          "121",
+          "070",
+          "707",
+          "012",
+          "422"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 37,
+          "555": 37
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 21,
+        "maxStartMonths": 875,
+        "maxStartDays": 29,
+        "pure": true,
+        "pureMinRate": 1.55,
+        "pureMinBalance": 2000,
+        "reduce": true,
+        "negative": "deduct",
+        "aggregate": "refinOnly",
+        "unify": false,
+        "srcc": true,
+        "portRatesListed": [
+          1.85,
+          1.35
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.55
+        ],
+        "minInstallment": 0,
+        "minCash": 100,
+        "corbanPaid": 12,
+        "networkPaid": 0,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "refin": [
+          "Condições de saldo do refinanciamento não individualizadas."
+        ],
+        "always": [
+          "Banco com exigência de 13 parcelas pagas não identificado."
+        ],
+        "invalid": [
+          "Espécies 32 e 92: condições de idade/benefício não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes analfabetos e acima de 60 anos em determinados estados"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 21 anos até 72 anos, 11 meses e 29 dias"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas para espécies 32 e 92, conforme idade e benefício"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não faz"
+        ],
+        [
+          "Portabilidade pura",
+          "Sim, taxa mínima de 1,55%"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "O valor negativo da margem deve ser deduzido do valor da parcela"
+        ],
+        [
+          "Agrega margem",
+          "Permite agregar margem apenas no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,35%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,55%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "Portabilidade pura: R$ 2.000,00. Demais condições específicas de refinanciamento"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 37 parcelas pagas.\n- Outro banco identificado no material: 13 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 0 parcelas.\n\nBancos não permitidos: Agibank, BRB, Daycoval, Inbursa e Safra."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                                                         |\n| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes analfabetos e acima de 60 anos em determinados estados |\n| Limite de idade             | A partir de 21 anos até 72 anos, 11 meses e 29 dias                                                                |\n| Regra espécie invalidez     | Condições específicas para espécies 32 e 92, conforme idade e benefício                                            |\n| Ordem de pagamento          | Não faz                                                                                                            |\n| Portabilidade pura          | Sim, taxa mínima de 1,55%                                                                                          |\n| Portabilidade LOAS          | Não atende                                                                                                         |\n| Redução de parcelas         | Permite                                                                                                            |\n| Margem negativa             | O valor negativo da margem deve ser deduzido do valor da parcela                                                   |\n| Agrega margem               | Permite agregar margem apenas no refin da portabilidade                                                            |\n| Unificar parcelas           | Não permite                                                                                                        |\n| Consulta SRCC               | Sim                                                                                                                |\n| Taxa de portabilidade       | 1,85% / 1,35%                                                                                                      |\n| Taxa refin da portabilidade | 1,85% / 1,55%                                                                                                      |\n| Parcela mínima              | Não tem                                                                                                            |\n| Saldo mínimo                | Portabilidade pura: R$ 2.000,00. Demais condições específicas de refinanciamento                                   |\n| Mínimo liberado             | R$ 100,00                                                                                                          |\n\nRegra de bancos:\n\n- PAN: 37 parcelas pagas.\n- Outro banco identificado no material: 13 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 0 parcelas.\n\nBancos não permitidos: Agibank, BRB, Daycoval, Inbursa e Safra."
+    },
+    {
+      "id": "daycoval",
+      "name": "DAYCOVAL",
+      "page": 4,
+      "criteria": {
+        "blocked": [
+          "025",
+          "336",
+          "626",
+          "422",
+          "012"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 15,
+          "555": 15,
+          "121": 15,
+          "149": 24
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 21,
+        "maxEndMonths": 839,
+        "maxEndDays": 29,
+        "pure": false,
+        "reduce": true,
+        "negative": "deduct",
+        "aggregate": "refinOnly",
+        "unify": 3,
+        "srcc": true,
+        "portRatesListed": [
+          1.85,
+          1.34
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.56
+        ],
+        "minInstallment": 20,
+        "minBalance": 0,
+        "minCash": 100,
+        "corbanPaid": 12,
+        "networkPaid": 0,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Código da origem NBC Bank, que exige 24 pagas, não comprovado."
+        ],
+        "invalid": [
+          "Espécies 32 e 92: condições não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "De 21 anos até 69 anos, 11 meses e 29 dias, conforme término do contrato"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas para espécies 32 e 92"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não faz"
+        ],
+        [
+          "Portabilidade pura",
+          "Não faz"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "O valor negativo da margem deve ser deduzido do valor da parcela"
+        ],
+        [
+          "Agrega margem",
+          "Permite agregar margem apenas no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Até 3 parcelas"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,34%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,56%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 20,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não tem"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos — parcelas pagas:\n\n- PAN: 15.\n- Agibank: 15.\n- Facta: 24.\n- NBC Bank: 24.\n- Bancos correspondentes (CORBAN): 12.\n- Bancos de rede: a partir de 0.\n\nBancos não permitidos: Alfa, C6 Consig, Safra e Inbursa."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                   |\n| --------------------------- | ---------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes acima de 60 anos |\n| Limite de idade             | De 21 anos até 69 anos, 11 meses e 29 dias, conforme término do contrato     |\n| Regra espécie invalidez     | Condições específicas para espécies 32 e 92                                  |\n| Ordem de pagamento          | Não faz                                                                      |\n| Portabilidade pura          | Não faz                                                                      |\n| Portabilidade LOAS          | Não atende                                                                   |\n| Redução de parcelas         | Permite                                                                      |\n| Margem negativa             | O valor negativo da margem deve ser deduzido do valor da parcela             |\n| Agrega margem               | Permite agregar margem apenas no refin da portabilidade                      |\n| Unificar parcelas           | Até 3 parcelas                                                               |\n| Consulta SRCC               | Sim                                                                          |\n| Taxa de portabilidade       | 1,85% / 1,34%                                                                |\n| Taxa refin da portabilidade | 1,85% / 1,56%                                                                |\n| Parcela mínima              | R$ 20,00                                                                     |\n| Saldo mínimo                | Não tem                                                                      |\n| Mínimo liberado             | R$ 100,00                                                                    |\n\nRegra de bancos — parcelas pagas:\n\n- PAN: 15.\n- Agibank: 15.\n- Facta: 24.\n- NBC Bank: 24.\n- Bancos correspondentes (CORBAN): 12.\n- Bancos de rede: a partir de 0.\n\nBancos não permitidos: Alfa, C6 Consig, Safra e Inbursa."
+    },
+    {
+      "id": "facta",
+      "name": "FACTA",
+      "page": 5,
+      "criteria": {
+        "blocked": [
+          "012",
+          "611",
+          "643"
+        ],
+        "blockedNames": [
+          "NBC Bank",
+          "Socicred"
+        ],
+        "paid": {},
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 21,
+        "pure": true,
+        "pureMinBalance": 1900,
+        "pureMinRate": 1.7,
+        "reduce": true,
+        "negative": true,
+        "aggregate": "refinOnly",
+        "unify": true,
+        "srcc": false,
+        "portRateFixed": 0.9,
+        "refinRatesListed": [
+          1.85,
+          1.68
+        ],
+        "minInstallment": 0,
+        "minBalance": 0,
+        "minCash": 50,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Faixas de idade e prazos FACTA não detalhadas.",
+          "Exigências de parcelas pagas por origem e categoria não individualizadas.",
+          "Há origens bloqueadas indicadas somente por logotipo; códigos NBC Bank e Socicred não comprovados."
+        ],
+        "invalid": [
+          "Invalidez: condições por idade e espécie não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 21 anos, com faixas e prazos específicos"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas por idade e espécie do benefício"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não faz"
+        ],
+        [
+          "Portabilidade pura",
+          "Sim, saldo mínimo de R$ 1.900,00 e taxa mínima de 1,70%"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Permite"
+        ],
+        [
+          "Agrega margem",
+          "Permite, apenas no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não"
+        ],
+        [
+          "Taxa de portabilidade",
+          "0,90%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,68%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "Não tem"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 50,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos: o material apresenta exigências específicas de parcelas pagas para PAN, Banrisul, BMG, C6 Consig e outros bancos, além das regras de CORBAN e rede.\n\nBancos não permitidos: Inbursa, Banco Paulista, Pine, NBC Bank, Socicred e outros identificados por logotipo no material."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                   |\n| --------------------------- | ---------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes acima de 60 anos |\n| Limite de idade             | A partir de 21 anos, com faixas e prazos específicos                         |\n| Regra espécie invalidez     | Condições específicas por idade e espécie do benefício                       |\n| Ordem de pagamento          | Não faz                                                                      |\n| Portabilidade pura          | Sim, saldo mínimo de R$ 1.900,00 e taxa mínima de 1,70%                      |\n| Portabilidade LOAS          | Não atende                                                                   |\n| Redução de parcelas         | Permite                                                                      |\n| Margem negativa             | Permite                                                                      |\n| Agrega margem               | Permite, apenas no refin da portabilidade                                    |\n| Unificar parcelas           | Permite                                                                      |\n| Consulta SRCC               | Não                                                                          |\n| Taxa de portabilidade       | 0,90%                                                                        |\n| Taxa refin da portabilidade | 1,85% / 1,68%                                                                |\n| Parcela mínima              | Não tem                                                                      |\n| Saldo mínimo                | Não tem                                                                      |\n| Mínimo liberado             | R$ 50,00                                                                     |\n\nRegra de bancos: o material apresenta exigências específicas de parcelas pagas para PAN, Banrisul, BMG, C6 Consig e outros bancos, além das regras de CORBAN e rede.\n\nBancos não permitidos: Inbursa, Banco Paulista, Pine, NBC Bank, Socicred e outros identificados por logotipo no material."
+    },
+    {
+      "id": "happy",
+      "name": "HAPPY",
+      "page": 6,
+      "criteria": {
+        "blocked": [
+          "070",
+          "643",
+          "329"
+        ],
+        "blockedNames": [
+          "Barigui"
+        ],
+        "paid": {
+          "318": 12,
+          "149": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 21,
+        "maxStartMonths": 839,
+        "maxStartDays": 29,
+        "pure": false,
+        "reduce": true,
+        "negative": false,
+        "aggregate": false,
+        "unify": false,
+        "srcc": false,
+        "portRatesListed": [
+          1.85,
+          1.45
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.77
+        ],
+        "minInstallment": 0,
+        "minCash": 100,
+        "otherPaid": 1,
+        "balanceByRefinRate": {
+          "1.85": 4000,
+          "1.80": 6000,
+          "1.75": 11000,
+          "1.71": 13000
+        },
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Identificador da origem Barigui não confirmado."
+        ],
+        "invalid": [
+          "Espécies 32 e 92: condições conforme idade não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes analfabetos e acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 21 anos até 69 anos, 11 meses e 29 dias"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas para espécies 32 e 92, conforme idade"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não faz"
+        ],
+        [
+          "Portabilidade pura",
+          "Não faz"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Não permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,45%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,77%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 4.000,00 (tabela 1,85%); R$ 6.000,00 (1,80%); R$ 11.000,00 (1,75%); R$ 13.000,00 (1,71%)"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- BMG: 12 parcelas pagas.\n- Facta: 12 parcelas pagas.\n- Demais bancos: 1 parcela paga.\n\nBancos não permitidos: Barigui, BRB, Pine e QI Tech."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                                  |\n| --------------------------- | ------------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes analfabetos e acima de 60 anos  |\n| Limite de idade             | A partir de 21 anos até 69 anos, 11 meses e 29 dias                                         |\n| Regra espécie invalidez     | Condições específicas para espécies 32 e 92, conforme idade                                 |\n| Ordem de pagamento          | Não faz                                                                                     |\n| Portabilidade pura          | Não faz                                                                                     |\n| Portabilidade LOAS          | Não atende                                                                                  |\n| Redução de parcelas         | Permite                                                                                     |\n| Margem negativa             | Não permite                                                                                 |\n| Agrega margem               | Não permite                                                                                 |\n| Unificar parcelas           | Não permite                                                                                 |\n| Consulta SRCC               | Não                                                                                         |\n| Taxa de portabilidade       | 1,85% / 1,45%                                                                               |\n| Taxa refin da portabilidade | 1,85% / 1,77%                                                                               |\n| Parcela mínima              | Não tem                                                                                     |\n| Saldo mínimo                | R$ 4.000,00 (tabela 1,85%); R$ 6.000,00 (1,80%); R$ 11.000,00 (1,75%); R$ 13.000,00 (1,71%) |\n| Mínimo liberado             | R$ 100,00                                                                                   |\n\nRegra de bancos:\n\n- BMG: 12 parcelas pagas.\n- Facta: 12 parcelas pagas.\n- Demais bancos: 1 parcela paga.\n\nBancos não permitidos: Barigui, BRB, Pine e QI Tech."
+    },
+    {
+      "id": "parana",
+      "name": "PB Consignado — Paraná Banco",
+      "page": 7,
+      "criteria": {
+        "blocked": [
+          "149",
+          "329"
+        ],
+        "blockedNames": [
+          "Barigui"
+        ],
+        "paid": {
+          "623": 13,
+          "555": 13,
+          "121": 13
+        },
+        "loas": false,
+        "paymentOrder": true,
+        "minAge": 18,
+        "maxStartMonths": 839,
+        "maxStartDays": 29,
+        "stateBlockedOver60": true,
+        "pure": true,
+        "reduce": true,
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "srcc": true,
+        "portRatesListed": [
+          1.85,
+          1.1
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.8
+        ],
+        "minInstallment": 120,
+        "minBalance": 0,
+        "minCash": 100,
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "formalizationConditional": false,
+        "paymentOrderRules": {
+          "033": 0,
+          "341": 2200
+        }
+      },
+      "pending": {
+        "always": [
+          "Faixas de idade por prazo e banco com exigência de 12 pagas não individualizados.",
+          "Identificador da origem Barigui não confirmado."
+        ],
+        "invalid": [
+          "Condições específicas de idade e espécie não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital, não atende clientes acima de 60 anos residentes nos estados AP, PB, TO, RR e SC"
+        ],
+        [
+          "Limite de idade",
+          "De 18 a 69 anos, 11 meses e 29 dias, conforme prazo"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas de idade e espécie"
+        ],
+        [
+          "Ordem de pagamento",
+          "Santander (código 033), sem valor mínimo; Itaú (código 341), mínimo R$ 2.200,00"
+        ],
+        [
+          "Portabilidade pura",
+          "Permite"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,10%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,80%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 120,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não tem"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 13 parcelas pagas.\n- Agibank: 13 parcelas pagas.\n- Outro banco indicado: 12 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: Barigui, Facta e QI Tech."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                               |\n| --------------------------- | ---------------------------------------------------------------------------------------- |\n| Formalização                | Digital, não atende clientes acima de 60 anos residentes nos estados AP, PB, TO, RR e SC |\n| Limite de idade             | De 18 a 69 anos, 11 meses e 29 dias, conforme prazo                                      |\n| Regra espécie invalidez     | Condições específicas de idade e espécie                                                 |\n| Ordem de pagamento          | Santander (código 033), sem valor mínimo; Itaú (código 341), mínimo R$ 2.200,00          |\n| Portabilidade pura          | Permite                                                                                  |\n| Portabilidade LOAS          | Não atende                                                                               |\n| Redução de parcelas         | Permite                                                                                  |\n| Margem negativa             | Permite                                                                                  |\n| Agrega margem               | Não permite                                                                              |\n| Unificar parcelas           | Não permite                                                                              |\n| Consulta SRCC               | Sim                                                                                      |\n| Taxa de portabilidade       | 1,85% / 1,10%                                                                            |\n| Taxa refin da portabilidade | 1,85% / 1,80%                                                                            |\n| Parcela mínima              | R$ 120,00                                                                                |\n| Saldo mínimo                | Não tem                                                                                  |\n| Mínimo liberado             | R$ 100,00                                                                                |\n\nRegra de bancos:\n\n- PAN: 13 parcelas pagas.\n- Agibank: 13 parcelas pagas.\n- Outro banco indicado: 12 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: Barigui, Facta e QI Tech."
+    },
+    {
+      "id": "icred",
+      "name": "ICRED",
+      "page": 8,
+      "criteria": {
+        "blocked": [
+          "012",
+          "643",
+          "329"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 12,
+          "555": 12,
+          "149": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 21,
+        "maxAge": 62,
+        "stateBlockedOver60": true,
+        "pure": false,
+        "reduce": true,
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "portRatesListed": [
+          1.85
+        ],
+        "portPonderationPending": true,
+        "refinRatesListed": [
+          1.85,
+          1.5
+        ],
+        "minInstallment": 0,
+        "minBalance": 3000,
+        "minCash": 100,
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "formalizationConditional": false
+      },
+      "pending": {
+        "invalid": [
+          "Espécies 32 e 92: condições não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital, não atende clientes acima de 60 anos residentes nos estados AP, PB, TO, RR e SC"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 21 anos até 62 anos"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas para espécies 32 e 92"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Não permite"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não informado"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / condição de ponderação indicada no material"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,50%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 3.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Facta: 12 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: Inbursa, Pine e QI Tech."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                               |\n| --------------------------- | ---------------------------------------------------------------------------------------- |\n| Formalização                | Digital, não atende clientes acima de 60 anos residentes nos estados AP, PB, TO, RR e SC |\n| Limite de idade             | A partir de 21 anos até 62 anos                                                          |\n| Regra espécie invalidez     | Condições específicas para espécies 32 e 92                                              |\n| Ordem de pagamento          | Não permite                                                                              |\n| Portabilidade pura          | Não permite                                                                              |\n| Portabilidade LOAS          | Não atende                                                                               |\n| Redução de parcelas         | Permite                                                                                  |\n| Margem negativa             | Permite                                                                                  |\n| Agrega margem               | Não permite                                                                              |\n| Unificar parcelas           | Não permite                                                                              |\n| Consulta SRCC               | Não informado                                                                            |\n| Taxa de portabilidade       | 1,85% / condição de ponderação indicada no material                                      |\n| Taxa refin da portabilidade | 1,85% / 1,50%                                                                            |\n| Parcela mínima              | Não tem                                                                                  |\n| Saldo mínimo                | R$ 3.000,00                                                                              |\n| Mínimo liberado             | R$ 100,00                                                                                |\n\nRegra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Facta: 12 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: Inbursa, Pine e QI Tech."
+    },
+    {
+      "id": "banrisul",
+      "name": "BANRISUL",
+      "page": 9,
+      "criteria": {
+        "blocked": [
+          "070"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 30,
+          "555": 30
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 21,
+        "maxStartMonths": 827,
+        "maxStartDays": 29,
+        "pure": true,
+        "pureMinRate": 1.63,
+        "reduce": true,
+        "negative": "deduct",
+        "aggregate": "refinOnly",
+        "unify": 5,
+        "unifyRefinOnly": true,
+        "srcc": true,
+        "portRatesListed": [
+          1.85,
+          1.49
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.7
+        ],
+        "minInstallment": 0,
+        "minBalance": 5000,
+        "minCash": 100,
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Uma origem bloqueada foi indicada somente por logotipo."
+        ],
+        "invalid": [
+          "Espécies 32 e 92: condições não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "De 21 a 68 anos, 11 meses e 29 dias"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas para espécies 32 e 92"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Permite (taxa mínima 1,63%)"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "O valor negativo da margem deve ser deduzido do valor da parcela"
+        ],
+        [
+          "Agrega margem",
+          "Permite agregar margem apenas no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Permite unificar até 5 contratos no refin da portabilidade"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,49%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,70%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 5.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 30 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: BRB e outro banco identificado por logotipo no documento."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                   |\n| --------------------------- | ---------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes acima de 60 anos |\n| Limite de idade             | De 21 a 68 anos, 11 meses e 29 dias                                          |\n| Regra espécie invalidez     | Condições específicas para espécies 32 e 92                                  |\n| Ordem de pagamento          | Não permite                                                                  |\n| Portabilidade pura          | Permite (taxa mínima 1,63%)                                                  |\n| Portabilidade LOAS          | Não atende                                                                   |\n| Redução de parcelas         | Permite                                                                      |\n| Margem negativa             | O valor negativo da margem deve ser deduzido do valor da parcela             |\n| Agrega margem               | Permite agregar margem apenas no refin da portabilidade                      |\n| Unificar parcelas           | Permite unificar até 5 contratos no refin da portabilidade                   |\n| Consulta SRCC               | Sim                                                                          |\n| Taxa de portabilidade       | 1,85% / 1,49%                                                                |\n| Taxa refin da portabilidade | 1,85% / 1,70%                                                                |\n| Parcela mínima              | Não tem                                                                      |\n| Saldo mínimo                | R$ 5.000,00                                                                  |\n| Mínimo liberado             | R$ 100,00                                                                    |\n\nRegra de bancos:\n\n- PAN: 30 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: BRB e outro banco identificado por logotipo no documento."
+    },
+    {
+      "id": "havecred",
+      "name": "HAVECRED",
+      "page": 10,
+      "criteria": {
+        "blocked": [
+          "336",
+          "626",
+          "643",
+          "329"
+        ],
+        "blockedNames": [
+          "Barigui",
+          "NBC Bank"
+        ],
+        "paid": {
+          "623": 12,
+          "555": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "pure": true,
+        "reduce": true,
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "portRateFixed": 0.6,
+        "refinRatesListed": [
+          1.85,
+          1.65
+        ],
+        "minInstallment": 0,
+        "cashFormulaPending": true,
+        "formalizationConditional": false
+      },
+      "pending": {
+        "always": [
+          "Faixas de idade e prazo não detalhadas.",
+          "Saldo mínimo depende de condições de operação não individualizadas.",
+          "Outras origens com 12 pagas e parte das exclusões não identificadas; códigos Barigui e NBC Bank não comprovados."
+        ],
+        "invalid": [
+          "Espécies 32 e 92: condições não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "100% digital"
+        ],
+        [
+          "Limite de idade",
+          "Faixas específicas conforme idade e prazo do contrato"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas para espécies 32 e 92"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Permite"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não informado"
+        ],
+        [
+          "Taxa de portabilidade",
+          "0,60%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,65%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "Condições específicas para refinanciamento e portabilidade"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 50,00 ou 5% do valor do novo endividamento"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Outros bancos identificados no material: 12 parcelas pagas.\n- Demais condições conforme regras da instituição.\n\nBancos não permitidos: C6 Consig, Barigui, Pine, QI Tech, NBC Bank e outros indicados por logotipo."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                 |\n| --------------------------- | ---------------------------------------------------------- |\n| Formalização                | 100% digital                                               |\n| Limite de idade             | Faixas específicas conforme idade e prazo do contrato      |\n| Regra espécie invalidez     | Condições específicas para espécies 32 e 92                |\n| Ordem de pagamento          | Não permite                                                |\n| Portabilidade pura          | Permite                                                    |\n| Portabilidade LOAS          | Não atende                                                 |\n| Redução de parcelas         | Permite                                                    |\n| Margem negativa             | Permite                                                    |\n| Agrega margem               | Não permite                                                |\n| Unificar parcelas           | Não permite                                                |\n| Consulta SRCC               | Não informado                                              |\n| Taxa de portabilidade       | 0,60%                                                      |\n| Taxa refin da portabilidade | 1,85% / 1,65%                                              |\n| Parcela mínima              | Não tem                                                    |\n| Saldo mínimo                | Condições específicas para refinanciamento e portabilidade |\n| Mínimo liberado             | R$ 50,00 ou 5% do valor do novo endividamento              |\n\nRegra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Outros bancos identificados no material: 12 parcelas pagas.\n- Demais condições conforme regras da instituição.\n\nBancos não permitidos: C6 Consig, Barigui, Pine, QI Tech, NBC Bank e outros indicados por logotipo."
+    },
+    {
+      "id": "finanto",
+      "name": "FINANTO",
+      "page": 11,
+      "criteria": {
+        "blocked": [
+          "422",
+          "079",
+          "380",
+          "469",
+          "149",
+          "329",
+          "025",
+          "643",
+          "012"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 12,
+          "555": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 22,
+        "maxStartMonths": 826,
+        "invalidMinAge": 60,
+        "pure": true,
+        "pureRateRange": [
+          1.6,
+          1.85
+        ],
+        "reduce": true,
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "portRatesListed": [
+          1.85,
+          1.1
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.6
+        ],
+        "minInstallment": 50,
+        "minBalance": 0,
+        "cashFormulaPending": true,
+        "otherPaid": 1,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Origens adicionais com 12 pagas e exclusões indicadas no documento não individualizadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 22 anos até 68 anos e 10 meses"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Apenas a partir de 60 anos"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Taxa 1,85% a 1,60%"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Atende"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não informado"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,10%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,60%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 50,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não tem"
+        ],
+        [
+          "Mínimo liberado",
+          "Condição conforme idade e percentual do novo endividamento"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Demais bancos listados: 12 parcelas pagas.\n- Demais bancos: 1 parcela paga.\n\nBancos não permitidos: Safra, PicPay, Facta, QI Tech, Alfa, Pine, Inbursa e outros identificados no documento."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                   |\n| --------------------------- | ---------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes acima de 60 anos |\n| Limite de idade             | A partir de 22 anos até 68 anos e 10 meses                                   |\n| Regra espécie invalidez     | Apenas a partir de 60 anos                                                   |\n| Ordem de pagamento          | Não permite                                                                  |\n| Portabilidade pura          | Taxa 1,85% a 1,60%                                                           |\n| Portabilidade LOAS          | Não atende                                                                   |\n| Redução de parcelas         | Permite                                                                      |\n| Margem negativa             | Atende                                                                       |\n| Agrega margem               | Não permite                                                                  |\n| Unificar parcelas           | Não permite                                                                  |\n| Consulta SRCC               | Não informado                                                                |\n| Taxa de portabilidade       | 1,85% / 1,10%                                                                |\n| Taxa refin da portabilidade | 1,85% / 1,60%                                                                |\n| Parcela mínima              | R$ 50,00                                                                     |\n| Saldo mínimo                | Não tem                                                                      |\n| Mínimo liberado             | Condição conforme idade e percentual do novo endividamento                   |\n\nRegra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Demais bancos listados: 12 parcelas pagas.\n- Demais bancos: 1 parcela paga.\n\nBancos não permitidos: Safra, PicPay, Facta, QI Tech, Alfa, Pine, Inbursa e outros identificados no documento."
+    },
+    {
+      "id": "nossa-fintech",
+      "name": "NOSSA FINTECH",
+      "page": 12,
+      "criteria": {
+        "blocked": [
+          "643",
+          "070",
+          "329",
+          "012",
+          "389",
+          "567"
+        ],
+        "blockedNames": [
+          "Barigui",
+          "NBC Bank"
+        ],
+        "paid": {
+          "623": 12,
+          "555": 12,
+          "149": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 18,
+        "ageByTerm": {
+          "108": 70,
+          "96": 79
+        },
+        "pure": false,
+        "reduce": "negativeOnly",
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "portRateFixed": 0.6,
+        "refinRatesListed": [
+          1.85,
+          1.65
+        ],
+        "minInstallment": 0,
+        "minBalance": 2900,
+        "minCash": 100,
+        "otherPaid": 1,
+        "requiresCip": true,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Identificadores das origens Barigui e NBC Bank não confirmados."
+        ],
+        "invalid": [
+          "Condições específicas de idade e espécie não detalhadas."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal, com condições específicas para clientes acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "Prazo 108x: a partir de 18 anos até 70 anos; prazo 96x: a partir de 18 anos até 79 anos"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Condições específicas conforme espécie e idade"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Não permite"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite apenas nos casos de margem negativa"
+        ],
+        [
+          "Margem negativa",
+          "Permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não informado"
+        ],
+        [
+          "Taxa de portabilidade",
+          "0,60%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,65%"
+        ],
+        [
+          "Parcela mínima",
+          "Não possui"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 2.900,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Facta: 12 parcelas pagas.\n- Demais bancos participantes da CIP: a partir de 1 parcela.\n\nBancos não permitidos: Pine, Barigui, BRB, QI Tech, Inbursa, Mercantil e NBC Bank."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                              |\n| --------------------------- | --------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal, com condições específicas para clientes acima de 60 anos            |\n| Limite de idade             | Prazo 108x: a partir de 18 anos até 70 anos; prazo 96x: a partir de 18 anos até 79 anos |\n| Regra espécie invalidez     | Condições específicas conforme espécie e idade                                          |\n| Ordem de pagamento          | Não permite                                                                             |\n| Portabilidade pura          | Não permite                                                                             |\n| Portabilidade LOAS          | Não atende                                                                              |\n| Redução de parcelas         | Permite apenas nos casos de margem negativa                                             |\n| Margem negativa             | Permite                                                                                 |\n| Agrega margem               | Não permite                                                                             |\n| Unificar parcelas           | Não permite                                                                             |\n| Consulta SRCC               | Não informado                                                                           |\n| Taxa de portabilidade       | 0,60%                                                                                   |\n| Taxa refin da portabilidade | 1,85% / 1,65%                                                                           |\n| Parcela mínima              | Não possui                                                                              |\n| Saldo mínimo                | R$ 2.900,00                                                                             |\n| Mínimo liberado             | R$ 100,00                                                                               |\n\nRegra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Facta: 12 parcelas pagas.\n- Demais bancos participantes da CIP: a partir de 1 parcela.\n\nBancos não permitidos: Pine, Barigui, BRB, QI Tech, Inbursa, Mercantil e NBC Bank."
+    },
+    {
+      "id": "quero-banking",
+      "name": "QUERO BANKING",
+      "page": 13,
+      "criteria": {
+        "blocked": [
+          "643",
+          "335",
+          "025",
+          "149"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 12,
+          "555": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 18,
+        "maxEndMonths": 971,
+        "pure": "conditional",
+        "reduce": true,
+        "negative": false,
+        "aggregate": false,
+        "unify": false,
+        "srcc": false,
+        "portRatesListed": [
+          1.85,
+          1.1
+        ],
+        "refinRatesListed": [
+          1.85,
+          1.66
+        ],
+        "minInstallment": 0,
+        "cashFormulaPending": true,
+        "otherPaid": 1,
+        "paidByBalance": [
+          {
+            "min": 2000,
+            "max": 5999.99,
+            "paid": 18
+          },
+          {
+            "min": 6000,
+            "paid": 6
+          }
+        ],
+        "identityPending": true,
+        "formalizationConditional": true
+      },
+      "pending": {
+        "always": [
+          "Identidade bancária de Quero Banking não confirmada; não associar a Quali ou Quero + Crédito.",
+          "Outras origens com 12 pagas e exclusões indicadas por logotipo não individualizadas."
+        ],
+        "invalid": [
+          "Faixa de invalidez transcrita como 5 anos e 5 meses até 73 anos e 11 meses no término; confirmar interpretação antes de aplicar."
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "100% digital, com condições específicas para clientes acima de 60 anos"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 18 anos até 80 anos, 11 meses (final do contrato)"
+        ],
+        [
+          "Regra espécie invalidez",
+          "A partir de 5 anos e 5 meses até 73 anos e 11 meses (final do contrato), conforme material"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Permite no refin da portabilidade, com condições específicas"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Não atende"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Não permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / 1,10%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,66%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 2.000,00 a R$ 5.999,99: mínimo de 18 parcelas pagas; R$ 6.000,00 ou mais: mínimo de 6 parcelas pagas"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00 ou até 5% do valor do novo endividamento, conforme regra"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Outros bancos identificados no material: 12 parcelas pagas.\n- Demais bancos: 1 parcela paga.\n\nBancos não permitidos: diversos bancos identificados por logotipos, incluindo Pine, Digio, Alfa, Facta e outros."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                                              |\n| --------------------------- | ------------------------------------------------------------------------------------------------------- |\n| Formalização                | 100% digital, com condições específicas para clientes acima de 60 anos                                  |\n| Limite de idade             | A partir de 18 anos até 80 anos, 11 meses (final do contrato)                                           |\n| Regra espécie invalidez     | A partir de 5 anos e 5 meses até 73 anos e 11 meses (final do contrato), conforme material              |\n| Ordem de pagamento          | Não permite                                                                                             |\n| Portabilidade pura          | Permite no refin da portabilidade, com condições específicas                                            |\n| Portabilidade LOAS          | Não atende                                                                                              |\n| Redução de parcelas         | Permite                                                                                                 |\n| Margem negativa             | Não permite                                                                                             |\n| Agrega margem               | Não permite                                                                                             |\n| Unificar parcelas           | Não permite                                                                                             |\n| Consulta SRCC               | Não                                                                                                     |\n| Taxa de portabilidade       | 1,85% / 1,10%                                                                                           |\n| Taxa refin da portabilidade | 1,85% / 1,66%                                                                                           |\n| Parcela mínima              | Não tem                                                                                                 |\n| Saldo mínimo                | R$ 2.000,00 a R$ 5.999,99: mínimo de 18 parcelas pagas; R$ 6.000,00 ou mais: mínimo de 6 parcelas pagas |\n| Mínimo liberado             | R$ 100,00 ou até 5% do valor do novo endividamento, conforme regra                                      |\n\nRegra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Outros bancos identificados no material: 12 parcelas pagas.\n- Demais bancos: 1 parcela paga.\n\nBancos não permitidos: diversos bancos identificados por logotipos, incluindo Pine, Digio, Alfa, Facta e outros."
+    },
+    {
+      "id": "brb",
+      "name": "BRB",
+      "page": 14,
+      "criteria": {
+        "blocked": [
+          "121",
+          "336",
+          "626",
+          "079",
+          "380",
+          "469",
+          "012"
+        ],
+        "blockedNames": [],
+        "paid": {
+          "623": 12,
+          "555": 12
+        },
+        "loas": false,
+        "paymentOrder": false,
+        "minAge": 18,
+        "maxEndMonths": 971,
+        "maxEndDays": 29,
+        "invalidMinAge": 60,
+        "pure": false,
+        "reduce": true,
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "portRateUnbounded": true,
+        "refinRatesListed": [
+          1.85,
+          1.79
+        ],
+        "minInstallment": 0,
+        "minBalance": 5000,
+        "minCash": 100,
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "formalizationConditional": true
+      },
+      "pending": {},
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal para clientes analfabetos e acima de 60 anos, conforme estados indicados"
+        ],
+        [
+          "Limite de idade",
+          "A partir de 18 anos até 80 anos, 11 meses e 29 dias (final do contrato)"
+        ],
+        [
+          "Regra espécie invalidez",
+          "Espécies 32/92 a partir de 60 anos"
+        ],
+        [
+          "Ordem de pagamento",
+          "Não permite"
+        ],
+        [
+          "Portabilidade pura",
+          "Não permite"
+        ],
+        [
+          "Portabilidade LOAS",
+          "Suspenso temporariamente"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite"
+        ],
+        [
+          "Margem negativa",
+          "Permite"
+        ],
+        [
+          "Agrega margem",
+          "Não permite"
+        ],
+        [
+          "Unificar parcelas",
+          "Não permite"
+        ],
+        [
+          "Consulta SRCC",
+          "Não informado"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,85% / sem taxa mínima na portabilidade"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,85% / 1,79%"
+        ],
+        [
+          "Parcela mínima",
+          "Não possui"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 5.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ],
+        [
+          "Bancos de origem e parcelas pagas",
+          "Regra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: Agibank, C6 Consig, PicPay e Inbursa."
+        ]
+      ],
+      "text": "| Campo                       | Informação                                                                                  |\n| --------------------------- | ------------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal para clientes analfabetos e acima de 60 anos, conforme estados indicados |\n| Limite de idade             | A partir de 18 anos até 80 anos, 11 meses e 29 dias (final do contrato)                     |\n| Regra espécie invalidez     | Espécies 32/92 a partir de 60 anos                                                          |\n| Ordem de pagamento          | Não permite                                                                                 |\n| Portabilidade pura          | Não permite                                                                                 |\n| Portabilidade LOAS          | Suspenso temporariamente                                                                    |\n| Redução de parcelas         | Permite                                                                                     |\n| Margem negativa             | Permite                                                                                     |\n| Agrega margem               | Não permite                                                                                 |\n| Unificar parcelas           | Não permite                                                                                 |\n| Consulta SRCC               | Não informado                                                                               |\n| Taxa de portabilidade       | 1,85% / sem taxa mínima na portabilidade                                                    |\n| Taxa refin da portabilidade | 1,85% / 1,79%                                                                               |\n| Parcela mínima              | Não possui                                                                                  |\n| Saldo mínimo                | R$ 5.000,00                                                                                 |\n| Mínimo liberado             | R$ 100,00                                                                                   |\n\nRegra de bancos:\n\n- PAN: 12 parcelas pagas.\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela.\n\nBancos não permitidos: Agibank, C6 Consig, PicPay e Inbursa."
+    }
+  ]
+}

@@ -77,7 +77,7 @@ describe('Regras operacionais INSS', () => {
     expect(finantoRuleItem({ items: [{ minTerm: 60, maxTerm: 108, minRate: 1.65, maxRate: 1.85 }] }, 96, 1.7)).not.toBeNull();
   });
 
-  it.each([[1.65, 13000], [1.78, 13000], [1.79, 4000], [1.85, 4000]])('Nossa Fintech: taxa %s requer saldo %i', (rate, minimum) => {
+  it.each([[1.65, 2900], [1.78, 2900], [1.79, 2900], [1.85, 2900]])('Nossa Fintech: taxa %s requer saldo %i', (rate, minimum) => {
     const table = { name: `INSS PORT-REFIN ${rate}% - 108x` };
     expect(nossaFintechBalanceError(table, minimum)).toBeNull();
     expect(nossaFintechBalanceError(table, minimum - 0.01)).not.toBeNull();

@@ -14452,7 +14452,7 @@ async function auditAndEnsureMasterUser() {
       if (!creditValuesValid || !Number.isInteger(Number(term)) || !Number.isInteger(Number(borrower.benefitType)) || typeof hasInsurance !== 'boolean') {
         return res.status(400).json({ error: 'Condição de crédito inválida.' });
       }
-      const borrowerAgeError = finantoAgeError(borrower.birthDate, Number(operation === '4' ? refinancing?.term : term));
+      const borrowerAgeError = finantoAgeError(borrower.birthDate, Number(operation === '4' ? refinancing?.term : term),undefined,['2','4'].includes(operation)?'PORT_REFIN':'NEW');
       if (borrowerAgeError) return res.status(422).json({ error: borrowerAgeError });
       if ((operation === '3' || operation === '4') && (!originContract || !Number.isInteger(Number(originContract.lenderCode)) || !String(originContract.contractNumber || '').trim() || !Number.isInteger(Number(originContract.term)) || !Number.isInteger(Number(originContract.installmentsRemaining)) || Number(originContract.installmentValue) <= 0 || Number(originContract.dueBalanceValue) <= 0)) {
         return res.status(400).json({ error: 'Preencha os dados válidos do contrato para portabilidade.' });
@@ -14499,9 +14499,9 @@ async function auditAndEnsureMasterUser() {
           if (benefitError) return res.status(422).json({ error: benefitError });
         }
         if (selectedRule && (operation === '3' || operation === '4')) {
-          const installmentError = finantoInstallmentError(selectedRule.name || '', Number(originContract.installmentValue));
+          const installmentError = finantoInstallmentError(selectedRule.name || '', Number(originContract.installmentValue),operation==='4'?'PORT_REFIN':'NEW');
           if (installmentError) return res.status(422).json({ error: installmentError });
-          const rateError = finantoTableRateError(selectedRule.name || '', Number(operation === '4' ? refinancing?.rate : rate));
+          const rateError = finantoTableRateError(selectedRule.name || '', Number(operation === '4' ? refinancing?.rate : rate),operation==='4'?'PORT_REFIN':'NEW');
           if (rateError) return res.status(422).json({ error: rateError });
           if (hasInsurance) return res.status(422).json({ error: 'Este roteiro de portabilidade FINANTO não permite seguro.' });
         }
@@ -14707,7 +14707,7 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
       if (endpoint === '/v3/loan-inss-simulations/calculation' && req.body.clientBirthDate) {
-        const ageError = finantoAgeError(req.body.clientBirthDate, Number(req.body.body?.refinancing?.term || req.body.body?.term));
+        const ageError = finantoAgeError(req.body.clientBirthDate, Number(req.body.body?.refinancing?.term || req.body.body?.term),undefined,req.body.body?.originContract?'PORT_REFIN':'NEW');
         if (ageError) return res.status(422).json({ error: ageError });
       }
       const portInput=endpoint==='/v3/loan-inss-simulations/calculation'&&req.body.body?.originContract?{...req.body.body,...portabilityReviewMetadata(req.body.portabilityContext),birthDate:req.body.clientBirthDate,benefitType:req.body.benefitType,operation:req.body.body.refinancing?'PORT_REFIN':'PORT'}:null;
@@ -14846,14 +14846,14 @@ async function auditAndEnsureMasterUser() {
       if (!tenantId) return res.status(403).json({ error: 'Sessão sem empresa ativa.' });
       const { lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments, birthDate, benefitType, refinancingRate, legalRepresentative = false } = req.body || {};
       const policyContext={...req.body,operation:'PORT_REFIN'};const policy=simulationPortabilityCheck('Nossa Fintech',policyContext);if(policy.blocked)return res.status(422).json({error:policy.reason});
-      if (refinancingRate !== undefined && (!Number.isFinite(Number(refinancingRate)) || Number(refinancingRate) < 1.6 || Number(refinancingRate) > 1.85)) {
-        return res.status(400).json({ error: 'Informe uma taxa de refinanciamento entre 1,60% e 1,85%.' });
+      if (refinancingRate !== undefined && (!Number.isFinite(Number(refinancingRate)) || Number(refinancingRate) <= 0)) {
+        return res.status(400).json({ error: 'Informe uma taxa positiva da configuração bancária selecionada.' });
       }
       if (![lastDueBalance, installmentFaceValue, openedInstallmentNumber, numberOfInstallments].every(value => Number.isFinite(Number(value)) && Number(value) > 0) ||
           !Number.isInteger(Number(openedInstallmentNumber)) || !Number.isInteger(Number(numberOfInstallments)) || typeof legalRepresentative !== 'boolean') {
         return res.status(400).json({ error: 'Informe saldo devedor, valor da parcela, parcelas em aberto, prazo de refinanciamento e representante legal válidos.' });
       }
-      const ageError = nossaFintechAgeError(birthDate, Number(numberOfInstallments));
+      const ageError = nossaFintechAgeError(birthDate, Number(numberOfInstallments),undefined,'PORT_REFIN');
       if (ageError) return res.status(422).json({ error: ageError });
       const result = await NossaFintechService.simulatePortabilityAcrossTables(prisma, tenantId, {
         policyContext,lastDueBalance: Number(lastDueBalance), installmentFaceValue: Number(installmentFaceValue),

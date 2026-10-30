@@ -1,11 +1,12 @@
+import {evaluateReplacementPolicy} from './portabilityReplacementPolicy';
 import { institutionLabel, resolveInstitutionCode } from './strParticipants';
 import {portabilitySourceCatalog as source, portabilityRuleSources} from './portabilityRuleSources';
 export const PORTABILITY_RULES = source;
 const clean = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const aliases: Record<string,string> = {bancodaycoval:'daycoval',c6bank:'c6',c6consig:'c6',factafinanceira:'facta',bancobrb:'brb',nossafintech:'nossa-fintech',happybyx:'happy',byx:'happy',qualibanking:'quali',pbconsignado:'parana',paranabanco:'parana',paranabancosa:'parana',bancoparana:'parana',bancoparanasa:'parana','254':'parana','041':'banrisul','149':'facta','336':'c6','626':'c6','335':'digio','422':'safra','707':'daycoval','623':'pan','555':'pan',bancobanrisul:'banrisul',banrisul:'banrisul',querocredito:'quero-credito',bancopan:'pan',bancosafra:'safra'};
+const aliases: Record<string,string> = {bancodaycoval:'daycoval',c6bank:'c6',c6consig:'c6',factafinanceira:'facta',bancobrb:'brb',nossafintech:'nossa-fintech',happybyx:'happy',byx:'happy',qualibanking:'quali',pbconsignadoparanabanco:'parana',pbconsignado:'parana',paranabanco:'parana',paranabancosa:'parana',bancoparana:'parana',bancoparanasa:'parana','254':'parana','041':'banrisul','149':'facta','336':'c6','626':'c6','335':'digio','422':'safra','707':'daycoval','623':'pan','555':'pan',bancobanrisul:'banrisul',banrisul:'banrisul',querobanking:'quero-banking',querocredito:'quero-credito',bancopan:'pan',bancosafra:'safra'};
 export const portabilityBankId = (name: string) => aliases[clean(name)] || clean(name);
 export type PortabilityContext = {
- operation?:string; birthDate?:string; simulationDate?:string; contractEndDate?:string; term?:number;
+ product?:string; paymentOrderBankCode?:string;paymentOrderAmount?:number; operation?:string; birthDate?:string; simulationDate?:string; contractEndDate?:string; term?:number;
  benefitType?:string|number; benefitStartDate?:string; state?:string; sex?:string;
  originCategory?:'CORBAN'|'NETWORK'; debt?:number; originalInstallment?:number; installment?:number;
  amount?:number; contractAmount?:number; portRate?:number; refinRate?:number; portInstallment?:number;
@@ -20,8 +21,13 @@ const has=(v:unknown)=>v!==undefined&&v!==null&&v!==''&&Number.isFinite(Number(v
 
 /** Explicit company rules only. Missing information is review, never automatic approval. */
 export function evaluatePortabilityPolicy(destination:string,origin:unknown,paid:unknown,input:PortabilityContext={}){
+ if(input.product&&input.product!=='INSS'||input.operation&&!['PORT','PORT_REFIN','PORTABILIDADE'].includes(input.operation))return null;
  const bankId=portabilityBankId(destination),entry=source.find(r=>r.id===bankId);
  if(!entry)return null;
+ const inss=(input.product==null||input.product==='INSS')&&(!input.operation||['PORT','PORT_REFIN','PORTABILIDADE'].includes(input.operation));
+ if(inss){const originAlias=portabilityBankId(String(origin??''));const codes:Record<string,string>={parana:'254',banrisul:'041',facta:'149',c6:'626',digio:'335',safra:'422',daycoval:'707',pan:'623'};
+  const current=evaluateReplacementPolicy(bankId,codes[originAlias]||origin,paid,input);if(current)return current;
+ }
  const originId=portabilityBankId(String(origin??''));
  const originCodes:Record<string,string>={parana:'254',banrisul:'041',facta:'149',c6:'626',digio:'335',safra:'422',daycoval:'707',pan:'623'};
  const code=resolveInstitutionCode(String(origin??''))||originCodes[originId]||'',name=clean(institutionLabel(code));

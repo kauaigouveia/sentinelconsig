@@ -16,6 +16,7 @@ const rules: Record<string, { blocked: string[]; paid: Record<string, number> }>
  banrisul: { blocked: [], paid: {} },
 };
 export function portabilityEligibility(destination: string, origin: unknown, paid: unknown, input: PortabilityContext = {}) {
+ if(input.product&&input.product!=='INSS'||input.operation&&!['PORT','PORT_REFIN','PORTABILIDADE'].includes(input.operation))return {blocked:false,review:false,status:'NÃO APLICÁVEL',reason:'Política de portabilidade INSS fora do escopo da operação.'};
  const current = evaluatePortabilityPolicy(destination, origin, paid, input);
  if (current) return current;
  const key = destination.toLowerCase().replace(/[^a-z0-9]/g, '');

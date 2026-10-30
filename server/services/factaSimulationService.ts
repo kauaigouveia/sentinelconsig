@@ -14,7 +14,7 @@ export type FactaInssInput = {
   debt?: number; originalTerm?: number; remainingTerm?: number; originalInstallment?: number;
   income?: number; contract?: string; originalBank?: string; state?: string; benefitStartDate?: string;
 };
-export type FactaOffer = { code: string; name: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number; portabilityCode?: string };
+export type FactaOffer = { policyStatus?:string;policyReview?:string; code: string; name: string; amount?: number; contractAmount?: number; installment?: number; term?: number; rate?: number; portabilityCode?: string };
 export const factaNumber = (value: unknown): number | undefined => {
   if (value == null || value === '') return undefined;
   const text = String(value).trim();
@@ -125,7 +125,7 @@ export class FactaSimulationService {
     } else offers = list(result.tabelas).filter(eligible).map(table => this.offer(table));
     if (offers.length) {
       const checks = offers.map(offer=>({offer,check:['PORT','PORT_REFIN'].includes(input.operation)?simulationPortabilityCheck('facta',input,offer):null}));
-      return {offers:checks.filter(row=>!row.check?.blocked).map(row=>row.offer),message:checks.filter(row=>row.check?.blocked).map(row=>row.check!.reason).join(' ')||undefined};
+      return {offers:checks.filter(row=>!row.check?.blocked).map(row=>row.check?{...row.offer,policyStatus:row.check.status,policyReview:row.check.reason}:row.offer),message:checks.filter(row=>row.check?.blocked).map(row=>row.check!.reason).join(' ')||undefined};
     }
     const returned = list(input.operation === 'PORT_REFIN' ? result.tabelas_refin_portabilidade : input.operation === 'PORT' ? result.tabelas_portabilidade : result.tabelas);
     const compatible = returned.filter(benefitEligible);

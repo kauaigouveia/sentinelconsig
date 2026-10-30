@@ -2,3 +2,5 @@ ops/evolution/*.sh text eol=lf
 
 *.pdf binary
 *.png binary
+
+docs/sources/portability-inss-replacement-20261030.md -text

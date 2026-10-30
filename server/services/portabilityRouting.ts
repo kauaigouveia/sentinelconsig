@@ -16,7 +16,7 @@ export function routingDiagnostic(row:{id:string;createdAt:unknown;newData:unkno
 export const defaultRoutingRule=(tenantId:string):RoutingRule=>({id:'daycoval-small-portability',name:'Daycoval · operações de baixo valor',operations:['PORT','PORT_REFIN'],convenio:'INSS',conditions:{installmentBelow:50,otherBanksBelowMinimum:true},bank:'daycoval',priority:10,tenantId,active:true,validFrom:'2026-10-30',version:1,internalReason:'Parcela inferior a R$ 50 e saldo abaixo dos mínimos dos demais destinos avaliáveis.'});
 export function routingCandidate(bank:string,input:any,availability:Omit<RoutingCandidate,'bank'|'check'|'minimumBalance'>):RoutingCandidate{
  const check=simulationPortabilityCheck(bank,input),c=portabilityRuleSources(bank,String(input.originalBank||''),input.originCategory).criteria;
- const minimum=input.operation==='PORT'?(c.pureMinBalance??c.minBalance):c.minBalance;
+ const minimum=input.operation==='PORT'?(c.pureMinBalance??c.minBalance):c.balanceByRefinRate&&Number.isFinite(Number(input.rate))?c.balanceByRefinRate[Number(input.rate).toFixed(2)]:c.minBalance;
  return {...availability,bank,check,minimumBalance:typeof minimum==='number'&&Number.isFinite(minimum)?minimum:undefined};
 }
 export function planPortabilityRouting(tenantId:string,input:any,candidates:RoutingCandidate[],rules:RoutingRule[],today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())){
@@ -30,7 +30,7 @@ export function planPortabilityRouting(tenantId:string,input:any,candidates:Rout
   const target=candidates.find(candidate=>candidate.bank===rule.bank);
   const blockers:string[]=[];
   if(!target||!target.enabled||!target.configured||!target.authorized)blockers.push('INTEGRATION_UNAVAILABLE');
-  if(target?.transport!=='OFFICIAL_API')blockers.push('OFFICIAL_TRANSPORT_UNAVAILABLE');
+  if(target?.transport!=='OFFICIAL_API'&&target?.transport!=='WORKBOOK')blockers.push('CALCULATION_TRANSPORT_UNAVAILABLE');
   if(!target?.dataReady||!target.idempotencyReady)blockers.push('DATA_OR_IDEMPOTENCY_PENDING');
   if(target?.check.blocked)blockers.push('DOCUMENTARY_BLOCK');else if(target?.check.review)blockers.push('DOCUMENTARY_PENDING');
   if(blockers.length||!target){trace.push(...blockers.map(code=>({code,bank:rule.bank,ruleId:rule.id,version:rule.version})));continue;}
@@ -51,11 +51,12 @@ export async function executeRoutingJobs(jobs:{id:string;run:()=>Promise<void>}[
  if(priority)await run(priority);
  await Promise.all(unique.filter(job=>job!==priority).map(run));return outcomes;
 }
-export async function existingPortabilityPlan(db:any,tenantId:string,input:any){
+export async function existingPortabilityPlan(db:any,tenantId:string,input:any,registeredCandidates?:RoutingCandidate[]){
  let rules=[defaultRoutingRule(tenantId)];
  const row=await db.systemConfig.findUnique({where:{tenantId_configKey:{tenantId,configKey:routingKey}}});
  if(row){const value=JSON.parse(row.configValue);if(!Array.isArray(value)||!value.every(rule=>rule&&rule.tenantId===tenantId&&typeof rule.active==='boolean'&&Array.isArray(rule.operations)&&rule.operations.every((v:any)=>['PORT','PORT_REFIN'].includes(v))&&rule.convenio==='INSS'&&portabilitySourceCatalog.some(bank=>bank.id===rule.bank)&&Number.isFinite(rule.priority)&&Number.isInteger(rule.version)&&rule.version>0&&typeof rule.id==='string'&&typeof rule.name==='string'&&typeof rule.internalReason==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(rule.validFrom)&&(!rule.validUntil||/^\d{4}-\d{2}-\d{2}$/.test(rule.validUntil))&&Number.isFinite(rule.conditions?.installmentBelow)&&rule.conditions.installmentBelow>0&&rule.conditions?.otherBanksBelowMinimum===true))throw Error('PORTABILITY_ROUTING_INVALID');rules=value;}
- // The existing Daycoval route is a workbook calculator. A browser/config flag cannot turn it into an official API.
+ if(registeredCandidates)return planPortabilityRouting(tenantId,input,registeredCandidates,rules);
+ // Without server preflight, browser claims cannot authorize a workbook calculation.
  const workbook=await db.systemConfig.findUnique({where:{tenantId_configKey:{tenantId,configKey:'DAYCOVAL_INSS_WORKBOOK_V1'}}});
  const book=workbook?decodeDaycoval(workbook.configValue):null;
  const candidate=routingCandidate('daycoval',input,{id:'daycoval-workbook',enabled:!!book&&book.enabled!==false,configured:!!book,authorized:!!book,transport:'WORKBOOK',dataReady:false,idempotencyReady:false});

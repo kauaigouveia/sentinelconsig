@@ -7,10 +7,11 @@ const other=candidate('facta',{check:{blocked:true,review:false,status:'NÃO ELE
 const run=(patch={},candidates=[day,other],rules=[defaultRoutingRule('tenant-a')])=>planPortabilityRouting('tenant-a',{...input,...patch},candidates,rules,'2026-10-30');
 describe('server-only routing with synthetic official-provider capability fixtures',()=>{
  it('prioritizes 35/900 only with proven eligibility, transport and other documented minima',()=>{expect(run().priorityId).toBe('daycoval-api');expect(run().trace[0].code).toBe('PRIORITY_SELECTED');});
+ it('accepts workbook transport without a Daycoval API',()=>{expect(run({},[{...day,id:'daycoval-workbook',transport:'WORKBOOK'},other]).priorityId).toBe('daycoval-workbook');});
  it.each([50,60])('does not trigger at installment %s',value=>{expect(run({originalInstallment:value}).priorityId).toBeNull();});
  it.each([undefined,0])('does not discard another bank with unknown/zero minimum %s',minimumBalance=>{expect(run({},[day,{...other,minimumBalance}]).priorityId).toBeNull();});
  it('does not discard an eligible alternative or a documentary pending',()=>{expect(run({},[day,candidate('pan')]).priorityId).toBeNull();expect(run({},[day,{...other,check:{...other.check,review:true}}]).priorityId).toBeNull();});
- it.each([{enabled:false},{configured:false},{authorized:false},{transport:'WORKBOOK' as const},{transport:'UNAVAILABLE' as const},{dataReady:false},{idempotencyReady:false},{check:{...day.check,blocked:true}},{check:{...day.check,review:true}}])('does not call unavailable/ineligible/unproven Daycoval %j',patch=>{expect(run({},[{...day,...patch},other]).priorityId).toBeNull();});
+ it.each([{enabled:false},{configured:false},{authorized:false},{transport:'UNAVAILABLE' as const},{dataReady:false},{idempotencyReady:false},{check:{...day.check,blocked:true}},{check:{...day.check,review:true}}])('does not call unavailable/ineligible/unproven Daycoval %j',patch=>{expect(run({},[{...day,...patch},other]).priorityId).toBeNull();});
  it('rejects invalid/missing financial data without inventing eligibility',()=>{for(const patch of [{debt:undefined},{originalInstallment:NaN},{debt:-1},{product:'CLT'},{operation:'NEW'}])expect(run(patch).priorityId).toBeNull();});
  it('scopes rules by tenant, active state and validity',()=>{
   for(const patch of [{tenantId:'tenant-b'},{active:false},{validFrom:'2027-01-01'},{validUntil:'2026-10-29'}])expect(run({},[day,other],[{...defaultRoutingRule('tenant-a'),...patch}]).priorityId).toBeNull();

@@ -1,3 +1,4 @@
+import {portabilityRuleSources} from '../../src/lib/portabilityRuleSources.js';
 import { simulateNossaWorkbook, nossaWorkbookTables, NOSSA_WORKBOOK_KEY } from './nossaFintechWorkbook.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { importDaycoval, simulateDaycoval, DaycovalCalculator, type DaycovalWorkbook, serial, parseDate, addMonths } from './daycovalWorkbook.js';
@@ -39,8 +40,8 @@ export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook
   const check=simulationPortabilityCheck(bank,input);
   if(check.blocked)throw new Error(check.reason);
   const result=calculatePortRefinUnchecked(bank,book,input);
-  const offers=result.offers.map(offer=>{const check=simulationPortabilityCheck(bank,input,offer);return {...offer,eligible:offer.eligible&&!check.blocked&&!check.review,policyStatus:check.status,policyReview:check.reason,status:check.blocked||check.review?`${check.status}: ${check.reason}`:offer.status};});
-  return {...result,offers,message:['message' in result?result.message:'',check.review?check.reason:''].filter(Boolean).join(' ')};
+  const offers=result.offers.map(offer=>{const finalInput={...input,contractEndDate:result.firstDue?addMonths(parseDate(result.firstDue),Number(offer.term)-1).toISOString().slice(0,10):input.contractEndDate};const check=simulationPortabilityCheck(bank,finalInput,offer);return {...offer,eligible:offer.eligible&&!check.blocked&&!check.review,policyStatus:check.status,policyReview:check.reason,status:check.blocked||check.review?`${check.status}: ${check.reason}`:offer.status};});
+  return {...result,offers,message:[...new Set(['message' in result?result.message:'',...offers.filter(offer=>offer.policyStatus!=='ELEGÍVEL').map(offer=>offer.policyReview),!offers.length&&check.review?check.reason:''].filter(Boolean))].join(' ')};
 }
 function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {
   if(bank==='DAYCOVAL')return simulateDaycoval(book,input);
@@ -73,7 +74,7 @@ function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbo
   if(!INSS_BENEFIT_TYPES.some(([code])=>code===species))throw new Error('Selecione uma espécie do benefício cadastrada no sistema.');
   const count=Number(input.benefitContractCount);
   if(!Number.isInteger(count)||count<1||count>13)throw new Error('Paraná: informe de 1 a 13 contratos no benefício.');
-  const minimumInstallment=[32,92].includes(species)?15:120;
+  const minimumInstallment=Number(portabilityRuleSources('parana','').criteria.minInstallment);
   const portInstallment=input.negativeMargin===true?Number(input.portInstallment):installment;
   if(!Number.isFinite(portInstallment)||portInstallment<minimumInstallment||portInstallment>installment)throw new Error(`Paraná: parcela da portabilidade a partir de R$ ${minimumInstallment.toFixed(2)}, sem agregar margem na portabilidade.`);
   const refinInstallment=portInstallment+extra;
@@ -82,8 +83,7 @@ function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbo
   const calculator=new DaycovalCalculator(book,{H4:'INSS',J4:serial(date),K4:'NÃO',B9:remaining,D9:portInstallment,D12:balance,H9:term,J9:refinInstallment,L9:rate,'Build Up!B22':minimumInstallment},'Simulador Portabilidade e Refin');
   const amount=Number(calculator.cell('F17')),contractAmount=Number(calculator.cell('J12')),status=String(calculator.cell('D20')),first=Number(calculator.cell('L12'));
   if(!status||!Number.isFinite(amount)||!Number.isFinite(contractAmount))throw new Error('A planilha Paraná não conseguiu calcular a condição.');
-  const firstDate=new Date(Date.UTC(1899,11,30)+first*86400000),lastDue=addMonths(firstDate,term-1),maximumAge=addMonths(birth,77*12+11);maximumAge.setUTCDate(maximumAge.getUTCDate()+29);
-  if(lastDue>maximumAge)throw new Error('Paraná: idade no término do contrato excede 77 anos, 11 meses e 29 dias.');
+  // The superseded 77-year bound is no longer an active company criterion. New documentary limits are checked by calculatePortRefin.
   const offer={provider:'PARANA',tableId:`INSS:${term}:${rate}`,tableName:'INSS · condição da planilha Paraná',amount,contractAmount,balance,installment:refinInstallment,term,rate:rate*100,coefficient:refinInstallment/contractAmount,iof:Number(calculator.cell('G15')),insurance:Number(calculator.cell('H15')),status:amount<100?'Paraná: troco mínimo de R$ 100,00 em portabilidade + refinanciamento.':status,eligible:status.startsWith('✅')&&amount>=100};
   return {offers:[offer],contracts:[{returnRate:Number(calculator.cell('F9'))*100,newInstallment:portInstallment}],firstDue:new Date(Date.UTC(1899,11,30)+first*86400000).toISOString().slice(0,10),weightedRate:rate*100,version};
 }

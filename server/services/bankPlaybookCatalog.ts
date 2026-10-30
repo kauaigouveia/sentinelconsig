@@ -9,7 +9,7 @@ import readingContent from '../assets/bank-playbooks/reading-content.json';
 import quickReference from '../assets/bank-playbooks/quick-reference.json';
 import { PORTABILITY_BOOKS, PORTABILITY_SECTIONS } from '../../src/lib/portabilityPlaybooks.js';
 import {portabilityGuide} from '../../src/lib/portabilityGuide.js';
-import {PORTABILITY_SOURCE_SUPPLEMENT} from '../../src/lib/portabilityRuleSources.js';
+import {PORTABILITY_SOURCE_SUPPLEMENT,replacementBankIds,PORTABILITY_REPLACEMENT} from '../../src/lib/portabilityRuleSources.js';
 import {routingDiagnostic} from './portabilityRouting.js';
 const prefix = 'BANK_PLAYBOOK_PDF_V2_';
 export async function customPlaybooks(db: PrismaClient, tenantId: string) {
@@ -27,9 +27,11 @@ export function registerBankPlaybookCatalog(app: Express, db: PrismaClient, getS
  app.get('/api/bank-playbooks', async (req,res) => {
   res.setHeader('Cache-Control','no-store');
   try { const session = await access(req); if (!session) return res.status(403).json({error:'Sem acesso aos roteiros.'});
-   const books = [...new Map([...PORTABILITY_BOOKS,...BANK_PLAYBOOKS].map(book=>[book.id,book])).values()];
-   const extra=PORTABILITY_SOURCE_SUPPLEMENT.banks.map(bank=>({id:bank.id+'-supplement',bankId:bank.id,title:'Documento complementar de portabilidade',page:0,topics:['Portabilidade'],paragraphs:[`Fonte: ${PORTABILITY_SOURCE_SUPPLEMENT.sourceFile}. Vigência e prioridade não informadas. Página ${bank.page} indicada na transcrição.`],tables:[{kind:'table',rows:bank.fields}]}));
-   return res.json({ rows: books.map(book=>({...book,convenios:['INSS'],guide:portabilityGuide(book.id),pdfUrl:BANK_PLAYBOOKS.some(old=>old.id===book.id)?`/api/bank-playbooks/${book.id}/pdf`:null,sections:[...PORTABILITY_SECTIONS,...extra,...quickReference,...readingContent].filter(section=>section.bankId===book.id)})), canEdit: false,canDiagnose:hasPermission(session.activeRole||session.user.role,session.activePermissions||session.user.customPermissions,'audit_logs.view')&&hasPermission(session.activeRole||session.user.role,session.activePermissions||session.user.customPermissions,'integrations.manage') });
+   const books = [...new Map([...BANK_PLAYBOOKS,...PORTABILITY_BOOKS].map(book=>[book.id,book])).values()];
+   const extra=PORTABILITY_SOURCE_SUPPLEMENT.banks.filter(bank=>!replacementBankIds.has(bank.id)).map(bank=>({id:bank.id+'-supplement',bankId:bank.id,title:'Documento complementar de portabilidade',page:0,topics:['Portabilidade'],paragraphs:[`Fonte: ${PORTABILITY_SOURCE_SUPPLEMENT.sourceFile}. Vigência e prioridade não informadas. Página ${bank.page} indicada na transcrição.`],tables:[{kind:'table',rows:bank.fields}]}));
+   const canDiagnose=hasPermission(session.activeRole||session.user.role,session.activePermissions||session.user.customPermissions,'audit_logs.view')&&hasPermission(session.activeRole||session.user.role,session.activePermissions||session.user.customPermissions,'integrations.manage');
+   const guideFor=(id:string)=>{const guide=portabilityGuide(id);return guide&&!canDiagnose?{...guide,details:[]}:guide;};
+   return res.json({ rows: books.map(book=>({...book,convenios:['INSS'],guide:guideFor(book.id),pdfUrl:!replacementBankIds.has(book.id)&&BANK_PLAYBOOKS.some(old=>old.id===book.id)?`/api/bank-playbooks/${book.id}/pdf`:null,sections:[...PORTABILITY_SECTIONS,...extra,...quickReference.filter(section=>!replacementBankIds.has(section.bankId)),...readingContent.filter(section=>!replacementBankIds.has(section.bankId))].filter(section=>section.bankId===book.id)})), canEdit: false,canDiagnose });
   } catch { return res.status(500).json({error:'Não foi possível carregar os roteiros.'}); }
  });
  app.get('/api/bank-playbooks/routing-diagnostics',async(req,res)=>{

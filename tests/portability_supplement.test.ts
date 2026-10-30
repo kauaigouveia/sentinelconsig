@@ -3,7 +3,7 @@ import historical from '../src/data/portabilityRules20261019.json';
 import supplement from '../src/data/portabilityRulesSupplement.json';
 import {evaluatePortabilityPolicy,portabilityBankId} from '../src/lib/portabilityPolicy';
 import {simulationPortabilityCheck} from '../src/lib/portabilitySimulationPolicy';
-import {PORTABILITY_BOOKS} from '../src/lib/portabilityPlaybooks';
+import {PORTABILITY_BOOKS,PORTABILITY_ARCHIVE_BOOKS} from '../src/lib/portabilityPlaybooks';
 const complete={operation:'PORT_REFIN',birthDate:'1980-01-01',simulationDate:'2026-10-30',state:'SP',
  benefitType:41,remainingInstallments:36,term:36,debt:10000,originalInstallment:900,installment:900,amount:1000,refinRate:1.6};
 describe('documentary portability supplement, synthetic data only',()=>{
@@ -20,24 +20,24 @@ describe('documentary portability supplement, synthetic data only',()=>{
  it('keeps all nine source banks and dates without manufacturing an effective date',()=>{
   expect(supplement.banks.map(bank=>bank.id)).toEqual(['facta','c6','digio','safra','parana','quero-credito','banrisul','daycoval','pan']);
   expect(supplement.effectiveAt).toBeNull();expect(supplement.priority).toBeNull();
-  expect(PORTABILITY_BOOKS.filter(book=>book.bankId==='facta')).toHaveLength(2);
-  expect(evaluatePortabilityPolicy('facta','623',30,complete)?.sources).toHaveLength(2);
+  expect(PORTABILITY_ARCHIVE_BOOKS.filter(book=>book.bankId==='facta')).toHaveLength(2);expect(PORTABILITY_BOOKS.filter(book=>book.bankId==='facta')).toHaveLength(1);
+  expect(evaluatePortabilityPolicy('facta','623',30,complete)?.sources).toHaveLength(1);
  });
- it('does not silently resolve FACTA PAN 15/30 or prior rate conflicts',()=>{
+ it('replaces obsolete FACTA conflicts without importing unprovided paid requirements',()=>{
   const check=evaluatePortabilityPolicy('facta','623',20,complete)!;
-  expect(check.status).toBe('PENDENTE DE DADOS');expect(check.reason).toContain('15 ou 30');
-  expect(check.reason).toContain('refinRates');
-  expect(evaluatePortabilityPolicy('facta','623',14,complete)?.status).toBe('NÃO ELEGÍVEL');
+  expect(check.status).toBe('PENDENTE DE DADOS');expect(check.reason).not.toContain('15 ou 30');
+  expect(check.reason).not.toContain('Divergência documental');expect(check.reason).toContain('não individualizadas');
+  expect(evaluatePortabilityPolicy('facta','623',14,complete)?.blocked).toBe(false);
  });
- it('enforces agreed origin exclusions and keeps conflicting exclusions pending',()=>{
+ it('uses replacement exclusions without obsolete documentary conflicts',()=>{
   expect(evaluatePortabilityPolicy('facta','012',30,complete)?.status).toBe('NÃO ELEGÍVEL');
   const check=evaluatePortabilityPolicy('parana','149',30,complete)!;
-  expect(check.status).toBe('PENDENTE DE DADOS');expect(check.reason).toContain('listas de exclusão divergem');
+  expect(check.status).toBe('NÃO ELEGÍVEL');expect(check.reason).not.toContain('listas de exclusão divergem');
  });
  it('compares an individual agreement against the older declared category before rejecting',()=>{
   const check=evaluatePortabilityPolicy('c6','149',12,{...complete,originCategory:'CORBAN'})!;
   expect(check.blocked).toBe(false);expect(check.status).toBe('PENDENTE DE DADOS');
-  expect(check.reason).toContain('mínimo de pagas conflitante');
+  expect(check.reason).not.toContain('mínimo de pagas conflitante');expect(check.reason).toContain('13 parcelas');
  });
  it.each([['PAN','626',35],['SAFRA','149',23],['Quero + Crédito','001',14]])('blocks insufficient paid installments for %s', (bank,origin,paid)=>{
   expect(evaluatePortabilityPolicy(bank as string,origin,paid,complete)?.status).toBe('NÃO ELEGÍVEL');
@@ -70,11 +70,11 @@ describe('documentary portability supplement, synthetic data only',()=>{
   expect(JSON.stringify(historical)).toBe(before);
  });
  it('checks the final age and preserves negative-margin/unification operation restrictions',()=>{
-  expect(evaluatePortabilityPolicy('parana','001',30,{...complete,contractEndDate:'2058-01-01'})?.blocked).toBe(true);
-  expect(evaluatePortabilityPolicy('banrisul','001',30,{...complete,contractEndDate:'2062-01-01'})?.blocked).toBe(true);
+  expect(evaluatePortabilityPolicy('parana','001',30,{...complete,contractEndDate:'2058-01-01'})?.blocked).toBe(false);
+  expect(evaluatePortabilityPolicy('daycoval','001',30,{...complete,contractEndDate:'2062-01-01'})?.blocked).toBe(true);
   expect(evaluatePortabilityPolicy('Quero + Crédito','001',30,{...complete,refinRate:1.55,installment:800,negativeMargin:true,contractCount:2})?.blocked).toBe(false);
   expect(evaluatePortabilityPolicy('safra','001',30,{...complete,negativeMargin:true,operation:'PORT'})?.blocked).toBe(true);
-  expect(evaluatePortabilityPolicy('facta','001',30,{...complete,contractCount:7})?.blocked).toBe(true);
-  expect(evaluatePortabilityPolicy('c6','001',30,{...complete,installment:700,originalInstallment:1000})?.reason).toContain('redução limitada a 15%');
+  expect(evaluatePortabilityPolicy('facta','001',30,{...complete,contractCount:7})?.blocked).toBe(false);
+  expect(evaluatePortabilityPolicy('c6','001',30,{...complete,installment:700,originalInstallment:1000})?.reason).not.toContain('redução limitada a 15%');
  });
 });

@@ -1,0 +1,13 @@
+import React,{useState} from 'react';
+import {eligibilityPresentation,type EligibilityPresentationInput} from '../../lib/eligibilityPresentation';
+/** Display only: this component never recalculates policy, dispatches a request or changes an offer. */
+export function EligibilityResult({input,canViewDiagnostics=false,portal=false}:{input:EligibilityPresentationInput;canViewDiagnostics?:boolean;portal?:boolean}){
+ const row=eligibilityPresentation(input,portal?'partner':'internal'),[technicalOpen,setTechnicalOpen]=useState(false);
+ const list=(title:string,items:string[])=>items.length>0&&<section><h5 className="text-xs font-semibold text-slate-600 dark:text-slate-300">{title}</h5><ul className="mt-1 space-y-1 text-sm">{items.map(text=><li key={text}>{text}</li>)}</ul></section>;
+ return <article aria-label={`Elegibilidade ${row.bank}${row.table?' · '+row.table:''}`} className="min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+  <header className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h4 className="break-words text-sm font-semibold">{row.bank}{row.table&&` · ${row.table}`}</h4><p className="text-xs text-slate-500 dark:text-slate-400">{row.product}{row.operation&&` · ${row.operation}`}</p></div><span className={`text-xs font-semibold ${row.status==='NÃO ELEGÍVEL'?'text-rose-700 dark:text-rose-300':row.status==='ELEGÍVEL'||row.status==='OFERTA CALCULADA'?'text-emerald-700 dark:text-emerald-300':'text-slate-600 dark:text-slate-300'}`}>{row.status}</span></header>
+  {row.commercial.length>0&&<dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">{row.commercial.map(({label,value})=><div key={label+value}><dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt><dd className="break-words font-medium">{value}</dd></div>)}</dl>}
+  {list('Condições atendidas',row.met)}{list('Restrições',row.restrictions)}{list('Pendências operacionais',row.pending)}
+  {!portal&&canViewDiagnostics&&row.diagnostics.evidence.length>0&&<details onToggle={event=>setTechnicalOpen(event.currentTarget.open)}><summary className="cursor-pointer text-xs font-medium">Detalhes técnicos e fontes</summary>{technicalOpen&&<div className="mt-2 space-y-2 break-words text-xs">{list('Evidências',row.diagnostics.evidence.filter(text=>!row.diagnostics.conflicts.includes(text)))}{list('Divergências documentais',row.diagnostics.conflicts)}{row.diagnostics.sources.map((source:any,index)=><p key={index}>Fonte: {source.file||'Não informada'} · Recebimento: {source.receivedAt||'Não informado'} · Vigência: {source.effectiveAt||'Não informada'}</p>)}</div>}</details>}
+ </article>;
+}

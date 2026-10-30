@@ -1,7 +1,8 @@
+import {PORTABILITY_REPLACEMENT,replacementBankIds} from './portabilityRuleSources';
 import rules from '../data/portabilityRules20261019.json';
 import supplement from '../data/portabilityRulesSupplement.json';
 
-export const PORTABILITY_SECTIONS = rules.flatMap(rule => {
+const historicalSections = rules.flatMap(rule => {
  const groups: Record<string,string[][]> = { 'Idade, benefício e formalização':[], 'Bancos de origem e parcelas pagas':[], 'Valores e taxas':[], 'Operação e restrições':[] };
  let group='Operação e restrições';
  for(const row of rule.fields){
@@ -27,11 +28,22 @@ export const PORTABILITY_SECTIONS = rules.flatMap(rule => {
 }));
 });
 
-export const PORTABILITY_BOOKS = [...rules.map(rule => ({
+export const PORTABILITY_ARCHIVE_BOOKS = [...rules.map(rule => ({
  id: rule.id, bankId: rule.id, name: rule.name, version: rule.version, receivedAt: rule.receivedAt,
  source: rule.source, sourceFile: rule.sourceFile, text: (supplement.banks.some(bank=>bank.id===rule.id)?'[Fonte de 19/10/2026; existe documento complementar sem vigência/prioridade comprovada. Conferir divergências entre as fontes.]\n':'')+rule.fields.map(([label,value])=>`${label}: ${value.replace(/\n/g,' ')}`).join('\n'),
 })), ...supplement.banks.map(rule=>({id:rule.id,bankId:rule.id,name:rule.name,
  version:'Documento complementar sem vigência/prioridade comprovada',receivedAt:supplement.receivedAt,
  source:supplement.source,sourceFile:supplement.sourceFile,
  text:`[Documento complementar p. ${rule.page}; vigência não informada; não substitui silenciosamente 19/10/2026]\n${rule.text}`,
+}))];
+
+const current=PORTABILITY_REPLACEMENT;
+export const PORTABILITY_BOOKS=[...PORTABILITY_ARCHIVE_BOOKS.filter(book=>!replacementBankIds.has(book.bankId)),...current.banks.map(bank=>({
+ id:bank.id,bankId:bank.id,name:bank.name,version:current.id,receivedAt:current.receivedAt,source:current.source,sourceFile:current.sourceFile,
+ text:`[Fonte substitutiva INSS p. ${bank.page}; prioridade expressa; vigência comercial não informada]\n${bank.text}`,
+}))];
+export const PORTABILITY_SECTIONS=[...historicalSections.filter(section=>!replacementBankIds.has(section.bankId)),...current.banks.map(bank=>({
+ id:bank.id+'-replacement-20261030',bankId:bank.id,title:'Portabilidade INSS · fonte substitutiva',page:bank.page,topics:['Portabilidade','Idade e benefício','Valores e prazos','Restrições e exceções'],
+ paragraphs:[`Fonte: ${current.sourceFile}, página ${bank.page}. Substituição expressamente autorizada para INSS. Recebida em ${current.receivedAt}; vigência comercial não informada.`,...Object.values(bank.pending).flat()],
+ tables:[{kind:'table',rows:[['Critério','Regra e exceções'],...bank.fields]}],partnerSafe:true,isGuide:true,
 }))];

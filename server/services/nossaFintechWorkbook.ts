@@ -1,3 +1,4 @@
+import replacement from '../../src/data/portabilityRulesReplacement20261030.json';
 import { addMonths, parseDate, type DaycovalWorkbook } from './daycovalWorkbook.js';
 
 export const NOSSA_WORKBOOK_KEY = 'NOSSA_FINTECH_PORT_REFIN_WORKBOOK_V7';
@@ -80,21 +81,16 @@ export function simulateNossaWorkbook(book: DaycovalWorkbook, input: any) {
   const iof = grossCashout * 0.0038 + dailyIof;
   const amount = grossCashout - iof;
   const expansion = contractAmount / balance - 1;
-  const minimumPercentage = remaining >= 72 ? 0.02 : remaining >= 57 ? 0.03 : 0.05;
-  const minimumCashout = (term - remaining) * installment * minimumPercentage;
   const returnRate = originRate(balance, installment, remaining);
-  const minimumBalance = table.code === '205011' ? 2900 : table.rate <= 0.0178 ? 13000 : 4000;
-  // V.07 conflicts between 0.5%, 0.6% and 0.8%. Use its strictest explicit rule.
+  const criteria=replacement.banks.find(bank=>bank.id==='nossa-fintech')!.criteria;
+  const minimumBalance=Number(criteria.minBalance);
+  // Financial formulas above remain intact. Superseded commercial checks are not active policy.
   const checks = [
-    { label: `Saldo mínimo da tabela: R$ ${minimumBalance.toLocaleString('pt-BR')}`, passed: balance >= minimumBalance },
-    { label: 'Taxa de origem mínima de 0,80% a.m.', passed: returnRate >= 0.008 - 1e-10 },
-    { label: 'Troco líquido mínimo de R$ 100,00', passed: amount >= 100 },
-    { label: `Expansão mínima de ${(minimumPercentage * 100).toFixed(0)}%`, passed: expansion >= minimumPercentage },
-    { label: 'Troco mínimo da política atingido', passed: amount >= minimumCashout },
-    { label: 'Prazo do refinanciamento igual ou maior que as parcelas restantes', passed: term >= remaining },
+    {label:`Saldo mínimo: R$ ${minimumBalance.toLocaleString('pt-BR')}`,passed:balance>=minimumBalance},
+    {label:`Troco líquido mínimo: R$ ${Number(criteria.minCash).toLocaleString('pt-BR')}`,passed:amount>=Number(criteria.minCash)},
   ];
   if (![amount, contractAmount, iof, returnRate, coefficient].every(Number.isFinite)) throw new Error('Não foi possível calcular uma condição financeira válida.');
   const eligible = checks.every(check => check.passed);
-  const offer = { provider: 'NOSSA_FINTECH', tableId: table.id, tableName: table.name, amount, contractAmount, balance, installment, term, rate: table.rate * 100, coefficient, iof, grossCashout, expansion, minimumCashout, checks, eligible, status: eligible ? 'Pode digitar · condições da planilha atendidas' : `Não pode digitar: ${checks.filter(check => !check.passed).map(check => check.label).join('; ')}` };
-  return { offers: [offer], contracts: [{ returnRate: returnRate * 100, newInstallment: installment }], firstDue: firstDue.toISOString().slice(0, 10), weightedRate: table.rate * 100, version: { fileName: book.fileName, hash: book.hash, uploadedAt: book.uploadedAt, versionDate: (book as any).versionDate }, message: 'Estimativa da planilha V.07. Taxa mínima de origem de 0,80% aplicada provisoriamente diante da divergência no arquivo. Digitação sujeita à confirmação do banco.' };
+  const offer = { provider: 'NOSSA_FINTECH', tableId: table.id, tableName: table.name, amount, contractAmount, balance, installment, term, rate: table.rate * 100, coefficient, iof, grossCashout, expansion, minimumCashout:Number(criteria.minCash), checks, eligible, status: eligible ? 'Pode digitar · condições da planilha atendidas' : `Não pode digitar: ${checks.filter(check => !check.passed).map(check => check.label).join('; ')}` };
+  return { offers: [offer], contracts: [{ returnRate: returnRate * 100, newInstallment: installment }], firstDue: firstDue.toISOString().slice(0, 10), weightedRate: table.rate * 100, version: { fileName: book.fileName, hash: book.hash, uploadedAt: book.uploadedAt, versionDate: (book as any).versionDate }, message: 'Estimativa da planilha V.07; condições comerciais conferidas pela fonte substitutiva INSS. Digitação sujeita à confirmação do banco.' };
 }

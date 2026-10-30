@@ -6,7 +6,7 @@ export function parseIlliteracy(value: unknown): boolean | undefined {
 }
 
 export function portabilityReviewMetadata(raw:any={}) {
- return {illiterate:parseIlliteracy(raw.illiterate),state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:['M','F'].includes(raw.sex)?raw.sex:undefined,originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount!==''&&raw.negativeMarginAmount!=null?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10)};
+ return {contractEndDate:String(raw.contractEndDate||'').slice(0,10),cipMember:raw.cipMember===true||raw.cipMember==='YES'?true:raw.cipMember===false||raw.cipMember==='NO'?false:undefined,illiterate:parseIlliteracy(raw.illiterate),state:String(raw.state||'').slice(0,2).toUpperCase(),benefitStartDate:String(raw.benefitStartDate||'').slice(0,10),sex:['M','F'].includes(raw.sex)?raw.sex:undefined,originCategory:['CORBAN','NETWORK'].includes(raw.originCategory)?raw.originCategory:undefined,negativeMarginAmount:raw.negativeMarginAmount!==''&&raw.negativeMarginAmount!=null?Number(raw.negativeMarginAmount):undefined,medicalExamDate:String(raw.medicalExamDate||'').slice(0,10)};
 }
 
 /** Normalize the existing simulators without confusing the port rate with the refinancing rate. */
@@ -18,7 +18,7 @@ function checkContract(bank: string, raw: any, offer?: any) {
  const originalInstallment=number(raw.originalInstallment,raw.installmentFaceValue,raw.valor_parcelas,contract.installmentValue,contract.installment);
  const installment=number(offer?.installment,offer?.installmentValue,raw.refinancing?.installmentValue,raw.valor_parcelas_refin,raw.installment,['AMOUNT','Liquid'].includes(raw.mode)?undefined:raw.value,raw.installmentFaceValue,contract.installment);
  const input:PortabilityContext={
-  operation,birthDate:value(raw.birthDate,raw.clientBirthDate),benefitType:value(raw.benefitType,raw.cd_beneficio_tipo),
+  operation,product:raw.product,paymentOrderBankCode:raw.paymentOrderBankCode,paymentOrderAmount:number(raw.paymentOrderAmount),birthDate:value(raw.birthDate,raw.clientBirthDate),benefitType:value(raw.benefitType,raw.cd_beneficio_tipo),
   benefitStartDate:value(raw.benefitStartDate,raw.dataConcessao),simulationDate:raw.simulationDate,state:value(raw.state,raw.ufBeneficio),sex:raw.sex,
   term:number(offer?.term,raw.refinancing?.term,raw.term,raw.numberOfInstallments,raw.numero_parcelas_refin),
   remainingInstallments:number(raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining),
@@ -37,6 +37,7 @@ function checkContract(bank: string, raw: any, offer?: any) {
 
 /** Every source contract is checked, not only the first one in a consolidation. */
 export function simulationPortabilityCheck(bank:string,raw:any,offer?:any) {
+ if(raw.product&&raw.product!=='INSS'||raw.operation&&!['PORT','PORT_REFIN','PORTABILIDADE'].includes(raw.operation))return {blocked:false,review:false,status:'NÃO APLICÁVEL',reason:'Política INSS fora do escopo.',contracts:[]};
  const contracts=Array.isArray(raw.contracts)&&raw.contracts.length?raw.contracts:[null];
  const checks=contracts.map((contract:any)=>checkContract(bank,contract?{...raw,originContract:contract,
   originalBank:contract.originBank??contract.lenderCode,originLenderCode:undefined,paidInstallments:contract.paidInstallments,

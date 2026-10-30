@@ -19,7 +19,7 @@ function searchablePlaybooks(partner: boolean) {
         const reference = `[PDF p. ${section.page}] ${section.title}`;
         const lines = [reference, ...section.paragraphs.map(text => `${reference}: ${text}`),
             ...section.tables.flatMap(table => table.rows.map(row => `${reference}: ${row.join(' | ')}`))];
-        return [{ ...book, id: section.id, text: lines.join('\n') }];
+        return [{ ...book, id: section.id, bankId:section.bankId, text: lines.join('\n') }];
     });
 }
 
@@ -88,7 +88,7 @@ export class SentinelaToolRouter {
     if (userRole === 'PARTNER' && toolName !== 'searchBankPlaybooks') return { success: false, toolName, rbacBlocked: true, error: 'Consulta do portal restrita aos roteiros bancários.' };
     if (toolName === 'searchBankPlaybooks') {
       if (userRole !== 'PARTNER' && !hasPermission(userRole, customPermissions, 'simulations.view') && !hasPermission(userRole, customPermissions, 'simulations.create')) return { success: false, toolName, rbacBlocked: true, error: 'Sem permissão de consulta de simulações.' };
-      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER', searchablePlaybooks(userRole === 'PARTNER')), notice: 'Biblioteca dos PDFs recebidos em 16/10/2026, atualizada com a transcrição de portabilidade de 13 bancos em 19/10/2026. Para portabilidade, priorize a atualização de 19/10/2026 quando conflitar com resumos anteriores. Não aplique regras de portabilidade a Novo ou refinanciamento comum. Preserve lacunas da FINANTO, espécies 32/93 da DIGIO e divergência de taxas HAPPY. Consulte a mesma base de textos e tabelas exibida na aba Roteiros. As células de uma linha de tabela estão separadas por |; preserve a relação entre critério, valor e exceção. Não reconstrua colunas ambíguas. Consulte a página original e informe lacunas de extração. Não use resumos anteriores. Material fornecido pela empresa em 16/10/2026; não comprova política vigente nem aprovação de crédito. Cite banco, versão e página do PDF quando disponível, ou seção da transcrição. Preserve ressalvas e divergências. Ausência de informação não é permissão. API ativa é independente de compatibilidade com roteiro.' } };
+      return { success: true, toolName, data: { excerpts: searchBankPlaybooks(typeof args.query === 'string' ? args.query : '', userRole === 'PARTNER', searchablePlaybooks(userRole === 'PARTNER')), notice: 'Para portabilidade INSS dos 13 bancos da fonte substitutiva Markdown colado(5).md, recebida em 30/10/2026, use exclusivamente essa versão; os critérios anteriores desses bancos são históricos e não geram conflitos ativos. Não aplique essa substituição a Novo, refinanciamento comum, SIAPE, CLT ou FGTS. Bancos ausentes conservam suas fontes e ressalvas. Espécies explicitamente descritas na nova fonte: 32 e 92; não reutilize 93 por herança. Taxas separadas por barras não comprovam faixas contínuas ou associação a tabelas. Preserve lacunas reais, inclusive Quero Banking sem identidade bancária confirmada. Vigência comercial não informada; recebimento não equivale a início de vigência. Cite banco, versão, página ou seção; não invente critérios, fontes ou condições financeiras. Ausência de informação não é permissão, e roteiro não equivale a oferta, habilitação de API ou aprovação bancária.' } };
     }
 
     // Sanitize filters (strip any tenantId injected in args, force session.effectiveTenantId)

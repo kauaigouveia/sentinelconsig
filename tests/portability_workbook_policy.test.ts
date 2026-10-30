@@ -9,5 +9,5 @@ it('retains calculated offers for review without marking disputed workbook condi
  const result=calculatePortRefin('DAYCOVAL',{} as any,{birthDate:'1980-01-01',simulationDate:'2026-10-30',state:'SP',benefitType:41,term:36,
   contracts:[{originBank:'001',paidInstallments:30,balance:10000,installment:900,remaining:36}],refinanceRate:1.8});
  expect(result.offers).toHaveLength(1);expect(result.offers[0]).toMatchObject({amount:1000,eligible:false,policyStatus:'PENDENTE DE DADOS'});
- expect(result.offers[0].status).toContain('Divergência documental');
+ expect(result.offers[0].status).not.toContain('Divergência documental');expect(result.offers[0].status).toContain('não comprovado');
 });

@@ -13,13 +13,29 @@ Base: main `2a1f83c44df8a9997bbea7c825b7193589b4d2de`.
 
 A regra inicial considera parcela **estritamente inferior a R$ 50** e saldo inferior aos mínimos documentados dos demais destinos habilitados e avaliáveis. Outro destino elegível, mínimo desconhecido/zero ou pendência documental impede a seleção especial. Nenhum destino é descartado artificialmente para favorecer Daycoval.
 
-A seleção exige transporte oficial, integração configurada/habilitada/autorizada, dados obrigatórios, proteção de idempotência e elegibilidade comprovada. O executor prioriza o destino selecionado, mantém o processamento dos demais, isola falhas, deduplica identificadores de jobs e não cria retry automático.
+A seleção admite cálculo **WORKBOOK** no backend. Para Daycoval, não exige API, gateway ou credenciais bancárias. Exige planilha configurada/habilitada para a empresa, modelo reconhecido, vigência comprovada, dados suficientes e resultado elegível segundo as regras documentais. O executor reutiliza o resultado calculado, mantém os demais destinos e não repete jobs.
 
-**Neste código, Daycoval está implementado como calculador de planilha. Não foi localizado um adapter oficial de simulação de portabilidade.** Um gateway Oracle ou um health check cadastrado não comprova essa operação. Nenhuma flag do navegador ou configuração pode transformar a planilha em API oficial. Por isso, a prioridade oficial permanece bloqueada em produção e o fluxo existente continua avaliando os demais bancos. Não se criou endpoint ou payload bancário fictício.
+O backend usa `DAYCOVAL_INSS_WORKBOOK_V1`, decodifica o arquivo importado e chama `calculatePortRefin('DAYCOVAL', ...)`, que executa `simulateDaycoval` e seu interpretador Excel limitado. Não usa `eval`, macros, resultados cacheados ou fórmulas financeiras novas. Preserva metadados documentais do formulário. A parcela original e o saldo são entradas distintas; o troco não é somado ao saldo como valor entregue ao cliente. Os resultados públicos permanecem identificados como estimativa de planilha.
 
-Além disso, as fontes atualmente cadastradas vedam portabilidade pura no Daycoval e apresentam divergências para outras condições. O exemplo de R$ 35/R$ 900 não autoriza ignorar essas regras. Os testes positivos de prioridade usam capacidades e elegibilidade **sintéticas**, não comprovam aceitação bancária real desse caso.
+As fontes cadastradas vedam portabilidade pura Daycoval e apresentam divergências para Portabilidade + Refinanciamento. Esses impedimentos continuam ativos; o caso R$ 35/R$ 900 não é aprovação documental automática.
 
-Para liberar execução oficial futuramente, faltam: contrato/endpoints/payloads oficiais, implementação do adapter autorizado e seu transporte, comprovação de habilitação e dados exigidos, idempotência persistente da operação e enquadramento documental compatível. A mera existência da planilha não satisfaz esses requisitos. As proteções distribuídas existentes não foram substituídas por cache em memória; a deduplicação de jobs não é apresentada como idempotência distribuída.
+### Disponibilidade e vigência
+
+O arquivo importado contém `uploadedAt`, hash do arquivo, hash de fórmulas e prazos. **Não possui comprovação automática de vigência comercial.** O preflight exige `validFrom` e `validUntil` documentados no registro de backend; não deriva vigência do nome, data de upload ou ausência de erro de cálculo. O cadastro/importador atual não coleta essas datas: é pendência real obter a vigência oficial e definir sua incorporação administrativa com evidência, antes de ativar automação operacional. Nenhuma configuração ou banco operacional foi consultado/alterado nesta correção.
+
+Na inspeção offline dos arquivos fornecidos em Downloads:
+- `DAYCOVAL-SIMULADORES-V- 09102026.xlsx`: fórmulas compatíveis, SHA-256 do arquivo `cdb84201e629776020b245dd91ae95cc80f1e9c1c6d2dd868d4db0f8a0fbba57`.
+- `DAYCOVAL-SIMULADORES-V- 16102026.xlsx`: fórmulas compatíveis, SHA-256 do arquivo `63e94e89464fd49fd0aa0e44cba9dbaf418accd5fbf5e2a3195dfa1e881ce728`.
+- Hash de fórmulas aceito: `6e0eacd03bb614e7a257cae03b8c7844f4f1436abd14cad78124369427dfb1af`; prazos encontrados: 108, 96 e 84.
+- Versões de 02/10 e 23/10: rejeitadas pelo importador por estrutura/fórmulas diferentes; não houve adaptação presumida nem escolha automática de versão antiga como vigente.
+
+Teste de cálculo real **offline**, sem política de aprovação: nascimento sintético 01/01/1980, data de cálculo 30/10/2026, saldo 900, parcela 35, 36 parcelas restantes, refinanciamento 108 meses. As versões compatíveis retornaram 11 tabelas, 7 disponíveis segundo a própria planilha; na tabela 805971 o troco calculado foi 682,5868270523455, taxa 1,85% a.m., primeiro vencimento 10/12/2026. Esses números demonstram o executor, não validam vigência, enquadramento documental ou aceitação bancária. Nenhum dado pessoal das planilhas foi exportado para fixtures/logs.
+
+### Entradas e saídas
+
+Entradas automáticas: nascimento, espécie INSS, banco de origem, prazo original e restante (para parcelas pagas), saldo, parcela original e prazo de refinanciamento; data de cálculo definida no backend. Demais informações documentais são preservadas. Margem adicional é zero somente quando não solicitada; quando há nova parcela, usa a diferença explícita. Redução não é convertida silenciosamente em margem zero. Daycoval usa taxas/tabelas da planilha, sem criar taxa externa.
+
+Saídas do calculador: tabela, taxa, coeficiente, valor do contrato, saldo, troco, parcela, prazo, disponibilidade, re-assinatura, taxa de retorno por contrato, primeiro vencimento e identificação da versão. O portal recebe apenas instituição/tabela e condições financeiras permitidas, com `quoteKind: ESTIMATE`; critérios privados e diagnósticos ficam na auditoria administrativa.
 
 ## Extensibilidade e persistência
 
@@ -27,13 +43,13 @@ Para liberar execução oficial futuramente, faltam: contrato/endpoints/payloads
 
 Configuração inválida ou indisponível não habilita prioridade e não paralisa as consultas anteriores. Um novo adapter precisa registrar sua capacidade no servidor; dados enviados pelo navegador não são prova de disponibilidade, autorização ou idempotência. Não se alterou a configuração de ordenação já existente por empresa.
 
-As decisões usam o serviço de auditoria existente, evento `simulation.portability_routing`. O registro contém códigos, versões, instituições e motivos documentais; não inclui CPF, telefone, nome, credenciais ou payload bancário. O volume de decisões é limitado. `AuditLog.newData` é JSON em coluna string: o diagnóstico lê esse formato e projeta campos específicos, sem devolver o objeto completo. Se a auditoria estiver indisponível, preserva-se o fluxo anterior; não há nova operação oficial Daycoval habilitada para executar sem suas garantias.
+As decisões usam o serviço de auditoria existente, evento `simulation.portability_routing`. O registro contém códigos, versões, instituições e motivos documentais; não inclui CPF, telefone, nome, credenciais ou payload bancário. O volume de decisões é limitado. `AuditLog.newData` é JSON em coluna string: o diagnóstico lê esse formato e projeta campos específicos, sem devolver o objeto completo. Se a auditoria estiver indisponível, preserva-se o fluxo anterior; o cálculo local de planilha não realiza operações bancárias ou contratação.
 
 ## Validação
 
 Dados sintéticos, mocks de APIs/armazenamento e HTTP local com callbacks reais, sem importar o bootstrap operacional. Cobertura: 35/900, fronteiras 50/60, outros destinos elegíveis ou com mínimo desconhecido/zero, bloqueios e disponibilidade, pendências, vigência/tenant, isolamento de falha e duplicações, projeção da oferta Daycoval, fontes completas, filtros, permissões administrativas, histórico e replay sem despacho bancário repetido.
 
-Resultado final: 116 testes aprovados em 13 arquivos; TypeScript/lint (tsc --noEmit), build e git diff --check aprovados. O teste de despacho foi reexecutado após o limite final do diagnóstico (3/3, sem somar repetições à contagem). O build mantém o aviso de chunks acima de 500 kB. Verificou-se que o identificador da regra e a chave de configuração privada não estão nos arquivos JavaScript enviados ao navegador. Não houve homologação bancária real, screenshot autenticado de produção, chamada a instituição financeira, migration, seed ou alteração de credenciais/gateway/schema. Sem nova infraestrutura e sem aguardar READY da Vercel.
+Regressão desta correção: 135 testes aprovados em 15 arquivos (116 do conjunto anterior e 19 adicionais, sem somar reexecuções). TypeScript/lint (tsc --noEmit), build e git diff --check aprovados. O build emite avisos de chunks grandes e de imports estáticos/dinâmicos já existentes; não foram alterados nesta correção. A validação inclui o interpretador real com fórmulas sintéticas, despacho com configurações/APIs mockadas e leitura/cálculo offline dos arquivos Daycoval descritos acima. Não equivale a comprovação de vigência comercial ou homologação bancária. O build mantém o aviso de chunks acima de 500 kB. Verificou-se que o identificador da regra e a chave de configuração privada não estão nos arquivos JavaScript enviados ao navegador. Não houve homologação bancária real, screenshot autenticado de produção, chamada a instituição financeira, migration, seed ou alteração de credenciais/gateway/schema. Sem nova infraestrutura e sem aguardar READY da Vercel.
 
 ## Arquivos
 
@@ -42,4 +58,12 @@ Resultado final: 116 testes aprovados em 13 arquivos; TypeScript/lint (tsc --noE
 - Testes: `tests/portability_routing.test.ts`, `portability_guide_catalog.test.ts`, `portability_guide_ui.test.tsx`, `portability_partner_projection.test.ts`, `portability_dispatch.test.ts`.
 - Este relatório. As fontes bancárias existentes permanecem preservadas.
 
-Publicação por commit e push normal na main após validação e sincronização. Reversão funcional por commit reverso, sem alteração no banco. Se já houver diagnósticos gravados, preservar as projeções públicas e o filtro de confidencialidade dos logs durante o rollback; um revert integral sem essas proteções poderia expor registros anteriores pelo endpoint geral. Não remover nem reescrever a trilha de auditoria.
+Esta correção permanece local, sem commit, push ou publicação. Exige validação da versão vigente e resolução das pendências documentais antes de produção. Reversão funcional por commit reverso, sem alteração no banco. Se já houver diagnósticos gravados, preservar as projeções públicas e o filtro de confidencialidade dos logs durante o rollback; um revert integral sem essas proteções poderia expor registros anteriores pelo endpoint geral. Não remover nem reescrever a trilha de auditoria.
+
+## Atualização posterior — precedência documental
+
+A fonte substitutiva Markdown colado(5).md passou a prevalecer para os 13 bancos indicados pelo responsável. As referências anteriores a conflitos entre versões descrevem a etapa histórica e não são mais aplicadas a esses critérios. As pendências atuais são lacunas da nova fonte, dados operacionais ou vigência/compatibilidade da planilha. Veja `docs/portability-rules-replacement-20261030.md`.
+
+## Entrega posterior no GitHub
+
+Após a validação local, o responsável autorizou commit e push das alterações relacionadas. Os registros anteriores de entrega local descrevem a etapa anterior; o SHA e o resultado do push são informados na entrega dessa publicação Git. Esta nota não comprova deployment nem homologação bancária real.

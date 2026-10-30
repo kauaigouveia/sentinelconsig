@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { finantoRefinancingChoices, nossaFintechTableRate } from '../src/lib/inssEligibility';
 import { NossaFintechService } from '../server/services/nossaFintechService';
 
+// Synthetic model/Prisma dependencies: no database or real workbook credentials.
+vi.mock('../server/services/daycovalWorkbook',()=>({decodeDaycoval:()=>({enabled:true})}));
+vi.mock('../server/services/nossaFintechWorkbook',()=>({NOSSA_WORKBOOK_KEY:'synthetic',nossaWorkbookTables:()=>[...Array.from({length:5},(_,i)=>({id:String(i+1),code:String(i+1),term:108,invalidity:false,rate:0.0185})),{id:'183',code:'183',term:108,invalidity:false,rate:0.0183},{id:'185',code:'185',term:108,invalidity:false,rate:0.0185}],simulateNossaWorkbook:()=>({offers:[{eligible:true,amount:100}]})}));
+const modelDb={systemConfig:{findUnique:vi.fn(async()=>({configValue:'synthetic'}))}} as any;
 afterEach(() => vi.restoreAllMocks());
 const rule = { name: 'PRIME ≥ 300', items: [{ rate: 1.85, minTerm: 1, maxTerm: 108 }] };
 describe('Taxas do refinanciamento', () => {
@@ -24,9 +28,9 @@ describe('Taxas do refinanciamento', () => {
     const simulate = (values: number[]) => {
       let index = 0;
       vi.spyOn(NossaFintechService, 'request').mockImplementation(async (_db, _tenant, method) => method === 'GET'
-        ? { success: true, status: 200, data: values.map((_, i) => ({ cod_tabela: String(i + 1), name: 'Tabela', number_of_installments: [108] })) }
+        ? { success: true, status: 200, data: values.map((_, i) => ({ cod_tabela: String(i + 1), name: 'Tabela 1,85%', number_of_installments: [108] })) }
         : { success: true, status: 200, data: { final_disbursement_amount: values[index++] } });
-      return NossaFintechService.simulatePortabilityAcrossTables({} as any, 'tenant', {
+      return NossaFintechService.simulatePortabilityAcrossTables(modelDb, 'tenant', {
         birthDate: '1980-01-01', lastDueBalance: 20000, installmentFaceValue: 500, openedInstallmentNumber: 72, numberOfInstallments: 108, legalRepresentative: false,
       });
     };
@@ -43,7 +47,7 @@ describe('Taxas do refinanciamento', () => {
         { cod_tabela: '183', name: 'INSS PORT-REFIN 1,83% - 108x', number_of_installments: [108] },
         { cod_tabela: '185', name: 'INSS PORT-REFIN 1,85% - 108x', number_of_installments: [108] },
       ] } : { success: true, status: 200, data: { final_disbursement_amount: 2000 } });
-    const result = await NossaFintechService.simulatePortabilityAcrossTables({} as any, 'tenant', {
+    const result = await NossaFintechService.simulatePortabilityAcrossTables(modelDb, 'tenant', {
       birthDate: '1980-01-01', lastDueBalance: 20000, installmentFaceValue: 500, openedInstallmentNumber: 72, numberOfInstallments: 108, legalRepresentative: false, refinancingRate: 1.83,
     });
     expect((result.data as any).results).toHaveLength(1);

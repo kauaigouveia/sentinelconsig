@@ -167,7 +167,7 @@ export class NossaFintechService {
     lastDueBalance: number; installmentFaceValue: number; openedInstallmentNumber: number; policyContext?: any;
     numberOfInstallments: number; legalRepresentative: boolean; birthDate: string; refinancingRate?: number; benefitType?: number;
   }) {
-    const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments);
+    const ageError = nossaFintechAgeError(input.birthDate, input.numberOfInstallments,undefined,'PORT_REFIN');
     if (ageError) throw new Error(ageError);
     // Fail closed: no API offer can bypass the company's active eligibility model.
     const workbookConfig = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: NOSSA_WORKBOOK_KEY } } });

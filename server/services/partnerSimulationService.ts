@@ -1,4 +1,6 @@
-import {existingPortabilityPlan,executeRoutingJobs,publicPortabilityRows} from './portabilityRouting.js';
+import {prepareDaycovalWorkbook} from './daycovalAutomaticWorkbook.js';
+import {HappyBankService} from './happyBankService.js';
+import {existingPortabilityPlan,executeRoutingJobs,publicPortabilityRows,routingCandidate,type RoutingCandidate} from './portabilityRouting.js';
 import {AuditLogService} from './auditLogService.js';
 import {portabilityBankId} from '../../src/lib/portabilityPolicy.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
@@ -33,7 +35,40 @@ export class PartnerSimulationService {
     if (action !== 'SIMULATE') return { rows: await partnerHappySimulation(prisma, tenantId, input, action), message: '' };
     const isPortability=['PORT','PORT_REFIN'].includes(input.operation);
     let plan:any=null;
-    if(isPortability)try{plan=await existingPortabilityPlan(prisma,tenantId,input);}catch{plan={priorityId:null,trace:[{code:'ROUTING_CONFIGURATION_UNAVAILABLE'}]};}
+    const today = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    let preparedDaycoval: ReturnType<typeof prepareDaycovalWorkbook> | undefined;
+    if(isPortability)try {
+      const candidates: RoutingCandidate[] = [];
+      const availability = (id:string, enabled:boolean, transport:'OFFICIAL_API'|'WORKBOOK'='OFFICIAL_API') =>
+        ({id,enabled,configured:enabled,authorized:enabled,transport,dataReady:true,idempotencyReady:transport==='WORKBOOK'});
+      // Only configuration reads: no credentials or customer data are sent to a bank here.
+      // A configuration read failure must prevent priority, not silently remove an alternative.
+      const facta = await FactaBankService.getTenantConfig(prisma,tenantId);
+      candidates.push(routingCandidate('facta',input,availability('facta-api',!!facta.isConfigured&&!!facta.simulationEnabled)));
+      const happy = await HappyBankService.getTenantConfig(prisma,tenantId);
+      candidates.push(routingCandidate('happy',input,availability('happy-api',!!happy.isConfigured&&!!happy.ativo)));
+      const nossa = await NossaFintechService.getConfig(prisma,tenantId);
+      candidates.push(routingCandidate('nossa-fintech',input,availability('nossa-fintech-api',!!nossa.isConfigured&&!!nossa.enabled)));
+      const finanto = await FinantoService.getConfig(prisma,tenantId);
+      candidates.push(routingCandidate('finanto',input,availability('finanto-api',!!finanto.isConfigured&&!!finanto.enabled)));
+      // An existing BMG actor is an alternative; unknown minimum must remain unknown.
+      candidates.push(routingCandidate('bmg',input,availability('bmg-api',!!input.bmgActorId)));
+      for(const bank of ['DAYCOVAL','C6','PARANA'] as const) {
+        const model=SPREADSHEET_MODELS[bank]; if(!model)continue;
+        const row=await prisma.systemConfig.findUnique({where:{tenantId_configKey:{tenantId,configKey:model.key}}});
+        const book=row?decodeDaycoval(row.configValue):null;
+        if(bank==='DAYCOVAL') {
+          preparedDaycoval=prepareDaycovalWorkbook(book,input,today);
+          const candidate=routingCandidate('daycoval',input,availability('daycoval-workbook',!!book&&book.enabled!==false,'WORKBOOK'));
+          candidate.dataReady=preparedDaycoval.ready;
+          // Eligibility was checked against calculated outputs as well as documentary input.
+          if(preparedDaycoval.ready)candidate.check={blocked:false,review:false,status:'ELEGÍVEL',reason:''};
+          candidates.push(candidate);
+        } else candidates.push(routingCandidate(bank.toLowerCase(),input,availability(bank.toLowerCase()+'-workbook',!!book&&book.enabled!==false,'WORKBOOK')));
+      }
+      plan=await existingPortabilityPlan(prisma,tenantId,input,candidates);
+      if(preparedDaycoval&&!preparedDaycoval.ready)plan.trace.push({code:preparedDaycoval.code,bank:'daycoval'});
+    } catch {plan={priorityId:null,trace:[{code:'ROUTING_CONFIGURATION_UNAVAILABLE'}]};}
     const offers: any[] = [], assessments:any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
       try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { assessments.push({provider,institution:provider,state:'PENDING',policyStatus:check.status,message:check.reason});return; } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`);if(isPortability)assessments.push({provider,policyStatus:'TECHNICAL_FAILURE',message:'Falha técnica na integração.'}); }
@@ -53,6 +88,19 @@ export class PartnerSimulationService {
       job('C6', async () => { if (['PORT','PORT_REFIN'].includes(input.operation)) return; offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
       ...(Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]).filter(bank => bank !== 'NOSSA_FINTECH').map(bank => job(SPREADSHEET_MODELS[bank].label, async () => {
         if (input.operation !== 'PORT_REFIN') return;
+        if (bank === 'DAYCOVAL') {
+          if(!preparedDaycoval) {
+            const row=await prisma.systemConfig.findUnique({where:{tenantId_configKey:{tenantId,configKey:SPREADSHEET_MODELS.DAYCOVAL.key}}});
+            preparedDaycoval=prepareDaycovalWorkbook(row?decodeDaycoval(row.configValue):null,input,today);
+          }
+          if(!preparedDaycoval.ready) {
+            assessments.push({provider:'DAYCOVAL',policyStatus:preparedDaycoval.code,message:preparedDaycoval.reason});
+            return;
+          }
+          const result=preparedDaycoval.result;
+          offers.push(...result.offers.filter(offer=>offer.eligible&&offer.amount>0).map(offer=>({...offer,name:offer.tableName,code:offer.tableId,institution:'DAYCOVAL',state:'OFFER',spreadsheetVersion:result.version})));
+          return;
+        }
         const config = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: SPREADSHEET_MODELS[bank].key } } });
         if (!config) return;
         const book = decodeDaycoval(config.configValue); if (book.enabled === false) return;
@@ -85,7 +133,7 @@ export class PartnerSimulationService {
       job('FINANTO', async () => {
         const config = await FinantoService.getConfig(prisma, tenantId);
         if (!config.enabled || !config.isConfigured) return;
-        const ageError = finantoAgeError(input.birthDate, input.term);
+        const ageError = finantoAgeError(input.birthDate, input.term,undefined,input.operation);
         if (ageError) throw new Error(ageError);
         const call = async (endpoint: string, body: any) => {
           const result = await FinantoService.request(prisma, tenantId, 'POST', endpoint, body);
@@ -104,9 +152,9 @@ export class PartnerSimulationService {
           if (page.length < 20) break;
         }
         const jobs = rules.flatMap(rule => {
-          if (finantoBenefitError(rule.name || '', input.benefitType) || (['PORT', 'PORT_REFIN'].includes(input.operation) && finantoInstallmentError(rule.name || '', input.originalInstallment))) return [];
+          if (finantoBenefitError(rule.name || '', input.benefitType) || (['PORT', 'PORT_REFIN'].includes(input.operation) && finantoInstallmentError(rule.name || '', input.originalInstallment,input.operation))) return [];
           const rates = input.rate ? [input.rate] : [...new Set<number>((rule.items || []).map((item: any) => Number(item.rate || item.maxRate)).filter((rate: number) => rate > 0))];
-          const choices = input.operation === 'PORT_REFIN' ? finantoRefinancingChoices(rule, input.term, input.rate) : rates.flatMap(rate => finantoRuleItem(rule, input.term, rate) ? [{ rate }] : []);
+          const choices = input.operation === 'PORT_REFIN' ? finantoRefinancingChoices(rule, input.term, input.rate,input.operation) : rates.flatMap(rate => finantoRuleItem(rule, input.term, rate,input.operation) ? [{ rate }] : []);
           return choices.map(choice => ({ rule, choice }));
         });
         for (let index = 0; index < jobs.length; index += 4) {
@@ -128,9 +176,9 @@ export class PartnerSimulationService {
                 ...(originContract ? { originContract } : {}), ...(originContracts ? { originContracts } : {}),
                 ...(input.operation === 'PORT_REFIN' ? { issueAmount: input.debt, refinancing: { term: input.term, rate: choice.rate, installmentValue: input.value } } : {}),
               });
-              if (finantoCashOutError(rule.name || '', data)) return;
+              if (finantoCashOutError(rule.name || '', data,input.operation)) return;
               const amount = finantoCashOut(data);
-              if (amount && amount > 0) offers.push({ provider: 'FINANTO', institution: data.lender?.name || data.fund?.name || 'FINANTO', state: 'OFFER', code: String(rule.code || rule.id), name: finantoTableLabel(rule), amount, contractAmount: data.loanValue, installment: data.installmentValue || input.value, term: input.term, rate: choice.rate });
+              if (amount && amount > 0) offers.push({ provider: 'FINANTO', institution: data.lender?.name || data.fund?.name || 'FINANTO', state: 'OFFER', code: String(rule.code || rule.id), name: finantoTableLabel(rule,input.operation), amount, contractAmount: data.loanValue, installment: data.installmentValue || input.value, term: input.term, rate: choice.rate });
             } catch (error: any) { notes.push(`FINANTO (${rule.name}): ${error.message}`); }
           }));
         }
