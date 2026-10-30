@@ -1,4 +1,5 @@
 import rules from '../data/portabilityRules20261019.json';
+import supplement from '../data/portabilityRulesSupplement.json';
 
 export const PORTABILITY_SECTIONS = rules.flatMap(rule => {
  const groups: Record<string,string[][]> = { 'Idade, benefício e formalização':[], 'Bancos de origem e parcelas pagas':[], 'Valores e taxas':[], 'Operação e restrições':[] };
@@ -26,7 +27,11 @@ export const PORTABILITY_SECTIONS = rules.flatMap(rule => {
 }));
 });
 
-export const PORTABILITY_BOOKS = rules.map(rule => ({
+export const PORTABILITY_BOOKS = [...rules.map(rule => ({
  id: rule.id, bankId: rule.id, name: rule.name, version: rule.version, receivedAt: rule.receivedAt,
- source: rule.source, sourceFile: rule.sourceFile, text: rule.fields.map(([label,value])=>`${label}: ${value.replace(/\n/g,' ')}`).join('\n'),
-}));
+ source: rule.source, sourceFile: rule.sourceFile, text: (supplement.banks.some(bank=>bank.id===rule.id)?'[Fonte de 19/10/2026; existe documento complementar sem vigência/prioridade comprovada. Conferir divergências entre as fontes.]\n':'')+rule.fields.map(([label,value])=>`${label}: ${value.replace(/\n/g,' ')}`).join('\n'),
+})), ...supplement.banks.map(rule=>({id:rule.id,bankId:rule.id,name:rule.name,
+ version:'Documento complementar sem vigência/prioridade comprovada',receivedAt:supplement.receivedAt,
+ source:supplement.source,sourceFile:supplement.sourceFile,
+ text:`[Documento complementar p. ${rule.page}; vigência não informada; não substitui silenciosamente 19/10/2026]\n${rule.text}`,
+}))];

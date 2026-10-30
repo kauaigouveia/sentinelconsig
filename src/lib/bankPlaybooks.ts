@@ -5,7 +5,7 @@ import { PORTABILITY_BOOKS } from './portabilityPlaybooks';
 export const BANK_PLAYBOOKS = source;
 export const PORTABILITY_PLAYBOOKS = PORTABILITY_BOOKS;
 export type PlaybookId = typeof source[number]['id'];
-export type PlaybookInput = { illiterate?: boolean; originBank?: string; paidInstallments?: number; birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean };
+export type PlaybookInput = { illiterate?: boolean; originBank?: string; paidInstallments?: number; birthDate: string; species: string; operation: 'NEW' | 'PORT' | 'REFIN' | 'PORT_REFIN'; term?: number; amount?: number; installment?: number; state?: string; benefitStartDate?: string; legalRepresentative?: boolean; debt?:number; originalInstallment?:number; remainingInstallments?:number };
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function publicPlaybookText(value: string) {
   // Commercial correspondent details are company-only, never part of partner answers.
@@ -23,7 +23,7 @@ export function searchBankPlaybooks(query: string, partner = false, additions: t
       const chunks: string[] = []; for (let index = 0; index < paragraph.length; index += 1800) chunks.push(`${index > 0 && reference ? `${reference} ` : ''}${paragraph.slice(index, index + 1800)}`); return chunks;
     });
     return paragraphs.map((excerpt, index) => ({ bankId: book.id, bank: book.name, version: book.version, receivedAt: book.receivedAt, source: book.source, sourceFile: book.sourceFile, page: /^\[PDF pp?\. ([^\]]+)\]/.exec(excerpt)?.[1] || null, section: index + 1, excerpt,
-      score: (book.receivedAt === '2026-10-19' && /portabil|origem|pagas|troco/.test(normalize(query)) && words.some(word=>normalize(excerpt).includes(word)||normalize(book.name).includes(word)) ? 30 : 0) + words.reduce((score, word) => score + (normalize(excerpt).includes(word) ? 1 : 0) + (normalize(book.name).includes(word) ? 3 : 0), 0) }));
+      score: (PORTABILITY_PLAYBOOKS.some(port=>port.sourceFile===book.sourceFile) && /portabil|origem|pagas|troco/.test(normalize(query)) && words.some(word=>normalize(excerpt).includes(word)||normalize(book.name).includes(word)) ? 30 : 0) + words.reduce((score, word) => score + (normalize(excerpt).includes(word) ? 1 : 0) + (normalize(book.name).includes(word) ? 3 : 0), 0) }));
   }).filter(row => row.score > 0).sort((a, b) => b.score - a.score);
   return matches.slice(0, 8).map(({ score: _score, ...row }) => row);
 }

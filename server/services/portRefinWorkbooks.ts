@@ -39,7 +39,7 @@ export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook
   const check=simulationPortabilityCheck(bank,input);
   if(check.blocked)throw new Error(check.reason);
   const result=calculatePortRefinUnchecked(bank,book,input);
-  const offers=result.offers.map(offer=>{const check=simulationPortabilityCheck(bank,input,offer);return {...offer,eligible:offer.eligible&&!check.blocked,policyReview:check.reason,status:check.blocked?check.reason:offer.status};});
+  const offers=result.offers.map(offer=>{const check=simulationPortabilityCheck(bank,input,offer);return {...offer,eligible:offer.eligible&&!check.blocked&&!check.review,policyStatus:check.status,policyReview:check.reason,status:check.blocked||check.review?`${check.status}: ${check.reason}`:offer.status};});
   return {...result,offers,message:['message' in result?result.message:'',check.review?check.reason:''].filter(Boolean).join(' ')};
 }
 function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {

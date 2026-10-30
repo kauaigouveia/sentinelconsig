@@ -10,7 +10,7 @@ export function portabilityReviewMetadata(raw:any={}) {
 }
 
 /** Normalize the existing simulators without confusing the port rate with the refinancing rate. */
-export function simulationPortabilityCheck(bank: string, raw: any, offer?: any) {
+function checkContract(bank: string, raw: any, offer?: any) {
  const contract=raw.originContract||raw.contracts?.[0]||{};
  const value=(...values:any[])=>values.find(v=>v!==undefined&&v!==null&&v!=='');
  const number=(...values:any[])=>{const v=value(...values);return v===undefined?undefined:Number(v);};
@@ -21,6 +21,8 @@ export function simulationPortabilityCheck(bank: string, raw: any, offer?: any) 
   operation,birthDate:value(raw.birthDate,raw.clientBirthDate),benefitType:value(raw.benefitType,raw.cd_beneficio_tipo),
   benefitStartDate:value(raw.benefitStartDate,raw.dataConcessao),simulationDate:raw.simulationDate,state:value(raw.state,raw.ufBeneficio),sex:raw.sex,
   term:number(offer?.term,raw.refinancing?.term,raw.term,raw.numberOfInstallments,raw.numero_parcelas_refin),
+  remainingInstallments:number(raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining),
+  contractEndDate:raw.contractEndDate,benefitCategory:raw.benefitCategory,cipMember:raw.cipMember,
   debt:number(raw.debt,raw.lastDueBalance,raw.saldo_devedor,contract.dueBalanceValue,contract.balance),originalInstallment,installment,
   amount:number(offer?.amount),contractAmount:number(offer?.contractAmount),portRate:number(offer?.portRate,raw.portRate,operation==='PORT'?offer?.rate??raw.rate:undefined),portInstallment:number(offer?.portInstallment,raw.portInstallment),
   refinRate:number(offer?.rate,raw.refinancing?.rate,raw.refinanceRate,raw.refinancingRate,raw.taxa_mensal_refin,operation==='PORT'?undefined:raw.rate),
@@ -31,6 +33,20 @@ export function simulationPortabilityCheck(bank: string, raw: any, offer?: any) 
  const origin=value(raw.originalBank,raw.originLenderCode,contract.lenderCode,contract.originBank);
  const paid=value(raw.paidInstallments,contract.paidInstallments,paidFromTerms(value(raw.originalTerm,contract.term),value(raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining)));
  return portabilityEligibility(bank,origin,paid,input);
+}
+
+/** Every source contract is checked, not only the first one in a consolidation. */
+export function simulationPortabilityCheck(bank:string,raw:any,offer?:any) {
+ const contracts=Array.isArray(raw.contracts)&&raw.contracts.length?raw.contracts:[null];
+ const checks=contracts.map((contract:any)=>checkContract(bank,contract?{...raw,originContract:contract,
+  originalBank:contract.originBank??contract.lenderCode,originLenderCode:undefined,paidInstallments:contract.paidInstallments,
+  originalTerm:contract.term,remainingTerm:contract.installmentsRemaining??contract.remaining,openedInstallmentNumber:undefined,
+  debt:contract.dueBalanceValue??contract.balance,lastDueBalance:undefined,saldo_devedor:undefined,
+  originalInstallment:contract.installmentValue??contract.installment,installmentFaceValue:undefined,valor_parcelas:undefined,
+ }:raw,offer));
+ const blocked=checks.some(check=>check.blocked),review=checks.some(check=>check.review);
+ return {...checks[0],blocked,review,status:blocked?'NÃO ELEGÍVEL':review?'PENDENTE DE DADOS':'ELEGÍVEL',
+  reason:checks.map((check,index)=>contracts.length>1?`Contrato ${index+1}: ${check.reason}`:check.reason).join(' '),contracts:checks};
 }
 
 /** Preserve the provider envelope while removing explicit financial offers that violate the roteiro. */

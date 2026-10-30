@@ -28,11 +28,11 @@ export class PartnerSimulationService {
       return result;
     }
     if (action !== 'SIMULATE') return { rows: await partnerHappySimulation(prisma, tenantId, input, action), message: '' };
-    const offers: any[] = [], notes: string[] = [];
+    const offers: any[] = [], assessments:any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
-      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { if (provider === 'Nossa Fintech' && input.operation === 'PORT_REFIN') return; throw new Error(check.reason); } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
-      if (['PORT','PORT_REFIN'].includes(input.operation)) { for (let index=offers.length-1;index>=0;index--) { const offer=offers[index]; const check=simulationPortabilityCheck(offer.provider||offer.institution,input,offer); if(check.blocked){notes.push(check.reason);offers.splice(index,1);}else offer.policyReview=check.reason; } }
-      if (onRows) await onRows([...offers]);
+      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { assessments.push({provider,institution:provider,state:'PENDING',policyStatus:check.status,message:check.reason});return; } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
+      if (['PORT','PORT_REFIN'].includes(input.operation)) { for (let index=offers.length-1;index>=0;index--) { const offer=offers[index]; const check=simulationPortabilityCheck(offer.provider||offer.institution,input,offer); if(check.blocked){notes.push(check.reason);assessments.push({provider:offer.provider||offer.institution,institution:offer.institution,state:'PENDING',policyStatus:check.status,message:check.reason});offers.splice(index,1);}else {offer.policyReview=check.reason;offer.policyStatus=check.status;} } }
+      if (onRows) await onRows([...offers,...assessments]);
     };
     await Promise.all([
       collect('HAPPY', async () => { offers.push(...await partnerHappySimulation(prisma, tenantId, input, action)); }),
@@ -129,6 +129,6 @@ export class PartnerSimulationService {
         }
       }),
     ]);
-    return { rows: offers, message: notes.join(' · ') || (!offers.length ? 'Nenhuma oferta retornada para os dados informados.' : '') };
+    return { rows: [...offers,...assessments], message: notes.join(' · ') || (!offers.length ? 'Nenhuma oferta retornada para os dados informados.' : '') };
   }
 }

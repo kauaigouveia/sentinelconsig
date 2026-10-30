@@ -20,14 +20,14 @@ export function portabilityEligibility(destination: string, origin: unknown, pai
  if (current) return current;
  const key = destination.toLowerCase().replace(/[^a-z0-9]/g, '');
  const rule = rules[key];
- if (!rule) return { blocked: false, review: true, reason: 'Acordo de origem exige conferência no roteiro do banco.' };
+ if (!rule) return { blocked: false, review: true, status:'PENDENTE DE DADOS', reason: 'Acordo de origem exige conferência no roteiro do banco.' };
  const code = normalizeInstitutionCode(String(origin ?? ''));
- if (!code) return { blocked: true, review: false, reason: 'Informe o banco de origem para conferir a portabilidade.' };
- if (rule.blocked.includes(code)) return { blocked: true, review: false, reason: `${destination}: não aceita portabilidade do banco ${code} (resumo 10/09/2026).` };
- if (paid === '' || paid == null || !Number.isInteger(Number(paid)) || Number(paid) < 0) return { blocked: true, review: false, reason: 'Informe uma quantidade válida de parcelas pagas.' };
+ if (!code) return { blocked: false, review: true, status:'PENDENTE DE DADOS', reason: 'Informe o banco de origem para conferir a portabilidade.' };
+ if (rule.blocked.includes(code)) return { blocked: true, review: false, status:'NÃO ELEGÍVEL', reason: `${destination}: não aceita portabilidade do banco ${code} (resumo 10/09/2026).` };
+ if (paid === '' || paid == null || !Number.isInteger(Number(paid)) || Number(paid) < 0) return { blocked: false, review: true, status:'PENDENTE DE DADOS', reason: 'Informe uma quantidade válida de parcelas pagas.' };
  const minimum = rule.paid[code];
- if (minimum != null && Number(paid) < minimum) return { blocked: true, review: false, reason: `${destination}: origem ${code} exige ${minimum} parcelas pagas; informadas ${paid} (resumo 10/09/2026).` };
- return { blocked: false, review: true, reason: minimum == null ? 'Acordo não individualizado: conferir origem e pagas no roteiro antes de contratar.' : `Mínimo de ${minimum} parcelas pagas atendido. Demais condições dependem do roteiro e do banco.` };
+ if (minimum != null && Number(paid) < minimum) return { blocked: true, review: false, status:'NÃO ELEGÍVEL', reason: `${destination}: origem ${code} exige ${minimum} parcelas pagas; informadas ${paid} (resumo 10/09/2026).` };
+ return { blocked: false, review: true, status:'PENDENTE DE DADOS', reason: minimum == null ? 'Acordo não individualizado: conferir origem e pagas no roteiro antes de contratar.' : `Mínimo de ${minimum} parcelas pagas atendido. Demais condições dependem do roteiro e do banco.` };
 }
 export function paidFromTerms(original: unknown, remaining: unknown): number | undefined {
  if (original === '' || remaining === '' || original == null || remaining == null) return undefined;

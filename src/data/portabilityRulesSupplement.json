@@ -1,0 +1,904 @@
+{
+  "source": "Documento de portabilidade fornecido pelo usuário",
+  "sourceFile": "Markdown colado(4).md",
+  "receivedAt": "2026-10-30",
+  "effectiveAt": null,
+  "priority": null,
+  "banks": [
+    {
+      "id": "facta",
+      "name": "FACTA",
+      "page": 2,
+      "criteria": {
+        "blocked": [
+          "611",
+          "643",
+          "917",
+          "359",
+          "012"
+        ],
+        "paid": {
+          "149": 24,
+          "318": 12,
+          "336": 12,
+          "555": [
+            15,
+            30
+          ],
+          "623": [
+            15,
+            30
+          ],
+          "626": 12,
+          "041": 15,
+          "033": 12
+        },
+        "minAge": 22,
+        "maxAge": 75,
+        "pure": false,
+        "reduce": true,
+        "negative": true,
+        "aggregate": false,
+        "unify": 6,
+        "portRates": [
+          0.82,
+          0.82
+        ],
+        "minInstallment": 0,
+        "minBalance": 2000,
+        "minCash": 50,
+        "refinRateOptions": [
+          1.7,
+          1.8
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital"
+        ],
+        [
+          "Limite de idade",
+          "22 a 75 anos"
+        ],
+        [
+          "Portabilidade pura",
+          "Não"
+        ],
+        [
+          "Redução de parcelas",
+          "Sim, desde que cubra o saldo devedor, dentro da taxa e regra do troco"
+        ],
+        [
+          "Margem negativa",
+          "Sim"
+        ],
+        [
+          "Agrega margem",
+          "Não"
+        ],
+        [
+          "Unificar parcelas",
+          "Sim, até 6 parcelas"
+        ],
+        [
+          "Consulta SRCC",
+          "Não"
+        ],
+        [
+          "Taxa de portabilidade",
+          "0,82%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,80% / 1,70%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 2.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 50,00"
+        ]
+      ],
+      "text": "1. FACTA — Página 2\n\n| Campo                       | Informação                                                            |\n| --------------------------- | --------------------------------------------------------------------- |\n| Formalização                | Digital                                                               |\n| Limite de idade             | 22 a 75 anos                                                          |\n| Portabilidade pura          | Não                                                                   |\n| Redução de parcelas         | Sim, desde que cubra o saldo devedor, dentro da taxa e regra do troco |\n| Margem negativa             | Sim                                                                   |\n| Agrega margem               | Não                                                                   |\n| Unificar parcelas           | Sim, até 6 parcelas                                                   |\n| Consulta SRCC               | Não                                                                   |\n| Taxa de portabilidade       | 0,82%                                                                 |\n| Taxa refin da portabilidade | 1,80% / 1,70%                                                         |\n| Parcela mínima              | Não tem                                                               |\n| Saldo mínimo                | R$ 2.000,00                                                           |\n| Mínimo liberado             | R$ 50,00                                                              |\n\nRegra de bancos — parcelas pagas:\n\n- PAN: 15\n- Banrisul: 15\n- C6 Consig: 12\n- Facta: 24\n- PAN (segunda condição apresentada): 30\n- Santander: 12\n- BMG: 12\n\nBancos não permitidos: Banco Paulista, Banco Pine, Socicred 917, Zema e Inbursa."
+    },
+    {
+      "id": "c6",
+      "name": "C6 CONSIG",
+      "page": 3,
+      "criteria": {
+        "blocked": [
+          "121",
+          "070",
+          "707",
+          "012"
+        ],
+        "paid": {
+          "149": 13,
+          "318": 13,
+          "555": 37,
+          "623": 37
+        },
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "minAge": 18,
+        "maxStartMonths": 863,
+        "maxStartDays": 28,
+        "pure": true,
+        "reduce": 0.15,
+        "negative": true,
+        "aggregate": false,
+        "unify": false,
+        "portRates": [
+          1.6,
+          1.6
+        ],
+        "minInstallment": 0,
+        "minBalance": 2000,
+        "minCash": 50,
+        "refinRateOptions": [
+          1.65,
+          1.8
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital"
+        ],
+        [
+          "Limite de idade",
+          "18 anos até 71 anos, 11 meses e 28 dias"
+        ],
+        [
+          "Portabilidade pura",
+          "Sim"
+        ],
+        [
+          "Redução de parcelas",
+          "Permite reduzir no máximo 15% do valor da parcela original"
+        ],
+        [
+          "Margem negativa",
+          "Sim"
+        ],
+        [
+          "Agrega margem",
+          "Não"
+        ],
+        [
+          "Unificar parcelas",
+          "Não"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,60%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,80% / 1,65%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 2.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 50,00"
+        ]
+      ],
+      "text": "2. C6 CONSIG — Página 3\n\n| Campo                       | Informação                                                 |\n| --------------------------- | ---------------------------------------------------------- |\n| Formalização                | Digital                                                    |\n| Limite de idade             | 18 anos até 71 anos, 11 meses e 28 dias                    |\n| Portabilidade pura          | Sim                                                        |\n| Redução de parcelas         | Permite reduzir no máximo 15% do valor da parcela original |\n| Margem negativa             | Sim                                                        |\n| Agrega margem               | Não                                                        |\n| Unificar parcelas           | Não                                                        |\n| Consulta SRCC               | Sim                                                        |\n| Taxa de portabilidade       | 1,60%                                                      |\n| Taxa refin da portabilidade | 1,80% / 1,65%                                              |\n| Parcela mínima              | Não tem                                                    |\n| Saldo mínimo                | R$ 2.000,00                                                |\n| Mínimo liberado             | R$ 50,00                                                   |\n\nRegra de bancos — parcelas pagas:\n\n- PAN: 37\n- BMG: 13\n- Facta: 13\n- Facta: 13 (segunda entrada apresentada)\n- Bancos correspondentes (CORBAN): 12\n- Bancos de rede: a partir de 1\n\nBancos não permitidos: Agibank, BRB, Daycoval e Inbursa."
+    },
+    {
+      "id": "digio",
+      "name": "DIGIO",
+      "page": 4,
+      "criteria": {
+        "blocked": [
+          "237",
+          "077"
+        ],
+        "paid": {},
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "minAge": 18,
+        "maxStartMonths": 911,
+        "maxStartDays": 29,
+        "startMonthsByTerm": {
+          "120": 851
+        },
+        "pure": false,
+        "reduce": false,
+        "negative": false,
+        "aggregate": false,
+        "unify": false,
+        "portRatesByBenefit": {
+          "retiree": 1.39,
+          "pensioner": 1.55
+        },
+        "minInstallment": 0,
+        "minBalanceByBenefit": {
+          "retiree": 12000,
+          "pensioner": 6000
+        },
+        "minCash": 250,
+        "refinRateOptions": [
+          1.65,
+          1.8
+        ],
+        "figitalStates": [
+          "AP",
+          "PB",
+          "RR",
+          "TO",
+          "MG"
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas)"
+        ],
+        [
+          "Limite de idade",
+          "18 anos até 70 anos, 11 meses e 29 dias em 120x; demais prazos até 75 anos, 11 meses e 29 dias"
+        ],
+        [
+          "Portabilidade pura",
+          "Não faz"
+        ],
+        [
+          "Redução de parcelas",
+          "Não faz"
+        ],
+        [
+          "Margem negativa",
+          "Não faz"
+        ],
+        [
+          "Agrega margem",
+          "Não faz"
+        ],
+        [
+          "Unificar parcelas",
+          "Não faz"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,39% aposentado / 1,55% pensionista"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,80% / 1,65%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "Aposentado: R$ 12.000,00 / Pensionista: R$ 6.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 250,00"
+        ]
+      ],
+      "text": "3. DIGIO — Página 4\n\n| Campo                       | Informação                                                                                         |\n| --------------------------- | -------------------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas) |\n| Limite de idade             | 18 anos até 70 anos, 11 meses e 29 dias em 120x; demais prazos até 75 anos, 11 meses e 29 dias     |\n| Portabilidade pura          | Não faz                                                                                            |\n| Redução de parcelas         | Não faz                                                                                            |\n| Margem negativa             | Não faz                                                                                            |\n| Agrega margem               | Não faz                                                                                            |\n| Unificar parcelas           | Não faz                                                                                            |\n| Consulta SRCC               | Sim                                                                                                |\n| Taxa de portabilidade       | 1,39% aposentado / 1,55% pensionista                                                               |\n| Taxa refin da portabilidade | 1,80% / 1,65%                                                                                      |\n| Parcela mínima              | Não tem                                                                                            |\n| Saldo mínimo                | Aposentado: R$ 12.000,00 / Pensionista: R$ 6.000,00                                                |\n| Mínimo liberado             | R$ 250,00                                                                                          |\n\nRegra de bancos:\n\n- Bancos correspondentes (CORBAN): 12 parcelas pagas.\n- Bancos de rede: a partir de 1 parcela paga.\n\nBancos não permitidos: Bradesco e Inter."
+    },
+    {
+      "id": "safra",
+      "name": "SAFRA",
+      "page": 5,
+      "criteria": {
+        "blocked": [
+          "707",
+          "012",
+          "025"
+        ],
+        "paid": {
+          "149": 24,
+          "336": 18,
+          "555": 15,
+          "623": 15,
+          "626": 18,
+          "041": 12
+        },
+        "corbanPaid": 12,
+        "networkPaid": 1,
+        "minAge": 21,
+        "maxAge": 69,
+        "pure": false,
+        "reduce": true,
+        "negative": "refinOnly",
+        "aggregate": false,
+        "unify": false,
+        "portRates": [
+          1.2,
+          1.2
+        ],
+        "minInstallment": 0,
+        "minBalance": 800,
+        "minCash": 500,
+        "refinRateOptions": [
+          1.55,
+          1.65,
+          1.8
+        ],
+        "conditionalRefinRatesReview": true
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital"
+        ],
+        [
+          "Limite de idade",
+          "21 a 69 anos"
+        ],
+        [
+          "Portabilidade pura",
+          "Não faz"
+        ],
+        [
+          "Redução de parcelas",
+          "Sim"
+        ],
+        [
+          "Margem negativa",
+          "Sim, no refin"
+        ],
+        [
+          "Agrega margem",
+          "Não faz"
+        ],
+        [
+          "Unificar parcelas",
+          "Não faz"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,20%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,55% (20 mil) / 1,65% (10 mil) / 1,80%"
+        ],
+        [
+          "Parcela mínima",
+          "Não tem"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 800,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 500,00"
+        ]
+      ],
+      "text": "4. SAFRA — Página 5\n\n| Campo                       | Informação                              |\n| --------------------------- | --------------------------------------- |\n| Formalização                | Digital                                 |\n| Limite de idade             | 21 a 69 anos                            |\n| Portabilidade pura          | Não faz                                 |\n| Redução de parcelas         | Sim                                     |\n| Margem negativa             | Sim, no refin                           |\n| Agrega margem               | Não faz                                 |\n| Unificar parcelas           | Não faz                                 |\n| Consulta SRCC               | Sim                                     |\n| Taxa de portabilidade       | 1,20%                                   |\n| Taxa refin da portabilidade | 1,55% (20 mil) / 1,65% (10 mil) / 1,80% |\n| Parcela mínima              | Não tem                                 |\n| Saldo mínimo                | R$ 800,00                               |\n| Mínimo liberado             | R$ 500,00                               |\n\nRegra de bancos — parcelas pagas:\n\n- PAN: 15\n- C6 Consig: 18\n- Facta: 24\n- Banrisul: 12\n- Bancos correspondentes (CORBAN): 12\n- Bancos de rede: a partir de 1\n\nBancos não permitidos: Daycoval, Inbursa e Alfa."
+    },
+    {
+      "id": "parana",
+      "name": "PB CONSIGNADO",
+      "page": 6,
+      "criteria": {
+        "blocked": [
+          "268",
+          "330",
+          "389"
+        ],
+        "paid": {
+          "121": 13,
+          "336": 25,
+          "555": 13,
+          "623": 13,
+          "626": 25
+        },
+        "minAge": 18,
+        "maxAge": 72,
+        "maxEndMonths": 935,
+        "maxEndDays": 29,
+        "endExclusive": true,
+        "pure": true,
+        "reduce": "negativeOnly",
+        "negative": true,
+        "aggregate": "refinOnly",
+        "unify": false,
+        "minInstallment": 200,
+        "minBalance": 0,
+        "minCash": 100,
+        "portRates": [
+          1,
+          1.8
+        ],
+        "refinRateOptions": [
+          1.6,
+          1.8
+        ],
+        "pureRateReview": true
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital"
+        ],
+        [
+          "Limite de idade",
+          "18 a 72 anos, com contrato encerrando antes de completar 77 anos, 11 meses e 29 dias"
+        ],
+        [
+          "Portabilidade pura",
+          "Sim"
+        ],
+        [
+          "Redução de parcelas",
+          "Somente se estiver negativo"
+        ],
+        [
+          "Margem negativa",
+          "Sim"
+        ],
+        [
+          "Agrega margem",
+          "Sim, no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Não"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "Port. pura acima de 500: 1,60% a 1,80%; port. pura: 1,70% a 1,80%; port. com refin: 1,00% a 1,80%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,80% / 1,60%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 200,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não tem"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ]
+      ],
+      "text": "5. PB CONSIGNADO — Página 6\n\n| Campo                       | Informação                                                                                        |\n| --------------------------- | ------------------------------------------------------------------------------------------------- |\n| Formalização                | Digital                                                                                           |\n| Limite de idade             | 18 a 72 anos, com contrato encerrando antes de completar 77 anos, 11 meses e 29 dias              |\n| Portabilidade pura          | Sim                                                                                               |\n| Redução de parcelas         | Somente se estiver negativo                                                                       |\n| Margem negativa             | Sim                                                                                               |\n| Agrega margem               | Sim, no refin da portabilidade                                                                    |\n| Unificar parcelas           | Não                                                                                               |\n| Consulta SRCC               | Sim                                                                                               |\n| Taxa de portabilidade       | Port. pura acima de 500: 1,60% a 1,80%; port. pura: 1,70% a 1,80%; port. com refin: 1,00% a 1,80% |\n| Taxa refin da portabilidade | 1,80% / 1,60%                                                                                     |\n| Parcela mínima              | R$ 200,00                                                                                         |\n| Saldo mínimo                | Não tem                                                                                           |\n| Mínimo liberado             | R$ 100,00                                                                                         |\n\nRegra de bancos — parcelas pagas:\n\n- PAN: 13\n- Agibank: 13\n- C6 Consig: 25\n\nBancos não permitidos: Barigui e Mercantil."
+    },
+    {
+      "id": "quero-credito",
+      "name": "QUERO + CRÉDITO",
+      "page": 7,
+      "criteria": {
+        "blocked": [
+          "422",
+          "336",
+          "626"
+        ],
+        "paid": {
+          "149": 12,
+          "555": 12,
+          "623": 12,
+          "001": 15,
+          "041": 13
+        },
+        "otherPaid": 6,
+        "requiresCip": true,
+        "minAge": 18,
+        "maxAge": 75,
+        "pure": false,
+        "reduce": "negativeOnly",
+        "negative": true,
+        "aggregate": "refinOnly",
+        "unify": "refinOnly",
+        "portRates": [
+          1.34,
+          1.34
+        ],
+        "minInstallment": 20,
+        "minBalance": 0,
+        "minCash": 100,
+        "refinRateOptions": [
+          1.55,
+          1.55
+        ],
+        "figitalStates": [
+          "AP",
+          "PB",
+          "RR",
+          "TO",
+          "MG"
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas)"
+        ],
+        [
+          "Limite de idade",
+          "18 a 75 anos"
+        ],
+        [
+          "Portabilidade pura",
+          "Não faz"
+        ],
+        [
+          "Redução de parcelas",
+          "Sim, apenas se estiver negativo"
+        ],
+        [
+          "Margem negativa",
+          "Sim"
+        ],
+        [
+          "Agrega margem",
+          "Sim, no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Sim, no refin da portabilidade"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,34%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,55%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 20,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não possui"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ]
+      ],
+      "text": "6. QUERO + CRÉDITO — Página 7\n\n| Campo                       | Informação                                                                                         |\n| --------------------------- | -------------------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas) |\n| Limite de idade             | 18 a 75 anos                                                                                       |\n| Portabilidade pura          | Não faz                                                                                            |\n| Redução de parcelas         | Sim, apenas se estiver negativo                                                                    |\n| Margem negativa             | Sim                                                                                                |\n| Agrega margem               | Sim, no refin da portabilidade                                                                     |\n| Unificar parcelas           | Sim, no refin da portabilidade                                                                     |\n| Consulta SRCC               | Sim                                                                                                |\n| Taxa de portabilidade       | 1,34%                                                                                              |\n| Taxa refin da portabilidade | 1,55%                                                                                              |\n| Parcela mínima              | R$ 20,00                                                                                           |\n| Saldo mínimo                | Não possui                                                                                         |\n| Mínimo liberado             | R$ 100,00                                                                                          |\n\nRegra de bancos — parcelas pagas:\n\n- PAN: 12\n- Banco identificado no material como código 001: 15\n- Facta: 12\n- Banrisul: 13\n- Demais bancos da CIP: 6\n\nBancos não permitidos: Safra e C6 Consig."
+    },
+    {
+      "id": "banrisul",
+      "name": "BANRISUL",
+      "page": 8,
+      "criteria": {
+        "blocked": [
+          "268",
+          "330"
+        ],
+        "paid": {},
+        "corbanPaid": 24,
+        "networkPaid": 24,
+        "minAge": 18,
+        "maxAge": 75,
+        "maxEndMonths": 936,
+        "endExclusive": true,
+        "pure": true,
+        "reduce": true,
+        "negative": true,
+        "aggregate": 10,
+        "unify": 5,
+        "portRates": [
+          1.5,
+          1.5
+        ],
+        "minInstallment": 800,
+        "minBalance": 5000,
+        "minCash": 300,
+        "refinRateOptions": [
+          1.75,
+          1.75
+        ],
+        "figitalStates": [
+          "AP",
+          "PB",
+          "RR",
+          "TO",
+          "MG"
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas)"
+        ],
+        [
+          "Limite de idade",
+          "18 a 75 anos, com contrato encerrando antes de completar 78 anos"
+        ],
+        [
+          "Portabilidade pura",
+          "Sim"
+        ],
+        [
+          "Redução de parcelas",
+          "Sim"
+        ],
+        [
+          "Margem negativa",
+          "Sim"
+        ],
+        [
+          "Agrega margem",
+          "Até R$ 10,00"
+        ],
+        [
+          "Unificar parcelas",
+          "Até 5 contratos"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Regra de bancos",
+          "24 parcelas pagas CORBAN / Rede"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,50%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,75%"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 800,00"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 5.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 300,00"
+        ]
+      ],
+      "text": "7. BANRISUL — Página 8\n\n| Campo                       | Informação                                                                                         |\n| --------------------------- | -------------------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas) |\n| Limite de idade             | 18 a 75 anos, com contrato encerrando antes de completar 78 anos                                   |\n| Portabilidade pura          | Sim                                                                                                |\n| Redução de parcelas         | Sim                                                                                                |\n| Margem negativa             | Sim                                                                                                |\n| Agrega margem               | Até R$ 10,00                                                                                       |\n| Unificar parcelas           | Até 5 contratos                                                                                    |\n| Consulta SRCC               | Sim                                                                                                |\n| Regra de bancos             | 24 parcelas pagas CORBAN / Rede                                                                    |\n| Taxa de portabilidade       | 1,50%                                                                                              |\n| Taxa refin da portabilidade | 1,75%                                                                                              |\n| Parcela mínima              | R$ 800,00                                                                                          |\n| Saldo mínimo                | R$ 5.000,00                                                                                        |\n| Mínimo liberado             | R$ 300,00                                                                                          |\n\nBancos não permitidos: Barigui."
+    },
+    {
+      "id": "daycoval",
+      "name": "DAYCOVAL",
+      "page": 9,
+      "criteria": {
+        "blocked": [
+          "422",
+          "336",
+          "626"
+        ],
+        "paid": {
+          "121": 13,
+          "149": 12,
+          "318": 15,
+          "555": 12,
+          "623": 12
+        },
+        "otherPaid": 6,
+        "requiresCip": true,
+        "minAge": 18,
+        "maxAge": 75,
+        "pure": false,
+        "reduce": true,
+        "negative": "refinOnly",
+        "aggregate": "refinOnly",
+        "unify": "refinOnly",
+        "portRatesByBalance": {
+          "cutoff": 20000,
+          "above": 1.3,
+          "below": 1.38
+        },
+        "refinRatesByBalance": {
+          "cutoff": 20000,
+          "above": 1.69,
+          "below": 1.72
+        },
+        "minInstallment": 20,
+        "minBalance": 0,
+        "minCash": 100,
+        "figitalStates": [
+          "AP",
+          "PB",
+          "RR",
+          "TO",
+          "MG"
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas)"
+        ],
+        [
+          "Limite de idade",
+          "18 a 75 anos"
+        ],
+        [
+          "Portabilidade pura",
+          "Não"
+        ],
+        [
+          "Redução de parcelas",
+          "Sim"
+        ],
+        [
+          "Margem negativa",
+          "Sim, abate só no refin"
+        ],
+        [
+          "Agrega margem",
+          "Sim, só no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Sim, só no refin da portabilidade"
+        ],
+        [
+          "Consulta SRCC",
+          "Sim"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,30% (TKT 20 mil) / 1,38% (abaixo de 20 mil)"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,69% (TKT 20 mil) / 1,72% (abaixo de 20 mil)"
+        ],
+        [
+          "Parcela mínima",
+          "R$ 20,00"
+        ],
+        [
+          "Saldo mínimo",
+          "Não possui"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 100,00"
+        ]
+      ],
+      "text": "8. DAYCOVAL — Página 9\n\n| Campo                       | Informação                                                                                         |\n| --------------------------- | -------------------------------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR, TO e MG (Poço de Caldas) |\n| Limite de idade             | 18 a 75 anos                                                                                       |\n| Portabilidade pura          | Não                                                                                                |\n| Redução de parcelas         | Sim                                                                                                |\n| Margem negativa             | Sim, abate só no refin                                                                             |\n| Agrega margem               | Sim, só no refin da portabilidade                                                                  |\n| Unificar parcelas           | Sim, só no refin da portabilidade                                                                  |\n| Consulta SRCC               | Sim                                                                                                |\n| Taxa de portabilidade       | 1,30% (TKT 20 mil) / 1,38% (abaixo de 20 mil)                                                      |\n| Taxa refin da portabilidade | 1,69% (TKT 20 mil) / 1,72% (abaixo de 20 mil)                                                      |\n| Parcela mínima              | R$ 20,00                                                                                           |\n| Saldo mínimo                | Não possui                                                                                         |\n| Mínimo liberado             | R$ 100,00                                                                                          |\n\nRegra de bancos — parcelas pagas:\n\n- BMG: 15\n- Agibank: 13\n- Facta: 12\n- PAN: 12\n- Demais bancos da CIP: 6\n\nBancos não permitidos: Safra e C6 Consig."
+    },
+    {
+      "id": "pan",
+      "name": "BANCO PAN",
+      "page": 10,
+      "criteria": {
+        "blocked": [
+          "121",
+          "070"
+        ],
+        "paid": {
+          "149": 16,
+          "336": 36,
+          "341": 15,
+          "422": 15,
+          "626": 36,
+          "041": 30
+        },
+        "otherPaid": 12,
+        "minAge": 22,
+        "maxAge": 71,
+        "pure": false,
+        "reduce": true,
+        "negative": true,
+        "aggregate": "refinOnly",
+        "unify": "refinOnly",
+        "portRates": [
+          1.2,
+          1.2
+        ],
+        "minBalance": 6000,
+        "minCash": 50,
+        "refinRateOptions": [
+          1.6,
+          1.6
+        ],
+        "figitalStates": [
+          "AP",
+          "PB",
+          "RR",
+          "TO"
+        ]
+      },
+      "fields": [
+        [
+          "Formalização",
+          "Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR e TO"
+        ],
+        [
+          "Limite de idade",
+          "22 a 71 anos"
+        ],
+        [
+          "Portabilidade pura",
+          "Não"
+        ],
+        [
+          "Redução de parcelas",
+          "Sim"
+        ],
+        [
+          "Margem negativa",
+          "Sim"
+        ],
+        [
+          "Agrega margem",
+          "Sim, só no refin da portabilidade"
+        ],
+        [
+          "Unificar parcelas",
+          "Sim, só no refin da portabilidade"
+        ],
+        [
+          "Consulta SRCC",
+          "Não informado no material"
+        ],
+        [
+          "Taxa de portabilidade",
+          "1,20%"
+        ],
+        [
+          "Taxa refin da portabilidade",
+          "1,60%"
+        ],
+        [
+          "Parcela mínima",
+          "Não informado no material"
+        ],
+        [
+          "Saldo mínimo",
+          "R$ 6.000,00"
+        ],
+        [
+          "Mínimo liberado",
+          "R$ 50,00"
+        ]
+      ],
+      "text": "9. BANCO PAN — Página 10\n\n| Campo                       | Informação                                                                    |\n| --------------------------- | ----------------------------------------------------------------------------- |\n| Formalização                | Digital / Figitaal para clientes acima de 60 anos nos estados AP, PB, RR e TO |\n| Limite de idade             | 22 a 71 anos                                                                  |\n| Portabilidade pura          | Não                                                                           |\n| Redução de parcelas         | Sim                                                                           |\n| Margem negativa             | Sim                                                                           |\n| Agrega margem               | Sim, só no refin da portabilidade                                             |\n| Unificar parcelas           | Sim, só no refin da portabilidade                                             |\n| Consulta SRCC               | Não informado no material                                                     |\n| Taxa de portabilidade       | 1,20%                                                                         |\n| Taxa refin da portabilidade | 1,60%                                                                         |\n| Parcela mínima              | Não informado no material                                                     |\n| Saldo mínimo                | R$ 6.000,00                                                                   |\n| Mínimo liberado             | R$ 50,00                                                                      |\n\nRegra de bancos — parcelas pagas:\n\n- C6 Consig: 36\n- Banrisul: 30\n- Facta: 16\n- Safra: 15\n- Itaú: 15\n- Demais bancos: a partir de 12\n\nBancos não permitidos: Agibank e BRB."
+    }
+  ],
+  "sourceSha256": "6b552b9efd26a2997890ef863db030bcc482afa8f83bdce862737a4864f3e53e"
+}
