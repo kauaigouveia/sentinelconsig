@@ -1,3 +1,6 @@
+import {existingPortabilityPlan,executeRoutingJobs,publicPortabilityRows} from './portabilityRouting.js';
+import {AuditLogService} from './auditLogService.js';
+import {portabilityBankId} from '../../src/lib/portabilityPolicy.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { paidFromTerms, portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
 import type { PrismaClient } from '@prisma/client';
@@ -28,23 +31,27 @@ export class PartnerSimulationService {
       return result;
     }
     if (action !== 'SIMULATE') return { rows: await partnerHappySimulation(prisma, tenantId, input, action), message: '' };
+    const isPortability=['PORT','PORT_REFIN'].includes(input.operation);
+    let plan:any=null;
+    if(isPortability)try{plan=await existingPortabilityPlan(prisma,tenantId,input);}catch{plan={priorityId:null,trace:[{code:'ROUTING_CONFIGURATION_UNAVAILABLE'}]};}
     const offers: any[] = [], assessments:any[] = [], notes: string[] = [];
     const collect = async (provider: string, run: () => Promise<void>) => {
-      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { assessments.push({provider,institution:provider,state:'PENDING',policyStatus:check.status,message:check.reason});return; } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`); }
+      try { if (['PORT','PORT_REFIN'].includes(input.operation)) { const check = simulationPortabilityCheck(provider, input); if (check.blocked) { assessments.push({provider,institution:provider,state:'PENDING',policyStatus:check.status,message:check.reason});return; } } await run(); } catch (error: any) { notes.push(`${provider}: ${error.message}`);if(isPortability)assessments.push({provider,policyStatus:'TECHNICAL_FAILURE',message:'Falha técnica na integração.'}); }
       if (['PORT','PORT_REFIN'].includes(input.operation)) { for (let index=offers.length-1;index>=0;index--) { const offer=offers[index]; const check=simulationPortabilityCheck(offer.provider||offer.institution,input,offer); if(check.blocked){notes.push(check.reason);assessments.push({provider:offer.provider||offer.institution,institution:offer.institution,state:'PENDING',policyStatus:check.status,message:check.reason});offers.splice(index,1);}else {offer.policyReview=check.reason;offer.policyStatus=check.status;} } }
-      if (onRows) await onRows([...offers,...assessments]);
+      if (onRows) await onRows(isPortability?publicPortabilityRows(offers):[...offers,...assessments]);
     };
-    await Promise.all([
-      collect('HAPPY', async () => { offers.push(...await partnerHappySimulation(prisma, tenantId, input, action)); }),
-      collect('FACTA', async () => {
+    const job=(provider:string,run:()=>Promise<void>,id=portabilityBankId(provider)+'-api')=>({id,run:()=>collect(provider,run)});
+    const jobs=[
+      job('HAPPY', async () => { offers.push(...await partnerHappySimulation(prisma, tenantId, input, action)); }),
+      job('FACTA', async () => {
         const config = await FactaBankService.getTenantConfig(prisma, tenantId);
-        if (!config.isConfigured || !config.simulationEnabled) return;
+        if (!config.isConfigured || !config.simulationEnabled) {if(isPortability)assessments.push({provider:'FACTA',policyStatus:'INTEGRATION_UNAVAILABLE',message:'Integração não habilitada para a empresa.'});return;}
         const result = await FactaSimulationService.inss(prisma, tenantId, { ...input, mode: input.mode === 'Payment' ? 'INSTALLMENT' : 'AMOUNT' } as FactaInssInput);
         offers.push(...result.offers.map(offer => ({ ...offer, provider: 'FACTA', institution: 'FACTA', state: offer.amount ? 'OFFER' : 'PENDING' })));
         if (result.message) notes.push(`FACTA: ${result.message}`);
       }),
-      collect('C6', async () => { if (['PORT','PORT_REFIN'].includes(input.operation)) return; offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
-      ...(Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]).filter(bank => bank !== 'NOSSA_FINTECH').map(bank => collect(SPREADSHEET_MODELS[bank].label, async () => {
+      job('C6', async () => { if (['PORT','PORT_REFIN'].includes(input.operation)) return; offers.push(...await C6SimulationService.inss(prisma, tenantId, input)); }),
+      ...(Object.keys(SPREADSHEET_MODELS) as SpreadsheetBank[]).filter(bank => bank !== 'NOSSA_FINTECH').map(bank => job(SPREADSHEET_MODELS[bank].label, async () => {
         if (input.operation !== 'PORT_REFIN') return;
         const config = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: SPREADSHEET_MODELS[bank].key } } });
         if (!config) return;
@@ -53,9 +60,9 @@ export class PartnerSimulationService {
         const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         const result = calculatePortRefin(bank, book, { birthDate: input.birthDate, benefitType: input.benefitType, simulationDate: date, term: bank === 'C6' ? 108 : input.term, refinanceRate: input.rate, contracts: [{ originBank: input.originalBank, paidInstallments: paidFromTerms(input.originalTerm,input.remainingTerm), balance: input.debt, installment: input.originalInstallment, remaining: input.remainingTerm }], additionalMargin: Math.max(0, Number(input.value) - Number(input.originalInstallment)) });
         offers.push(...result.offers.filter(offer => offer.eligible && offer.amount > 0).map(offer => ({ ...offer, name: offer.tableName, code: offer.tableId, institution: bank, state: 'OFFER', spreadsheetVersion: result.version, spreadsheet: { bank, ...result } })));
-      })),
-      collect('BMG', async () => { if (input.bmgActorId) offers.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, input)); }),
-      collect('Nossa Fintech', async () => {
+      },bank.toLowerCase()+'-workbook')),
+      job('BMG', async () => { if (input.bmgActorId) offers.push(...await BmgBankService.offers(prisma, tenantId, input.bmgActorId, input)); }),
+      job('Nossa Fintech', async () => {
         const config = await NossaFintechService.getConfig(prisma, tenantId);
         if (!config.enabled || !config.isConfigured) return;
         if (!['NEW', 'PORT_REFIN'].includes(input.operation)) { notes.push('Nossa Fintech: modalidade disponível neste fluxo somente para Novo e Portabilidade + Refin.'); return; }
@@ -75,7 +82,7 @@ export class PartnerSimulationService {
           }
         }
       }),
-      collect('FINANTO', async () => {
+      job('FINANTO', async () => {
         const config = await FinantoService.getConfig(prisma, tenantId);
         if (!config.enabled || !config.isConfigured) return;
         const ageError = finantoAgeError(input.birthDate, input.term);
@@ -128,7 +135,13 @@ export class PartnerSimulationService {
           }));
         }
       }),
-    ]);
+    ];
+    await executeRoutingJobs(jobs,plan?.priorityId||null);
+    if(isPortability){
+      try{await AuditLogService.record(prisma,{tenantId,action:'simulation.portability_routing',entity:'SimulationRequest',newData:{priorityId:plan?.priorityId,trace:plan?.trace,decisions:[...assessments.map(row=>({bank:portabilityBankId(row.provider||row.institution),status:row.policyStatus,reason:row.message})),...offers.map(row=>({bank:portabilityBankId(row.provider||row.institution),status:row.policyStatus,reason:row.policyReview}))].slice(0,100),offerBanks:[...new Set(offers.map(row=>row.provider||row.institution))]}});}catch{/* Preserve existing simulations if diagnostic storage is unavailable. */}
+      const failed=assessments.some(row=>row.policyStatus==='TECHNICAL_FAILURE');
+      return {rows:publicPortabilityRows(offers),operationalStatus:offers.length?(failed?'PARTIAL':'OFFERS'):(failed?'TECHNICAL_FAILURE':'NO_OFFERS'),message:failed?'Uma ou mais instituições não concluíram a consulta. Consulte as ofertas disponíveis ou solicite orientação à mesa.':offers.length?'':'Nenhuma oferta disponível para os dados informados. Consulte a mesa para orientação.'};
+    }
     return { rows: [...offers,...assessments], message: notes.join(' · ') || (!offers.length ? 'Nenhuma oferta retornada para os dados informados.' : '') };
   }
 }

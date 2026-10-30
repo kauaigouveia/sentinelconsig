@@ -1,3 +1,4 @@
+import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
 import {CltJourneyService} from './server/services/cltJourneyService.js';
 import {CltAuthorizationFollowup} from './server/services/cltAuthorizationFollowup.js';
 import { registerVctexRoutes } from './server/services/vctexRoutes.js';
@@ -7351,7 +7352,8 @@ async function auditAndEnsureMasterUser() {
         endDate,
       } = req.query as Record<string, string | undefined>;
 
-      const where: Prisma.AuditLogWhereInput = {};
+      const routingAccess=hasPermission(session.activeRole||userRole,session.activePermissions||userCustomPerms,'audit_logs.view')&&hasPermission(session.activeRole||userRole,session.activePermissions||userCustomPerms,'integrations.manage');
+      const where: Prisma.AuditLogWhereInput = {AND:[routingAuditConstraint(routingAccess,effectiveTenantId)]};
 
       if (targetTenantId) {
         where.tenantId = targetTenantId;
@@ -18122,7 +18124,7 @@ async function auditAndEnsureMasterUser() {
       if (!context) return res.status(401).json({ error: 'Sessão do parceiro expirada.' });
       await PartnerSimulationTracking.reconcile(prisma, context.tenant.id);
       const rows = await prisma.simulationRequest.findMany({ where: { tenantId: context.tenant.id, partnerId: context.partner.id, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 200 });
-      return res.json({ rows: rows.map(row => ({ id: row.id, cpf: row.cpf, partnerCode: row.partnerCodeSnapshot || context.partner.code, status: row.status, createdAt: row.createdAt, offerExpiresAt: row.offerExpiresAt, matchedProposalNumber: row.matchedProposalNumber, matchedAt: row.matchedAt, matchedAfterDeadline: row.matchedAfterDeadline, operationType: row.operationType, selectedCondition: row.selectedCondition, offers: (row.customerData as any)?.offers || [] })) });
+      return res.json({ rows: rows.map(row => ({ id: row.id, cpf: row.cpf, partnerCode: row.partnerCodeSnapshot || context.partner.code, status: row.status, createdAt: row.createdAt, offerExpiresAt: row.offerExpiresAt, matchedProposalNumber: row.matchedProposalNumber, matchedAt: row.matchedAt, matchedAfterDeadline: row.matchedAfterDeadline, operationType: row.operationType, selectedCondition: row.selectedCondition, offers: /^INSS:PORT/.test(row.operationType||'')?publicPortabilityRows((row.customerData as any)?.offers||[],['SPREADSHEET_INSS','DAYCOVAL_INSS'].includes(row.simulationType||'')):(row.customerData as any)?.offers||[] })) });
     } catch (error: any) { return res.status(500).json({ error: 'Não foi possível carregar as simulações.' }); }
   });
 
@@ -18157,7 +18159,7 @@ async function auditAndEnsureMasterUser() {
         if (existing) {
           const saved = existing.customerData as any;
           if (['cpf', 'product', 'operation', 'mode', 'term', 'value', 'benefitNumber', 'employerDocument', 'factaRegistration', 'v8ConsultId', 'v8PromoterId'].some(key => saved?.[key] !== (input as any)[key])) return res.status(409).json({ error: 'Identificador já utilizado para outra simulação. Faça uma nova consulta.' });
-          return res.json({ rows: saved?.offers || [], simulationId: existing.id, message: 'Simulação já registrada.' });
+          return res.json({ rows: input.product==='INSS'&&['PORT','PORT_REFIN'].includes(input.operation)?publicPortabilityRows(saved?.offers||[]):saved?.offers||[], simulationId: existing.id, message: 'Simulação já registrada.' });
         }
       }
       let persistence = Promise.resolve();

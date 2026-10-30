@@ -1,5 +1,6 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-const mocks=vi.hoisted(()=>({factaConfig:vi.fn(),facta:vi.fn(),bmg:vi.fn(),happy:vi.fn(),nossaConfig:vi.fn(),finantoConfig:vi.fn()}));
+const mocks=vi.hoisted(()=>({factaConfig:vi.fn(),facta:vi.fn(),bmg:vi.fn(),happy:vi.fn(),nossaConfig:vi.fn(),finantoConfig:vi.fn(),audit:vi.fn()}));
+vi.mock('../server/services/auditLogService',()=>({AuditLogService:{record:mocks.audit}}));
 vi.mock('../server/services/factaSimulationService',()=>({FactaSimulationService:{inss:mocks.facta}}));
 vi.mock('../server/services/factaBankService',()=>({FactaBankService:{getTenantConfig:mocks.factaConfig}}));
 vi.mock('../server/services/bmgBankService',()=>({BmgBankService:{offers:mocks.bmg}}));
@@ -21,7 +22,8 @@ it('skips a confirmed forbidden origin, continues to the next bank once and expo
  const result=await PartnerSimulationService.run({} as any,'tenant-a',input,'SIMULATE');
  expect(mocks.facta).not.toHaveBeenCalled();expect(mocks.bmg).toHaveBeenCalledTimes(1);
  expect(result.rows.some(row=>row.provider==='BMG'&&row.state==='OFFER')).toBe(true);
- expect(result.rows.find(row=>row.provider==='FACTA')).toMatchObject({policyStatus:'NÃO ELEGÍVEL',state:'PENDING'});
+ expect(result.rows.some(row=>row.provider==='FACTA')).toBe(false);
+ expect(mocks.audit.mock.calls[0][1].newData.decisions).toContainEqual(expect.objectContaining({bank:'facta',status:'NÃO ELEGÍVEL'}));
  expect(mocks.bmg.mock.calls[0].slice(1,3)).toEqual(['tenant-a','synthetic-user']);
 });
 it('uses each tenant configuration without leaking a configured provider to another tenant',async()=>{
@@ -34,5 +36,6 @@ it('isolates a provider failure and never retries its non-idempotent call',async
  mocks.facta.mockRejectedValue(new Error('Falha sintética'));
  const result=await PartnerSimulationService.run({} as any,'tenant-a',{...input,originalBank:'001'},'SIMULATE');
  expect(mocks.facta).toHaveBeenCalledTimes(1);expect(mocks.bmg).toHaveBeenCalledTimes(1);
- expect(result.message).toContain('Falha sintética');expect(result.rows.some(row=>row.provider==='BMG')).toBe(true);
+ expect(result.message).not.toContain('Falha sintética');expect(result.rows.some(row=>row.provider==='BMG')).toBe(true);
+ expect(mocks.audit.mock.calls[0][1].newData.decisions).toContainEqual(expect.objectContaining({bank:'facta',status:'TECHNICAL_FAILURE'}));
 });
