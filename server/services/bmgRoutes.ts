@@ -15,7 +15,7 @@ import { sseRegistry } from '../realtime.js';
 
 export function registerBmgRoutes(app: Express, prisma: PrismaClient, getAuthSession: (req: Request) => Promise<any>) {
   app.use('/api/integrations/bmg/customer', rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Muitas consultas BMG. Aguarde alguns minutos.' } }));
-  app.use('/api/integrations/bmg/customer/send-otp', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Limite de solicitações SMS. Aguarde antes de solicitar outro código.' } }));
+  app.use(['/api/integrations/bmg/customer/send-otp','/api/integrations/bmg/customer/resend-otp'], rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Limite de solicitações SMS. Aguarde antes de solicitar outro código.' } }));
   async function actor(req: Request) {
     const session = await getAuthSession(req);
     if (session?.effectiveTenantId && hasPermission(session.activeRole, session.activePermissions, 'simulations.create')) return { tenantId: session.effectiveTenantId, actorId: `user:${session.user.id}`, session, partner: null };
@@ -65,7 +65,9 @@ export function registerBmgRoutes(app: Express, prisma: PrismaClient, getAuthSes
         sseRegistry.broadcastToTenant(context.tenantId, { type: 'PROPOSAL_CREATED', entity: 'Proposal', entityId: result.proposalId, userId: context.session.user.id });
         return res.json(result);
       }
-      if (req.params.action === 'send-otp') {
+      if(req.params.action==='authorization-status'){if(raw.product!=='CLT')return res.status(400).json({error:'Acompanhamento disponível para CLT.'});return res.json({authorization:await BmgBankService.cltAuthorization(prisma,context.tenantId,context.actorId,{cpf,phone},false)});}
+      if (req.params.action === 'send-otp'||req.params.action==='resend-otp') {
+        if(req.params.action==='resend-otp'&&(raw.product!=='CLT'||raw.contactAuthorized!==true))return res.status(400).json({error:'Confirme a autorização do cliente para o contato antes de reenviar SMS.'});
         if (!/^\d{10,11}$/.test(phone)) return res.status(400).json({ error: 'Informe telefone com DDD.' });
         return res.json(await BmgBankService.sendOtp(prisma, context.tenantId, context.actorId, cpf, phone));
       }
@@ -80,7 +82,7 @@ export function registerBmgRoutes(app: Express, prisma: PrismaClient, getAuthSes
       const rows = await BmgBankService.offers(prisma, context.tenantId, context.actorId, input);
       const tracking = context.partner ? await PartnerSimulationTracking.record(prisma, { tenantId: context.tenantId, partnerId: context.partner.partner.id, partnerCode: context.partner.partner.code, accessName: context.partner.access.name }, randomUUID(), input, rows.filter(row => row.state === 'OFFER')) : null;
       return res.json({ rows, simulationId: tracking?.id });
-    } catch (error: any) { return res.status(400).json({ error: error.message || 'Não foi possível concluir a consulta BMG.' }); }
+    } catch (error: any) { return res.status(/limite/i.test(error?.message||'')?429:400).json({ error: error.message || 'Não foi possível concluir a consulta BMG.',writeUncertain:error?.writeUncertain===true }); }
   });
   const consultProposal = async (req: Request, res: Response, synchronize: boolean) => {
     res.setHeader('Cache-Control', 'no-store');

@@ -123,3 +123,21 @@ describe('FACTA CLT employment selection, synthetic only', () => {
     expect(result.rows).toContainEqual(expect.objectContaining({ provider: 'FACTA', state: 'ERROR', message: 'Matrícula FACTA recusada' }));
   });
 });
+
+it('recognizes the official expired data-consent response without confusing it with OAuth failure',async()=>{
+ vi.spyOn(FactaSimulationService,'request').mockRejectedValue(Error('Token expirado, necessário utilizar o endpoint {solicita-autorizacao-consulta}.'));
+ const rows=await FactaSimulationService.product(prisma,'tenant-a','CLT','REFRESH',{...input,observeOnly:true});expect(rows[0]).toMatchObject({provider:'FACTA',institution:'FACTA',outcome:'AUTHORIZATION_REQUIRED'});
+});
+it('marks FACTA consent as confirmed only after an official worker response for the requested document',async()=>{
+ bank([worker]);const rows=await FactaSimulationService.product(prisma,'tenant-a','CLT','REFRESH',input);expect((rows[0].data as any).authorization.status).toBe('AUTHORIZED');
+});
+it('keeps FACTA operational identification when the CLT adapter fails',async()=>{
+ vi.spyOn(FactaSimulationService,'product').mockRejectedValue(Error('Gateway FACTA indisponível (HTTP 503).'));const rows=await ProductSimulationService.run(prisma,'tenant-a','CLT','REFRESH',input,undefined,['facta']);expect(rows.rows[0].institution).toBe('FACTA');
+});
+
+it('recovers an existing FACTA authorization before considering a new SMS',async()=>{
+ const request=bank([worker]);const rows=await FactaSimulationService.product(prisma,'tenant-a','CLT','AUTHORIZE',input);expect((rows[0].data as any).authorization.status).toBe('AUTHORIZED');expect(request).toHaveBeenCalledOnce();expect(request.mock.calls[0][2]).toBe('/consignado-trabalhador/autoriza-consulta');
+});
+it.each([[403,'Usuário sem permissão.','AUTHENTICATION'],[503,'Serviço temporariamente indisponível.','UNAVAILABLE'],[200,'Consulta de dados indisponível devido a virada de folha.','UNAVAILABLE']] as const)('preserves FACTA HTTP %s and specific failure classification',async(status,mensagem,code)=>{
+ const http=vi.fn().mockResolvedValue(Response.json({erro:true,mensagem},{status}));vi.stubGlobal('fetch',http);const result=await ProductSimulationService.run(prisma,'tenant-a','CLT','REFRESH',{...input,observeOnly:true},undefined,['facta']);expect(result.rows[0]).toMatchObject({institution:'FACTA',data:{providerDiagnostic:{httpStatus:status,code,endpoint:'/consignado-trabalhador/autoriza-consulta'}}});expect(http).toHaveBeenCalledOnce();
+});

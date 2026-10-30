@@ -1,3 +1,4 @@
+import {otpAttempts,consumeOtpAttempt} from './bmgOtpAttempts.js';
 import { cltResponseReasons } from '../../src/lib/cltRestrictions.js';
 import { cltBankOnce, reserveCltSms } from './cltBankOperation.js';
 import { journeyFetch } from './cltJourneyDeadline.js';
@@ -73,26 +74,38 @@ export class BmgBankService {
     const configKey = this.sessionKey(actorId, cpf); await (await integrationConfigStore(prisma, tenantId, 'bmg')).upsert({ where: { tenantId_configKey: { tenantId, configKey } }, create: { tenantId, configKey, configValue: seal(data), isSecret: true }, update: { configValue: seal(data) } });
   }
   static async sendOtp(prisma: PrismaClient, tenantId: string, actorId: string, cpf: string, phone: string) {
-    const data = await this.request(prisma, tenantId, 'POST', '/v1/sms/otp', { cpf, celular: phone });
-    if (!data?.verificationToken) throw new Error('BMG não retornou a identificação da autorização.');
-    await this.saveSession(prisma, tenantId, actorId, cpf, { phone, verificationToken: data.verificationToken, expires: Date.now() + 300000 });
-    return { message: 'Código enviado ao cliente. Informe o código recebido por SMS em até 5 minutos.' };
+    const saved=await this.session(prisma,tenantId,actorId,cpf),session=saved.data;
+    if(session?.token&&session.expires>Date.now())return {message:'O cliente já possui autorização válida. Nenhum novo SMS foi enviado.',authorization:await this.cltAuthorization(prisma,tenantId,actorId,{cpf,phone},false),smsSent:false};
+    const attempts=session?.verificationToken?await otpAttempts(prisma,tenantId,actorId,cpf,session.expires):0;
+    if(session?.verificationToken&&session.expires>Date.now()&&attempts<3)return {message:'Já existe um SMS válido. Aguarde o código ou sua expiração; não houve reenvio.',smsSent:false,authorization:await this.cltAuthorization(prisma,tenantId,actorId,{cpf,phone},false)};
+    return cltBankOnce(prisma,tenantId,'bmg',['OTP',actorId,cpf,session?.expires||0],async()=>{
+      await reserveCltSms(prisma,tenantId,actorId);
+      const data=await this.request(prisma,tenantId,'POST','/v1/sms/otp',{cpf,celular:phone});
+      if(!data?.verificationToken)throw Error('BMG não retornou a identificação da autorização.');
+      const expires=Date.now()+300000;
+      await this.saveSession(prisma,tenantId,actorId,cpf,{phone,verificationToken:data.verificationToken,expires});
+      return {message:'SMS solicitado ao BMG. Aguarde o código do cliente e valide em até 5 minutos.',smsSent:true,authorization:{status:'WAITING_OTP',ready:false,expiresAt:new Date(expires).toISOString(),retryAfterSeconds:300,attemptsRemaining:3}};
+    });
   }
   static async cltAuthorization(prisma: PrismaClient, tenantId: string, actorId: string, input: {cpf:string;phone:string}, initiate: boolean) {
     const saved=await this.session(prisma,tenantId,actorId,input.cpf),session=saved.data;
     if(session?.token&&session.expires>Date.now()) {
       const eligible=await this.request(prisma,tenantId,'GET','/v1/consignado-privado/elegibilidade?canal=WEBSERVICE',undefined,{cpf:input.cpf,'session-token':session.token});
+      if(eligible?.cpf&&String(eligible.cpf).replace(/\D/g,'')!==input.cpf)throw Error('BMG retornou elegibilidade de outro cliente.');
       if(typeof eligible?.elegivel!=='boolean')throw Error('BMG retornou formato incompatível para elegibilidade. Nenhuma simulação foi enviada.');
-      return {status:'APPROVED',ready:eligible.elegivel,reason:cltResponseReasons(eligible).join(' · ')||undefined};
+      return {status:'APPROVED',ready:eligible.elegivel,expiresAt:new Date(session.expires).toISOString(),reason:cltResponseReasons(eligible).join(' · ')||undefined};
     }
-    if(session?.verificationToken&&session.expires>Date.now())return {status:'WAITING_OTP',ready:false};
-    if(initiate) {await cltBankOnce(prisma,tenantId,'bmg',['OTP',actorId,input.cpf,session?.expires||0],async()=>{await reserveCltSms(prisma,tenantId,actorId);return this.sendOtp(prisma,tenantId,actorId,input.cpf,input.phone);});return {status:'WAITING_OTP',ready:false};}
-    return {status:session?'EXPIRED':'MISSING',ready:false};
+    if(session?.verificationToken&&session.expires>Date.now()){
+      const attempts=await otpAttempts(prisma,tenantId,actorId,input.cpf,session.expires);
+      return {status:attempts>=3?'ATTEMPTS_EXCEEDED':'WAITING_OTP',ready:false,expiresAt:new Date(session.expires).toISOString(),retryAfterSeconds:attempts>=3?0:Math.ceil((session.expires-Date.now())/1000),attemptsRemaining:Math.max(0,3-attempts)};
+    }
+    if(initiate&&!session){const sent=await this.sendOtp(prisma,tenantId,actorId,input.cpf,input.phone);return sent.authorization;}
+    return {status:session?'EXPIRED':'MISSING',ready:false,retryAfterSeconds:0};
   }
   static async verifyOtp(prisma: PrismaClient, tenantId: string, actorId: string, cpf: string, code: string) {
     const session = await this.session(prisma, tenantId, actorId, cpf);
     if (!session.data?.verificationToken || session.data.expires <= Date.now()) throw new Error('Solicite um novo código de autorização.');
-    const data = await this.request(prisma, tenantId, 'POST', '/v1/sms/validar', { celular: session.data.phone, codigo: code, verificationToken: session.data.verificationToken });
+    const data = await cltBankOnce(prisma,tenantId,'bmg',['VERIFY_OTP',actorId,cpf,session.data.expires,createHash('sha256').update(code).digest('hex')],async()=>{await consumeOtpAttempt(prisma,tenantId,actorId,cpf,session.data.expires);return this.request(prisma, tenantId, 'POST', '/v1/sms/validar', { celular: session.data.phone, codigo: code, verificationToken: session.data.verificationToken });});
     if (!data?.session_token) throw new Error('O código não foi validado pelo BMG.');
     await this.saveSession(prisma, tenantId, actorId, cpf, { phone: session.data.phone, token: data.session_token, expires: Date.now() + 1800000 });
     return { message: 'Cliente autorizado. Você pode consultar as ofertas.' };

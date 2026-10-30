@@ -119,9 +119,10 @@ describe('FACTA simulações conforme manuais oficiais', () => {
     expect(rows.map(item => item.state)).toEqual(['ERROR', 'PENDING']); expect(rows.every(item => !item.amount)).toBe(true);
   });
   it('solicita autorização CLT explícita, averbador correto e telefone formatado', async () => {
-    const request = vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ mensagem: 'Aguarde assinatura' });
+    const request = vi.spyOn(FactaSimulationService, 'request').mockImplementation(async(_db,_tenant,path)=>{if(path==='/consignado-trabalhador/autoriza-consulta')throw Error('Token expirado, necessário utilizar o endpoint {solicita-autorizacao-consulta}.');return {mensagem:'Aguarde assinatura'};});
     expect((await FactaSimulationService.product(prisma, 'tenant', 'CLT', 'AUTHORIZE', productInput))[0].message).toBe('Aguarde assinatura');
-    expect(request.mock.calls[0]).toEqual([prisma, 'tenant', '/solicita-autorizacao-consulta', {}, { averbador: '10010', nome: 'Cliente', cpf: input.cpf, celular: '(11) 99999-9999', tipo_envio: 'SMS' }, true]);
+    expect(request.mock.calls[0]).toEqual([prisma,'tenant','/consignado-trabalhador/autoriza-consulta',{cpf:input.cpf}]);
+    expect(request.mock.calls[1]).toEqual([prisma, 'tenant', '/solicita-autorizacao-consulta', {}, { averbador: '10010', nome: 'Cliente', cpf: input.cpf, celular: '(11) 99999-9999', tipo_envio: 'SMS' }, true]);
   });
   it('consulta CLT apresenta CNPJ, margem e motivo de restrição', async () => {
     vi.spyOn(FactaSimulationService, 'request').mockResolvedValue({ dados_trabalhador: { dados: [{ ...worker, elegivel: false, erro_mensagem: 'CNAE restrito' }] } });

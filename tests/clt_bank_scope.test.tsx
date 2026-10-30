@@ -78,3 +78,7 @@ it('restores original V8 quotes without a bank request and never mixes custom qu
  const fetcher=await open(data);fireEvent.click(screen.getByRole('button',{name:'Selecionar V8 DIGITAL'}));await screen.findByText('Personalizada V8 150');const before=fetcher.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Ver ofertas originais'}));
  expect(screen.getByText('Original preservada V8')).toBeTruthy();expect(screen.queryByText('Personalizada V8 150')).toBeNull();expect(screen.queryByText('Oferta FACTA')).toBeNull();expect(fetcher.mock.calls).toHaveLength(before);fireEvent.click(screen.getByRole('button',{name:'Ver simulação personalizada'}));expect(screen.getByText('Personalizada V8 150')).toBeTruthy();
 });
+
+it('presents FACTA identity and its specific failure reason without other banks in the compact margin view',()=>{
+ const data=fixture();data.results.facta={status:'ERROR',rows:[{provider:'FACTA',institution:'CLT',state:'ERROR',message:'Serviço FACTA indisponível durante virada de folha.',data:{providerDiagnostic:{code:'UNAVAILABLE',httpStatus:200}}}]} as any;render(<CltMarginResults compact snapshot={snapshotOfBank(data,'facta')}/>);expect(screen.getByText('FACTA')).toBeTruthy();expect(screen.getByText('FACTA temporariamente indisponível')).toBeTruthy();expect(screen.getByText('Serviço FACTA indisponível durante virada de folha.')).toBeTruthy();expect(screen.queryByText('CLT')).toBeNull();expect(screen.queryByText('V8')).toBeNull();
+});

@@ -1,3 +1,4 @@
+import {cltPublicMessage} from '../../src/lib/cltSimulationOutcome.js';
 import { cltBankOnce, missingCltAuthorization } from './cltBankOperation.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { cltPaymentLimit } from './cltFinancialPolicy.js';
@@ -29,6 +30,11 @@ const digits = (value: unknown) => String(value || '').replace(/\D/g, '');
 const list = (value: unknown): any[] => Array.isArray(value) ? value : [];
 const allowed = new Set(['/proposta/operacoes-disponiveis', '/proposta/contratos-refinanciamento', '/fgts/saldo', '/fgts/calculo', '/comercial/tabelas-coeficientes', '/solicita-autorizacao-consulta', '/consignado-trabalhador/autoriza-consulta', '/consignado-trabalhador/analise-politica-credito']);
 
+const missingFactaConsent=(message:string)=>missingCltAuthorization(message)||/(?:^|[\s{\/])solicita-autorizacao-consulta\b/i.test(message);
+const safeFactaMessage=(message:string)=>cltPublicMessage(message)?.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[e-mail omitido]');
+export class FactaRequestError extends Error {
+ constructor(message:string,public httpStatus:number|undefined,public endpoint:string,public diagnosticCode:string){super(safeFactaMessage(message)||'FACTA não concluiu a consulta.');}
+}
 export class FactaSimulationService {
   static async request(prisma: PrismaClient, tenantId: string, path: string, query: Record<string, unknown> = {}, body?: unknown, form = false, retry = true): Promise<any> {
     if (!allowed.has(path)) throw new Error('Método FACTA não permitido.');
@@ -53,7 +59,7 @@ export class FactaSimulationService {
       }
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload || payload.erro === true || payload.erro === 'true' || payload.error) {
-        throw Object.assign(new Error(payload?.mensagem || payload?.msg || payload?.message || `FACTA não concluiu a consulta (HTTP ${response.status}).`),{writeUncertain:body!==undefined&&(response.status>=500||response.ok&&!payload)});
+        throw Object.assign(new FactaRequestError(payload?.mensagem || payload?.msg || payload?.message || `FACTA não concluiu a consulta (HTTP ${response.status}).`,response.status,path,[401,403].includes(response.status)?'AUTHENTICATION':response.status>=500?'UNAVAILABLE':!payload?'INVALID_RESPONSE':'BANK_REJECTED'),{writeUncertain:body!==undefined&&(response.status>=500||response.ok&&!payload)});
       }
       return payload;
     } catch (error: any) {
@@ -61,6 +67,14 @@ export class FactaSimulationService {
       if (error.name === 'AbortError') throw Object.assign(new Error('FACTA não respondeu no prazo. Atualize o estado antes de reenviar.'),{writeUncertain:body!==undefined});
       throw error;
     } finally { clearTimeout(timer); }
+  }
+
+  static failure(error:any):ProductSimulationRow {
+    const original=typeof error?.message==='string'?error.message:'FACTA não concluiu a consulta.';
+    const code=error?.diagnosticCode==='AUTHENTICATION'||/autentica|usu[aá]rio.*senha|credenciais|solicitar token|authorization incorreto/i.test(original)?'AUTHENTICATION':/gateway|indispon[ií]vel|virada de folha|fetch failed|ECONN|timeout|n[aã]o respondeu/i.test(original)?'UNAVAILABLE':error?.diagnosticCode||'INTEGRATION_ERROR';
+    const httpStatus=Number.isInteger(error?.httpStatus)?error.httpStatus:undefined;
+    const message=safeFactaMessage(original)||'FACTA não concluiu a consulta.';
+    return {provider:'FACTA',institution:'FACTA',state:'ERROR',outcome:'TECHNICAL_ERROR',message,data:{writeUncertain:error?.writeUncertain===true,providerDiagnostic:{code,httpStatus,endpoint:typeof error?.endpoint==='string'&&allowed.has(error.endpoint)?error.endpoint:undefined}}};
   }
 
   static offer(table: any): FactaOffer {
@@ -175,6 +189,7 @@ export class FactaSimulationService {
       }
       return rows.length ? rows : [row({ state: 'PENDING', message: 'Nenhuma tabela FGTS retornada.' })];
     }
+    if(action==='AUTHORIZE'&&!confirmedMissing)return this.product(prisma,tenantId,product,'REFRESH',{...input,automaticAuthorization:true,observeOnly:false});
     if (action === 'AUTHORIZE') {
       const phone = input.phone.length === 11 ? `(${input.phone.slice(0, 2)}) ${input.phone.slice(2, 7)}-${input.phone.slice(7)}` : `(${input.phone.slice(0, 2)}) ${input.phone.slice(2, 6)}-${input.phone.slice(6)}`;
       const send = () => this.request(prisma, tenantId, '/solicita-autorizacao-consulta', {}, { averbador: '10010', nome: input.name, cpf: input.cpf, celular: phone, tipo_envio: 'SMS' }, true);
@@ -184,11 +199,12 @@ export class FactaSimulationService {
     let result: any;
     try { result = await this.request(prisma, tenantId, '/consignado-trabalhador/autoriza-consulta', { cpf: input.cpf }); }
     catch (error) {
-      if (!missingCltAuthorization(error instanceof Error ? error.message : '')) throw error;
+      if ([401,403].includes((error as any)?.httpStatus)||(error as any)?.httpStatus>=500||!missingFactaConsent(error instanceof Error ? error.message : '')) throw error;
       if (input.automaticAuthorization && !input.observeOnly) return this.product(prisma, tenantId, product, 'AUTHORIZE', input,true);
       return [row({state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{authorization:{status:'PENDING',mechanism:'SMS'}},message:'Aguardando autorização da consulta FACTA pelo cliente. Nenhuma nova solicitação foi enviada nesta atualização.'})];
     }
-    if (!Array.isArray(result.dados_trabalhador?.dados)) throw new Error('FACTA retornou uma resposta incompatível com a consulta de vínculos CLT. A resposta não foi utilizada.');
+    if (!Array.isArray(result.dados_trabalhador?.dados)) throw new FactaRequestError('FACTA retornou uma resposta incompatível com a consulta de vínculos CLT. A resposta não foi utilizada.',200,'/consignado-trabalhador/autoriza-consulta','INVALID_RESPONSE');
+    if(!result.dados_trabalhador.dados.length)return [row({state:'PENDING',outcome:'MISSING_DATA',message:'Vínculo FACTA não retornado na consulta atual. Nenhuma margem ou simulação foi presumida.'})];
     const registrationOf = (value: unknown): string => typeof value === 'string' ? value : typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? String(value) : '';
     let workers = list(result.dados_trabalhador?.dados).filter(worker => !input.employerDocument || digits(worker.numeroInscricaoEmpregador) === input.employerDocument);
     // Re-read the authorized response; a browser-supplied registration is only a selector.
@@ -202,7 +218,7 @@ export class FactaSimulationService {
       const eligible = [true, 1, '1', 'true', 'S', 'SIM'].includes(worker.elegivel);
       const restrictions = [worker.erro_mensagem, !eligible ? 'Vínculo não elegível para crédito.' : undefined].filter(value => typeof value === 'string' && value.trim());
       if (action === 'REFRESH') {
-        rows.push(row({ state: 'DATA', message: restrictions.join(' · ') || 'Dados do vínculo e margem atualizados.', data: { employment: { employer_cnpj: digits(worker.numeroInscricaoEmpregador), work_registration: worker.matricula }, margin: { name: worker.nome, document: worker.cpf, birth_date: worker.dataNascimento, available_balance: marginNumber(worker.valorMargemDisponivel), can_continue: eligible && !restrictions.length, employer: { name: worker.nomeEmpregador, document: digits(worker.numeroInscricaoEmpregador) }, restrictions, registration_number: worker.matricula, total_gross_salary: factaNumber(worker.valorTotalVencimentos), base_margin_value: marginNumber(worker.valorBaseMargem), admission_date: worker.dataAdmissao, job_code: { description: worker.cbo_descricao } } } }));
+        rows.push(row({ state: 'DATA', message: restrictions.join(' · ') || (marginNumber(worker.valorMargemDisponivel)===undefined?'A FACTA não informou a margem deste vínculo. Atualize a consulta antes de simular.':'Dados do vínculo e margem atualizados.'), outcome:restrictions.length?'INELIGIBLE':marginNumber(worker.valorMargemDisponivel)===undefined?'MISSING_DATA':'PENDING',data: {authorization:{status:'AUTHORIZED',source:'FACTA_CONSULT',observedAt:new Date().toISOString()}, employment: { employer_cnpj: digits(worker.numeroInscricaoEmpregador), work_registration: worker.matricula }, margin: { name: worker.nome, document: worker.cpf, birth_date: worker.dataNascimento, available_balance: marginNumber(worker.valorMargemDisponivel), can_continue: eligible && !restrictions.length, employer: { name: worker.nomeEmpregador, document: digits(worker.numeroInscricaoEmpregador) }, restrictions, registration_number: worker.matricula, total_gross_salary: factaNumber(worker.valorTotalVencimentos), base_margin_value: marginNumber(worker.valorBaseMargem), admission_date: worker.dataAdmissao, job_code: { description: worker.cbo_descricao } } } }));
         continue;
       }
       if (restrictions.length) { rows.push(row({ state: 'PENDING', message: restrictions.join(' · ') })); continue; }

@@ -46,6 +46,8 @@ export class ProductSimulationService {
     const rows: ProductSimulationRow[] = [];
     let configured = false;
     const failure = (provider: string, institution: string, error: any,origin?:ProductSimulationRow['origin']) => {
+      if(provider==='FACTA'&&product==='CLT'){rows.push(FactaSimulationService.failure(error));return;}
+      if(provider==='BMG'&&product==='CLT'&&action==='REFRESH'&&error?.writeUncertain){rows.push({provider:'BMG',institution:'BMG',state:'ERROR',outcome:'TECHNICAL_ERROR',message:'Envio SMS BMG incerto. Atualize a autorização; nenhum novo SMS será enviado automaticamente.',data:{writeUncertain:true,authorization:{status:'UNKNOWN',source:'BMG_SMS_REQUEST'}}});return;}
       const detail = error?.writeUncertain?'Resultado incerto após envio à instituição. Atualize o estado antes de outra operação; nenhuma solicitação será repetida automaticamente.':/fetch failed|ECONN|ETIMEDOUT|ENOTFOUND/i.test(error?.message||'')?'Falha de comunicação com a instituição. Atualize a consulta; as demais instituições continuam disponíveis.':error?.message || 'Não foi possível consultar esta instituição.';
       if(product==='CLT'&&missingCltAuthorization(detail)){rows.push({provider,institution,origin,state:'PENDING',outcome:'AUTHORIZATION_REQUIRED',data:{authorization:{status:'MISSING'},writeUncertain:!!error?.writeUncertain,trackingUnsupported:provider==='FINANTO'},message:detail});return;}
       const j17Timeout = provider === 'Nossa Fintech' && institution === 'J17' && /curl error 28|connection timed out|timeout|timedout/i.test(detail);
@@ -229,7 +231,7 @@ export class ProductSimulationService {
       ...(product==='CLT'&&action==='REFRESH'&&providers?.includes('vctex')?[observeVctexConditions(prisma,tenantId,input).then(found=>{configured=true;rows.push(...found);}).catch(error=>failure('VCTEX DIGITAL','VCTEX DIGITAL',error)).then(publishRows)]:[]),
       ...(product==='CLT'&&action==='SIMULATE'&&providers?.includes('vctex')?[calculateVctexConditions(prisma,tenantId,input).then(found=>{configured=true;rows.push(...found);}).catch(error=>failure('VCTEX DIGITAL','VCTEX DIGITAL',error)).then(publishRows)]:[]),
       ...(!providers || providers.includes('nossa') ? [nossa().catch(error => failure('Nossa Fintech', product, error)).then(publishRows)] : []),
-      ...(!providers || providers.includes('facta') ? [facta().catch(error => failure('FACTA', product, error)).then(publishRows)] : []),
+      ...(!providers || providers.includes('facta') ? [facta().catch(error => failure('FACTA', product==='CLT'?'FACTA':product, error)).then(publishRows)] : []),
       ...(!providers || providers.includes('bmg') ? [bmg().catch(error => failure('BMG', 'BMG', error)).then(publishRows)] : []),
       ...(!providers || providers.includes('v8') ? [v8().catch(() => { rows.push({ provider: 'V8 DIGITAL', institution: 'V8 · QI', state: 'ERROR', outcome: 'TECHNICAL_ERROR', message: 'Não foi possível consultar as conexões V8 desta empresa.' }); return true; }).then(async changed => { if (changed) await publishRows(); })] : []),
     ]);
