@@ -15,9 +15,9 @@ it('groups common pending data once without approving unknown banks or hiding ba
   {bank:'E',calculated:true},
  ]);
  expect(projection.common).toEqual([{message:'Informe saldo devedor válido.',count:2}]);
- expect(projection.groups.map(group=>group.rows.length)).toEqual([1,1,2,1]);
- expect(projection.groups[2].rows[0].pending).toEqual(['Prazo específico pendente.']);
- expect(projection.groups[3].rows[0].restrictions).toEqual(['Origem não permitida.']);
+ expect(projection.groups.map(group=>group.rows.length)).toEqual([1,1,0,2,1]);
+ expect(projection.groups[3].rows[0].pending).toEqual(['Prazo específico pendente.']);
+ expect(projection.groups[4].rows[0].restrictions).toEqual(['Origem não permitida.']);
 });
 it('preserves Brazilian financial inputs and the remaining-installments alias without inventing missing values',()=>{
  const raw={product:'INSS',operation:'PORT_REFIN',originalBank:'001',originalTerm:84,remainingTerm:36,birthDate:'1980-01-01',benefitType:41,term:84,state:'SP',debt:20000,originalInstallment:900};
@@ -34,24 +34,17 @@ it.each(['PENDING','PROCESSING','REJECTED','FAILED'])('HTTP 200 with business %s
  const result=await FactaSimulationService.inss({} as any,'synthetic-tenant',{cpf:'00000000000',birthDate:'1980-01-01',benefitNumber:'synthetic',benefitType:41,operation:'NEW',term:36,mode:'INSTALLMENT',value:50});
  expect(result.offers).toEqual([]);expect(result.message).toContain('não concluiu');expect(fetch).toHaveBeenCalledTimes(1);
 });
-it('reproduces BB 001, 84/15, 1548.18, 25.91, age 67 and requested 108 without false missing data or NBC requirements',()=>{
+it('reproduces BB amounts without false missing data and applies the NEW Daycoval table where age 67 can use 108',()=>{
  const raw={product:'INSS',operation:'PORT_REFIN',originalBank:'001',originalTerm:84,remainingTerm:15,debt:'1.548,18',originalInstallment:'25,91',term:108,birthDate:'1959-10-30',simulationDate:'2026-10-30',benefitType:41};
  const result=simulationPortabilityCheck('daycoval',raw);
- expect(result.blocked).toBe(true);expect(result.status).toBe('NÃO ELEGÍVEL');
- expect(result.reason).toMatch(/prazo máximo de 84 meses/);
- expect(result.reason).not.toMatch(/Informe saldo|Informe parcela|parcelas restantes|NBC|CIP|UF|data efetiva/);
- expect(result.reason).not.toMatch(/saldo mínimo|parcela mínima/);
- // The same valid balance may be below another bank's documented threshold,
- // never recast as an absent value.
- const other=simulationPortabilityCheck('parana',raw);expect(other.reason).not.toMatch(/Informe saldo/);
+ expect(result.blocked).toBe(false);expect(result.status).toBe('PENDENTE DE DADOS');
+ expect(result.reason).not.toMatch(/Informe saldo|Informe parcela|parcelas restantes|NBC|CIP|UF|data efetiva|saldo mínimo|parcela mínima/);
+ expect(simulationPortabilityCheck('parana',raw).reason).not.toMatch(/Informe saldo/);
 });
-it('removes the superseded Daycoval maturity limit and pure-portability ban using the confirmed age at contracting',()=>{
- const base={operation:'PORT_REFIN',birthDate:'1959-10-30',simulationDate:'2026-10-30',benefitType:41,term:12,debt:1548.18,originalInstallment:25.91,remainingInstallments:15};
- for(const patch of [{},{contractEndDate:'2031-01-01'},{operation:'PORT'}]){
-  const check=evaluatePortabilityPolicy('daycoval','001',69,{...base,...patch})!;
-  expect(check.blocked).toBe(false);expect(check.review).toBe(true);
-  expect(check.reason).not.toMatch(/referência da idade|data efetiva/);expect(check.reason).not.toMatch(/NBC|idade no término excede|não atende portabilidade pura|CIP|UF/);
- }
+it('new Daycoval rules replace the pure-portability permission and old maturity limit',()=>{
+ const base={operation:'PORT_REFIN',birthDate:'1959-10-30',simulationDate:'2026-10-30',benefitType:41,term:108,debt:1548.18,originalInstallment:25.91,remainingInstallments:15};
+ expect(evaluatePortabilityPolicy('daycoval','001',69,{...base,contractEndDate:'2050-01-01'})!.blocked).toBe(false);
+ expect(evaluatePortabilityPolicy('daycoval','001',69,{...base,operation:'PORT'})!.reasons.join(' ')).toMatch(/não atende portabilidade pura/);
 });
 it('does not turn a successful HTTP envelope or an incomplete table into a calculated offer',async()=>{
  vi.spyOn(FactaBankService,'getTenantConfig').mockResolvedValue({isConfigured:true,simulationEnabled:true} as any);
@@ -69,23 +62,12 @@ it('reports an existing balance below a documented bank threshold as a restricti
  const result=evaluatePortabilityPolicy('facta','001',69,{operation:'PORT',birthDate:'1959-10-30',simulationDate:'2026-10-30',benefitType:41,term:15,remainingInstallments:15,debt:1548.18,originalInstallment:25.91})!;
  expect(result.blocked).toBe(true);expect(result.reasons.join(' ')).toContain('saldo mínimo de R$ 1900.00');expect(result.notices.join(' ')).not.toMatch(/Informe saldo/);
 });
-it('tests both possible age-reference contracts without selecting either as a production rule',()=>{
+it('uses only the latest Daycoval per-term age map, retaining the old financial bands as archive only',()=>{
  const criteria=activePortabilityReplacement.banks.find(bank=>bank.id==='daycoval')!.criteria;
- const previous=criteria.ageReference;
- const base={operation:'PORT_REFIN',birthDate:'1959-10-30',simulationDate:'2026-10-30',benefitType:41,term:84,debt:1548.18,originalInstallment:25.91,remainingInstallments:15,contractAmount:300000};
- try{
-  criteria.ageReference='START';
-  expect(evaluatePortabilityPolicy('daycoval','001',69,{...base,term:108})!.reasons.join(' ')).toMatch(/prazo máximo de 84/);
-  expect(evaluatePortabilityPolicy('daycoval','001',69,base)!.blocked).toBe(false);
-  expect(evaluatePortabilityPolicy('daycoval','001',69,{...base,contractAmount:300000.01})!.reasons.join(' ')).toMatch(/valor máximo do contrato/);
-  for(const [age,term,max] of [[62,108,400000],[63,96,350000],[65,96,350000],[66,84,300000],[72,84,300000]]){
-   const input={...base,birthDate:`${2026-age}-10-30`,term,contractAmount:max};
-   expect(evaluatePortabilityPolicy('daycoval','001',69,input)!.blocked).toBe(false);
-   expect(evaluatePortabilityPolicy('daycoval','001',69,{...input,term:term+1})!.blocked).toBe(true);
-  }
-  criteria.ageReference='END';
-  expect(evaluatePortabilityPolicy('daycoval','001',69,{...base,birthDate:'1980-01-01',contractEndDate:'2050-01-01'})!.blocked).toBe(false);
-  expect(evaluatePortabilityPolicy('daycoval','001',69,{...base,birthDate:'1980-01-01',contractEndDate:'2055-01-01'})!.blocked).toBe(true);
-  expect(evaluatePortabilityPolicy('daycoval','001',69,base)!.reason).toMatch(/data efetiva/);
- }finally{criteria.ageReference=previous;}
+ expect(criteria.ageByTerm).toEqual({'108':70,'96':71,'84':72});expect(criteria.portabilityAgeBands).toBeUndefined();expect(criteria.maxEndMonths).toBeUndefined();
+ const base={operation:'PORT_REFIN',simulationDate:'2026-10-30',benefitType:41,debt:3481.19,originalInstallment:43,remainingInstallments:57,contractAmount:10000,amount:100};
+ for(const [age,term] of [[70,108],[71,96],[72,84]]){
+  expect(evaluatePortabilityPolicy('daycoval','001',27,{...base,birthDate:`${2026-age}-10-30`,term})!.blocked).toBe(false);
+  expect(evaluatePortabilityPolicy('daycoval','001',27,{...base,birthDate:`${2025-age}-10-30`,term})!.blocked).toBe(true);
+ }
 });

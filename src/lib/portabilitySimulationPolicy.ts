@@ -47,7 +47,7 @@ export function simulationPortabilityCheck(bank:string,raw:any,offer?:any) {
   originalInstallment:contract.installmentValue??contract.installment,installmentFaceValue:undefined,valor_parcelas:undefined,
  }:raw,offer));
  const blocked=checks.some(check=>check.blocked),review=checks.some(check=>check.review);
- return {...checks[0],blocked,review,status:blocked?'NÃO ELEGÍVEL':review?'PENDENTE DE DADOS':'ELEGÍVEL',
+ return {...checks[0],blocked,review,calculationAllowed:!blocked&&checks.every(check=>('calculationAllowed' in check&&check.calculationAllowed===true)||!check.review),inputIssues:checks.flatMap(check=>'inputIssues' in check?check.inputIssues:[]),status:blocked?'NÃO ELEGÍVEL':review?'PENDENTE DE DADOS':'ELEGÍVEL',
   reason:checks.map((check,index)=>contracts.length>1?`Contrato ${index+1}: ${check.reason}`:check.reason).join(' '),contracts:checks};
 }
 

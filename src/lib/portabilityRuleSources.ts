@@ -12,7 +12,7 @@ const previousCatalog: any[] = [
 ];
 export const PORTABILITY_REPLACEMENT = replacement;
 export const replacementBankIds = new Set(replacement.banks.map(bank=>bank.id));
-const replacementRows=replacement.banks.map(bank=>({...bank,receivedAt:replacement.receivedAt,version:replacement.id,source:bank.amendment?.source||replacement.source,sourceFile:bank.amendment?.sourceFile||replacement.sourceFile}));
+const replacementRows=replacement.banks.map(bank=>({...bank,receivedAt:bank.policySource?.receivedAt||replacement.receivedAt,version:bank.policySource?.id||replacement.id,source:bank.policySource?.source||replacement.source,sourceFile:bank.policySource?.sourceFile||replacement.sourceFile}));
 export const portabilitySourceCatalog:any[]=[...previousCatalog.filter(bank=>!replacementBankIds.has(bank.id)),...replacementRows];
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 

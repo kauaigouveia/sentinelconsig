@@ -4,7 +4,7 @@ import {calculatePortRefin} from '../server/services/portRefinWorkbooks';
 import {describe,expect,it} from 'vitest';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {activePortabilityReplacement as replacement} from '../src/lib/portabilityActiveRules';
+import {activePortabilityReplacement as replacement,archivedPortabilityReplacement} from '../src/lib/portabilityActiveRules';
 import {evaluatePortabilityPolicy,portabilityBankId} from '../src/lib/portabilityPolicy';
 import {portabilityRuleSources,portabilitySourceCatalog} from '../src/lib/portabilityRuleSources';
 import {simulationPortabilityCheck} from '../src/lib/portabilitySimulationPolicy';
@@ -15,21 +15,21 @@ const base={product:'INSS',operation:'PORT_REFIN',birthDate:'1980-01-01',simulat
 const check=(bank:string,patch:any={},origin='001',paid=40)=>evaluatePortabilityPolicy(bank,origin,paid,{...base,...patch})!;
 describe('express replacement of INSS portability criteria, synthetic fixtures',()=>{
  it('preserves the exact source file and its hash without manufacturing commercial validity',()=>{
-  const bytes=readFileSync(new URL('../docs/sources/portability-inss-replacement-20261030.md',import.meta.url));
-  expect(createHash('sha256').update(bytes).digest('hex')).toBe(replacement.sourceSha256);expect(replacement.effectiveAt).toBeNull();expect(replacement.banks).toHaveLength(13);
+  const bytes=readFileSync(new URL('../docs/sources/portability-inss-rules-20261103.md',import.meta.url));
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe(replacement.sourceSha256);expect(replacement.effectiveAt).toBeNull();expect(replacement.currentBankCount).toBe(13);expect(replacement.banks).toHaveLength(14);expect(archivedPortabilityReplacement.banks).toHaveLength(13);
  });
  it.each(replacement.banks)('$name uses one replacement source and no obsolete conflicts',bank=>{
   const resolved=portabilityRuleSources(bank.id,'001','NETWORK');
   expect(resolved.criteria).toEqual(bank.criteria);expect(resolved.conflicts).toEqual([]);expect(resolved.ageAlternatives).toEqual([]);
-  expect(resolved.sources).toHaveLength(bank.id==='daycoval'?2:1);expect(resolved.sources[0].file).toBe('Markdown colado(5).md');
+  expect(resolved.sources).toHaveLength(1);expect(resolved.sources[0].file).toBe(bank.policySource.sourceFile);
   expect(check(bank.id).reason).not.toMatch(/Divergência documental|entre os dois documentos|ambas as fontes|mínimo de pagas conflitante/);
   expect(PORTABILITY_BOOKS.filter(row=>row.bankId===bank.id)).toHaveLength(1);
-  expect(PORTABILITY_SECTIONS.filter(row=>row.bankId===bank.id).every(row=>row.id.endsWith('replacement-20261030'))).toBe(true);expect(portabilityGuide(bank.id)?.hasConflicts).toBe(false);
+  expect(PORTABILITY_SECTIONS.filter(row=>row.bankId===bank.id).every(row=>row.id.endsWith(bank.policySource.id))).toBe(true);expect(portabilityGuide(bank.id)?.hasConflicts).toBe(false);
  });
  it('retains archives but excludes obsolete sources from active INSS portability search',()=>{
   expect(PORTABILITY_ARCHIVE_BOOKS.filter(row=>row.bankId==='facta').length).toBeGreaterThan(1);
   const rows=searchBankPlaybooks('FACTA portabilidade saldo mínimo');
-  expect(rows.filter(row=>row.bankId==='facta').every(row=>row.sourceFile==='Markdown colado(5).md')).toBe(true);
+  expect(rows.filter(row=>row.bankId==='facta').every(row=>row.sourceFile==='docs/sources/portability-inss-rules-20261103.md')).toBe(true);
   const inherited=searchBankPlaybooks('FACTA portabilidade 99999',false,[{id:'facta-p5',bankId:'facta',name:'FACTA',version:'old',receivedAt:'2026-10-16',source:'old',sourceFile:'old.pdf',text:'FACTA portabilidade 99999'} as any]);
   expect(inherited.some(row=>row.sourceFile==='old.pdf')).toBe(false);
  });
@@ -56,7 +56,7 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
  });
  it('does not invent a Daycoval minimum balance or lose unknown DIGIO/Havecred minima',()=>{
   expect(portabilityRuleSources('daycoval','001').criteria.minBalance).toBe(0);
-  for(const bank of ['digio','havecred']){expect(portabilityRuleSources(bank,'001').criteria.minBalance).toBeUndefined();expect(check(bank,{debt:1}).status).toBe('PENDENTE DE DADOS');}
+  expect(portabilityRuleSources('digio','001').criteria.minBalance).toBeUndefined();expect(check('digio',{debt:1}).status).toBe('PENDENTE DE DADOS');expect(portabilityRuleSources('havecred','001').criteria.minBalance).toBe(1000);expect(check('havecred',{debt:999}).blocked).toBe(true);
  });
  it.each([['digio',250],['facta',50],['nossa-fintech',100]])('%s keeps its documented cash minimum %s', (bank,amount)=>{
   expect(check(bank,{amount:amount-.01}).blocked).toBe(true);expect(check(bank,{amount}).blocked).toBe(false);
@@ -69,10 +69,10 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
   expect(check('quero-banking',{debt:6000},'001',5).blocked).toBe(true);
   expect(check('quero-banking',{debt:6000},'001',6).blocked).toBe(false);
  });
- it.each([['c6','623',37],['daycoval','623',15],['daycoval','149',24],['parana','121',13],['icred','149',12],['banrisul','623',30],['happy','318',12]])('%s uses documented paid agreement for %s', (bank,origin,paid)=>{
-  expect(check(bank,{},origin,paid-1).blocked).toBe(true);expect(check(bank,{},origin,paid).blocked).toBe(false);
+ it.each([['c6','623',37],['daycoval','623',15],['daycoval','001',12],['icred','149',12],['banrisul','623',30],['happy','001',6]])('%s uses documented paid agreement for %s', (bank,origin,paid)=>{
+  expect(check(bank,{originCategory:'CORBAN'},origin,paid-1).blocked).toBe(true);expect(check(bank,{originCategory:'CORBAN'},origin,paid).blocked).toBe(false);
  });
- it.each([['digio','237'],['c6','707'],['daycoval','626'],['facta','611'],['happy','070'],['parana','149'],['icred','012'],['banrisul','070'],['havecred','643'],['finanto','422'],['nossa-fintech','389'],['quero-banking','335'],['brb','121']])('%s excludes its confirmed origin %s', (bank,origin)=>{expect(check(bank,{},origin).blocked).toBe(true);});
+ it.each([['digio','237'],['c6','707'],['daycoval','626'],['facta','643'],['happy','070'],['parana','149'],['icred','012'],['banrisul','070'],['havecred','643'],['finanto','422'],['nossa-fintech','389'],['quero-banking','335'],['brb','121']])('%s excludes its confirmed origin %s', (bank,origin)=>{expect(check(bank,{},origin).blocked).toBe(true);});
  it.each(replacement.banks)('$name does not approve missing data and rejects documented LOAS',bank=>{
   expect(evaluatePortabilityPolicy(bank.id,'',undefined,{product:'INSS',operation:'PORT_REFIN'})?.status).toBe('PENDENTE DE DADOS');
   expect(check(bank.id,{benefitType:87}).blocked).toBe(true);
@@ -84,11 +84,11 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
   expect(check('daycoval',{contractEndDate:'2049-12-31'}).review).toBe(true); // Replaced limit; age reference still unconfirmed.
   expect(check('facta',{birthDate:'1940-01-01'}).status).toBe('PENDENTE DE DADOS');
   expect(check('finanto',{birthDate:'1957-01-01'}).blocked).toBe(true);
-  expect(check('nossa-fintech',{birthDate:'1950-01-01',term:96}).blocked).toBe(false);
-  expect(check('nossa-fintech',{birthDate:'1950-01-01',term:84}).status).toBe('PENDENTE DE DADOS');
+  expect(check('nossa-fintech',{birthDate:'1950-01-01',term:96}).blocked).toBe(true);
+  expect(check('nossa-fintech',{birthDate:'1950-01-01',term:84}).status).toBe('NÃO ELEGÍVEL');
  });
  it.each([32,92])('species %s applies explicit ages and preserves real documentary gaps',benefitType=>{
-  expect(check('digio',{benefitType,birthDate:'1966-10-30'}).blocked).toBe(true);
+  expect(check('digio',{benefitType,birthDate:'1967-01-01'}).blocked).toBe(benefitType===32);
   expect(check('finanto',{benefitType,birthDate:'1967-01-01'}).blocked).toBe(true);
   expect(check('brb',{benefitType,birthDate:'1966-10-30'}).blocked).toBe(false);
   expect(check('c6',{benefitType}).status).toBe('PENDENTE DE DADOS');
@@ -104,22 +104,22 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
   expect(check('nossa-fintech',{installment:800}).blocked).toBe(true);expect(check('nossa-fintech',{installment:800,negativeMarginAmount:100}).blocked).toBe(true);expect(check('nossa-fintech',{installment:800,negativeMargin:true,negativeMarginAmount:100}).blocked).toBe(false);
  });
  it('does not interpret slash-separated rates as continuous ranges or invent cash formulas',()=>{
-  expect(check('c6',{refinRate:1.72}).status).toBe('PENDENTE DE DADOS');expect(check('c6',{refinRate:1.72}).reason).toContain('barras');
+  expect(check('c6',{refinRate:1.72}).status).toBe('PENDENTE DE DADOS');expect(check('c6',{refinRate:1.72}).reason).toContain('listadas');
   expect(check('finanto',{operation:'PORT',portRate:1.59}).blocked).toBe(true);
-  for(const bank of ['havecred','finanto','quero-banking'])expect(check(bank,{amount:1}).reason).toContain('sem regra completa');
+  for(const bank of ['havecred','quero-banking'])expect(check(bank,{amount:1}).reason).toContain('sem regra completa');
  });
- it('applies documented state/payment-order restrictions without borrowing origin bank as payment bank',()=>{
-  expect(check('parana',{birthDate:'1965-01-01',state:'AP'}).blocked).toBe(true);
-  expect(check('icred',{birthDate:'1965-01-01',state:'PB'}).blocked).toBe(true);
-  expect(check('parana',{paymentOrder:true,paymentOrderBankCode:'341',paymentOrderAmount:2199}).blocked).toBe(true);
-  expect(check('parana',{paymentOrder:true,paymentOrderBankCode:'033',paymentOrderAmount:100}).blocked).toBe(false);
+ it('does not gate by UF and preserves payment-order restrictions',()=>{
+  expect(check('parana',{birthDate:'1965-01-01',state:'AP'}).blocked).toBe(false);
+  expect(check('icred',{birthDate:'1965-01-01',state:'PB'}).blocked).toBe(false);
+  expect(check('parana',{paymentOrder:true,paymentOrderBankCode:'341',paymentOrderAmount:2199}).blocked).toBe(false);
+  expect(check('parana',{paymentOrder:true,paymentOrderBankCode:'033',paymentOrderAmount:100}).blocked).toBe(true);
   expect(check('parana',{paymentOrder:true}).status).toBe('PENDENTE DE DADOS');
  });
  it('leaves Novo and non-INSS products outside the replacement, with no mutation between tenants',()=>{
   expect(evaluatePortabilityPolicy('finanto','001',30,{...base,product:'SIAPE'})).toBeNull();
   expect(simulationPortabilityCheck('facta',{...base,product:'CLT'}).status).toBe('NÃO APLICÁVEL');
   expect(evaluatePortabilityPolicy('finanto','001',30,{...base,operation:'NEW'})).toBeNull();
-  expect(searchBankPlaybooks('SIAPE portabilidade FACTA idade').some(row=>row.sourceFile==='Markdown colado(5).md')).toBe(false);
+  expect(searchBankPlaybooks('SIAPE portabilidade FACTA idade').some(row=>row.sourceFile==='docs/sources/portability-inss-rules-20261103.md')).toBe(false);
   const before=JSON.stringify(replacement);const a=portabilityRuleSources('facta','001');a.criteria.minBalance=999999;
   expect(check('facta',{debt:900,tenantId:'tenant-b'}).reasons.some(line=>line.includes('saldo mínimo'))).toBe(false);expect(JSON.stringify(replacement)).toBe(before);
   for(const id of ['safra','pan','quali','quero-credito'])expect(portabilitySourceCatalog.some(bank=>bank.id===id)).toBe(true);
@@ -137,7 +137,7 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
  it('secondary helpers distinguish updated portability from preserved Novo rules',()=>{
   const today=new Date(2026,9,30,12);
   expect(finantoAgeError('1957-01-01',96,today,'PORT_REFIN')).not.toBeNull();expect(finantoAgeError('1957-01-01',96,today,'NEW')).toBeNull();
-  expect(nossaFintechAgeError('1950-01-01',96,today,'PORT_REFIN')).toBeNull();expect(nossaFintechAgeError('1950-01-01',96,today,'NEW')).not.toBeNull();
+  expect(nossaFintechAgeError('1950-01-01',96,today,'PORT_REFIN')).not.toBeNull();expect(nossaFintechAgeError('1950-01-01',96,today,'NEW')).not.toBeNull();
   expect(finantoInstallmentError('PRIME',60,'PORT_REFIN')).toBeNull();expect(finantoCashOutError('PRIME',{netValue:1},'PORT_REFIN')).toBeNull();
   expect(finantoRefinancingChoices({name:'PRIME',items:[{rate:1.85,minTerm:1,maxTerm:108}]},108,undefined,'PORT_REFIN').map(row=>row.rate)).toEqual([1.85]);
   expect(finantoRefinancingChoices({name:'PRIME',items:[{rate:1.85,minTerm:1,maxTerm:108}]},108,1.83,'PORT_REFIN')).toEqual([]);

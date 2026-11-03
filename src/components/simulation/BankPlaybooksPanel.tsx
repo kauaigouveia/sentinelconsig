@@ -3,6 +3,7 @@ import {portabilityGuide} from '../../lib/portabilityGuide';
 import {eligibilityGroups} from '../../lib/eligibilityGroups';
 import React, {useState,useEffect} from 'react';
 import type { PlaybookInput } from '../../lib/bankPlaybooks';
+import {PORTABILITY_REPLACEMENT} from '../../lib/portabilityRuleSources';
 import { PORTABILITY_RULES, evaluatePortabilityPolicy } from '../../lib/portabilityPolicy';
 export function BankPlaybooksPanel({portal=false,input,onDiagnosticsPermission}:{input?:PlaybookInput;portal?:boolean;onDiagnosticsPermission?:(allowed:boolean)=>void}) {
  const [destination,setDestination]=useState('ALL');
@@ -23,7 +24,8 @@ export function BankPlaybooksPanel({portal=false,input,onDiagnosticsPermission}:
   <h3 className="text-sm font-semibold">Roteiros dos bancos</h3>
   <p className="mt-2 text-sm text-slate-500">{portal?'As condições devem ser conferidas nos roteiros vigentes pela mesa.':'Critérios de enquadramento; não representam oferta nem aprovação bancária.'}</p>
   {rows.length>0&&<details className="mt-3"><summary className="cursor-pointer text-sm font-semibold">Conferir regras de portabilidade em {rows.length} bancos</summary>
-   <p className="my-3 text-xs text-slate-500">Política substitutiva recebida em 30/10/2026 para os 13 bancos indicados. Demais bancos conservam suas fontes; Vigência comercial não informada.</p>
+   <p className="my-3 text-xs text-slate-500">Esta lista é documental: não representa 17 integrações habilitadas. Os resultados financeiros são apresentados acima. Política recebida em {PORTABILITY_REPLACEMENT.receivedAt.split('-').reverse().join('/')} para os {PORTABILITY_REPLACEMENT.currentBankCount} bancos indicados. Demais bancos conservam suas fontes; Vigência comercial não informada.</p>
+   {Number.isInteger(input?.paidInstallments)&&<p className="mb-2 text-sm">Parcelas pagas: {input?.paidInstallments}</p>}
    <label className="mb-3 block text-sm">Banco de destino<select className="ml-2 rounded border border-slate-500/30 bg-transparent p-2" value={destination} onChange={event=>setDestination(event.target.value)}><option value="ALL">Todos os bancos</option>{rows.map(({bank})=><option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></label>
    {projection.common.length>0&&<section aria-label="Pendências comuns" className="mb-3 rounded-lg border border-amber-500/30 p-3 text-sm"><h4 className="font-semibold">Pendências comuns</h4><ul>{projection.common.map(({message,count})=><li key={message}>{message} <span className="text-xs text-slate-500">({count} bancos)</span></li>)}</ul></section>}
    <table aria-label="Enquadramento por banco" className="w-full text-left text-sm"><tbody>{projection.groups.filter(group=>group.rows.length).map(group=><React.Fragment key={group.status}><tr><th className="pt-4 pb-2">{group.title} ({group.rows.length}) · {group.status}</th></tr>{group.rows.map(row=><tr key={row.bank} className="border-t border-slate-500/20"><td className="py-2"><strong>{row.bank}</strong><ul>{[...row.restrictions,...row.pending].map(message=><li className="text-xs text-slate-500" key={message}>{message}</li>)}</ul></td></tr>)}</React.Fragment>)}</tbody></table>

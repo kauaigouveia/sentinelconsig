@@ -1,5 +1,5 @@
-export type EligibilityStatus = 'OFERTA CALCULADA' | 'ELEGÍVEL' | 'PENDENTE DE DADOS' | 'NÃO ELEGÍVEL';
-export type EligibilityEvidence = {blocked?:boolean;review?:boolean;status?:string;reason?:string;reasons?:string[];notices?:string[];sources?:unknown[]};
+export type EligibilityStatus = 'OFERTA CALCULADA' | 'ELEGÍVEL' | 'APTO PARA CÁLCULO' | 'PENDENTE DE DADOS' | 'NÃO ELEGÍVEL';
+export type EligibilityEvidence = {calculationAllowed?:boolean;inputIssues?:string[];blocked?:boolean;review?:boolean;status?:string;reason?:string;reasons?:string[];notices?:string[];sources?:unknown[]};
 export type EligibilityPresentationInput = {bank:string;product?:string;operation?:string;table?:string;check?:EligibilityEvidence;message?:string;calculated?:boolean;commercial?:{label:string;value:string}[]};
 const unique=(items:string[])=>[...new Set(items.map(value=>value.trim()).filter(Boolean))];
 const money=(value:string)=>Number(value.includes(',')?value.replace(/\./g,'').replace(',','.'):value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -34,10 +34,10 @@ export function eligibilityPresentation(input:EligibilityPresentationInput,audie
  const pending=unique((check?.notices?.length?check.notices:evidence.filter(text=>!(check?.reasons||[]).includes(text))).map(clean).map(publicLine));
  const explicitBlocked=check?.blocked===true||check?.status==='NÃO ELEGÍVEL';
  const requiresReview=check?.review===true||check?.status==='PENDENTE DE DADOS'||conflicts.length>0;
- const status:EligibilityStatus=explicitBlocked?'NÃO ELEGÍVEL':requiresReview?'PENDENTE DE DADOS':input.calculated?'OFERTA CALCULADA':check?.status==='ELEGÍVEL'?'ELEGÍVEL':'PENDENTE DE DADOS';
+ const status:EligibilityStatus=explicitBlocked?'NÃO ELEGÍVEL':input.calculated&&check?.calculationAllowed===true?'OFERTA CALCULADA':requiresReview&&check?.calculationAllowed===true?'APTO PARA CÁLCULO':requiresReview?'PENDENTE DE DADOS':input.calculated?'OFERTA CALCULADA':check?.status==='ELEGÍVEL'?'ELEGÍVEL':'PENDENTE DE DADOS';
  return {bank,product:input.product||'Produto não informado',operation:input.operation,table:input.table,status,
-  commercial:audience==='partner'?[]:input.commercial||[],restrictions,pending,conflicts:unique(conflicts.map(publicLine)),
+  commercial:audience==='partner'?[]:input.commercial||[],restrictions,pending:check?.calculationAllowed===true?[]:check?.inputIssues?check.inputIssues.map(publicLine):pending,conflicts:unique(conflicts.map(publicLine)),
   met:check?.status==='ELEGÍVEL'&&!requiresReview&&!explicitBlocked?['Critérios informados atendidos; sujeito à análise do banco.']:[],
   original:input,diagnostics:{evidence,conflicts,sources:check?.sources||[]}};
 }
-export const eligibilityRank=(status:EligibilityStatus)=>['OFERTA CALCULADA','ELEGÍVEL','PENDENTE DE DADOS','NÃO ELEGÍVEL'].indexOf(status);
+export const eligibilityRank=(status:EligibilityStatus)=>['OFERTA CALCULADA','ELEGÍVEL','APTO PARA CÁLCULO','PENDENTE DE DADOS','NÃO ELEGÍVEL'].indexOf(status);

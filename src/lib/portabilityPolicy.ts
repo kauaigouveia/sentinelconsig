@@ -50,7 +50,7 @@ export function evaluatePortabilityPolicy(destination:string,origin:unknown,paid
  if(!has(input.benefitType))notices.push('Informe a espécie do benefício para conferir restrições.');
  if(!has(input.debt)||Number(input.debt)<=0)notices.push('Informe saldo devedor válido.');
  if(!has(input.originalInstallment)||Number(input.originalInstallment)<=0)notices.push('Informe a parcela original válida.');
- if(c.requiresCip&&input.cipMember!==true)notices.push('Confirme participação do banco de origem na CIP.');
+ if(c.requiresCip&&input.cipMember!==true&&code!=='001')notices.push('Confirme participação do banco de origem na CIP.');
  const species=Number(input.benefitType),disability=c.invalidCodes?c.invalidCodes.includes(species):[32,92].includes(species);
  if([87,88].includes(species))reasons.push(`${entry.name}: portabilidade LOAS/BPC não atendida${bankId==='brb'?' (suspensa)':''}.`);
  if(c.deniedSpecies?.includes(species))reasons.push(`${entry.name}: espécie ${species} não atendida.`);
@@ -75,14 +75,7 @@ export function evaluatePortabilityPolicy(destination:string,origin:unknown,paid
   if(c.endExclusive&&c.maxEndMonths!=null&&end&&end>=bound(birth,c.maxEndMonths,c.maxEndDays||0))reasons.push(`${entry.name}: contrato deve terminar antes do limite de idade documentado.`);
   if(end&&resolved.ageAlternatives.length&&resolved.ageAlternatives.every(alternative=>alternative.maxEndMonths!=null&&
    (alternative.endExclusive?end>=bound(birth,alternative.maxEndMonths,alternative.maxEndDays||0):alternative.maxEndDays==null?end>=months(birth,alternative.maxEndMonths+1):end>bound(birth,alternative.maxEndMonths,alternative.maxEndDays))))reasons.push(`${entry.name}: idade final excede os limites de ambas as fontes documentais.`);
-  const state=String(input.state||'').toUpperCase(),over60=today>months(birth,720);
-  if(over60&&c.figitalStates?.includes(state))notices.push(state==='MG'?'Confirmar município (Poço de Caldas no documento) e formalização figital.':'Aplicar formalização figital indicada no documento complementar.');
-  if(c.blockedStates?.includes(state))reasons.push(`${entry.name}: não atende residentes em ${state}.`);
-  if(over60&&['AP','PB','TO','RR','SC'].includes(state)){
-   if(c.stateBlockedOver60)reasons.push(`${entry.name}: não atende acima de 60 anos em ${state}.`);
-   else notices.push(bankId==='quali'?'Exige foto do cliente com CCB assinada.':'Aplicar formalização figital conforme roteiro.');
-  }
-  if(bankId==='havecred'&&state==='GO'&&today>=months(birth,600))notices.push('Goiás, a partir de 50 anos: exige e-mail válido do cliente na formalização.');
+  // UF-specific commercial/formalization checks are not simulation gates.
   const special=c.speciesMinAge?.[String(species)];
   if(special!=null&&today<months(birth,special*12))reasons.push(`${entry.name}: espécie ${species} exige a partir de ${special} anos.`);
   if(disability&&!c.deniedSpecies?.includes(species)){
@@ -101,7 +94,7 @@ export function evaluatePortabilityPolicy(destination:string,origin:unknown,paid
    if(bankId==='icred'&&today>=months(birth,720))notices.push(input.sex==='M'?'Homem: Tabela Diferenciada.':input.sex==='F'?'Mulher: Tabela Normal, comissão cheia.':'Confirmar sexo para enquadrar Tabela Diferenciada (homem) ou Normal (mulher).');
   }
  }
- if(!input.state)notices.push('UF não informada: conferir residência e formalização.');
+
  if(input.illiterate)notices.push('Conferir formalização e documentos do cliente analfabeto.');
  const negative=input.negativeMargin===true||Number(input.negativeMarginAmount)<0;
  if(negative&&c.negative===false)reasons.push(`${entry.name}: margem negativa não permitida.`);
@@ -155,5 +148,10 @@ export function evaluatePortabilityPolicy(destination:string,origin:unknown,paid
  if(c.cashReview)notices.push('Conferir regra percentual de troco com o comercial; não presumir equivalência ao mínimo fixo.');
  if(c.incomplete)notices.push('Trecho FINANTO incompleto: taxa do refin e mínimos financeiros não foram enviados.');
  const status=reasons.length?'NÃO ELEGÍVEL':notices.length?'PENDENTE DE DADOS':'ELEGÍVEL';
- return {blocked:reasons.length>0,review:notices.length>0,status,reason:[...reasons,...notices].join(' ')||'Critérios informados atendidos; sujeito à análise do banco.',reasons,notices,bankId,sources:resolved.sources};
+ const inputIssues:string[]=[];
+ if(!code)inputIssues.push('Informe banco de origem.');
+ if(!validPaid)inputIssues.push('Informe parcelas pagas válidas.');
+ if(!birth)inputIssues.push('Informe nascimento válido.');
+ for(const [value,label] of [[input.benefitType,'espécie'],[input.debt,'saldo devedor'],[input.originalInstallment,'parcela original'],[input.remainingInstallments,'parcelas restantes'],[input.term,'prazo']] as const)if(!has(value)||Number(value)<=0)inputIssues.push(`Informe ${label} válido.`);
+ return {blocked:reasons.length>0,review:notices.length>0,calculationAllowed:reasons.length===0&&inputIssues.length===0,inputIssues,status,reason:[...reasons,...notices].join(' ')||'Critérios informados atendidos; sujeito à análise do banco.',reasons,notices,bankId,sources:resolved.sources};
 }

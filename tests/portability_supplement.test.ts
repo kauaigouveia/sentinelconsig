@@ -30,14 +30,14 @@ describe('documentary portability supplement, synthetic data only',()=>{
   expect(evaluatePortabilityPolicy('facta','623',14,complete)?.blocked).toBe(false);
  });
  it('uses replacement exclusions without obsolete documentary conflicts',()=>{
-  expect(evaluatePortabilityPolicy('facta','012',30,complete)?.status).toBe('NÃO ELEGÍVEL');
+  expect(evaluatePortabilityPolicy('facta','643',30,complete)?.status).toBe('NÃO ELEGÍVEL');
   const check=evaluatePortabilityPolicy('parana','149',30,complete)!;
   expect(check.status).toBe('NÃO ELEGÍVEL');expect(check.reason).not.toContain('listas de exclusão divergem');
  });
  it('compares an individual agreement against the older declared category before rejecting',()=>{
   const check=evaluatePortabilityPolicy('c6','149',12,{...complete,originCategory:'CORBAN'})!;
   expect(check.blocked).toBe(false);expect(check.status).toBe('PENDENTE DE DADOS');
-  expect(check.reason).not.toContain('mínimo de pagas conflitante');expect(check.reason).toContain('13 parcelas');
+  expect(check.reason).not.toContain('mínimo de pagas conflitante');expect(check.reason).toContain('15 pagas');
  });
  it.each([['PAN','626',35],['SAFRA','149',23],['Quero + Crédito','001',14]])('blocks insufficient paid installments for %s', (bank,origin,paid)=>{
   expect(evaluatePortabilityPolicy(bank as string,origin,paid,complete)?.status).toBe('NÃO ELEGÍVEL');

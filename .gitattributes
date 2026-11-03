@@ -4,3 +4,4 @@ ops/evolution/*.sh text eol=lf
 *.png binary
 
 docs/sources/portability-inss-replacement-20261030.md -text
+docs/sources/portability-inss-rules-20261103.md -text whitespace=cr-at-eol,-blank-at-eol

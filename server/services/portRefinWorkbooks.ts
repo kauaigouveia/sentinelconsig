@@ -40,7 +40,7 @@ export function calculatePortRefin(bank: SpreadsheetBank, book: DaycovalWorkbook
   const check=simulationPortabilityCheck(bank,input);
   if(check.blocked)throw new Error(check.reason);
   const result=calculatePortRefinUnchecked(bank,book,input);
-  const offers=result.offers.map(offer=>{const finalInput={...input,contractEndDate:result.firstDue?addMonths(parseDate(result.firstDue),Number(offer.term)-1).toISOString().slice(0,10):input.contractEndDate};const check=simulationPortabilityCheck(bank,finalInput,offer);return {...offer,eligible:offer.eligible&&!check.blocked&&!check.review,policyStatus:check.status,policyReview:check.reason,status:check.blocked||check.review?`${check.status}: ${check.reason}`:offer.status};});
+  const offers=result.offers.map(offer=>{const finalInput={...input,contractEndDate:result.firstDue?addMonths(parseDate(result.firstDue),Number(offer.term)-1).toISOString().slice(0,10):input.contractEndDate};const check=simulationPortabilityCheck(bank,finalInput,offer);return {...offer,calculated:offer.eligible&&!check.blocked&&check.calculationAllowed!==false,eligible:offer.eligible&&!check.blocked&&!check.review,policyStatus:check.status,policyReview:check.reason,status:check.blocked||check.review?`${check.status}: ${check.reason}`:offer.status};});
   return {...result,offers,message:[...new Set(['message' in result?result.message:'',...offers.filter(offer=>offer.policyStatus!=='ELEGÍVEL').map(offer=>offer.policyReview),!offers.length&&check.review?check.reason:''].filter(Boolean))].join(' ')};
 }
 function calculatePortRefinUnchecked(bank: SpreadsheetBank, book: DaycovalWorkbook, input: any) {

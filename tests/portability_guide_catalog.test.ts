@@ -10,7 +10,7 @@ it('uses the existing engine and preserves full documentary sources behind the c
  const guide=portabilityGuide('parana')!;expect(guide.summary.length).toBeGreaterThan(0);expect(guide.sources).toHaveLength(1);expect(guide.hasConflicts).toBe(false);
  const response=await request(app(actor())).get('/api/bank-playbooks');expect(response.status).toBe(200);
  expect(new Set(response.body.rows.map((row:any)=>row.id)).size).toBe(response.body.rows.length);
- expect(response.body.rows.find((row:any)=>row.id==='parana').sections.some((section:any)=>section.id==='parana-replacement-20261030')).toBe(true);
+ expect(response.body.rows.find((row:any)=>row.id==='parana').sections.some((section:any)=>section.id==='parana-INSS_PORTABILITY_20261103_REPLACEMENT')).toBe(true);
  expect(response.body.canDiagnose).toBe(false);
 });
 it('denies partner/ordinary-user diagnostics and restricts managers to their server-selected tenant',async()=>{

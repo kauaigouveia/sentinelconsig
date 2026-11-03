@@ -10,14 +10,15 @@ const unique=(rows:string[])=>[...new Set(rows)];
 export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unknown,input:PortabilityContext){
  const bank=replacement.banks.find(bank=>bank.id===bankId);if(!bank)return null;
  const c:Record<string,any>=bank.criteria,pending:Record<string,string[]>=bank.pending;
- const reasons:string[]=[],notices:string[]=[];
+ const reasons:string[]=[],notices:string[]=[],inputIssues:string[]=[];
+ const requireInput=(message:string)=>{inputIssues.push(message);notices.push(message);};
  const pure=['PORT','PORTABILIDADE'].includes(input.operation||'PORT_REFIN');
  const code=resolveInstitutionCode(String(origin||'')),originNames=[clean(origin),clean(institutionLabel(code))];
  notices.push(...(pending.always||[]).filter(text=>!(bankId==='daycoval'&&/NBC Bank/i.test(text)&&code&&!originNames.some(name=>name.includes('nbcbank')))));
- if(!code)notices.push('Informe o banco de origem com identificador confirmado.');
+ if(!code)requireInput('Informe o banco de origem com identificador confirmado.');
  if(c.blocked.includes(code)||c.blockedNames.some((name:string)=>originNames.some(value=>value===clean(name)||value===clean('Banco '+name))))reasons.push(`${bank.name}: banco de origem não permitido pela fonte substitutiva.`);
  const paidValid=num(paid)&&Number.isInteger(Number(paid))&&Number(paid)>=0;
- if(!paidValid)notices.push('Informe parcelas pagas válidas.');
+ if(!paidValid)requireInput('Informe parcelas pagas válidas.');
  let minimum=c.paid[code]??(input.originCategory==='CORBAN'?c.corbanPaid:input.originCategory==='NETWORK'?c.networkPaid:undefined)??c.otherPaid;
  // Satisfying both documented categories needs no guess about the creditor's category.
  if(minimum==null&&code&&paidValid&&num(c.corbanPaid)&&num(c.networkPaid)&&Number(paid)>=Math.max(c.corbanPaid,c.networkPaid))minimum=Math.max(c.corbanPaid,c.networkPaid);
@@ -29,19 +30,20 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
  if(minimum==null)notices.push('Mínimo de pagas por origem/categoria não informado; validar sem presumir a regra antiga.');
  else if(paidValid&&Number(paid)<minimum)reasons.push(`${bank.name}: mínimo de ${minimum} parcelas pagas para a origem e condição informadas.`);
  for(const [key,label] of [['debt','saldo devedor'],['originalInstallment','parcela original'],['remainingInstallments','parcelas restantes'],['term','prazo']] as const){
-  if(input[key]==null||String(input[key])==='')notices.push(`Informe ${label}.`);
-  else if(!num(input[key])||Number(input[key])<=0||(['term','remainingInstallments'].includes(key)&&!Number.isInteger(Number(input[key]))))notices.push(`${label[0].toUpperCase()+label.slice(1)} inválido: informe valor positivo${['term','remainingInstallments'].includes(key)?' inteiro':''}.`);
+  if(input[key]==null||String(input[key])==='')requireInput(`Informe ${label}.`);
+  else if(!num(input[key])||Number(input[key])<=0||(['term','remainingInstallments'].includes(key)&&!Number.isInteger(Number(input[key]))))requireInput(`${label[0].toUpperCase()+label.slice(1)} inválido: informe valor positivo${['term','remainingInstallments'].includes(key)?' inteiro':''}.`);
  }
- if(!num(input.benefitType))notices.push('Informe a espécie do benefício.');
- const species=Number(input.benefitType),invalid=[32,92].includes(species);
+ if(!num(input.benefitType))requireInput('Informe a espécie do benefício.');
+ const species=Number(input.benefitType),invalid=(c.invalidSpecies||[32,92]).includes(species);
+ if(c.deniedSpecies?.includes(species))reasons.push(`${bank.name}: espécie ${species} não atendida.`);
  if([87,88].includes(species))reasons.push(`${bank.name}: portabilidade LOAS/BPC não atendida${bankId==='brb'?' (suspensa)':''}.`);
  if(pure&&c.pure===false)reasons.push(`${bank.name}: não atende portabilidade pura.`);
  if(pure&&c.pure==='conditional')notices.push('Portabilidade pura depende de condição de refinanciamento não detalhada.');
  if(!pure)notices.push(...(pending.refin||[]));
  const today=date(input.simulationDate||new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()));
  const birth=date(input.birthDate),end=date(input.contractEndDate);
- if(!today)notices.push('Data de cálculo inválida.');
- if(!birth)notices.push('Informe nascimento válido.');
+ if(!today)requireInput('Data de cálculo inválida.');
+ if(!birth)requireInput('Informe nascimento válido.');
  if(birth&&today){
   if(birth>today)reasons.push('Data de nascimento inválida.');
   if(c.minAge!=null&&!(bankId==='quero-banking'&&invalid)&&today<months(birth,c.minAge*12))reasons.push(`${bank.name}: idade mínima de ${c.minAge} anos.`);
@@ -69,15 +71,28 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
    else if(c.maxEndDays==null?end>=months(birth,c.maxEndMonths+1):end>months(birth,c.maxEndMonths,c.maxEndDays))reasons.push(`${bank.name}: idade no término excede o limite documentado.`);
   }
   if(end&&end<=today)notices.push('Término do contrato deve ser posterior à data de cálculo.');
-  const over60=today>months(birth,720),state=String(input.state||'').toUpperCase();
-  if(over60&&c.stateBlockedOver60){
-   if(!'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ').includes(state))notices.push('UF não informada: validar restrições acima de 60 anos.');
-   else if(['AP','PB','TO','RR','SC'].includes(state))reasons.push(`${bank.name}: não atende acima de 60 anos em ${state}.`);
-  }
-  if(c.formalizationConditional&&(over60||input.illiterate))notices.push(bankId==='daycoval'?'Formalização digital/figital: requisitos por idade ou alfabetização não detalhados na fonte.':'Formalização digital/figital: condições por idade, UF ou alfabetização não detalhadas na nova fonte.');
+  const over60=today>months(birth,720);
+  // Explicit operational correction: UF is not a simulation gate for INSS PORT/PORT_REFIN.
+  if(c.formalizationConditional&&(over60||input.illiterate))notices.push('Formalização: conferir requisitos por idade ou alfabetização antes da contratação.');
+  const speciesMinimum=c.speciesMinAge?.[String(species)],strictMinimum=c.strictSpeciesMinAge?.[String(species)],speciesMaximum=c.speciesMaxStartMonths?.[String(species)];
+  if(speciesMinimum!=null&&today<months(birth,speciesMinimum*12))reasons.push(`${bank.name}: espécie ${species} exige a partir de ${speciesMinimum} anos.`);
+  if(strictMinimum!=null&&today<=months(birth,strictMinimum*12))reasons.push(`${bank.name}: espécie ${species} exige idade acima de ${strictMinimum} anos.`);
+  if(speciesMaximum!=null&&today>=months(birth,speciesMaximum+1))reasons.push(`${bank.name}: idade da espécie ${species} excede o limite no início.`);
   if(invalid){
    notices.push(...(pending.invalid||[]));
-   if(c.invalidMinAge!=null&&(c.invalidStrictMin?today<=months(birth,c.invalidMinAge*12):today<months(birth,c.invalidMinAge*12)))reasons.push(`${bank.name}: espécies 32/92 exigem ${c.invalidStrictMin?'idade acima de':'a partir de'} ${c.invalidMinAge} anos.`);
+   if(c.invalidMinAge!=null&&(c.invalidStrictMin?today<=months(birth,c.invalidMinAge*12):today<months(birth,c.invalidMinAge*12))){
+    const exception=c.invalidBenefitException;
+    if(exception&&today>=months(birth,exception.minAge*12)){
+     const grant=date(input.benefitStartDate);
+     if(!grant)notices.push('Informe concessão do benefício para validar a exceção de invalidez.');
+     else if(today<months(grant,exception.benefitMonths))reasons.push(`${bank.name}: exceção de invalidez exige ${exception.benefitMonths/12} anos de benefício.`);
+    }else if(c.invalidExceptionMinAge!=null&&today>=months(birth,c.invalidExceptionMinAge*12))notices.push('Exceção de invalidez por idade depende de condição não individualizada na fonte.');
+    else reasons.push(`${bank.name}: espécie ${species} exige ${c.invalidStrictMin?'idade acima de':'a partir de'} ${c.invalidExceptionMinAge??c.invalidMinAge} anos, observadas as exceções documentadas.`);
+   }
+   if(c.invalidEndMinMonths!=null||c.invalidEndMaxMonths!=null){
+    if(!end)notices.push('Data efetiva de término necessária para validar a faixa de invalidez.');
+    else if(c.invalidEndMinMonths!=null&&end<months(birth,c.invalidEndMinMonths)||c.invalidEndMaxMonths!=null&&end>=months(birth,c.invalidEndMaxMonths+1))reasons.push(`${bank.name}: idade final fora da faixa documentada para invalidez.`);
+   }
   }
  }
  if(input.paymentOrder){
@@ -85,6 +100,7 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
   else {const rule=c.paymentOrderRules?.[input.paymentOrderBankCode||''];
    if(rule==null||!num(input.paymentOrderAmount))notices.push('Informe banco e valor da ordem de pagamento para validar as condições documentadas.');
    else if(Number(input.paymentOrderAmount)<rule)reasons.push(`${bank.name}: valor da ordem de pagamento abaixo do mínimo de R$ ${Number(rule).toFixed(2)}.`);
+   else if(c.paymentOrderMaxRules?.[input.paymentOrderBankCode||'']!=null&&Number(input.paymentOrderAmount)>c.paymentOrderMaxRules[input.paymentOrderBankCode||''])reasons.push(`${bank.name}: valor da ordem de pagamento acima do máximo documentado.`);
   }
  }
  const negative=input.negativeMargin===true||num(input.negativeMarginAmount)&&Number(input.negativeMarginAmount)<0;
@@ -97,18 +113,28 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
  if(Number(input.contractCount)>1&&(c.unify===false||pure&&c.unifyRefinOnly))reasons.push(`${bank.name}: unificação não permitida nesta modalidade.`);
  if(typeof c.unify==='number'&&Number(input.contractCount)>c.unify)reasons.push(`${bank.name}: unificação limitada a ${c.unify}.`);
  if(num(input.installment)&&num(input.originalInstallment)&&Number(input.installment)<Number(input.originalInstallment)-.005&&(c.reduce===false||c.reduce==='negativeOnly'&&!negative))reasons.push(`${bank.name}: redução de parcela não permitida neste caso.`);
+ if(typeof c.reduce==='number'&&num(input.installment)&&num(input.originalInstallment)&&Number(input.installment)<Number(input.originalInstallment)*(1-c.reduce)-.005)reasons.push(`${bank.name}: redução limitada a ${c.reduce*100}% da parcela original.`);
  if(c.minInstallment!=null&&[input.originalInstallment,input.installment].some(value=>num(value)&&Number(value)<c.minInstallment))reasons.push(`${bank.name}: parcela mínima de R$ ${Number(c.minInstallment).toFixed(2)}.`);
  let minBalance=pure?(c.pureMinBalance??c.minBalance):c.minBalance;
  if(!pure&&c.balanceByRefinRate){
   minBalance=num(input.refinRate)?c.balanceByRefinRate[Number(input.refinRate).toFixed(2)]:undefined;
   if(minBalance==null)notices.push('Saldo mínimo depende da tabela/taxa: condição não individualizada para os parâmetros recebidos.');
  }
+ if(!pure&&c.refinBalanceRange&&num(input.refinRate)&&Number(input.refinRate)>=c.refinBalanceRange.minRate-.00001&&Number(input.refinRate)<=c.refinBalanceRange.maxRate+.00001)minBalance=c.refinBalanceRange.minBalance;
  if(minBalance!=null&&num(input.debt)&&Number(input.debt)<minBalance)reasons.push(`${bank.name}: saldo mínimo de R$ ${Number(minBalance).toFixed(2)}.`);
  if(!pure){
+  if(c.minTotal!=null){if(!num(input.amount))notices.push('Aguardando cálculo do total de saldo mais troco.');else if(num(input.debt)&&Number(input.debt)+Number(input.amount)<c.minTotal-.005)reasons.push(`${bank.name}: saldo mais troco deve atingir R$ ${c.minTotal.toFixed(2)}.`);}
+  if(c.minGrossExclusive!=null){if(!num(input.contractAmount))notices.push('Bruto do refinanciamento necessário para validar o saldo mínimo condicional.');else if(Number(input.contractAmount)<=c.minGrossExclusive)reasons.push(`${bank.name}: bruto do refinanciamento deve ser superior a R$ ${c.minGrossExclusive.toFixed(2)}.`);}
+  if(c.minCashPercent!=null){
+   if(!num(input.term)||c.percentCashTermGap?.includes(Number(input.term)))notices.push('Regra percentual de troco não individualizada para este prazo.');
+   else if(!num(input.contractAmount)||!num(input.amount))notices.push('Aguardando bruto do novo contrato e troco para validar o mínimo percentual.');
+   else if(Number(input.amount)<Number(input.contractAmount)*c.minCashPercent-.005)reasons.push(`${bank.name}: troco mínimo de ${c.minCashPercent*100}% do novo endividamento.`);
+  }
   if(c.cashFormulaPending)notices.push('Troco mínimo percentual/por idade sem regra completa; não calcular por suposição.');
   if(c.minCash!=null){if(!num(input.amount))notices.push('Aguardando cálculo do troco mínimo.');else if(Number(input.amount)<c.minCash-.005)reasons.push(`${bank.name}: troco mínimo de R$ ${Number(c.minCash).toFixed(2)}.`);}
  }
- if(c.requiresCip&&input.cipMember!==true)notices.push('Confirme participação da origem na CIP.');
+ // Banco do Brasil 001: membership explicitly confirmed by the responsible operator.
+ if(c.requiresCip&&input.cipMember!==true&&code!=='001')notices.push('Confirme participação da origem na CIP.');
  if(pure){
   if(c.pureMinRate!=null&&num(input.portRate)&&Number(input.portRate)<c.pureMinRate-.00001)reasons.push(`${bank.name}: taxa mínima da portabilidade pura de ${c.pureMinRate}%.`);
   if(c.pureRateRange&&num(input.portRate)&&(Number(input.portRate)<c.pureRateRange[0]-.00001||Number(input.portRate)>c.pureRateRange[1]+.00001))reasons.push(`${bank.name}: taxa da portabilidade pura fora da faixa expressamente documentada.`);
@@ -117,7 +143,7 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
   if(c.refinRateFixed!=null&&num(input.refinRate)&&Math.abs(Number(input.refinRate)-c.refinRateFixed)>.00001)reasons.push(`${bank.name}: taxa do refin incompatível com o valor documentado.`);
  }
  if(c.portPonderationPending&&num(input.portRate))notices.push('Ponderação da taxa de portabilidade sem fórmula na nova fonte.');
- if((c.portRatesListed&&num(input.portRate)||!pure&&c.refinRatesListed&&num(input.refinRate)))notices.push('Taxas separadas por barras sem associação inequívoca à tabela: confirmar enquadramento, sem presumir faixa contínua.');
+ if((c.portRatesListed&&num(input.portRate)||!pure&&c.refinRatesListed&&num(input.refinRate)))notices.push('Taxas listadas sem associação inequívoca à tabela: confirmar enquadramento, sem presumir faixa contínua.');
  const finalReasons=unique(reasons),finalNotices=unique(notices),status=finalReasons.length?'NÃO ELEGÍVEL':finalNotices.length?'PENDENTE DE DADOS':'ELEGÍVEL';
- return {blocked:finalReasons.length>0,review:finalNotices.length>0,status,reason:[...finalReasons,...finalNotices].join(' ')||'Critérios documentados atendidos; sujeito à análise do banco.',reasons:finalReasons,notices:finalNotices,bankId,sources:replacementSources(bank)};
+ return {blocked:finalReasons.length>0,review:finalNotices.length>0,calculationAllowed:finalReasons.length===0&&inputIssues.length===0,inputIssues:unique(inputIssues),status,reason:[...finalReasons,...finalNotices].join(' ')||'Critérios documentados atendidos; sujeito à análise do banco.',reasons:finalReasons,notices:finalNotices,bankId,sources:replacementSources(bank)};
 }

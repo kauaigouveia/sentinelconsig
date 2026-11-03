@@ -13,7 +13,7 @@ vi.mock('../server/services/portRefinWorkbooks',()=>({SPREADSHEET_MODELS:{},calc
 vi.mock('../server/services/daycovalWorkbook',()=>({decodeDaycoval:vi.fn()}));
 import {PartnerSimulationService} from '../server/services/partnerSimulationService';
 const input={product:'INSS',operation:'PORT_REFIN',birthDate:'1980-01-01',state:'SP',benefitType:41,
- originalBank:'012',originalTerm:60,remainingTerm:36,originalInstallment:900,debt:10000,
+ originalBank:'643',originalTerm:60,remainingTerm:36,originalInstallment:900,debt:10000,
  mode:'Payment',value:900,term:36,rate:1.8,bmgActorId:'synthetic-user'};
 beforeEach(()=>{vi.clearAllMocks();mocks.happy.mockResolvedValue([]);mocks.bmg.mockResolvedValue([{provider:'BMG',institution:'BMG',state:'OFFER',amount:1000}]);
  mocks.factaConfig.mockImplementation(async(_db,tenant)=>({isConfigured:tenant==='tenant-a',simulationEnabled:tenant==='tenant-a'}));

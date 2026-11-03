@@ -1,3 +1,4 @@
+import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
 import {CltJourneyService} from './server/services/cltJourneyService.js';
 import {CltAuthorizationFollowup} from './server/services/cltAuthorizationFollowup.js';
@@ -14713,7 +14714,7 @@ async function auditAndEnsureMasterUser() {
       const portInput=endpoint==='/v3/loan-inss-simulations/calculation'&&req.body.body?.originContract?{...req.body.body,...portabilityReviewMetadata(req.body.portabilityContext),birthDate:req.body.clientBirthDate,benefitType:req.body.benefitType,operation:req.body.body.refinancing?'PORT_REFIN':'PORT'}:null;
       if(portInput){const check=simulationPortabilityCheck('finanto',portInput);if(check.blocked)return res.status(422).json({error:check.reason});}
       const result = await FinantoService.request(prisma, tenantId, req.body.method, req.body.endpoint, req.body.body);
-      if(portInput&&result.success){const data=result.data as any;const check=simulationPortabilityCheck('finanto',portInput,{amount:finantoCashOut(data),contractAmount:data?.loanValue,installment:data?.refinancing?.installmentValue??data?.installmentValue,rate:data?.refinancing?.rate??portInput.refinancing?.rate});if(check.blocked)return res.status(422).json({error:check.reason});}
+      if(portInput&&result.success){const data=result.data as any;const check=simulationPortabilityCheck('finanto',portInput,{amount:finantoCashOut(data),contractAmount:portInput.operation==='PORT_REFIN'?data?.refinancing?.loanValue:data?.loanValue,installment:data?.refinancing?.installmentValue??data?.installmentValue,rate:data?.refinancing?.rate??portInput.refinancing?.rate});if(check.blocked)return res.status(422).json({error:check.reason});}
       res.status(result.status).json(result.data);
     } catch (err: any) {
       res.status(502).json({ error: err.message || 'Falha na chamada FINANTO.' });
@@ -15379,11 +15380,11 @@ async function auditAndEnsureMasterUser() {
         return res.status(403).json({ error: 'Permissão negada para configurar integrações bancárias.' });
       }
 
+      let credentialPatch:ReturnType<typeof factaCredentialPatch>;
+      try{credentialPatch=factaCredentialPatch(req.body||{});}catch{return res.status(400).json({error:'Ative a edição explícita das credenciais FACTA para alterar usuário/senha da API.'});}
       const {
         enabled,
         environment,
-        username,
-        password,
         baseUrl,
         autoSyncEnabled,
         simulationEnabled,
@@ -15400,8 +15401,7 @@ async function auditAndEnsureMasterUser() {
       const saved = await FactaBankService.saveTenantConfig(prisma, tenantId, {
         enabled,
         environment,
-        username,
-        password,
+        ...credentialPatch,
         baseUrl,
         autoSyncEnabled,
         simulationEnabled,
@@ -15429,7 +15429,7 @@ async function auditAndEnsureMasterUser() {
           autoSyncEnabled: saved.autoSyncEnabled,
           simulationEnabled: saved.simulationEnabled,
           syncIntervalMinutes: saved.syncIntervalMinutes,
-          passwordUpdated: Boolean(password),
+          passwordUpdated: Boolean(credentialPatch.password),
         },
         req,
       });
@@ -15498,8 +15498,9 @@ async function auditAndEnsureMasterUser() {
       const tenantId = session.effectiveTenantId || session.user.tenantId;
       if (!tenantId) return res.status(403).json({ error: 'Sessão inválida: sem tenantId.' });
 
-      const { username, password, baseUrl } = req.body || {};
-      const override = (username || password || baseUrl) ? { username, password, baseUrl } : undefined;
+      let credentialPatch:ReturnType<typeof factaCredentialPatch>;
+      try{credentialPatch=factaCredentialPatch(req.body||{});}catch{return res.status(400).json({error:'Ative a edição explícita das credenciais FACTA para testar uma senha alternativa.'});}
+      const override={...credentialPatch,baseUrl:req.body?.baseUrl};
 
       const environment = req.body?.environment;
       if (environment !== undefined && !['production', 'homologation'].includes(environment)) return res.status(400).json({ error: 'Ambiente FACTA inválido.' });

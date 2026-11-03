@@ -13,6 +13,7 @@ import { simulationDeadline } from './partnerSimulationTracking.js';
 import { AuditLogService } from './auditLogService.js';
 import { eventBus } from './pusherService.js';
 import { decodeDaycoval, encodeDaycoval } from './daycovalWorkbook.js';
+import {previewPortRefin} from './portRefinPreview.js';
 
 import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRatePolicies, type SpreadsheetBank } from './portRefinWorkbooks.js';
 export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSession: (req: Request) => Promise<any>) {
@@ -40,6 +41,15 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
   const model=SPREADSHEET_MODELS[bank], KEY=model.key, routeName=bank==='DAYCOVAL'?'daycoval':`${bank.toLowerCase()}-spreadsheet`;
   for (const portal of [false, true]) {
     const path = portal ? `/api/partner-portal/${routeName}` : `/api/${routeName}`;
+    app.post(`${path}/calculate`,limiter,async(req,res)=>{
+      res.setHeader('Cache-Control','no-store');
+      try{
+        const ctx=await context(req,portal,'simulations.create');if(!ctx)return res.status(403).json({error:'Sessão e permissão para simular são necessárias.'});
+        const book=await read(ctx.tenantId,bank);
+        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        return res.json(previewPortRefin(bank,book,req.body||{},today));
+      }catch(error:any){return res.status(422).json({error:error.message||'Não foi possível calcular pela planilha.'});}
+    });
     app.get(path, async (req, res) => {
       res.setHeader('Cache-Control', 'no-store');
       try {

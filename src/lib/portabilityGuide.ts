@@ -23,6 +23,9 @@ export function portabilityGuide(bankId:string){
  if(c.refinRateFixed!=null)add('Taxa de refinanciamento',`${Number(c.refinRateFixed).toLocaleString('pt-BR')}%`);
  if(c.minInstallment!==undefined)add('Parcela mínima',c.minInstallment===0?'Sem parcela mínima':money(c.minInstallment));
  if(c.minBalance!==undefined)add('Saldo mínimo',c.minBalance===0?'Sem saldo mínimo geral':money(c.minBalance));
+ if(c.minTotal!=null)add('Saldo mais troco mínimo',money(c.minTotal));
+ if(c.minGrossExclusive!=null)add('Bruto condicional do refinanciamento',`Superior a ${money(c.minGrossExclusive)}`);
+ if(c.minCashPercent!=null)add('Troco mínimo percentual',`${c.minCashPercent*100}% do novo endividamento; validar prazo e bruto retornado`);
  if(typeof c.pureMinBalance==='number')add('Saldo mínimo · portabilidade pura',money(c.pureMinBalance));
  if(typeof c.minCash==='number')add('Troco mínimo',money(c.minCash));
  if(Array.isArray(c.portRatesListed??c.portRates)&&(c.portRatesListed??c.portRates).every((value:unknown)=>typeof value==='number'))add('Taxas de portabilidade documentadas',(c.portRatesListed??c.portRates).map((value:number)=>`${value.toLocaleString('pt-BR')}%`).join(' / '));

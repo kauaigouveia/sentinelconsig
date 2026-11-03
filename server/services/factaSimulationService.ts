@@ -57,9 +57,16 @@ export class FactaSimulationService {
         FactaBankService.invalidateTokenCache(tenantId);
         return await this.request(prisma, tenantId, path, query, undefined, false, false);
       }
-      const payload = await response.json().catch(() => null);
+      const text=await response.text();
+      let payload:any;
+      try{payload=JSON.parse(text.replace(/^\uFEFF/,''));}catch{
+        const kind=!text.trim()?'EMPTY_RESPONSE':/^\s*</.test(text)?'NON_JSON_RESPONSE':'INVALID_JSON';
+        const detail=kind==='EMPTY_RESPONSE'?'corpo vazio':kind==='NON_JSON_RESPONSE'?'conteúdo não JSON (possível página de erro do transporte)':'JSON inválido';
+        throw Object.assign(new FactaRequestError(`FACTA respondeu HTTP ${response.status} com ${detail}. Nenhuma oferta foi confirmada.`,response.status,path,kind),{writeUncertain:body!==undefined});
+      }
+      if(!payload||typeof payload!=='object')throw Object.assign(new FactaRequestError(`FACTA respondeu HTTP ${response.status} sem um objeto de resposta válido. Nenhuma oferta foi confirmada.`,response.status,path,'INVALID_RESPONSE'),{writeUncertain:body!==undefined});
       if (!response.ok || !payload || payload.erro === true || payload.erro === 'true' || payload.error) {
-        throw Object.assign(new FactaRequestError(payload?.mensagem || payload?.msg || payload?.message || `FACTA não concluiu a consulta (HTTP ${response.status}).`,response.status,path,[401,403].includes(response.status)?'AUTHENTICATION':response.status>=500?'UNAVAILABLE':!payload?'INVALID_RESPONSE':'BANK_REJECTED'),{writeUncertain:body!==undefined&&(response.status>=500||response.ok&&!payload)});
+        throw Object.assign(new FactaRequestError(payload?.mensagem || payload?.msg || payload?.message || `FACTA informou falha de negócio sem mensagem explicativa (HTTP ${response.status}). Nenhuma oferta foi confirmada.`,response.status,path,[401,403].includes(response.status)?'AUTHENTICATION':response.status>=500?'UNAVAILABLE':!payload?'INVALID_RESPONSE':'BANK_REJECTED'),{writeUncertain:body!==undefined&&(response.status>=500||response.ok&&!payload)});
       }
       return payload;
     } catch (error: any) {

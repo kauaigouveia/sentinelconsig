@@ -14,7 +14,7 @@ it('shows independent Paraná/Banrisul, statuses, source uncertainty and individ
  expect(screen.getByRole('option',{name:'Todos os bancos'})).toBeTruthy();
  fireEvent.change(select,{target:{value:'parana'}});
  expect(screen.getAllByRole('row')).toHaveLength(2);
- expect(screen.getByText(/PENDENTE DE DADOS/)).toBeTruthy();
+ expect(screen.getByText(/APTO PARA CÁLCULO/)).toBeTruthy();
  fireEvent.change(select,{target:{value:'banrisul'}});expect(screen.getAllByRole('row')).toHaveLength(2);
  fireEvent.change(select,{target:{value:'ALL'}});expect(screen.getAllByRole('row').length).toBeGreaterThan(9);
 });

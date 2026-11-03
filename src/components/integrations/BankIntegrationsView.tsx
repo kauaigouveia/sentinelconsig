@@ -1,3 +1,5 @@
+import {FactaCredentialFields} from './FactaCredentialFields';
+import {factaCredentialPatch} from '../../lib/factaCredentialIntent';
 import { VctexIntegrationTab } from './VctexIntegrationTab';
 import { BankPromoterConnection, promoterApiUrl } from './BankPromoterConnection';
 import React, { useState, useEffect } from 'react';
@@ -241,7 +243,8 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
   });
 
   const [factaPassword, setFactaPassword] = useState('');
-  const [showFactaPassword, setShowFactaPassword] = useState(false);
+  const [editFactaCredentials,setEditFactaCredentials]=useState(false);
+  useEffect(()=>{const reset=()=>{setFactaPassword('');setEditFactaCredentials(false);};reset();window.addEventListener('tenantUpdated',reset);return()=>window.removeEventListener('tenantUpdated',reset);},[promoterId]);
   const [isLoadingFactaConfig, setIsLoadingFactaConfig] = useState(false);
   const [isSavingFactaConfig, setIsSavingFactaConfig] = useState(false);
   const [factaSaveSuccessMsg, setFactaSaveSuccessMsg] = useState<string | null>(null);
@@ -354,8 +357,8 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
         body: JSON.stringify({
           enabled: factaConfig.enabled,
           environment: factaConfig.environment,
-          username: factaConfig.username,
-          password: factaPassword ? factaPassword : undefined,
+          editCredentials: editFactaCredentials,
+          ...factaCredentialPatch({editCredentials:editFactaCredentials,username:factaConfig.username,password:editFactaCredentials?factaPassword:undefined}),
           baseUrl: factaConfig.baseUrl,
           autoSyncEnabled: factaConfig.autoSyncEnabled,
           simulationEnabled: Boolean(factaConfig.simulationEnabled),
@@ -375,7 +378,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
       }
 
       setFactaSaveSuccessMsg('Configurações da FACTA Financeira salvas com sucesso!');
-      setFactaPassword('');
+      setFactaPassword('');setEditFactaCredentials(false);
       await fetchFactaConfigAndStatus();
     } catch (err: any) {
       toastService.error('Não foi possível salvar a FACTA', err.message || 'Falha ao salvar as configurações da FACTA Financeira.');
@@ -391,8 +394,8 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
 
     try {
       const payload: any = { environment: factaConfig.environment };
-      if (factaConfig.username?.trim()) payload.username = factaConfig.username.trim();
-      if (factaPassword?.trim()) payload.password = factaPassword.trim();
+      payload.editCredentials=editFactaCredentials;
+      Object.assign(payload,factaCredentialPatch({editCredentials:editFactaCredentials,username:factaConfig.username,password:editFactaCredentials?factaPassword:undefined}));
       if (factaConfig.baseUrl?.trim()) payload.baseUrl = factaConfig.baseUrl.trim();
 
       const { ok, data } = await safeFetchJson(factaUrl('/api/integrations/facta/test-connection'), {
@@ -1320,43 +1323,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
                     </select>
                   </div>
 
-                  {/* Usuário */}
-                  <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Usuário Corban FACTA (username) *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={factaConfig.username}
-                      onChange={(e) => setFactaConfig({ ...factaConfig, username: e.target.value })}
-                      placeholder="Ex: CORBAN_SUL"
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden"
-                    />
-                  </div>
-
-                  {/* Senha */}
-                  <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Senha FACTA (password) {factaConfig.hasPassword ? '(Cadastrada)' : '*'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showFactaPassword ? 'text' : 'password'}
-                        value={factaPassword}
-                        onChange={(e) => setFactaPassword(e.target.value)}
-                        placeholder={factaConfig.hasPassword ? '•••••••• (Preencha para alterar)' : 'Digite a senha da FACTA'}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-slate-900 dark:text-slate-100 focus:border-orange-500 focus:outline-hidden pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowFactaPassword(!showFactaPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                      >
-                        {showFactaPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
+                  <FactaCredentialFields editing={editFactaCredentials} username={factaConfig.username} password={factaPassword} hasPassword={factaConfig.hasPassword} onUsernameChange={username=>setFactaConfig(current=>({...current,username}))} onPasswordChange={setFactaPassword} onEditingChange={editing=>{setEditFactaCredentials(editing);setFactaPassword('');if(!editing)void fetchFactaConfigAndStatus();}} />
 
                   {/* Tipo de Filtro por Data */}
                   <div>

@@ -99,7 +99,7 @@ export function finantoCashOut(data: any): number | null {
 }
 
 export function finantoCashOutError(name: string, data: any,operation="NEW"): string | null {
-  if(isPortability(operation))return null; // New document leaves the percentage/age formula unspecified.
+  if(isPortability(operation))return null; // PORT/PORT_REFIN financial minima are checked centrally with refinancing gross, term and cash-out.
   if (!/ESSENCIAL|SELECT|PRIME/i.test(name)) return null;
   const amount = finantoCashOut(data);
   if (amount === null) return 'A API não informou o troco para conferir o mínimo de R$ 100,00.';

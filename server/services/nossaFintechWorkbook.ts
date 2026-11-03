@@ -1,4 +1,4 @@
-import replacement from '../../src/data/portabilityRulesReplacement20261030.json';
+import {activePortabilityReplacement as replacement} from '../../src/lib/portabilityActiveRules.js';
 import { addMonths, parseDate, type DaycovalWorkbook } from './daycovalWorkbook.js';
 
 export const NOSSA_WORKBOOK_KEY = 'NOSSA_FINTECH_PORT_REFIN_WORKBOOK_V7';

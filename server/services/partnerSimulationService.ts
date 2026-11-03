@@ -178,7 +178,7 @@ export class PartnerSimulationService {
               });
               if (finantoCashOutError(rule.name || '', data,input.operation)) return;
               const amount = finantoCashOut(data);
-              if (amount && amount > 0) offers.push({ provider: 'FINANTO', institution: data.lender?.name || data.fund?.name || 'FINANTO', state: 'OFFER', code: String(rule.code || rule.id), name: finantoTableLabel(rule,input.operation), amount, contractAmount: data.loanValue, installment: data.installmentValue || input.value, term: input.term, rate: choice.rate });
+              if (amount && amount > 0) offers.push({ provider: 'FINANTO', institution: data.lender?.name || data.fund?.name || 'FINANTO', state: 'OFFER', code: String(rule.code || rule.id), name: finantoTableLabel(rule,input.operation), amount, contractAmount: input.operation==='PORT_REFIN'?data.refinancing?.loanValue:data.loanValue, installment: data.installmentValue || input.value, term: input.term, rate: choice.rate });
             } catch (error: any) { notes.push(`FINANTO (${rule.name}): ${error.message}`); }
           }));
         }
