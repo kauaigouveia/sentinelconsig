@@ -1,3 +1,4 @@
+import {paletteStyle} from './lib/presentationPalette';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StorageService } from './services/storageService';
 import { BackupService } from './services/backupService';
@@ -544,7 +545,7 @@ function AppMainContent() {
     else if (pathname.startsWith('/parceiro/perfil') || pathname.startsWith('/parceiro/cadastro')) initialTab = 'perfil';
 
     return (
-      <React.Suspense fallback={<div className="p-6 text-sm text-slate-500">Carregando portal...</div>}>
+      <React.Suspense fallback={<div className="p-6 text-sm text-[var(--text-secondary)]">Carregando portal...</div>}>
         <PartnerPortalLayout initialTab={initialTab} />
       </React.Suspense>
     );
@@ -552,10 +553,10 @@ function AppMainContent() {
 
   if (isVerifyingSession) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-slate-200 font-sans">
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] font-sans">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <span className="text-xs font-semibold tracking-wide text-slate-400">Verificando autenticação segura...</span>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--field-border)] border-t-transparent"></div>
+          <span className="text-xs font-semibold tracking-wide text-[var(--text-secondary)]">Verificando autenticação segura...</span>
         </div>
       </div>
     );
@@ -563,7 +564,7 @@ function AppMainContent() {
 
   if (!isAuthenticated) {
     return (
-      <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Carregando acesso seguro...</div>}>
+      <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-[var(--text-secondary)]">Carregando acesso seguro...</div>}>
         <LoginView
           onLoginSuccess={async () => {
             await verifyServerSession();
@@ -580,7 +581,7 @@ function AppMainContent() {
 
   if (activeUser?.requireTenantSelection) {
     return (
-      <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Carregando empresas...</div>}>
+      <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-[var(--text-secondary)]">Carregando empresas...</div>}>
         <TenantSelectionView user={activeUser} onSuccess={() => window.location.reload()} />
       </React.Suspense>
     );
@@ -594,7 +595,7 @@ function AppMainContent() {
     : true;
 
   return (
-    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-colors ${newUI ? "s2-root" : ""}`} data-density={workspace.density}>
+    <div className={`sentinel-app flex w-screen overflow-hidden font-sans antialiased transition-transform ${newUI ? "s2-root" : ""}`} data-density={workspace.density} style={paletteStyle(brandingTenant?.whiteLabel?.primaryColor || (publicBranding.status==='ACTIVE'?publicBranding.primaryColor:null))}>
       <a href="#sentinel-main" className="sentinel-skip-link">Ir para o conteúdo principal</a>
       {/* Sidebar (Hidden in Focus Mode) */}
       {!isFocusMode && (
@@ -603,7 +604,7 @@ function AppMainContent() {
             <button
               type="button"
               aria-label="Fechar menu de navegação"
-              className="md:hidden fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px]"
+              className="md:hidden fixed inset-0 z-40 bg-[var(--bg-surface-elevated)] backdrop-blur-[1px]"
               onClick={() => setIsMobileNavigationOpen(false)}
             />
           )}
@@ -646,13 +647,13 @@ function AppMainContent() {
             isNavigationOpen={isMobileNavigationOpen}
           />
         ) : (
-          <div className="flex h-12 items-center justify-between border-b border-blue-500/20 bg-blue-900/90 dark:bg-blue-950 px-4 text-white shadow-md z-30 transition-all backdrop-blur-xs">
+          <div className="flex h-12 items-center justify-between border-b border-[var(--field-border)] bg-[var(--action)] bg-[var(--action)] px-4 text-[var(--action-ink)]  z-30 transition-transform backdrop-blur-xs">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 rounded-md bg-blue-600/80 px-2 py-0.5 text-xs font-black tracking-wide uppercase">
+              <div className="flex items-center gap-1.5 rounded-md bg-[var(--action)] px-2 py-0.5 text-xs font-black tracking-wide uppercase">
                 <Maximize2 className="h-3.5 w-3.5" />
                 <span>Modo Foco Ativo</span>
               </div>
-              <span className="text-xs text-blue-200 hidden sm:inline">
+              <span className="text-xs text-[var(--info-text)] hidden sm:inline">
                 Barra lateral e cabeçalho ocultados para análise ampliada de dados
               </span>
             </div>
@@ -660,7 +661,7 @@ function AppMainContent() {
             <div className="flex items-center gap-2">
               <button
                 onClick={openNewProduction}
-                className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-xs cursor-pointer"
+                className="flex items-center gap-1 rounded-lg bg-[var(--action)] bg-[var(--action)] px-2.5 py-1 text-xs font-bold text-[var(--action-ink)]  cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Nova Produção</span>
@@ -668,7 +669,7 @@ function AppMainContent() {
 
               <button
                 onClick={() => setIsUniversalSearchOpen(true)}
-                className="flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 px-2.5 py-1 text-xs font-medium text-white cursor-pointer"
+                className="flex items-center gap-1 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] cursor-pointer"
               >
                 <Search className="h-3.5 w-3.5" />
                 <span>Buscar (Ctrl+K)</span>
@@ -676,7 +677,7 @@ function AppMainContent() {
 
               <button
                 onClick={() => setIsShortcutsOpen(true)}
-                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                className="p-1 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] cursor-pointer"
                 title="Atalhos (?)"
               >
                 <Keyboard className="h-4 w-4" />
@@ -685,7 +686,7 @@ function AppMainContent() {
               <button
                 id="btn-exit-focus-mode"
                 onClick={() => setIsFocusMode(false)}
-                className="flex items-center gap-1 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+                className="flex items-center gap-1 rounded-lg bg-[var(--action)] bg-[var(--action)] px-3 py-1 text-xs font-bold text-[var(--action-ink)]  transition-transform cursor-pointer"
                 title="Sair do Modo Foco (Esc)"
               >
                 <Minimize2 className="h-3.5 w-3.5" />
@@ -701,8 +702,8 @@ function AppMainContent() {
         )}
 
         {/* Dynamic Page Views */}
-        {newUI && !isFocusMode && <WorkTabs key={preferenceKey} path={pathname} recent={workspace.recent} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate} />}
-        <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
+        {newUI && !isFocusMode && <div className="ui-context-row"><Breadcrumbs currentView={effectiveView} onNavigate={handleNavigate}/><details className="ui-recent-pages"><summary>Páginas recentes</summary><WorkTabs key={preferenceKey} path={pathname} recent={workspace.recent} role={activeUser?.role} permissions={activeUser?.customPermissions} navigate={handleNavigate}/></details></div>}
+        <main id="sentinel-main" tabIndex={-1} className={`sentinel-main flex-1 overflow-y-auto min-h-0 ${isFocusMode ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]' : ''}`}>
           <div className={showRouteContext && hasRouteAccess ? 'sentinel-view-frame' : ''}><div className="sentinel-view-body" data-ui-module={newUI && hasRouteAccess ? effectiveView : undefined} data-ui-family={newUI && hasRouteAccess ? operationalFamily(effectiveView) : undefined}>
           {is404 ? (
             <NotFoundView
@@ -718,7 +719,7 @@ function AppMainContent() {
               onNavigateHome={() => navigate('/dashboard')}
             />
           ) : (
-            <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-slate-500">Carregando tela...</div>}>
+            <React.Suspense fallback={<div className="flex min-h-48 items-center justify-center text-sm text-[var(--text-secondary)]">Carregando tela...</div>}>
             <>
               {effectiveView === 'torre-controle' && newUI && <PreviewDashboard onRefresh={preview.refresh} loading={preview.loading} key={preferenceKey} rows={preview.rows} bottlenecks={preview.bottlenecks} error={preview.error} openStatus={statusId => handleNavigateToProductionWithFilter({statusId})} openBank={bankId => handleNavigateToProductionWithFilter({bankId})} role={activeUser?.role} permissions={activeUser?.customPermissions} name={activeUser?.name || 'equipe'} navigate={handleNavigate} openProposal={id => { setDetailProposalId(id); navigate(`/propostas/${id}`); }} newProposal={canCreateProposals ? openNewProduction : undefined} />}
               {effectiveView === 'torre-controle' && !newUI && (

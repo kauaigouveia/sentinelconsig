@@ -345,12 +345,12 @@ export const Header: React.FC<HeaderProps> = ({
   const isHealthChecking = serverHealth === null;
 
   return (
-    <header className="sentinel-header h-13 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b101d] px-2 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 transition-colors select-none">
+    <header className="sentinel-header h-13 border-b border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 transition-transform select-none">
       {onOpenNavigation && (
         <button
           type="button"
           onClick={onOpenNavigation}
-          className="md:hidden h-11 w-11 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+          className="md:hidden h-11 w-11 shrink-0 flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
           aria-label="Abrir menu de navegação"
           aria-controls="app-sidebar"
           aria-expanded={isNavigationOpen}
@@ -358,7 +358,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="h-4 w-4" />
         </button>
       )}
-      {redesignPreview && <label className="s2-company-selector"><span>EMPRESA ATUAL</span><select aria-label="Selecionar empresa" value={activeUser?.role === 'PLATFORM_MASTER' ? adminContext?.context?.targetTenantId || 'PLATFORM' : StorageService.getCurrentTenantId()} onChange={e => handleCompanySwitch(e.target.value)}>
+      {redesignPreview && <label className="s2-company-selector"><span>EMPRESA ATUAL</span><select className="ui-input" aria-label="Selecionar empresa" value={activeUser?.role === 'PLATFORM_MASTER' ? adminContext?.context?.targetTenantId || 'PLATFORM' : StorageService.getCurrentTenantId()} onChange={e => handleCompanySwitch(e.target.value)}>
         {activeUser?.role === 'PLATFORM_MASTER' && <option value="PLATFORM">Plataforma</option>}
         {(activeUser?.role === 'PLATFORM_MASTER' ? tenants : (activeUser?.availableMemberships || activeUser?.memberships || []).filter((m:any)=>m.active!==false).map((m:any)=>({id:m.tenantId,name:m.tenantName||m.tenant?.name||'Empresa'}))).map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
         {activeUser?.role !== 'PLATFORM_MASTER' && !(activeUser?.availableMemberships || activeUser?.memberships || []).some((m:any)=>m.tenantId===StorageService.getCurrentTenantId()) && <option value={StorageService.getCurrentTenantId()}>{StorageService.getCurrentTenant().name}</option>}
@@ -366,7 +366,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* CENTRO: Busca Global */}
       <div className="flex-1 min-w-0 max-w-xl">
         {redesignPreview ? <button className="s2-global-search" aria-label="Abrir busca universal" onClick={onOpenSearch}><Search size={17}/><span>Buscar páginas, cliente, CPF ou ADE</span><kbd>Ctrl K</kbd></button> : <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
           <input
             id="global-search-input"
             aria-label="Buscar cliente, CPF, ADE, proposta ou parceiro"
@@ -374,9 +374,9 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchTerm}
             onChange={e => onGlobalSearch(e.target.value)}
             placeholder="Buscar cliente, CPF, ADE ou parceiro..."
-            className="w-full h-8.5 pl-9 pr-20 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all shadow-2xs"
+            className="ui-input w-full h-8.5 pl-9 pr-20 text-xs rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] placeholder-slate-400 dark:placeholder-slate-500 focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:outline-none focus:border-[var(--border-default)] focus:ring-1 focus:ring-[var(--field-border)] transition-transform "
           />
-          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-0.5 text-[9.5px] font-mono font-bold text-slate-400 dark:text-slate-400 shadow-2xs">
+          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center gap-0.5 rounded border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 text-[9.5px] font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] ">
             Ctrl + K
           </kbd>
         </div>}
@@ -390,16 +390,16 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-system-status"
             onClick={() => setIsSystemStatusOpen(!isSystemStatusOpen)}
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] transition-transform cursor-pointer"
             title="Status dos Serviços"
           >
             <span
               className={`h-2 w-2 rounded-full ${
                 isHealthChecking
-                  ? 'bg-slate-400'
+                  ? 'bg-[var(--bg-surface-elevated)]'
                   : isHealthy
-                  ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]'
-                  : 'bg-amber-500 animate-pulse'
+                  ? 'bg-[var(--action)] -[0_0_8px_rgba(16,185,129,0.7)]'
+                  : 'bg-[var(--action)] animate-pulse'
               }`}
             />
             <span className="hidden xl:inline text-[11px] font-bold">
@@ -408,35 +408,35 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {isSystemStatusOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-3.5 shadow-xl z-50 animate-in fade-in duration-100 text-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2.5">
-                <span className="font-bold text-slate-900 dark:text-slate-100">
+            <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5  z-50 animate-in fade-in duration-100 text-xs">
+              <div className="flex items-center justify-between border-b border-[var(--border-default)] dark:border-[var(--border-default)] pb-2 mb-2.5">
+                <span className="font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                   Status dos Serviços
                 </span>
-                <span className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded border ${isHealthChecking ? 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-300' : isHealthy ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20'}`}>
+                <span className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded border ${isHealthChecking ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)] dark:text-[var(--text-primary)]' : isHealthy ? 'bg-[var(--action)] text-[var(--action-ink)] dark:text-[var(--action-ink)] border-[var(--border-default)]' : 'bg-[var(--action)] text-[var(--action-ink)] dark:text-[var(--action-ink)] border-[var(--border-default)]'}`}>
                   {isHealthChecking ? 'VERIFICANDO' : isHealthy ? 'OPERACIONAL' : 'ATENÇÃO'}
                 </span>
               </div>
 
               <div className="space-y-2">
                 {/* Realtime Connection */}
-                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                <div className="flex items-center justify-between py-1 border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
                   <div className="flex items-center gap-2">
-                    <Radio className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-slate-700 dark:text-slate-300">Conexão em Tempo Real</span>
+                    <Radio className="h-3.5 w-3.5 text-[var(--info-text)]" />
+                    <span className="text-[var(--text-primary)] dark:text-[var(--text-primary)]">Conexão em Tempo Real</span>
                   </div>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded font-mono ${realtimeStatus === 'CONNECTED' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-500/10 text-slate-600 dark:text-slate-300'}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded font-mono ${realtimeStatus === 'CONNECTED' ? 'bg-[var(--action)] text-[var(--action-ink)] dark:text-[var(--action-ink)]' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>
                     {realtimeStatus === 'CONNECTED' ? 'CONECTADA' : realtimeStatus === 'CONNECTING' ? 'CONECTANDO' : 'DESCONECTADA'}
                   </span>
                 </div>
 
                 {/* Secure Sync */}
-                <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                <div className="flex items-center justify-between py-1 border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
                   <div className="flex items-center gap-2">
-                    <Activity className="h-3.5 w-3.5 text-emerald-500" />
-                    <span className="text-slate-700 dark:text-slate-300">API da Plataforma</span>
+                    <Activity className="h-3.5 w-3.5 text-[var(--success-text)]" />
+                    <span className="text-[var(--text-primary)] dark:text-[var(--text-primary)]">API da Plataforma</span>
                   </div>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${serverHealth?.status === 'ok' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-500/10 text-slate-600 dark:text-slate-300'}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${serverHealth?.status === 'ok' ? 'bg-[var(--action)] text-[var(--action-ink)] dark:text-[var(--action-ink)]' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>
                     {serverHealth ? (serverHealth.status === 'ok' ? 'DISPONÍVEL' : 'INDISPONÍVEL') : 'VERIFICANDO'}
                   </span>
                 </div>
@@ -444,15 +444,15 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* API e banco consultados pelo endpoint de saúde */}
                 <div className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">
-                    <Database className="h-3.5 w-3.5 text-indigo-500" />
-                    <span className="text-slate-700 dark:text-slate-300">Banco de dados</span>
+                    <Database className="h-3.5 w-3.5 text-[var(--info-text)]" />
+                    <span className="text-[var(--text-primary)] dark:text-[var(--text-primary)]">Banco de dados</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-[10px] font-bold font-mono ${databaseStatus === 'online' ? 'text-emerald-600 dark:text-emerald-400' : databaseStatus === 'checking' ? 'text-slate-500 dark:text-slate-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    <span className={`text-[10px] font-bold font-mono ${databaseStatus === 'online' ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : databaseStatus === 'checking' ? 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)]' : 'text-[var(--danger-text)] dark:text-[var(--danger-text)]'}`}>
                       {databaseStatus === 'online' ? 'CONECTADO' : databaseStatus === 'checking' ? 'VERIFICANDO' : 'INDISPONÍVEL'}
                     </span>
                     {databaseLatency !== null && (
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                         ({databaseLatency}ms)
                       </span>
                     )}
@@ -462,7 +462,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={checkServerHealth}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs py-1.5 font-bold transition-colors cursor-pointer"
+                className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-xs py-1.5 font-bold transition-transform cursor-pointer"
               >
                 <RefreshCw className={`h-3 w-3 ${databaseStatus === 'checking' ? 'animate-spin' : ''}`} />
                 <span>Verificar API e banco</span>
@@ -475,12 +475,12 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="btn-notifications-header"
           onClick={onOpenNotifications}
-          className="relative h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+          className="relative h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
           title="Notificações do Sistema"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-white dark:ring-slate-900 shadow-xs">
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-[var(--action)] text-[9px] font-black text-[var(--action-ink)] ring-2 ring-white dark:ring-[var(--field-border)] ">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -491,7 +491,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-toggle-focus"
             onClick={onToggleFocusMode}
-            className="h-8 w-8 hidden md:flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+            className="h-8 w-8 hidden md:flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
             title="Modo Foco (Alt+F)"
           >
             <Maximize2 className="h-3.5 w-3.5" />
@@ -502,10 +502,10 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="btn-theme-toggle"
           onClick={toggleTheme}
-          className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+          className="h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
           title={isDark ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
         >
-          {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
+          {isDark ? <Sun className="h-4 w-4 text-[var(--warning-text)]" /> : <Moon className="h-4 w-4 text-[var(--text-secondary)]" />}
         </button>
 
         {/* Usuário, Perfil & Menu Dropdown */}
@@ -513,40 +513,40 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-user-profile-menu"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 h-8.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+            className="flex items-center gap-2 h-8.5 px-2.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
             title={getUserDisplayTitle()}
           >
-            <div className="h-5.5 w-5.5 rounded-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="h-5.5 w-5.5 rounded-md    text-[var(--text-primary)] text-[10px] font-black flex items-center justify-center shrink-0 ">
               {activeUser?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[150px] truncate hidden md:inline">
+            <span className="text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] max-w-[150px] truncate hidden md:inline">
               {getUserDisplayTitle()}
             </span>
-            <ChevronDown className="h-3 w-3 text-slate-400 shrink-0" />
+            <ChevronDown className="h-3 w-3 text-[var(--text-secondary)] shrink-0" />
           </button>
 
           {isUserMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 shadow-xl z-50 animate-in fade-in duration-100 text-xs">
+            <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2.5  z-50 animate-in fade-in duration-100 text-xs">
               {/* User Info Header */}
-              <div className="px-2.5 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
-                <p className="font-black text-slate-900 dark:text-slate-100 truncate">
+              <div className="px-2.5 py-2 border-b border-[var(--border-default)] dark:border-[var(--border-default)] mb-2">
+                <p className="font-black text-[var(--text-primary)] dark:text-[var(--text-primary)] truncate">
                   {getUserDisplayTitle()}
                 </p>
-                <p className="text-[10.5px] text-slate-400 dark:text-slate-500 font-mono truncate">
+                <p className="text-[10.5px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono truncate">
                   {activeUser?.email || 'usuario@sentinel.com'}
                 </p>
               </div>
 
               {/* Context Selector for PLATFORM_MASTER */}
               {activeUser?.role === 'PLATFORM_MASTER' && !redesignPreview && (
-                <div className="px-2 py-1.5 mb-2 border-b border-slate-100 dark:border-slate-800">
-                  <label className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                <div className="px-2 py-1.5 mb-2 border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
+                  <label className="text-[9.5px] font-black uppercase tracking-wider text-[var(--text-secondary)] block mb-1">
                     Selecionar Empresa
                   </label>
                   <select
                     value={adminContext?.active && adminContext?.context ? adminContext.context.targetTenantId : 'PLATFORM'}
                     onChange={e => handleCompanySwitch(e.target.value)}
-                    className="w-full text-[11px] font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-200"
+                    className="ui-input w-full text-[11px] font-semibold rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1.5 text-[var(--text-primary)] dark:text-[var(--text-primary)]"
                   >
                     <option value="PLATFORM">🌐 [MASTER OP] PLATAFORMA</option>
                     {tenants.map(t => {
@@ -570,7 +570,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
 
-              {redesignPreview && <div className="px-2 pb-2 border-b border-slate-200 dark:border-slate-800 mb-2">{onToggleFavorite && <button className="s2-text-button w-full py-2" onClick={onToggleFavorite}><Star size={14}/>{isFavorite?'Remover favorito':'Favoritar esta página'}</button>}{onToggleDensity && <button className="s2-text-button w-full py-2" onClick={onToggleDensity}><Sliders size={14}/>Densidade: {density==='compact'?'compacta':'confortável'}</button>}</div>}
+              {redesignPreview && <div className="px-2 pb-2 border-b border-[var(--border-default)] dark:border-[var(--border-default)] mb-2">{onToggleFavorite && <button className="s2-text-button w-full py-2" onClick={onToggleFavorite}><Star size={14}/>{isFavorite?'Remover favorito':'Favoritar esta página'}</button>}{onToggleDensity && <button className="s2-text-button w-full py-2" onClick={onToggleDensity}><Sliders size={14}/>Densidade: {density==='compact'?'compacta':'confortável'}</button>}</div>}
               {/* Quick Actions */}
               <div className="space-y-0.5">
                 {onOpenBackupModal && (
@@ -579,9 +579,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setIsUserMenuOpen(false);
                       onOpenBackupModal();
                     }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-left font-semibold transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-left font-semibold transition-transform cursor-pointer"
                   >
-                    <Database className="h-3.5 w-3.5 text-purple-500" />
+                    <Database className="h-3.5 w-3.5 text-[var(--info-text)]" />
                     <span>Backup & Snapshots</span>
                   </button>
                 )}
@@ -591,17 +591,17 @@ export const Header: React.FC<HeaderProps> = ({
                     setIsUserMenuOpen(false);
                     onOpenTestRunner();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-left font-semibold transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-left font-semibold transition-transform cursor-pointer"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[var(--info-text)]" />
                   <span>Central de Testes</span>
                 </button>
 
                 <button
                   onClick={handleTriggerCron}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-left font-semibold transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-left font-semibold transition-transform cursor-pointer"
                 >
-                  <Play className="h-3.5 w-3.5 text-emerald-500" />
+                  <Play className="h-3.5 w-3.5 text-[var(--success-text)]" />
                   <span>Atualizar Prazos e Saldos</span>
                 </button>
 
@@ -611,9 +611,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setIsUserMenuOpen(false);
                       onOpenShortcuts();
                     }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-left font-semibold transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-left font-semibold transition-transform cursor-pointer"
                   >
-                    <Keyboard className="h-3.5 w-3.5 text-slate-400" />
+                    <Keyboard className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
                     <span>Atalhos de Teclado (?)</span>
                   </button>
                 )}
@@ -623,17 +623,17 @@ export const Header: React.FC<HeaderProps> = ({
                     setIsUserMenuOpen(false);
                     setIsChangePasswordOpen(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-left font-semibold transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-left font-semibold transition-transform cursor-pointer"
                 >
-                  <KeyRound className="h-3.5 w-3.5 text-amber-500" />
+                  <KeyRound className="h-3.5 w-3.5 text-[var(--warning-text)]" />
                   <span>Alterar senha</span>
                 </button>
 
-                <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+                <div className="border-t border-[var(--border-default)] dark:border-[var(--border-default)] my-1" />
 
                 <button
                   onClick={handleResetData}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-semibold text-left transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--action)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold text-left transition-transform cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Redefinir Dados (Seed)</span>
@@ -644,7 +644,7 @@ export const Header: React.FC<HeaderProps> = ({
                     StorageService.logout();
                     window.location.reload();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-left transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--action)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold text-left transition-transform cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   <span>Sair do Sistema</span>
@@ -658,8 +658,8 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Floating Cron Toast */}
       {isChangePasswordOpen && <ChangePasswordModal onClose={() => setIsChangePasswordOpen(false)} />}
       {cronMessage && (
-        <div className="absolute top-14 right-4 z-50 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/90 px-3.5 py-2 text-xs text-emerald-800 dark:text-emerald-200 shadow-lg flex items-center gap-2">
-          <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+        <div className="absolute top-14 right-4 z-50 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-3.5 py-2 text-xs text-[var(--success-text)] dark:text-[var(--success-text)]  flex items-center gap-2">
+          <Zap className="h-3.5 w-3.5 text-[var(--success-text)] dark:text-[var(--success-text)] animate-pulse" />
           <span>{cronMessage}</span>
         </div>
       )}

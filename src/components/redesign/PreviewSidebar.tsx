@@ -40,16 +40,7 @@ const icons: Record<string, React.ElementType> = {
   "/esteira": Workflow,
   "/agenda-operacional": CalendarDays,
 };
-const colors = [
-  "#2563eb",
-  "#8b5cf6",
-  "#06b6d4",
-  "#10b981",
-  "#f59e0b",
-  "#3b82f6",
-  "#f43f5e",
-  "#8b5cf6",
-];
+const colors = Array(8).fill("var(--text-secondary)");
 export function PreviewSidebar({
   role,
   permissions = [],
