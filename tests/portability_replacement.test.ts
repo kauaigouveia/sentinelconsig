@@ -138,7 +138,7 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
   const today=new Date(2026,9,30,12);
   expect(finantoAgeError('1957-01-01',96,today,'PORT_REFIN')).not.toBeNull();expect(finantoAgeError('1957-01-01',96,today,'NEW')).toBeNull();
   expect(nossaFintechAgeError('1950-01-01',96,today,'PORT_REFIN')).not.toBeNull();expect(nossaFintechAgeError('1950-01-01',96,today,'NEW')).not.toBeNull();
-  expect(finantoInstallmentError('PRIME',60,'PORT_REFIN')).toBeNull();expect(finantoCashOutError('PRIME',{netValue:1},'PORT_REFIN')).toBeNull();
+  expect(finantoInstallmentError('PRIME',60,'PORT_REFIN')).not.toBeNull();expect(finantoCashOutError('PRIME',{netValue:1},'PORT_REFIN')).toBeNull();
   expect(finantoRefinancingChoices({name:'PRIME',items:[{rate:1.85,minTerm:1,maxTerm:108}]},108,undefined,'PORT_REFIN').map(row=>row.rate)).toEqual([1.85]);
   expect(finantoRefinancingChoices({name:'PRIME',items:[{rate:1.85,minTerm:1,maxTerm:108}]},108,1.83,'PORT_REFIN')).toEqual([]);
   expect(finantoTableLabel({name:'PRIME'},'PORT_REFIN')).toBe('PRIME');

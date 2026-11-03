@@ -89,3 +89,18 @@ describe('Regras operacionais INSS', () => {
     expect(nossaFintechBalanceError({ name: 'INSS 1,85% (saldo mín R$ 20000)' }, 13000)).not.toBeNull();
   });
 });
+
+// Synthetic financial fixtures: shared gate used by frontend and backend before dispatch.
+describe('FINANTO portability installment table selection',()=>{
+  it.each(['PORT','PORT_REFIN'])('keeps only PRIME for 319.56 in %s',operation=>{
+    const names=['ESSENCIAL ≥ 50','ESSENCIAL ≥ 50 +90DIAS','SELECT ≥ 100','SELECT ≥ 100 +90DIAS','PRIME ≥ 300','PRIME ≥ 300 +90DIAS'];
+    expect(names.filter(name=>!finantoInstallmentError(name,319.56,operation))).toEqual(['PRIME ≥ 300','PRIME ≥ 300 +90DIAS']);
+  });
+  it.each(['PORT','PORT_REFIN'])('preserves explicit boundaries in %s',operation=>{
+    for(const [value,expected] of [[49.99,[]],[50,['ESSENCIAL']],[100,['ESSENCIAL']],[101,['SELECT']],[299,['SELECT']],[300,[]],[300.01,['PRIME']]] as const){
+      expect(['ESSENCIAL','SELECT','PRIME'].filter(name=>!finantoInstallmentError(name,value,operation))).toEqual(expected);
+    }
+    expect(finantoInstallmentError('Outra tabela',49.99,operation)).not.toBeNull();
+    expect(finantoInstallmentError('Outra tabela',319.56,operation)).toBeNull();
+  });
+});

@@ -32,3 +32,30 @@ it('calls Daycoval/C6 read-only calculators from the real form, keeps estimates 
  expect(fetch.mock.calls.filter(([url])=>url==='/api/parana-spreadsheet/calculate')).toHaveLength(1);
  expect(screen.queryByText('UF: confirmar informação.')).toBeNull();expect(screen.queryByText('Banco com exigência de 13 parcelas pagas não identificado.')).toBeNull();
 });
+
+it('filters lower FINANTO tiers before requesting calculations for an installment above 300',async()=>{
+ const rules=['ESSENCIAL ≥ 50','SELECT ≥ 100','PRIME ≥ 300','PRIME ≥ 300 +90DIAS'].map((name,index)=>({id:`rule-${index}`,name,product:{id:'inss'},items:[{term:108,rate:1.85}]}));
+ const fetch=vi.fn(async(url:any,init?:RequestInit)=>{
+  if(url==='/api/bank-playbooks')return new Response(JSON.stringify({canDiagnose:false}));
+  if(url==='/api/integrations/finanto/config')return new Response(JSON.stringify({enabled:true,isConfigured:true}));
+  if(url==='/api/integrations/finanto/request'){
+   const request=JSON.parse(String(init?.body));
+   if(request.endpoint.includes('loan-products/'))return new Response(JSON.stringify({items:[{id:'inss',type:{code:20}}]}));
+   if(request.endpoint.includes('loan-product-rules/'))return new Response(JSON.stringify({items:rules}));
+   if(request.endpoint.includes('/calculation'))return new Response(JSON.stringify({refinancing:{netValue:500,installmentValue:319.56}}));
+   throw Error('Unexpected FINANTO mock endpoint');
+  }
+  return new Response(JSON.stringify({offers:[],success:false,error:'Synthetic integration without offer'}));
+ });vi.stubGlobal('fetch',fetch);
+ render(<NossaFintechPortRefinSimulationModal isOpen onClose={()=>{}}/>);
+ const change=(label:string,value:string)=>fireEvent.change(screen.getByLabelText(label),{target:{value}});
+ change('CPF','00000000191');change('Data de nascimento','1980-01-01');change('Número do benefício','123456789');
+ fireEvent.change(screen.getByRole('combobox',{name:/Espécie/}),{target:{value:'41'}});fireEvent.click(screen.getByRole('button',{name:'41 - Aposentadoria por Idade'}));
+ fireEvent.click(screen.getByRole('button',{name:'Continuar'}));
+ change('Banco de origem','001');change('Número do contrato','SYNTHETIC');change('Prazo original (meses)','84');change('Parcelas restantes','57');change('Saldo devedor (R$)','3.481,19');change('Parcela atual (R$)','319,56');change('Prazo do novo refinanciamento','108');
+ fireEvent.submit(screen.getByRole('button',{name:'Comparar ofertas'}).closest('form')!);
+ await screen.findByText('PRIME ≥ 300 +90DIAS');
+ const requests=fetch.mock.calls.filter(([url])=>url==='/api/integrations/finanto/request').map(([,init])=>JSON.parse(String(init?.body))).filter(row=>row.endpoint.endsWith('/calculation'));
+ expect(requests.map(row=>row.body.ruleId).sort()).toEqual(['rule-2','rule-3']);
+ expect(screen.getAllByRole('button',{name:'Selecionar'})).toHaveLength(2);
+});

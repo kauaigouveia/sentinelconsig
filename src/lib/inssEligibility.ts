@@ -52,10 +52,10 @@ export function nossaFintechAgeError(birthDate: string, term: number, today = co
 
 export function finantoInstallmentError(name: string, installment: number,operation="NEW"): string | null {
   if (!Number.isFinite(installment) || installment <= 0) return 'Informe uma parcela atual maior que zero.';
-  if(isPortability(operation))return installment<50?'FINANTO: parcela mínima de R$ 50,00.':null;
   if (/ESSENCIAL/i.test(name)) return installment >= 50 && installment <= 100 ? null : 'ESSENCIAL: parcela atual de R$ 50,00 a R$ 100,00.';
   if (/SELECT/i.test(name)) return installment >= 101 && installment <= 299 ? null : 'SELECT: parcela atual de R$ 101,00 a R$ 299,00.';
   if (/PRIME/i.test(name)) return installment > 300 ? null : 'PRIME: parcela atual acima de R$ 300,00.';
+  if(isPortability(operation)&&installment<50)return 'FINANTO: parcela mínima de R$ 50,00.';
   return null;
 }
 
