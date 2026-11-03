@@ -1,0 +1,60 @@
+/* Single source of design values. Brand is supplied by the existing tenant resolver. */
+:root {
+ --bg-canvas:#E9ECEB; --bg-surface:#F6F7F7; --bg-surface-elevated:#FFFFFF;
+ --border-default:#CCD0CF; --border-strong:#9BA8AB; --field-border:#4A5C6A;
+ --text-primary:#06141B; --text-secondary:#4A5C6A; --text-muted:#4A5C6A;
+ --action-default:#253745; --action-default-ink:#F6F7F7;
+ --action:var(--primary-color,var(--action-default)); --action-ink:var(--brand-ink,var(--action-default-ink));
+ --success-bg:#E0E9E4; --success-border:#436A57; --success-text:#254D3D;
+ --warning-bg:#EDE5D5; --warning-border:#826233; --warning-text:#5D431A;
+ --danger-bg:#F0E0E1; --danger-border:#98515B; --danger-text:#713C43;
+ --info-bg:#E1E8ED; --info-border:#55778B; --info-text:#304F63;
+ --contrast-dark:#000000; --contrast-light:#FFFFFF;
+ --scrim:rgb(6 20 27 / .65); --focus:#253745;
+ --font-ui:'Plus Jakarta Sans',system-ui,sans-serif; --font-code:'JetBrains Mono',monospace;
+ --text-heading:20px; --text-display:40px; --text-xs:12px; --text-sm:13px; --text-base:14px; --text-title:28px;
+ --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
+ --radius-control:5px; --radius-panel:8px; --radius-dialog:12px; --shadow-panel:none;
+ --motion-fast:160ms; --motion-normal:220ms; --z-header:30; --z-drawer:60; --z-dialog:70; --z-toast:100;
+ --sidebar-width:208px; --header-height:56px;
+ /* Compatibility aliases, values defined here only. */
+ --primary-main:var(--action); --primary-hover:var(--action); --primary-dark:var(--action);
+ --border-subtle:var(--border-default); --bg-primary:var(--bg-canvas);
+ --s2-bg:var(--bg-canvas); --s2-sidebar:var(--bg-surface); --s2-surface:var(--bg-surface); --s2-elevated:var(--bg-surface-elevated); --s2-border:var(--border-default); --s2-text:var(--text-primary); --s2-muted:var(--text-secondary); --s2-blue:var(--action); --s2-cyan:var(--info-text);
+}
+.dark {
+ --bg-canvas:#06141B; --bg-surface:#11212D; --bg-surface-elevated:#253745;
+ --border-default:#253745; --border-strong:#4A5C6A; --field-border:#9BA8AB;
+ --text-primary:#CCD0CF; --text-secondary:#9BA8AB; --text-muted:#4A5C6A;
+ --action-default:#9BA8AB; --action-default-ink:#06141B; --focus:#CCD0CF;
+ --success-bg:#162E29; --success-border:#7F9D8D; --success-text:#B8D2C1;
+ --warning-bg:#302A20; --warning-border:#AB9460; --warning-text:#D6C6A1;
+ --danger-bg:#352329; --danger-border:#B58B94; --danger-text:#DFBAC1;
+ --info-bg:#182D3C; --info-border:#7B95AA; --info-text:#BDCDD8;
+}
+@media(prefers-reduced-motion:reduce){:root{--motion-fast:0ms;--motion-normal:0ms}}
+
+/* Resolve aliases in the tenant scope as well as root, so a scoped custom brand is effective. */
+:where(.sentinel-app,.sentinel-auth,.s2-root) {--action:var(--primary-color,var(--action-default));--action-ink:var(--brand-ink,var(--action-default-ink));--primary-main:var(--action);--primary-hover:var(--action);--primary-dark:var(--action);--s2-blue:var(--action)}
+
+/* Tailwind compatibility aliases, sharing the same semantic sources. */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  --color-slate-50: var(--bg-surface);
+  --color-slate-100: var(--bg-canvas);
+  --color-slate-200: #CCD0CF;
+  --color-slate-300: #9BA8AB;
+  --color-slate-400: #9BA8AB;
+  --color-slate-500: #4A5C6A;
+  --color-slate-600: #4A5C6A;
+  --color-slate-700: #253745;
+  --color-slate-800: #11212D;
+  --color-slate-900: #06141B;
+  --color-slate-950: #06141B;
+  --color-blue-500: var(--info-text);
+  --color-blue-600: var(--info-text);
+  --color-blue-700: var(--info-text);
+  --color-indigo-500: var(--info-text);
+  --color-indigo-600: var(--info-text);
+}
+:root {--sentinel-accent:var(--text-primary);--sentinel-accent-soft:var(--bg-surface-elevated);--sentinel-shadow:none;--sentinel-sidebar:var(--bg-surface)}

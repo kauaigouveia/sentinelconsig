@@ -6,7 +6,7 @@ export const Skeleton: React.FC<{ className?: string; style?: React.CSSPropertie
 }) => (
   <div
     style={style}
-    className={`animate-pulse rounded bg-slate-200 dark:bg-slate-800 ${className}`}
+    className={`animate-pulse rounded bg-[var(--bg-surface-elevated)] bg-[var(--bg-surface-elevated)] ${className}`}
   />
 );
 
@@ -15,7 +15,7 @@ export const SkeletonCard: React.FC<{ count?: number }> = ({ count = 4 }) => (
     {Array.from({ length: count }).map((_, i) => (
       <div
         key={i}
-        className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 space-y-2.5"
+        className="rounded-lg border border-[var(--border-default)] border-[var(--border-default)] bg-white bg-[var(--bg-surface-elevated)] p-3.5 space-y-2.5"
       >
         <div className="flex justify-between items-center">
           <Skeleton className="h-3 w-20" />
@@ -32,9 +32,9 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number }> = ({
   rows = 8,
   columns = 6,
 }) => (
-  <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+  <div className="rounded-lg border border-[var(--border-default)] border-[var(--border-default)] bg-white bg-[var(--bg-surface-elevated)] overflow-hidden">
     {/* Header */}
-    <div className="flex border-b border-slate-200 dark:border-slate-800 px-4 py-3 bg-slate-50/70 dark:bg-slate-950/40 gap-4">
+    <div className="flex border-b border-[var(--border-default)] border-[var(--border-default)] px-4 py-3 bg-[var(--bg-surface-elevated)] bg-[var(--bg-surface-elevated)] gap-4">
       {Array.from({ length: columns }).map((_, i) => (
         <Skeleton key={i} className="h-3.5 flex-1" />
       ))}
@@ -57,7 +57,7 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number }> = ({
 
 export const SkeletonChart: React.FC<{ height?: string }> = ({ height = 'h-64' }) => (
   <div
-    className={`rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4 ${height} flex flex-col`}
+    className={`rounded-lg border border-[var(--border-default)] border-[var(--border-default)] bg-white bg-[var(--bg-surface-elevated)] p-4 space-y-4 ${height} flex flex-col`}
   >
     <div className="flex justify-between items-center">
       <Skeleton className="h-4 w-32" />
