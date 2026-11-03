@@ -5,12 +5,14 @@ import { V8WorkerConsentPage } from './components/simulation/V8WorkerConsentPage
 import './index.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
         {window.location.pathname === '/consentimento-v8' ? <V8WorkerConsentPage /> : <App />}
+        <SpeedInsights />
       </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,
