@@ -1,0 +1,195 @@
+{
+  "method": "Literal import graph from src/main.tsx; not proof of runtime branch usage or dead code",
+  "reachableFiles": 273,
+  "css": [
+    {
+      "file": "src/index.css",
+      "lines": 180,
+      "important": 4,
+      "reachable": true
+    },
+    {
+      "file": "src/styles/sentinel.css",
+      "lines": 401,
+      "important": 18,
+      "reachable": true
+    },
+    {
+      "file": "src/styles/sentinel-2-preview.css",
+      "lines": 2633,
+      "important": 21,
+      "reachable": true
+    },
+    {
+      "file": "src/styles/sentinel-2-production.css",
+      "lines": 212,
+      "important": 1,
+      "reachable": true
+    },
+    {
+      "file": "src/styles/sentinel-2-modules.css",
+      "lines": 320,
+      "important": 0,
+      "reachable": true
+    },
+    {
+      "file": "src/styles/sentinel-2-dialogs.css",
+      "lines": 41,
+      "important": 0,
+      "reachable": true
+    },
+    {
+      "file": "src/styles/sentinel-2-finishing.css",
+      "lines": 76,
+      "important": 0,
+      "reachable": true
+    }
+  ],
+  "redesign": [
+    {
+      "file": "src/components/redesign/developmentPresentation.ts",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/galleryFixtures.ts",
+      "reachableByLiteralImports": false
+    },
+    {
+      "file": "src/components/redesign/GalleryWorkspaces.tsx",
+      "reachableByLiteralImports": false
+    },
+    {
+      "file": "src/components/redesign/KanbanStageNavigator.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/navigation.ts",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/operationalFamilies.ts",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PremiumContent.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PremiumPrimitives.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PremiumRecordWorkspace.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PreviewDashboard.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PreviewData.ts",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PreviewProposals.tsx",
+      "reachableByLiteralImports": false
+    },
+    {
+      "file": "src/components/redesign/PreviewSearch.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/PreviewSidebar.tsx",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/productionPresentation.ts",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/useTaskSearch.ts",
+      "reachableByLiteralImports": true
+    },
+    {
+      "file": "src/components/redesign/WorkTabs.tsx",
+      "reachableByLiteralImports": true
+    }
+  ],
+  "largestComponents": [
+    {
+      "file": "src/components/simulation/SimulationView.tsx",
+      "lines": 2644,
+      "inlineStyles": 1
+    },
+    {
+      "file": "src/components/crm/PartnerDetailModal.tsx",
+      "lines": 2329,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/saas/PlatformMasterCentral.tsx",
+      "lines": 1956,
+      "inlineStyles": 5
+    },
+    {
+      "file": "src/components/integrations/BankIntegrationsView.tsx",
+      "lines": 1619,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/production/ProposalDetailModal.tsx",
+      "lines": 1587,
+      "inlineStyles": 3
+    },
+    {
+      "file": "src/components/admin/UserManagement.tsx",
+      "lines": 1502,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/admin/CentralPendencias.tsx",
+      "lines": 1426,
+      "inlineStyles": 1
+    },
+    {
+      "file": "src/components/CommandCenter/CommandCenterView.tsx",
+      "lines": 1289,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/admin/HubIntegracoes.tsx",
+      "lines": 1278,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/integrations/HappyIntegrationTab.tsx",
+      "lines": 1278,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/production/ProductionList.tsx",
+      "lines": 1260,
+      "inlineStyles": 3
+    },
+    {
+      "file": "src/components/admin/AuditLogView.tsx",
+      "lines": 1214,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/bi/ExecutiveBIDashboard.tsx",
+      "lines": 1195,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/production/NewProductionModal.tsx",
+      "lines": 1116,
+      "inlineStyles": 0
+    },
+    {
+      "file": "src/components/admin/StatusImport.tsx",
+      "lines": 1105,
+      "inlineStyles": 3
+    }
+  ]
+}

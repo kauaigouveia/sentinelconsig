@@ -1,0 +1,500 @@
+[
+  {
+    "name": "antes-login-light-390.jpg",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-login-light-1366.jpg",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-login-light-1920.jpg",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-login-dark-390.jpg",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-login-dark-1366.jpg",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-login-dark-1920.jpg",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-propostas-dark-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1055,
+      "scrollWidth": 465,
+      "width": 488
+    }
+  },
+  {
+    "name": "antes-harness-propostas-dark-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-propostas-dark-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-propostas-light-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-propostas-light-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-propostas-light-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-simulacoes-dark-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-simulacoes-dark-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-simulacoes-dark-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1080,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-simulacoes-light-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-simulacoes-light-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-simulacoes-light-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 1080,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-kanban-dark-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-kanban-dark-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-kanban-dark-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-kanban-light-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-kanban-light-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-kanban-light-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-clientes-dark-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-clientes-dark-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-clientes-dark-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-clientes-light-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-clientes-light-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-clientes-light-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-pendencias-dark-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-pendencias-dark-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-pendencias-dark-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": true,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "antes-harness-pendencias-light-390.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 390,
+      "height": 844
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 844,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "antes-harness-pendencias-light-1366.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1366,
+      "height": 900
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "antes-harness-pendencias-light-1920.jpg",
+    "mode": "component-harness-synthetic-no-auth",
+    "requestedCSS": {
+      "width": 1920,
+      "height": 1080
+    },
+    "actualCSS": {
+      "dark": false,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  }
+]
