@@ -5,6 +5,9 @@ import { V8WorkerConsentPage } from './components/simulation/V8WorkerConsentPage
 import './index.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
+import { inject } from '@vercel/analytics';
+
+inject();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
