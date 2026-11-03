@@ -93,10 +93,16 @@ export class FactaSimulationService {
       Object.assign(query, { tipo_operacao: 14, contratos_refin: input.contract, valor_renda: input.income });
     } else if (input.operation === 'PORT' || input.operation === 'PORT_REFIN') {
       if (![input.debt, input.originalTerm, input.remainingTerm, input.originalInstallment].every(value => factaNumber(value))) throw new Error('Informe saldo devedor, parcela atual e prazos do contrato de origem.');
-      Object.assign(query, { tipo_operacao: '003500', opcao_valor: 2, valor_parcela: input.value, saldo_devedor: input.debt, prazo_original: input.originalTerm, prazo_restante: input.remainingTerm, valor_parcela_original: input.originalInstallment });
+      Object.assign(query, { tipo_operacao: '003500', opcao_valor: 2, valor_parcela: input.value, saldo_devedor: factaNumber(input.debt), prazo_original: factaNumber(input.originalTerm), prazo_restante: factaNumber(input.remainingTerm), valor_parcela_original: factaNumber(input.originalInstallment) });
       delete query.valor;
     } else query.tipo_operacao = 13;
     const result = await this.request(prisma, tenantId, '/proposta/operacoes-disponiveis', query);
+    // HTTP success is transport evidence only. Do not use tables from an explicitly
+    // nonterminal/refused business envelope, or retry the operation automatically.
+    const businessStatus = String(result.status ?? result.situacao ?? '').trim().toUpperCase();
+    if (['PENDING','PROCESSING','IN_PROGRESS','PENDENTE','EM_PROCESSAMENTO','AGUARDANDO','REJECTED','FAILED','ERROR','REJEITADO','ERRO'].includes(businessStatus)) {
+      return {offers:[],message:`A FACTA não concluiu a consulta (${businessStatus}). Atualize o estado antes de solicitar nova operação.`};
+    }
     const benefitEligible = (table: any) => {
       const name = String(table.tabela || '').toUpperCase();
       const species = name.match(/(?:ESP(?:ECIE|ÉCIE)?|BNF|BENEF[IÍ]CIO)\s*[:\-]?\s*(\d{1,2})(?!\d)/);
@@ -123,6 +129,9 @@ export class FactaSimulationService {
     } else if (input.operation === 'PORT') {
       offers = list(result.tabelas_portabilidade).filter(eligible).map(table => this.offer(table));
     } else offers = list(result.tabelas).filter(eligible).map(table => this.offer(table));
+    const incomplete = offers.some(offer=>!offer.code.trim()||!offer.installment||!offer.term||!(offer.amount||offer.contractAmount));
+    offers=offers.filter(offer=>offer.code.trim()&&offer.installment&&offer.term&&(offer.amount||offer.contractAmount));
+    if (!offers.length && incomplete) return {offers:[],message:'A FACTA retornou tabelas sem os campos financeiros necessários para concluir a consulta. Nenhuma oferta válida foi confirmada.'};
     if (offers.length) {
       const checks = offers.map(offer=>({offer,check:['PORT','PORT_REFIN'].includes(input.operation)?simulationPortabilityCheck('facta',input,offer):null}));
       return {offers:checks.filter(row=>!row.check?.blocked).map(row=>row.check?{...row.offer,policyStatus:row.check.status,policyReview:row.check.reason}:row.offer),message:checks.filter(row=>row.check?.blocked).map(row=>row.check!.reason).join(' ')||undefined};
@@ -134,7 +143,7 @@ export class FactaSimulationService {
     const formatValues = (values: number[], suffix: string) => [...new Set(values)].sort((a, b) => a - b).map(value => `${value.toLocaleString('pt-BR')}${suffix}`).join(', ');
     if (!returned.length) {
       const bankMessage = [result.mensagem, result.msg, result.message].find(value => typeof value === 'string' && value.trim());
-      return { offers, message: `A FACTA não retornou tabelas para esta operação e os dados informados.${bankMessage ? ` Retorno do banco: ${bankMessage.trim()}` : ''}` };
+      return { offers, message: `A FACTA não retornou tabelas para esta operação e os dados informados. Resposta HTTP de sucesso não comprova conclusão ou oferta.${bankMessage ? ` Retorno do banco: ${safeFactaMessage(bankMessage.trim()) || 'Mensagem indisponível.'}` : ''}` };
     }
     if (!compatible.length) return { offers, message: 'As tabelas retornadas pela FACTA têm restrições incompatíveis com a espécie do benefício selecionada.' };
     if (!rateMatches.length) {

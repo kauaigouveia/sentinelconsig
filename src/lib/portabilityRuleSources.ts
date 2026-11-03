@@ -1,4 +1,4 @@
-import replacement from '../data/portabilityRulesReplacement20261030.json';
+import {activePortabilityReplacement as replacement,replacementSources} from './portabilityActiveRules';
 import historical from '../data/portabilityRules20261019.json';
 import supplement from '../data/portabilityRulesSupplement.json';
 
@@ -12,14 +12,14 @@ const previousCatalog: any[] = [
 ];
 export const PORTABILITY_REPLACEMENT = replacement;
 export const replacementBankIds = new Set(replacement.banks.map(bank=>bank.id));
-const replacementRows=replacement.banks.map(bank=>({...bank,receivedAt:replacement.receivedAt,version:replacement.id,source:replacement.source,sourceFile:replacement.sourceFile}));
+const replacementRows=replacement.banks.map(bank=>({...bank,receivedAt:replacement.receivedAt,version:replacement.id,source:bank.amendment?.source||replacement.source,sourceFile:bank.amendment?.sourceFile||replacement.sourceFile}));
 export const portabilitySourceCatalog:any[]=[...previousCatalog.filter(bank=>!replacementBankIds.has(bank.id)),...replacementRows];
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** No documentary precedence was provided. Disputed criteria cannot definitively reject or approve. */
 export function portabilityRuleSources(id: string, origin: string, category?:'CORBAN'|'NETWORK') {
  const current=replacement.banks.find(bank=>bank.id===id);
- if(current)return {criteria:JSON.parse(JSON.stringify(current.criteria)),conflicts:[] as string[],sources:[{file:replacement.sourceFile,receivedAt:replacement.receivedAt,effectiveAt:replacement.effectiveAt,page:current.page,sha256:replacement.sourceSha256,precedence:replacement.precedence}],ageAlternatives:[] as Record<string,any>[]};
+ if(current)return {criteria:JSON.parse(JSON.stringify(current.criteria)),conflicts:[] as string[],sources:replacementSources(current),ageAlternatives:[] as Record<string,any>[]};
  const old = historical.find(bank => bank.id === id);
  const next = supplement.banks.find(bank => bank.id === id);
  const conflicts: string[] = [], criteria: Record<string, any> = {...old?.criteria};

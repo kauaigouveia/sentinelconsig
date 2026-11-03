@@ -12,7 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { Activity, AlertCircle, LoaderCircle, X } from 'lucide-react';
 import { Partner, SimulationRequest } from '../../types';
 import { readJsonResponse } from '../../lib/httpJson';
-import { formatCpf, isValidCpf, normalizeCpf } from '../../lib/utils';
+import { formatCpf, isValidCpf, normalizeCpf, parseCurrency } from '../../lib/utils';
 import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
@@ -48,7 +48,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const calculateNossaFintech = async (): Promise<SimulationRow[]> => {
     const response = await fetch('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...portabilityContext,originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: Number(form.lastDueBalance), installmentFaceValue: Number(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? Number(form.refinancingRate) : undefined }),
+      body: JSON.stringify({ ...portabilityContext,originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: parseCurrency(form.lastDueBalance), installmentFaceValue: parseCurrency(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined }),
     });
     const result = await readJsonResponse(response);
     if (response.status === 422) return [];
@@ -63,7 +63,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
 
   const calculateFacta = async (): Promise<SimulationRow[]> => {
     const agreement = portabilityEligibility('facta', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)); if (agreement.blocked) throw new Error(agreement.reason);
-    const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portabilityContext,cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: Number(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? Number(form.refinancingRate) : undefined, debt: Number(form.lastDueBalance), originalBank: form.originLenderCode, originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: Number(form.installmentFaceValue) }) });
+    const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portabilityContext,cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: parseCurrency(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined, debt: parseCurrency(form.lastDueBalance), originalBank: form.originLenderCode, originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: parseCurrency(form.installmentFaceValue) }) });
     const result = await readJsonResponse(response);
     if (!response.ok) throw new Error(result.error || 'Falha ao consultar FACTA.');
     if (result.message) throw new Error(result.message);
@@ -95,8 +95,8 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     }
     const results: SimulationRow[] = [];
     const eligible = allRules.flatMap(rule => {
-      const choices = finantoRefinancingChoices(rule, Number(form.numberOfInstallments), form.refinancingRate ? Number(form.refinancingRate) : undefined,'PORT_REFIN');
-      const reason = finantoBenefitError(rule.name || '', form.benefitType) || finantoInstallmentError(rule.name || '', Number(form.installmentFaceValue),'PORT_REFIN');
+      const choices = finantoRefinancingChoices(rule, Number(form.numberOfInstallments), form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined,'PORT_REFIN');
+      const reason = finantoBenefitError(rule.name || '', form.benefitType) || finantoInstallmentError(rule.name || '', parseCurrency(form.installmentFaceValue),'PORT_REFIN');
       if (reason || !choices.length) {
         results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule,'PORT_REFIN'), originalName: rule.name, id: rule.id, cod_tabela: rule.code || rule.id }, term: Number(form.numberOfInstallments), success: false, skipped: true, error: reason || 'A tabela não atende à taxa e ao prazo escolhidos.' });
         return [];
@@ -110,11 +110,11 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         try {
           const response = await call('/v3/loan-inss-simulations/calculation', {
             ruleId: rule.id, hasInsurance: false,
-            loanValue: Number(form.lastDueBalance), installmentValue: Number(form.installmentFaceValue),
+            loanValue: parseCurrency(form.lastDueBalance), installmentValue: parseCurrency(form.installmentFaceValue),
             rate: selectedRate, term: Number(form.openedInstallmentNumber),
-            issueAmount: Number(form.lastDueBalance),
-            originContract: { lenderCode: Number(form.originLenderCode), contractNumber: form.originContractNumber.trim(), term: Number(form.originalTerm), installmentsRemaining: Number(form.openedInstallmentNumber), installmentValue: Number(form.installmentFaceValue), dueBalanceValue: Number(form.lastDueBalance) },
-            refinancing: { term: Number(form.numberOfInstallments), rate: selectedRate, installmentValue: Number(form.installmentFaceValue) },
+            issueAmount: parseCurrency(form.lastDueBalance),
+            originContract: { lenderCode: Number(form.originLenderCode), contractNumber: form.originContractNumber.trim(), term: Number(form.originalTerm), installmentsRemaining: Number(form.openedInstallmentNumber), installmentValue: parseCurrency(form.installmentFaceValue), dueBalanceValue: parseCurrency(form.lastDueBalance) },
+            refinancing: { term: Number(form.numberOfInstallments), rate: selectedRate, installmentValue: parseCurrency(form.installmentFaceValue) },
           });
           const cashOutError = finantoCashOutError(rule.name || '', response,'PORT_REFIN');
           results.push({ provider: 'FINANTO', table: { name: finantoTableLabel(rule,'PORT_REFIN'), originalName: rule.name, id: rule.id, cod_tabela: rule.code || rule.id, amount: selectedRate }, lender: response.lender?.name || response.fund?.name, term: Number(form.numberOfInstallments), success: !cashOutError, skipped: Boolean(cashOutError), error: cashOutError || undefined, data: response, troco: finantoCashOut(response) });
@@ -147,7 +147,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     } finally { setLoading(false); }
   };
 
-  const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || Number(form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : row.provider === 'FACTA' ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
+  const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || parseCurrency(form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : row.provider === 'FACTA' ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
   const draftValues = () => ({ ...Object.fromEntries(Object.entries(form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
   const save = async () => {
     if (!selected || !Number.isFinite(selected.troco) || !(Number(selected.troco) > 0) || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
@@ -162,7 +162,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="port-refin-simulation-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
       <header className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-800"><div><SimulationBack onBack={onBack} disabled={loading}/><h2 id="port-refin-simulation-title" className="text-xl font-bold text-slate-900 dark:text-white">INSS · Portabilidade + Refinanciamento</h2><p className="mt-1 text-xs text-slate-500">Informe cliente e dívida para comparar as condições nas integrações habilitadas.</p></div><button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></header>
-      <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>{step===2 && <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={Number(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?Number(form.refinancingRate):undefined}/>}<div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
+      <SimulationSteps labels={['Cliente','Contrato','Ofertas']} step={step} onChange={setStep} disabled={loading}/>{step===2 && <SimulationCustomerSummary name={form.name} cpf={form.cpf} birthDate={form.birthDate} installment={parseCurrency(form.installmentFaceValue)} term={Number(form.numberOfInstallments)} rate={form.refinancingRate?parseCurrency(form.refinancingRate):undefined}/>}<div className="overflow-y-auto p-5 sm:p-7"><form onSubmit={event=>{if(step!==1){event.preventDefault();return;}setStep(2);void calculate(event);}} className="space-y-4">
         <fieldset data-simulation-step hidden={step!==0} disabled={step!==0} className="space-y-4"><section className="rounded-xl border border-slate-200 p-5 dark:border-slate-700"><h3 className="mb-3 text-sm font-bold">1. Cliente e benefício</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className={labelClass}>CPF<input required value={form.cpf} onChange={e => update('cpf', formatCpf(e.target.value))} className={inputClass} /></label>
           <label className={labelClass}>Nome do cliente (opcional)<input value={form.name} onChange={e=>update('name',e.target.value)} className={inputClass}/></label>
@@ -189,7 +189,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       {step===2 && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar ao contrato"/>}
       {step===2 && error && <p role="alert" className="my-3 rounded-lg bg-rose-500/10 p-4 text-sm text-rose-500">{error}</p>}
       <div hidden={step!==2}>{loading && <p role="status" className="my-4 rounded-xl bg-blue-500/10 p-5 text-sm">Consultando as condições disponíveis…</p>}
-      <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments) }} />
+      <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />
       {happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-amber-600">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-slate-200 p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
       {providerNotes.length > 0 && <div className="mt-4 space-y-1 rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{providerNotes.map(note => <p key={note}>{note}</p>)}</div>}

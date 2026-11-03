@@ -1,4 +1,4 @@
-import replacement from '../data/portabilityRulesReplacement20261030.json';
+import {activePortabilityReplacement as replacement,replacementSources} from './portabilityActiveRules';
 import {resolveInstitutionCode,institutionLabel} from './strParticipants';
 import type {PortabilityContext} from './portabilityPolicy';
 const clean=(v:unknown)=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -10,14 +10,17 @@ const unique=(rows:string[])=>[...new Set(rows)];
 export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unknown,input:PortabilityContext){
  const bank=replacement.banks.find(bank=>bank.id===bankId);if(!bank)return null;
  const c:Record<string,any>=bank.criteria,pending:Record<string,string[]>=bank.pending;
- const reasons:string[]=[],notices:string[]=[...(pending.always||[])];
+ const reasons:string[]=[],notices:string[]=[];
  const pure=['PORT','PORTABILIDADE'].includes(input.operation||'PORT_REFIN');
  const code=resolveInstitutionCode(String(origin||'')),originNames=[clean(origin),clean(institutionLabel(code))];
+ notices.push(...(pending.always||[]).filter(text=>!(bankId==='daycoval'&&/NBC Bank/i.test(text)&&code&&!originNames.some(name=>name.includes('nbcbank')))));
  if(!code)notices.push('Informe o banco de origem com identificador confirmado.');
  if(c.blocked.includes(code)||c.blockedNames.some((name:string)=>originNames.some(value=>value===clean(name)||value===clean('Banco '+name))))reasons.push(`${bank.name}: banco de origem não permitido pela fonte substitutiva.`);
  const paidValid=num(paid)&&Number.isInteger(Number(paid))&&Number(paid)>=0;
  if(!paidValid)notices.push('Informe parcelas pagas válidas.');
  let minimum=c.paid[code]??(input.originCategory==='CORBAN'?c.corbanPaid:input.originCategory==='NETWORK'?c.networkPaid:undefined)??c.otherPaid;
+ // Satisfying both documented categories needs no guess about the creditor's category.
+ if(minimum==null&&code&&paidValid&&num(c.corbanPaid)&&num(c.networkPaid)&&Number(paid)>=Math.max(c.corbanPaid,c.networkPaid))minimum=Math.max(c.corbanPaid,c.networkPaid);
  if(c.paidByBalance){
   const band=num(input.debt)?c.paidByBalance.find((row:any)=>Number(input.debt)>=row.min&&(row.max==null||Number(input.debt)<=row.max)):null;
   if(!band)notices.push('Faixa de saldo sem exigência de pagas individualizada na fonte substitutiva.');
@@ -26,7 +29,8 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
  if(minimum==null)notices.push('Mínimo de pagas por origem/categoria não informado; validar sem presumir a regra antiga.');
  else if(paidValid&&Number(paid)<minimum)reasons.push(`${bank.name}: mínimo de ${minimum} parcelas pagas para a origem e condição informadas.`);
  for(const [key,label] of [['debt','saldo devedor'],['originalInstallment','parcela original'],['remainingInstallments','parcelas restantes'],['term','prazo']] as const){
-  if(!num(input[key])||Number(input[key])<=0||(['term','remainingInstallments'].includes(key)&&!Number.isInteger(Number(input[key]))))notices.push(`Informe ${label} válido.`);
+  if(input[key]==null||String(input[key])==='')notices.push(`Informe ${label}.`);
+  else if(!num(input[key])||Number(input[key])<=0||(['term','remainingInstallments'].includes(key)&&!Number.isInteger(Number(input[key]))))notices.push(`${label[0].toUpperCase()+label.slice(1)} inválido: informe valor positivo${['term','remainingInstallments'].includes(key)?' inteiro':''}.`);
  }
  if(!num(input.benefitType))notices.push('Informe a espécie do benefício.');
  const species=Number(input.benefitType),invalid=[32,92].includes(species);
@@ -41,6 +45,20 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
  if(birth&&today){
   if(birth>today)reasons.push('Data de nascimento inválida.');
   if(c.minAge!=null&&!(bankId==='quero-banking'&&invalid)&&today<months(birth,c.minAge*12))reasons.push(`${bank.name}: idade mínima de ${c.minAge} anos.`);
+  if(c.portabilityAgeBands){
+   const reference=c.ageReference==='START'?today:c.ageReference==='END'?end:null;
+   if(!reference)notices.push(c.ageReference==='END'?'Confirme a data efetiva de término para enquadrar a faixa de idade Daycoval.':'Confirmar referência da idade na tabela Daycoval: contratação ou término.');
+   else {
+    const band=c.portabilityAgeBands.find((band:any)=>reference>=months(birth,band.minAge*12)&&reference<=months(birth,band.maxMonths,band.maxDays));
+    if(!band)reasons.push(`${bank.name}: idade fora das faixas de portabilidade documentadas.`);
+    else {
+     const effectiveTerm=pure?input.remainingInstallments:input.term;
+     if(num(effectiveTerm)&&Number(effectiveTerm)>band.maxTerm)reasons.push(`${bank.name}: prazo máximo de ${band.maxTerm} meses para esta faixa de idade.`);
+     if(num(input.contractAmount)){if(Number(input.contractAmount)>band.maxContract)reasons.push(`${bank.name}: valor máximo do contrato de R$ ${band.maxContract.toFixed(2)} para esta faixa de idade.`);}
+     else notices.push('Limite máximo do contrato: aguardando valor bruto calculado, sem confundir com saldo ou troco.');
+    }
+   }
+  }
   const maxAge=c.ageByTerm?.[String(input.term)]??c.maxAge;
   const maxMonths=c.startMonthsByTerm?.[String(input.term)]??c.maxStartMonths;
   if(maxAge!=null&&today>=months(birth,(maxAge+1)*12))reasons.push(`${bank.name}: idade máxima de ${maxAge} anos para o prazo.`);
@@ -56,7 +74,7 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
    if(!'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ').includes(state))notices.push('UF não informada: validar restrições acima de 60 anos.');
    else if(['AP','PB','TO','RR','SC'].includes(state))reasons.push(`${bank.name}: não atende acima de 60 anos em ${state}.`);
   }
-  if(c.formalizationConditional&&(over60||input.illiterate))notices.push('Formalização digital/figital: condições por idade, UF ou alfabetização não detalhadas na nova fonte.');
+  if(c.formalizationConditional&&(over60||input.illiterate))notices.push(bankId==='daycoval'?'Formalização digital/figital: requisitos por idade ou alfabetização não detalhados na fonte.':'Formalização digital/figital: condições por idade, UF ou alfabetização não detalhadas na nova fonte.');
   if(invalid){
    notices.push(...(pending.invalid||[]));
    if(c.invalidMinAge!=null&&(c.invalidStrictMin?today<=months(birth,c.invalidMinAge*12):today<months(birth,c.invalidMinAge*12)))reasons.push(`${bank.name}: espécies 32/92 exigem ${c.invalidStrictMin?'idade acima de':'a partir de'} ${c.invalidMinAge} anos.`);
@@ -101,5 +119,5 @@ export function evaluateReplacementPolicy(bankId:string,origin:unknown,paid:unkn
  if(c.portPonderationPending&&num(input.portRate))notices.push('Ponderação da taxa de portabilidade sem fórmula na nova fonte.');
  if((c.portRatesListed&&num(input.portRate)||!pure&&c.refinRatesListed&&num(input.refinRate)))notices.push('Taxas separadas por barras sem associação inequívoca à tabela: confirmar enquadramento, sem presumir faixa contínua.');
  const finalReasons=unique(reasons),finalNotices=unique(notices),status=finalReasons.length?'NÃO ELEGÍVEL':finalNotices.length?'PENDENTE DE DADOS':'ELEGÍVEL';
- return {blocked:finalReasons.length>0,review:finalNotices.length>0,status,reason:[...finalReasons,...finalNotices].join(' ')||'Critérios documentados atendidos; sujeito à análise do banco.',reasons:finalReasons,notices:finalNotices,bankId,sources:[{file:replacement.sourceFile,receivedAt:replacement.receivedAt,effectiveAt:replacement.effectiveAt,page:bank.page,sha256:replacement.sourceSha256,precedence:replacement.precedence}]};
+ return {blocked:finalReasons.length>0,review:finalNotices.length>0,status,reason:[...finalReasons,...finalNotices].join(' ')||'Critérios documentados atendidos; sujeito à análise do banco.',reasons:finalReasons,notices:finalNotices,bankId,sources:replacementSources(bank)};
 }

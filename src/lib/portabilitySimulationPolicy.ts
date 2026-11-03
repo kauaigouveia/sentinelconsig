@@ -1,5 +1,6 @@
 import { paidFromTerms, portabilityEligibility } from './portabilityEligibility';
 import type { PortabilityContext } from './portabilityPolicy';
+import { parseCurrency } from './utils';
 
 export function parseIlliteracy(value: unknown): boolean | undefined {
  return value === true || value === 'YES' ? true : value === false || value === 'NO' ? false : undefined;
@@ -13,15 +14,15 @@ export function portabilityReviewMetadata(raw:any={}) {
 function checkContract(bank: string, raw: any, offer?: any) {
  const contract=raw.originContract||raw.contracts?.[0]||{};
  const value=(...values:any[])=>values.find(v=>v!==undefined&&v!==null&&v!=='');
- const number=(...values:any[])=>{const v=value(...values);return v===undefined?undefined:Number(v);};
+ const number=(...values:any[])=>{const v=value(...values);if(v===undefined||typeof v==='boolean')return undefined;if(typeof v==='number')return Number.isFinite(v)?v:undefined;const text=String(v).trim().replace(/^R\$\s*/, '');return /^-?\d+(?:\.\d{3})*(?:,\d+)?$|^-?\d+(?:\.\d+)?$/.test(text)?parseCurrency(text)??undefined:undefined;};
  const operation=value(raw.operation,raw.operationCode==='2'?'PORT':raw.operationCode==='4'?'PORT_REFIN':undefined,'PORT_REFIN');
  const originalInstallment=number(raw.originalInstallment,raw.installmentFaceValue,raw.valor_parcelas,contract.installmentValue,contract.installment);
  const installment=number(offer?.installment,offer?.installmentValue,raw.refinancing?.installmentValue,raw.valor_parcelas_refin,raw.installment,['AMOUNT','Liquid'].includes(raw.mode)?undefined:raw.value,raw.installmentFaceValue,contract.installment);
  const input:PortabilityContext={
   operation,product:raw.product,paymentOrderBankCode:raw.paymentOrderBankCode,paymentOrderAmount:number(raw.paymentOrderAmount),birthDate:value(raw.birthDate,raw.clientBirthDate),benefitType:value(raw.benefitType,raw.cd_beneficio_tipo),
   benefitStartDate:value(raw.benefitStartDate,raw.dataConcessao),simulationDate:raw.simulationDate,state:value(raw.state,raw.ufBeneficio),sex:raw.sex,
-  term:number(offer?.term,raw.refinancing?.term,raw.term,raw.numberOfInstallments,raw.numero_parcelas_refin),
-  remainingInstallments:number(raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining),
+  term:number(offer?.term,operation==='PORT'?value(raw.remainingInstallments,raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining):undefined,raw.refinancing?.term,raw.term,raw.numberOfInstallments,raw.numero_parcelas_refin),
+  remainingInstallments:number(raw.remainingInstallments,raw.remainingTerm,raw.openedInstallmentNumber,contract.installmentsRemaining,contract.remaining),
   contractEndDate:raw.contractEndDate,benefitCategory:raw.benefitCategory,cipMember:raw.cipMember,
   debt:number(raw.debt,raw.lastDueBalance,raw.saldo_devedor,contract.dueBalanceValue,contract.balance),originalInstallment,installment,
   amount:number(offer?.amount),contractAmount:number(offer?.contractAmount),portRate:number(offer?.portRate,raw.portRate,operation==='PORT'?offer?.rate??raw.rate:undefined),portInstallment:number(offer?.portInstallment,raw.portInstallment),

@@ -16,6 +16,8 @@ export function portabilityGuide(bankId:string){
  else if(c.maxStartMonths!==undefined)add('Idade máxima',`${Math.floor(c.maxStartMonths/12)} anos e ${c.maxStartMonths%12} meses${c.maxStartDays!==undefined?` e ${c.maxStartDays} dias`:''}`);
  if(c.maxEndMonths!=null)add('Idade máxima no término',`${Math.floor(c.maxEndMonths/12)} anos e ${c.maxEndMonths%12} meses${c.maxEndDays!=null?` e ${c.maxEndDays} dias`:''}`);
  if(c.ageByTerm)add('Idade por prazo',Object.entries(c.ageByTerm).map(([term,age])=>`${term} meses: até ${age} anos`).join(' / '));
+ if(c.portabilityAgeBands)add('Idade, prazo e teto do contrato',c.portabilityAgeBands.map((band:any)=>`${band.minAge} a ${Math.floor(band.maxMonths/12)} anos, ${band.maxMonths%12} meses e ${band.maxDays} dias: até ${band.maxTerm} meses / ${money(band.maxContract)}`).join(' · '));
+ if(c.portabilityAgeBands)add('Referência da idade',c.ageReference==='START'?'Na contratação':c.ageReference==='END'?'No término':'Aguardando confirmação');
  if(c.startMonthsByTerm)add('Idade por prazo',Object.entries(c.startMonthsByTerm).map(([term,age])=>`${term} meses: até ${Math.floor(Number(age)/12)} anos e ${Number(age)%12} meses`).join(' / '));
  if(c.portRateFixed!=null)add('Taxa de portabilidade',`${Number(c.portRateFixed).toLocaleString('pt-BR')}%`);
  if(c.refinRateFixed!=null)add('Taxa de refinanciamento',`${Number(c.refinRateFixed).toLocaleString('pt-BR')}%`);

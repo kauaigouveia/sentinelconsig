@@ -71,7 +71,7 @@ describe('documentary portability supplement, synthetic data only',()=>{
  });
  it('checks the final age and preserves negative-margin/unification operation restrictions',()=>{
   expect(evaluatePortabilityPolicy('parana','001',30,{...complete,contractEndDate:'2058-01-01'})?.blocked).toBe(false);
-  expect(evaluatePortabilityPolicy('daycoval','001',30,{...complete,contractEndDate:'2062-01-01'})?.blocked).toBe(true);
+  expect(evaluatePortabilityPolicy('daycoval','001',30,{...complete,contractEndDate:'2062-01-01'})?.review).toBe(true);
   expect(evaluatePortabilityPolicy('Quero + Crédito','001',30,{...complete,refinRate:1.55,installment:800,negativeMargin:true,contractCount:2})?.blocked).toBe(false);
   expect(evaluatePortabilityPolicy('safra','001',30,{...complete,negativeMargin:true,operation:'PORT'})?.blocked).toBe(true);
   expect(evaluatePortabilityPolicy('facta','001',30,{...complete,contractCount:7})?.blocked).toBe(false);

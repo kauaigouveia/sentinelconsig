@@ -4,7 +4,7 @@ import {calculatePortRefin} from '../server/services/portRefinWorkbooks';
 import {describe,expect,it} from 'vitest';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import replacement from '../src/data/portabilityRulesReplacement20261030.json';
+import {activePortabilityReplacement as replacement} from '../src/lib/portabilityActiveRules';
 import {evaluatePortabilityPolicy,portabilityBankId} from '../src/lib/portabilityPolicy';
 import {portabilityRuleSources,portabilitySourceCatalog} from '../src/lib/portabilityRuleSources';
 import {simulationPortabilityCheck} from '../src/lib/portabilitySimulationPolicy';
@@ -21,7 +21,7 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
  it.each(replacement.banks)('$name uses one replacement source and no obsolete conflicts',bank=>{
   const resolved=portabilityRuleSources(bank.id,'001','NETWORK');
   expect(resolved.criteria).toEqual(bank.criteria);expect(resolved.conflicts).toEqual([]);expect(resolved.ageAlternatives).toEqual([]);
-  expect(resolved.sources).toHaveLength(1);expect(resolved.sources[0].file).toBe('Markdown colado(5).md');
+  expect(resolved.sources).toHaveLength(bank.id==='daycoval'?2:1);expect(resolved.sources[0].file).toBe('Markdown colado(5).md');
   expect(check(bank.id).reason).not.toMatch(/Divergência documental|entre os dois documentos|ambas as fontes|mínimo de pagas conflitante/);
   expect(PORTABILITY_BOOKS.filter(row=>row.bankId===bank.id)).toHaveLength(1);
   expect(PORTABILITY_SECTIONS.filter(row=>row.bankId===bank.id).every(row=>row.id.endsWith('replacement-20261030'))).toBe(true);expect(portabilityGuide(bank.id)?.hasConflicts).toBe(false);
@@ -81,7 +81,7 @@ describe('express replacement of INSS portability criteria, synthetic fixtures',
   expect(check('digio',{birthDate:'1955-10-30'}).blocked).toBe(true);
   expect(check('c6',{birthDate:'1953-10-30'}).blocked).toBe(true);
   expect(check('daycoval',{contractEndDate:'2049-12-30'}).blocked).toBe(false);
-  expect(check('daycoval',{contractEndDate:'2049-12-31'}).blocked).toBe(true);
+  expect(check('daycoval',{contractEndDate:'2049-12-31'}).review).toBe(true); // Replaced limit; age reference still unconfirmed.
   expect(check('facta',{birthDate:'1940-01-01'}).status).toBe('PENDENTE DE DADOS');
   expect(check('finanto',{birthDate:'1957-01-01'}).blocked).toBe(true);
   expect(check('nossa-fintech',{birthDate:'1950-01-01',term:96}).blocked).toBe(false);

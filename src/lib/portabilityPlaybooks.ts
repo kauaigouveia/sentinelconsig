@@ -39,11 +39,11 @@ export const PORTABILITY_ARCHIVE_BOOKS = [...rules.map(rule => ({
 
 const current=PORTABILITY_REPLACEMENT;
 export const PORTABILITY_BOOKS=[...PORTABILITY_ARCHIVE_BOOKS.filter(book=>!replacementBankIds.has(book.bankId)),...current.banks.map(bank=>({
- id:bank.id,bankId:bank.id,name:bank.name,version:current.id,receivedAt:current.receivedAt,source:current.source,sourceFile:current.sourceFile,
+ id:bank.id,bankId:bank.id,name:bank.name,version:current.id,receivedAt:current.receivedAt,source:bank.amendment?.source||current.source,sourceFile:bank.amendment?.sourceFile||current.sourceFile,
  text:`[Fonte substitutiva INSS p. ${bank.page}; prioridade expressa; vigência comercial não informada]\n${bank.text}`,
 }))];
 export const PORTABILITY_SECTIONS=[...historicalSections.filter(section=>!replacementBankIds.has(section.bankId)),...current.banks.map(bank=>({
  id:bank.id+'-replacement-20261030',bankId:bank.id,title:'Portabilidade INSS · fonte substitutiva',page:bank.page,topics:['Portabilidade','Idade e benefício','Valores e prazos','Restrições e exceções'],
- paragraphs:[`Fonte: ${current.sourceFile}, página ${bank.page}. Substituição expressamente autorizada para INSS. Recebida em ${current.receivedAt}; vigência comercial não informada.`,...Object.values(bank.pending).flat()],
+ paragraphs:[`Fonte: ${bank.amendment?.sourceFile||current.sourceFile}, página ${bank.page}. Substituição expressamente autorizada para INSS. Recebida em ${current.receivedAt}; vigência comercial não informada.`,...Object.values(bank.pending).flat()],
  tables:[{kind:'table',rows:[['Critério','Regra e exceções'],...bank.fields]}],partnerSafe:true,isGuide:true,
 }))];
