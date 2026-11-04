@@ -284,25 +284,25 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
     switch (p) {
       case 'URGENT':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800 animate-pulse">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] animate-pulse">
             Urgente
           </span>
         );
       case 'HIGH':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
             Alta
           </span>
         );
       case 'MEDIUM':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
             Média
           </span>
         );
       case 'LOW':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
             Informativo
           </span>
         );
@@ -313,31 +313,31 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
     switch (status) {
       case 'PUBLISHED':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
             Publicado
           </span>
         );
       case 'DRAFT':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]">
             Rascunho
           </span>
         );
       case 'SCHEDULED':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
             Agendado
           </span>
         );
       case 'CANCELLED':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">
             Cancelado
           </span>
         );
       case 'ARCHIVED':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]">
             Arquivado
           </span>
         );
@@ -349,17 +349,17 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Barra Superior com Controles de Busca e Filtros */}
-      <div className="bg-white dark:bg-[#080d18] rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] p-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 max-w-md">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 placeholder="Buscar comunicado por título ou palavra-chave..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--focus)]"
               />
             </div>
           </div>
@@ -369,7 +369,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-2"
+              className="text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] px-2.5 py-2"
             >
               <option value="ALL">Todas as Prioridades</option>
               <option value="URGENT">Urgente</option>
@@ -382,7 +382,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
             <select
               value={readFilter}
               onChange={(e) => setReadFilter(e.target.value as any)}
-              className="text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-2"
+              className="text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] px-2.5 py-2"
             >
               <option value="ALL">Lidos e Não Lidos</option>
               <option value="UNREAD">Apenas Não Lidos</option>
@@ -395,7 +395,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                   resetForm();
                   setIsCreateModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)]  transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Novo Comunicado
@@ -407,16 +407,16 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
 
       {/* Grid de Comunicados */}
       {loading ? (
-        <div className="text-center py-12 text-slate-500 dark:text-slate-400 text-xs">
+        <div className="text-center py-12 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
           Carregando comunicados da operação...
         </div>
       ) : filteredAnnouncements.length === 0 ? (
-        <div className="bg-white dark:bg-[#080d18] rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center shadow-xs">
-          <Megaphone className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] p-12 text-center shadow-xs">
+          <Megaphone className="h-10 w-10 text-[var(--text-primary)] dark:text-[var(--text-secondary)] mx-auto mb-3" />
+          <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             Nenhum comunicado encontrado
           </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1 max-w-sm mx-auto">
             Não há comunicados vigentes correspondentes aos filtros selecionados.
           </p>
         </div>
@@ -427,10 +427,10 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
             return (
               <div
                 key={announcement.id}
-                className={`bg-white dark:bg-[#080d18] rounded-xl border transition-all flex flex-col justify-between p-4 shadow-xs ${
+                className={`bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border transition-all flex flex-col justify-between p-4  ${
                   isUnread
-                    ? 'border-blue-300 dark:border-blue-800/80 ring-1 ring-blue-500/20'
-                    : 'border-slate-200 dark:border-slate-800'
+                    ? 'border-[var(--field-border)] dark:border-[var(--field-border)] ring-1 ring-[var(--focus)]'
+                    : 'border-[var(--field-border)] dark:border-[var(--field-border)]'
                 }`}
               >
                 <div>
@@ -439,30 +439,30 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                       {getPriorityBadge(announcement.priority)}
                       {getStatusBadge(announcement.status)}
                       {isUnread && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500 text-white animate-pulse">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[var(--info-bg)] text-[var(--text-primary)] animate-pulse">
                           Não Lido
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">
+                    <span className="text-[11px] text-[var(--text-secondary)] font-mono">
                       {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
                     </span>
                   </div>
 
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                  <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-tight">
                     {announcement.title}
                   </h3>
 
-                  <div className="mt-2 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line line-clamp-4">
+                  <div className="mt-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] whitespace-pre-line line-clamp-4">
                     {announcement.content}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                <div className="mt-4 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setSelectedAnnouncement(announcement)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--link)] dark:text-[var(--link)] hover:underline cursor-pointer"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       Visualizar Completo
@@ -471,7 +471,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                     {announcement.status === 'PUBLISHED' && isUnread && (
                       <button
                         onClick={() => handleMarkAsRead(announcement.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--success-bg)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)] cursor-pointer"
                       >
                         <Check className="h-3 w-3" />
                         Marcar como Lido
@@ -485,7 +485,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                       {announcement.status === 'DRAFT' && (
                         <button
                           onClick={() => handlePublish(announcement.id)}
-                          className="px-2.5 py-1 rounded text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded text-xs font-bold bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] transition-colors cursor-pointer"
                           title="Publicar agora para a equipe"
                         >
                           Publicar
@@ -495,7 +495,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                       {announcement.status === 'PUBLISHED' && (
                         <button
                           onClick={() => handleCancel(announcement.id)}
-                          className="p-1 rounded text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--warning-text)] dark:hover:text-[var(--warning-text)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
                           title="Cancelar comunicado"
                         >
                           <AlertTriangle className="h-3.5 w-3.5" />
@@ -504,7 +504,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
 
                       <button
                         onClick={() => handleArchive(announcement.id)}
-                        className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
                         title="Arquivar comunicado"
                       >
                         <Archive className="h-3.5 w-3.5" />
@@ -512,7 +512,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
 
                       <button
                         onClick={() => handleDelete(announcement.id)}
-                        className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--danger-text)] dark:hover:text-[var(--danger-text)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
                         title="Excluir comunicado"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -528,39 +528,39 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
 
       {/* MODAL: Visualizar Comunicado Completo */}
       {selectedAnnouncement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-2xl w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl max-w-2xl w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
                 {getPriorityBadge(selectedAnnouncement.priority)}
                 {getStatusBadge(selectedAnnouncement.status)}
               </div>
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-[var(--text-secondary)] font-mono">
                 {new Date(selectedAnnouncement.createdAt).toLocaleString('pt-BR')}
               </span>
             </div>
 
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">
+            <h2 className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-4">
               {selectedAnnouncement.title}
             </h2>
 
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 text-xs text-slate-700 dark:text-slate-200 whitespace-pre-line leading-relaxed max-h-96 overflow-y-auto border border-slate-200/60 dark:border-slate-700/60">
+            <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-lg p-4 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] whitespace-pre-line leading-relaxed max-h-96 overflow-y-auto border border-[var(--field-border)] dark:border-[var(--field-border)]">
               {selectedAnnouncement.content}
             </div>
 
-            <div className="mt-5 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="mt-5 flex items-center justify-between pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div>
                 {!selectedAnnouncement.read && selectedAnnouncement.status === 'PUBLISHED' && (
                   <button
                     onClick={() => handleMarkAsRead(selectedAnnouncement.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] transition-colors cursor-pointer"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Confirmar Leitura
                   </button>
                 )}
                 {selectedAnnouncement.read && (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="inline-flex items-center gap-1 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] font-semibold">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Leitura confirmada
                   </span>
@@ -570,7 +570,7 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedAnnouncement(null)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] transition-colors"
               >
                 Fechar
               </button>
@@ -581,18 +581,18 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
 
       {/* MODAL: Novo Comunicado */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-xl w-full p-5 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl max-w-xl w-full p-5 shadow-2xl">
+            <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
               Novo Comunicado Operacional
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-4">
               Publique comunicados, avisos de esteira, regras de bancos ou diretrizes urgentes para a equipe.
             </p>
 
             <form onSubmit={handleCreate} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Título do Comunicado *
                 </label>
                 <input
@@ -600,20 +600,20 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                   placeholder="Ex: Atenção: Banco Pan altera tabela de coeficientes para Refin"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5 focus:ring-2 focus:ring-[var(--focus)]"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     Nível de Prioridade *
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                    className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                   >
                     <option value="LOW">Informativo (Baixa)</option>
                     <option value="MEDIUM">Média (Avisos Gerais)</option>
@@ -623,20 +623,20 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     Agendamento (Opcional)
                   </label>
                   <input
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                    className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Conteúdo do Comunicado *
                 </label>
                 <textarea
@@ -644,22 +644,22 @@ export const AnnouncementsTab: React.FC<AnnouncementsTabProps> = ({
                   placeholder="Escreva as orientações detalhadas, procedimentos a seguir e contatos de apoio..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 font-sans"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5 font-sans"
                   required
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] shadow-xs"
                 >
                   Criar Comunicado
                 </button>

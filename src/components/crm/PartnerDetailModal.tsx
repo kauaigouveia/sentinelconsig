@@ -553,29 +553,29 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
     switch (status) {
       case 'ATIVO_RECENTE':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success-bg)] animate-pulse" />
             Ativo Recente
           </span>
         );
       case 'COM_PENDENCIAS':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-            <AlertTriangle className="w-3 h-3 text-amber-600" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
+            <AlertTriangle className="w-3 h-3 text-[var(--warning-text)]" />
             Com Pendências
           </span>
         );
       case 'SEM_ATIVIDADE':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-            <Clock className="w-3 h-3 text-slate-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <Clock className="w-3 h-3 text-[var(--text-secondary)]" />
             Sem Atividade Recente
           </span>
         );
       case 'INATIVO':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-            <AlertCircle className="w-3 h-3 text-rose-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+            <AlertCircle className="w-3 h-3 text-[var(--danger-text)]" />
             Inativo
           </span>
         );
@@ -590,25 +590,25 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 md:p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-6xl overflow-hidden flex flex-col h-[94vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-2 md:p-4 animate-in fade-in duration-200">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-2xl  border border-[var(--field-border)] dark:border-[var(--field-border)] w-full max-w-6xl overflow-hidden flex flex-col h-[94vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+            <div className="p-2.5 bg-[var(--info-bg)] text-[var(--text-primary)] rounded-xl  shadow-blue-500/20">
               <Building className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                <h2 className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] tracking-tight">
                   {partner?.name || 'Carregando Parceiro...'}
                 </h2>
-                <span className="px-2 py-0.5 rounded-md font-mono text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                <span className="px-2 py-0.5 rounded-md font-mono text-xs font-bold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {partner?.code || 'SEM CÓDIGO'}
                 </span>
                 {getOperationalStatusBadge(partner?.operationalStatus)}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-3">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5 flex items-center gap-3">
                 <span>Promotora: <strong>{partner?.promoter?.name || 'Nenhuma'}</strong></span>
                 <span>•</span>
                 <span>Operador: <strong>{partner?.assignedUser?.name || 'Não atribuído'}</strong></span>
@@ -630,13 +630,13 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                 loadMetrics();
               }}
               title="Atualizar dados"
-              className="p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-xl transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-xl transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -644,13 +644,13 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-1 overflow-x-auto shrink-0 py-1">
+        <div className="px-6 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] flex items-center gap-1 overflow-x-auto shrink-0 py-1">
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -661,16 +661,16 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('portal')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'portal'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <Key className="w-3.5 h-3.5" />
             Portal do Parceiro
             {portalAccesses.length > 0 && portalAccesses[0].active ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+              <span className="w-2 h-2 rounded-full bg-[var(--success-bg)] inline-block" />
             ) : (
-              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+              <span className="w-2 h-2 rounded-full bg-[var(--warning-bg)] inline-block" />
             )}
           </button>
 
@@ -678,14 +678,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('timeline')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'timeline'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
             Linha do Tempo
             {timeline.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)]">
                 {timeline.length}
               </span>
             )}
@@ -695,14 +695,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('interactions')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'interactions'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" />
             Interações
             {interactions.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] font-bold">
                 {interactions.length}
               </span>
             )}
@@ -712,14 +712,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('notes')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'notes'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <StickyNote className="w-3.5 h-3.5" />
             Notas Internas
             {notes.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold">
                 {notes.length}
               </span>
             )}
@@ -729,14 +729,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('tasks')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'tasks'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <ListTodo className="w-3.5 h-3.5" />
             Tarefas & Follow-up
             {partner?.openTasksCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] font-bold">
                 {partner.openTasksCount}
               </span>
             )}
@@ -746,8 +746,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('production')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'production'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
@@ -758,8 +758,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('proposals')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'proposals'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <DollarSign className="w-3.5 h-3.5" />
@@ -770,8 +770,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('simulations')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'simulations'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
@@ -782,14 +782,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             onClick={() => setActiveTab('pendencies')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'pendencies'
-                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <AlertCircle className="w-3.5 h-3.5" />
             Pendências
             {partner?.openPendenciesCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--warning-bg)] text-[var(--warning-text)] font-bold">
                 {partner.openPendenciesCount}
               </span>
             )}
@@ -797,7 +797,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
         </div>
 
         {/* Modal Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex-1 overflow-y-auto p-6 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]">
           {/* ============================================================== */}
           {/* TAB 1: VISÃO GERAL 360°                                         */}
           {/* ============================================================== */}
@@ -805,38 +805,38 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
             <div className="space-y-6">
               {/* Quick Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                  <div className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] uppercase tracking-wider">
                     Total de Propostas
                   </div>
-                  <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                  <div className="text-2xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1">
                     {partner?._count?.proposals || 0}
                   </div>
                 </div>
 
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                  <div className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] uppercase tracking-wider">
                     Pendências em Aberto
                   </div>
-                  <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+                  <div className="text-2xl font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] mt-1">
                     {partner?.openPendenciesCount || 0}
                   </div>
                 </div>
 
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                  <div className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] uppercase tracking-wider">
                     Tarefas Pendentes
                   </div>
-                  <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                  <div className="text-2xl font-bold text-[var(--link)] dark:text-[var(--link)] mt-1">
                     {partner?.openTasksCount || 0}
                   </div>
                 </div>
 
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                  <div className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] uppercase tracking-wider">
                     Total de Interações
                   </div>
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                  <div className="text-2xl font-bold text-[var(--link)] dark:text-[var(--link)] mt-1">
                     {partner?._count?.interactions || 0}
                   </div>
                 </div>
@@ -846,65 +846,65 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Column 1: Contact & Cadastral details */}
                 <div className="lg:col-span-1 space-y-4">
-                  <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
-                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
-                      <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <div className="p-5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-4">
+                    <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2.5">
+                      <ShieldCheck className="w-4 h-4 text-[var(--link)]" />
                       Dados Cadastrais Internos
                     </h4>
 
                     <div className="space-y-3 text-xs">
                       <div>
-                        <span className="text-slate-400 block font-medium">Nome / Razão Social</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                        <span className="text-[var(--text-secondary)] block font-medium">Nome / Razão Social</span>
+                        <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">
                           {partner?.name}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">Código do Parceiro</span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block font-medium">Código do Parceiro</span>
+                        <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {partner?.code}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">CNPJ / CPF</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block font-medium">CNPJ / CPF</span>
+                        <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {partner?.document || 'Não informado'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">E-mail Comercial</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block font-medium">E-mail Comercial</span>
+                        <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {partner?.email || 'Não informado'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">Telefone / WhatsApp</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block font-medium">Telefone / WhatsApp</span>
+                        <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {partner?.phone || 'Não informado'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">Promotora Vinculada</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block font-medium">Promotora Vinculada</span>
+                        <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {partner?.promoter?.name || 'Sem promotora'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">Operador Atribuído</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block font-medium">Operador Atribuído</span>
+                        <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {partner?.assignedUser?.name || 'Não atribuído'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium">Data de Cadastro</span>
-                        <span className="text-slate-600 dark:text-slate-400">
+                        <span className="text-[var(--text-secondary)] block font-medium">Data de Cadastro</span>
+                        <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                           {partner?.createdAt ? new Date(partner.createdAt).toLocaleString('pt-BR') : '-'}
                         </span>
                       </div>
@@ -912,27 +912,27 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
 
                   {/* Portal do Parceiro Section in Overview */}
-                  <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3.5 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <Key className="w-4 h-4 text-blue-600" />
+                  <div className="p-5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3.5 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2.5">
+                      <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                        <Key className="w-4 h-4 text-[var(--link)]" />
                         Portal do Parceiro
                       </h4>
                       {portalAccesses.length > 0 ? (
                         portalAccesses[0].active ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
+                            <span className="w-2 h-2 rounded-full bg-[var(--success-bg)] animate-pulse" />
                             🟢 Acesso ativo
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+                            <span className="w-2 h-2 rounded-full bg-[var(--danger-bg)]" />
                             🔴 Acesso desativado
                           </span>
                         )
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
+                          <span className="w-2 h-2 rounded-full bg-[var(--warning-bg)]" />
                           🟡 Acesso pendente
                         </span>
                       )}
@@ -940,12 +940,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
                     <div className="space-y-2.5 text-xs">
                       <div>
-                        <span className="text-slate-400 block font-medium text-[10px] uppercase">Link do Portal</span>
+                        <span className="text-[var(--text-secondary)] block font-medium text-[10px] uppercase">Link do Portal</span>
                         <a
                           href={typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-0.5 break-all"
+                          className="font-medium text-[var(--link)] dark:text-[var(--link)] hover:underline flex items-center gap-1 mt-0.5 break-all"
                         >
                           {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
                           <ExternalLink className="w-3 h-3 shrink-0" />
@@ -953,15 +953,15 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium text-[10px] uppercase">Login do Parceiro</span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200 select-all">
+                        <span className="text-[var(--text-secondary)] block font-medium text-[10px] uppercase">Login do Parceiro</span>
+                        <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] select-all">
                           {portalAccesses.length > 0 ? portalAccesses[0].email : partner?.email || 'Nenhum e-mail cadastrado'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block font-medium text-[10px] uppercase">Último Acesso</span>
-                        <span className="text-slate-700 dark:text-slate-300">
+                        <span className="text-[var(--text-secondary)] block font-medium text-[10px] uppercase">Último Acesso</span>
+                        <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {portalAccesses.length > 0 && portalAccesses[0].lastLoginAt
                             ? new Date(portalAccesses[0].lastLoginAt).toLocaleString('pt-BR')
                             : 'Nenhum acesso registrado'}
@@ -969,14 +969,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex flex-col gap-2">
+                    <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col gap-2">
                       {portalAccesses.length > 0 ? (
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={handleResetPortalAccess}
                             disabled={resettingPortal}
-                            className="flex-1 py-2 px-3 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-blue-200 dark:border-blue-900/50 disabled:opacity-50"
+                            className="flex-1 py-2 px-3 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] hover:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[var(--field-border)] dark:border-[var(--field-border)] disabled:opacity-90"
                           >
                             <Key className="w-3.5 h-3.5" />
                             {resettingPortal ? 'Gerando...' : 'Redefinir Acesso'}
@@ -987,8 +987,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                             disabled={togglingPortal}
                             className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border disabled:opacity-50 ${
                               portalAccesses[0].active
-                                ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
-                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50'
+                                ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] hover:bg-[var(--danger-bg)] border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] dark:border-[var(--danger-border)]'
+                                : 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--success-bg)] border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] dark:border-[var(--success-border)]'
                             }`}
                           >
                             {portalAccesses[0].active ? 'Desativar' : 'Ativar'}
@@ -999,13 +999,13 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                           type="button"
                           onClick={handleOpenGeneratePortalConfirm}
                           disabled={resettingPortal}
-                          className="w-full py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-emerald-200 dark:border-emerald-800 disabled:opacity-50"
+                          className="w-full py-2 bg-[var(--success-bg)] dark:bg-[var(--success-bg)] hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[var(--success-border)] dark:border-[var(--success-border)] disabled:opacity-90"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           {resettingPortal ? 'Gerando...' : 'Gerar Acesso'}
                         </button>
                       ) : (
-                        <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                        <span className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)]">
                           Cadastre um e-mail no parceiro para habilitar o acesso ao portal.
                         </span>
                       )}
@@ -1013,23 +1013,23 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
 
                   {/* Quick Action Shortcuts */}
-                  <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl space-y-2">
-                    <span className="text-xs font-bold text-blue-900 dark:text-blue-300 block">
+                  <div className="p-4 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl space-y-2">
+                    <span className="text-xs font-bold text-[var(--link)] dark:text-[var(--link)] block">
                       Ações Rápidas de CRM
                     </span>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setActiveTab('interactions')}
-                        className="p-2.5 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors"
+                        className="p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-colors"
                       >
-                        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                        <MessageSquare className="w-3.5 h-3.5 text-[var(--link)]" />
                         Nova Interação
                       </button>
                       <button
                         onClick={() => setActiveTab('tasks')}
-                        className="p-2.5 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors"
+                        className="p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-colors"
                       >
-                        <ListTodo className="w-3.5 h-3.5 text-indigo-600" />
+                        <ListTodo className="w-3.5 h-3.5 text-[var(--link)]" />
                         Nova Tarefa
                       </button>
                     </div>
@@ -1039,22 +1039,22 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                 {/* Column 2 & 3: Recent Activity & Follow-ups */}
                 <div className="lg:col-span-2 space-y-6">
                   {/* Recent Tasks */}
-                  <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <ListTodo className="w-4 h-4 text-indigo-600" />
+                  <div className="p-5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                    <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2.5">
+                      <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                        <ListTodo className="w-4 h-4 text-[var(--link)]" />
                         Próximas Tarefas & Follow-up
                       </h4>
                       <button
                         onClick={() => setActiveTab('tasks')}
-                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                        className="text-xs font-semibold text-[var(--link)] dark:text-[var(--link)] hover:underline"
                       >
                         Ver todas
                       </button>
                     </div>
 
                     {tasks.filter(t => t.status !== 'CONCLUIDA').length === 0 ? (
-                      <p className="text-xs text-slate-400 py-3 text-center italic">
+                      <p className="text-xs text-[var(--text-secondary)] py-3 text-center italic">
                         Nenhuma tarefa pendente para este parceiro.
                       </p>
                     ) : (
@@ -1062,21 +1062,21 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                         {tasks.filter(t => t.status !== 'CONCLUIDA').slice(0, 3).map(task => (
                           <div
                             key={task.id}
-                            className="p-3 bg-slate-50 dark:bg-slate-850 rounded-lg border border-slate-200 dark:border-slate-700/70 flex items-start justify-between gap-3"
+                            className="p-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] flex items-start justify-between gap-3"
                           >
                             <div className="flex items-start gap-2.5">
                               <button
                                 onClick={() => handleToggleTask(task.id, task.status)}
-                                className="mt-0.5 text-slate-400 hover:text-emerald-600"
+                                className="mt-0.5 text-[var(--text-secondary)] hover:text-[var(--success-text)]"
                               >
                                 <Square className="w-4 h-4" />
                               </button>
                               <div>
-                                <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                                <h5 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   {task.title}
                                 </h5>
                                 {task.description && (
-                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                                  <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5 line-clamp-1">
                                     {task.description}
                                   </p>
                                 )}
@@ -1084,11 +1084,11 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                             </div>
                             <div className="text-right shrink-0">
                               {task.dueDate && (
-                                <span className="text-[10px] font-semibold text-slate-500 block">
+                                <span className="text-[10px] font-semibold text-[var(--text-secondary)] block">
                                   {new Date(task.dueDate).toLocaleDateString('pt-BR')}
                                 </span>
                               )}
-                              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                                 {task.priority}
                               </span>
                             </div>
@@ -1099,42 +1099,42 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
 
                   {/* Recent Timeline Preview */}
-                  <div className="p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-blue-600" />
+                  <div className="p-5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                    <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2.5">
+                      <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-[var(--link)]" />
                         Histórico Recente de Atividades
                       </h4>
                       <button
                         onClick={() => setActiveTab('timeline')}
-                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                        className="text-xs font-semibold text-[var(--link)] dark:text-[var(--link)] hover:underline"
                       >
                         Ver linha completa
                       </button>
                     </div>
 
                     {timeline.length === 0 ? (
-                      <p className="text-xs text-slate-400 py-4 text-center italic">
+                      <p className="text-xs text-[var(--text-secondary)] py-4 text-center italic">
                         Nenhuma atividade registrada até o momento.
                       </p>
                     ) : (
                       <div className="space-y-3">
                         {timeline.slice(0, 5).map(item => (
                           <div key={item.id} className="flex items-start gap-3 text-xs">
-                            <div className="p-1.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-lg shrink-0 mt-0.5">
+                            <div className="p-1.5 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] rounded-lg shrink-0 mt-0.5">
                               <Activity className="w-3 h-3" />
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   {item.title}
                                 </span>
-                                <span className="text-[11px] text-slate-400">
+                                <span className="text-[11px] text-[var(--text-secondary)]">
                                   {new Date(item.date).toLocaleString('pt-BR')}
                                 </span>
                               </div>
                               {item.subtitle && (
-                                <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+                                <p className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[11px] mt-0.5">
                                   {item.subtitle}
                                 </p>
                               )}
@@ -1154,18 +1154,18 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {/* ============================================================== */}
           {activeTab === 'portal' && (
             <div className="space-y-6 max-w-4xl mx-auto">
-              <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
+              <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-6 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)]  space-y-6">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700/60 pb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-5">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
+                    <div className="p-3 bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] rounded-xl">
                       <Key className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                      <h3 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-base">
                         Portal do Parceiro Comercial
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                         Acesso exclusivo para acompanhamento de esteira de propostas e suporte em tempo real
                       </p>
                     </div>
@@ -1173,35 +1173,35 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
                   {portalAccesses.length > 0 ? (
                     portalAccesses[0].active ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
+                        <span className="w-2 h-2 rounded-full bg-[var(--success-bg)] animate-pulse" />
                         🟢 Acesso Ativo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+                        <span className="w-2 h-2 rounded-full bg-[var(--danger-bg)]" />
                         🔴 Acesso Desativado
                       </span>
                     )
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
+                      <span className="w-2 h-2 rounded-full bg-[var(--warning-bg)]" />
                       🟡 Acesso Pendente
                     </span>
                   )}
                 </div>
 
                 {/* Portal Link Box */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block tracking-wider">
                       Endereço do Portal do Parceiro
                     </span>
                     <a
                       href={typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-mono font-medium text-blue-600 dark:text-blue-400 text-sm hover:underline flex items-center gap-1.5 mt-0.5"
+                      className="font-mono font-medium text-[var(--link)] dark:text-[var(--link)] text-sm hover:underline flex items-center gap-1.5 mt-0.5"
                     >
                       {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -1215,7 +1215,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                         'login'
                       )
                     }
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 hover:bg-slate-100 transition-colors"
+                    className="px-3 py-1.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 hover:bg-[var(--bg-surface-elevated)] transition-colors"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     Copiar link
@@ -1224,58 +1224,58 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
                 {/* Access Details */}
                 {loadingPortal ? (
-                  <div className="p-8 text-center text-slate-400">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-600" />
+                  <div className="p-8 text-center text-[var(--text-secondary)]">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--link)]" />
                     Carregando credenciais do parceiro...
                   </div>
                 ) : portalAccesses.length > 0 ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      <div className="p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block tracking-wider">
                           E-mail de Login
                         </span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm select-all">
+                        <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm select-all">
                           {portalAccesses[0].email}
                         </span>
                       </div>
 
-                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      <div className="p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block tracking-wider">
                           Nome do Contato
                         </span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+                        <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">
                           {portalAccesses[0].name}
                         </span>
                       </div>
 
-                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      <div className="p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block tracking-wider">
                           Último Acesso Registrado
                         </span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300 text-sm">
+                        <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">
                           {portalAccesses[0].lastLoginAt
                             ? new Date(portalAccesses[0].lastLoginAt).toLocaleString('pt-BR')
                             : 'Nenhum acesso registrado até o momento'}
                         </span>
                       </div>
 
-                      <div className="p-4 bg-slate-50/60 dark:bg-slate-850/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      <div className="p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block tracking-wider">
                           Troca de Senha Obrigatória
                         </span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300 text-sm flex items-center gap-1.5">
+                        <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm flex items-center gap-1.5">
                           {portalAccesses[0].mustChangePassword ? (
-                            <span className="text-amber-600 font-bold">Sim (no próximo acesso)</span>
+                            <span className="text-[var(--warning-text)] font-bold">Sim (no próximo acesso)</span>
                           ) : (
-                            <span className="text-emerald-600 font-semibold">Não (senha já definida)</span>
+                            <span className="text-[var(--success-text)] font-semibold">Não (senha já definida)</span>
                           )}
                         </span>
                       </div>
                     </div>
 
                     {/* Actions Bar */}
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="pt-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           type="button"
@@ -1283,8 +1283,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                           disabled={togglingPortal}
                           className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors border disabled:opacity-50 w-full sm:w-auto ${
                             portalAccesses[0].active
-                              ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50'
+                              ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] hover:bg-[var(--danger-bg)] border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] dark:border-[var(--danger-border)]'
+                              : 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--success-bg)] border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] dark:border-[var(--success-border)]'
                           }`}
                         >
                           {portalAccesses[0].active ? 'Desativar Acesso do Portal' : 'Ativar Acesso do Portal'}
@@ -1295,7 +1295,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                         type="button"
                         onClick={handleResetPortalAccess}
                         disabled={resettingPortal}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full sm:w-auto px-5 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-semibold   transition-all flex items-center justify-center gap-2 disabled:opacity-90"
                       >
                         <Key className="w-4 h-4" />
                         {resettingPortal ? 'Gerando Senha...' : 'Gerar Nova Senha Temporária'}
@@ -1303,16 +1303,16 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl space-y-3 text-center sm:text-left">
+                  <div className="p-6 bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] rounded-xl space-y-3 text-center sm:text-left">
                     <div className="flex flex-col sm:flex-row items-center gap-3">
-                      <div className="p-3 bg-amber-500/10 text-amber-600 rounded-xl">
+                      <div className="p-3 bg-[var(--warning-bg)] text-[var(--warning-text)] rounded-xl">
                         <AlertCircle className="w-6 h-6" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                        <h4 className="font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] text-sm">
                           Acesso ao Portal Pendente
                         </h4>
-                        <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                        <p className="text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)] mt-0.5">
                           {partner?.email
                             ? `O parceiro possui o e-mail (${partner.email}) cadastrado, mas ainda não teve o acesso provisionado.`
                             : 'O parceiro não possui e-mail de contato cadastrado. Cadastre o e-mail para gerar o acesso.'}
@@ -1326,7 +1326,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                           type="button"
                           onClick={handleOpenGeneratePortalConfirm}
                           disabled={resettingPortal}
-                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                          className="px-4 py-2.5 bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] rounded-xl text-xs font-semibold   transition-all flex items-center gap-2 disabled:opacity-90"
                         >
                           <Plus className="w-4 h-4" />
                           {resettingPortal ? 'Gerando...' : 'Gerar Acesso'}
@@ -1344,10 +1344,10 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {/* ============================================================== */}
           {activeTab === 'timeline' && (
             <div className="space-y-4 max-w-4xl mx-auto">
-              <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <div className="flex items-center gap-2 text-xs">
-                  <Filter className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="font-semibold text-slate-600 dark:text-slate-300">Filtrar por evento:</span>
+                  <Filter className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                  <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Filtrar por evento:</span>
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto">
                   {['ALL', 'INTERACTION', 'NOTE', 'TASK', 'PROPOSAL', 'SIMULATION', 'PENDENCY'].map(f => (
@@ -1356,8 +1356,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       onClick={() => setTimelineFilter(f)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
                         timelineFilter === f
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                          ? 'bg-[var(--action)] text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
                       }`}
                     >
                       {f === 'ALL' ? 'Todos' : f}
@@ -1367,38 +1367,38 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
               </div>
 
               {timelineLoading ? (
-                <div className="py-12 text-center text-slate-400">Carregando eventos...</div>
+                <div className="py-12 text-center text-[var(--text-secondary)]">Carregando eventos...</div>
               ) : filteredTimeline.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="py-12 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   Nenhum registro encontrado para este filtro.
                 </div>
               ) : (
-                <div className="relative border-l-2 border-slate-200 dark:border-slate-700 ml-4 pl-6 space-y-6">
+                <div className="relative border-l-2 border-[var(--field-border)] dark:border-[var(--field-border)] ml-4 pl-6 space-y-6">
                   {filteredTimeline.map(item => (
                     <div key={item.id} className="relative group">
-                      <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 bg-blue-600" />
-                      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+                      <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)]" />
+                      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {item.title}
                           </span>
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-[var(--text-secondary)]">
                             {new Date(item.date).toLocaleString('pt-BR')}
                           </span>
                         </div>
                         {item.subtitle && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
+                          <p className="text-xs text-[var(--link)] dark:text-[var(--link)] font-medium mb-1">
                             {item.subtitle}
                           </p>
                         )}
                         {item.description && (
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap">
+                          <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1 whitespace-pre-wrap">
                             {item.description}
                           </p>
                         )}
-                        <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                        <div className="mt-2 text-[10px] text-[var(--text-secondary)] flex items-center justify-between pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                           <span>Registrado por: <strong>{item.author || 'Sistema'}</strong></span>
-                          <span className="px-1.5 py-0.5 rounded uppercase font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                          <span className="px-1.5 py-0.5 rounded uppercase font-bold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {item.type}
                           </span>
                         </div>
@@ -1416,21 +1416,21 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {activeTab === 'interactions' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Form to add interaction */}
-              <div className="lg:col-span-1 bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-blue-600" />
+              <div className="lg:col-span-1 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-4">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[var(--link)]" />
                   Registrar Nova Interação
                 </h4>
 
                 <form onSubmit={handleCreateInteraction} className="space-y-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Canal / Tipo
                     </label>
                     <select
                       value={interactionType}
                       onChange={e => setInteractionType(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     >
                       <option value="LIGAÇÃO">Ligação Telefônica</option>
                       <option value="WHATSAPP">WhatsApp</option>
@@ -1442,7 +1442,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Assunto *
                     </label>
                     <input
@@ -1451,12 +1451,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       placeholder="Ex: Alinhamento de metas / Campanha C6"
                       value={interactionSubject}
                       onChange={e => setInteractionSubject(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Resumo da Conversa
                     </label>
                     <textarea
@@ -1464,12 +1464,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       placeholder="Detalhes discutidos, dúvidas ou solicitações do parceiro..."
                       value={interactionDesc}
                       onChange={e => setInteractionDesc(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Resultado / Acordo
                     </label>
                     <input
@@ -1477,12 +1477,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       placeholder="Ex: Parceiro prometeu enviar 10 contratos amanhã"
                       value={interactionResult}
                       onChange={e => setInteractionResult(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Próxima Ação / Follow-up
                     </label>
                     <input
@@ -1490,14 +1490,14 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       placeholder="Ex: Ligar na sexta para cobrar retorno"
                       value={interactionNextAction}
                       onChange={e => setInteractionNextAction(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={savingInteraction}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs"
+                    className="w-full py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Send className="w-3.5 h-3.5" />
                     {savingInteraction ? 'Salvando...' : 'Salvar Interação'}
@@ -1507,12 +1507,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
               {/* Interactions list */}
               <div className="lg:col-span-2 space-y-4">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
                   Histórico de Interações ({interactions.length})
                 </h4>
 
                 {interactions.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="p-8 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     Nenhuma interação comercial registrada.
                   </div>
                 ) : (
@@ -1520,41 +1520,41 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     {interactions.map(int => (
                       <div
                         key={int.id}
-                        className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 shadow-xs"
+                        className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-2 shadow-xs"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]">
                               {int.type}
                             </span>
-                            <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                            <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">
                               {int.subject}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-[var(--text-secondary)]">
                             {new Date(int.date || int.createdAt).toLocaleString('pt-BR')}
                           </span>
                         </div>
 
                         {int.description && (
-                          <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
+                          <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] whitespace-pre-wrap">
                             {int.description}
                           </p>
                         )}
 
                         {int.result && (
-                          <div className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          <div className="text-xs text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-2 rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)]">
                             <strong>Resultado:</strong> {int.result}
                           </div>
                         )}
 
                         {int.nextAction && (
-                          <div className="text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 p-2 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                          <div className="text-xs text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
                             <strong>Próxima Ação:</strong> {int.nextAction}
                           </div>
                         )}
 
-                        <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                        <div className="text-[10px] text-[var(--text-secondary)] pt-1 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                           Registrado por: <strong>{int.user?.name || 'Operador'}</strong>
                         </div>
                       </div>
@@ -1571,9 +1571,9 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {activeTab === 'notes' && (
             <div className="max-w-3xl mx-auto space-y-6">
               {/* Note creator */}
-              <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <StickyNote className="w-4 h-4 text-amber-500" />
+              <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                  <StickyNote className="w-4 h-4 text-[var(--warning-text)]" />
                   Nova Nota Interna Confidencial
                 </h4>
                 <form onSubmit={handleCreateNote} className="space-y-3">
@@ -1583,13 +1583,13 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     placeholder="Escreva anotações internas sobre comportamento, perfil de produção, orientações da diretoria ou histórico confidencial..."
                     value={noteContent}
                     onChange={e => setNoteContent(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                   />
                   <div className="flex justify-end">
                     <button
                       type="submit"
                       disabled={savingNote}
-                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors"
+                      className="px-4 py-2 bg-[var(--warning-bg)] hover:bg-[var(--warning-bg)] text-[var(--warning-text)] rounded-lg text-xs font-semibold flex items-center gap-2  transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       {savingNote ? 'Salvando...' : 'Adicionar Nota'}
@@ -1601,19 +1601,19 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
               {/* Notes List */}
               <div className="space-y-3">
                 {notes.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="p-8 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     Nenhuma nota interna registrada.
                   </div>
                 ) : (
                   notes.map(note => (
                     <div
                       key={note.id}
-                      className="p-4 bg-amber-50/40 dark:bg-slate-800 rounded-xl border border-amber-200/60 dark:border-slate-700 space-y-2 shadow-xs"
+                      className="p-4 bg-[var(--warning-bg)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--warning-border)] dark:border-[var(--field-border)] space-y-2 shadow-xs"
                     >
-                      <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                      <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
                         {note.content}
                       </p>
-                      <div className="text-[10px] text-slate-400 flex items-center justify-between pt-2 border-t border-amber-100 dark:border-slate-700">
+                      <div className="text-[10px] text-[var(--text-secondary)] flex items-center justify-between pt-2 border-t border-[var(--warning-border)] dark:border-[var(--field-border)]">
                         <span>Escrito por: <strong>{note.author?.name || 'Operador'}</strong></span>
                         <span>{new Date(note.createdAt).toLocaleString('pt-BR')}</span>
                       </div>
@@ -1630,15 +1630,15 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {activeTab === 'tasks' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Form to create task */}
-              <div className="lg:col-span-1 bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <ListTodo className="w-4 h-4 text-indigo-600" />
+              <div className="lg:col-span-1 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-4">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                  <ListTodo className="w-4 h-4 text-[var(--link)]" />
                   Criar Tarefa / Follow-up
                 </h4>
 
                 <form onSubmit={handleCreateTask} className="space-y-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Título da Tarefa *
                     </label>
                     <input
@@ -1647,12 +1647,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       placeholder="Ex: Cobrar envio dos documentos do cliente X"
                       value={taskTitle}
                       onChange={e => setTaskTitle(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Descrição
                     </label>
                     <textarea
@@ -1660,19 +1660,19 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       placeholder="Instruções ou observações adicionais..."
                       value={taskDesc}
                       onChange={e => setTaskDesc(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                      <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                         Prioridade
                       </label>
                       <select
                         value={taskPriority}
                         onChange={e => setTaskPriority(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                        className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                       >
                         <option value="LOW">Baixa</option>
                         <option value="MEDIUM">Média</option>
@@ -1682,26 +1682,26 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                      <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                         Data Limite
                       </label>
                       <input
                         type="date"
                         value={taskDueDate}
                         onChange={e => setTaskDueDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                        className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1">
                       Atribuir a
                     </label>
                     <select
                       value={taskAssignedTo}
                       onChange={e => setTaskAssignedTo(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     >
                       <option value="">Atribuir a mim</option>
                       {users.map(u => (
@@ -1715,7 +1715,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   <button
                     type="submit"
                     disabled={savingTask}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs"
+                    className="w-full py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     {savingTask ? 'Criando...' : 'Criar Tarefa'}
@@ -1725,12 +1725,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
               {/* Tasks List */}
               <div className="lg:col-span-2 space-y-4">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-between">
                   <span>Todas as Tarefas ({tasks.length})</span>
                 </h4>
 
                 {tasks.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="p-8 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     Nenhuma tarefa cadastrada.
                   </div>
                 ) : (
@@ -1740,17 +1740,17 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       return (
                         <div
                           key={t.id}
-                          className={`p-3.5 bg-white dark:bg-slate-800 rounded-xl border transition-all flex items-start justify-between gap-3 ${
+                          className={`p-3.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border transition-all flex items-start justify-between gap-3 ${
                             isDone
-                              ? 'opacity-60 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900'
-                              : 'border-slate-200 dark:border-slate-700 shadow-xs'
+                              ? 'opacity-60 border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]'
+                              : 'border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs'
                           }`}
                         >
                           <div className="flex items-start gap-3">
                             <button
                               onClick={() => handleToggleTask(t.id, t.status)}
                               className={`mt-0.5 transition-colors ${
-                                isDone ? 'text-emerald-500' : 'text-slate-400 hover:text-emerald-600'
+                                isDone ? 'text-[var(--success-text)]' : 'text-[var(--text-secondary)] hover:text-[var(--success-text)]'
                               }`}
                             >
                               {isDone ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
@@ -1759,18 +1759,18 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                               <h5
                                 className={`text-xs font-bold ${
                                   isDone
-                                    ? 'line-through text-slate-400 dark:text-slate-500'
-                                    : 'text-slate-800 dark:text-slate-100'
+                                    ? 'line-through text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
+                                    : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                                 }`}
                               >
                                 {t.title}
                               </h5>
                               {t.description && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                                   {t.description}
                                 </p>
                               )}
-                              <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-400">
+                              <div className="flex items-center gap-3 mt-2 text-[10px] text-[var(--text-secondary)]">
                                 <span>Responsável: <strong>{t.assignedTo?.name || 'Não atribuído'}</strong></span>
                                 {t.dueDate && (
                                   <span>Prazo: {new Date(t.dueDate).toLocaleDateString('pt-BR')}</span>
@@ -1783,17 +1783,17 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                             <span
                               className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
                                 t.priority === 'URGENT'
-                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                                  ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                                   : t.priority === 'HIGH'
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                  : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                  ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
+                                  : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]'
                               }`}
                             >
                               {t.priority}
                             </span>
                             <button
                               onClick={() => handleDeleteTask(t.id)}
-                              className="text-slate-400 hover:text-rose-500 p-1 rounded transition-colors"
+                              className="text-[var(--text-secondary)] hover:text-[var(--danger-text)] p-1 rounded transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1813,7 +1813,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {activeTab === 'production' && (
             <div className="space-y-6">
               {/* Period Filter Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <div className="flex items-center gap-1.5 overflow-x-auto">
                   {[
                     { id: 'today', label: 'Hoje' },
@@ -1828,8 +1828,8 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       onClick={() => setPeriod(p.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         period === p.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                          ? 'bg-[var(--action)] text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
                       }`}
                     >
                       {p.label}
@@ -1843,61 +1843,61 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       type="date"
                       value={customStartDate}
                       onChange={e => setCustomStartDate(e.target.value)}
-                      className="px-2 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="px-2 py-1 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
-                    <span className="text-slate-400">até</span>
+                    <span className="text-[var(--text-secondary)]">até</span>
                     <input
                       type="date"
                       value={customEndDate}
                       onChange={e => setCustomEndDate(e.target.value)}
-                      className="px-2 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      className="px-2 py-1 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs"
                     />
                   </div>
                 )}
               </div>
 
               {metricsLoading ? (
-                <div className="py-12 text-center text-slate-400">Calculando métricas de produção...</div>
+                <div className="py-12 text-center text-[var(--text-secondary)]">Calculando métricas de produção...</div>
               ) : metrics ? (
                 <div className="space-y-6">
                   {/* Summary Metric Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                      <span className="text-xs text-slate-400 uppercase font-semibold">Volume Produzido</span>
-                      <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+                    <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                      <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Volume Produzido</span>
+                      <div className="text-xl font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1">
                         R$ {Number(metrics.summary?.totalProductionVolume ?? metrics.summary?.totalReleasedValue ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
-                      <span className="text-[11px] text-slate-500 mt-0.5 block">
+                      <span className="text-[11px] text-[var(--text-secondary)] mt-0.5 block">
                         {metrics.summary?.totalCount || 0} propostas cadastradas
                       </span>
                     </div>
 
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                      <span className="text-xs text-slate-400 uppercase font-semibold">Volume Aprovado / Pago</span>
-                      <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                    <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                      <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Volume Aprovado / Pago</span>
+                      <div className="text-xl font-bold text-[var(--success-text)] dark:text-[var(--success-text)] mt-1">
                         R$ {Number(metrics.summary?.approvedVolume || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
-                      <span className="text-[11px] text-emerald-600/80 mt-0.5 block">
+                      <span className="text-[11px] text-[var(--success-text)] mt-0.5 block">
                         {metrics.summary?.approvedCount || 0} propostas concluídas
                       </span>
                     </div>
 
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                      <span className="text-xs text-slate-400 uppercase font-semibold">Taxa de Conversão</span>
-                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                    <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                      <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Taxa de Conversão</span>
+                      <div className="text-xl font-bold text-[var(--link)] dark:text-[var(--link)] mt-1">
                         {Number(metrics.summary?.approvalRate || 0).toFixed(1)}%
                       </div>
-                      <span className="text-[11px] text-slate-500 mt-0.5 block">
+                      <span className="text-[11px] text-[var(--text-secondary)] mt-0.5 block">
                         Aprovadas / Total digitado
                       </span>
                     </div>
 
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                      <span className="text-xs text-slate-400 uppercase font-semibold">Ticket Médio</span>
-                      <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                    <div className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
+                      <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">Ticket Médio</span>
+                      <div className="text-xl font-bold text-[var(--link)] dark:text-[var(--link)] mt-1">
                         R$ {Number(metrics.summary?.ticketAverage || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </div>
-                      <span className="text-[11px] text-slate-500 mt-0.5 block">
+                      <span className="text-[11px] text-[var(--text-secondary)] mt-0.5 block">
                         Por contrato digitado
                       </span>
                     </div>
@@ -1906,22 +1906,22 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   {/* Breakdowns Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Status Breakdown */}
-                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+                    <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                      <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-between">
                         <span>Distribuição por Status</span>
-                        <span className="text-xs font-normal text-slate-400">Total: {metrics.summary?.totalCount}</span>
+                        <span className="text-xs font-normal text-[var(--text-secondary)]">Total: {metrics.summary?.totalCount}</span>
                       </h4>
 
                       {metrics.statusBreakdown?.length === 0 ? (
-                        <p className="text-xs text-slate-400 py-4 text-center">Sem propostas no período.</p>
+                        <p className="text-xs text-[var(--text-secondary)] py-4 text-center">Sem propostas no período.</p>
                       ) : (
                         <div className="space-y-2">
                           {metrics.statusBreakdown?.map((st: any) => (
-                            <div key={st.status} className="flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-850 rounded-lg">
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">{st.status}</span>
+                            <div key={st.status} className="flex items-center justify-between text-xs p-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-lg">
+                              <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{st.status}</span>
                               <div className="flex items-center gap-3">
-                                <span className="text-slate-500">{st.count} un.</span>
-                                <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
+                                <span className="text-[var(--text-secondary)]">{st.count} un.</span>
+                                <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   R$ {Number(st.volume).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -1932,22 +1932,22 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                     </div>
 
                     {/* Bank Breakdown */}
-                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+                    <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                      <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-between">
                         <span>Distribuição por Banco</span>
-                        <span className="text-xs font-normal text-slate-400">{metrics.bankBreakdown?.length} bancos</span>
+                        <span className="text-xs font-normal text-[var(--text-secondary)]">{metrics.bankBreakdown?.length} bancos</span>
                       </h4>
 
                       {metrics.bankBreakdown?.length === 0 ? (
-                        <p className="text-xs text-slate-400 py-4 text-center">Sem propostas no período.</p>
+                        <p className="text-xs text-[var(--text-secondary)] py-4 text-center">Sem propostas no período.</p>
                       ) : (
                         <div className="space-y-2">
                           {metrics.bankBreakdown?.map((bk: any) => (
-                            <div key={bk.bank} className="flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-850 rounded-lg">
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">{bk.bank}</span>
+                            <div key={bk.bank} className="flex items-center justify-between text-xs p-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-lg">
+                              <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{bk.bank}</span>
                               <div className="flex items-center gap-3">
-                                <span className="text-slate-500">{bk.count} un.</span>
-                                <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
+                                <span className="text-[var(--text-secondary)]">{bk.count} un.</span>
+                                <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   R$ {Number(bk.volume).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -1968,20 +1968,20 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {activeTab === 'proposals' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Propostas do Parceiro ({proposals.length})
                 </h4>
               </div>
 
               {proposals.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="p-8 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   Nenhuma proposta associada a este parceiro.
                 </div>
               ) : (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+                <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase font-semibold">
+                      <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] uppercase font-semibold">
                         <tr>
                           <th className="px-4 py-3">Proposta</th>
                           <th className="px-4 py-3">Cliente</th>
@@ -1992,35 +1992,35 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                           <th className="px-4 py-3">Data</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                      <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                         {proposals.map(p => (
-                          <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/60">
-                            <td className="px-4 py-3 font-mono font-bold text-slate-800 dark:text-slate-200">
+                          <tr key={p.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                            <td className="px-4 py-3 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               #{p.proposalNumber || p.id.slice(0, 8)}
                             </td>
                             <td className="px-4 py-3">
-                              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                              <div className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {p.client?.name || 'Cliente'}
                               </div>
-                              <div className="text-[11px] text-slate-400 font-mono">
+                              <div className="text-[11px] text-[var(--text-secondary)] font-mono">
                                 {p.client?.cpf || '***.***.***-**'}
                               </div>
                             </td>
-                            <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
+                            <td className="px-4 py-3 font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               {p.bank || '-'}
                             </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                            <td className="px-4 py-3 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                               {p.operationType || '-'}
                             </td>
-                            <td className="px-4 py-3 font-mono font-bold text-slate-800 dark:text-slate-100">
+                            <td className="px-4 py-3 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               R$ {Number(p.contractValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </td>
                             <td className="px-4 py-3">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {p.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-slate-400">
+                            <td className="px-4 py-3 text-[var(--text-secondary)]">
                               {new Date(p.createdAt).toLocaleDateString('pt-BR')}
                             </td>
                           </tr>
@@ -2038,12 +2038,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {/* ============================================================== */}
           {activeTab === 'simulations' && (
             <div className="space-y-4">
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+              <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Simulações de Crédito Solicitadas ({simulations.length})
               </h4>
 
               {simulations.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="p-8 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   Nenhuma simulação registrada para este parceiro.
                 </div>
               ) : (
@@ -2051,17 +2051,17 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   {simulations.map(sim => (
                     <div
                       key={sim.id}
-                      className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 shadow-xs"
+                      className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-2 shadow-xs"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-slate-800 dark:text-slate-100">
+                        <span className="font-bold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {sim.clientName || 'Cliente Sem Nome'}
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]">
                           {sim.type}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-500 flex items-center justify-between">
+                      <div className="text-xs text-[var(--text-secondary)] flex items-center justify-between">
                         <span>Origem: <strong>{sim.origin || 'Interna'}</strong></span>
                         <span>{new Date(sim.createdAt).toLocaleString('pt-BR')}</span>
                       </div>
@@ -2077,12 +2077,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
           {/* ============================================================== */}
           {activeTab === 'pendencies' && (
             <div className="space-y-4">
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+              <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Pendências Vinculadas ({pendencies.length})
               </h4>
 
               {pendencies.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="p-8 text-center text-[var(--text-secondary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   Nenhuma pendência cadastrada para este parceiro.
                 </div>
               ) : (
@@ -2090,26 +2090,26 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   {pendencies.map(pen => (
                     <div
                       key={pen.id}
-                      className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 shadow-xs"
+                      className="p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between gap-4 shadow-xs"
                     >
                       <div>
-                        <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                        <h5 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {pen.title}
                         </h5>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                           {pen.description || 'Sem descrição detalhada'}
                         </p>
-                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400">
+                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[var(--text-secondary)]">
                           <span>Responsável: <strong>{pen.assignedUser?.name || 'Não atribuído'}</strong></span>
                           <span>Criada em: {new Date(pen.createdAt).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                           {pen.status}
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]">
                           {pen.priority}
                         </span>
                       </div>
@@ -2123,48 +2123,48 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
         {/* Modal de Confirmação de Geração de Acesso ao Portal */}
         {confirmGeneratePortalModal && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden p-6 space-y-5">
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-2xl  border border-[var(--field-border)] dark:border-[var(--field-border)] w-full max-w-md overflow-hidden p-6 space-y-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                <div className="w-10 h-10 rounded-xl bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center shrink-0 border border-[var(--field-border)]">
                   <Key className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h4 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Gerar acesso ao Portal do Parceiro?
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                     Confirme as informações antes de gerar a credencial inicial.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3 text-xs">
+              <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-4 space-y-3 text-xs">
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  <span className="text-[10px] uppercase font-semibold text-[var(--text-secondary)] block tracking-wider">
                     E-mail:
                   </span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm select-all">
+                  <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm select-all">
                     {partner?.email || 'Nenhum e-mail informado'}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  <span className="text-[10px] uppercase font-semibold text-[var(--text-secondary)] block tracking-wider">
                     Portal:
                   </span>
-                  <span className="font-mono text-blue-600 dark:text-blue-400 break-all select-all">
+                  <span className="font-mono text-[var(--link)] dark:text-[var(--link)] break-all select-all">
                     {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setConfirmGeneratePortalModal(false)}
                   disabled={resettingPortal}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-xl transition-colors"
                 >
                   Cancelar
                 </button>
@@ -2172,7 +2172,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   type="button"
                   onClick={handleCreatePortalAccess}
                   disabled={resettingPortal}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-semibold   transition-all flex items-center gap-2 disabled:opacity-90"
                 >
                   {resettingPortal ? (
                     <>
@@ -2190,32 +2190,32 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
 
         {/* Modal de Credenciais do Portal do Parceiro */}
         {portalCredentialsModal && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden p-6 space-y-6">
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-2xl  border border-[var(--field-border)] dark:border-[var(--field-border)] w-full max-w-lg overflow-hidden p-6 space-y-6">
               <div className="text-center space-y-2">
-                <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20 shadow-xs">
+                <div className="w-12 h-12 bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] rounded-2xl flex items-center justify-center mx-auto border border-[var(--success-border)] shadow-xs">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {portalCredentialsModal.title || 'ACESSO AO PORTAL GERADO'}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   {portalCredentialsModal.partnerName}
                 </p>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xs">
+              <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-2xl p-5 space-y-4 shadow-xs">
                 <div className="space-y-3 text-xs">
                   {/* Portal Link */}
-                  <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                  <div className="p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
                       Portal
                     </span>
                     <a
                       href={portalCredentialsModal.portalUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline break-all flex items-center gap-1 mt-0.5"
+                      className="font-medium text-[var(--link)] dark:text-[var(--link)] hover:underline break-all flex items-center gap-1 mt-0.5"
                     >
                       {portalCredentialsModal.portalUrl}
                       <ExternalLink className="w-3 h-3 shrink-0" />
@@ -2223,24 +2223,24 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
 
                   {/* Login */}
-                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <div className="min-w-0">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
                         Login
                       </span>
-                      <span className="font-mono font-medium text-slate-800 dark:text-slate-100 break-all select-all">
+                      <span className="font-mono font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] break-all select-all">
                         {portalCredentialsModal.email}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopyCredentials(portalCredentialsModal.email, 'login')}
-                      className="px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
+                      className="px-2.5 py-1.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
                     >
                       {copiedField === 'login' ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-600 dark:text-emerald-400">Copiado!</span>
+                          <Check className="w-3.5 h-3.5 text-[var(--success-text)]" />
+                          <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Copiado!</span>
                         </>
                       ) : (
                         <>
@@ -2252,24 +2252,24 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
 
                   {/* Senha Temporária */}
-                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <div className="min-w-0">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
                         Senha Temporária
                       </span>
-                      <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm select-all">
+                      <span className="font-mono font-bold text-[var(--link)] dark:text-[var(--link)] text-sm select-all">
                         {portalCredentialsModal.temporaryPassword}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopyCredentials(portalCredentialsModal.temporaryPassword, 'password')}
-                      className="px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
+                      className="px-2.5 py-1.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
                     >
                       {copiedField === 'password' ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-600 dark:text-emerald-400">Copiada!</span>
+                          <Check className="w-3.5 h-3.5 text-[var(--success-text)]" />
+                          <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Copiada!</span>
                         </>
                       ) : (
                         <>
@@ -2281,15 +2281,15 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="p-3 bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] rounded-xl text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[var(--warning-text)] mt-0.5" />
                   <p>
                     <strong>Por segurança, a senha temporária será exibida somente agora.</strong> O parceiro deverá definir uma nova senha no primeiro acesso.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() =>
@@ -2298,12 +2298,12 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                       'all'
                     )
                   }
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-slate-200 dark:border-slate-700"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[var(--field-border)] dark:border-[var(--field-border)]"
                 >
                   {copiedField === 'all' ? (
                     <>
-                      <Check className="w-4 h-4 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">Credenciais copiadas!</span>
+                      <Check className="w-4 h-4 text-[var(--success-text)]" />
+                      <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Credenciais copiadas!</span>
                     </>
                   ) : (
                     <>
@@ -2315,7 +2315,7 @@ export const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setPortalCredentialsModal(null)}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-semibold   transition-all"
                 >
                   Fechar
                 </button>

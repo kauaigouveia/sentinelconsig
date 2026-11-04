@@ -56,21 +56,21 @@ export function parseInline(text: string): React.ReactNode[] {
     if (token.startsWith('`') && token.endsWith('`')) {
       const codeText = token.slice(1, -1);
       nodes.push(
-        <code key={key} className="bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded font-mono text-xs">
+        <code key={key} className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--link)] dark:text-[var(--link)] px-1 py-0.5 rounded font-mono text-xs">
           {codeText}
         </code>
       );
     } else if (token.startsWith('**') && token.endsWith('**')) {
       const boldText = token.slice(2, -2);
       nodes.push(
-        <strong key={key} className="font-semibold text-slate-900 dark:text-slate-100">
+        <strong key={key} className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
           {boldText}
         </strong>
       );
     } else if ((token.startsWith('*') && token.endsWith('*')) || (token.startsWith('_') && token.endsWith('_'))) {
       const italicText = token.slice(1, -1);
       nodes.push(
-        <em key={key} className="italic text-slate-800 dark:text-slate-200">
+        <em key={key} className="italic text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
           {italicText}
         </em>
       );
@@ -90,7 +90,7 @@ export function parseInline(text: string): React.ReactNode[] {
           href={safeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          className="text-[var(--link)] dark:text-[var(--link)] hover:underline font-medium"
         >
           {label}
         </a>
@@ -120,8 +120,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     if (!currentList) return;
     const ListTag = currentList.type === 'ul' ? 'ul' : 'ol';
     const listClass = currentList.type === 'ul'
-      ? 'list-disc list-inside space-y-1 my-2 text-slate-700 dark:text-slate-200'
-      : 'list-decimal list-inside space-y-1 my-2 text-slate-700 dark:text-slate-200';
+      ? 'list-disc list-inside space-y-1 my-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
+      : 'list-decimal list-inside space-y-1 my-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)]';
 
     blocks.push(
       <ListTag key={key} className={listClass}>
@@ -167,9 +167,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     const bodyRows = rows.slice(1).map(parseRow);
 
     blocks.push(
-      <div key={key} className="overflow-x-auto my-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xs">
-        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-xs">
-          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold">
+      <div key={key} className="overflow-x-auto my-3 border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg shadow-xs">
+        <table className="min-w-full divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] text-xs">
+          <thead className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-semibold">
             <tr>
               {headerCells.map((cell, idx) => (
                 <th key={idx} className="px-3 py-2 text-left">
@@ -178,9 +178,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+          <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             {bodyRows.map((row, rIdx) => (
-              <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/40'}>
+              <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]' : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]'}>
                 {row.map((cell, cIdx) => (
                   <td key={cIdx} className="px-3 py-2 whitespace-nowrap">
                     {parseInline(cell)}
@@ -247,7 +247,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     // Headings
     if (trimmed.startsWith('### ')) {
       blocks.push(
-        <h3 key={key} className="text-base font-bold text-slate-900 dark:text-slate-100 mt-3 mb-1">
+        <h3 key={key} className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-3 mb-1">
           {parseInline(trimmed.slice(4))}
         </h3>
       );
@@ -255,7 +255,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     }
     if (trimmed.startsWith('## ')) {
       blocks.push(
-        <h2 key={key} className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-4 mb-2">
+        <h2 key={key} className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-4 mb-2">
           {parseInline(trimmed.slice(3))}
         </h2>
       );
@@ -263,7 +263,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     }
     if (trimmed.startsWith('# ')) {
       blocks.push(
-        <h1 key={key} className="text-xl font-extrabold text-slate-900 dark:text-slate-100 mt-4 mb-2">
+        <h1 key={key} className="text-xl font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-4 mb-2">
           {parseInline(trimmed.slice(2))}
         </h1>
       );
@@ -273,7 +273,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
     // Blockquote
     if (trimmed.startsWith('> ')) {
       blocks.push(
-        <blockquote key={key} className="border-l-4 border-blue-500 pl-3 py-1 my-2 italic text-slate-600 dark:text-slate-300 bg-blue-50/50 dark:bg-blue-950/20 rounded-r">
+        <blockquote key={key} className="border-l-4 border-[var(--field-border)] pl-3 py-1 my-2 italic text-[var(--text-secondary)] dark:text-[var(--text-primary)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] rounded-r">
           {parseInline(trimmed.slice(2))}
         </blockquote>
       );
@@ -282,7 +282,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
 
     // Standard paragraph line
     blocks.push(
-      <p key={key} className="my-1 leading-relaxed text-slate-800 dark:text-slate-200">
+      <p key={key} className="my-1 leading-relaxed text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
         {parseInline(trimmed)}
       </p>
     );

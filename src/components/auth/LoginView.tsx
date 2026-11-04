@@ -46,7 +46,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   if (isBrandingLoading) {
     return (
       <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-surface)] text-[var(--text-primary)] font-sans antialiased">
-        <div className="h-8 w-8 border-2 border-[var(--field-border)] border-t-blue-500 rounded-full animate-spin mb-4" />
+        <div className="h-8 w-8 border-2 border-[var(--field-border)] border-t-[var(--focus)] rounded-full animate-spin mb-4" />
         <span className="text-xs text-[var(--text-secondary)] font-medium">Carregando ambiente...</span>
       </div>
     );

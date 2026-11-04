@@ -1,3 +1,4 @@
+import {ChartPatternDefinitions} from './components/ui/ChartPatterns';
 import {paletteStyle} from './lib/presentationPalette';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StorageService } from './services/storageService';
@@ -997,6 +998,7 @@ function AppMainContent() {
 export default function App() {
   return (
     <RouterProvider>
+      <ChartPatternDefinitions/>
       <AppMainContent />
     </RouterProvider>
   );

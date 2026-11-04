@@ -258,17 +258,17 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6  space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--field-border)] pb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-violet-600/20 text-violet-400 rounded-xl border border-violet-500/30">
+            <div className="p-3 bg-[var(--info-bg)] text-[var(--link)] rounded-xl border border-[var(--field-border)]">
               <Sliders className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">
                 {initialData?.id ? 'Editar Fluxo de Automação' : 'Novo Fluxo Operacional'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)]">
                 Configure regras lógicas orientadas a eventos: QUANDO → SE → ENTÃO.
               </p>
             </div>
@@ -278,7 +278,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
             <button
               type="button"
               onClick={() => setShowTestModal(true)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-violet-300 border border-violet-800/40 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
+              className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--link)] border border-[var(--field-border)] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               Testar Regra
@@ -286,7 +286,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+              className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl text-xs font-semibold transition-colors"
             >
               Cancelar
             </button>
@@ -294,7 +294,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-violet-600/20 transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-semibold   transition-all flex items-center gap-2 disabled:opacity-90"
             >
               <Save className="w-3.5 h-3.5" />
               {isSaving ? 'Salvando...' : 'Salvar Automação'}
@@ -306,19 +306,19 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2 space-y-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Nome da Automação <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-primary)] mb-1.5">
+                Nome da Automação <span className="text-[var(--danger-text)]">*</span>
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Escalar SLA Crítico para Supervisão"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500 transition-colors"
+                className="w-full bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl px-4 py-2.5 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--field-border)] transition-colors"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5">
                 Descrição Operacional
               </label>
               <input
@@ -326,18 +326,18 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Ex: Notifica a gerência e ajusta a prioridade quando o tempo de SLA estourar"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-violet-500 transition-colors"
+                className="w-full bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl px-4 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--field-border)] transition-colors"
               />
             </div>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+          <div className="bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-primary)]">
                   Status da Regra
                 </span>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                   Regras pausadas não executam ações mesmo quando o gatilho ocorre.
                 </p>
               </div>
@@ -346,22 +346,22 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                 onClick={() => setActive(!active)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                   active
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                    ? 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]'
+                    : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--field-border)]'
                 }`}
               >
                 {active ? 'ATIVO' : 'PAUSADO'}
               </button>
             </div>
-            <div className="text-[11px] text-slate-500 pt-3 border-t border-slate-800/80">
+            <div className="text-[11px] text-[var(--text-secondary)] pt-3 border-t border-[var(--field-border)]">
               Idempotência e proteção contra recursão ativas por padrão.
             </div>
           </div>
         </div>
 
         {errorMessage && (
-          <div className="p-4 bg-rose-950/30 border border-rose-800/40 rounded-xl text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="p-4 bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-xl text-[var(--danger-text)] text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-[var(--danger-text)]" />
             {errorMessage}
           </div>
         )}
@@ -370,40 +370,40 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
       {/* ==================================================== */}
       {/* 1. QUANDO (TRIGGER / GATILHO)                         */}
       {/* ==================================================== */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6  relative">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400 font-extrabold text-sm">
+            <div className="w-8 h-8 rounded-xl bg-[var(--info-bg)] border border-[var(--field-border)] flex items-center justify-center text-[var(--link)] font-extrabold text-sm">
               1
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                 QUANDO (Gatilho de Disparo)
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)]">
                 O evento da esteira que inicia a avaliação do fluxo.
               </p>
             </div>
           </div>
-          <span className="text-xs font-mono text-violet-400 bg-violet-950/40 border border-violet-800/30 px-3 py-1 rounded-lg">
+          <span className="text-xs font-mono text-[var(--link)] bg-[var(--info-bg)] border border-[var(--field-border)] px-3 py-1 rounded-lg">
             {selectedTrigger?.category}
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5">
               Selecione o Evento de Domínio
             </label>
             <select
               value={event}
               onChange={(e) => setEvent(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm font-semibold focus:outline-none focus:border-[var(--field-border)] transition-colors"
             >
               {Object.entries(groupedTriggers).map(([category, items]) => (
-                <optgroup key={category} label={category} className="bg-slate-900 text-slate-300">
+                <optgroup key={category} label={category} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                   {items.map((t) => (
-                    <option key={t.id} value={t.id} className="text-white py-1">
+                    <option key={t.id} value={t.id} className="text-[var(--text-primary)] py-1">
                       {t.label} ({t.id})
                     </option>
                   ))}
@@ -411,16 +411,16 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
               ))}
             </select>
             {selectedTrigger && (
-              <p className="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+              <p className="text-xs text-[var(--text-secondary)] mt-2 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-[var(--link)] shrink-0" />
                 {selectedTrigger.description}
               </p>
             )}
           </div>
 
           {/* Quick field hints */}
-          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl p-3.5 space-y-2">
+            <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
               Campos Disponíveis no Evento
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -431,10 +431,10 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                   onClick={() => {
                     setRules([...rules, { field: f.field, operator: 'EQUALS', value: '' }]);
                   }}
-                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded text-[11px] font-mono border border-slate-800 transition-colors flex items-center gap-1"
+                  className="px-2 py-1 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded text-[11px] font-mono border border-[var(--field-border)] transition-colors flex items-center gap-1"
                   title={`Clique para adicionar condição com ${f.field}`}
                 >
-                  <Plus className="w-2.5 h-2.5 text-violet-400" />
+                  <Plus className="w-2.5 h-2.5 text-[var(--link)]" />
                   {f.field}
                 </button>
               ))}
@@ -444,7 +444,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
 
         {/* Visual Connector Arrow */}
         <div className="flex justify-center -mb-9 mt-4">
-          <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 z-10 shadow">
+          <div className="w-8 h-8 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] flex items-center justify-center text-[var(--text-secondary)] z-10 shadow">
             <ArrowDown className="w-4 h-4" />
           </div>
         </div>
@@ -453,30 +453,30 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
       {/* ==================================================== */}
       {/* 2. SE (CONDITIONS / FILTROS)                          */}
       {/* ==================================================== */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6  relative">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-extrabold text-sm">
+            <div className="w-8 h-8 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning-border)] flex items-center justify-center text-[var(--warning-text)] font-extrabold text-sm">
               2
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">SE (Condições de Execução)</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">SE (Condições de Execução)</h3>
+              <p className="text-xs text-[var(--text-secondary)]">
                 Filtre os cenários exatos para os quais a automação deve rodar.
               </p>
             </div>
           </div>
 
           {/* AND / OR Switch */}
-          <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
-            <span className="text-xs font-semibold text-slate-400 px-2">Critério:</span>
+          <div className="flex items-center gap-2 bg-[var(--bg-canvas)] p-1 rounded-xl border border-[var(--field-border)]">
+            <span className="text-xs font-semibold text-[var(--text-secondary)] px-2">Critério:</span>
             <button
               type="button"
               onClick={() => setMatchType('ALL')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
                 matchType === 'ALL'
-                  ? 'bg-violet-600 text-white shadow'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[var(--action)] text-[var(--text-primary)] shadow'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               TODAS (E / AND)
@@ -486,8 +486,8 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
               onClick={() => setMatchType('ANY')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
                 matchType === 'ANY'
-                  ? 'bg-amber-600 text-white shadow'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[var(--warning-bg)] text-[var(--text-primary)] shadow'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               QUALQUER (OU / OR)
@@ -498,10 +498,10 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
         {/* Condition Rows */}
         <div className="space-y-3">
           {rules.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
-              <Sliders className="w-8 h-8 mx-auto text-slate-600 mb-2" />
-              <div className="text-sm font-semibold text-slate-300">Sem condições restritivas</div>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            <div className="p-8 text-center text-[var(--text-secondary)] border border-dashed border-[var(--field-border)] rounded-xl bg-[var(--bg-canvas)]">
+              <Sliders className="w-8 h-8 mx-auto text-[var(--text-secondary)] mb-2" />
+              <div className="text-sm font-semibold text-[var(--text-primary)]">Sem condições restritivas</div>
+              <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-sm mx-auto">
                 A automação disparará sempre que o evento ocorrer. Adicione condições para restringir por banco, prioridade, valores, etc.
               </p>
             </div>
@@ -509,9 +509,9 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
             rules.map((rule, idx) => (
               <div
                 key={idx}
-                className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 transition-colors hover:border-slate-700"
+                className="bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 transition-colors hover:border-[var(--field-border)]"
               >
-                <div className="w-8 shrink-0 text-xs font-mono font-bold text-slate-500 text-center">
+                <div className="w-8 shrink-0 text-xs font-mono font-bold text-[var(--text-secondary)] text-center">
                   #{idx + 1}
                 </div>
 
@@ -522,7 +522,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                     value={rule.field}
                     onChange={(e) => handleUpdateCondition(idx, 'field', e.target.value)}
                     placeholder="campo (ex: priority)"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-violet-500"
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:border-[var(--field-border)]"
                   />
                 </div>
 
@@ -531,7 +531,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                   <select
                     value={rule.operator}
                     onChange={(e) => handleUpdateCondition(idx, 'operator', e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-violet-300 text-xs font-semibold focus:outline-none focus:border-violet-500"
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg px-3 py-2 text-[var(--link)] text-xs font-semibold focus:outline-none focus:border-[var(--field-border)]"
                   >
                     {catalog.operators.map((op) => (
                       <option key={op.id} value={op.id}>
@@ -549,11 +549,11 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                       value={rule.value ?? ''}
                       onChange={(e) => handleUpdateCondition(idx, 'value', e.target.value)}
                       placeholder="valor esperado (ex: CRITICAL)"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-violet-500"
+                      className="w-full bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--field-border)]"
                     />
                   </div>
                 ) : (
-                  <div className="flex-1 text-xs text-slate-500 italic px-2">
+                  <div className="flex-1 text-xs text-[var(--text-secondary)] italic px-2">
                     (Sem valor para este operador)
                   </div>
                 )}
@@ -562,7 +562,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                 <button
                   type="button"
                   onClick={() => handleRemoveCondition(idx)}
-                  className="p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors shrink-0"
+                  className="p-2 text-[var(--text-secondary)] hover:text-[var(--danger-text)] hover:bg-[var(--bg-surface)] rounded-lg transition-colors shrink-0"
                   title="Remover condição"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -575,9 +575,9 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
             <button
               type="button"
               onClick={handleAddCondition}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-700"
+              className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 border border-[var(--field-border)]"
             >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
+              <Plus className="w-3.5 h-3.5 text-[var(--warning-text)]" />
               Adicionar Condição
             </button>
           </div>
@@ -585,7 +585,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
 
         {/* Visual Connector Arrow */}
         <div className="flex justify-center -mb-9 mt-4">
-          <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 z-10 shadow">
+          <div className="w-8 h-8 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] flex items-center justify-center text-[var(--text-secondary)] z-10 shadow">
             <ArrowDown className="w-4 h-4" />
           </div>
         </div>
@@ -594,22 +594,22 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
       {/* ==================================================== */}
       {/* 3. ENTÃO (ACTIONS / AÇÕES)                           */}
       {/* ==================================================== */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6  relative">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-extrabold text-sm">
+            <div className="w-8 h-8 rounded-xl bg-[var(--success-bg)] border border-[var(--success-border)] flex items-center justify-center text-[var(--success-text)] font-extrabold text-sm">
               3
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">ENTÃO (Ações Operacionais)</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">ENTÃO (Ações Operacionais)</h3>
+              <p className="text-xs text-[var(--text-secondary)]">
                 Ações executadas sequencialmente quando todas as condições forem válidas.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <ShieldAlert className="w-4 h-4 text-emerald-400" />
+          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <ShieldAlert className="w-4 h-4 text-[var(--success-text)]" />
             <span className="hidden sm:inline">Apenas ações autorizadas e seguras</span>
           </div>
         </div>
@@ -622,17 +622,17 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
             return (
               <div
                 key={actIdx}
-                className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3 transition-colors hover:border-slate-700"
+                className="bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl p-4 space-y-3 transition-colors hover:border-[var(--field-border)]"
               >
-                <div className="flex items-center justify-between gap-3 border-b border-slate-850 pb-3">
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--field-border)] pb-3">
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="w-6 h-6 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-xs font-bold text-violet-400">
+                    <span className="w-6 h-6 rounded-lg bg-[var(--bg-surface)] border border-[var(--field-border)] flex items-center justify-center text-xs font-bold text-[var(--link)]">
                       {actIdx + 1}
                     </span>
                     <select
                       value={act.type}
                       onChange={(e) => handleActionTypeChange(actIdx, e.target.value)}
-                      className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-emerald-300 font-bold text-xs focus:outline-none focus:border-violet-500"
+                      className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg px-3 py-1.5 text-[var(--success-text)] font-bold text-xs focus:outline-none focus:border-[var(--field-border)]"
                     >
                       {catalog.actions.map((a) => (
                         <option key={a.type} value={a.type}>
@@ -646,7 +646,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                     type="button"
                     onClick={() => handleRemoveAction(actIdx)}
                     disabled={actions.length === 1}
-                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors disabled:opacity-30"
+                    className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--danger-text)] hover:bg-[var(--bg-surface)] rounded-lg transition-colors disabled:opacity-90"
                     title="Remover ação"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -661,13 +661,13 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                     if (f.type === 'select') {
                       return (
                         <div key={f.name}>
-                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                             {f.label}
                           </label>
                           <select
                             value={val}
                             onChange={(e) => handleActionParamChange(actIdx, f.name, e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-violet-500"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--field-border)]"
                           >
                             {f.options?.map((opt) => (
                               <option key={opt} value={opt}>
@@ -682,14 +682,14 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
                     if (f.type === 'textarea') {
                       return (
                         <div key={f.name} className="md:col-span-2">
-                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                          <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                             {f.label}
                           </label>
                           <textarea
                             rows={2}
                             value={val}
                             onChange={(e) => handleActionParamChange(actIdx, f.name, e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-violet-500"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg p-2.5 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--field-border)]"
                           />
                         </div>
                       );
@@ -697,14 +697,14 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
 
                     return (
                       <div key={f.name}>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                        <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                           {f.label}
                         </label>
                         <input
                           type="text"
                           value={val}
                           onChange={(e) => handleActionParamChange(actIdx, f.name, e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-violet-500"
+                          className="w-full bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--field-border)]"
                         />
                       </div>
                     );
@@ -718,9 +718,9 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
             <button
               type="button"
               onClick={handleAddAction}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-700"
+              className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 border border-[var(--field-border)]"
             >
-              <Plus className="w-3.5 h-3.5 text-emerald-400" />
+              <Plus className="w-3.5 h-3.5 text-[var(--success-text)]" />
               Adicionar Nova Ação
             </button>
           </div>
@@ -730,13 +730,13 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
       {/* ==================================================== */}
       {/* HUMAN LANGUAGE PREVIEW BANNER                        */}
       {/* ==================================================== */}
-      <div className="bg-slate-900 border border-violet-900/40 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5  flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-violet-400 text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-[var(--link)] text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-4 h-4" />
             Visão em Linguagem Natural
           </div>
-          <p className="text-sm text-slate-200 font-medium italic">
+          <p className="text-sm text-[var(--text-primary)] font-medium italic">
             "{naturalLanguagePreview}"
           </p>
         </div>
@@ -745,7 +745,7 @@ export const AutomationVisualBuilder: React.FC<AutomationVisualBuilderProps> = (
           <button
             type="button"
             onClick={() => setShowTestModal(true)}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-violet-300 border border-violet-800/40 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
+            className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--link)] border border-[var(--field-border)] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             Simular Regra

@@ -240,7 +240,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar ADE, CPF ou Parceiro..."
-                className="ui-input-icon ui-input w-44 sm:w-52 h-7.5 rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] placeholder-slate-400 focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--border-default)] focus:outline-none"
+                className="ui-input-icon ui-input w-44 sm:w-52 h-7.5 rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--border-default)] focus:outline-none"
               />
             </div>
 
@@ -372,7 +372,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                       return (
                         <div
                           key={p.id}
-                          className={`rounded-xl border bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5  hover: transition-transform space-y-2 cursor-pointer group relative ${
+                          className={`rounded-xl border bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5   transition-transform space-y-2 cursor-pointer group relative ${
                             sla.health === 'OVERDUE'
                               ? 'border-[var(--border-default)] dark:border-[var(--border-default)] ring-1 ring-[var(--field-border)] dark:ring-[var(--field-border)]'
                               : sla.health === 'WARNING'

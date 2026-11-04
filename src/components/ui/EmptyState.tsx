@@ -52,7 +52,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {secondaryActionLabel && onSecondaryAction && (
             <button
               onClick={onSecondaryAction}
-              className="inline-flex items-center justify-center rounded-md border border-[var(--border-default)] border-[var(--border-default)] bg-white bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] text-[var(--text-secondary)] transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center rounded-md border border-[var(--border-default)] border-[var(--border-default)] bg-[var(--bg-surface)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] text-[var(--text-secondary)] transition-colors cursor-pointer"
             >
               {secondaryActionLabel}
             </button>

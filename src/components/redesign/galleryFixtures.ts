@@ -6,10 +6,10 @@ export type GalleryRow = PreviewRow & {
   elapsed: string;
 };
 export const galleryStatuses = [
-  { name: "Aguardar formalização", color: "#8b5cf6" },
-  { name: "Aguardar retorno CIP", color: "#06b6d4" },
-  { name: "Pendência documental", color: "#f59e0b" },
-  { name: "Proposta paga", color: "#10b981" },
+  { name: "Aguardar formalização", color: "var(--text-primary)" },
+  { name: "Aguardar retorno CIP", color: "var(--text-primary)" },
+  { name: "Pendência documental", color: "var(--text-primary)" },
+  { name: "Proposta paga", color: "var(--text-primary)" },
 ];
 export const galleryRows: GalleryRow[] = Array.from({ length: 36 }, (_, i) => {
   const status = galleryStatuses[i % 4];

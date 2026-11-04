@@ -1,3 +1,7 @@
+import {renderToStaticMarkup} from 'react-dom/server';
+import {TokenDonut} from '../src/components/ui/ChartPatterns';
+import {presentationIndependentSource} from '../scripts/ui-palette-parity.mjs';
+import {createHash} from 'node:crypto';
 // @vitest-environment jsdom
 import React, { useState } from 'react';
 import {PreviewSidebar} from '../src/components/redesign/PreviewSidebar';
@@ -12,13 +16,13 @@ describe('Design system visual, without APIs', () => {
     it('navigates tabs by keyboard and skips disabled tabs', () => { function Fixture() { const [value, setValue] = useState('a'); return <Tabs label="Áreas" value={value} onChange={setValue} items={[{ id: 'a', label: 'Primeira' }, { id: 'b', label: 'Indisponível', disabled: true }, { id: 'c', label: 'Última' }]}/>; } render(<Fixture />); const first = screen.getByRole('tab', { name: 'Primeira' }); first.focus(); fireEvent.keyDown(first, { key: 'ArrowRight' }); expect(screen.getByRole('tab', { name: 'Última' }).getAttribute('aria-selected')).toBe('true'); expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Última' })); });
     it('closes a dialog on Escape and returns focus to its trigger', () => { function Fixture() { const [open, setOpen] = useState(false); return <><Button onClick={() => setOpen(true)}>Abrir</Button><Modal open={open} title="Revisão" onClose={() => setOpen(false)}><Input aria-label="Detalhe"/></Modal></>; } render(<Fixture />); const trigger = screen.getByRole('button', { name: 'Abrir' }); trigger.focus(); fireEvent.click(trigger); expect(screen.getByRole('dialog', { name: 'Revisão' })).toBeTruthy(); fireEvent.keyDown(document, { key: 'Escape' }); expect(screen.queryByRole('dialog')).toBeNull(); expect(document.activeElement).toBe(trigger); });
     it('sorts financial rows without mutating source records', () => { const rows = [{ id: 'a', amount: 300 }, { id: 'b', amount: 100 }]; render(<Table caption="Ofertas fictícias" rows={rows} rowKey={row => row.id} columns={[{ key: 'amount', label: 'Valor', render: row => row.amount, compare: (a, b) => a.amount - b.amount }]}/>); fireEvent.click(screen.getByRole('button', { name: /Valor/ })); expect(screen.getAllByRole('cell').map(cell => cell.textContent)).toEqual(['100', '300']); expect(rows[0].id).toBe('a'); });
-    it('uses the official default palette and preserves custom brand with contrasting ink', () => { const css = readFileSync('src/styles/tokens.css', 'utf8'); expect(css).toContain('--bg-canvas:#06141B'); expect(css).toContain('--action:var(--primary-color,var(--action-default))'); expect(paletteStyle(null)).toMatchObject({ '--primary-color': 'initial' }); for (let r = 0; r <= 255; r += 51)
+    it('uses the official default palette and preserves custom brand with contrasting ink', () => { const css = readFileSync('src/styles/tokens.css', 'utf8'); expect(css).toContain('--bg-canvas:#021024'); expect(css).toContain('--action:var(--primary-color,var(--action-default))'); expect(paletteStyle(null)).toMatchObject({ '--primary-color': 'initial' }); for (let r = 0; r <= 255; r += 51)
         for (let g = 0; g <= 255; g += 51)
             for (let b = 0; b <= 255; b += 51) {
                 const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
                 const style = paletteStyle(color) as Record<string, string>;
                 expect(style['--primary-color']).toBe(color);
-                const ink = style['--brand-ink'].includes('dark') ? [0, 0, 0] : [255, 255, 255];
+                const ink = style['--brand-ink'].includes('dark') ? [1, 2, 3] : [254, 255, 255];
                 expect(contrastRatio([r, g, b], ink)).toBeGreaterThanOrEqual(4.5);
             } });
 });
@@ -51,3 +55,8 @@ describe('Navegação sem redundância', () => {
     expect(screen.getByRole('button',{name:'Integrações'}).getAttribute('aria-expanded')).toBe('true');
   });
 });
+
+it('global blue migration preserves operational source across all migrated modules',()=>{const baseline=JSON.parse(readFileSync('docs/redesign-v4/blue-behavior-baseline.json','utf8'));for(const file of baseline.files){expect(createHash('sha256').update(presentationIndependentSource(readFileSync(file.path,'utf8'))).digest('hex'),file.path).toBe(file.sha256);}});
+
+it('semantic and action tokens pass WCAG contrast in both themes',()=>{const css=readFileSync('src/styles/tokens.css','utf8');const sections=[css.split('.dark {')[0],css.split('.dark {')[1].split('}')[0]];let tokens:Record<string,string>={};const rgb=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));for(const section of sections){tokens={...tokens,...Object.fromEntries([...section.matchAll(/--([\w-]+):\s*(#[\da-fA-F]{6})/g)].map(m=>[m[1],m[2]]))};const pairs:[string,string,number][]=[];for(const bg of ['bg-canvas','bg-surface','bg-surface-elevated']){for(const fg of ['text-primary','text-secondary'])pairs.push([fg,bg,4.5]);for(const fg of ['field-border','focus'])pairs.push([fg,bg,3]);}pairs.push(['action-default-ink','action-default',4.5],['action-default-ink','action-hover-default',4.5]);for(const tone of ['success','warning','danger','info'])pairs.push([tone+'-text',tone+'-bg',4.5],[tone+'-border',tone+'-bg',3]);for(const [fg,bg,min] of pairs)expect(contrastRatio(rgb(tokens[fg]),rgb(tokens[bg])),fg+'/'+bg).toBeGreaterThanOrEqual(min);}});
+it('donut keeps the original category proportions and distinguishes series beyond four',()=>{const rows=[10,20,30,15,15,10].map(count=>({count}));const html=renderToStaticMarkup(<TokenDonut data={rows} total={100}/>);expect(html.match(/<circle/g)).toHaveLength(6);expect(html).toContain('stroke-dasharray="20 80"');expect(html).toContain('stroke-dasharray="30 70"');expect(html).toContain('<pattern');expect(html).not.toContain('NaN');expect(rows.map(r=>r.count)).toEqual([10,20,30,15,15,10]);});

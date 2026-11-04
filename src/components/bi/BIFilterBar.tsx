@@ -101,11 +101,11 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
   );
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs transition-all space-y-3">
+    <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5  transition-all space-y-3">
       {/* Top Row: Presets & Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         {/* Presets Segmented Control */}
-        <div className="flex items-center flex-wrap gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+        <div className="flex items-center flex-wrap gap-1 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] p-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
           {(['HOJE', 'ONTEM', 'ULTIMOS_7_DIAS', 'ULTIMOS_30_DIAS', 'MES_ATUAL', 'MES_ANTERIOR', 'ANO_ATUAL', 'PERSONALIZADO'] as BIPeriodPreset[]).map((preset) => {
             const isActive = filters.period === preset;
             return (
@@ -116,8 +116,8 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                 onClick={() => handlePeriodClick(preset)}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap cursor-pointer ${
                   isActive
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 font-bold shadow-2xs border border-slate-200/60 dark:border-slate-700/80'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--link)] dark:text-[var(--link)] font-bold  border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
                 {PERIOD_LABELS[preset]}
@@ -130,10 +130,10 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
         <div className="flex items-center gap-2">
           {/* Realtime Sync Badge */}
           <div
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)]"
             title="Dados sincronizados automaticamente com a base oficial"
           >
-            <Radio className="w-3 h-3 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+            <Radio className="w-3 h-3 text-[var(--success-text)] dark:text-[var(--success-text)] animate-pulse" />
             <span>Atualização em Tempo Real</span>
           </div>
 
@@ -144,8 +144,8 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
             onClick={() => setShowAdvanced((prev) => !prev)}
             className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
               showAdvanced || hasActiveFilters
-                ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
+                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
+                : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)]'
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
@@ -159,7 +159,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
               id="bi-filter-reset-button"
               type="button"
               onClick={handleReset}
-              className="p-1.5 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg transition-colors cursor-pointer"
               title="Limpar todos os filtros"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
             type="button"
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-[var(--action-ink)] bg-[var(--action)] hover:bg-[var(--action-hover)] disabled:opacity-90 rounded-lg  transition-all cursor-pointer"
             title="Atualizar dados do painel"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -183,16 +183,16 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
       {/* Advanced Filter Collapsible Bar */}
       {showAdvanced && (
-        <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 animate-fadeIn">
+        <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 animate-fadeIn">
           {/* Custom Date Pickers */}
           {filters.period === 'PERSONALIZADO' && (
             <>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Data Inicial
                 </label>
                 <div className="relative">
-                  <Calendar className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Calendar className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
                   <input
                     id="bi-filter-start-date"
                     type="date"
@@ -200,17 +200,17 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                     max={filters.endDate ? filters.endDate.split('T')[0] : undefined}
                     onChange={(e) => onFilterChange({ startDate: e.target.value })}
                     aria-label="Data inicial do período do BI"
-                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Data Final
                 </label>
                 <div className="relative">
-                  <Calendar className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Calendar className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
                   <input
                     id="bi-filter-end-date"
                     type="date"
@@ -218,7 +218,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
                     min={filters.startDate ? filters.startDate.split('T')[0] : undefined}
                     onChange={(e) => onFilterChange({ endDate: e.target.value })}
                     aria-label="Data final do período do BI"
-                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden"
                   />
                 </div>
               </div>
@@ -227,16 +227,16 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Bank Select */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
               Banco
             </label>
             <div className="relative">
-              <Building2 className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Building2 className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
               <select
                 id="bi-filter-bank"
                 value={filters.bankId || ''}
                 onChange={(e) => onFilterChange({ bankId: e.target.value || undefined })}
-                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden appearance-none cursor-pointer"
+                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden appearance-none cursor-pointer"
               >
                 <option value="">Todos os Bancos</option>
                 {banks.map((b) => (
@@ -250,16 +250,16 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Partner Select */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
               Correspondente / Parceiro
             </label>
             <div className="relative">
-              <Users className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Users className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
               <select
                 id="bi-filter-partner"
                 value={filters.partnerId || ''}
                 onChange={(e) => onFilterChange({ partnerId: e.target.value || undefined })}
-                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden appearance-none cursor-pointer"
+                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden appearance-none cursor-pointer"
               >
                 <option value="">Todos os Parceiros</option>
                 {partners.map((p) => (
@@ -273,16 +273,16 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Product Select */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
               Operação / Produto
             </label>
             <div className="relative">
-              <Briefcase className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Briefcase className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] pointer-events-none" />
               <select
                 id="bi-filter-product"
                 value={filters.productId || ''}
                 onChange={(e) => onFilterChange({ productId: e.target.value || undefined })}
-                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden appearance-none cursor-pointer"
+                className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden appearance-none cursor-pointer"
               >
                 <option value="">Todos os Produtos</option>
                 {products.map((prod) => (
@@ -296,12 +296,12 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Convenio Select */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Convênio</label>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">Convênio</label>
             <select
               id="bi-filter-convenio"
               value={filters.convenioId || ''}
               onChange={(e) => onFilterChange({ convenioId: e.target.value || undefined })}
-              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden cursor-pointer"
             >
               <option value="">Todos os Convênios</option>
               {convenios.map((convenio) => <option key={convenio.id} value={convenio.id}>{convenio.name}</option>)}
@@ -310,12 +310,12 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Status Select */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Status</label>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">Status</label>
             <select
               id="bi-filter-status"
               value={filters.statusId || ''}
               onChange={(e) => onFilterChange({ statusId: e.target.value || undefined })}
-              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden cursor-pointer"
             >
               <option value="">Todos os Status</option>
               {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
@@ -324,24 +324,24 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Responsible Operator Selects */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Digitador</label>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">Digitador</label>
             <select
               id="bi-filter-digitizer"
               value={filters.digitizerId || ''}
               onChange={(e) => onFilterChange({ digitizerId: e.target.value || undefined })}
-              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden cursor-pointer"
             >
               <option value="">Todos os Digitadores</option>
               {users.filter((user) => user.role === 'DIGITADOR').map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Responsável atual</label>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">Responsável atual</label>
             <select
               id="bi-filter-assigned-to"
               value={filters.assignedToId || ''}
               onChange={(e) => onFilterChange({ assignedToId: e.target.value || undefined })}
-              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden cursor-pointer"
             >
               <option value="">Todos os Responsáveis</option>
               {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
@@ -350,12 +350,12 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
           {/* Proposal Classification */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Tipo de operação</label>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">Tipo de operação</label>
             <select
               id="bi-filter-proposal-type"
               value={filters.proposalType || ''}
               onChange={(e) => onFilterChange({ proposalType: e.target.value || undefined })}
-              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden cursor-pointer"
             >
               <option value="">Todos os Tipos</option>
               <option value="NOVO">Novo</option>
@@ -368,12 +368,12 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Categoria do status</label>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">Categoria do status</label>
             <select
               id="bi-filter-standard-category"
               value={filters.standardCategory || ''}
               onChange={(e) => onFilterChange({ standardCategory: e.target.value || undefined })}
-              className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+              className="w-full px-2.5 py-1 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden cursor-pointer"
             >
               <option value="">Todas as Categorias</option>
               <option value="ESTEIRA">Esteira</option>
@@ -389,7 +389,7 @@ export const BIFilterBar: React.FC<BIFilterBarProps> = ({
 
       {/* Footer info: Last Updated */}
       {lastUpdated && (
-        <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between select-none">
+        <div className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] flex items-center justify-between select-none">
           <span>Base Oficial • Isolamento Multi-Tenant</span>
           <span>Última atualização: {lastUpdated.toLocaleTimeString('pt-BR')}</span>
         </div>

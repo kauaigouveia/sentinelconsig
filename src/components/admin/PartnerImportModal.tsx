@@ -120,7 +120,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
     rowsData.forEach((row, idx) => {
       // Auto-detect columns
       const rowKeys = Object.keys(row);
-      
+
       const findVal = (keyPatterns: string[]) => {
         for (const pattern of keyPatterns) {
           const matchKey = rowKeys.find(k => k.toLowerCase().includes(pattern));
@@ -458,20 +458,20 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
   const invalidCount = parsedRows.filter(r => r.status === 'INVALID').length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col">
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
           <div className="flex items-center gap-2.5">
-            <div className="rounded-lg bg-blue-600 p-2 text-white">
+            <div className="rounded-lg bg-[var(--info-bg)] p-2 text-[var(--text-primary)]">
               <FileSpreadsheet className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
+              <h2 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-tight">
                 Importar Parceiros Comerciais em Lote
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Upload de arquivos Excel (.xlsx, .csv) ou colar diretamente da planilha
               </p>
             </div>
@@ -479,7 +479,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -487,17 +487,17 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
         {/* Modal Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          
+
           {/* Section 1: Default Promoter Fallback */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50/50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-200/60 dark:border-blue-900/50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
+              <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 Promotora de Vínculo Padrão *
               </label>
               <select
                 value={defaultPromoterId}
                 onChange={e => setDefaultPromoterId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-100"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               >
                 {promoters.map(pr => (
                   <option key={pr.id} value={pr.id}>
@@ -505,7 +505,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                 Utilizada quando a coluna 'Promotora' da planilha estiver vazia.
               </p>
             </div>
@@ -514,9 +514,9 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
               <button
                 type="button"
                 onClick={handleDownloadTemplate}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
               >
-                <Download className="h-4 w-4 text-blue-600" />
+                <Download className="h-4 w-4 text-[var(--link)]" />
                 <span>Baixar Modelo Excel (.xlsx)</span>
               </button>
             </div>
@@ -524,15 +524,15 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
           {/* Section 2: Upload or Paste Input */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
+
             {/* File Upload Dropzone */}
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-5 text-center hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex flex-col items-center justify-center">
-              <Upload className={`h-8 w-8 mb-2 ${loadingPartners || partnersLoadFailed ? 'text-slate-400' : 'text-blue-500'}`} />
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            <div className="border-2 border-dashed border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-5 text-center hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors flex flex-col items-center justify-center">
+              <Upload className={`h-8 w-8 mb-2 ${loadingPartners || partnersLoadFailed ? 'text-[var(--text-secondary)]' : 'text-[var(--link)]'}`} />
+              <p className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Selecione uma planilha de parceiros
               </p>
-              <p className="text-[10px] text-slate-500 mb-3">Formatos suportados: .XLSX, .CSV</p>
-              <label className={`rounded-lg px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors ${loadingPartners || partnersLoadFailed ? 'bg-slate-400 cursor-not-allowed opacity-60' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'}`}>
+              <p className="text-[10px] text-[var(--text-secondary)] mb-3">Formatos suportados: .XLSX, .CSV</p>
+              <label className={`rounded-lg px-4 py-2 text-xs font-bold text-[var(--text-primary)]  transition-colors ${loadingPartners || partnersLoadFailed ? 'bg-[var(--bg-surface-elevated)] cursor-not-allowed opacity-60' : 'bg-[var(--info-bg)] hover:bg-[var(--info-bg)] cursor-pointer'}`}>
                 <span>{loadingPartners ? 'Carregando parceiros existentes...' : 'Escolher Arquivo'}</span>
                 <input
                   type="file"
@@ -546,7 +546,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
             {/* Paste Raw Data */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+              <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Ou cole os dados (Nome [Tab] Login [Tab] Promotora [Tab] E-mail):
               </label>
               <textarea
@@ -555,13 +555,13 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                 onChange={e => setPastedText(e.target.value)}
                 disabled={loadingPartners || partnersLoadFailed}
                 placeholder="Nome [Tab] Login/Código [Tab] Promotora [Tab] E-mail"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs font-mono text-slate-800 dark:text-slate-100 focus:outline-hidden disabled:opacity-50"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2.5 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden disabled:opacity-90"
               />
               <button
                 type="button"
                 onClick={handleParsePastedText}
                 disabled={loadingPartners || partnersLoadFailed || !pastedText.trim()}
-                className="w-full rounded-lg bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white py-1.5 text-xs font-bold transition-colors disabled:opacity-40"
+                className="w-full rounded-lg bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] py-1.5 text-xs font-bold transition-colors disabled:opacity-90"
               >
                 {loadingPartners ? 'Carregando parceiros existentes...' : 'Processar Texto Colado'}
               </button>
@@ -571,16 +571,16 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
 
           {/* Feedback messages */}
           {errorMsg && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
+            <div className="rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-3 text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <AlertCircle className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
                 <span>{errorMsg}</span>
               </div>
               {partnersLoadFailed && (
                 <button
                   type="button"
                   onClick={() => setRetryTrigger(prev => prev + 1)}
-                  className="px-2.5 py-1 text-[10px] font-bold bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 rounded transition-colors cursor-pointer shrink-0"
+                  className="px-2.5 py-1 text-[10px] font-bold bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] rounded transition-colors cursor-pointer shrink-0"
                 >
                   Tentar Novamente
                 </button>
@@ -589,36 +589,36 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           )}
 
           {successMsg && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-3 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
-          {importId && !importing && <button type="button" className="mx-6 mb-3 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white" onClick={() => void downloadCredentials(importId).catch(error => setErrorMsg(error.message))}>Baixar planilha de acessos (disponível por 24 horas)</button>}
+          {importId && !importing && <button type="button" className="mx-6 mb-3 rounded-lg bg-[var(--action)] px-4 py-2 text-xs font-bold text-[var(--action-ink)]" onClick={() => void downloadCredentials(importId).catch(error => setErrorMsg(error.message))}>Baixar planilha de acessos (disponível por 24 horas)</button>}
 
           {/* Section 3: Parsed Preview Table */}
           {parsedRows.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Pré-visualização da Importação ({parsedRows.length} linhas)
                 </h3>
 
                 <div className="flex items-center gap-2 text-xs font-bold">
-                  <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  <span className="px-2.5 py-1 rounded-md bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]">
                     {validCount} Válidos
                   </span>
                   {invalidCount > 0 && (
-                    <span className="px-2.5 py-1 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                    <span className="px-2.5 py-1 rounded-md bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">
                       {invalidCount} Inválidos
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="max-h-60 overflow-y-auto rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]">
                 <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                  <thead className="sticky top-0 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <tr>
                       <th className="px-3 py-2">Linha</th>
                       <th className="px-3 py-2">Nome Completo</th>
@@ -629,45 +629,45 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
                       <th className="px-3 py-2">Validação</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                  <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
                     {parsedRows.map(row => (
                       <tr
                         key={row.rowIndex}
                         className={
                           row.status === 'INVALID'
-                            ? 'bg-rose-50/50 dark:bg-rose-950/20'
+                            ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)]'
                             : row.status === 'WARNING'
-                            ? 'bg-amber-50/50 dark:bg-amber-950/20'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                            ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)]'
+                            : 'hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
                         }
                       >
-                        <td className="px-3 py-2 text-slate-400 font-mono">{row.rowIndex}</td>
-                        <td className="px-3 py-2 font-bold text-slate-800 dark:text-slate-200">
+                        <td className="px-3 py-2 text-[var(--text-secondary)] font-mono">{row.rowIndex}</td>
+                        <td className="px-3 py-2 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {row.fullName || '-'}
                         </td>
-                        <td className="px-3 py-2 font-mono font-bold text-slate-900 dark:text-slate-100">
+                        <td className="px-3 py-2 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {row.login || '-'}
                         </td>
                         <td className="px-3 py-2">{row.email || '-'}</td>
-                        <td className="px-3 py-2 font-mono font-bold text-blue-600">
+                        <td className="px-3 py-2 font-mono font-bold text-[var(--link)]">
                           {row.extractedCode || '-'}
                         </td>
-                        <td className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                        <td className="px-3 py-2 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {row.promoterName}
                         </td>
                         <td className="px-3 py-2">
                           {row.status === 'VALID' && (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                            <span className="inline-flex items-center gap-1 text-[var(--success-text)] dark:text-[var(--success-text)] font-bold">
                               <CheckCircle2 className="h-3.5 w-3.5" /> OK
                             </span>
                           )}
                           {row.status === 'WARNING' && (
-                            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold" title={row.statusMessage}>
+                            <span className="inline-flex items-center gap-1 text-[var(--warning-text)] dark:text-[var(--warning-text)] font-semibold" title={row.statusMessage}>
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Ajustado
                             </span>
                           )}
                           {row.status === 'INVALID' && (
-                            <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold" title={row.statusMessage}>
+                            <span className="inline-flex items-center gap-1 text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold" title={row.statusMessage}>
                               <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {row.statusMessage}
                             </span>
                           )}
@@ -683,11 +683,11 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between border-t border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             Cancelar
           </button>
@@ -696,7 +696,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
             type="button"
             onClick={handleConfirmImport}
             disabled={loadingPartners || partnersLoadFailed || importing || (!!importId && !canResume) || validCount === 0}
-            className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-5 py-2 text-xs font-bold text-[var(--action-ink)]  transition-colors disabled:opacity-90 flex items-center gap-1.5"
           >
             {loadingPartners ? (
               <Loader2 className="h-4 w-4 animate-spin" />

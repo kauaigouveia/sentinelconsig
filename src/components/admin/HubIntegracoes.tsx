@@ -747,7 +747,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     <button
                       onClick={() => !['c6','facta','bmg','happy'].includes(bank.slug)?setActiveTab(bank.slug):handleRunHealthCheck(bank.slug)}
                       disabled={isChecking}
-                      className="px-3 py-1.5 bg-[var(--action)] hover:bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-xs font-semibold  transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-lg text-xs font-semibold  transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       {isChecking ? (
                         <>
@@ -1027,7 +1027,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     setLogsSearch(e.target.value);
                     setLogsPage(1);
                   }}
-                  className="ui-input w-full pl-9 pr-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] placeholder-slate-500 focus:outline-none focus:border-[var(--info-border)]"
+                  className="ui-input w-full pl-9 pr-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--info-border)]"
                 />
               </div>
 
@@ -1101,7 +1101,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     <th className="py-3 px-4">Ray ID / ReqID</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)]">
                   {logsLoading ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-[var(--text-secondary)]">
@@ -1199,7 +1199,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
       {/* MODAL DE DIAGNÓSTICO AVANÇADO */}
       {diagnosticModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl w-full max-w-lg p-6 space-y-4 ">
             <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <div className="flex items-center gap-2">

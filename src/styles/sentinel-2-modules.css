@@ -1,13 +1,4 @@
 /* Operational module adapters for the active application shell. */
-.s2-root [data-ui-family] :is(.text-slate-200,.text-slate-300) { color: var(--s2-text); }
-.s2-root [data-ui-family] :is(.text-slate-400,.text-slate-500) { color: var(--s2-muted); }
-.s2-root [data-ui-family] :is(h1,h2,h3,h4,label,div.text-white,p.text-white) { color: var(--s2-text); }
-.s2-root [data-ui-family] :is(.bg-white,.bg-slate-900) { background: var(--s2-surface); border-color: var(--s2-border); }
-.s2-root [data-ui-family] :is(.bg-slate-50,.bg-slate-100,.bg-slate-800,.bg-slate-950) { background: var(--s2-elevated); border-color: var(--s2-border); }
-.s2-root [data-ui-family] :is([class*="bg-slate-800/"],[class*="bg-slate-900/"],[class*="bg-slate-950/"]) { background: var(--s2-elevated); border-color: var(--s2-border); }
-:root:not(.dark) .s2-root [data-ui-family] :is(.text-indigo-200,.text-indigo-300,.text-indigo-400) { color: var(--info-text); }
-:root:not(.dark) .s2-root [data-ui-family] :is(.text-violet-300,.text-violet-400) { color: var(--info-text); }
-:root:not(.dark) .s2-root [data-ui-family] .text-emerald-400 { color: var(--success-text); }
 .s2-root .p2-live-simulations { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: 16px; align-items: start; }
 .s2-root .p2-live-simulations > * { margin-block: 0; min-width: 0; grid-column: 1 / -1; }
 .s2-root .p2-live-simulations > .module-mode-tabs { grid-column: 1 / -1; grid-row: auto; flex-direction: row; position: static; overflow: visible; }
@@ -40,7 +31,6 @@
 .s2-root .p2-spreadsheet-workspace > :last-child > section { background: var(--s2-surface); border-color: var(--s2-border); border-radius: var(--radius-panel); }
 .s2-root .p2-spreadsheet-workspace > :last-child > section > header { border-color: var(--s2-border); padding: 16px 18px; }
 .s2-root .p2-spreadsheet-workspace :is(input,select) { background: var(--s2-elevated); color: var(--s2-text); border-color: var(--field-border); }
-.s2-root .p2-spreadsheet-workspace [class*="text-slate-500"] { color: var(--s2-muted); }
 @media(max-width:1500px) {
   .s2-root .p2-simulation-analytics { grid-template-columns: minmax(0,1fr); }
 }
@@ -97,7 +87,6 @@
 .s2-root .p2-kanban-board > div > div:first-child { background: var(--s2-elevated); border-color: var(--s2-border); min-height: 80px; }
 .s2-root .p2-kanban-board > div > div:last-child { max-height: none; }
 .s2-root .p2-kanban-board > div > div:last-child > div:not([class*="border-dashed"]) { background: var(--s2-elevated); border-radius: var(--radius-control); box-shadow: none; }
-.s2-root .p2-kanban-board :is(h3,[class*="text-slate-900"]) { color: var(--s2-text); }
 .s2-root .p2-client-layout { grid-template-columns: 255px minmax(0,1fr); align-items: start; }
 .s2-root .p2-client-layout > div:first-child { height: calc(100dvh - 250px); min-height: 330px; position: sticky; top: 0; background: var(--s2-surface); border-color: var(--s2-border); }
 .s2-root .p2-client-detail { grid-column: auto; display: grid; grid-template-columns: 155px minmax(0,1fr); gap: 14px; min-width: 0; margin: 0; }
@@ -110,7 +99,6 @@
 .s2-root .p2-client-tabs button[aria-current="page"] { color: var(--info-text); background: color-mix(in srgb,var(--info-bg) 15%,var(--s2-surface)); }
 .s2-root .p2-client-content { margin: 0; min-width: 0; padding: 18px; background: var(--s2-surface); border-color: var(--s2-border); }
 .s2-root .p2-live-clients :is(input,select,textarea) { color: var(--s2-text); background: var(--s2-elevated); border-color: var(--field-border); }
-.s2-root .p2-live-clients [class*="text-slate-900"], .s2-root .p2-live-clients [class*="text-slate-800"] { color: var(--s2-text); }
 .s2-root .p2-live-cip { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 16px; align-items: start; }
 .s2-root .p2-live-cip > .sentinel-action-bar,.s2-root .p2-live-cip > .p2-cip-totals,.s2-root .p2-live-cip > div:not(.p2-cip-queues):not(.p2-cip-results) { grid-column: 1 / -1; margin: 0; }
 .s2-root .p2-cip-queues { grid-template-columns: 1fr; position: sticky; top: 0; padding: 10px; background: var(--s2-surface); border: 1px solid var(--s2-border); border-radius: var(--radius-panel); margin: 0; }
@@ -121,7 +109,6 @@
 .s2-root .p2-cip-results thead { background: var(--s2-elevated); color: var(--s2-muted); }
 .s2-root .p2-cip-results td { border-color: var(--s2-border); }
 .s2-root .p2-cip-totals > div { background: var(--s2-surface); border-color: var(--s2-border); }
-.s2-root .p2-cip-results [class*="text-slate-900"] { color: var(--s2-text); }
 .s2-root .p2-live-pendencies { display: grid; grid-template-columns: 260px minmax(0,1fr); gap: 16px; align-items: start; }
 .s2-root .p2-live-pendencies > :not(.p2-pendency-filters):not(.p2-pendency-list) { grid-column: 1 / -1; margin: 0; }
 .s2-root .p2-pendency-header { background: transparent; border: 0; box-shadow: none; padding: 6px 0 14px; }
@@ -134,10 +121,6 @@
 .s2-root .p2-pendency-filters :is(input,select) { color: var(--s2-text); background: var(--s2-elevated); border-color: var(--field-border); }
 .s2-root .p2-pendency-list h4 { color: var(--s2-text); }
 .s2-root .p2-pendency-list > div > div { border-color: var(--s2-border); }
-.s2-root .p2-pendency-metrics .text-white { color: var(--s2-text); }
-.s2-root :is(.p2-pendency-header,.p2-pendency-list,.p2-pendency-filters) .text-slate-300 { color: var(--s2-text); }
-.s2-root :is(.p2-pendency-header,.p2-pendency-list,.p2-pendency-filters,.p2-pendency-metrics) :is(.text-slate-400,.text-slate-500) { color: var(--s2-muted); }
-.s2-root .p2-pendency-filters [class*="bg-slate-950"] { background: var(--s2-elevated); border-color: var(--s2-border); }
 .s2-root .p2-live-finance { display: grid; grid-template-columns: 240px minmax(0,1fr); gap: 16px; align-items: start; }
 .s2-root .p2-live-finance > :not(.p2-finance-filters):not(.p2-finance-results) { grid-column: 1 / -1; margin: 0; }
 .s2-root :is(.p2-finance-filters,.p2-finance-results,.p2-finance-metrics > div) { background: var(--s2-surface); border-color: var(--s2-border); margin: 0; min-width: 0; }
@@ -148,7 +131,6 @@
 .s2-root .p2-finance-results table { min-width: 760px; color: var(--s2-text); }
 .s2-root .p2-finance-results thead { background: var(--s2-elevated); }
 .s2-root .p2-finance-results :is(th,td) { padding: 12px; border-color: var(--s2-border); }
-.s2-root .p2-finance-results [class*="text-slate-900"] { color: var(--s2-text); }
 .s2-root .p2-live-crm { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
 .s2-root .p2-live-crm > :not(.fixed) { min-width: 0; margin: 0; }
 .s2-root .p2-crm-header,.s2-root .p2-crm-metrics { grid-column: 1 / -1; margin: 0; }
@@ -174,9 +156,8 @@
 .s2-root .p2-integration-tabs { grid-column: 1; grid-row: 3; flex-direction: column; align-items: stretch; gap: 5px; background: var(--s2-surface); border: 1px solid var(--s2-border); border-radius: var(--radius-panel); padding: 10px; position: sticky; top: 0; margin: 0; }
 .s2-root .p2-integration-body { grid-column: 2; grid-row: 3; min-width: 0; }
 .s2-root .p2-integration-tabs button { min-height: 40px; white-space: normal; text-align: left; }
-.s2-root .p2-integration-tabs button[aria-current="page"] { background: var(--bg-surface); }
+.s2-root .p2-integration-tabs button[aria-current="page"] { background:var(--action);color:var(--action-ink); }
 .s2-root .p2-integration-body > .grid > div { background: var(--s2-surface); border-color: var(--s2-border); }
-.s2-root .p2-integration-metrics .text-white { color: var(--s2-text); }
 .s2-root .p2-live-integrations table { background: var(--s2-surface); color: var(--s2-text); }
 .s2-root .p2-live-administration { min-height: 0; background: transparent; color: var(--s2-text); }
 .s2-root .p2-live-administration > div:first-child { background: transparent; border: 0; padding: 6px 0 18px; }
@@ -194,7 +175,6 @@
 .s2-root [data-ui-family="administration"] :is(th,td) { padding-top: 12px; padding-bottom: 12px; border-color: var(--s2-border); }
 .s2-root [data-ui-family="administration"] > div > .grid > div { background: var(--s2-surface); border-color: var(--s2-border); }
 .s2-root .p2-live-administration > div:last-child > main > div > .grid > div { background: var(--s2-surface); border-color: var(--s2-border); }
-.s2-root .p2-live-administration > div:last-child > main > div > .grid > div :is(h3,.text-white) { color: var(--s2-text); }
 .s2-root [data-ui-family="workflow"] .sentinel-action-bar { background: transparent; border: 0; box-shadow: none; padding: 6px 0 16px; }
 .s2-root [data-ui-family="workflow"] .sentinel-action-bar h2 { font-size: var(--text-title); line-height: 1.3; color: var(--s2-text); }
 .s2-root [data-ui-family="workflow"] > div > .grid > div { background: var(--s2-surface); border-color: var(--s2-border); border-radius: var(--radius-panel); }
@@ -236,9 +216,6 @@
 .s2-root .p2-automation-header h1 { font-size: var(--text-title); letter-spacing: -.8px; color: var(--s2-text); }
 .s2-root .p2-automation-tabs { border: 1px solid var(--s2-border); padding: 6px; border-radius: var(--radius-panel); background: var(--s2-surface); gap: 5px; flex-wrap: wrap; }
 .s2-root .p2-automation-tabs button { min-height: 38px; border-radius: var(--radius-control); }
-.s2-root .p2-automation-page :is(.bg-slate-900,.bg-white) { background: var(--s2-surface); border-color: var(--s2-border); }
-.s2-root .p2-automation-page .bg-slate-950 { background: var(--s2-elevated); border-color: var(--s2-border); }
-.s2-root .p2-automation-page :is(h2,h3,h4,label,div.text-white) { color: var(--s2-text); }
 .s2-root .p2-automation-page :is(input,select,textarea) { color: var(--s2-text); background: var(--s2-elevated); border-color: var(--field-border); }
 .s2-root .p2-automation-page table { color: var(--s2-text); font-size: var(--text-xs); background: var(--s2-surface); }
 .s2-root .p2-automation-page thead { background: var(--s2-elevated); }
@@ -266,7 +243,6 @@
 .s2-root [data-ui-family="platform"] table { background: var(--s2-surface); color: var(--s2-text); font-size: var(--text-xs); }
 .s2-root [data-ui-family="platform"] thead { background: var(--s2-elevated); color: var(--s2-muted); }
 .s2-root [data-ui-family="platform"] :is(th,td) { padding-top: 12px; padding-bottom: 12px; border-color: var(--s2-border); }
-.s2-root [data-ui-family="platform"] table [class*="text-slate-900"] { color: var(--s2-text); }
 .s2-root [data-ui-family="platform"] > div > div:not(.fixed):has(> div > table) { background: var(--s2-surface); border-color: var(--s2-border); border-radius: var(--radius-panel); }
 .s2-root [data-ui-family="monitor"] { color: var(--s2-text); }
 @media(max-width:767px) {

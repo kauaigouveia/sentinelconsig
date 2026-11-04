@@ -161,22 +161,22 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden transition-colors">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col max-h-[90vh] overflow-hidden transition-colors">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <div className="h-10 w-10 rounded-xl bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center shadow-xs">
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
                 <span>Backup & Segurança do Banco de Dados</span>
-                <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-extrabold px-2 py-0.5">
+                <span className="rounded-full bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)] text-[10px] font-extrabold px-2 py-0.5">
                   ROTINA ATIVA
                 </span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Exportações automáticas periódicas, snapshots de segurança e restauração completa
               </p>
             </div>
@@ -184,7 +184,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -195,64 +195,64 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
           <div
             className={`px-4 py-2.5 text-xs font-semibold flex items-center gap-2 transition-all ${
               feedbackMessage.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-800'
-                : 'bg-rose-50 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-b border-rose-200 dark:border-rose-800'
+                ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-b border-[var(--success-border)] dark:border-[var(--success-border)]'
+                : 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-b border-[var(--danger-border)] dark:border-[var(--danger-border)]'
             }`}
           >
             {feedbackMessage.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)] shrink-0" />
             ) : (
-              <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] dark:text-[var(--danger-text)] shrink-0" />
             )}
             <span>{feedbackMessage.text}</span>
           </div>
         )}
 
         {/* Quick KPI Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 text-xs">
-          <div className="rounded-xl bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <span className="text-slate-500 dark:text-slate-400 block font-medium">Status da Rotina</span>
-            <div className="flex items-center gap-1.5 mt-1 font-bold text-slate-900 dark:text-slate-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] text-xs">
+          <div className="rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-3 border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
+            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block font-medium">Status da Rotina</span>
+            <div className="flex items-center gap-1.5 mt-1 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               <span
                 className={`h-2 w-2 rounded-full ${
-                  schedule.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                  schedule.enabled ? 'bg-[var(--success-bg)] animate-pulse' : 'bg-[var(--bg-surface-elevated)]'
                 }`}
               />
               <span>{schedule.enabled ? 'Agendado Automático' : 'Desativado'}</span>
             </div>
           </div>
 
-          <div className="rounded-xl bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <span className="text-slate-500 dark:text-slate-400 block font-medium">Frequência</span>
-            <span className="font-bold text-slate-900 dark:text-slate-100 block mt-1">
+          <div className="rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-3 border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
+            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block font-medium">Frequência</span>
+            <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block mt-1">
               A cada {schedule.intervalHours}h
             </span>
           </div>
 
-          <div className="rounded-xl bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <span className="text-slate-500 dark:text-slate-400 block font-medium">Último Backup</span>
-            <span className="font-bold text-slate-900 dark:text-slate-100 block mt-1">
+          <div className="rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-3 border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
+            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block font-medium">Último Backup</span>
+            <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block mt-1">
               {schedule.lastRunAt ? formatDate(schedule.lastRunAt) : 'Nenhum ainda'}
             </span>
           </div>
 
-          <div className="rounded-xl bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <span className="text-slate-500 dark:text-slate-400 block font-medium">Snapshots Salvos</span>
-            <span className="font-bold text-slate-900 dark:text-slate-100 block mt-1">
+          <div className="rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-3 border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
+            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block font-medium">Snapshots Salvos</span>
+            <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block mt-1">
               {snapshots.length} de {schedule.maxSnapshotsToKeep || 15}
             </span>
           </div>
         </div>
 
         {/* Tabs & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-3 pb-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('SNAPSHOTS')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
                 activeTab === 'SNAPSHOTS'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+                  : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
               Snapshots de Histórico ({snapshots.length})
@@ -261,8 +261,8 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
               onClick={() => setActiveTab('CONFIG')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
                 activeTab === 'CONFIG'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+                  : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
               Agendamento & Retenção
@@ -271,8 +271,8 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
               onClick={() => setActiveTab('UPLOAD')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
                 activeTab === 'UPLOAD'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+                  : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
               Restaurar de Arquivo
@@ -282,16 +282,16 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleRunCronCheck}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
               title="Verificar e executar agendador de backup"
             >
-              <Play className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Play className="h-3.5 w-3.5 text-[var(--success-text)] dark:text-[var(--success-text)]" />
               <span>Executar Rotina</span>
             </button>
 
             <button
               onClick={handleManualBackup}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--success-bg)] hover:bg-[var(--success-bg)] px-3 py-1.5 text-xs font-bold text-[var(--success-text)]  transition-colors"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Fazer Backup Agora</span>
@@ -304,17 +304,17 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
           {activeTab === 'SNAPSHOTS' && (
             <div className="space-y-3">
               {snapshots.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 dark:text-slate-500 space-y-2">
-                  <Database className="h-10 w-10 mx-auto text-slate-300 dark:text-slate-600" />
+                <div className="py-16 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] space-y-2">
+                  <Database className="h-10 w-10 mx-auto text-[var(--text-primary)] dark:text-[var(--text-secondary)]" />
                   <p className="text-xs font-semibold">Nenhum snapshot de backup registrado ainda.</p>
                   <p className="text-[11px]">
                     Clique em "Fazer Backup Agora" para criar seu primeiro ponto de restauração.
                   </p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/70 shadow-2xs">
+                <div className="overflow-hidden rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] shadow-2xs">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                       <tr>
                         <th className="px-3.5 py-3">Tipo / Data</th>
                         <th className="px-3.5 py-3">Nome do Arquivo</th>
@@ -324,44 +324,44 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                         <th className="px-3.5 py-3 text-center">Ações</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                    <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
                       {snapshots.map(snap => (
                         <tr
                           key={snap.id}
-                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                          className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                         >
                           <td className="px-3.5 py-3">
                             <div className="flex items-center gap-2">
                               <span
                                 className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase border ${
                                   snap.type === 'AUTOMATICO_CRON'
-                                    ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                                    : 'bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                    ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
+                                    : 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
                                 }`}
                               >
                                 {snap.type === 'AUTOMATICO_CRON' ? 'Rotina Automática' : 'Manual'}
                               </span>
-                              <span className="text-slate-900 dark:text-slate-100 font-bold">
+                              <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold">
                                 {formatDate(snap.createdAt)}
                               </span>
                             </div>
                           </td>
 
-                          <td className="px-3.5 py-3 font-mono text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-[180px]">
+                          <td className="px-3.5 py-3 font-mono text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate max-w-[180px]">
                             {snap.fileName}
                           </td>
 
-                          <td className="px-3.5 py-3 text-slate-700 dark:text-slate-300 font-mono">
+                          <td className="px-3.5 py-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono">
                             {(snap.fileSizeBytes / 1024).toFixed(1)} KB
                           </td>
 
                           <td className="px-3.5 py-3">
-                            <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                            <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               {snap.stats.proposalsCount} propostas, {snap.stats.clientsCount} clientes
                             </span>
                           </td>
 
-                          <td className="px-3.5 py-3 text-slate-600 dark:text-slate-300">
+                          <td className="px-3.5 py-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {snap.createdByUserName}
                           </td>
 
@@ -369,7 +369,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => BackupService.downloadBackupAsFile(snap)}
-                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-blue-600"
+                                className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--link)]"
                                 title="Baixar arquivo .json"
                               >
                                 <Download className="h-3.5 w-3.5" />
@@ -383,7 +383,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                                     snapshotName: `Snapshot de ${formatDate(snap.createdAt)} (${snap.stats.proposalsCount} propostas)`,
                                   })
                                 }
-                                className="p-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                                className="p-1.5 rounded-lg border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] hover:bg-[var(--warning-bg)] dark:hover:bg-[var(--warning-bg)]"
                                 title="Restaurar este backup"
                               >
                                 <RotateCcw className="h-3.5 w-3.5" />
@@ -397,7 +397,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                                     snapshotName: snap.fileName,
                                   })
                                 }
-                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+                                className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] hover:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)]"
                                 title="Excluir snapshot"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -415,8 +415,8 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
 
           {activeTab === 'CONFIG' && (
             <div className="max-w-xl mx-auto space-y-5 py-4">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 p-5 space-y-4">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-5 space-y-4">
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Parâmetros de Agendamento Automático
                 </h4>
 
@@ -426,16 +426,16 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                       type="checkbox"
                       checked={schedule.enabled}
                       onChange={e => handleUpdateSchedule({ enabled: e.target.checked })}
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)]"
                     />
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       Habilitar exportações periódicas de backup em segundo plano
                     </span>
                   </label>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                         Frequência de Backup
                       </label>
                       <select
@@ -443,7 +443,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                         onChange={e =>
                           handleUpdateSchedule({ intervalHours: parseFloat(e.target.value) })
                         }
-                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100"
+                        className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                       >
                         <option value={0.5}>A cada 30 minutos (Alta frequência)</option>
                         <option value={1}>A cada 1 hora</option>
@@ -455,7 +455,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                         Limite de Retenção
                       </label>
                       <select
@@ -463,7 +463,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                         onChange={e =>
                           handleUpdateSchedule({ maxSnapshotsToKeep: parseInt(e.target.value, 10) })
                         }
-                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100"
+                        className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                       >
                         <option value={5}>Manter últimos 5 backups</option>
                         <option value={10}>Manter últimos 10 backups</option>
@@ -480,9 +480,9 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                         type="checkbox"
                         checked={schedule.autoDownload}
                         onChange={e => handleUpdateSchedule({ autoDownload: e.target.checked })}
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)]"
                       />
-                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                      <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         Baixar automaticamente arquivo .json no navegador ao executar backup
                       </span>
                     </label>
@@ -494,12 +494,12 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
 
           {activeTab === 'UPLOAD' && (
             <div className="max-w-xl mx-auto space-y-4 py-4">
-              <div className="rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-8 text-center space-y-3">
-                <FileJson className="h-12 w-12 mx-auto text-blue-500" />
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <div className="rounded-2xl border-2 border-dashed border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-8 text-center space-y-3">
+                <FileJson className="h-12 w-12 mx-auto text-[var(--link)]" />
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Carregar Arquivo de Backup (.json)
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] max-w-sm mx-auto">
                   Selecione um arquivo de backup previamente exportado pelo sistema para inspecionar e
                   restaurar toda a base de dados.
                 </p>
@@ -515,7 +515,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                   />
                   <label
                     htmlFor="backup-file-upload-input"
-                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[var(--info-bg)] hover:bg-[var(--info-bg)] px-4 py-2.5 text-xs font-bold text-[var(--text-primary)]  cursor-pointer transition-colors"
                   >
                     <Upload className="h-4 w-4" />
                     <span>Selecionar Arquivo JSON</span>
@@ -523,8 +523,8 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-3.5 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-                <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] p-3.5 text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-start gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-[var(--warning-text)] shrink-0 mt-0.5" />
                 <p>
                   <strong>Segurança Garantida:</strong> Antes de qualquer restauração, o sistema cria
                   automaticamente um snapshot emergencial do estado atual, permitindo desfazer se
@@ -536,10 +536,10 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+        <div className="p-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex items-center justify-between">
           <button
             onClick={() => BackupService.downloadBackupAsFile()}
-            className="flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Baixar Base Atual Completa</span>
@@ -547,7 +547,7 @@ export const BackupManagementModal: React.FC<BackupManagementModalProps> = ({
 
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 px-4 py-2 text-xs font-bold text-white dark:text-slate-900"
+            className="rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-secondary)]"
           >
             Fechar
           </button>

@@ -124,67 +124,67 @@ export const CommercialRadarView: React.FC = () => {
         title="Radar Comercial & Inteligência de Mesa"
         subtitle="Mapeamento de performance de agentes, matriz de conversão e identificação de oportunidades e riscos"
         badgeText="BI & ANÁLISE DE CORRESPONDENTES"
-        badgeColor="bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
       />
 
       {/* Top Real KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="rounded-xl border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50/40 dark:bg-cyan-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
               Parceiros com Produção
             </span>
-            <Users className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+            <Users className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-cyan-950 dark:text-cyan-200">
-            {totalParceirosAtivos} <span className="text-xs font-normal text-slate-500">/ {partners.length} cadastrados</span>
+          <p className="text-2xl font-black font-mono text-[var(--link)] dark:text-[var(--link)]">
+            {totalParceirosAtivos} <span className="text-xs font-normal text-[var(--text-secondary)]">/ {partners.length} cadastrados</span>
           </p>
-          <span className="text-[11px] text-cyan-700 dark:text-cyan-400 font-bold block">
+          <span className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-bold block">
             {Math.round((totalParceirosAtivos / (partners.length || 1)) * 100)}% de engajamento ativo
           </span>
         </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)]">
               Volume Total Movimentado
             </span>
-            <DollarSign className="h-4 w-4 text-slate-400" />
+            <DollarSign className="h-4 w-4 text-[var(--text-secondary)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-slate-900 dark:text-white">
+          <p className="text-2xl font-black font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             {formatCurrency(totalVolumeGeral)}
           </p>
-          <span className="text-[11px] text-slate-500 font-bold block">
+          <span className="text-[11px] text-[var(--text-secondary)] font-bold block">
             {proposals.length} propostas na base
           </span>
         </div>
 
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--success-text)] dark:text-[var(--success-text)]">
               Segmento Diamante
             </span>
-            <Award className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <Award className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-emerald-900 dark:text-emerald-300">
+          <p className="text-2xl font-black font-mono text-[var(--success-text)] dark:text-[var(--success-text)]">
             {diamondCount} parceiros
           </p>
-          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold block">
+          <span className="text-[11px] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold block">
             Alto volume e conversão &gt; 60%
           </span>
         </div>
 
-        <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-800 dark:text-rose-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--danger-text)] dark:text-[var(--danger-text)]">
               Parceiros em Risco
             </span>
-            <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+            <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-rose-900 dark:text-rose-300">
+          <p className="text-2xl font-black font-mono text-[var(--danger-text)] dark:text-[var(--danger-text)]">
             {riskCount} parceiros
           </p>
-          <span className="text-[11px] text-rose-700 dark:text-rose-400 font-bold block">
+          <span className="text-[11px] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold block">
             Alta taxa de cancelamento / perda
           </span>
         </div>
@@ -196,34 +196,34 @@ export const CommercialRadarView: React.FC = () => {
           {insights.map(ins => (
             <div
               key={ins.id}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-2 flex flex-col justify-between"
+              className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  space-y-2 flex flex-col justify-between"
             >
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)] flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
                     <span>{ins.type}</span>
                   </span>
                   <span
                     className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded ${
                       ins.severity === 'WARNING'
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
                         : ins.severity === 'SUCCESS'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                        ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                        : 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
                     }`}
                   >
                     {ins.metricValue}
                   </span>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                <h4 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-tight">
                   {ins.title}
                 </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-relaxed">
                   {ins.description}
                 </p>
               </div>
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-blue-600 dark:text-blue-400 font-bold font-mono">
+              <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] text-[10px] text-[var(--link)] dark:text-[var(--link)] font-bold font-mono">
                 Tendência: {ins.trend === 'UP' ? 'ALTA ↑' : ins.trend === 'DOWN' ? 'QUEDA ↓' : 'ESTÁVEL →'}
               </div>
             </div>
@@ -232,32 +232,32 @@ export const CommercialRadarView: React.FC = () => {
       )}
 
       {/* Main Analytical Partners Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <BarChart3 className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Matriz de Desempenho dos Correspondentes
             </h3>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar parceiro ou código..."
-                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
               />
             </div>
 
-            <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5 text-xs font-semibold">
+            <div className="flex rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-0.5 text-xs font-semibold">
               <button
                 onClick={() => setFilterSegment('ALL')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterSegment === 'ALL' ? 'bg-cyan-600 text-white' : 'text-slate-500'
+                  filterSegment === 'ALL' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Todos ({partnerMatrix.length})
@@ -265,7 +265,7 @@ export const CommercialRadarView: React.FC = () => {
               <button
                 onClick={() => setFilterSegment('DIAMOND')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterSegment === 'DIAMOND' ? 'bg-emerald-600 text-white' : 'text-slate-500'
+                  filterSegment === 'DIAMOND' ? 'bg-[var(--success-bg)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Diamantes ({diamondCount})
@@ -273,7 +273,7 @@ export const CommercialRadarView: React.FC = () => {
               <button
                 onClick={() => setFilterSegment('GROWTH')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterSegment === 'GROWTH' ? 'bg-blue-600 text-white' : 'text-slate-500'
+                  filterSegment === 'GROWTH' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Em Crescimento
@@ -281,7 +281,7 @@ export const CommercialRadarView: React.FC = () => {
               <button
                 onClick={() => setFilterSegment('RISK')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterSegment === 'RISK' ? 'bg-rose-600 text-white' : 'text-slate-500'
+                  filterSegment === 'RISK' ? 'bg-[var(--danger-bg)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Em Risco ({riskCount})
@@ -291,8 +291,8 @@ export const CommercialRadarView: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="px-3.5 py-2.5">Correspondente / Agente</th>
                 <th className="px-3.5 py-2.5 font-mono">Código</th>
@@ -303,33 +303,33 @@ export const CommercialRadarView: React.FC = () => {
                 <th className="px-3.5 py-2.5 text-right font-mono">Ticket Médio</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
               {filteredPartners.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-6 text-slate-400">
+                  <td colSpan={7} className="text-center py-6 text-[var(--text-secondary)]">
                     Nenhum parceiro encontrado com os filtros selecionados.
                   </td>
                 </tr>
               ) : (
                 filteredPartners.map(pt => (
-                  <tr key={pt.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr key={pt.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
                     <td className="px-3.5 py-2.5">
-                      <span className="font-bold text-slate-900 dark:text-white block">{pt.fullName}</span>
-                      <span className="text-[10px] text-slate-500">{pt.login}</span>
+                      <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block">{pt.fullName}</span>
+                      <span className="text-[10px] text-[var(--text-secondary)]">{pt.login}</span>
                     </td>
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 dark:text-slate-400">
+                    <td className="px-3.5 py-2.5 font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                       {pt.code}
                     </td>
                     <td className="px-3.5 py-2.5 text-center">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           pt.segment === 'DIAMOND'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
                             : pt.segment === 'GROWTH'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
                             : pt.segment === 'RISK'
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
+                            : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-secondary)]'
                         }`}
                       >
                         {pt.segment === 'DIAMOND'
@@ -344,15 +344,15 @@ export const CommercialRadarView: React.FC = () => {
                     <td className="px-3.5 py-2.5 text-right font-mono font-bold">
                       {pt.total}
                     </td>
-                    <td className="px-3.5 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="px-3.5 py-2.5 text-right font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {formatCurrency(pt.disbursed)}
                     </td>
                     <td className="px-3.5 py-2.5 text-center font-mono">
-                      <span className={`font-bold ${pt.conversion >= 60 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                      <span className={`font-bold ${pt.conversion >= 60 ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'}`}>
                         {pt.conversion}%
                       </span>
                     </td>
-                    <td className="px-3.5 py-2.5 text-right font-mono text-slate-600 dark:text-slate-400">
+                    <td className="px-3.5 py-2.5 text-right font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                       {formatCurrency(pt.ticket)}
                     </td>
                   </tr>

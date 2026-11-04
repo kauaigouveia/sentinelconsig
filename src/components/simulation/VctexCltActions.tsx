@@ -4,7 +4,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {CurrencyInput} from '../common/CurrencyInput';
 import type {ProductSimulationRow} from '../../../server/services/productSimulationService';
 type Props={visible?:boolean;managedPricing?:boolean;pricingLocked?:boolean;executionId:string;scope:string;active:boolean;onRows:(rows:ProductSimulationRow[],bankResult?:JourneySnapshot['results'][string])=>void};
-const control='rounded-lg border border-slate-300 bg-white p-2 text-sm dark:border-slate-700 dark:bg-slate-900';
+const control='rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]';
 export function VctexCltActions({executionId,scope,active,onRows,visible=true,managedPricing=false,pricingLocked=false}:Props){
   const [connections,setConnections]=useState<{id:string;name:string}[]>([]),[promoter,setPromoter]=useState(''),[data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const [employment,setEmployment]=useState(''),[rate,setRate]=useState(''),[term,setTerm]=useState(''),[amount,setAmount]=useState(''),[copied,setCopied]=useState(false);
@@ -58,16 +58,16 @@ export function VctexCltActions({executionId,scope,active,onRows,visible=true,ma
   },[employment,promoter,executionId,active,data?.status]);
   const selected=data?.employments?.find((e:any)=>e.employmentId===employment),selectedRate=selected?.rates?.find((r:any)=>r.id===rate);
   if(!visible)return null;
-  return <section aria-label="Acompanhamento VCTEX" className="mb-4 space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-    <p className="text-xs text-slate-500">VCTEX DIGITAL · A assinatura do termo cabe ao trabalhador. Nenhuma proposta será criada.</p>
+  return <section aria-label="Acompanhamento VCTEX" className="mb-4 space-y-3 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]">
+    <p className="text-xs text-[var(--text-secondary)]">VCTEX DIGITAL · A assinatura do termo cabe ao trabalhador. Nenhuma proposta será criada.</p>
     {connections.length>1&&<label className="block text-xs">Conexão autorizada<select aria-label="Conexão VCTEX" className={control} disabled={busy} value={promoter} onChange={e=>{lifecycle.current++;controller.current?.abort();lock.current=false;setData(null);setPromoter(e.target.value);}}><option value="">Selecione</option>{connections.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
     <p role="status" className="text-sm font-semibold">{busy?'Consultando VCTEX…':data?.label||'Verificando autorização'}</p>
-    {error&&<p role="alert" className="text-sm text-amber-700 dark:text-amber-300">{error}</p>}
+    {error&&<p role="alert" className="text-sm text-[var(--warning-text)] dark:text-[var(--warning-text)]">{error}</p>}
     {(error||data?.status==='authorization_failure')&&<button type="button" className={control} disabled={busy} onClick={()=>void request('start')}>Verificar autorização existente</button>}
-    {data?.link&&<div className="flex flex-wrap gap-3"><a href={data.link} target="_blank" rel="noopener noreferrer" className="text-sm text-cyan-700 underline">Abrir termo oficial</a><button className={control} type="button" onClick={()=>void navigator.clipboard.writeText(data.link).then(()=>setCopied(true)).catch(()=>setError('Não foi possível copiar. Abra o termo oficial.'))}>{copied?'Link copiado':'Copiar link de autorização'}</button></div>}
+    {data?.link&&<div className="flex flex-wrap gap-3"><a href={data.link} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--link)] underline">Abrir termo oficial</a><button className={control} type="button" onClick={()=>void navigator.clipboard.writeText(data.link).then(()=>setCopied(true)).catch(()=>setError('Não foi possível copiar. Abra o termo oficial.'))}>{copied?'Link copiado':'Copiar link de autorização'}</button></div>}
     {managedPricing&&data?.status==='not_found'&&<button type="button" className={control} disabled={busy} onClick={()=>void request('start')}>Solicitar consulta VCTEX</button>}
     {data?.preOperationId&&<details><summary className="cursor-pointer text-xs">Recuperação manual</summary><button type="button" className={control} disabled={busy} onClick={()=>void request('observe')}>Atualizar consulta pelo ID</button></details>}
-    {!managedPricing&&currentVctexEmployments<any>(data?.employments||[]).map((e:any)=><article key={e.employmentId} className="rounded-lg border border-slate-200 p-2 text-xs dark:border-slate-700"><strong>{e.employer?.name||'Empregador'}</strong><p>{e.eligible?'Elegível':'Inelegível'} · Margem {Number(e.availableMarginValue).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>{e.ineligibilityReason&&<p>{e.ineligibilityReason}</p>}</article>)}
+    {!managedPricing&&currentVctexEmployments<any>(data?.employments||[]).map((e:any)=><article key={e.employmentId} className="rounded-lg border border-[var(--field-border)] p-2 text-xs dark:border-[var(--field-border)]"><strong>{e.employer?.name||'Empregador'}</strong><p>{e.eligible?'Elegível':'Inelegível'} · Margem {Number(e.availableMarginValue).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>{e.ineligibilityReason&&<p>{e.ineligibilityReason}</p>}</article>)}
 
     {!managedPricing&&data?.status==='finished'&&<details><summary className="cursor-pointer text-xs">Calcular outra condição VCTEX</summary><div className="mt-2 grid gap-2 sm:grid-cols-2">
       <label className="text-xs">Vínculo<select className={control} value={employment} onChange={e=>{setEmployment(e.target.value);setRate('');}}>{data.employments?.filter((e:any)=>e.eligible).map((e:any)=><option key={e.employmentId} value={e.employmentId}>{e.employer?.name||e.employmentId}</option>)}</select></label>

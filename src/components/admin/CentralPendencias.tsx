@@ -703,7 +703,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Buscar pendências por contrato, cliente, CPF ou título"
-              className="ui-input-icon ui-input w-full pl-9 pr-16 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] placeholder-slate-500"
+              className="ui-input-icon ui-input w-full pl-9 pr-16 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] placeholder-[var(--text-secondary)]"
             />
             <button
               type="submit"
@@ -937,7 +937,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Drawer Lateral: Detalhes Completos & Timeline Histórico */}
       {isDrawerOpen && selectedPendency && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--scrim)] backdrop-blur-xs flex justify-end">
           <div className="w-full max-w-xl bg-[var(--bg-surface-elevated)] border-l border-[var(--border-default)] h-full flex flex-col  animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
             <div className="p-5 border-b border-[var(--border-default)] flex items-start justify-between gap-4">
@@ -1097,7 +1097,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Nova Pendência */}
       {showCreateModal && canCreate && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-lg p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
               <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -1227,7 +1227,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Baixar / Resolver Pendência */}
       {resolvingPendency && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-md p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
               <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -1286,7 +1286,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Cancelar Pendência */}
       {cancellingPendency && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-md p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
               <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -1338,7 +1338,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Matriz de SLA */}
       {showSlaConfigModal && canManageSla && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-xl p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
               <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">

@@ -93,11 +93,6 @@
 .s2-root .p2-live-results td [class*="text-slate-"] {
   color: var(--s2-text);
 }
-.s2-root .p2-live-results td [class*="text-slate-400"],
-.s2-root .p2-live-results td [class*="text-slate-500"] {
-  color: var(--s2-muted);
-  font-size: var(--text-xs);
-}
 .s2-root .p2-live-results .operation-card-grid {
   padding: 16px;
   grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));

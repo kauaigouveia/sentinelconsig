@@ -2451,7 +2451,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--bg-surface-elevated)] dark:before:bg-[var(--bg-surface-elevated)]">
                   {/* Step 1 */}
                   <div className="relative pl-7">
-                    <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-white dark:border-[var(--border-default)]" />
+                    <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
                     <div className="font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">SIMULAÇÃO ENVIADA</div>
                     <div className="text-[11px] text-[var(--text-secondary)]">
                       Cadastrado em {new Date(detailTarget.createdAt).toLocaleString('pt-BR')} por{' '}
@@ -2463,7 +2463,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <div className="relative pl-7">
                     {detailTarget.status === 'DIGITADA PELA MESA' ? (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-white dark:border-[var(--border-default)]" />
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
                         <div className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-1.5">
                           DIGITADA PELA MESA
                           <span className="px-1.5 py-0.2 text-[9px] bg-[var(--success-bg)] text-[var(--success-text)] font-bold rounded-xs">
@@ -2487,7 +2487,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       </>
                     ) : detailTarget.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-white dark:border-[var(--border-default)]" />
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
                         <div className="font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center gap-1.5">
                           NÃO PASSÍVEL DE CONTRATAÇÃO
                           <span className="px-1.5 py-0.2 text-[9px] bg-[var(--danger-bg)] text-[var(--danger-text)] font-bold rounded-xs">
@@ -2500,7 +2500,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       </>
                     ) : detailTarget.status === 'PERDIDA (NÃO DIGITADA)' ? (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--bg-surface-elevated)] border-2 border-white dark:border-[var(--border-default)]" />
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--bg-surface-elevated)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
                         <div className="font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
                           PERDIDA (NÃO DIGITADA)
                           <span className="px-1.5 py-0.2 text-[9px] bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] font-bold rounded-xs">
@@ -2513,7 +2513,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       </>
                     ) : (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] border-2 border-white dark:border-[var(--border-default)]" />
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
                         <div className="font-semibold text-[var(--text-secondary)]">Aguardando Identificação da Mesa...</div>
                       </>
                     )}

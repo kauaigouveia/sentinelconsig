@@ -1,3 +1,4 @@
+import {configurationColorValues} from '../../data/configurationColorValues';
 import React, { useState, useEffect } from 'react';
 import {
   Sliders,
@@ -25,48 +26,48 @@ const ALCADA_OPTIONS: { value: Alcada; label: string; color: string; desc: strin
   {
     value: 'CLIENTE',
     label: 'CLIENTE',
-    color: 'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-300 dark:border-orange-800',
+    color: 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]',
     desc: 'Pendência ou ação direta do cliente final (ex: formalização, biometria, assinar link).',
   },
   {
     value: 'PARCEIRO',
     label: 'PARCEIRO',
-    color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+    color: 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]',
     desc: 'Ação pendente do Agente/Parceiro de vendas (ex: reenviar documentos, sanar divergência).',
   },
   {
     value: 'BANCO',
     label: 'BANCO',
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800',
+    color: 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]',
     desc: 'Aguardando processamento e retorno da instituição financeira / CIP / Dataprev.',
   },
   {
     value: 'NOSSA EQUIPE',
     label: 'NOSSA EQUIPE',
-    color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-800',
+    color: 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]',
     desc: 'Análise, digitação ou aprovação interna pela equipe da Corban / Mesa de Crédito.',
   },
   {
     value: 'SISTEMA',
     label: 'SISTEMA',
-    color: 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700',
+    color: 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border-[var(--field-border)] dark:border-[var(--field-border)]',
     desc: 'Status automáticos ou conclusivos de encerramento da esteira (ex: Integrado, Pago, Cancelado).',
   },
 ];
 
 const PRESET_COLORS = [
-  '#64748b', // Slate
-  '#eab308', // Yellow
-  '#3b82f6', // Blue
-  '#8b5cf6', // Purple
-  '#10b981', // Emerald
-  '#ef4444', // Red
-  '#f97316', // Orange
-  '#06b6d4', // Cyan
-  '#22c55e', // Green
-  '#ec4899', // Pink
-  '#6366f1', // Indigo
-  '#14b8a6', // Teal
+  configurationColorValues.color_64748b, // Slate
+  configurationColorValues.color_eab308, // Yellow
+  configurationColorValues.color_3b82f6, // Blue
+  configurationColorValues.color_8b5cf6, // Purple
+  configurationColorValues.color_10b981, // Emerald
+  configurationColorValues.color_ef4444, // Red
+  configurationColorValues.color_f97316, // Orange
+  configurationColorValues.color_06b6d4, // Cyan
+  configurationColorValues.color_22c55e, // Green
+  configurationColorValues.color_ec4899, // Pink
+  configurationColorValues.color_6366f1, // Indigo
+  configurationColorValues.color_14b8a6, // Teal
 ];
 
 export const StatusManagement: React.FC = () => {
@@ -86,7 +87,7 @@ export const StatusManagement: React.FC = () => {
   const [formCode, setFormCode] = useState('');
   const [formAlcada, setFormAlcada] = useState<Alcada>('NOSSA EQUIPE');
   const [formSlaHours, setFormSlaHours] = useState<number>(24);
-  const [formColor, setFormColor] = useState('#3b82f6');
+  const [formColor, setFormColor] = useState(configurationColorValues.color_3b82f6);
   const [formActive, setFormActive] = useState(true);
   const [formFinalStatus, setFormFinalStatus] = useState(false);
   const [formManualAllowed, setFormManualAllowed] = useState(true);
@@ -123,7 +124,7 @@ export const StatusManagement: React.FC = () => {
     setFormCode('');
     setFormAlcada('NOSSA EQUIPE');
     setFormSlaHours(24);
-    setFormColor('#3b82f6');
+    setFormColor(configurationColorValues.color_3b82f6);
     setFormActive(true);
     setFormFinalStatus(false);
     setFormManualAllowed(true);
@@ -138,7 +139,7 @@ export const StatusManagement: React.FC = () => {
     setFormCode(s.code);
     setFormAlcada(s.responsibleGroup || s.responsible);
     setFormSlaHours(s.slaHours || 0);
-    setFormColor(s.color || '#3b82f6');
+    setFormColor(s.color || configurationColorValues.color_3b82f6);
     setFormActive(s.active);
     setFormFinalStatus(s.finalStatus);
     setFormManualAllowed(s.manualChangeAllowed);
@@ -271,11 +272,11 @@ export const StatusManagement: React.FC = () => {
         title="Gestão de Status & Alçadas da Esteira"
         subtitle="Cadastre novos status, defina alçadas de responsabilidade, ajuste prazos de SLA e organize a esteira operacional"
         badgeText={`${statuses.length} STATUS ATIVOS`}
-        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
         actions={canManageStatuses ? (
           <button
             onClick={openNewModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-xs font-bold shadow-sm transition-all cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] px-4 py-2 text-xs font-bold  transition-all cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>Cadastrar Novo Status</span>
@@ -285,8 +286,8 @@ export const StatusManagement: React.FC = () => {
 
       {/* Success Notification */}
       {successMsg && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+        <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-3 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
           <span className="font-semibold">{successMsg}</span>
         </div>
       )}
@@ -296,14 +297,14 @@ export const StatusManagement: React.FC = () => {
         {ALCADA_OPTIONS.map(opt => (
           <div
             key={opt.value}
-            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs space-y-1.5"
+            className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3  space-y-1.5"
           >
             <span
               className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${opt.color}`}
             >
               {opt.label}
             </span>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+            <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-tight">
               {opt.desc}
             </p>
           </div>
@@ -311,22 +312,22 @@ export const StatusManagement: React.FC = () => {
       </div>
 
       {/* Main Statuses Table */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+      <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  overflow-hidden">
+        <div className="p-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
+            <Layers className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
+            <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Esteira de Produção ({statuses.length} status cadastrados)
             </span>
           </div>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+          <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium">
             Alçadas e SLAs controlam o painel Kanban e alertas de gargalo
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-100/70 dark:bg-slate-800/80 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="px-3 py-3 text-center w-16">Ordem</th>
                 <th className="px-4 py-3">Nome do Status</th>
@@ -338,7 +339,7 @@ export const StatusManagement: React.FC = () => {
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
               {statuses.map((s, index) => {
                 const alcadaConfig = ALCADA_OPTIONS.find(a => a.value === (s.responsibleGroup || s.responsible));
                 const count = proposalsCountMap[s.id] || 0;
@@ -346,14 +347,14 @@ export const StatusManagement: React.FC = () => {
                 return (
                   <tr
                     key={s.id}
-                    className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
-                      !s.active ? 'opacity-50 bg-slate-50/40 dark:bg-slate-900/40' : ''
+                    className={`hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors ${
+                      !s.active ? 'opacity-50 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]' : ''
                     }`}
                   >
                     {/* Order & Reordering */}
                     <td className="px-3 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="font-bold font-mono text-slate-400 dark:text-slate-500 text-xs">
+                        <span className="font-bold font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
                           #{s.order}
                         </span>
                         {canManageStatuses && <div className="flex flex-col gap-0.5">
@@ -361,7 +362,7 @@ export const StatusManagement: React.FC = () => {
                             type="button"
                             disabled={index === 0}
                             onClick={() => handleMoveOrder(s.id, 'UP')}
-                            className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-20 cursor-pointer"
+                            className="p-0.5 rounded hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] disabled:opacity-90 cursor-pointer"
                             title="Mover para cima na esteira"
                           >
                             <ArrowUp className="h-3 w-3" />
@@ -370,7 +371,7 @@ export const StatusManagement: React.FC = () => {
                             type="button"
                             disabled={index === statuses.length - 1}
                             onClick={() => handleMoveOrder(s.id, 'DOWN')}
-                            className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-20 cursor-pointer"
+                            className="p-0.5 rounded hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] disabled:opacity-90 cursor-pointer"
                             title="Mover para baixo na esteira"
                           >
                             <ArrowDown className="h-3 w-3" />
@@ -383,15 +384,15 @@ export const StatusManagement: React.FC = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <span
-                          className="h-3.5 w-3.5 rounded-full shrink-0 shadow-xs ring-1 ring-black/10"
-                          style={{ backgroundColor: s.color || '#3b82f6' }}
+                          className="h-3.5 w-3.5 rounded-full shrink-0  ring-1 ring-[var(--focus)]"
+                          style={{ backgroundColor: s.color || "var(--bg-surface)" }}
                         />
                         <div>
-                          <div className="font-extrabold text-slate-900 dark:text-white text-xs">
+                          <div className="font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs">
                             {s.name}
                           </div>
                           {!s.active && (
-                            <span className="text-[9px] font-bold text-rose-500 uppercase">
+                            <span className="text-[9px] font-bold text-[var(--danger-text)] uppercase">
                               (Inativo)
                             </span>
                           )}
@@ -400,7 +401,7 @@ export const StatusManagement: React.FC = () => {
                     </td>
 
                     {/* Code */}
-                    <td className="px-3 py-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                    <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                       {s.code}
                     </td>
 
@@ -409,23 +410,23 @@ export const StatusManagement: React.FC = () => {
                       {canManageStatuses ? <select
                         value={s.responsibleGroup || s.responsible}
                         onChange={e => handleQuickAlcadaChange(s.id, e.target.value as Alcada)}
-                        className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500 ${
-                          alcadaConfig?.color || 'bg-slate-100 text-slate-800'
+                        className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[var(--focus)] ${
+                          alcadaConfig?.color || 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
                         }`}
                         title="Clique para alterar a alçada responsável deste status"
                       >
                         {ALCADA_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          <option key={opt.value} value={opt.value} className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {opt.label}
                           </option>
                         ))}
-                      </select> : <span className="text-xs text-slate-600 dark:text-slate-300">{s.responsibleGroup || s.responsible}</span>}
+                      </select> : <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{s.responsibleGroup || s.responsible}</span>}
                     </td>
 
                     {/* SLA Hours */}
                     <td className="px-3 py-3 text-center">
-                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-[11px]">
-                        <Clock className="h-3 w-3 text-slate-400" />
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono font-bold text-[11px]">
+                        <Clock className="h-3 w-3 text-[var(--text-secondary)]" />
                         <span>
                           {s.code === 'AGUARDAR_RETORNO_CIP'
                             ? '5 dias úteis'
@@ -441,8 +442,8 @@ export const StatusManagement: React.FC = () => {
                       <span
                         className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
                           count > 0
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300'
-                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+                            ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
+                            : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-secondary)]'
                         }`}
                       >
                         {count} {count === 1 ? 'proposta' : 'propostas'}
@@ -454,7 +455,7 @@ export const StatusManagement: React.FC = () => {
                       <div className="flex items-center justify-center gap-1.5">
                         {s.finalStatus && (
                           <span
-                            className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 text-[9px] font-bold uppercase"
+                            className="px-1.5 py-0.5 rounded bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] text-[9px] font-bold uppercase"
                             title="Status Finalizador (Conclusivo)"
                           >
                             Final
@@ -462,7 +463,7 @@ export const StatusManagement: React.FC = () => {
                         )}
                         {s.manualChangeAllowed && (
                           <span
-                            className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[9px] font-bold"
+                            className="px-1.5 py-0.5 rounded bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] text-[9px] font-bold"
                             title="Permite Troca Manual"
                           >
                             Manual
@@ -476,14 +477,14 @@ export const StatusManagement: React.FC = () => {
                       <div className="flex items-center justify-end gap-1">
                         {canManageStatuses && <button
                           onClick={() => openEditModal(s)}
-                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--link)] dark:hover:text-[var(--link)] transition-colors cursor-pointer"
                           title="Editar Status"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>}
                         {canManageStatuses && <button
                           onClick={() => handleDeleteRequest(s)}
-                          className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] transition-colors cursor-pointer"
                           title="Excluir Status"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -500,26 +501,26 @@ export const StatusManagement: React.FC = () => {
 
       {/* Modal: Create / Edit Status */}
       {isModalOpen && canManageStatuses && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  relative">
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2">
-                <Sliders className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                <Sliders className="h-5 w-5 text-[var(--link)] dark:text-[var(--link)]" />
+                <h3 className="text-base font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {editingStatus ? 'Editar Status da Esteira' : 'Cadastrar Novo Status'}
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {errorMsg && (
-              <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-300 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+              <div className="mb-4 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] p-3 text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -527,7 +528,7 @@ export const StatusManagement: React.FC = () => {
             <form onSubmit={handleSave} className="space-y-4">
               {/* Nome do Status */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Nome do Status *
                 </label>
                 <input
@@ -540,14 +541,14 @@ export const StatusManagement: React.FC = () => {
                     }
                   }}
                   placeholder="EX: PENDENTE DE ASSINATURA"
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden"
                   required
                 />
               </div>
 
               {/* Código do Sistema */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Código Único do Sistema *
                 </label>
                 <input
@@ -555,23 +556,23 @@ export const StatusManagement: React.FC = () => {
                   value={formCode}
                   onChange={e => setFormCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
                   placeholder="EX: PENDENTE_ASSINATURA"
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden"
                   required
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-[10px] text-[var(--text-secondary)] mt-1 block">
                   Identificador sem espaços usado em automações, relatórios e importação Excel.
                 </span>
               </div>
 
               {/* Alçada Responsável */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Alçada Responsável *
                 </label>
                 <select
                   value={formAlcada}
                   onChange={e => setFormAlcada(e.target.value as Alcada)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden"
                 >
                   {ALCADA_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>
@@ -584,7 +585,7 @@ export const StatusManagement: React.FC = () => {
               {/* SLA & Cor */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     SLA Padrão (Horas)
                   </label>
                   <input
@@ -593,15 +594,15 @@ export const StatusManagement: React.FC = () => {
                     max="720"
                     value={formSlaHours}
                     onChange={e => setFormSlaHours(Number(e.target.value))}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden"
                   />
-                  <span className="text-[10px] text-slate-400 mt-1 block">
+                  <span className="text-[10px] text-[var(--text-secondary)] mt-1 block">
                     Defina 0 horas para status conclusivos sem estouro de SLA.
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     Cor de Destaque
                   </label>
                   <div className="flex items-center gap-2">
@@ -609,13 +610,13 @@ export const StatusManagement: React.FC = () => {
                       type="color"
                       value={formColor}
                       onChange={e => setFormColor(e.target.value)}
-                      className="h-9 w-12 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent p-0.5 cursor-pointer"
+                      className="h-9 w-12 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-transparent p-0.5 cursor-pointer"
                     />
                     <input
                       type="text"
                       value={formColor}
                       onChange={e => setFormColor(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-200"
+                      className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                     />
                   </div>
                 </div>
@@ -623,7 +624,7 @@ export const StatusManagement: React.FC = () => {
 
               {/* Color Presets */}
               <div>
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                <span className="text-[10px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block mb-1">
                   Paleta de Cores Sugerida:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -632,13 +633,13 @@ export const StatusManagement: React.FC = () => {
                       key={c}
                       type="button"
                       onClick={() => setFormColor(c)}
-                      className={`h-6 w-6 rounded-full border border-black/10 transition-transform cursor-pointer hover:scale-110 flex items-center justify-center ${
-                        formColor.toLowerCase() === c.toLowerCase() ? 'ring-2 ring-blue-500 scale-110' : ''
+                      className={`h-6 w-6 rounded-full border border-[var(--field-border)] transition-transform cursor-pointer hover:scale-110 flex items-center justify-center ${
+                        formColor.toLowerCase() === c.toLowerCase() ? 'ring-2 ring-[var(--focus)] scale-110' : ''
                       }`}
                       style={{ backgroundColor: c }}
                     >
                       {formColor.toLowerCase() === c.toLowerCase() && (
-                        <Check className="h-3 w-3 text-white drop-shadow-sm" />
+                        <Check className="h-3 w-3 text-[var(--text-primary)] drop-shadow-sm" />
                       )}
                     </button>
                   ))}
@@ -646,51 +647,51 @@ export const StatusManagement: React.FC = () => {
               </div>
 
               {/* Checkbox Flags */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
+              <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   <input
                     type="checkbox"
                     checked={formActive}
                     onChange={e => setFormActive(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-4 w-4"
                   />
                   <span>Status Ativo na Esteira</span>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   <input
                     type="checkbox"
                     checked={formFinalStatus}
                     onChange={e => setFormFinalStatus(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-4 w-4"
                   />
                   <span>Status Finalizador (Conclusão de proposta, ex: Pago, Cancelado, Reprovado)</span>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   <input
                     type="checkbox"
                     checked={formManualAllowed}
                     onChange={e => setFormManualAllowed(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-4 w-4"
                   />
                   <span>Permitir Troca Manual pelos Usuários da Esteira</span>
                 </label>
               </div>
 
               {/* Actions */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] disabled:opacity-90 px-4 py-2 text-xs font-bold text-[var(--action-ink)]   transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="h-4 w-4" />
                   <span>{isSaving ? 'Salvando no Banco...' : editingStatus ? 'Salvar Alterações' : 'Cadastrar Status'}</span>
@@ -703,36 +704,36 @@ export const StatusManagement: React.FC = () => {
 
       {/* Modal: Confirm Delete & Migration */}
       {deleteTarget && canManageStatuses && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 p-6 shadow-2xl relative">
-            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 mb-3">
-              <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  relative">
+            <div className="flex items-center gap-3 text-[var(--danger-text)] dark:text-[var(--danger-text)] mb-3">
+              <div className="p-2 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                 <AlertTriangle className="h-6 w-6" />
               </div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+              <h3 className="text-base font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Excluir Status "{deleteTarget.name}"?
               </h3>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
-              Tem certeza que deseja excluir o status <strong className="text-slate-900 dark:text-white">{deleteTarget.name}</strong>? Esta ação removerá a coluna da esteira Kanban.
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-4 leading-relaxed">
+              Tem certeza que deseja excluir o status <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{deleteTarget.name}</strong>? Esta ação removerá a coluna da esteira Kanban.
             </p>
 
             {/* Check if proposals are bound */}
             {(proposalsCountMap[deleteTarget.id] || 0) > 0 ? (
-              <div className="mb-4 p-3 rounded-xl border border-amber-300 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 text-xs space-y-2">
-                <div className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                  <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <div className="mb-4 p-3 rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-xs space-y-2">
+                <div className="font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-center gap-1.5">
+                  <Info className="h-4 w-4 text-[var(--warning-text)] dark:text-[var(--warning-text)]" />
                   <span>Atenção: Propostas Vinculadas</span>
                 </div>
-                <p className="text-amber-800 dark:text-amber-300/90 text-[11px]">
+                <p className="text-[var(--warning-text)] dark:text-[var(--warning-text)] text-[11px]">
                   Existem <strong>{proposalsCountMap[deleteTarget.id]} propostas</strong> atualmente neste status. Escolha para qual status elas devem ser migradas antes de confirmar a exclusão:
                 </p>
 
                 <select
                   value={fallbackStatusId}
                   onChange={e => setFallbackStatusId(e.target.value)}
-                  className="w-full rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   required
                 >
                   {statuses
@@ -747,7 +748,7 @@ export const StatusManagement: React.FC = () => {
             ) : null}
 
             {errorMsg && (
-              <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-300">
+              <div className="mb-4 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] p-3 text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                 {errorMsg}
               </div>
             )}
@@ -756,7 +757,7 @@ export const StatusManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -764,7 +765,7 @@ export const StatusManagement: React.FC = () => {
                 type="button"
                 onClick={confirmDelete}
                 disabled={isSaving}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-rose-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="rounded-xl bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] disabled:opacity-90 px-4 py-2 text-xs font-bold text-[var(--danger-text)]   transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
                 <span>{isSaving ? 'Excluindo...' : 'Confirmar Exclusão'}</span>

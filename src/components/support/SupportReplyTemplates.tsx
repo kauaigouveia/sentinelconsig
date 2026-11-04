@@ -29,20 +29,20 @@ export function SupportReplyTemplates({ onInsert, canInsert }: { onInsert: (mess
     catch (err: any) { setError(err.message); }
     finally { setBusy(false); }
   };
-  const control = 'w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950';
-  return <details className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+  const control = 'w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 text-xs dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
+  return <details className="rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-3 dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
     <summary className="cursor-pointer text-sm font-bold">Minhas mensagens modelo ({rows.length})</summary>
-    <p className="my-2 text-xs text-slate-500">Cadastre respostas para reutilizar. Usar modelo preenche o campo de resposta; você pode editar antes de enviar.</p>
+    <p className="my-2 text-xs text-[var(--text-secondary)]">Cadastre respostas para reutilizar. Usar modelo preenche o campo de resposta; você pode editar antes de enviar.</p>
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="max-h-64 space-y-2 overflow-y-auto">{rows.map(row => <article key={row.id} className="rounded-lg border p-2 dark:border-slate-700">
-        <strong className="text-xs">{row.title}</strong><p className="my-1 whitespace-pre-wrap break-words text-xs text-slate-500">{row.message}</p>
-        <div className="flex gap-3 text-xs"><button type="button" disabled={!canInsert || busy} onClick={() => onInsert(row.message)} className="font-bold text-blue-600 disabled:opacity-40">Usar modelo</button><button type="button" disabled={busy} onClick={() => { setEditingId(row.id); setTitle(row.title); setMessage(row.message); }}>Editar</button><button type="button" disabled={busy} onClick={() => void remove(row.id)} className="text-red-600">Excluir</button></div>
-      </article>)}{!rows.length && <p className="text-xs text-slate-500">Nenhum modelo cadastrado.</p>}</div>
+      <div className="max-h-64 space-y-2 overflow-y-auto">{rows.map(row => <article key={row.id} className="rounded-lg border p-2 dark:border-[var(--field-border)]">
+        <strong className="text-xs">{row.title}</strong><p className="my-1 whitespace-pre-wrap break-words text-xs text-[var(--text-secondary)]">{row.message}</p>
+        <div className="flex gap-3 text-xs"><button type="button" disabled={!canInsert || busy} onClick={() => onInsert(row.message)} className="font-bold text-[var(--link)] disabled:opacity-90">Usar modelo</button><button type="button" disabled={busy} onClick={() => { setEditingId(row.id); setTitle(row.title); setMessage(row.message); }}>Editar</button><button type="button" disabled={busy} onClick={() => void remove(row.id)} className="text-[var(--danger-text)]">Excluir</button></div>
+      </article>)}{!rows.length && <p className="text-xs text-[var(--text-secondary)]">Nenhum modelo cadastrado.</p>}</div>
       <form onSubmit={save} className="space-y-2"><h4 className="text-xs font-bold">{editingId ? 'Editar modelo' : 'Novo modelo'}</h4>
         <label className="block text-xs">Título<input required maxLength={120} value={title} onChange={event => setTitle(event.target.value)} className={control} /></label>
         <label className="block text-xs">Mensagem<textarea required maxLength={5000} rows={3} value={message} onChange={event => setMessage(event.target.value)} className={control} /></label>
-        <div className="flex gap-3"><button disabled={busy || !title.trim() || !message.trim()} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{busy ? 'Salvando…' : 'Salvar modelo'}</button>{editingId && <button disabled={busy} type="button" onClick={clear} className="text-xs">Cancelar edição</button>}</div>
+        <div className="flex gap-3"><button disabled={busy || !title.trim() || !message.trim()} className="rounded-lg bg-[var(--action)] px-3 py-2 text-xs font-bold text-[var(--action-ink)] disabled:opacity-90">{busy ? 'Salvando…' : 'Salvar modelo'}</button>{editingId && <button disabled={busy} type="button" onClick={clear} className="text-xs">Cancelar edição</button>}</div>
       </form>
-    </div>{error && <p role="alert" className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>{error && <p role="alert" className="mt-2 text-xs text-[var(--danger-text)]">{error}</p>}
   </details>;
 }

@@ -1,0 +1,706 @@
+[
+  {
+    "file": "src/components/CommandCenter/CommandCenterView.tsx",
+    "edits": 206
+  },
+  {
+    "file": "src/components/admin/AnnouncementsManagement.tsx",
+    "edits": 35
+  },
+  {
+    "file": "src/components/admin/AuditLogView.tsx",
+    "edits": 176
+  },
+  {
+    "file": "src/components/admin/BackupManagementModal.tsx",
+    "edits": 73
+  },
+  {
+    "file": "src/components/admin/BankBatchImport.tsx",
+    "edits": 7
+  },
+  {
+    "file": "src/components/admin/BankPromoterManagement.tsx",
+    "edits": 47
+  },
+  {
+    "file": "src/components/admin/CentralAdministracao.tsx",
+    "edits": 66
+  },
+  {
+    "file": "src/components/admin/CentralAutomacoes.tsx",
+    "edits": 120
+  },
+  {
+    "file": "src/components/admin/CentralPendencias.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/admin/ConvenioManagement.tsx",
+    "edits": 57
+  },
+  {
+    "file": "src/components/admin/DomainManagement.tsx",
+    "edits": 48
+  },
+  {
+    "file": "src/components/admin/HolidayManagement.tsx",
+    "edits": 45
+  },
+  {
+    "file": "src/components/admin/HubIntegracoes.tsx",
+    "edits": 3
+  },
+  {
+    "file": "src/components/admin/NewUserCredentialsModal.tsx",
+    "edits": 21
+  },
+  {
+    "file": "src/components/admin/OperationalRulesManagement.tsx",
+    "edits": 57
+  },
+  {
+    "file": "src/components/admin/PartnerImportModal.tsx",
+    "edits": 50
+  },
+  {
+    "file": "src/components/admin/PerfisPermissoesView.tsx",
+    "edits": 23
+  },
+  {
+    "file": "src/components/admin/ProductImportModal.tsx",
+    "edits": 67
+  },
+  {
+    "file": "src/components/admin/ProductManagement.tsx",
+    "edits": 84
+  },
+  {
+    "file": "src/components/admin/StatusImport.tsx",
+    "edits": 101
+  },
+  {
+    "file": "src/components/admin/StatusManagement.tsx",
+    "edits": 106
+  },
+  {
+    "file": "src/components/admin/TenantSaaSCapacityView.tsx",
+    "edits": 100
+  },
+  {
+    "file": "src/components/admin/TestRunnerModal.tsx",
+    "edits": 29
+  },
+  {
+    "file": "src/components/admin/UserDetailsModal.tsx",
+    "edits": 68
+  },
+  {
+    "file": "src/components/admin/UserManagement.tsx",
+    "edits": 153
+  },
+  {
+    "file": "src/components/admin/WhiteLabelModal.tsx",
+    "edits": 60
+  },
+  {
+    "file": "src/components/admin/automations/AutomationExecutionTimelineModal.tsx",
+    "edits": 57
+  },
+  {
+    "file": "src/components/admin/automations/AutomationTestModal.tsx",
+    "edits": 44
+  },
+  {
+    "file": "src/components/admin/automations/AutomationVisualBuilder.tsx",
+    "edits": 84
+  },
+  {
+    "file": "src/components/agenda/MyTaskQueueView.tsx",
+    "edits": 27
+  },
+  {
+    "file": "src/components/agenda/OperationalAgendaView.tsx",
+    "edits": 75
+  },
+  {
+    "file": "src/components/ai/SentinelaAIChat.tsx",
+    "edits": 36
+  },
+  {
+    "file": "src/components/auth/ChangePasswordModal.tsx",
+    "edits": 14
+  },
+  {
+    "file": "src/components/auth/ForcePasswordChangeModal.tsx",
+    "edits": 23
+  },
+  {
+    "file": "src/components/auth/TenantSelectionView.tsx",
+    "edits": 15
+  },
+  {
+    "file": "src/components/bi/BIFilterBar.tsx",
+    "edits": 39
+  },
+  {
+    "file": "src/components/bi/CommercialRadarView.tsx",
+    "edits": 61
+  },
+  {
+    "file": "src/components/bi/ExecutiveBIDashboard.tsx",
+    "edits": 229
+  },
+  {
+    "file": "src/components/bi/ExecutiveInsightsWidget.tsx",
+    "edits": 29
+  },
+  {
+    "file": "src/components/bi/MarkdownRenderer.tsx",
+    "edits": 17
+  },
+  {
+    "file": "src/components/bi/OperationalBIDashboard.tsx",
+    "edits": 78
+  },
+  {
+    "file": "src/components/bi/OperationalHealthCard.tsx",
+    "edits": 35
+  },
+  {
+    "file": "src/components/bi/SentinelaAIChat.tsx",
+    "edits": 26
+  },
+  {
+    "file": "src/components/clients/Client360View.tsx",
+    "edits": 137
+  },
+  {
+    "file": "src/components/common/AccessDeniedView.tsx",
+    "edits": 20
+  },
+  {
+    "file": "src/components/common/BankCodeSelect.tsx",
+    "edits": 3
+  },
+  {
+    "file": "src/components/common/CommandPaletteModal.tsx",
+    "edits": 19
+  },
+  {
+    "file": "src/components/common/DeleteConfirmationModal.tsx",
+    "edits": 22
+  },
+  {
+    "file": "src/components/common/ErrorBoundary.tsx",
+    "edits": 9
+  },
+  {
+    "file": "src/components/common/InteractiveTourModal.tsx",
+    "edits": 33
+  },
+  {
+    "file": "src/components/common/KeyboardShortcutsModal.tsx",
+    "edits": 15
+  },
+  {
+    "file": "src/components/common/NotFoundView.tsx",
+    "edits": 8
+  },
+  {
+    "file": "src/components/common/PartnerSearchSelect.tsx",
+    "edits": 27
+  },
+  {
+    "file": "src/components/common/UniversalConfirmationModal.tsx",
+    "edits": 38
+  },
+  {
+    "file": "src/components/crm/PartnerBatchActions.tsx",
+    "edits": 10
+  },
+  {
+    "file": "src/components/crm/PartnerCrmHub.tsx",
+    "edits": 81
+  },
+  {
+    "file": "src/components/crm/PartnerDetailModal.tsx",
+    "edits": 353
+  },
+  {
+    "file": "src/components/crm/PartnerFormModal.tsx",
+    "edits": 103
+  },
+  {
+    "file": "src/components/dashboard/ControlTower.tsx",
+    "edits": 13
+  },
+  {
+    "file": "src/components/dashboard/CustomizeWidgetsModal.tsx",
+    "edits": 24
+  },
+  {
+    "file": "src/components/dashboard/DigitizerHome.tsx",
+    "edits": 39
+  },
+  {
+    "file": "src/components/dashboard/ExecutiveDashboard.tsx",
+    "edits": 95
+  },
+  {
+    "file": "src/components/dashboard/StatusBottleneckReport.tsx",
+    "edits": 52
+  },
+  {
+    "file": "src/components/finance/GeneralFinanceView.tsx",
+    "edits": 59
+  },
+  {
+    "file": "src/components/gamification/GamificationCenter.tsx",
+    "edits": 52
+  },
+  {
+    "file": "src/components/integrations/BankIntegrationsView.tsx",
+    "edits": 271
+  },
+  {
+    "file": "src/components/integrations/BankPromoterConnection.tsx",
+    "edits": 2
+  },
+  {
+    "file": "src/components/integrations/BankStatusMappingSettings.tsx",
+    "edits": 4
+  },
+  {
+    "file": "src/components/integrations/BmgIntegrationTab.tsx",
+    "edits": 5
+  },
+  {
+    "file": "src/components/integrations/C6BankConfigModal.tsx",
+    "edits": 56
+  },
+  {
+    "file": "src/components/integrations/C6BankConfigView.tsx",
+    "edits": 109
+  },
+  {
+    "file": "src/components/integrations/DaycovalWorkbookSettings.tsx",
+    "edits": 14
+  },
+  {
+    "file": "src/components/integrations/FactaCredentialFields.tsx",
+    "edits": 2
+  },
+  {
+    "file": "src/components/integrations/FinantoIntegrationTab.tsx",
+    "edits": 44
+  },
+  {
+    "file": "src/components/integrations/HappyIntegrationTab.tsx",
+    "edits": 171
+  },
+  {
+    "file": "src/components/integrations/NossaFintechIntegrationTab.tsx",
+    "edits": 36
+  },
+  {
+    "file": "src/components/integrations/ParanaIntegrationTab.tsx",
+    "edits": 11
+  },
+  {
+    "file": "src/components/integrations/PresencaIntegrationTab.tsx",
+    "edits": 9
+  },
+  {
+    "file": "src/components/integrations/SimulationBankOrderSettings.tsx",
+    "edits": 4
+  },
+  {
+    "file": "src/components/integrations/TelegramIntegrationSettings.tsx",
+    "edits": 11
+  },
+  {
+    "file": "src/components/integrations/V8IntegrationTab.tsx",
+    "edits": 11
+  },
+  {
+    "file": "src/components/integrations/VctexIntegrationTab.tsx",
+    "edits": 16
+  },
+  {
+    "file": "src/components/integrations/WorkbankIntegrationTab.tsx",
+    "edits": 13
+  },
+  {
+    "file": "src/components/intelligence/SentinelIntelligenceDashboard.tsx",
+    "edits": 157
+  },
+  {
+    "file": "src/components/layout/Header.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/layout/NotificationsDrawer.tsx",
+    "edits": 37
+  },
+  {
+    "file": "src/components/layout/Sidebar.tsx",
+    "edits": 24
+  },
+  {
+    "file": "src/components/monitor/TVOperationsMonitor.tsx",
+    "edits": 82
+  },
+  {
+    "file": "src/components/operations/AnnouncementsTab.tsx",
+    "edits": 58
+  },
+  {
+    "file": "src/components/operations/ApiMonitoringTab.tsx",
+    "edits": 116
+  },
+  {
+    "file": "src/components/operations/OperationsCentral.tsx",
+    "edits": 28
+  },
+  {
+    "file": "src/components/partner-portal/PartnerPortalDashboard.tsx",
+    "edits": 15
+  },
+  {
+    "file": "src/components/partner-portal/PartnerPortalLayout.tsx",
+    "edits": 17
+  },
+  {
+    "file": "src/components/partner-portal/PartnerProfileView.tsx",
+    "edits": 39
+  },
+  {
+    "file": "src/components/partner-portal/PartnerProposalDetailModal.tsx",
+    "edits": 53
+  },
+  {
+    "file": "src/components/partner-portal/PartnerProposalsView.tsx",
+    "edits": 35
+  },
+  {
+    "file": "src/components/partner-portal/PartnerSimulationsView.tsx",
+    "edits": 16
+  },
+  {
+    "file": "src/components/partner-portal/PartnerSupportView.tsx",
+    "edits": 61
+  },
+  {
+    "file": "src/components/partner-portal/PartnerTelegramSettings.tsx",
+    "edits": 12
+  },
+  {
+    "file": "src/components/partner-portal/SupportRating.tsx",
+    "edits": 7
+  },
+  {
+    "file": "src/components/production/BmgProposalCard.tsx",
+    "edits": 5
+  },
+  {
+    "file": "src/components/production/BulkStatusModal.tsx",
+    "edits": 22
+  },
+  {
+    "file": "src/components/production/C6ProposalCard.tsx",
+    "edits": 78
+  },
+  {
+    "file": "src/components/production/ExcelExportModal.tsx",
+    "edits": 55
+  },
+  {
+    "file": "src/components/production/ExcelImportModal.tsx",
+    "edits": 116
+  },
+  {
+    "file": "src/components/production/FactaProposalCard.tsx",
+    "edits": 79
+  },
+  {
+    "file": "src/components/production/HappyProposalCard.tsx",
+    "edits": 48
+  },
+  {
+    "file": "src/components/production/KanbanBoard.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/production/NewProductionModal.tsx",
+    "edits": 80
+  },
+  {
+    "file": "src/components/production/ParanaProposalSyncCard.tsx",
+    "edits": 2
+  },
+  {
+    "file": "src/components/production/PortabilityFinancialSummary.tsx",
+    "edits": 3
+  },
+  {
+    "file": "src/components/production/PortabilityView.tsx",
+    "edits": 51
+  },
+  {
+    "file": "src/components/production/ProposalBatchSyncButton.tsx",
+    "edits": 5
+  },
+  {
+    "file": "src/components/production/ProposalDetailModal.tsx",
+    "edits": 182
+  },
+  {
+    "file": "src/components/production/ProviderProposalSyncCard.tsx",
+    "edits": 17
+  },
+  {
+    "file": "src/components/redesign/GalleryWorkspaces.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/redesign/KanbanStageNavigator.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/redesign/PreviewDashboard.tsx",
+    "edits": 14
+  },
+  {
+    "file": "src/components/redesign/PreviewData.ts",
+    "edits": 1
+  },
+  {
+    "file": "src/components/redesign/galleryFixtures.ts",
+    "edits": 4
+  },
+  {
+    "file": "src/components/saas/PlatformMasterCentral.tsx",
+    "edits": 276
+  },
+  {
+    "file": "src/components/search/UniversalCommandPalette.tsx",
+    "edits": 33
+  },
+  {
+    "file": "src/components/simulation/BankPlaybooksPanel.tsx",
+    "edits": 9
+  },
+  {
+    "file": "src/components/simulation/BankPlaybooksView.tsx",
+    "edits": 19
+  },
+  {
+    "file": "src/components/simulation/BmgCltProposalForm.tsx",
+    "edits": 4
+  },
+  {
+    "file": "src/components/simulation/BmgCustomerAuthorization.tsx",
+    "edits": 9
+  },
+  {
+    "file": "src/components/simulation/C6CltAuthorization.tsx",
+    "edits": 5
+  },
+  {
+    "file": "src/components/simulation/C6SimulationResults.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/simulation/CltCustomerDataCard.tsx",
+    "edits": 14
+  },
+  {
+    "file": "src/components/simulation/CltJourneyWorkspace.tsx",
+    "edits": 49
+  },
+  {
+    "file": "src/components/simulation/CltResults.tsx",
+    "edits": 13
+  },
+  {
+    "file": "src/components/simulation/DaycovalSimulationModal.tsx",
+    "edits": 26
+  },
+  {
+    "file": "src/components/simulation/EligibilityResult.tsx",
+    "edits": 7
+  },
+  {
+    "file": "src/components/simulation/FactaSimulationResults.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/simulation/FinantoInssSimulationModal.tsx",
+    "edits": 47
+  },
+  {
+    "file": "src/components/simulation/HappyCltSimulationModal.tsx",
+    "edits": 89
+  },
+  {
+    "file": "src/components/simulation/HappyInssSimulationModal.tsx",
+    "edits": 106
+  },
+  {
+    "file": "src/components/simulation/InssBenefitTypeSelect.tsx",
+    "edits": 5
+  },
+  {
+    "file": "src/components/simulation/NossaFintechPortRefinSimulationModal.tsx",
+    "edits": 32
+  },
+  {
+    "file": "src/components/simulation/NossaFintechPortRefinSimulationModal.tsx",
+    "edits": 29
+  },
+  {
+    "file": "src/components/simulation/OrderedSimulationBanks.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/simulation/ParanaCltSimulation.tsx",
+    "edits": 8
+  },
+  {
+    "file": "src/components/simulation/ParanaNovoOpportunities.tsx",
+    "edits": 8
+  },
+  {
+    "file": "src/components/simulation/PartnerSimulationMonthlyReport.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/simulation/PortabilityReviewFields.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/simulation/PresencaCltSimulation.tsx",
+    "edits": 8
+  },
+  {
+    "file": "src/components/simulation/PresencaFgtsSimulation.tsx",
+    "edits": 14
+  },
+  {
+    "file": "src/components/simulation/PresencaInssBenefits.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/simulation/ProductSimulationModal.tsx",
+    "edits": 24
+  },
+  {
+    "file": "src/components/simulation/SimulationCustomerSummary.tsx",
+    "edits": 3
+  },
+  {
+    "file": "src/components/simulation/SimulationFlowSelectorModal.tsx",
+    "edits": 15
+  },
+  {
+    "file": "src/components/simulation/SimulationImportModal.tsx",
+    "edits": 42
+  },
+  {
+    "file": "src/components/simulation/SimulationOfferCard.tsx",
+    "edits": 7
+  },
+  {
+    "file": "src/components/simulation/SimulationSteps.tsx",
+    "edits": 7
+  },
+  {
+    "file": "src/components/simulation/SimulationView.tsx",
+    "edits": 5
+  },
+  {
+    "file": "src/components/simulation/SpreadsheetPortRefinWorkspace.tsx",
+    "edits": 3
+  },
+  {
+    "file": "src/components/simulation/V8ApiAuthorization.tsx",
+    "edits": 2
+  },
+  {
+    "file": "src/components/simulation/V8CltActions.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/simulation/V8CltConsultation.tsx",
+    "edits": 4
+  },
+  {
+    "file": "src/components/simulation/V8WorkerConsentPage.tsx",
+    "edits": 2
+  },
+  {
+    "file": "src/components/simulation/VctexCltActions.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/support/CentralAtendimentoView.tsx",
+    "edits": 55
+  },
+  {
+    "file": "src/components/support/SimulationWhatsAppConnection.tsx",
+    "edits": 6
+  },
+  {
+    "file": "src/components/support/SupportCenter.tsx",
+    "edits": 37
+  },
+  {
+    "file": "src/components/support/SupportReplyTemplates.tsx",
+    "edits": 10
+  },
+  {
+    "file": "src/components/ui/AuthorityBadge.tsx",
+    "edits": 28
+  },
+  {
+    "file": "src/components/ui/EmptyState.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/ui/ErrorState.tsx",
+    "edits": 7
+  },
+  {
+    "file": "src/components/ui/RecordWorkspace.tsx",
+    "edits": 1
+  },
+  {
+    "file": "src/components/ui/Skeleton.tsx",
+    "edits": 4
+  },
+  {
+    "file": "src/components/ui/ToastContainer.tsx",
+    "edits": 20
+  },
+  {
+    "file": "src/layout-preview.tsx",
+    "edits": 22
+  },
+  {
+    "file": "src/lib/roleUtils.ts",
+    "edits": 27
+  },
+  {
+    "file": "src/components/support/support-workspace.css",
+    "css": true
+  },
+  {
+    "file": "src/styles/sentinel-2-preview.css",
+    "css": true
+  },
+  {
+    "file": "src/styles/sentinel.css",
+    "css": true
+  }
+]

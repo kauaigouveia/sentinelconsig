@@ -387,29 +387,29 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
       {/* Banner Principal da Integração Happy / BYX Capital */}
       <div
         id="happy-banner-header"
-        className="p-4 rounded-2xl bg-gradient-to-r from-pink-900 via-rose-900 to-slate-900 text-white flex flex-wrap items-center justify-between gap-4 shadow-sm"
+        className="p-4 rounded-2xl     text-[var(--text-primary)] flex flex-wrap items-center justify-between gap-4 shadow-sm"
       >
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-white text-pink-600 flex items-center justify-center font-black text-xl tracking-tighter shadow-md">
+          <div className="h-12 w-12 rounded-xl bg-[var(--bg-surface)] text-[var(--danger-text)] flex items-center justify-center font-black text-xl tracking-tighter shadow-md">
             HP
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-black">Happy / BYX Capital (Código HAPPY)</h2>
               {config.isConfigured ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]">
                   {config.ativo ? 'Conectado & Habilitado' : 'Configurado (Inativo)'}
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]">
                   Credenciais Pendentes
                 </span>
               )}
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-500/20 text-pink-200 border border-pink-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] border border-[var(--danger-border)]">
                 Ambiente: {config.ambiente === 'production' ? 'PRODUÇÃO' : 'STAGING / HOMOLOGAÇÃO'}
               </span>
             </div>
-            <p className="text-xs text-pink-100/80 mt-0.5">
+            <p className="text-xs text-[var(--danger-text)] mt-0.5">
               API REST & Webhooks em Tempo Real — Acompanhamento de Propostas, Consulta de Contratos e Atualização de Status
             </p>
           </div>
@@ -421,7 +421,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
             type="button"
             onClick={handleRunReconciliation}
             disabled={isSyncing || !config.isConfigured || !canSync}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs disabled:opacity-50 transition-all shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] text-[var(--danger-text)] font-bold text-xs disabled:opacity-90 transition-all  cursor-pointer"
           >
             <Play className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>{isSyncing ? 'Reconciliando...' : 'Reconciliar Propostas Ativas'}</span>
@@ -436,7 +436,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               fetchUnmatchedWebhooks();
             }}
             disabled={isLoadingConfig}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
+            className="p-2 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] transition-all cursor-pointer"
             title="Recarregar dados"
           >
             <RefreshCw className={`h-4 w-4 ${isLoadingConfig ? 'animate-spin' : ''}`} />
@@ -446,15 +446,15 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
 
       {/* Alerta de Feedback de Reconciliação / Salvar */}
       {syncResultMsg && (
-        <div className="p-3 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800 text-pink-900 dark:text-pink-200 flex items-center justify-between text-xs">
+        <div className="p-3 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-pink-600 shrink-0" />
+            <Info className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
             <span>{syncResultMsg}</span>
           </div>
           <button
             type="button"
             onClick={() => setSyncResultMsg(null)}
-            className="text-pink-600 hover:underline font-bold text-[11px]"
+            className="text-[var(--danger-text)] hover:underline font-bold text-[11px]"
           >
             Fechar
           </button>
@@ -462,15 +462,15 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
       )}
 
       {saveSuccessMsg && (
-        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between text-xs">
+        <div className="p-3 rounded-xl bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--success-border)] dark:border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
             <span>{saveSuccessMsg}</span>
           </div>
           <button
             type="button"
             onClick={() => setSaveSuccessMsg(null)}
-            className="text-emerald-600 hover:underline font-bold text-[11px]"
+            className="text-[var(--success-text)] hover:underline font-bold text-[11px]"
           >
             Fechar
           </button>
@@ -478,15 +478,15 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
       )}
 
       {errorMessage && (
-        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-900 dark:text-red-200 flex items-center justify-between text-xs">
+        <div className="p-3 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+            <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
             <span>{errorMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setErrorMessage(null)}
-            className="text-red-600 hover:underline font-bold text-[11px]"
+            className="text-[var(--danger-text)] hover:underline font-bold text-[11px]"
           >
             Fechar
           </button>
@@ -495,70 +495,70 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
 
       {/* Grid de Métricas Operacionais */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4" id="happy-metrics-grid">
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Estado Operacional</span>
+        <div className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Estado Operacional</span>
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
               <div
                 className={`h-2.5 w-2.5 rounded-full ${
-                  config.ativo && config.isConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                  config.ativo && config.isConfigured ? 'bg-[var(--success-bg)] animate-pulse' : 'bg-[var(--bg-surface-elevated)]'
                 }`}
               />
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
+              <span className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 {config.ativo && config.isConfigured ? 'Ativo & Operacional' : 'Desativado / Pendente'}
               </span>
             </div>
-            <Activity className="h-4 w-4 text-slate-400" />
+            <Activity className="h-4 w-4 text-[var(--text-secondary)]" />
           </div>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-[var(--text-secondary)]">
             Ambiente: {config.ambiente}
           </p>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Propostas Sincronizadas</span>
+        <div className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Propostas Sincronizadas</span>
           <div className="flex items-center justify-between pt-1">
-            <span className="font-bold text-xl text-slate-900 dark:text-slate-100">
+            <span className="font-bold text-xl text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               {status?.totalSyncedCount ?? 0}
             </span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-[var(--success-text)]" />
           </div>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-[var(--text-secondary)]">
             Última sync: {formatDateTime(status?.lastSyncAt)}
           </p>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Webhooks em Tempo Real</span>
+        <div className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Webhooks em Tempo Real</span>
           <div className="flex items-center justify-between pt-1">
-            <span className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <Radio className="h-3.5 w-3.5 text-pink-500 animate-pulse" />
+            <span className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+              <Radio className="h-3.5 w-3.5 text-[var(--danger-text)] animate-pulse" />
               Recepção Ativa
             </span>
-            <Clock className="h-4 w-4 text-slate-400" />
+            <Clock className="h-4 w-4 text-[var(--text-secondary)]" />
           </div>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-[var(--text-secondary)]">
             Último evento: {formatDateTime(status?.lastWebhookReceivedAt)}
           </p>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Eventos Não Vinculados</span>
+        <div className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Eventos Não Vinculados</span>
           <div className="flex items-center justify-between pt-1">
             <span
               className={`font-bold text-xl ${
-                (status?.unmatchedWebhooksCount || 0) > 0 ? 'text-amber-600' : 'text-slate-900 dark:text-slate-100'
+                (status?.unmatchedWebhooksCount || 0) > 0 ? 'text-[var(--warning-text)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
               }`}
             >
               {status?.unmatchedWebhooksCount ?? 0}
             </span>
             <AlertTriangle
               className={`h-4 w-4 ${
-                (status?.unmatchedWebhooksCount || 0) > 0 ? 'text-amber-500' : 'text-slate-400'
+                (status?.unmatchedWebhooksCount || 0) > 0 ? 'text-[var(--warning-text)]' : 'text-[var(--text-secondary)]'
               }`}
             />
           </div>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-[var(--text-secondary)]">
             {status?.unmatchedWebhooksCount ? 'Aguardando matching de contrato' : 'Todos vinculados com sucesso'}
           </p>
         </div>
@@ -569,33 +569,33 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
         {/* Coluna 1: Formulário de Configurações Seguras (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           {!canManageConfig && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+            <div className="rounded-xl border border-[var(--field-border)] bg-[var(--info-bg)] p-3 text-xs text-[var(--link)] dark:border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]">
               Você pode consultar a integração, mas precisa de permissão de gestão para alterar as credenciais.
             </div>
           )}
           <form
             id="happy-config-form"
             onSubmit={handleSaveConfig}
-            className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4"
+            className="p-5 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-4"
           >
             <fieldset disabled={!canManageConfig} className="contents">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-pink-600" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                <ShieldCheck className="h-4 w-4 text-[var(--danger-text)]" />
+                <h3 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Credenciais & Parâmetros de Autenticação (Happy/BYX)
                 </h3>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">OAuth 2.0 Client Credentials</span>
+              <span className="text-[10px] text-[var(--text-secondary)] font-mono">OAuth 2.0 Client Credentials</span>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               Senhas e segredos não são devolvidos pela API de configuração; os dados operacionais ficam isolados por tenant.
             </p>
 
             {/* Seleção de Ambiente */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Ambiente de Conexão
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -604,13 +604,13 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   onClick={() => handleEnvironmentChange('staging')}
                   className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
                     config.ambiente === 'staging'
-                      ? 'border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 text-pink-900 dark:text-pink-200 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
+                      ? 'border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] shadow-xs'
+                      : 'border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                   }`}
                 >
                   <div
                     className={`h-3 w-3 rounded-full mt-0.5 border ${
-                      config.ambiente === 'staging' ? 'border-pink-600 bg-pink-600' : 'border-slate-400'
+                      config.ambiente === 'staging' ? 'border-[var(--danger-border)] bg-[var(--danger-bg)]' : 'border-[var(--field-border)]'
                     }`}
                   />
                   <div>
@@ -624,13 +624,13 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   onClick={() => handleEnvironmentChange('production')}
                   className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
                     config.ambiente === 'production'
-                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
+                      ? 'border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] shadow-xs'
+                      : 'border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                   }`}
                 >
                   <div
                     className={`h-3 w-3 rounded-full mt-0.5 border ${
-                      config.ambiente === 'production' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-400'
+                      config.ambiente === 'production' ? 'border-[var(--success-border)] bg-[var(--success-bg)]' : 'border-[var(--field-border)]'
                     }`}
                   />
                   <div>
@@ -643,7 +643,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
 
             {/* Base URL */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 URL Base da API (Endpoint REST)
               </label>
               <input
@@ -652,7 +652,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                 value={config.baseUrl}
                 onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
                 required
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 placeholder="https://sp-integracao-api.byx.capital"
               />
             </div>
@@ -660,7 +660,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
             {/* Grid 2 Cols: Client ID & Secret */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Client ID (client_id)
                 </label>
                 <input
@@ -669,17 +669,17 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   value={config.clientId}
                   onChange={(e) => setConfig({ ...config, clientId: e.target.value })}
                   placeholder="Ex: d41d8cd98f00b204e9800998ecf8427e"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Client Secret (secret)
                   </label>
                   {config.hasSecret && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="text-[10px] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold">
                       ✓ Já cadastrado
                     </span>
                   )}
@@ -691,12 +691,12 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                     value={secretInput}
                     onChange={(e) => setSecretInput(e.target.value)}
                     placeholder={config.hasSecret ? '••••••••••••••••••••••••' : 'Cole o client_secret aqui'}
-                    className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSecret(!showSecret)}
-                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                    className="absolute right-2.5 top-2.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     {showSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
@@ -707,7 +707,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
             {/* Grid 2 Cols: Usuário & Senha */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Usuário Operador (usuario)
                 </label>
                 <input
@@ -716,17 +716,17 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   value={config.usuario}
                   onChange={(e) => setConfig({ ...config, usuario: e.target.value })}
                   placeholder="Ex: operador.sentinel"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Senha (senha)
                   </label>
                   {config.hasSenha && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="text-[10px] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold">
                       ✓ Já cadastrada
                     </span>
                   )}
@@ -738,12 +738,12 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                     value={senhaInput}
                     onChange={(e) => setSenhaInput(e.target.value)}
                     placeholder={config.hasSenha ? '••••••••••••••••' : 'Digite a senha de acesso'}
-                    className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                    className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSenha(!showSenha)}
-                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                    className="absolute right-2.5 top-2.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     {showSenha ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
@@ -754,7 +754,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
             {/* Grid 2 Cols: CPF Digitador & Corban */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   CPF do Digitador (Obrigatório para consultas)
                 </label>
                 <input
@@ -764,12 +764,12 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   onChange={(e) => setConfig({ ...config, cpfDigitador: e.target.value })}
                   placeholder="000.000.000-00"
                   maxLength={14}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Correspondente Banqueiro (Código Corban)
                 </label>
                 <input
@@ -778,7 +778,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   value={config.correspondenteBanqueiro}
                   onChange={(e) => setConfig({ ...config, correspondenteBanqueiro: e.target.value })}
                   placeholder="Ex: CORBAN_001"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 />
               </div>
             </div>
@@ -791,22 +791,22 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                   type="checkbox"
                   checked={config.ativo}
                   onChange={(e) => setConfig({ ...config, ativo: e.target.checked })}
-                  className="h-4 w-4 rounded-sm border-slate-300 text-pink-600 focus:ring-pink-500"
+                  className="h-4 w-4 rounded-sm border-[var(--field-border)] text-[var(--danger-text)] focus:ring-[var(--danger-border)]"
                 />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Habilitar integração Happy / BYX Capital e novas simulações nesta empresa
                 </span>
               </label>
             </div>
 
             {/* Botões Salvar e Testar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               <button
                 id="happy-btn-test-connection"
                 type="button"
                 onClick={handleTestConnection}
                 disabled={isTesting || !canDiagnose}
-                className="px-4 py-2 rounded-lg border border-pink-300 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/40 text-pink-800 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 font-bold text-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] font-bold text-xs disabled:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Zap className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
                 <span>{isTesting ? 'Validando...' : 'Testar Conexão e Token'}</span>
@@ -816,7 +816,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                 id="happy-btn-save-config"
                 type="submit"
                 disabled={isSaving}
-                className="px-5 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs disabled:opacity-50 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2 rounded-lg bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] text-[var(--danger-text)] font-bold text-xs disabled:opacity-90 transition-all  flex items-center gap-1.5 cursor-pointer"
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 <span>{isSaving ? 'Salvando...' : 'Salvar Configurações'}</span>
@@ -828,15 +828,15 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               <div
                 className={`p-3.5 rounded-xl border text-xs space-y-1.5 animate-in fade-in duration-200 ${
                   testResult.success
-                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
-                    : 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+                    ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border-[var(--success-border)] dark:border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)]'
+                    : 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                 }`}
               >
                 <div className="flex items-center gap-2 font-bold">
                   {testResult.success ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                    <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
                   )}
                   <span>{testResult.message}</span>
                 </div>
@@ -855,37 +855,37 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
         {/* Coluna 2: Endpoint de Webhook & Ferramenta de Diagnóstico (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Card: Endpoint de Webhook em Tempo Real */}
-          <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="p-5 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2">
-                <Radio className="h-4 w-4 text-pink-600" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                <Radio className="h-4 w-4 text-[var(--danger-text)]" />
+                <h3 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Endpoint Público para Webhooks
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-800 dark:text-pink-300">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                 POST Inbound
               </span>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               Cadastre esta URL na plataforma Happy / BYX Capital para receber notificações em tempo real sempre que uma proposta alterar de fase.
             </p>
 
             <div className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">URL do Webhook</span>
-              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300 truncate select-all flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">URL do Webhook</span>
+              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="font-mono text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate select-all flex-1">
                   {webhookPublicUrl}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyWebhookUrl}
-                  className="px-2 py-1 rounded-md bg-white dark:bg-slate-850 hover:bg-slate-100 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                  className="px-2 py-1 rounded-md bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
                 >
                   {copiedWebhookUrl ? (
                     <>
-                      <Check className="h-3 w-3 text-emerald-600" />
+                      <Check className="h-3 w-3 text-[var(--success-text)]" />
                       <span>Copiado</span>
                     </>
                   ) : (
@@ -898,21 +898,21 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            <div className="p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] block">
                 Características de Segurança e Confiabilidade
               </span>
               <ul className="space-y-1 text-[11px]">
                 <li className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-[var(--success-bg)]" />
                   <span><strong>Idempotência:</strong> Deduplicação automática via <code className="font-mono">request_id</code></span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-[var(--success-bg)]" />
                   <span><strong>Isolamento Multi-tenant:</strong> Resolução de proposta e tenant automática</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-[var(--success-bg)]" />
                   <span><strong>Preservação de Estado:</strong> Payload bruto e status desconhecidos mantidos</span>
                 </li>
               </ul>
@@ -920,18 +920,18 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
           </div>
 
           {/* Card: Ferramenta de Consulta / Diagnóstico de Contratos */}
-          <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="p-5 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-pink-600" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                <Search className="h-4 w-4 text-[var(--danger-text)]" />
+                <h3 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Diagnóstico: Consulta Direta de Contratos
                 </h3>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">/contratos/consultar</span>
+              <span className="text-[10px] text-[var(--text-secondary)] font-mono">/contratos/consultar</span>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               Teste a resposta ao vivo da API da Happy consultando por CPF do cliente ou ID do Contrato.
             </p>
 
@@ -939,7 +939,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               <fieldset disabled={!canDiagnose} className="contents">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <label className="text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     CPF do Cliente
                   </label>
                   <input
@@ -947,12 +947,12 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                     value={consultCpf}
                     onChange={(e) => setConsultCpf(e.target.value)}
                     placeholder="000.000.000-00"
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono"
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <label className="text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     ID do Contrato
                   </label>
                   <input
@@ -960,7 +960,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                     value={consultContractId}
                     onChange={(e) => setConsultContractId(e.target.value)}
                     placeholder="Ex: 12345"
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono"
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] font-mono"
                   />
                 </div>
               </div>
@@ -969,7 +969,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                 <select
                   value={consultProductType}
                   onChange={(e) => setConsultProductType(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                  className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)]"
                 >
                   <option value="CONSIGNADO">Consignado (INSS/Servidores)</option>
                   <option value="PORTABILIDADE">Portabilidade</option>
@@ -978,7 +978,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                 <button
                   type="submit"
                   disabled={isConsulting || !canDiagnose}
-                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-3.5 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-secondary)] font-bold text-xs disabled:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <Search className={`h-3 w-3 ${isConsulting ? 'animate-spin' : ''}`} />
                   <span>{isConsulting ? 'Consultando...' : 'Consultar na Happy'}</span>
@@ -989,10 +989,10 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
 
             {/* Resultado da Consulta Diagnóstica */}
             {consultResult && (
-              <div className="mt-3 p-3 rounded-xl bg-slate-950 text-slate-100 font-mono text-[10px] space-y-2 overflow-x-auto max-h-56">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-800">
-                  <span className="text-pink-400 font-bold">Resultado da Consulta</span>
-                  <span className="text-slate-400">{new Date().toLocaleTimeString()}</span>
+              <div className="mt-3 p-3 rounded-xl bg-[var(--bg-canvas)] text-[var(--text-primary)] font-mono text-[10px] space-y-2 overflow-x-auto max-h-56">
+                <div className="flex items-center justify-between pb-1 border-b border-[var(--field-border)]">
+                  <span className="text-[var(--danger-text)] font-bold">Resultado da Consulta</span>
+                  <span className="text-[var(--text-secondary)]">{new Date().toLocaleTimeString()}</span>
                 </div>
                 <pre className="whitespace-pre-wrap">{JSON.stringify(consultResult, null, 2)}</pre>
               </div>
@@ -1002,11 +1002,11 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
       </div>
 
       {/* Sub-abas de Auditoria e Logs */}
-      {canViewLogs && <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+      {canViewLogs && <div className="p-5 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
           <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-pink-600" />
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+            <History className="h-4 w-4 text-[var(--danger-text)]" />
+            <h3 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Auditoria de Sincronizações e Eventos Webhook
             </h3>
           </div>
@@ -1017,8 +1017,8 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               onClick={() => setActiveSubTab('logs')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'logs'
-                  ? 'bg-pink-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  ? 'bg-[var(--danger-bg)] text-[var(--text-primary)] shadow-xs'
+                  : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
               Histórico de Sincronizações ({recentLogs.length})
@@ -1028,8 +1028,8 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               onClick={() => setActiveSubTab('webhooks')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'webhooks'
-                  ? 'bg-pink-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  ? 'bg-[var(--danger-bg)] text-[var(--text-primary)] shadow-xs'
+                  : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
               Eventos Webhook Recebidos ({unmatchedWebhooks.length})
@@ -1041,20 +1041,20 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
         {activeSubTab === 'logs' && (
           <div className="space-y-3">
             {isLoadingLogs ? (
-              <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin text-pink-600" />
+              <div className="p-8 text-center text-[var(--text-secondary)] flex items-center justify-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin text-[var(--danger-text)]" />
                 <span>Carregando logs de sincronização...</span>
               </div>
             ) : recentLogs.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 space-y-1">
-                <Info className="h-6 w-6 mx-auto text-slate-300 mb-1" />
+              <div className="p-8 text-center text-[var(--text-secondary)] space-y-1">
+                <Info className="h-6 w-6 mx-auto text-[var(--text-primary)] mb-1" />
                 <p className="font-bold text-xs">Nenhum registro de sincronização encontrado para este tenant.</p>
                 <p className="text-[11px]">As sincronizações serão registradas automaticamente quando houver eventos ou consultas.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
+                  <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] uppercase text-[10px] tracking-wider border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <tr>
                       <th className="p-2.5">Operação</th>
                       <th className="p-2.5">Proposta / Contrato</th>
@@ -1065,60 +1065,60 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                       <th className="p-2.5 text-right">Ação</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                     {recentLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
+                      <tr key={log.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
                         <td className="p-2.5 font-bold font-mono">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] ${
                               log.operation === 'WEBHOOK'
-                                ? 'bg-pink-100 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300'
+                                ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                                 : log.operation === 'RECONCILIATION'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300'
-                                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                                ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
+                                : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]'
                             }`}
                           >
                             {log.operation}
                           </span>
                         </td>
                         <td className="p-2.5">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                          <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block">
                             {log.proposal?.proposalNumber || 'Sem vínculo'}
                           </span>
                           {log.happyContractId && (
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                               Contrato: {log.happyContractId}
                             </span>
                           )}
                         </td>
                         <td className="p-2.5">
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">
+                          <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium">
                             {log.proposal?.client?.fullName || '—'}
                           </span>
                         </td>
                         <td className="p-2.5 font-mono text-[11px]">
-                          {log.previousStatus || '—'} → <strong className="text-pink-600">{log.newStatus || '—'}</strong>
+                          {log.previousStatus || '—'} → <strong className="text-[var(--danger-text)]">{log.newStatus || '—'}</strong>
                         </td>
                         <td className="p-2.5">
                           {log.status === 'SUCCESS' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]">
                               Sucesso
                             </span>
                           ) : log.status === 'UNCHANGED' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]">
                               Sem alteração
                             </span>
                           ) : log.status === 'UNMATCHED' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                               Não vinculado
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">
                               Erro
                             </span>
                           )}
                         </td>
-                        <td className="p-2.5 text-slate-500 whitespace-nowrap">
+                        <td className="p-2.5 text-[var(--text-secondary)] whitespace-nowrap">
                           {formatDateTime(log.startedAt)}
                         </td>
                         <td className="p-2.5 text-right">
@@ -1126,7 +1126,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                             <button
                               type="button"
                               onClick={() => setSelectedLogPayload(log.rawResponse)}
-                              className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all cursor-pointer"
+                              className="px-2 py-1 rounded-md text-[10px] font-bold bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] transition-all cursor-pointer"
                             >
                               Ver Payload
                             </button>
@@ -1145,20 +1145,20 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
         {activeSubTab === 'webhooks' && (
           <div className="space-y-3">
             {isLoadingWebhooks ? (
-              <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin text-pink-600" />
+              <div className="p-8 text-center text-[var(--text-secondary)] flex items-center justify-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin text-[var(--danger-text)]" />
                 <span>Carregando eventos webhook...</span>
               </div>
             ) : unmatchedWebhooks.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 space-y-1">
-                <CheckCircle2 className="h-6 w-6 mx-auto text-emerald-400 mb-1" />
+              <div className="p-8 text-center text-[var(--text-secondary)] space-y-1">
+                <CheckCircle2 className="h-6 w-6 mx-auto text-[var(--success-text)] mb-1" />
                 <p className="font-bold text-xs">Nenhum evento pendente ou desvinculado no momento.</p>
                 <p className="text-[11px]">Todos os webhooks recebidos foram processados e correlacionados com sucesso.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
+                  <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] uppercase text-[10px] tracking-wider border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <tr>
                       <th className="p-2.5">Request ID</th>
                       <th className="p-2.5">Evento</th>
@@ -1169,33 +1169,33 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                       <th className="p-2.5 text-right">Payload</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                     {unmatchedWebhooks.map((event) => (
-                      <tr key={event.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
-                        <td className="p-2.5 font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      <tr key={event.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                        <td className="p-2.5 font-mono text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {event.requestId}
                         </td>
                         <td className="p-2.5">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">
                             {event.eventName}
                           </span>
                         </td>
                         <td className="p-2.5">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                          <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block">
                             {event.contractId ? `Contrato: ${event.contractId}` : 'Sem contrato'}
                           </span>
                           {event.customerId && (
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                               Cliente ID: {event.customerId}
                             </span>
                           )}
                         </td>
                         <td className="p-2.5">
-                          <div className="font-medium text-slate-800 dark:text-slate-200">
+                          <div className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {event.statusName || '—'}
                           </div>
                           {event.statusDescription && (
-                            <div className="text-[10px] text-slate-400">
+                            <div className="text-[10px] text-[var(--text-secondary)]">
                               {event.statusDescription}
                             </div>
                           )}
@@ -1204,23 +1204,23 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               event.processingStatus === 'MATCHED'
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
                                 : event.processingStatus === 'UNMATCHED'
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                                ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
+                                : 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                             }`}
                           >
                             {event.processingStatus}
                           </span>
                         </td>
-                        <td className="p-2.5 text-slate-500 whitespace-nowrap">
+                        <td className="p-2.5 text-[var(--text-secondary)] whitespace-nowrap">
                           {formatDateTime(event.receivedAt)}
                         </td>
                         <td className="p-2.5 text-right">
                           <button
                             type="button"
                             onClick={() => setSelectedLogPayload(event.payload)}
-                            className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all cursor-pointer"
+                            className="px-2 py-1 rounded-md text-[10px] font-bold bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] transition-all cursor-pointer"
                           >
                             Ver Payload
                           </button>
@@ -1237,25 +1237,25 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
 
       {/* Modal / Visualizador de Payload Bruto */}
       {selectedLogPayload && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-2xl max-w-2xl w-full p-5 space-y-4  animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-pink-600" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                <FileText className="h-4 w-4 text-[var(--danger-text)]" />
+                <h3 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Payload Bruto da API / Webhook (Auditoria)
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedLogPayload(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-950 text-slate-100 font-mono text-[11px] overflow-auto max-h-96">
+            <div className="p-3 rounded-xl bg-[var(--bg-canvas)] text-[var(--text-primary)] font-mono text-[11px] overflow-auto max-h-96">
               <pre className="whitespace-pre-wrap">{JSON.stringify(selectedLogPayload, null, 2)}</pre>
             </div>
 
@@ -1263,7 +1263,7 @@ const HappyIntegrationTabContent: React.FC<{ promoterId: string }> = ({ promoter
               <button
                 type="button"
                 onClick={() => setSelectedLogPayload(null)}
-                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold text-xs cursor-pointer"
               >
                 Fechar Visualizador
               </button>

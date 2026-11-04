@@ -125,7 +125,7 @@ export const AnnouncementsManagement: React.FC = () => {
         actions={
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-4 py-2 text-xs font-bold text-[var(--action-ink)]  transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>Novo Comunicado</span>
@@ -135,51 +135,51 @@ export const AnnouncementsManagement: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {announcements.map(a => (
-          <div key={a.id} className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs flex flex-col">
+          <div key={a.id} className="p-4 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)]  flex flex-col">
             <div className="flex items-center justify-between mb-2">
               <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                a.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800' :
-                a.status === 'DRAFT' ? 'bg-slate-100 text-slate-800' :
-                'bg-rose-100 text-rose-800'
+                a.status === 'PUBLISHED' ? 'bg-[var(--success-bg)] text-[var(--success-text)]' :
+                a.status === 'DRAFT' ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]' :
+                'bg-[var(--danger-bg)] text-[var(--danger-text)]'
               }`}>
                 {a.status}
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">
+              <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                 {a.tenantId ? 'Tenant Local' : 'Global'}
               </span>
             </div>
-            
-            <h4 className="font-bold text-slate-900 text-sm mb-1">{a.title}</h4>
-            <p className="text-xs text-slate-600 line-clamp-2 mb-4 flex-1">{a.content}</p>
 
-            <div className="flex items-center gap-2 pt-3 border-t border-slate-100 flex-wrap">
+            <h4 className="font-bold text-[var(--text-secondary)] text-sm mb-1">{a.title}</h4>
+            <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mb-4 flex-1">{a.content}</p>
+
+            <div className="flex items-center gap-2 pt-3 border-t border-[var(--field-border)] flex-wrap">
               {a.status === 'DRAFT' && (
-                <button 
+                <button
                   onClick={() => handlePublish(a.id)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-[10px] font-bold"
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--info-bg)] text-[var(--link)] hover:bg-[var(--info-bg)] rounded-lg text-[10px] font-bold"
                 >
                   <Send className="h-3 w-3" /> Publicar
                 </button>
               )}
               {a.status === 'PUBLISHED' && (
-                <button 
+                <button
                   onClick={() => handleCancel(a.id)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-[10px] font-bold"
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--warning-bg)] text-[var(--warning-text)] hover:bg-[var(--warning-bg)] rounded-lg text-[10px] font-bold"
                 >
                   <AlertTriangle className="h-3 w-3" /> Cancelar
                 </button>
               )}
               {a.status !== 'ARCHIVED' && (
-                <button 
+                <button
                   onClick={() => handleArchive(a.id)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-lg text-[10px] font-bold"
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] rounded-lg text-[10px] font-bold"
                 >
                   <Archive className="h-3 w-3" /> Arquivar
                 </button>
               )}
-              <button 
+              <button
                 onClick={() => handleDelete(a.id)}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold ml-auto"
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--danger-bg)] text-[var(--danger-text)] hover:bg-[var(--danger-bg)] rounded-lg text-[10px] font-bold ml-auto"
               >
                 <Trash2 className="h-3 w-3" /> Excluir
               </button>
@@ -187,38 +187,38 @@ export const AnnouncementsManagement: React.FC = () => {
           </div>
         ))}
         {announcements.length === 0 && (
-          <div className="col-span-full py-12 text-center text-slate-400 text-sm">
+          <div className="col-span-full py-12 text-center text-[var(--text-secondary)] text-sm">
             Nenhum comunicado criado.
           </div>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-blue-600" />
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-[var(--bg-surface)] rounded-2xl  overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-[var(--field-border)] flex items-center justify-between">
+              <h3 className="font-bold text-[var(--text-secondary)] flex items-center gap-2">
+                <Megaphone className="h-4 w-4 text-[var(--link)]" />
                 Novo Comunicado
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setIsModalOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)]">✕</button>
             </div>
-            
+
             <form onSubmit={handleCreate} className="p-4 overflow-y-auto space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Título</label>
-                <input required value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Manutenção Programada" />
+                <label className="text-xs font-bold text-[var(--text-secondary)]">Título</label>
+                <input required value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-[var(--field-border)] rounded-xl px-3 py-2 text-sm" placeholder="Ex: Manutenção Programada" />
               </div>
-              
+
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Conteúdo</label>
-                <textarea required rows={4} value={content} onChange={e => setContent(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Escreva o aviso aqui..." />
+                <label className="text-xs font-bold text-[var(--text-secondary)]">Conteúdo</label>
+                <textarea required rows={4} value={content} onChange={e => setContent(e.target.value)} className="w-full border border-[var(--field-border)] rounded-xl px-3 py-2 text-sm" placeholder="Escreva o aviso aqui..." />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Prioridade</label>
-                  <select value={priority} onChange={e => setPriority(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+                  <label className="text-xs font-bold text-[var(--text-secondary)]">Prioridade</label>
+                  <select value={priority} onChange={e => setPriority(e.target.value)} className="w-full border border-[var(--field-border)] rounded-xl px-3 py-2 text-sm">
                     <option value="LOW">Baixa (Low)</option>
                     <option value="MEDIUM">Normal (Medium)</option>
                     <option value="HIGH">Alta (High)</option>
@@ -228,8 +228,8 @@ export const AnnouncementsManagement: React.FC = () => {
                 {activeUser?.role === 'PLATFORM_MASTER' && (
                   <div className="space-y-1 flex flex-col justify-center">
                     <label className="flex items-center gap-2 cursor-pointer mt-6">
-                      <input type="checkbox" checked={isGlobal} onChange={e => setIsGlobal(e.target.checked)} className="rounded text-blue-600" />
-                      <span className="text-sm font-bold text-slate-700">Anúncio GLOBAL (Todos os Tenants)</span>
+                      <input type="checkbox" checked={isGlobal} onChange={e => setIsGlobal(e.target.checked)} className="rounded text-[var(--link)]" />
+                      <span className="text-sm font-bold text-[var(--text-secondary)]">Anúncio GLOBAL (Todos os Tenants)</span>
                     </label>
                   </div>
                 )}
@@ -237,18 +237,18 @@ export const AnnouncementsManagement: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Agendar Publicação (Opcional)</label>
-                  <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                  <label className="text-xs font-bold text-[var(--text-secondary)]">Agendar Publicação (Opcional)</label>
+                  <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full border border-[var(--field-border)] rounded-xl px-3 py-2 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Data de Expiração (Opcional)</label>
-                  <input type="datetime-local" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                  <label className="text-xs font-bold text-[var(--text-secondary)]">Data de Expiração (Opcional)</label>
+                  <input type="datetime-local" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} className="w-full border border-[var(--field-border)] rounded-xl px-3 py-2 text-sm" />
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600">Cancelar</button>
-                <button type="submit" className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-xl">Criar Rascunho</button>
+              <div className="pt-4 flex justify-end gap-2 border-t border-[var(--field-border)]">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-bold text-[var(--text-secondary)]">Cancelar</button>
+                <button type="submit" className="px-4 py-2 text-sm font-bold text-[var(--action-ink)] bg-[var(--action)] rounded-xl">Criar Rascunho</button>
               </div>
             </form>
           </div>

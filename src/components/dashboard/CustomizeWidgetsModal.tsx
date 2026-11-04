@@ -85,26 +85,26 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+            <div className="p-2 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]">
               <LayoutGrid className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Personalizar Dashboard Executivo
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Arraste para reordenar, oculte ou ajuste a largura dos widgets conforme sua preferência
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-surface-elevated)] dark:hover:text-[var(--text-primary)] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -125,14 +125,14 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
                 onDragEnd={handleDragEnd}
                 className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
                   widget.enabled
-                    ? 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 shadow-2xs'
-                    : 'border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 opacity-60'
-                } ${draggedIndex === index ? 'ring-2 ring-blue-500 border-blue-500 scale-[1.01]' : ''}`}
+                    ? 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] shadow-2xs'
+                    : 'border-dashed border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] opacity-60'
+                } ${draggedIndex === index ? 'ring-2 ring-[var(--focus)] border-[var(--field-border)] scale-[1.01]' : ''}`}
               >
                 {/* Left: Drag Handle & Info */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    className="cursor-grab active:cursor-grabbing p-1 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]"
                     title="Arrastar para reordenar"
                   >
                     <GripVertical className="h-4 w-4" />
@@ -140,17 +140,17 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                      <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
                         {widget.title}
                       </span>
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         {categoryLabels[widget.category] || widget.category}
                       </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
                         {widget.colSpan === 2 ? 'Largura Total (100%)' : 'Meia Largura (50%)'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate mt-0.5">
                       {widget.description}
                     </p>
                   </div>
@@ -163,7 +163,7 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
                     onClick={() => handleMove(index, 'UP')}
                     disabled={isFirst}
                     title="Mover para cima"
-                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:hover:bg-transparent"
                   >
                     <ArrowUp className="h-3.5 w-3.5" />
                   </button>
@@ -171,18 +171,18 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
                     onClick={() => handleMove(index, 'DOWN')}
                     disabled={isLast}
                     title="Mover para baixo"
-                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="p-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:hover:bg-transparent"
                   >
                     <ArrowDown className="h-3.5 w-3.5" />
                   </button>
 
-                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                  <div className="h-4 w-px bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] mx-1" />
 
                   {/* Toggle Width */}
                   <button
                     onClick={() => handleToggleColSpan(widget.id)}
                     title={widget.colSpan === 2 ? 'Mudar para 50% de largura' : 'Mudar para 100% de largura'}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                   >
                     {widget.colSpan === 2 ? (
                       <>
@@ -203,8 +203,8 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
                     title={widget.enabled ? 'Ocultar widget' : 'Exibir widget'}
                     className={`p-1.5 rounded-lg border transition-colors ${
                       widget.enabled
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800'
+                        ? 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-text)] dark:border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                        : 'border-[var(--field-border)] bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)]'
                     }`}
                   >
                     {widget.enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -216,10 +216,10 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+        <div className="flex items-center justify-between border-t border-[var(--field-border)] dark:border-[var(--field-border)] pt-4">
           <button
             onClick={onResetToDefault}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Restaurar Padrão</span>
@@ -227,7 +227,7 @@ export const CustomizeWidgetsModal: React.FC<CustomizeWidgetsModalProps> = ({
 
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[var(--action-ink)] bg-[var(--action)] hover:bg-[var(--action-hover)] rounded-xl  transition-colors"
           >
             <Check className="h-4 w-4" />
             <span>Concluir Personalização</span>

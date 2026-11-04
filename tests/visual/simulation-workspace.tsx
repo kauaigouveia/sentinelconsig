@@ -1,4 +1,6 @@
 /// <reference types="vite/client" />
+import {paletteStyle} from '../../src/lib/presentationPalette';
+import {ChartPatternDefinitions} from '../../src/components/ui/ChartPatterns';
 import {ThemeProvider,useTheme} from '../../src/context/ThemeContext';
 import {RedesignGallery,ShellGallery} from './RedesignGallery';
 /* Standalone development harness. Never imported by the authenticated application. */
@@ -50,6 +52,7 @@ realtimeHub.subscribe = () => () => {};
 window.fetch = async (input, options) => {
   const path = typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url;
   if (options?.method && options.method !== 'GET') throw new Error('Escrita bloqueada nesta revisão local');
+  if(path==='/api/public/tenant-branding') return new Response(JSON.stringify({status:'PLATFORM_DEFAULT',domainType:'PLATFORM_DEFAULT',companyName:'Sentinel Consig'}),{status:200,headers:{'Content-Type':'application/json'}});
   if(path==='/api/integrations/health') {
     const banks=[['c6','C6 Bank'],['facta','FACTA'],['bmg','BMG'],['happy','Happy'],['finanto','FINANTO'],['nossa-fintech','Nossa Fintech'],['workbank','WorkBank'],['parana','Paraná Banco'],['presenca','Presença Bank'],['v8','V8 Digital'],['vctex','VCTEX CLT']];
     const integrations=banks.map(([slug,name],index)=>({id:slug,slug,name,code:slug.toUpperCase(),type:'FINTECH',protocol:'Dados sintéticos',environment:'production',active:index<8,configured:index<9,connectionCount:index<9?1:0,enabledConnectionCount:index<8?1:0,status:index===0?'ONLINE':index<8?'ATTENTION':'DISABLED',maskedBaseUrl:'Endereço fictício · sem acesso externo',capabilities:[],lastHealthCheck:index===0?{timestamp:new Date().toISOString(),success:true,latencyMs:12,httpStatus:200}:null,metricsPartial:true}));
@@ -78,21 +81,30 @@ const {NewProductionModal} = await import('../../src/components/production/NewPr
 const {CentralAdministracao} = await import('../../src/components/admin/CentralAdministracao');
 const {CentralAutomacoes} = await import('../../src/components/admin/CentralAutomacoes');
 const {SentinelIntelligenceDashboard} = await import('../../src/components/intelligence/SentinelIntelligenceDashboard');
+const {LoginView}=await import('../../src/components/auth/LoginView');
+const {PartnerPortalLayout}=await import('../../src/components/partner-portal/PartnerPortalLayout');
+const {PartnerPortalClient}=await import('../../src/services/partnerPortalClient');
+PartnerPortalClient.getSession=async()=>({authenticated:true,access:{id:'visual-access',name:'Acesso sintético'},partner:{id:'visual-partner',name:'Parceiro de demonstração',code:'DEMO'},tenant:{id:'visual-tenant',name:'Empresa de demonstração'}} as any);
+PartnerPortalClient.getUnreadCount=async()=>0;
+PartnerPortalClient.getDashboard=async()=>({partner:{id:'visual-partner',name:'Parceiro de demonstração',code:'DEMO'},tenant:{id:'visual-tenant',name:'Empresa de demonstração'},metrics:{totalProposals:0,inProgressCount:0,completedCount:0,pendingCount:0,waitingReturnCount:0,totalDisbursed:0,totalContract:0},recentProposals:[]} as any);
 function LocalReview() {
   const {isDark:dark,toggleTheme}=useTheme();
   const [premium,setPremium] = useState(true);
   const [module,setModule] = useState('Shell');
   const [newProposal,setNewProposal] = useState(false);
 
-  return <main className={premium?'s2-root':'sentinel-app'} style={{minHeight:'100vh',padding:24,background:'var(--bg-canvas)'}}>
+  return <main className={premium?'s2-root':'sentinel-app'} style={{...paletteStyle(null),minHeight:'100vh',padding:['Login','Portal do parceiro'].includes(module)?0:24,background:'var(--bg-canvas)'}}>
+    <ChartPatternDefinitions/>
     <header style={{display:'flex',gap:16,alignItems:'center',marginBottom:24,color:'var(--text-primary)'}}>
       <strong>REVISÃO LOCAL · Dados fictícios · Sem autenticação</strong>
       <button onClick={toggleTheme}>Alternar tema</button>
       <button onClick={()=>setPremium(!premium)}>Comparar {premium?'legado':'V2'}</button>
       <span>Rede externa e gravações bloqueadas</span>
     </header>
-    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Design system','Shell','Hub de Integrações','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
+    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Login','Portal do parceiro','Design system','Shell','Hub de Integrações','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
     <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
+    {module==='Login'&&<LoginView onLoginSuccess={()=>{}}/>}
+    {module==='Portal do parceiro'&&<PartnerPortalLayout/>}
     {module==='Design system'&&<RedesignGallery/>}
     {module==='Hub de Integrações'&&<HubIntegracoes premium/>}
     {module==='Shell'&&<ShellGallery renderContent={(path,navigate)=>path==='/integracoes'?<HubIntegracoes premium/>:path==='/simulacoes'?<SimulationView premium/>:path==='/propostas'?<ProductionList premium onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>navigate('/esteira')}/>:path==='/esteira'?<KanbanBoard premium/>:path==='/central-pendencias'?<CentralPendencias premium/>:null}/>}

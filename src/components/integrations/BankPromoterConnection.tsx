@@ -24,12 +24,12 @@ export function BankPromoterConnection({ children, endpoint = '/api/integrations
   if (error) return <p role="alert">{error}</p>;
   return <div className="space-y-4">
     <label className="block text-sm font-semibold">Promotora da conexão
-      <select value={selected} onChange={event => setSelected(event.target.value)} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+      <select value={selected} onChange={event => setSelected(event.target.value)} className="mt-2 w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2 dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)]">
         {!promoters.length && <option value="">Cadastre uma promotora ativa</option>}
         {promoters.map(promoter => <option key={promoter.id} value={promoter.id}>{promoter.name}</option>)}
       </select>
     </label>
-    <p className="text-xs text-slate-500">Cada banco tem credenciais e ativação próprias por promotora. As conexões anteriores pertencem à DG PROMOTORA.</p>
+    <p className="text-xs text-[var(--text-secondary)]">Cada banco tem credenciais e ativação próprias por promotora. As conexões anteriores pertencem à DG PROMOTORA.</p>
     {selected && <React.Fragment key={selected}>{children(selected)}</React.Fragment>}
   </div>;
 }

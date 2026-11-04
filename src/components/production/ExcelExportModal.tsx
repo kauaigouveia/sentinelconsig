@@ -162,24 +162,24 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/40 shrink-0">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+            <div className="h-9 w-9 rounded-xl bg-[var(--success-bg)] text-[var(--success-text)] flex items-center justify-center shadow-xs">
               <Download className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Exportação de Propostas e Produção</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Exportação de Propostas e Produção</h3>
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 {proposalsForExport.length} proposta(s) prontas para download
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -193,15 +193,15 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
               onClick={() => setExportType('PADRAO')}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 exportType === 'PADRAO'
-                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-300 font-bold shadow-2xs'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  ? 'border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold shadow-2xs'
+                  : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
-              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-emerald-800 dark:text-emerald-400">
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-[var(--success-text)] dark:text-[var(--success-text)]">
+                <FileSpreadsheet className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)]" />
                 <span>Layout Padrão Bancário</span>
               </div>
-              <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-[11px] font-normal text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-relaxed">
                 Colunas essenciais para importação bancária: <strong>ADE | CPF | CÓDIGO DO PARCEIRO | DATA</strong>
               </p>
             </button>
@@ -210,35 +210,35 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
               onClick={() => setExportType('PERSONALIZADO')}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 exportType === 'PERSONALIZADO'
-                  ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-950 dark:text-blue-300 font-bold shadow-2xs'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] font-bold shadow-2xs'
+                  : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
-              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-blue-800 dark:text-blue-400">
-                <Sliders className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="font-bold flex items-center gap-1.5 text-xs mb-1 text-[var(--link)] dark:text-[var(--link)]">
+                <Sliders className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
                 <span>Exportação Seletiva Personalizada</span>
               </div>
-              <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-[11px] font-normal text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-relaxed">
                 Escolha exatamente quais colunas financeiras, operacionais e de esteira incluir.
               </p>
             </button>
           </div>
 
           {/* Format selection (.xlsx vs .csv) */}
-          {exportType === 'PERSONALIZADO' ? <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800">
+          {exportType === 'PERSONALIZADO' ? <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-700 dark:text-slate-300">Formato de Saída:</span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">Compatível com Excel, Google Sheets e PowerBI</span>
+              <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Formato de Saída:</span>
+              <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Compatível com Excel, Google Sheets e PowerBI</span>
             </div>
 
-            <div className="flex rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-0.5">
+            <div className="flex rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-0.5">
               <button
                 type="button"
                 onClick={() => setFileFormat('XLSX')}
                 className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
                   fileFormat === 'XLSX'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[var(--success-bg)] text-[var(--text-primary)] shadow-2xs'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
                 Excel (.xlsx)
@@ -248,34 +248,34 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                 onClick={() => setFileFormat('CSV')}
                 className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
                   fileFormat === 'CSV'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[var(--success-bg)] text-[var(--text-primary)] shadow-2xs'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
                 CSV (.csv)
               </button>
             </div>
-          </div> : <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
-            <Info className="h-4 w-4 text-slate-500" />
+          </div> : <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <Info className="h-4 w-4 text-[var(--text-secondary)]" />
             <span>O layout bancário é gerado em Excel (.xlsx).</span>
           </div>}
 
           {exportType === 'PADRAO' ? (
             <div className="space-y-3">
-            <label className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 text-xs text-emerald-950 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200">
+            <label className="flex flex-col gap-1.5 rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-4 text-xs text-[var(--success-text)] sm:flex-row sm:items-center sm:justify-between dark:border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]">
               <span className="font-bold">Produto para o arquivo bancário</span>
               <select
                 value={standardProductId}
                 onChange={event => setStandardProductId(event.target.value)}
-                className="min-h-9 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none focus:border-emerald-500 dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-200"
+                className="min-h-9 rounded-lg border border-[var(--success-border)] bg-[var(--bg-surface)] px-3 text-xs font-medium text-[var(--text-secondary)] outline-none focus:border-[var(--success-border)] dark:border-[var(--success-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]"
               >
                 <option value="TODOS">Todos os produtos</option>
                 {activeProducts.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}
               </select>
             </label>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-2.5 text-xs text-emerald-900">
-              <div className="flex items-center gap-2 font-bold text-emerald-800">
-                <Info className="h-4 w-4 text-emerald-600" />
+            <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-4 space-y-2.5 text-xs text-[var(--success-text)]">
+              <div className="flex items-center gap-2 font-bold text-[var(--success-text)]">
+                <Info className="h-4 w-4 text-[var(--success-text)]" />
                 <span>Regras de Integridade e Formatação Padrão:</span>
               </div>
               <ul className="list-disc pl-5 space-y-1.5 text-[11px] leading-relaxed">
@@ -288,27 +288,27 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
           ) : (
             <div className="space-y-3">
               {/* Presets and Quick Selection Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--field-border)] pb-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-bold text-slate-700 mr-1">Presets:</span>
+                  <span className="font-bold text-[var(--text-secondary)] mr-1">Presets:</span>
                   <button
                     type="button"
                     onClick={() => handleApplyPreset('ESSENCIAL')}
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-[11px] font-semibold text-slate-700"
+                    className="px-2 py-0.5 rounded border border-[var(--field-border)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[11px] font-semibold text-[var(--text-secondary)]"
                   >
                     Operacional Básico
                   </button>
                   <button
                     type="button"
                     onClick={() => handleApplyPreset('FINANCEIRO')}
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-[11px] font-semibold text-slate-700"
+                    className="px-2 py-0.5 rounded border border-[var(--field-border)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[11px] font-semibold text-[var(--text-secondary)]"
                   >
                     Financeiro & Crédito
                   </button>
                   <button
                     type="button"
                     onClick={() => handleApplyPreset('COMPLETO')}
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-[11px] font-semibold text-slate-700"
+                    className="px-2 py-0.5 rounded border border-[var(--field-border)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[11px] font-semibold text-[var(--text-secondary)]"
                   >
                     Auditoria Completa
                   </button>
@@ -318,26 +318,26 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="text-blue-600 hover:underline font-semibold"
+                    className="text-[var(--link)] hover:underline font-semibold"
                   >
                     Marcar Todas
                   </button>
-                  <span className="text-slate-300">|</span>
+                  <span className="text-[var(--text-primary)]">|</span>
                   <button
                     type="button"
                     onClick={handleSelectNone}
-                    className="text-slate-500 hover:underline"
+                    className="text-[var(--text-secondary)] hover:underline"
                   >
                     Desmarcar
                   </button>
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
+                  <span className="rounded-full bg-[var(--info-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--link)] border border-[var(--field-border)]">
                     {selectedColumns.length} de {columnsCount} selecionadas
                   </span>
                 </div>
               </div>
 
               {/* Column Selection Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 border border-[var(--field-border)] rounded-xl bg-[var(--bg-canvas)]">
                 {availableColumns.map(col => {
                   const isChecked = selectedColumns.includes(col.key);
                   return (
@@ -347,21 +347,21 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
                       onClick={() => toggleColumn(col.key)}
                       className={`flex items-center justify-between p-2 rounded-lg border text-left text-xs transition-colors ${
                         isChecked
-                          ? 'bg-white border-blue-200 text-slate-900 shadow-2xs'
-                          : 'bg-transparent border-transparent text-slate-500 hover:bg-white/60'
+                          ? 'bg-[var(--bg-surface)] border-[var(--field-border)] text-[var(--text-secondary)] shadow-2xs'
+                          : 'bg-transparent border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 pr-1">
                         {isChecked ? (
-                          <CheckSquare className="h-4 w-4 text-blue-600 shrink-0" />
+                          <CheckSquare className="h-4 w-4 text-[var(--link)] shrink-0" />
                         ) : (
-                          <Square className="h-4 w-4 text-slate-300 shrink-0" />
+                          <Square className="h-4 w-4 text-[var(--text-primary)] shrink-0" />
                         )}
-                        <span className={isChecked ? 'font-bold text-slate-800 truncate' : 'text-slate-600 truncate'}>
+                        <span className={isChecked ? 'font-bold text-[var(--text-secondary)] truncate' : 'text-[var(--text-secondary)] truncate'}>
                           {col.label}
                         </span>
                       </div>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] shrink-0">
                         {col.category}
                       </span>
                     </button>
@@ -372,23 +372,23 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
           )}
 
           {downloadSuccess && (
-            <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2 shadow-xs">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-3 text-xs text-[var(--success-text)] flex items-center gap-2 shadow-xs">
+              <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
               <span className="font-semibold">{downloadSuccess}</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-3.5 bg-slate-50 dark:bg-slate-950/40 rounded-b-2xl shrink-0">
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between border-t border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-3.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-b-2xl shrink-0">
+          <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
             {exportType === 'PADRAO' ? '4 colunas bancárias' : `${selectedColumns.length} colunas selecionadas`}
           </span>
 
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -396,7 +396,7 @@ export const ExcelExportModal: React.FC<ExcelExportModalProps> = ({
               id="btn-confirm-download-excel"
               onClick={handleExport}
               disabled={isExporting || Boolean(downloadSuccess) || proposalsForExport.length === 0}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white transition-colors flex items-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-[var(--success-bg)] hover:bg-[var(--success-bg)] px-5 py-2 text-xs font-bold text-[var(--success-text)] transition-colors flex items-center gap-2  cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             >
               <Download className="h-4 w-4" />
               <span>{isExporting ? 'Gerando arquivo…' : `Baixar Arquivo ${exportType === 'PADRAO' || fileFormat === 'XLSX' ? 'Excel (.xlsx)' : 'CSV (.csv)'}`}</span>

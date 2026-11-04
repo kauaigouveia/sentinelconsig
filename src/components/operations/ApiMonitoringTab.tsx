@@ -313,36 +313,36 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
     switch (status) {
       case 'OPERATIONAL':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--success-bg)] animate-pulse" />
             Operacional
           </span>
         );
       case 'DEGRADED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--warning-bg)]" />
             Degradado
           </span>
         );
       case 'OUTAGE':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60">
-            <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--danger-bg)] animate-ping" />
             Fora do Ar
           </span>
         );
       case 'MAINTENANCE':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--info-bg)]" />
             Manutenção
           </span>
         );
       case 'UNKNOWN':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-            <span className="h-2 w-2 rounded-full bg-slate-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--bg-surface-elevated)]" />
             Não verificado
           </span>
         );
@@ -355,25 +355,25 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
     switch (severity) {
       case 'CRITICAL':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
             Crítico
           </span>
         );
       case 'HIGH':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
             Alto
           </span>
         );
       case 'MEDIUM':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
             Médio
           </span>
         );
       case 'LOW':
         return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
             Baixo
           </span>
         );
@@ -383,18 +383,18 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Banner Geral de Status & Ações Rápidas */}
-      <div className="bg-white dark:bg-[#080d18] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
               className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
                 overview?.overallStatus === 'OPERATIONAL'
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)]'
                   : overview?.overallStatus === 'DEGRADED'
-                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--warning-border)]'
                   : overview?.overallStatus === 'UNKNOWN' || !overview
-                  ? 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30'
-                  : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
+                  ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border border-[var(--field-border)]'
+                  : 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] animate-pulse'
               }`}
             >
               {overview?.overallStatus === 'OPERATIONAL' ? (
@@ -410,7 +410,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
 
             <div>
               <div className="flex items-center gap-2.5">
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] tracking-tight">
                   {overview?.overallStatus === 'OPERATIONAL'
                     ? 'Todas as Integrações & APIs Operando Normalmente'
                     : overview?.overallStatus === 'DEGRADED'
@@ -421,7 +421,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 </h3>
                 {overview && getStatusBadge(overview.overallStatus)}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                 O status considera apenas verificações recentes ou incidentes registrados.
                 {overview?.lastUpdated && ` Atualizado às ${new Date(overview.lastUpdated).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.`}
                 {loading && ' Carregando dados...'}
@@ -433,7 +433,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
             {isManager && (
               <button
                 onClick={() => setIsIncidentModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800/60 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--danger-bg)] text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] dark:hover:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] transition-colors cursor-pointer"
               >
                 <ShieldAlert className="h-3.5 w-3.5" />
                 Registrar Incidente
@@ -443,7 +443,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
             <button
               onClick={handlePingAll}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)]  transition-colors cursor-pointer disabled:opacity-90"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               Verificar endpoints compatíveis
@@ -452,59 +452,59 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
         </div>
 
         {/* 4 Cards de Métricas em Tempo Real */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/60">
-          <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-200/60 dark:border-slate-800/50">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-5 pt-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
+          <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] rounded-lg p-3 border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
               Serviços Operacionais
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-xl font-black text-slate-900 dark:text-slate-100">
+              <span className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 {overview?.operational ?? 0}
               </span>
-              <span className="text-xs text-slate-400">/ {overview?.totalServices ?? 0}</span>
+              <span className="text-xs text-[var(--text-secondary)]">/ {overview?.totalServices ?? 0}</span>
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-200/60 dark:border-slate-800/50">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+          <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] rounded-lg p-3 border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
               Latência média das verificações recentes
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-xl font-black text-blue-600 dark:text-blue-400">
+              <span className="text-xl font-black text-[var(--link)] dark:text-[var(--link)]">
                 {overview?.averageLatencyMs == null ? '—' : `${overview.averageLatencyMs} ms`}
               </span>
-              <span className="text-[10px] text-slate-400">{overview?.averageLatencyMs == null ? 'Sem medições' : 'Atual'}</span>
+              <span className="text-[10px] text-[var(--text-secondary)]">{overview?.averageLatencyMs == null ? 'Sem medições' : 'Atual'}</span>
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-200/60 dark:border-slate-800/50">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+          <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] rounded-lg p-3 border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
               Disponibilidade histórica
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-xl font-black text-[var(--success-text)] dark:text-[var(--success-text)]">
                 {overview?.averageUptimePercent == null ? '—' : `${overview.averageUptimePercent}%`}
               </span>
-              <span className="text-[10px] text-slate-400">{overview?.averageUptimePercent == null ? 'Sem histórico' : 'Últimos 30 dias'}</span>
+              <span className="text-[10px] text-[var(--text-secondary)]">{overview?.averageUptimePercent == null ? 'Sem histórico' : 'Últimos 30 dias'}</span>
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-200/60 dark:border-slate-800/50">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+          <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] rounded-lg p-3 border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
               Incidentes Ativos
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
               <span
                 className={`text-xl font-black ${
                   (overview?.activeIncidentsCount || 0) > 0
-                    ? 'text-rose-600 dark:text-rose-400'
-                    : 'text-slate-900 dark:text-slate-100'
+                    ? 'text-[var(--danger-text)] dark:text-[var(--danger-text)]'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                 }`}
               >
                 {overview?.activeIncidentsCount ?? 0}
               </span>
               {(overview?.activeIncidentsCount || 0) > 0 && (
-                <span className="text-[10px] text-rose-500 font-bold">Ação necessária</span>
+                <span className="text-[10px] text-[var(--danger-text)] font-bold">Ação necessária</span>
               )}
             </div>
           </div>
@@ -512,7 +512,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
       </div>
 
       {loadError && (
-        <div role="alert" className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center">
+        <div role="alert" className="flex flex-col gap-2 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:border-[var(--warning-border)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] sm:flex-row sm:items-center">
           <span className="flex-1">Alguns dados podem estar desatualizados. {loadError}</span>
           <button type="button" onClick={() => void loadData()} className="shrink-0 font-bold underline">Tentar carregar novamente</button>
         </div>
@@ -520,30 +520,30 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
 
       {/* Se houver incidentes ativos, exibir faixa de atenção prioritária */}
       {overview && overview.activeIncidents && overview.activeIncidents.length > 0 && (
-        <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-sm mb-3">
-            <ShieldAlert className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+        <div className="bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] rounded-xl p-4">
+          <div className="flex items-center gap-2 text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold text-sm mb-3">
+            <ShieldAlert className="h-4 w-4 shrink-0 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
             <span>Incidentes Operacionais em Andamento ({overview.activeIncidents.length})</span>
           </div>
           <div className="space-y-2">
             {overview.activeIncidents.map((inc) => (
               <div
                 key={inc.id}
-                className="bg-white dark:bg-slate-900 rounded-lg p-3.5 border border-rose-200/80 dark:border-rose-900/50 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs"
+                className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-lg p-3.5 border border-[var(--danger-border)] dark:border-[var(--danger-border)] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {inc.title}
                     </span>
                     {getSeverityBadge(inc.severity)}
-                    <span className="text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium">
                       {inc.service?.name || 'Serviço'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{inc.description}</p>
+                  <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1">{inc.description}</p>
                   {inc.impactDetails && (
-                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-0.5">
+                    <p className="text-[11px] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold mt-0.5">
                       Impacto Operacional: {inc.impactDetails}
                     </p>
                   )}
@@ -553,7 +553,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                   {onOpenAnnouncementsTabWithIncident && (
                     <button
                       onClick={() => onOpenAnnouncementsTabWithIncident(inc)}
-                      className="px-2.5 py-1.5 rounded text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-2.5 py-1.5 rounded text-xs font-semibold bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] hover:bg-[var(--warning-bg)] transition-colors flex items-center gap-1 cursor-pointer"
                       title="Criar um comunicado para a equipe a partir deste incidente"
                     >
                       <Megaphone className="h-3 w-3" />
@@ -564,7 +564,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                   {isManager && (
                     <button
                       onClick={() => handleResolveIncident(inc.id)}
-                      className="px-3 py-1.5 rounded text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded text-xs font-bold bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] transition-colors cursor-pointer"
                     >
                       Marcar Resolvido
                     </button>
@@ -577,14 +577,14 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
       )}
 
       {/* Lista de Serviços Monitorados */}
-      <div className="bg-white dark:bg-[#080d18] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Radio className="h-4 w-4 text-blue-500 animate-pulse" />
-            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            <Radio className="h-4 w-4 text-[var(--link)] animate-pulse" />
+            <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Serviços e APIs Integradas
             </h4>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] font-semibold">
               {filteredServices.length} ativos
             </span>
           </div>
@@ -597,8 +597,8 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                   categoryFilter === cat
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)]'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 {cat === 'ALL'
@@ -619,8 +619,8 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
 
         {/* Tabela de Serviços */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold uppercase text-[10px] tracking-wider">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] font-semibold uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="px-4 py-3">Serviço / Barramento</th>
                 <th className="px-3 py-3">Categoria</th>
@@ -632,21 +632,21 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
               {filteredServices.map((service) => {
                 const isTesting = testingServiceId === service.id;
                 return (
                   <tr
                     key={service.id}
-                    className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                    className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                   >
                     <td className="px-4 py-3.5">
                       <div>
-                        <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                        <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block">
                           {service.name}
                         </span>
                         {service.description && (
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-sm block">
+                          <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate max-w-sm block">
                             {service.description}
                           </span>
                         )}
@@ -654,7 +654,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                     </td>
 
                     <td className="px-3 py-3.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]">
                         {service.category}
                       </span>
                     </td>
@@ -667,11 +667,11 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`font-mono font-bold ${
-                            service.latencyMs == null ? 'text-slate-400' : service.latencyMs < 100
-                              ? 'text-emerald-600 dark:text-emerald-400'
+                            service.latencyMs == null ? 'text-[var(--text-secondary)]' : service.latencyMs < 100
+                              ? 'text-[var(--success-text)] dark:text-[var(--success-text)]'
                               : service.latencyMs < 200
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-rose-600 dark:text-rose-400'
+                              ? 'text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+                              : 'text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                           }`}
                         >
                           {service.latencyMs == null ? '—' : `${service.latencyMs}ms`}
@@ -680,10 +680,10 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                     </td>
 
                     <td className="px-3 py-3.5">
-                      <span className="text-slate-400">{service.uptimePercent == null ? 'Sem histórico' : `${service.uptimePercent}%`}</span>
+                      <span className="text-[var(--text-secondary)]">{service.uptimePercent == null ? 'Sem histórico' : `${service.uptimePercent}%`}</span>
                     </td>
 
-                    <td className="px-3 py-3.5 text-slate-500 dark:text-slate-400 text-[11px]">
+                    <td className="px-3 py-3.5 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[11px]">
                       {service.lastCheckedAt
                         ? new Date(service.lastCheckedAt).toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
@@ -697,7 +697,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                       <button
                         onClick={() => handlePingSingle(service.id, service.name)}
                         disabled={isTesting || !service.probeSupported}
-                        className="px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+                        className="px-2.5 py-1 rounded text-xs font-semibold bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] transition-colors cursor-pointer disabled:opacity-90"
                         title={service.probeSupported ? 'Executar verificação neste endpoint' : 'Não há verificação configurada para este serviço'}
                       >
                         {isTesting ? 'Verificando...' : service.probeSupported ? 'Verificar' : 'Sem check'}
@@ -711,7 +711,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                             setEditCriticality(service.criticality);
                             setIsEditServiceModalOpen(true);
                           }}
-                          className="px-2 py-1 rounded text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="px-2 py-1 rounded text-xs text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                           title="Ajustar status ou criticidade"
                         >
                           <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -727,43 +727,43 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
       </div>
 
       {/* Histórico Geral de Incidentes */}
-      <div className="bg-white dark:bg-[#080d18] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] p-5 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-slate-500" />
-            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            <Clock className="h-4 w-4 text-[var(--text-secondary)]" />
+            <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Histórico Recente de Incidentes & Manutenções
             </h4>
           </div>
-          <span className="text-xs text-slate-500">Últimos registros</span>
+          <span className="text-xs text-[var(--text-secondary)]">Últimos registros</span>
         </div>
 
         {incidents.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-xs">
+          <div className="text-center py-8 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
             Nenhum incidente registrado recentemente. Todos os sistemas operam em conformidade.
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          <div className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
             {incidents.slice(0, 8).map((inc) => (
               <div key={inc.id} className="py-3 flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {inc.title}
                     </span>
                     {getSeverityBadge(inc.severity)}
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         inc.status === 'RESOLVED'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                          ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                          : 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
                       }`}
                     >
                       {inc.status === 'RESOLVED' ? 'Resolvido' : 'Investigando'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{inc.description}</p>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
+                  <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">{inc.description}</p>
+                  <span className="text-[10px] text-[var(--text-secondary)] mt-1 block">
                     Identificado em {new Date(inc.identifiedAt).toLocaleString('pt-BR')} por{' '}
                     {inc.createdByName || 'Sistema'}
                   </span>
@@ -772,7 +772,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 {inc.status !== 'RESOLVED' && isManager && (
                   <button
                     onClick={() => handleResolveIncident(inc.id)}
-                    className="px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer shrink-0"
+                    className="px-2.5 py-1 text-xs font-semibold text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] rounded border border-[var(--success-border)] dark:border-[var(--success-border)] hover:bg-[var(--success-bg)] transition-colors cursor-pointer shrink-0"
                   >
                     Resolver
                   </button>
@@ -785,24 +785,24 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
 
       {/* MODAL: Registrar Incidente */}
       {isIncidentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg w-full p-5 shadow-xl">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl max-w-lg w-full p-5 shadow-xl">
+            <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
               Registrar Novo Incidente Operacional
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-4">
               Informe os dados da instabilidade ou queda para alertar a operação e atualizar as métricas.
             </p>
 
             <form onSubmit={handleCreateIncident} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Serviço Afetado *
                 </label>
                 <select
                   value={incidentServiceId}
                   onChange={(e) => setIncidentServiceId(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5 focus:ring-2 focus:ring-[var(--focus)]"
                   required
                 >
                   <option value="">Selecione o serviço...</option>
@@ -815,7 +815,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Título do Incidente *
                 </label>
                 <input
@@ -823,20 +823,20 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                   value={incidentTitle}
                   onChange={(e) => setIncidentTitle(e.target.value)}
                   placeholder="Ex: Instabilidade no retorno de margem do INSS"
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5 focus:ring-2 focus:ring-[var(--focus)]"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     Gravidade *
                   </label>
                   <select
                     value={incidentSeverity}
                     onChange={(e) => setIncidentSeverity(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                    className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                   >
                     <option value="LOW">Baixa</option>
                     <option value="MEDIUM">Média</option>
@@ -846,7 +846,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     Impacto Estimado
                   </label>
                   <input
@@ -854,13 +854,13 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                     value={incidentImpact}
                     onChange={(e) => setIncidentImpact(e.target.value)}
                     placeholder="Ex: Digitação temporariamente suspensa"
-                    className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                    className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Descrição dos Fatos & Causa *
                 </label>
                 <textarea
@@ -868,7 +868,7 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                   value={incidentDescription}
                   onChange={(e) => setIncidentDescription(e.target.value)}
                   placeholder="Descreva o que foi observado, mensagens de erro retornadas pelo banco/barramento..."
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                   required
                 />
               </div>
@@ -879,27 +879,27 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                   id="chk-announcement"
                   checked={createAnnouncementFromIncident}
                   onChange={(e) => setCreateAnnouncementFromIncident(e.target.checked)}
-                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                  className="rounded text-[var(--link)] focus:ring-[var(--focus)] h-4 w-4"
                 />
                 <label
                   htmlFor="chk-announcement"
-                  className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium"
+                  className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer font-medium"
                 >
                   Abrir Central de Comunicados para emitir aviso oficial para a equipe
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setIsIncidentModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] text-[var(--danger-text)] shadow-xs"
                 >
                   Salvar Incidente
                 </button>
@@ -911,24 +911,24 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
 
       {/* MODAL: Ajustar Status de Serviço */}
       {isEditServiceModalOpen && selectedService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md w-full p-5 shadow-xl">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl max-w-md w-full p-5 shadow-xl">
+            <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
               Ajustar Status do Serviço
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-4">
               {selectedService.name}
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Status Operacional
                 </label>
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value as any)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                 >
                   <option value="OPERATIONAL">OPERACIONAL (100% Funcional)</option>
                   <option value="DEGRADED">DEGRADADO (Lentidão / Instabilidade)</option>
@@ -938,13 +938,13 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Nível de Criticidade
                 </label>
                 <select
                   value={editCriticality}
                   onChange={(e) => setEditCriticality(e.target.value as any)}
-                  className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] p-2.5"
                 >
                   <option value="LOW">Baixa</option>
                   <option value="MEDIUM">Média</option>
@@ -953,18 +953,18 @@ export const ApiMonitoringTab: React.FC<ApiMonitoringTabProps> = ({
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setIsEditServiceModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveServiceEdit}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] shadow-xs"
                 >
                   Salvar Alterações
                 </button>

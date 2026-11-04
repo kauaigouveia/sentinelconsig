@@ -62,20 +62,20 @@ export const PerfisPermissoesView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Overview */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-xl p-6 text-[var(--text-primary)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+          <div className="p-3 bg-[var(--info-bg)] text-[var(--link)] rounded-xl border border-[var(--field-border)]">
             <Shield className="w-8 h-8" />
           </div>
           <div>
             <h2 className="text-xl font-bold">Matriz de Perfis & Permissões RBAC</h2>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-[var(--text-secondary)]">
               Controle granular de autorizações baseado no modelo de identidade única e memberships multi-tenant.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-full flex items-center gap-1.5">
+          <span className="px-3 py-1 bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)] text-xs font-semibold rounded-full flex items-center gap-1.5">
             <CheckCircle className="w-3.5 h-3.5" />
             Controle Granular Ativo
           </span>
@@ -85,7 +85,7 @@ export const PerfisPermissoesView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Roles list */}
         <div className="lg:col-span-1 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider px-1">
+          <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-1">
             Perfis de Acesso ({roles.length})
           </h3>
           <div className="space-y-2">
@@ -98,15 +98,15 @@ export const PerfisPermissoesView: React.FC = () => {
                   onClick={() => setSelectedRole(r.role)}
                   className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between ${
                     isSelected
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/20'
-                      : 'bg-slate-900/60 hover:bg-slate-800 text-slate-200 border-slate-800'
+                      ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)]  shadow-indigo-600/20'
+                      : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] border-[var(--field-border)]'
                   }`}
                 >
                   <div className="min-w-0 pr-2">
                     <div className="font-semibold text-sm truncate flex items-center gap-2">
                       {r.label}
                       {r.scope === 'GLOBAL' && (
-                        <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        <span className="text-[10px] uppercase font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] px-1.5 py-0.5 rounded border border-[var(--warning-border)]">
                           Global
                         </span>
                       )}
@@ -116,7 +116,7 @@ export const PerfisPermissoesView: React.FC = () => {
                   <div className="flex items-center gap-2 shrink-0">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        isSelected ? 'bg-indigo-700 text-white' : 'bg-slate-800 text-slate-400'
+                        isSelected ? 'bg-[var(--info-bg)] text-[var(--text-primary)]' : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
                       }`}
                     >
                       {count} {count === 1 ? 'user' : 'users'}
@@ -131,26 +131,26 @@ export const PerfisPermissoesView: React.FC = () => {
 
         {/* Permissions Matrix */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-800">
+          <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-xl p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-[var(--field-border)]">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  Permissões do Perfil: <span className="text-indigo-400">{getRoleLabel(selectedRole)}</span>
+                <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  Permissões do Perfil: <span className="text-[var(--link)]">{getRoleLabel(selectedRole)}</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                   {rolePermissions.length} permissões concedidas por padrão neste perfil.
                 </p>
               </div>
 
               {/* Search filter */}
               <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[var(--text-secondary)] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Filtrar permissões..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-9 pr-3 py-1.5 bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--field-border)]"
                 />
               </div>
             </div>
@@ -159,8 +159,8 @@ export const PerfisPermissoesView: React.FC = () => {
             <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
               {filteredCategories.map((category) => (
                 <div key={category.category} className="space-y-2">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                  <div className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-[var(--link)]" />
                     {category.label}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -173,8 +173,8 @@ export const PerfisPermissoesView: React.FC = () => {
                           key={perm.id}
                           className={`p-3 rounded-lg border text-sm flex items-center justify-between ${
                             isGranted
-                              ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
-                              : 'bg-slate-950/40 border-slate-800 text-slate-500'
+                              ? 'bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text)]'
+                              : 'bg-[var(--bg-canvas)] border-[var(--field-border)] text-[var(--text-secondary)]'
                           }`}
                         >
                           <div>
@@ -182,11 +182,11 @@ export const PerfisPermissoesView: React.FC = () => {
                             <div className="text-xs opacity-60 font-mono">{perm.id}</div>
                           </div>
                           {isGranted ? (
-                            <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
+                            <span className="flex items-center gap-1 text-xs text-[var(--success-text)] font-semibold bg-[var(--success-bg)] px-2 py-0.5 rounded">
                               <CheckCircle className="w-3.5 h-3.5" /> Concedida
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-900 px-2 py-0.5 rounded">
+                            <span className="flex items-center gap-1 text-xs text-[var(--text-secondary)] bg-[var(--bg-surface)] px-2 py-0.5 rounded">
                               <XCircle className="w-3.5 h-3.5" /> Negada
                             </span>
                           )}

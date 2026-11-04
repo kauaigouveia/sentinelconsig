@@ -252,11 +252,11 @@ export const OperationalAgendaView: React.FC = () => {
         title="Agenda Operacional & Controle de Tarefas"
         subtitle="Controle de vencimento de saldo CIP, follow-up de pendências, averbações e rotinas diárias da mesa"
         badgeText="ROTINA DE OPERAÇÃO"
-        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
         actions={canCreateTasks ? (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-4 py-2 text-xs font-bold text-[var(--action-ink)]  transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>+ Nova Tarefa</span>
@@ -266,79 +266,79 @@ export const OperationalAgendaView: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--warning-text)] dark:text-[var(--warning-text)]">
               Pendências Ativas
             </span>
-            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <Clock className="h-4 w-4 text-[var(--warning-text)] dark:text-[var(--warning-text)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-amber-950 dark:text-amber-200">
+          <p className="text-2xl font-black font-mono text-[var(--warning-text)] dark:text-[var(--warning-text)]">
             {pendingCount} tarefas
           </p>
-          <span className="text-[11px] text-amber-700 dark:text-amber-400 font-bold block">
+          <span className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold block">
             {criticalCount} classificadas como ALTA prioridade
           </span>
         </div>
 
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--success-text)] dark:text-[var(--success-text)]">
               Concluídas
             </span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-emerald-950 dark:text-emerald-200">
+          <p className="text-2xl font-black font-mono text-[var(--success-text)] dark:text-[var(--success-text)]">
             {completedCount} tarefas
           </p>
-          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold block">
+          <span className="text-[11px] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold block">
             Rotinas resolvidas pela equipe
           </span>
         </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)]">
               Total na Agenda
             </span>
-            <CalendarIcon className="h-4 w-4 text-slate-400" />
+            <CalendarIcon className="h-4 w-4 text-[var(--text-secondary)]" />
           </div>
-          <p className="text-2xl font-black font-mono text-slate-900 dark:text-white">
+          <p className="text-2xl font-black font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             {tasks.length} tarefas
           </p>
-          <span className="text-[11px] text-slate-500 font-bold block">
+          <span className="text-[11px] text-[var(--text-secondary)] font-bold block">
             Histórico operacional completo
           </span>
         </div>
       </div>
 
       {/* Main Tasks Stream */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4 p2-agenda-stream">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4 p2-agenda-stream">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
           <div className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <CalendarIcon className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Fila de Execução ({filteredTasks.length})
             </h3>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <label className="relative min-w-40 flex-1 sm:flex-none">
-              <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-[var(--text-secondary)]" aria-hidden="true" />
               <input
                 type="search"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar tarefas"
                 aria-label="Buscar tarefas por título, descrição, cliente, proposta ou responsável"
-                className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:w-48"
+                className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] py-1.5 pl-8 pr-2.5 text-[11px] font-medium text-[var(--text-secondary)] placeholder:text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)] sm:w-48"
               />
             </label>
-            <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5 text-xs font-semibold">
+            <div className="flex rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-0.5 text-xs font-semibold">
               <button
                 onClick={() => setFilterStatus('ALL')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterStatus === 'ALL' ? 'bg-blue-600 text-white' : 'text-slate-500'
+                  filterStatus === 'ALL' ? 'bg-[var(--action)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Todas
@@ -346,7 +346,7 @@ export const OperationalAgendaView: React.FC = () => {
               <button
                 onClick={() => setFilterStatus('PENDING')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterStatus === 'PENDING' ? 'bg-amber-600 text-white' : 'text-slate-500'
+                  filterStatus === 'PENDING' ? 'bg-[var(--warning-bg)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Pendentes ({pendingCount})
@@ -354,7 +354,7 @@ export const OperationalAgendaView: React.FC = () => {
               <button
                 onClick={() => setFilterStatus('COMPLETED')}
                 className={`px-2.5 py-1 rounded-md text-[11px] transition-colors cursor-pointer ${
-                  filterStatus === 'COMPLETED' ? 'bg-emerald-600 text-white' : 'text-slate-500'
+                  filterStatus === 'COMPLETED' ? 'bg-[var(--success-bg)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
                 }`}
               >
                 Concluídas ({completedCount})
@@ -365,7 +365,7 @@ export const OperationalAgendaView: React.FC = () => {
               id="agenda-category-filter"
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]"
             >
               <option value="ALL">Todas as categorias</option>
               {Array.from(new Set(tasks.map(task => task.category).filter(Boolean))).sort().map(taskCategory => (
@@ -377,7 +377,7 @@ export const OperationalAgendaView: React.FC = () => {
               id="agenda-priority-filter"
               value={filterPriority}
               onChange={e => setFilterPriority(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]"
             >
               <option value="ALL">Todas as prioridades</option>
               {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -386,12 +386,12 @@ export const OperationalAgendaView: React.FC = () => {
         </div>
 
         {loadError ? (
-          <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+          <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)] dark:border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">
             <span>{loadError}</span>
             <button type="button" onClick={() => void refreshTasks()} className="inline-flex items-center gap-2 font-semibold underline"><RefreshCw className="h-3.5 w-3.5" />Tentar novamente</button>
           </div>
         ) : isLoading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Carregando tarefas…</div>
+          <div className="py-10 text-center text-sm text-[var(--text-secondary)]">Carregando tarefas…</div>
         ) : filteredTasks.length === 0 ? (
           <EmptyState
             title="Nenhuma tarefa encontrada"
@@ -405,10 +405,10 @@ export const OperationalAgendaView: React.FC = () => {
                 key={task.id}
                 className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-3 ${
                   task.completed
-                    ? 'border-slate-200 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/30 opacity-60'
+                    ? 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] opacity-60'
                     : task.priority === 'HIGH' || task.priority === 'URGENT'
-                    ? 'border-amber-200 dark:border-amber-900/60 bg-amber-50/20 dark:bg-amber-950/10'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                    ? 'border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)]'
+                    : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -416,10 +416,10 @@ export const OperationalAgendaView: React.FC = () => {
                     onClick={() => handleToggleCompleted(task)}
                     disabled={!canEditTasks && task.assignedToId !== activeUser?.id}
                     title={!canEditTasks && task.assignedToId !== activeUser?.id ? 'Você só pode alterar tarefas atribuídas a você.' : 'Alterar conclusão'}
-                    className="mt-0.5 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                    className="mt-0.5 text-[var(--text-secondary)] hover:text-[var(--link)] transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
                   >
                     {task.completed ? (
-                      <CheckSquare className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                      <CheckSquare className="h-5 w-5 text-[var(--success-text)] dark:text-[var(--success-text)]" />
                     ) : (
                       <Square className="h-5 w-5" />
                     )}
@@ -430,8 +430,8 @@ export const OperationalAgendaView: React.FC = () => {
                       <h4
                         className={`text-xs font-bold ${
                           task.completed
-                            ? 'line-through text-slate-400'
-                            : 'text-slate-900 dark:text-white'
+                            ? 'line-through text-[var(--text-secondary)]'
+                            : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                         }`}
                       >
                         {task.title}
@@ -440,40 +440,40 @@ export const OperationalAgendaView: React.FC = () => {
                       <span
                         className={`px-2 py-0.2 rounded text-[9.5px] font-bold ${
                           task.priority === 'URGENT'
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                            ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                             : task.priority === 'HIGH'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
                             : task.priority === 'MEDIUM'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                            : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                            ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
+                            : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]'
                         }`}
                       >
                         {TASK_PRIORITY_LABELS[task.priority as TaskPriority] || task.priority}
                       </span>
 
-                      <span className="px-2 py-0.2 rounded text-[9.5px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                      <span className="px-2 py-0.2 rounded text-[9.5px] font-bold bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]">
                         {TASK_CATEGORY_LABELS[task.category] || task.category}
                       </span>
                     </div>
 
                     {task.description && (
-                      <p className="text-[11px] text-slate-500 leading-relaxed">{task.description}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{task.description}</p>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-3 text-[10.5px] text-slate-400 pt-1 font-mono">
+                    <div className="flex flex-wrap items-center gap-3 text-[10.5px] text-[var(--text-secondary)] pt-1 font-mono">
                       <span>Vencimento: {formatTaskDate(task.dueDate)}</span>
                       <span>•</span>
                       <span>Responsável: {task.assignedUserName}</span>
                       {task.proposalNumber && (
                         <>
                           <span>•</span>
-                          <span className="text-blue-600 dark:text-blue-400">ADE: {task.proposalNumber}</span>
+                          <span className="text-[var(--link)] dark:text-[var(--link)]">ADE: {task.proposalNumber}</span>
                         </>
                       )}
                       {task.clientName && (
                         <>
                           <span>•</span>
-                          <span className="text-slate-600 dark:text-slate-300">Cliente: {task.clientName}</span>
+                          <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Cliente: {task.clientName}</span>
                         </>
                       )}
                     </div>
@@ -484,7 +484,7 @@ export const OperationalAgendaView: React.FC = () => {
                   {canEditTasks && <button
                     type="button"
                     onClick={() => startEditingTask(task)}
-                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/50"
+                    className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--info-bg)] hover:text-[var(--link)] dark:hover:bg-[var(--info-bg)]"
                     title="Editar tarefa"
                     aria-label={`Editar tarefa: ${task.title}`}
                   >
@@ -493,7 +493,7 @@ export const OperationalAgendaView: React.FC = () => {
                   {canDeleteTasks && <button
                     type="button"
                     onClick={() => handleDeleteTask(task.id)}
-                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/50"
+                    className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--danger-bg)] hover:text-[var(--danger-text)] dark:hover:bg-[var(--danger-bg)]"
                     title="Excluir tarefa"
                     aria-label={`Excluir tarefa: ${task.title}`}
                   >
@@ -508,13 +508,13 @@ export const OperationalAgendaView: React.FC = () => {
 
       {/* Modal Nova Tarefa */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{editingTaskId ? 'Editar Tarefa Operacional' : 'Nova Tarefa Operacional'}</h3>
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{editingTaskId ? 'Editar Tarefa Operacional' : 'Nova Tarefa Operacional'}</h3>
               <button
                 onClick={closeTaskModal}
-                className="text-slate-400 hover:text-slate-200 text-xs font-bold"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-bold"
               >
                 ✕
               </button>
@@ -522,7 +522,7 @@ export const OperationalAgendaView: React.FC = () => {
 
             <form onSubmit={handleCreateTask} className="space-y-3.5">
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Título da Tarefa *
                 </label>
                 <input
@@ -532,19 +532,19 @@ export const OperationalAgendaView: React.FC = () => {
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Ex: Cobrar saldo devedor Banco Santander"
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                  className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Categoria
                   </label>
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value as TaskCategory)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   >
                     <option value="SALDO_CIP">Saldo CIP</option>
                     <option value="RETORNO">Retorno</option>
@@ -562,13 +562,13 @@ export const OperationalAgendaView: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Prioridade
                   </label>
                   <select
                     value={priority}
                     onChange={e => setPriority(e.target.value as TaskPriority)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   >
                     <option value="URGENT">Urgente</option>
                     <option value="HIGH">Alta</option>
@@ -580,26 +580,26 @@ export const OperationalAgendaView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Data de Vencimento
                   </label>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={e => setDueDate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Atribuir a
                   </label>
                   <select
                     value={assignedUserId}
                     onChange={e => setAssignedUserId(e.target.value)}
                     disabled={!canAssignTasks}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden disabled:opacity-60"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden disabled:opacity-90"
                   >
                     <option value="">Eu mesmo ({activeUser.name})</option>
                     {editingTaskId && <option value="__UNASSIGNED__">Sem responsável</option>}
@@ -613,7 +613,7 @@ export const OperationalAgendaView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Descrição Detalhada
                 </label>
                 <textarea
@@ -622,21 +622,21 @@ export const OperationalAgendaView: React.FC = () => {
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Instruções adicionais..."
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                  className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Vincular cliente</label>
-                  <select value={clientId} onChange={e => { setClientId(e.target.value); setProposalId(''); }} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Vincular cliente</label>
+                  <select value={clientId} onChange={e => { setClientId(e.target.value); setProposalId(''); }} className="w-full rounded-xl border border-[var(--field-border)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]">
                     <option value="">Nenhum cliente</option>
                     {clients.map(client => <option key={client.id} value={client.id}>{client.fullName}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Vincular proposta</label>
-                  <select value={proposalId} onChange={e => { const nextId = e.target.value; setProposalId(nextId); const proposal = proposals.find(item => item.id === nextId); if (proposal?.clientId) setClientId(proposal.clientId); }} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Vincular proposta</label>
+                  <select value={proposalId} onChange={e => { const nextId = e.target.value; setProposalId(nextId); const proposal = proposals.find(item => item.id === nextId); if (proposal?.clientId) setClientId(proposal.clientId); }} className="w-full rounded-xl border border-[var(--field-border)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]">
                     <option value="">Nenhuma proposta</option>
                     {proposals.filter(proposal => !clientId || proposal.clientId === clientId).map(proposal => <option key={proposal.id} value={proposal.id}>ADE {proposal.proposalNumber}</option>)}
                   </select>
@@ -647,14 +647,14 @@ export const OperationalAgendaView: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeTaskModal}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="px-4 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-xl"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xs cursor-pointer disabled:opacity-60"
+                  className="px-4 py-2 text-xs font-bold text-[var(--action-ink)] bg-[var(--action)] hover:bg-[var(--action-hover)] rounded-xl  cursor-pointer disabled:opacity-90"
                 >
                   {isSaving ? 'Salvando…' : editingTaskId ? 'Salvar Alterações' : 'Salvar Tarefa'}
                 </button>

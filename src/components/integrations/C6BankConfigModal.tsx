@@ -215,35 +215,35 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] max-w-2xl w-full max-h-[90vh] flex flex-col  overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/40">
+        <div className="px-6 py-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-black text-white flex items-center justify-center font-black text-sm tracking-tighter shadow-xs">
+            <div className="h-9 w-9 rounded-xl bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center font-black text-sm tracking-tighter shadow-xs">
               C6
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <h2 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
                 Integração C6 Bank
                 {config.isConfigured ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
                     Configurado
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
                     Não configurado
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Consulta automática e manual de status de propostas e esteira C6
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -252,18 +252,18 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
           {isLoadingConfig ? (
-            <div className="py-12 text-center text-slate-400">
-              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
+            <div className="py-12 text-center text-[var(--text-secondary)]">
+              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--link)]" />
               <span>Carregando configurações do C6 Bank...</span>
             </div>
           ) : (
             <>
               {/* Card de Status Operacional do Worker */}
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800">
+              <div className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-blue-600" />
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                    <Zap className="h-4 w-4 text-[var(--link)]" />
+                    <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       Status do Robô Automático (Background Worker)
                     </span>
                   </div>
@@ -271,7 +271,7 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                     type="button"
                     onClick={handleRunBatchSync}
                     disabled={isTriggeringSync || !config.isConfigured}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs disabled:opacity-50 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs disabled:opacity-90 transition-all cursor-pointer"
                   >
                     <Play className={`h-3 w-3 ${isTriggeringSync ? 'animate-spin' : ''}`} />
                     <span>{isTriggeringSync ? 'Processando Lote...' : 'Sincronizar Lote Agora'}</span>
@@ -280,33 +280,33 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Sincronizador</span>
-                    <span className={`font-bold ${config.autoSyncEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Sincronizador</span>
+                    <span className={`font-bold ${config.autoSyncEnabled ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : 'text-[var(--text-secondary)]'}`}>
                       {config.autoSyncEnabled ? 'Ativo' : 'Desativado'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Propostas Pendentes</span>
-                    <span className="font-bold font-mono text-slate-900 dark:text-slate-100">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Propostas Pendentes</span>
+                    <span className="font-bold font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {workerStatus?.pendingProposalsCount ?? '—'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Última Execução</span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Última Execução</span>
+                    <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {workerStatus?.lastRunAt ? new Date(workerStatus.lastRunAt).toLocaleTimeString('pt-BR') : 'Nunca'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Falhas (24h)</span>
-                    <span className={`font-bold font-mono ${workerStatus?.recentFailuresCount ? 'text-rose-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Falhas (24h)</span>
+                    <span className={`font-bold font-mono ${workerStatus?.recentFailuresCount ? 'text-[var(--danger-text)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]'}`}>
                       {workerStatus?.recentFailuresCount ?? 0}
                     </span>
                   </div>
                 </div>
 
                 {batchSyncResult && (
-                  <div className="mt-3 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[11px]">
+                  <div className="mt-3 p-2 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[11px]">
                     {batchSyncResult}
                   </div>
                 )}
@@ -314,16 +314,16 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
 
               {/* Formulário de Configuração de Credenciais Seguras */}
               <form onSubmit={handleSaveConfig} className="space-y-4">
-                <div className="flex items-center gap-2 pb-1 border-b border-slate-200 dark:border-slate-800">
-                  <Lock className="h-4 w-4 text-blue-600" />
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100">
+                <div className="flex items-center gap-2 pb-1 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+                  <Lock className="h-4 w-4 text-[var(--link)]" />
+                  <h3 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Credenciais e Parâmetros de Acesso
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                       Usuário C6 Bank (username) *
                     </label>
                     <input
@@ -332,12 +332,12 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                       value={config.username}
                       onChange={(e) => setConfig({ ...config, username: e.target.value })}
                       placeholder="Ex: parceiro_sentinel"
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                      className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                       Senha C6 Bank (password) {config.hasPassword ? '(Já cadastrada)' : '*'}
                     </label>
                     <div className="relative">
@@ -346,12 +346,12 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={config.hasPassword ? '•••••••• (Preencha apenas para alterar)' : 'Digite a senha C6'}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden pr-9"
+                        className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden pr-9"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
@@ -360,7 +360,7 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     URL Base da API (Marketplace Proposal Service)
                   </label>
                   <input
@@ -368,36 +368,36 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                     required
                     value={config.baseUrl}
                     onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  <span className="text-[10px] text-[var(--text-secondary)] mt-0.5 block">
                     Padrão de produção: https://marketplace-proposal-service-api-p.c6bank.info
                   </span>
                 </div>
 
-                <p className="text-sm text-slate-500">C6 CLT temporariamente suspenso.</p>
+                <p className="text-sm text-[var(--text-secondary)]">C6 CLT temporariamente suspenso.</p>
                 {/* Switch Auto-Sync e Intervalo */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
                       id="autoSyncToggle"
                       checked={config.autoSyncEnabled}
                       onChange={(e) => setConfig({ ...config, autoSyncEnabled: e.target.checked })}
-                      className="h-4 w-4 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="h-4 w-4 rounded-sm border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] cursor-pointer"
                     />
                     <label htmlFor="autoSyncToggle" className="cursor-pointer">
-                      <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                      <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block">
                         Ativar Consulta Automática Periódica
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-[var(--text-secondary)]">
                         Varre e sincroniza propostas C6 em andamento em segundo plano.
                       </span>
                     </label>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                       Intervalo de Consulta (minutos)
                     </label>
                     <input
@@ -406,21 +406,21 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                       max={1440}
                       value={config.syncIntervalMinutes}
                       onChange={(e) => setConfig({ ...config, syncIntervalMinutes: parseInt(e.target.value, 10) || 15 })}
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                      className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    <span className="text-[10px] text-[var(--text-secondary)] mt-0.5 block">
                       Mínimo recomendado: 15 minutos para evitar bloqueio por rate limit.
                     </span>
                   </div>
                 </div>
 
                 {/* Botões de Ação */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <button
                     type="button"
                     onClick={handleTestConnection}
                     disabled={isTesting || !config.username}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors disabled:opacity-90 cursor-pointer"
                   >
                     <Server className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
                     <span>{isTesting ? 'Testando Conexão...' : 'Testar Conexão com C6'}</span>
@@ -430,14 +430,14 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-semibold hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                     >
                       Fechar
                     </button>
                     <button
                       type="submit"
                       disabled={isSaving}
-                      className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs disabled:opacity-50 transition-all cursor-pointer"
+                      className="px-5 py-2 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold  disabled:opacity-90 transition-all cursor-pointer"
                     >
                       {isSaving ? 'Salvando...' : 'Salvar Configurações'}
                     </button>
@@ -447,8 +447,8 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
 
               {/* Mensagem de Sucesso ao Salvar */}
               {saveSuccessMsg && (
-                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <div className="p-3 rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)] flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)]" />
                   <span>{saveSuccessMsg}</span>
                 </div>
               )}
@@ -458,14 +458,14 @@ export const C6BankConfigModal: React.FC<C6BankConfigModalProps> = ({
                 <div
                   className={`p-3 rounded-lg border flex items-start gap-2.5 ${
                     testResult.success
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
-                      : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+                      ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]'
+                      : 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                   }`}
                 >
                   {testResult.success ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)] mt-0.5" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger-text)] mt-0.5" />
                   )}
                   <div>
                     <span className="font-bold block">

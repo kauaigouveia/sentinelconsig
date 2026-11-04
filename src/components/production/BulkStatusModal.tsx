@@ -151,16 +151,16 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
   const selectedStatus = statuses.find(s => s.id === targetStatusId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/40 rounded-t-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-lg rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)]">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-t-xl">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center">
               <Layers className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Alterar Status em Lote</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Alterar Status em Lote</h3>
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 {selectedProposalIds.length} proposta(s) selecionada(s)
               </p>
             </div>
@@ -168,7 +168,7 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed"
           >
             <X className="h-5 w-5" />
           </button>
@@ -176,14 +176,14 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
 
         <div className="p-6 space-y-4 text-xs">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
               Novo Status para Todas as Propostas Selecionadas *
             </label>
             <select
               value={targetStatusId}
               onChange={e => setTargetStatusId(e.target.value)}
               disabled={isProcessing || isLoadingStatuses || statuses.length === 0}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
             >
               {isLoadingStatuses && <option value="">Carregando status oficiais...</option>}
               {!isLoadingStatuses && statuses.length === 0 && <option value="">Nenhum status ativo disponível</option>}
@@ -193,16 +193,16 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
                 </option>
               ))}
             </select>
-            {statusLoadError && <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">{statusLoadError} Feche e abra a janela para tentar novamente.</p>}
+            {statusLoadError && <p className="mt-1 text-[11px] text-[var(--danger-text)] dark:text-[var(--danger-text)]">{statusLoadError} Feche e abra a janela para tentar novamente.</p>}
             {selectedStatus && (
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                Alçada responsável: <strong className="text-slate-700 dark:text-slate-300">{selectedStatus.responsible}</strong>
+              <p className="mt-1 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
+                Alçada responsável: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{selectedStatus.responsible}</strong>
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
               Motivo / Observação Geral (Opcional)
             </label>
             <textarea
@@ -210,11 +210,11 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
               value={observation}
               onChange={e => setObservation(e.target.value)}
               placeholder="Ex: Atualizado após confirmação bancária em lote..."
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
             />
           </div>
 
-          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-[11px] text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          <div className="rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-3 text-[11px] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
             <strong>Nota de Auditoria:</strong> Cada alteração confirmada pela API será registrada no histórico da proposta com o usuário ativo e a observação informada.
           </div>
 
@@ -222,32 +222,32 @@ export const BulkStatusModal: React.FC<BulkStatusModalProps> = ({
             <div
               className={`rounded-lg p-3 text-xs flex items-center gap-2 border ${
                 resultMsg.success
-                  ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
-                  : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
+                  ? 'border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]'
+                  : 'border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
               }`}
             >
               {resultMsg.success ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
               ) : (
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <AlertCircle className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
               )}
               <span>{resultMsg.text}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800 px-6 py-3 bg-slate-50 dark:bg-slate-950/40 rounded-b-xl">
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-b-xl">
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+            className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
             disabled={isProcessing || isLoadingStatuses || !!statusLoadError || !statuses.some(status => status.manualChangeAllowed) || !targetStatusId}
-            className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-1.5 text-xs font-bold text-white transition-colors flex items-center gap-2 shadow-xs"
+            className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-5 py-1.5 text-xs font-bold text-[var(--action-ink)] transition-colors flex items-center gap-2 shadow-xs"
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             <span>{isProcessing ? 'Atualizando...' : 'Confirmar Alteração'}</span>

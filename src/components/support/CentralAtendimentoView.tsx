@@ -348,26 +348,26 @@ export const CentralAtendimentoView: React.FC = () => {
       {/* Main Two-Column Layout */}
       <div className={`support-inbox ${showQueue ? 'support-show-queue' : 'support-show-conversation'}`}>
         {/* Left Side: Conversation Queue & Filters */}
-        <div className="support-queue flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="support-queue flex flex-col bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] overflow-hidden">
           {/* Filters Bar */}
-          <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2 shrink-0">
+          <div className="p-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] space-y-2 shrink-0">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 aria-label="Buscar conversas"
                 placeholder="Buscar conversas..."
-                className="w-full h-8 pl-8 pr-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                className="w-full h-8 pl-8 pr-2.5 text-xs rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--field-border)]"
               />
             </div>
 
             <details className="support-filters"><summary>Filtros{channelFilter !== 'ALL' || departmentFilter !== 'ALL' ? ' · ativos' : ''}</summary>
-            <select aria-label="Canal de atendimento" value={channelFilter} onChange={e => setChannelFilter(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+            <select aria-label="Canal de atendimento" value={channelFilter} onChange={e => setChannelFilter(e.target.value)} className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 text-xs dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)]">
               <option value="ALL">Todos os canais</option><option value="PORTAL">Portal</option><option value="WHATSAPP">WhatsApp</option>{canViewTelegram && <option value="TELEGRAM">Telegram</option>}
             </select>
-            <select aria-label="Fila de atendimento" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+            <select aria-label="Fila de atendimento" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 text-xs dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)]">
               <option value="ALL">Todas as filas</option>{canViewSimulation && <option value="SIMULATION">Mesa de simulação</option>}<option value="SUPPORT">Atendimento ao parceiro</option>
             </select>
             </details>
@@ -384,8 +384,8 @@ export const CentralAtendimentoView: React.FC = () => {
                   onClick={() => setStatusFilter(tab.id)}
                   className={`flex-1 py-1 rounded-lg text-[10.5px] font-bold transition-colors cursor-pointer ${
                     statusFilter === tab.id
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-2xs'
+                      : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                   }`}
                 >
                   {tab.label}
@@ -395,22 +395,22 @@ export const CentralAtendimentoView: React.FC = () => {
           </div>
 
           {/* Conversations Queue */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
             {isLoadingList ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-2">
-                <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-                <span className="text-[11px] text-slate-400">Carregando fila...</span>
+                <div className="h-6 w-6 border-2 border-[var(--field-border)] border-t-[var(--focus)] rounded-full animate-spin" />
+                <span className="text-[11px] text-[var(--text-secondary)]">Carregando fila...</span>
               </div>
             ) : conversationError ? (
-              <div className="p-6 text-center text-xs text-rose-700 dark:text-rose-300 space-y-2" role="alert">
+              <div className="p-6 text-center text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] space-y-2" role="alert">
                 <AlertTriangle className="mx-auto h-6 w-6" />
                 <p>{conversationError}</p>
                 <button type="button" onClick={() => void fetchConversations(false)} className="font-bold underline underline-offset-2">Tentar novamente</button>
               </div>
             ) : conversations.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400 space-y-2">
-                <MessageSquare className="h-6 w-6 text-slate-300 dark:text-slate-600 mx-auto" />
-                <p className="font-bold text-slate-600 dark:text-slate-300">Nenhum chamado nesta visualização</p>
+              <div className="p-8 text-center text-xs text-[var(--text-secondary)] space-y-2">
+                <MessageSquare className="h-6 w-6 text-[var(--text-primary)] dark:text-[var(--text-secondary)] mx-auto" />
+                <p className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nenhum chamado nesta visualização</p>
               </div>
             ) : (
               conversations.map((c) => {
@@ -431,22 +431,22 @@ export const CentralAtendimentoView: React.FC = () => {
                     }}
                     className={`p-3 transition-colors cursor-pointer text-xs space-y-1 ${
                       isActive
-                        ? 'bg-blue-500/10 dark:bg-blue-500/15 border-l-3 border-blue-600'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                        ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border-l-3 border-[var(--field-border)]'
+                        : 'hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-bold text-slate-900 dark:text-white truncate">
+                        <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
                           {c.partnerName || 'Parceiro'}
                         </span>
                         {c.partnerCode && (
-                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]">
                             {c.partnerCode}
                           </span>
                         )}
                       </div>
-                      <span className="text-[9.5px] text-slate-400 font-mono shrink-0">
+                      <span className="text-[9.5px] text-[var(--text-secondary)] font-mono shrink-0">
                         {new Date(c.lastMessageAt).toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -454,12 +454,12 @@ export const CentralAtendimentoView: React.FC = () => {
                       </span>
                     </div>
 
-                    <p className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                    <p className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
                       {c.subject || 'Atendimento'}
                     </p>
 
                     {c.proposalNumber && (
-                      <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono font-semibold">
+                      <p className="text-[10px] text-[var(--link)] dark:text-[var(--link)] font-mono font-semibold">
                         Proposta #{c.proposalNumber} {c.bankName ? `• ${c.bankName}` : ''}
                       </p>
                     )}
@@ -469,23 +469,23 @@ export const CentralAtendimentoView: React.FC = () => {
                         <span
                           className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
                             c.status === 'RESOLVED'
-                              ? 'bg-emerald-500/10 text-emerald-500'
+                              ? 'bg-[var(--success-bg)] text-[var(--success-text)]'
                               : c.status === 'IN_PROGRESS'
-                              ? 'bg-blue-500/10 text-blue-500'
-                              : 'bg-amber-500/10 text-amber-500'
+                              ? 'bg-[var(--info-bg)] text-[var(--link)]'
+                              : 'bg-[var(--warning-bg)] text-[var(--warning-text)]'
                           }`}
                         >
                           {c.status === 'RESOLVED' ? 'Resolvido' : c.status === 'IN_PROGRESS' ? 'Em Tratativa' : 'Aberto'}
                         </span>
 
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]">
                           {c.channel}
                         </span>
-                        {c.department === 'SIMULATION' && <span className="text-[9px] text-violet-500">{c.simulationStage === 'WAITING' ? 'Aguardando mesa' : c.simulationStage === 'ATTENDING' ? 'Em simulação' : 'Coletando dados'}</span>}
+                        {c.department === 'SIMULATION' && <span className="text-[9px] text-[var(--link)]">{c.simulationStage === 'WAITING' ? 'Aguardando mesa' : c.simulationStage === 'ATTENDING' ? 'Em simulação' : 'Coletando dados'}</span>}
                       </div>
 
                       {c.unreadCount > 0 && (
-                        <span className="h-4 min-w-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">
+                        <span className="h-4 min-w-4 px-1 rounded-full bg-[var(--danger-bg)] text-[var(--danger-text)] text-[9px] font-black flex items-center justify-center">
                           {c.unreadCount}
                         </span>
                       )}
@@ -498,31 +498,31 @@ export const CentralAtendimentoView: React.FC = () => {
         </div>
 
         {/* Right Side: Chat Window & Partner Overview */}
-        <div className="support-chat flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="support-chat flex flex-col bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] overflow-hidden">
               <button type="button" className="support-back" onClick={() => setShowQueue(true)}>← Conversas</button>
           {activeConversationData ? (
             <>
               {/* Chat Header */}
-              <div className="support-chat-header p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="support-chat-header p-3.5 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] flex flex-wrap items-center justify-between gap-3 shrink-0">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-black text-xs text-slate-900 dark:text-white">
+                    <h3 className="font-black text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {activeConversationData.partnerName}
                     </h3>
-                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono font-bold bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]">
                       Cód: {activeConversationData.partnerCode}
                     </span>
                     <span
                       className={`text-[9.5px] font-black uppercase px-1.5 py-0.2 rounded ${
                         activeConversationData.status === 'RESOLVED'
-                          ? 'bg-emerald-500/10 text-emerald-500'
-                          : 'bg-blue-500/10 text-blue-500'
+                          ? 'bg-[var(--success-bg)] text-[var(--success-text)]'
+                          : 'bg-[var(--info-bg)] text-[var(--link)]'
                       }`}
                     >
                       {activeConversationData.status === 'RESOLVED' ? 'Resolvido' : activeConversationData.status === 'IN_PROGRESS' ? 'Em atendimento' : 'Aberto'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                     {activeConversationData.subject}{' '}
                     {activeConversationData.proposalNumber ? `• Proposta #${activeConversationData.proposalNumber}` : ''}
                   </p>
@@ -534,7 +534,7 @@ export const CentralAtendimentoView: React.FC = () => {
                     <button
                       onClick={() => handleUpdateStatus('RESOLVED')}
                       disabled={isUpdatingStatus}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] text-xs font-bold transition-colors cursor-pointer shadow-2xs"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       <span>{isUpdatingStatus ? 'Salvando...' : 'Concluir Atendimento'}</span>
@@ -543,7 +543,7 @@ export const CentralAtendimentoView: React.FC = () => {
                     <button
                       onClick={() => handleUpdateStatus('IN_PROGRESS')}
                       disabled={isUpdatingStatus}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs font-bold transition-colors cursor-pointer"
                     >
                       <span>{isUpdatingStatus ? 'Salvando...' : 'Reabrir'}</span>
                     </button>
@@ -552,15 +552,15 @@ export const CentralAtendimentoView: React.FC = () => {
               </div>
 
               <SupportConversationDetails key={activeConversationId} conversation={activeConversationData} />
-              {messagesError && messages.length > 0 && <div role="alert" className="px-4 py-2 text-xs text-rose-600">{messagesError} <button type="button" className="underline" onClick={() => activeConversationId && void fetchMessages(activeConversationId, true)}>Tentar novamente</button></div>}
+              {messagesError && messages.length > 0 && <div role="alert" className="px-4 py-2 text-xs text-[var(--danger-text)]">{messagesError} <button type="button" className="underline" onClick={() => activeConversationId && void fetchMessages(activeConversationId, true)}>Tentar novamente</button></div>}
               {/* Chat Message List */}
-              <div className="support-messages flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/30 dark:bg-slate-950/20">
+              <div className="support-messages flex-1 overflow-y-auto p-4 space-y-3.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
                 {isLoadingMessages ? (
                   <div className="flex items-center justify-center py-16">
-                    <div className="h-6 w-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                    <div className="h-6 w-6 border-2 border-[var(--field-border)] border-t-[var(--focus)] rounded-full animate-spin" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className={`text-center py-12 text-xs ${messagesError ? 'text-rose-600 dark:text-rose-300' : 'text-slate-400'}`}>
+                  <div className={`text-center py-12 text-xs ${messagesError ? 'text-[var(--danger-text)] dark:text-[var(--danger-text)]' : 'text-[var(--text-secondary)]'}`}>
                     {messagesError ? (
                       <>
                         <p>{messagesError}</p>
@@ -576,8 +576,8 @@ export const CentralAtendimentoView: React.FC = () => {
                         key={m.id}
                         className={`flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}
                       >
-                        <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-400">
-                          <span className="font-bold text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5 mb-1 text-[10px] text-[var(--text-secondary)]">
+                          <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {m.senderType === 'SYSTEM' ? 'Canal de simulação (Automático)' : isStaff ? `${m.senderName || 'Suporte'}` : `${m.senderName || 'Parceiro'}`}
                           </span>
                           <span>•</span>
@@ -587,10 +587,10 @@ export const CentralAtendimentoView: React.FC = () => {
                         </div>
 
                         <div
-                          className={`support-bubble p-3 rounded-2xl max-w-[80%] text-xs font-medium leading-relaxed shadow-2xs ${
+                          className={`support-bubble p-3 rounded-2xl max-w-[80%] text-xs font-medium leading-relaxed  ${
                             isStaff
-                              ? 'bg-blue-600 text-white rounded-tr-xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-xs'
+                              ? 'bg-[var(--info-bg)] text-[var(--text-primary)] rounded-tr-xs'
+                              : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-tl-xs'
                           }`}
                         >
                           <p className="whitespace-pre-wrap break-words">{m.message}</p>
@@ -606,22 +606,22 @@ export const CentralAtendimentoView: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {canReply ? <form onSubmit={handleSendReply} className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
+              {canReply ? <form onSubmit={handleSendReply} className="p-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] flex items-center gap-2 shrink-0">
                 <textarea
                   rows={2}
                   aria-label="Resposta para o parceiro"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Digite sua resposta para o parceiro..."
-                  className="min-w-0 flex-1 max-h-32 resize-y px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  className="min-w-0 flex-1 max-h-32 resize-y px-3 py-2 text-xs rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--field-border)]"
                 />
                 <button
                   type="submit"
                   disabled={!replyText.trim() || isSending || isLoadingMessages || activeConversationData?.id !== activeConversationId}
-                  className="h-9.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="h-9.5 px-4 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] disabled:opacity-90 text-[var(--action-ink)] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   {isSending ? (
-                    <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="h-3.5 w-3.5 border-2 border-[var(--field-border)] border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
                       <span>Responder</span>
@@ -629,12 +629,12 @@ export const CentralAtendimentoView: React.FC = () => {
                     </>
                   )}
                 </button>
-              </form> : <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">Seu perfil pode consultar o atendimento, mas não possui permissão para responder.</div>}
+              </form> : <div className="border-t border-[var(--field-border)] bg-[var(--bg-canvas)] px-4 py-3 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)] dark:text-[var(--text-secondary)]">Seu perfil pode consultar o atendimento, mas não possui permissão para responder.</div>}
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-slate-400 space-y-2">
-              <Headphones className="h-10 w-10 text-slate-300 dark:text-slate-700" />
-              <p className="font-bold text-slate-600 dark:text-slate-300">Nenhum atendimento selecionado</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--text-secondary)] space-y-2">
+              <Headphones className="h-10 w-10 text-[var(--text-primary)] dark:text-[var(--text-secondary)]" />
+              <p className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nenhum atendimento selecionado</p>
               <p className="text-[11px] max-w-sm">
                 Selecione um chamado na fila à esquerda para visualizar o histórico e responder ao parceiro.
               </p>

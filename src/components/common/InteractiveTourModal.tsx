@@ -48,8 +48,8 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
       title: 'Bem-vindo ao Sistema de Produção e Esteira de Crédito',
       badge: 'Visão Geral',
       icon: Sparkles,
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
+      iconBg: 'bg-[var(--info-bg)]',
+      iconColor: 'text-[var(--link)]',
       description:
         'Uma plataforma completa para gestão, esteira kanban com SLA operacional, conciliação de parceiros e relatórios gerenciais.',
       highlightPoints: [
@@ -72,8 +72,8 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
       title: 'Esteira Kanban com Indicadores Visuais de SLA',
       badge: 'Operação Ágil',
       icon: Kanban,
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-600',
+      iconBg: 'bg-[var(--warning-bg)]',
+      iconColor: 'text-[var(--warning-text)]',
       description:
         'Acompanhe o status de cada ADE em tempo real com barras de progresso que alertam sobre vencimento de prazos operacionais.',
       highlightPoints: [
@@ -97,8 +97,8 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
       title: 'Busca Global, Paleta de Comandos & Atalhos',
       badge: 'Produtividade',
       icon: Search,
-      iconBg: 'bg-emerald-100',
-      iconColor: 'text-emerald-600',
+      iconBg: 'bg-[var(--success-bg)]',
+      iconColor: 'text-[var(--success-text)]',
       description:
         'Localize qualquer proposta, cliente, parceiro ou módulo em milissegundos sem tirar as mãos do teclado.',
       highlightPoints: [
@@ -121,8 +121,8 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
       title: 'Exportação Seletiva de Dados (Excel e CSV)',
       badge: 'Inteligência de Dados',
       icon: Download,
-      iconBg: 'bg-teal-100',
-      iconColor: 'text-teal-600',
+      iconBg: 'bg-[var(--success-bg)]',
+      iconColor: 'text-[var(--success-text)]',
       description:
         'Gere relatórios customizados escolhendo exatamente quais colunas incluir ou use o layout padrão bancário.',
       highlightPoints: [
@@ -144,8 +144,8 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
       title: 'Dashboard Executivo & Gamificação da Equipe',
       badge: 'Gestão & Performance',
       icon: BarChart3,
-      iconBg: 'bg-indigo-100',
-      iconColor: 'text-indigo-600',
+      iconBg: 'bg-[var(--info-bg)]',
+      iconColor: 'text-[var(--link)]',
       description:
         'Métricas estratégicas com gráficos Recharts para acompanhar tendências em 30 dias, gargalos e performance individual.',
       highlightPoints: [
@@ -168,8 +168,8 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
       title: 'Segurança, Diagnóstico Técnico e Backup Agendado',
       badge: 'Confiabilidade',
       icon: ShieldAlert,
-      iconBg: 'bg-rose-100',
-      iconColor: 'text-rose-600',
+      iconBg: 'bg-[var(--danger-bg)]',
+      iconColor: 'text-[var(--danger-text)]',
       description:
         'Trilha de auditoria imutável, log detalhado de exceções para suporte técnico e backups automáticos via cron.',
       highlightPoints: [
@@ -225,27 +225,27 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-fade-in">
+      <div className="relative w-full max-w-xl rounded-2xl bg-[var(--bg-surface)]  border border-[var(--field-border)] overflow-hidden flex flex-col">
         {/* Header Progress Bar */}
-        <div className="w-full bg-slate-100 h-1.5 overflow-hidden">
+        <div className="w-full bg-[var(--bg-surface-elevated)] h-1.5 overflow-hidden">
           <div
-            className="bg-blue-600 h-full transition-all duration-300 ease-out"
+            className="bg-[var(--info-bg)] h-full transition-all duration-300 ease-out"
             style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
           />
         </div>
 
         {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)]">
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+            <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--link)] bg-[var(--info-bg)] px-2.5 py-1 rounded-full border border-[var(--field-border)]">
               <Zap className="h-3 w-3" /> Passo {currentStepIndex + 1} de {steps.length}: {currentStep.badge}
             </span>
           </div>
 
           <button
             onClick={handleComplete}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] transition-colors"
             title="Pular Tour"
           >
             <X className="h-5 w-5" />
@@ -261,27 +261,27 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-slate-900 leading-snug">
+              <h3 className="text-base font-bold text-[var(--text-secondary)] leading-snug">
                 {currentStep.title}
               </h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
                 {currentStep.description}
               </p>
             </div>
           </div>
 
           {/* Highlight Points Card List */}
-          <div className="space-y-2.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">
+          <div className="space-y-2.5 bg-[var(--bg-canvas)] p-4 rounded-xl border border-[var(--field-border)]">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] block">
               Destaques e Recursos Principais:
             </span>
 
             {currentStep.highlightPoints.map((pt, i) => (
               <div key={i} className="flex items-start gap-2.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-slate-800">{pt.title}: </strong>
-                  <span className="text-slate-600 leading-relaxed">{pt.text}</span>
+                  <strong className="text-[var(--text-secondary)]">{pt.title}: </strong>
+                  <span className="text-[var(--text-secondary)] leading-relaxed">{pt.text}</span>
                 </div>
               </div>
             ))}
@@ -289,15 +289,15 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
 
           {/* Action Hint / Navigation trigger */}
           {currentStep.targetView && onNavigateView && (
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-blue-50/60 border border-blue-200/60 text-[11px] text-blue-900">
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--info-bg)] border border-[var(--field-border)] text-[11px] text-[var(--link)]">
               <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+                <Sparkles className="h-3.5 w-3.5 text-[var(--link)]" />
                 <span>Visualizando tela correspondente ao fundo</span>
               </div>
               <button
                 type="button"
                 onClick={() => onNavigateView(currentStep.targetView!)}
-                className="font-bold underline hover:text-blue-800"
+                className="font-bold underline hover:text-[var(--link)]"
               >
                 Ir para módulo
               </button>
@@ -306,10 +306,10 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
         </div>
 
         {/* Footer Navigation */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 bg-slate-50 rounded-b-2xl">
+        <div className="flex items-center justify-between border-t border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] rounded-b-2xl">
           <button
             onClick={handleComplete}
-            className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline"
+            className="text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-secondary)] hover:underline"
           >
             Pular Tour
           </button>
@@ -318,7 +318,7 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
             <button
               disabled={currentStepIndex === 0}
               onClick={handlePrev}
-              className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Anterior</span>
@@ -327,7 +327,7 @@ export const InteractiveTourModal: React.FC<InteractiveTourModalProps> = ({
             <button
               id="btn-tour-next-step"
               onClick={handleNext}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-4 py-1.5 text-xs font-bold text-[var(--action-ink)]  transition-colors"
             >
               <span>{isLastStep ? 'Concluir Tour' : 'Próximo'}</span>
               <ChevronRight className="h-4 w-4" />

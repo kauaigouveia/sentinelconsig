@@ -120,7 +120,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
         rightActions={
           <button
             onClick={handleRunCron}
-            className="flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-md bg-[var(--success-bg)] hover:bg-[var(--success-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--success-text)]  transition-colors cursor-pointer"
           >
             <Play className="h-3.5 w-3.5" />
             <span>Consultar Retornos de Saldo CIP</span>
@@ -148,8 +148,8 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
 
       {/* Cron Feedback Banner */}
       {cronFeedback && (
-        <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+        <div className="rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-3 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] shrink-0" />
           <span>{cronFeedback}</span>
         </div>
       )}
@@ -160,70 +160,70 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
           onClick={() => { setFinancialFilter(null); setActiveTab('TODAS'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'TODAS'
-              ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 dark:border-blue-500'
-              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)]'
+              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase text-slate-400">Todas</span>
-          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{classified.length}</p>
+          <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)]">Todas</span>
+          <p className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{classified.length}</p>
         </button>
 
         <button
           onClick={() => { setFinancialFilter(null); setActiveTab('EM_PRAZO'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'EM_PRAZO'
-              ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-500'
-              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] dark:border-[var(--success-border)]'
+              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Em Prazo (1 a 3d)</span>
-          <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{emPrazo.length}</p>
+          <span className="text-[10px] font-bold uppercase text-[var(--success-text)] dark:text-[var(--success-text)]">Em Prazo (1 a 3d)</span>
+          <p className="text-lg font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">{emPrazo.length}</p>
         </button>
 
         <button
           onClick={() => { setFinancialFilter(null); setActiveTab('5_DIA'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === '5_DIA'
-              ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 dark:border-amber-500'
-              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] dark:border-[var(--warning-border)]'
+              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">No 4º ou 5º Dia</span>
-          <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{no5Dia.length}</p>
+          <span className="text-[10px] font-bold uppercase text-[var(--warning-text)] dark:text-[var(--warning-text)]">No 4º ou 5º Dia</span>
+          <p className="text-lg font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)]">{no5Dia.length}</p>
         </button>
 
         <button
           onClick={() => { setFinancialFilter(null); setActiveTab('ATRASADAS'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'ATRASADAS'
-              ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/40 dark:border-rose-500'
-              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] dark:border-[var(--danger-border)]'
+              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">Atrasadas (&gt; 5d)</span>
-          <p className="text-lg font-bold text-rose-700 dark:text-rose-300">{atrasadas.length}</p>
+          <span className="text-[10px] font-bold uppercase text-[var(--danger-text)] dark:text-[var(--danger-text)]">Atrasadas (&gt; 5d)</span>
+          <p className="text-lg font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]">{atrasadas.length}</p>
         </button>
 
         <button
           onClick={() => { setFinancialFilter(null); setActiveTab('SALDO_RETORNADO'); }}
           className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
             activeTab === 'SALDO_RETORNADO'
-              ? 'border-purple-500 bg-purple-50/70 dark:bg-purple-950/40 dark:border-purple-500'
-              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)]'
+              : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
-          <span className="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400">Saldo Retornado</span>
-          <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{saldoRetornado.length}</p>
+          <span className="text-[10px] font-bold uppercase text-[var(--link)] dark:text-[var(--link)]">Saldo Retornado</span>
+          <p className="text-lg font-bold text-[var(--link)] dark:text-[var(--link)]">{saldoRetornado.length}</p>
         </button>
       </div>
 
-      {financialFilter && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-950/30"><span>{financialFilter.segment==='SALDO'?'Saldo de portabilidade':'Troco do refinanciamento'} · {PORTABILITY_SITUATIONS.find(item=>item.key===financialFilter.situation)?.label} · {currentList.length} proposta(s)</span><button type="button" onClick={()=>{setFinancialFilter(null);setActiveTab('TODAS');}} className="rounded-lg border px-3 py-2 font-semibold">Limpar filtro financeiro</button></div>}
+      {financialFilter && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--field-border)] bg-[var(--info-bg)] p-3 text-sm dark:border-[var(--field-border)] dark:bg-[var(--info-bg)]"><span>{financialFilter.segment==='SALDO'?'Saldo de portabilidade':'Troco do refinanciamento'} · {PORTABILITY_SITUATIONS.find(item=>item.key===financialFilter.situation)?.label} · {currentList.length} proposta(s)</span><button type="button" onClick={()=>{setFinancialFilter(null);setActiveTab('TODAS');}} className="rounded-lg border px-3 py-2 font-semibold">Limpar filtro financeiro</button></div>}
 
       {/* Table */}
-      <div className={`overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs ${premium ? 'p2-cip-results' : ''}`}>
+      <div className={`overflow-hidden rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  ${premium ? 'p2-cip-results' : ''}`}>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-950/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="px-4 py-3">ADE / Proposta</th>
                 <th className="px-4 py-3">Cliente</th>
@@ -236,10 +236,10 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
               {currentList.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 dark:text-slate-500 font-medium">
+                  <td colSpan={9} className="py-12 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium">
                     Nenhuma portabilidade nesta categoria.
                   </td>
                 </tr>
@@ -251,41 +251,41 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
                   const partner = partners.find(pt => pt.id === p.partnerId);
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-3 font-mono font-black text-slate-900 dark:text-white">
+                    <tr key={p.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                      <td className="px-4 py-3 font-mono font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         ADE {p.proposalNumber}
-                        <span className="mt-1 block text-[10px] font-normal text-slate-500">{portabilitySegment(p,products)==='SALDO'?'Portabilidade':'Refinanciamento da portabilidade'}</span>
+                        <span className="mt-1 block text-[10px] font-normal text-[var(--text-secondary)]">{portabilitySegment(p,products)==='SALDO'?'Portabilidade':'Refinanciamento da portabilidade'}</span>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">
+                      <td className="px-4 py-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         {client?.fullName}
                       </td>
-                      <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400">
+                      <td className="px-4 py-3 font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         {formatCpf(client?.cpf || '')}
                       </td>
-                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300 font-medium">
-                        {bank?.name} / <span className="text-slate-500">{promoter?.name}</span>
+                      <td className="px-4 py-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium">
+                        {bank?.name} / <span className="text-[var(--text-secondary)]">{promoter?.name}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-mono font-bold text-blue-700 dark:text-blue-400">
+                        <span className="font-mono font-bold text-[var(--link)] dark:text-[var(--link)]">
                           {partner?.login || ''}
                         </span>
-                        <span className="text-slate-400 dark:text-slate-500 text-[10px] block truncate max-w-[120px]">
+                        <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[10px] block truncate max-w-[120px]">
                           {partner?.login}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {portabilitySegment(p,products)==='SALDO' && portabilityMonitoredValue(p,'SALDO')!==null ? (
-                          <span className="text-[11px] font-mono font-black text-indigo-700 dark:text-indigo-400 block">
+                          <span className="text-[11px] font-mono font-black text-[var(--link)] dark:text-[var(--link)] block">
                             Saldo: {formatCurrency(portabilityMonitoredValue(p,'SALDO') ?? 0)}
                           </span>
                         ) : null}
                         {portabilitySegment(p,products)==='TROCO' && portabilityMonitoredValue(p,'TROCO')!==null ? (
-                          <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 block">
+                          <span className="text-[10px] font-mono font-bold text-[var(--success-text)] dark:text-[var(--success-text)] block">
                             Troco: {formatCurrency(portabilityMonitoredValue(p,'TROCO') ?? 0)}
                           </span>
                         ) : null}
                         {portabilityMonitoredValue(p,portabilitySegment(p,products)!)===null && (
-                          <span className="text-slate-400 text-[10px]">—</span>
+                          <span className="text-[var(--text-secondary)] text-[10px]">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -295,36 +295,36 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
                         {status?.code === 'AGUARDAR_RETORNO_CIP' ? (
                           <div>
                             <div className="flex items-center justify-between text-[11px] mb-1 font-mono">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">
+                              <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {sla.businessDays} / {sla.targetDays} dias úteis
                               </span>
                               <span
                                 className={`font-black text-[10px] px-1.5 py-0.5 rounded ${
                                   sla.statusBadge === 'ESTOURADO'
-                                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900'
+                                    ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                                     : sla.statusBadge === 'URGENTE'
-                                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900'
-                                    : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
+                                    ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]'
+                                    : 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]'
                                 }`}
                               >
                                 {sla.statusBadge}
                               </span>
                             </div>
-                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                            <div className="w-full bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] rounded-full h-2 overflow-hidden">
                               <div
                                 className={`h-2 rounded-full ${
                                   sla.statusBadge === 'ESTOURADO'
-                                    ? 'bg-rose-500'
+                                    ? 'bg-[var(--danger-bg)]'
                                     : sla.statusBadge === 'URGENTE'
-                                    ? 'bg-amber-500'
-                                    : 'bg-emerald-500'
+                                    ? 'bg-[var(--warning-bg)]'
+                                    : 'bg-[var(--success-bg)]'
                                 }`}
                                 style={{ width: `${sla.progressPercent}%` }}
                               />
                             </div>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400 italic">
+                          <span className="text-[11px] text-[var(--text-secondary)] italic">
                             Fora de contagem CIP
                           </span>
                         )}
@@ -332,7 +332,7 @@ export const PortabilityView: React.FC<{ premium?: boolean }> = ({ premium = fal
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => setSelectedProposalId(p.id)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100"
+                          className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--link)] rounded hover:bg-[var(--bg-surface-elevated)]"
                           title="Ver detalhes"
                         >
                           <Eye className="h-4 w-4" />

@@ -402,20 +402,20 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
 
       <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${premium ? 'p2-client-layout' : ''}`}>
         {/* Left Column: Client Search & List */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs space-y-3 flex flex-col h-[min(70vh,760px)] min-h-[320px] lg:h-[760px]">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3  space-y-3 flex flex-col h-[min(70vh,760px)] min-h-[320px] lg:h-[760px]">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Buscar cliente por CPF ou Nome..."
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-8 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-8 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface)] focus:border-[var(--field-border)] focus:outline-hidden"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -441,22 +441,22 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                     onClick={() => setSelectedClientId(c.id)}
                     className={`w-full text-left p-2.5 rounded-lg border transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 dark:border-blue-500 shadow-xs ring-2 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)]  ring-2 ring-[var(--focus)]'
+                        : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 truncate">
+                      <span className="font-semibold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
                         {c.fullName}
                       </span>
-                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                      <span className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold px-1.5 py-0.5 rounded text-[10px]">
                         {count} ADEs
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                       <span className="font-mono">{formatCpf(c.cpf)}</span>
                       {c.convenio && (
-                        <span className="text-[10px] text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1 rounded font-semibold">
+                        <span className="text-[10px] text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-1 rounded font-semibold">
                           {c.convenio}
                         </span>
                       )}
@@ -473,22 +473,22 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
           {selectedClient ? (
             <>
               {/* Profile Card & KPI Header */}
-              <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4 ${premium ? 'p2-client-profile' : ''}`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className={`rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4 ${premium ? 'p2-client-profile' : ''}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold flex items-center justify-center text-lg shadow-xs">
+                    <div className="h-12 w-12 rounded-xl    text-[var(--text-primary)] font-bold flex items-center justify-center text-lg shadow-xs">
                       {selectedClient.fullName.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
                         <span>{selectedClient.fullName}</span>
                       </h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono mt-0.5">
                         <span className="flex items-center gap-1">
-                          CPF: <strong className="text-slate-800 dark:text-slate-200">{formatCpf(selectedClient.cpf)}</strong>
+                          CPF: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{formatCpf(selectedClient.cpf)}</strong>
                           <button
                             onClick={() => toastService.copyToClipboard(selectedClient.cpf, 'CPF')}
-                            className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"
                             title="Copiar CPF"
                             aria-label="Copiar CPF"
                           >
@@ -500,7 +500,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             | Matrícula: <strong>{selectedClient.matricula}</strong>
                             <button
                               onClick={() => toastService.copyToClipboard(selectedClient.matricula || '', 'Matrícula')}
-                              className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                              className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"
                               title="Copiar Matrícula"
                             >
                               <Copy className="h-3 w-3" />
@@ -508,7 +508,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                           </span>
                         )}
                         {selectedClient.convenio && (
-                          <span className="bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-1.5 py-0.2 rounded font-sans text-[10px] font-bold">
+                          <span className="bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)] px-1.5 py-0.2 rounded font-sans text-[10px] font-bold">
                             {selectedClient.convenio}
                           </span>
                         )}
@@ -518,8 +518,8 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
 
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Liberado</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm font-mono">
+                      <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Total Liberado</span>
+                      <span className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)] text-sm font-mono">
                         {formatCurrency(totalDisbursed)}
                       </span>
                     </div>
@@ -528,28 +528,28 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
 
                 {/* KPI Metrics */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-2.5">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Total de Propostas</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">{clientProposals.length} ADEs</span>
+                  <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-2.5">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Total de Propostas</span>
+                    <span className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono">{clientProposals.length} ADEs</span>
                   </div>
-                  <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-2.5">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Propostas Pagas</span>
-                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{paidProposalsCount}</span>
+                  <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-2.5">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Propostas Pagas</span>
+                    <span className="text-sm font-bold text-[var(--success-text)] dark:text-[var(--success-text)] font-mono">{paidProposalsCount}</span>
                   </div>
-                  <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-2.5">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Saldo Retornado CIP</span>
-                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono">{formatCurrency(totalBalance)}</span>
+                  <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-2.5">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Saldo Retornado CIP</span>
+                    <span className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono">{formatCurrency(totalBalance)}</span>
                   </div>
-                  <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-2.5">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Margem Estimada</span>
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">
+                  <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-2.5">
+                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Margem Estimada</span>
+                    <span className="text-sm font-bold text-[var(--link)] dark:text-[var(--link)] font-mono">
                       {selectedClient.margemDisponivel ? formatCurrency(selectedClient.margemDisponivel) : 'R$ 0,00'}
                     </span>
                   </div>
                 </div>
 
                 {/* Tab Navigation */}
-                <div className={`flex items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pt-2 text-xs ${premium ? 'p2-client-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Seções do cliente' : undefined}>
+                <div className={`flex items-center gap-1 overflow-x-auto border-b border-[var(--field-border)] dark:border-[var(--field-border)] pt-2 text-xs ${premium ? 'p2-client-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Seções do cliente' : undefined}>
                   {[
                     { id: 'overview', label: 'Visão Geral', icon: FileText },
                     { id: 'proposals', label: `Propostas (${clientProposals.length})`, icon: Layers },
@@ -568,8 +568,8 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                         aria-current={premium && isActive ? 'page' : undefined}
                         className={`flex items-center gap-1.5 px-3 py-2 font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
                           isActive
-                            ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/30 dark:bg-blue-950/30'
-                            : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
+                            ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)]'
+                            : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:border-[var(--field-border)] dark:hover:border-[var(--field-border)]'
                         }`}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -581,28 +581,28 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
               </div>
 
               {/* Tab Contents */}
-              <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs min-h-[400px] ${premium ? 'p2-client-content' : ''}`}>
+              <div className={`rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  min-h-[400px] ${premium ? 'p2-client-content' : ''}`}>
                 {/* 1. VISÃO GERAL */}
                 {activeTab === 'overview' && (
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div className="space-y-3 p-4 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                        <h4 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                          <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="space-y-3 p-4 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]">
+                        <h4 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
                           <span>Dados Cadastrais</span>
                         </h4>
-                        <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
+                        <div className="grid grid-cols-2 gap-2 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Nome Completo</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.fullName}</span>
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Nome Completo</span>
+                            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{selectedClient.fullName}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">CPF</span>
-                            <div className="flex items-center gap-1 font-semibold font-mono text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">CPF</span>
+                            <div className="flex items-center gap-1 font-semibold font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               <span>{formatCpf(selectedClient.cpf)}</span>
                               <button
                                 onClick={() => toastService.copyToClipboard(selectedClient.cpf, 'CPF')}
-                                className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                                className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded"
                                 title="Copiar CPF"
                               >
                                 <Copy className="h-3 w-3" />
@@ -610,13 +610,13 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             </div>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Telefone Principal</span>
-                            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Telefone Principal</span>
+                            <div className="flex items-center gap-1 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               <span>{selectedClient.phone || 'Não informado'}</span>
                               {selectedClient.phone && (
                                 <button
                                   onClick={() => toastService.copyToClipboard(selectedClient.phone || '', 'Telefone')}
-                                  className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                                  className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded"
                                   title="Copiar Telefone"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -625,13 +625,13 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             </div>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">WhatsApp</span>
-                            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">WhatsApp</span>
+                            <div className="flex items-center gap-1 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               <span>{selectedClient.whatsapp || selectedClient.phone || 'Não informado'}</span>
                               {(selectedClient.whatsapp || selectedClient.phone) && (
                                 <button
                                   onClick={() => toastService.copyToClipboard(selectedClient.whatsapp || selectedClient.phone || '', 'WhatsApp')}
-                                  className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                                  className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded"
                                   title="Copiar WhatsApp"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -640,30 +640,30 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             </div>
                           </div>
                           <div className="col-span-2">
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">E-mail</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.email || 'Não informado'}</span>
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">E-mail</span>
+                            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{selectedClient.email || 'Não informado'}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="space-y-3 p-4 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                        <h4 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                          <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="space-y-3 p-4 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]">
+                        <h4 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                          <Building className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
                           <span>Vínculo Funcional & Margem</span>
                         </h4>
-                        <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
+                        <div className="grid grid-cols-2 gap-2 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Convênio</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.convenio || 'Não informado'}</span>
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Convênio</span>
+                            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{selectedClient.convenio || 'Não informado'}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Matrícula / Benefício</span>
-                            <div className="flex items-center gap-1 font-semibold font-mono text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Matrícula / Benefício</span>
+                            <div className="flex items-center gap-1 font-semibold font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               <span>{selectedClient.matricula || 'Não informado'}</span>
                               {selectedClient.matricula && (
                                 <button
                                   onClick={() => toastService.copyToClipboard(selectedClient.matricula!, 'Matrícula')}
-                                  className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                                  className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded"
                                   title="Copiar Matrícula"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -672,18 +672,18 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             </div>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Margem Consignável</span>
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Margem Consignável</span>
+                            <span className="font-semibold text-[var(--success-text)] dark:text-[var(--success-text)] font-mono">
                               {selectedClient.margemDisponivel != null ? formatCurrency(selectedClient.margemDisponivel) : 'Não informada'}
                             </span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">UF / Cidade</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{[selectedClient.city, selectedClient.state].filter(Boolean).join(' - ') || 'Não informado'}</span>
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">UF / Cidade</span>
+                            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{[selectedClient.city, selectedClient.state].filter(Boolean).join(' - ') || 'Não informado'}</span>
                           </div>
                           <div className="col-span-2">
-                            <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Observação Cadastral</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedClient.observation || 'Sem observações especiais.'}</span>
+                            <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Observação Cadastral</span>
+                            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{selectedClient.observation || 'Sem observações especiais.'}</span>
                           </div>
                         </div>
                       </div>
@@ -695,7 +695,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                 {activeTab === 'proposals' && (
                   <div className="space-y-3">
                     {clientProposals.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic py-6 text-center">
+                      <p className="text-xs text-[var(--text-secondary)] italic py-6 text-center">
                         Nenhuma proposta cadastrada para este cliente.
                       </p>
                     ) : (
@@ -709,25 +709,25 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                         return (
                           <div
                             key={p.id}
-                            className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-4 space-y-2 hover:bg-white dark:hover:bg-slate-900 hover:shadow-xs transition-all"
+                            className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-4 space-y-2 hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface)]  transition-all"
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
+                                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   <span>ADE {p.proposalNumber}</span>
                                   <button
                                     onClick={() => toastService.copyToClipboard(p.proposalNumber, 'ADE')}
-                                    className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                                    className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded"
                                     title="Copiar ADE"
                                   >
                                     <Copy className="h-3 w-3" />
                                   </button>
                                 </div>
-                                <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
+                                <span className="text-xs font-bold text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] px-2 py-0.5 rounded">
                                   {prod?.name}
                                 </span>
                                 {p.relatedPortabilityId && (
-                                  <span className="flex items-center gap-1 text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 px-2 py-0.5 rounded">
+                                  <span className="flex items-center gap-1 text-[10px] font-bold text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] px-2 py-0.5 rounded">
                                     <Link2 className="h-3 w-3" />
                                     <span>Vinculado a Portabilidade</span>
                                   </span>
@@ -737,27 +737,27 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                               <StatusBadge status={status} />
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                               <div>
-                                <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Banco</span>
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">{bank?.name}</span>
+                                <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Banco</span>
+                                <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{bank?.name}</span>
                               </div>
                               <div>
-                                <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Valor Liberado</span>
-                                <span className="font-semibold font-mono text-emerald-600 dark:text-emerald-400">
+                                <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Valor Liberado</span>
+                                <span className="font-semibold font-mono text-[var(--success-text)] dark:text-[var(--success-text)]">
                                   {formatCurrency(p.disbursedValue || 0)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[10px] uppercase text-slate-400 dark:text-slate-500 block">Saldo Retornado</span>
-                                <span className="font-semibold font-mono text-slate-800 dark:text-slate-200">
+                                <span className="text-[10px] uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Saldo Retornado</span>
+                                <span className="font-semibold font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   {formatCurrency(p.contractBalance || 0)}
                                 </span>
                               </div>
                               <div className="text-right">
                                 <button
                                   onClick={() => setDetailProposalId(p.id)}
-                                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400 cursor-pointer"
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--link)] hover:text-[var(--link)] dark:text-[var(--link)] cursor-pointer"
                                 >
                                   <Eye className="h-3.5 w-3.5" />
                                   <span>Ver Detalhes</span>
@@ -774,9 +774,9 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                 {/* 3. CONTRATOS / SALDOS */}
                 {activeTab === 'contracts' && (
                   <div className="space-y-3">
-                    <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
+                    <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-x-auto">
                       <table className="w-full min-w-[680px] text-xs text-left">
-                        <thead className="bg-slate-100 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
+                        <thead className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                           <tr>
                             <th className="p-3">ADE / Proposta</th>
                             <th className="p-3">Produto</th>
@@ -786,20 +786,20 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             <th className="p-3">Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                        <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {clientProposals.map(p => {
                             const prod = products.find(pr => pr.id === p.productId);
                             const bank = banks.find(b => b.id === p.bankId);
                             const status = (p as any).status || statuses.find(s => s.id === p.statusId || s.code === (p as any).status?.code);
                             return (
-                              <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                <td className="p-3 font-mono font-bold text-slate-900 dark:text-slate-100">{p.proposalNumber}</td>
+                              <tr key={p.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                                <td className="p-3 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{p.proposalNumber}</td>
                                 <td className="p-3 font-medium">{prod?.name}</td>
                                 <td className="p-3">{bank?.name}</td>
-                                <td className="p-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                <td className="p-3 text-right font-mono font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                                   {formatCurrency(p.disbursedValue || 0)}
                                 </td>
-                                <td className="p-3 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
+                                <td className="p-3 text-right font-mono font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   {formatCurrency(p.contractBalance || 0)}
                                 </td>
                                 <td className="p-3">
@@ -818,28 +818,28 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                 {activeTab === 'timeline' && (
                   <div className="space-y-4">
                     {clientHistory.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic py-6 text-center">
+                      <p className="text-xs text-[var(--text-secondary)] italic py-6 text-center">
                         Nenhum evento registrado no histórico para as propostas deste cliente.
                       </p>
                     ) : (
-                      <div className="relative border-l-2 border-slate-200 dark:border-slate-800 ml-3 space-y-4 pl-4">
+                      <div className="relative border-l-2 border-[var(--field-border)] dark:border-[var(--field-border)] ml-3 space-y-4 pl-4">
                         {clientHistory.map(h => (
                           <div key={h.id} className="relative">
-                            <div className="absolute -left-[23px] top-0.5 h-3 w-3 rounded-full bg-blue-600 ring-4 ring-white dark:ring-slate-900" />
+                            <div className="absolute -left-[23px] top-0.5 h-3 w-3 rounded-full bg-[var(--info-bg)] ring-4 ring-[var(--focus)] dark:ring-[var(--focus)]" />
                             <div className="text-xs">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 dark:text-slate-100">{h.action}</span>
-                                <span className="text-[10px] text-slate-400 font-mono">{formatDate(h.createdAt)}</span>
+                                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{h.action}</span>
+                                <span className="text-[10px] text-[var(--text-secondary)] font-mono">{formatDate(h.createdAt)}</span>
                               </div>
-                              <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                                Status: <strong className="text-slate-800 dark:text-slate-200">{h.previousStatusName || 'Início'}</strong> → <strong className="text-blue-600 dark:text-blue-400">{h.newStatusName}</strong>
+                              <p className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
+                                Status: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{h.previousStatusName || 'Início'}</strong> → <strong className="text-[var(--link)] dark:text-[var(--link)]">{h.newStatusName}</strong>
                               </p>
                               {h.observation && (
-                                <p className="text-slate-500 dark:text-slate-400 italic text-[11px] mt-0.5 bg-slate-50 dark:bg-slate-900 p-1.5 rounded">
+                                <p className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] italic text-[11px] mt-0.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-1.5 rounded">
                                   "{h.observation}"
                                 </p>
                               )}
-                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                              <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                                 Operador: {h.userName} ({h.origin})
                               </span>
                             </div>
@@ -855,20 +855,20 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                   <div className="space-y-4">
                     {/* Add Document Form */}
                     {canManageClientData ? (
-                    <form onSubmit={handleAddDocument} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-5 gap-2">
+                    <form onSubmit={handleAddDocument} className="p-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] grid grid-cols-1 sm:grid-cols-5 gap-2">
                       <input
                         type="text"
                         value={docName}
                         onChange={e => setDocName(e.target.value)}
                         maxLength={180}
                         placeholder="Nome do Documento (Ex: RG_Frente.pdf)"
-                        className="sm:col-span-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="sm:col-span-2 rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                         required
                       />
                       <select
                         value={docType}
                         onChange={e => setDocType(e.target.value as DocumentType)}
-                        className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                       >
                         <option value="RG">RG</option>
                         <option value="CNH">CNH</option>
@@ -890,19 +890,19 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                             setDocName(file.name);
                           }
                         }}
-                        className="text-xs text-slate-600 dark:text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-950 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100"
+                        className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[var(--info-bg)] dark:file:bg-[var(--info-bg)] file:text-[var(--link)] dark:file:text-[var(--link)] hover:file:bg-[var(--info-bg)]"
                       />
                       <button
                         type="submit"
                         disabled={isUploadingDoc}
-                        className="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-1.5 px-3 rounded disabled:opacity-50 cursor-pointer"
+                        className="flex items-center justify-center gap-1 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs py-1.5 px-3 rounded disabled:opacity-90 cursor-pointer"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         <span>{isUploadingDoc ? 'Enviando...' : 'Anexar'}</span>
                       </button>
                     </form>
                     ) : (
-                      <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+                      <p className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-secondary)]">
                         Seu perfil pode consultar documentos, mas não possui permissão para anexar novos arquivos.
                       </p>
                     )}
@@ -910,19 +910,19 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                     {/* Documents List */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {clientDocuments.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic col-span-2 py-4 text-center">
+                        <p className="text-xs text-[var(--text-secondary)] italic col-span-2 py-4 text-center">
                           Nenhum documento anexado para este cliente.
                         </p>
                       ) : (
                         clientDocuments.map(doc => (
-                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-xs transition-all">
+                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  transition-all">
                             <div className="flex items-center gap-2.5 overflow-hidden">
-                              <div className="p-2 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded-lg">
+                              <div className="p-2 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] rounded-lg">
                                 <FileText className="h-4 w-4" />
                               </div>
                               <div className="overflow-hidden">
-                                <span className="font-bold text-xs text-slate-900 dark:text-slate-100 block truncate">{doc.name}</span>
-                                <span className="text-[10px] text-slate-400 block">{doc.type} • {doc.uploadedByUserName}</span>
+                                <span className="font-bold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] block truncate">{doc.name}</span>
+                                <span className="text-[10px] text-[var(--text-secondary)] block">{doc.type} • {doc.uploadedByUserName}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -930,7 +930,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                                 href={doc.fileUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded"
+                                className="p-1.5 text-[var(--link)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] rounded"
                                 title="Abrir ou baixar"
                                 aria-label={`Abrir ou baixar documento ${doc.name}`}
                               >
@@ -938,7 +938,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                               </a>
                               {canDeleteClientDocuments && <button
                                 onClick={() => handleDeleteDocument(doc.id)}
-                                className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded cursor-pointer"
+                                className="p-1.5 text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] rounded cursor-pointer"
                                 title="Excluir"
                                 aria-label={`Excluir documento ${doc.name}`}
                               >
@@ -956,13 +956,13 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                 {activeTab === 'communications' && (
                   <div className="space-y-4">
                     {/* Quick WhatsApp Dispatch */}
-                    {canUpdateClientData ? <form onSubmit={handleSendCommunication} className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800/60 space-y-2">
+                    {canUpdateClientData ? <form onSubmit={handleSendCommunication} className="p-3 bg-[var(--success-bg)] dark:bg-[var(--success-bg)] rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-1.5">
                           <MessageSquare className="h-4 w-4" />
                           <span>Disparo de Notificação WhatsApp</span>
                         </span>
-                        <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                        <span className="text-[11px] font-mono font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                           {selectedClient.phone || selectedClient.whatsapp || 'Telefone não cadastrado'}
                         </span>
                       </div>
@@ -970,7 +970,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                         value={waMessage}
                         onChange={e => setWaMessage(e.target.value)}
                         placeholder="Digite a mensagem para o cliente..."
-                        className="w-full rounded border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="w-full rounded border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                         rows={2}
                         required
                       />
@@ -981,7 +981,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                               key={t}
                               type="button"
                               onClick={() => setWaMessage(`Olá ${selectedClient.fullName}! Atualização da sua proposta: ${t}. Acompanhe com a nossa mesa de crédito.`)}
-                              className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold hover:bg-emerald-200 dark:hover:bg-emerald-800 cursor-pointer"
+                              className="text-[10px] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] px-2 py-0.5 rounded font-semibold hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] cursor-pointer"
                             >
                               {t}
                             </button>
@@ -990,34 +990,34 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                         <button
                           type="submit"
                           disabled={isSendingCommunication || (!selectedClient.phone && !selectedClient.whatsapp)}
-                          className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 px-3 rounded cursor-pointer"
+                          className="flex items-center gap-1 bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] font-bold text-xs py-1.5 px-3 rounded cursor-pointer"
                         >
                           <Send className={`h-3.5 w-3.5 ${isSendingCommunication ? 'animate-pulse' : ''}`} />
                           <span>{isSendingCommunication ? 'Preparando…' : 'Enviar Mensagem'}</span>
                         </button>
                       </div>
-                    </form> : <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">Seu perfil pode consultar o histórico, mas não possui permissão para registrar comunicações.</p>}
+                    </form> : <p className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-secondary)]">Seu perfil pode consultar o histórico, mas não possui permissão para registrar comunicações.</p>}
 
                     {/* Messages History */}
                     <div className="space-y-2">
                       {clientCommunications.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic py-4 text-center">
+                        <p className="text-xs text-[var(--text-secondary)] italic py-4 text-center">
                           Nenhuma comunicação enviada ainda para este cliente.
                         </p>
                       ) : (
                         clientCommunications.map(comm => (
-                          <div key={comm.id} className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
+                          <div key={comm.id} className="p-3 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-1">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                              <span className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-1">
                                 <MessageSquare className="h-3.5 w-3.5" />
                                 <span>{comm.templateName || 'WhatsApp'}</span>
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono">{formatDate(comm.createdAt)}</span>
+                              <span className="text-[10px] text-[var(--text-secondary)] font-mono">{formatDate(comm.createdAt)}</span>
                             </div>
-                            <p className="text-xs text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                               {comm.messageContent}
                             </p>
-                            <span className="text-[10px] text-slate-400 block">
+                            <span className="text-[10px] text-[var(--text-secondary)] block">
                               Enviado por: {comm.sentByUserName} ({comm.status})
                             </span>
                           </div>
@@ -1030,42 +1030,42 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
                 {/* 7. OBSERVAÇÕES INTERNAS */}
                 {activeTab === 'notes' && (
                   <div className="space-y-4">
-                    {hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.update') ? <form onSubmit={handleAddNote} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
+                    {hasPermission(activeUser?.role, activeUser?.customPermissions, 'clients.update') ? <form onSubmit={handleAddNote} className="space-y-2 p-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
                       <textarea
                         value={noteText}
                         onChange={e => setNoteText(e.target.value)}
                         placeholder="Adicionar nota interna sobre o cliente..."
                         maxLength={5000}
-                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                         rows={2}
                         required
                       />
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400">{noteText.length}/5.000</span>
+                        <span className="text-[10px] text-[var(--text-secondary)]">{noteText.length}/5.000</span>
                         <button
                           type="submit"
                           disabled={isSavingNote || !noteText.trim()}
-                          className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-1.5 px-4 rounded disabled:opacity-50 cursor-pointer"
+                          className="bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--text-primary)] font-bold text-xs py-1.5 px-4 rounded disabled:opacity-90 cursor-pointer"
                         >
                           {isSavingNote ? 'Salvando...' : 'Salvar Nota'}
                         </button>
                       </div>
                     </form>
-                      : <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">Seu perfil pode consultar as anotações, mas não possui permissão para adicionar novas notas.</p>}
+                      : <p className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-secondary)]">Seu perfil pode consultar as anotações, mas não possui permissão para adicionar novas notas.</p>}
 
                     <div className="space-y-2">
                       {clientNotes.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic py-4 text-center">
+                        <p className="text-xs text-[var(--text-secondary)] italic py-4 text-center">
                           Nenhuma anotação interna registrada para este cliente.
                         </p>
                       ) : (
                         clientNotes.map(n => (
-                          <div key={n.id} className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
+                          <div key={n.id} className="p-3 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-1">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-slate-900 dark:text-slate-100">{n.authorName}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{formatDate(n.createdAt)}</span>
+                              <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{n.authorName}</span>
+                              <span className="text-[10px] text-[var(--text-secondary)] font-mono">{formatDate(n.createdAt)}</span>
                             </div>
-                            <p className="text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-2.5 rounded border border-slate-100 dark:border-slate-800">
+                            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                               {n.note}
                             </p>
                           </div>
@@ -1077,7 +1077,7 @@ export const Client360View: React.FC<Client360ViewProps> = ({ initialSearchCpf, 
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-12 text-center text-slate-400 text-xs">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-12 text-center text-[var(--text-secondary)] text-xs">
               Selecione um cliente ao lado para ver sua ficha completa 360º.
             </div>
           )}

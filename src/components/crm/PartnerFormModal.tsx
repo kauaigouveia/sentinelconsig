@@ -371,44 +371,44 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
     : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-2xl  border border-[var(--field-border)] dark:border-[var(--field-border)] w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Provision Success View */}
         {provisionResult ? (
           <div className="p-6 md:p-8 space-y-6 overflow-y-auto">
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20 shadow-xs">
+              <div className="w-12 h-12 bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] rounded-2xl flex items-center justify-center mx-auto border border-[var(--success-border)] shadow-xs">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              <h3 className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 {provisionResult.title || 'Parceiro cadastrado com sucesso!'}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 {provisionResult.partnerName} ({provisionResult.partnerCode})
               </p>
             </div>
 
             {provisionResult.portalAccess.created && provisionResult.portalAccess.temporaryPassword ? (
-              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xs">
-                <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-slate-700/60 pb-3">
-                  <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-2xl p-5 space-y-4 shadow-xs">
+                <div className="flex items-center gap-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
+                  <Key className="w-4 h-4 text-[var(--link)] dark:text-[var(--link)]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Acesso ao Portal do Parceiro
                   </span>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   {/* Portal Link */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
                         Portal
                       </span>
                       <a
                         href={portalUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-medium text-blue-600 dark:text-blue-400 hover:underline break-all flex items-center gap-1 mt-0.5"
+                        className="font-medium text-[var(--link)] dark:text-[var(--link)] hover:underline break-all flex items-center gap-1 mt-0.5"
                       >
                         {portalUrl}
                         <ExternalLink className="w-3 h-3 shrink-0" />
@@ -417,24 +417,24 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   </div>
 
                   {/* Login */}
-                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <div className="min-w-0">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
                         Login
                       </span>
-                      <span className="font-mono font-medium text-slate-800 dark:text-slate-100 break-all select-all">
+                      <span className="font-mono font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] break-all select-all">
                         {provisionResult.portalAccess.email}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopy(provisionResult.portalAccess.email || '', 'login')}
-                      className="px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
+                      className="px-2.5 py-1.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
                     >
                       {copiedField === 'login' ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-600 dark:text-emerald-400">Copiado!</span>
+                          <Check className="w-3.5 h-3.5 text-[var(--success-text)]" />
+                          <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Copiado!</span>
                         </>
                       ) : (
                         <>
@@ -446,24 +446,24 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   </div>
 
                   {/* Senha Temporária */}
-                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     <div className="min-w-0">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] block">
                         Senha Temporária
                       </span>
-                      <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm select-all">
+                      <span className="font-mono font-bold text-[var(--link)] dark:text-[var(--link)] text-sm select-all">
                         {provisionResult.portalAccess.temporaryPassword}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopy(provisionResult.portalAccess.temporaryPassword || '', 'password')}
-                      className="px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
+                      className="px-2.5 py-1.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0"
                     >
                       {copiedField === 'password' ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-600 dark:text-emerald-400">Copiada!</span>
+                          <Check className="w-3.5 h-3.5 text-[var(--success-text)]" />
+                          <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Copiada!</span>
                         </>
                       ) : (
                         <>
@@ -475,8 +475,8 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="p-3 bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] rounded-xl text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[var(--warning-text)] mt-0.5" />
                   <p>
                     <strong>Por segurança, a senha temporária será exibida somente agora.</strong> O parceiro deverá
                     definir uma nova senha individual no primeiro acesso.
@@ -484,32 +484,32 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+              <div className="p-4 bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] rounded-xl text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-[var(--warning-text)] mt-0.5" />
                 <div>
                   <span className="font-semibold block">Acesso ao portal pendente</span>
                   <p className="mt-0.5">
                     {provisionResult.portalAccess.message ||
                       'Parceiro criado, mas o acesso ao portal não foi gerado porque não há e-mail cadastrado.'}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                     Você pode gerar o acesso posteriormente através do Perfil 360° do Parceiro após cadastrar um e-mail válido.
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               {provisionResult.portalAccess.created && provisionResult.portalAccess.temporaryPassword && (
                 <button
                   type="button"
                   onClick={() => handleCopy(copyAllText, 'all')}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-slate-200 dark:border-slate-700"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[var(--field-border)] dark:border-[var(--field-border)]"
                 >
                   {copiedField === 'all' ? (
                     <>
-                      <Check className="w-4 h-4 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">Credenciais copiadas!</span>
+                      <Check className="w-4 h-4 text-[var(--success-text)]" />
+                      <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Credenciais copiadas!</span>
                     </>
                   ) : (
                     <>
@@ -522,7 +522,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
               <button
                 type="button"
                 onClick={handleCloseSuccess}
-                className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-semibold   transition-all"
               >
                 Concluir e Fechar
               </button>
@@ -531,23 +531,23 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
         ) : (
           <>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
+            <div className="px-6 py-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
+                <div className="p-2 bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] rounded-xl">
                   <Building className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-lg">
+                  <h3 className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-lg">
                     {partner ? 'Editar Parceiro Comercial' : 'Cadastrar Novo Parceiro Comercial'}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                     Cadastro interno confidencial para acompanhamento de produção e CRM
                   </p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] p-2 rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -556,7 +556,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
             {/* Form Body */}
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
               {errorMsg && (
-                <div className="p-3.5 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2">
+                <div className="p-3.5 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] rounded-xl text-sm flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
@@ -565,7 +565,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nome */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                     Razão Social / Nome do Parceiro *
                   </label>
                   <div className="relative">
@@ -575,14 +575,14 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                       placeholder="Ex: CORRETORA ALPHA CONSIG LTDA"
                       value={name}
                       onChange={e => setName(e.target.value)}
-                      className="w-full pl-3 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium uppercase"
+                      className="w-full pl-3 pr-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-medium uppercase"
                     />
                   </div>
                 </div>
 
                 {/* Código Institucional */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                     Código / Login Institucional *
                   </label>
                   <input
@@ -591,9 +591,9 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                     placeholder="Ex: ALPHA01 ou CORR_88"
                     value={code}
                     onChange={e => setCode(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono font-bold uppercase"
+                    className="w-full px-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-mono font-bold uppercase"
                   />
-                  <span className="text-[11px] text-slate-400 mt-1 block">
+                  <span className="text-[11px] text-[var(--text-secondary)] mt-1 block">
                     Identificador único interno deste parceiro
                   </span>
                 </div>
@@ -601,12 +601,12 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                 {/* Promotora Vinculada */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider">
                       Promotora Vinculada
                     </label>
                     {loadingPromoters && (
-                      <span className="text-[11px] text-blue-500 font-medium flex items-center gap-1">
-                        <span className="inline-block w-2.5 h-2.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                      <span className="text-[11px] text-[var(--link)] font-medium flex items-center gap-1">
+                        <span className="inline-block w-2.5 h-2.5 border-2 border-[var(--field-border)] border-t-[var(--focus)] rounded-full animate-spin" />
                         Carregando promotoras...
                       </span>
                     )}
@@ -615,7 +615,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                     value={promoterId}
                     onChange={e => setPromoterId(e.target.value)}
                     disabled={loadingPromoters}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium disabled:opacity-60"
+                    className="w-full px-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-medium disabled:opacity-90"
                   >
                     {loadingPromoters ? (
                       <option value="">Carregando promotoras...</option>
@@ -638,19 +638,19 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                     )}
                   </select>
                   {promotersError && (
-                    <div className="flex items-center justify-between mt-1 text-[11px] text-rose-500">
+                    <div className="flex items-center justify-between mt-1 text-[11px] text-[var(--danger-text)]">
                       <span>Erro ao carregar promotoras</span>
                       <button
                         type="button"
                         onClick={fetchPromoters}
-                        className="text-blue-500 hover:underline font-semibold cursor-pointer"
+                        className="text-[var(--link)] hover:underline font-semibold cursor-pointer"
                       >
                         Tentar novamente
                       </button>
                     </div>
                   )}
                   {!loadingPromoters && !promotersError && displayPromoters.length === 0 && (
-                    <span className="text-[11px] text-amber-500 mt-1 block">
+                    <span className="text-[11px] text-[var(--warning-text)] mt-1 block">
                       Nenhuma promotora disponível
                     </span>
                   )}
@@ -658,13 +658,13 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
                 {/* Responsável Interno (Assigned User) */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                     Operador / Gerente de Contas
                   </label>
                   <select
                     value={assignedUserId}
                     onChange={e => setAssignedUserId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full px-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-medium"
                   >
                     <option value="">Nenhum operador atribuído</option>
                     {users.map(u => (
@@ -677,7 +677,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
                 {/* Status Cadastral */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                     Status Cadastral
                   </label>
                   <div className="flex gap-3">
@@ -686,11 +686,11 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                       onClick={() => setStatus('ATIVO')}
                       className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                         status === 'ATIVO'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20'
-                          : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                          ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)] ring-2 ring-[var(--success-border)]'
+                          : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <CheckCircle2 className="w-4 h-4 text-[var(--success-text)]" />
                       Ativo
                     </button>
                     <button
@@ -698,11 +698,11 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                       onClick={() => setStatus('INATIVO')}
                       className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                         status === 'INATIVO'
-                          ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/20'
-                          : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                          ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] ring-2 ring-[var(--danger-border)]'
+                          : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
-                      <AlertCircle className="w-4 h-4 text-rose-500" />
+                      <AlertCircle className="w-4 h-4 text-[var(--danger-text)]" />
                       Inativo
                     </button>
                   </div>
@@ -710,7 +710,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
                 {/* CNPJ / CPF */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                     Documento (CNPJ / CPF)
                   </label>
                   <input
@@ -718,13 +718,13 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                     placeholder="00.000.000/0000-00"
                     value={document}
                     onChange={e => setDocument(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full px-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-medium"
                   />
                 </div>
 
                 {/* Telefone / WhatsApp */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                     Telefone / WhatsApp Comercial
                   </label>
                   <input
@@ -732,17 +732,17 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                     placeholder="(00) 00000-0000"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full px-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-medium"
                   />
                 </div>
 
                 {/* Email Comercial */}
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider">
                       E-mail de Contato Comercial
                     </label>
-                    <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+                    <span className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-medium">
                       Utilizado como login no Portal do Parceiro
                     </span>
                   </div>
@@ -751,40 +751,40 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                     placeholder="contato@parceiro.com.br"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full px-3 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] font-medium"
                   />
-                  <span className="text-[11px] text-slate-400 mt-1 block">
+                  <span className="text-[11px] text-[var(--text-secondary)] mt-1 block">
                     Ao cadastrar com e-mail válido, o acesso ao Portal do Parceiro (/parceiro) é provisionado automaticamente com senha temporária segura.
                   </span>
                 </div>
 
                 {/* Seção Portal do Parceiro na Edição */}
                 {partner && (
-                  <div className="md:col-span-2 mt-2 p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/60 pb-2.5">
+                  <div className="md:col-span-2 mt-2 p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                    <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2.5">
                       <div className="flex items-center gap-2">
-                        <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        <Key className="w-4 h-4 text-[var(--link)] dark:text-[var(--link)]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           Portal do Parceiro (/parceiro)
                         </span>
                       </div>
                       {loadingPortalAccess ? (
-                        <span className="text-[11px] text-slate-400">Verificando acesso...</span>
+                        <span className="text-[11px] text-[var(--text-secondary)]">Verificando acesso...</span>
                       ) : portalAccess ? (
                         portalAccess.active ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
+                            <span className="w-2 h-2 rounded-full bg-[var(--success-bg)] animate-pulse" />
                             ATIVO
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+                            <span className="w-2 h-2 rounded-full bg-[var(--danger-bg)]" />
                             DESATIVADO
                           </span>
                         )
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
+                          <span className="w-2 h-2 rounded-full bg-[var(--warning-bg)]" />
                           PENDENTE
                         </span>
                       )}
@@ -792,15 +792,15 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">Login do Portal</span>
-                        <span className="font-mono font-medium text-slate-800 dark:text-slate-200">
+                        <span className="text-[var(--text-secondary)] block text-[10px] uppercase font-semibold">Login do Portal</span>
+                        <span className="font-mono font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {portalAccess?.email || email.trim() || partner.email || 'Nenhum e-mail cadastrado'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">Último Acesso</span>
-                        <span className="text-slate-700 dark:text-slate-300">
+                        <span className="text-[var(--text-secondary)] block text-[10px] uppercase font-semibold">Último Acesso</span>
+                        <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {portalAccess?.lastLoginAt
                             ? new Date(portalAccess.lastLoginAt).toLocaleString('pt-BR')
                             : 'Nenhum acesso registrado'}
@@ -814,9 +814,9 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                           type="button"
                           onClick={handleResetPortalAccess}
                           disabled={resettingAccess || generatingAccess}
-                          className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          className="px-3 py-1.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-90"
                         >
-                          <Key className="w-3.5 h-3.5 text-blue-600" />
+                          <Key className="w-3.5 h-3.5 text-[var(--link)]" />
                           {resettingAccess ? 'Redefinindo...' : 'Redefinir acesso'}
                         </button>
                       ) : (
@@ -824,7 +824,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                           type="button"
                           onClick={handleOpenGenerateAccessConfirm}
                           disabled={generatingAccess || resettingAccess}
-                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 transition-all disabled:opacity-50"
+                          className="px-3.5 py-1.5 bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] rounded-xl text-xs font-semibold flex items-center gap-1.5   transition-all disabled:opacity-90"
                         >
                           <Key className="w-3.5 h-3.5" />
                           {generatingAccess ? 'Gerando...' : 'Gerar Acesso'}
@@ -835,18 +835,18 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                 )}
               </div>
 
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <div className="pt-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  className="px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-xl transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] text-sm font-semibold rounded-xl   transition-all flex items-center gap-2 disabled:opacity-90"
                 >
                   <Save className="w-4 h-4" />
                   {loading ? 'Salvando...' : partner ? 'Atualizar Parceiro' : 'Cadastrar Parceiro'}
@@ -858,48 +858,48 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
         {/* Confirmação de Geração de Acesso */}
         {confirmGenerateModal && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden p-6 space-y-5">
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-2xl  border border-[var(--field-border)] dark:border-[var(--field-border)] w-full max-w-md overflow-hidden p-6 space-y-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                <div className="w-10 h-10 rounded-xl bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center shrink-0 border border-[var(--field-border)]">
                   <Key className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h4 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Gerar acesso ao Portal do Parceiro?
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                     Confirme as informações antes de gerar a credencial inicial.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3 text-xs">
+              <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-4 space-y-3 text-xs">
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  <span className="text-[10px] uppercase font-semibold text-[var(--text-secondary)] block tracking-wider">
                     E-mail:
                   </span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-100 text-sm select-all">
+                  <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm select-all">
                     {email.trim() || partner?.email || 'Nenhum e-mail informado'}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  <span className="text-[10px] uppercase font-semibold text-[var(--text-secondary)] block tracking-wider">
                     Portal:
                   </span>
-                  <span className="font-mono text-blue-600 dark:text-blue-400 break-all select-all">
+                  <span className="font-mono text-[var(--link)] dark:text-[var(--link)] break-all select-all">
                     {typeof window !== 'undefined' ? `${window.location.origin}/parceiro` : 'https://grupoevolve.sentinelconsig.com.br/parceiro'}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setConfirmGenerateModal(false)}
                   disabled={generatingAccess}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-xl transition-colors"
                 >
                   Cancelar
                 </button>
@@ -907,7 +907,7 @@ export const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   type="button"
                   onClick={handleExecuteGenerateAccess}
                   disabled={generatingAccess}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-semibold   transition-all flex items-center gap-2 disabled:opacity-90"
                 >
                   {generatingAccess ? (
                     <>

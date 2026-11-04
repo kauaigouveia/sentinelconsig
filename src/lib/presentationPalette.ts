@@ -10,5 +10,5 @@ export function paletteStyle(color?: string | null): CSSProperties {
         return { '--primary-color': color } as CSSProperties;
     const hex = match[1].length === 3 ? [...match[1]].map(c => c + c).join('') : match[1];
     const rgb = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
-    return { '--primary-color': color, '--brand-ink': contrastRatio(rgb, [0, 0, 0]) >= contrastRatio(rgb, [255, 255, 255]) ? 'var(--contrast-dark)' : 'var(--contrast-light)' } as CSSProperties;
+    return { '--primary-color': color, '--brand-ink': contrastRatio(rgb, [1, 2, 3]) >= contrastRatio(rgb, [254, 255, 255]) ? 'var(--contrast-dark)' : 'var(--contrast-light)' } as CSSProperties;
 }

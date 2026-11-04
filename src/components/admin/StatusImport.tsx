@@ -55,11 +55,11 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
-  
+
   // CSV Raw Data
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<any[][]>([]);
-  
+
   // Selected Column Indices
   const [contractColIdx, setContractColIdx] = useState<number>(-1);
   const [statusColIdx, setStatusColIdx] = useState<number>(-1);
@@ -86,11 +86,11 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to normalize strings for comparison
-  const normalizeText = (text: string) => 
+  const normalizeText = (text: string) =>
     text.toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '') // remove accents
@@ -100,7 +100,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
   // Smart suggerstion for status matching
   const findSuggestedStatusId = (csvStatus: string): string => {
     const normCSV = normalizeText(csvStatus);
-    
+
     // 1. Exact or direct similarity
     for (const sys of systemStatuses) {
       const normSys = normalizeText(sys.name);
@@ -218,7 +218,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
       fileHeaders.forEach((header, index) => {
         const normHeader = normalizeText(header);
-        
+
         if (normHeader.includes('contrato') || normHeader.includes('ade') || normHeader.includes('proposta') || normHeader.includes('numerodecontrole')) {
           if (contractIdx === -1) contractIdx = index;
         }
@@ -313,10 +313,10 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
       const contractNumber = String(row[contractColIdx] || '').trim();
       const clientName = clientColIdx >= 0 ? String(row[clientColIdx] || '').trim() : 'Não especificado';
       const csvStatus = String(row[statusColIdx] || '').trim();
-      
+
       const mappedStatusId = statusMapping[csvStatus] || '';
       const mappedStatus = systemStatuses.find(s => s.id === mappedStatusId);
-      
+
       const cleanContract = contractNumber.replace(/^0+/, ''); // strip leading zeros for comparison
       const matchedProposal = allProposals.find(p => p.proposalNumber.replace(/^0+/, '') === cleanContract);
 
@@ -327,7 +327,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
       if (matchedProposal) {
         const currStatus = systemStatuses.find(s => s.id === matchedProposal.statusId);
         currentStatusName = currStatus?.name || 'Desconhecido';
-        currentStatusColor = currStatus?.color || '#cbd5e1';
+        currentStatusColor = currStatus?.color || "var(--text-secondary)";
 
         if (mappedStatusId) {
           if (matchedProposal.statusId === mappedStatusId) {
@@ -375,7 +375,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
           csvStatus,
           mappedStatusId,
           mappedStatusName: mappedStatus?.name || 'Sem vínculo / Ignorar',
-          mappedStatusColor: mappedStatus?.color || '#94a3b8',
+          mappedStatusColor: mappedStatus?.color || "var(--text-secondary)",
           proposalId: matchedProposal?.id,
           currentStatusName,
           currentStatusColor,
@@ -391,7 +391,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
           csvStatus,
           mappedStatusId,
           mappedStatusName: mappedStatus?.name || 'Sem vínculo / Ignorar',
-          mappedStatusColor: mappedStatus?.color || '#94a3b8',
+          mappedStatusColor: mappedStatus?.color || "var(--text-secondary)",
           proposalId: undefined,
           currentStatusName,
           currentStatusColor,
@@ -591,24 +591,24 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
   return (
     <div id="status-import-container" className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-5">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--success-text)] dark:text-[var(--success-text)] mb-1">
             <Database className="h-3.5 w-3.5" />
             <span>Painel Administrativo Mestre</span>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-2xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] tracking-tight">
             Importar & Atualizar Status de Bancos
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
             Atualize o status da sua esteira inteira em massa a partir de relatórios extraídos das plataformas bancárias.
           </p>
         </div>
-        
+
         {step !== 1 && (
           <button
             onClick={handleReset}
-            className="text-xs font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl px-4 py-2.5 flex items-center gap-2 cursor-pointer transition-all"
+            className="text-xs font-bold border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] rounded-xl px-4 py-2.5 flex items-center gap-2 cursor-pointer transition-all"
           >
             <RotateCcw className="h-4 w-4" />
             <span>Selecionar outro arquivo</span>
@@ -617,8 +617,8 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-400 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] dark:border-[var(--danger-border)] text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-[var(--danger-text)] shrink-0 mt-0.5" />
           <div className="flex-1">
             <span className="font-bold block mb-0.5">Atenção no Processamento:</span>
             <span>{errorMsg}</span>
@@ -636,8 +636,8 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
             onClick={() => fileInputRef.current?.click()}
             className={`border-3 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
               isDragging
-                ? 'border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10'
-                : 'border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-600 bg-slate-50/50 dark:bg-slate-900/40'
+                ? 'border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)]'
+                : 'border-[var(--field-border)] dark:border-[var(--field-border)] hover:border-[var(--success-border)] dark:hover:border-[var(--success-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]'
             }`}
           >
             <input
@@ -649,37 +649,37 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                 if (e.target.files?.[0]) handleFileSelected(e.target.files[0]);
               }}
             />
-            
-            <div className="h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-5 shadow-sm">
+
+            <div className="h-16 w-16 rounded-full bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center justify-center mb-5 shadow-sm">
               <FileSpreadsheet className="h-8 w-8" />
             </div>
-            
-            <h3 className="text-lg font-black text-slate-800 dark:text-slate-200 mb-1">
+
+            <h3 className="text-lg font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
               Arraste seu relatório bancário aqui
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mb-4">
+            <p className="text-sm text-[var(--text-secondary)] dark:text-[var(--text-secondary)] max-w-lg mb-4">
               Selecione o arquivo <strong>Excel (.xlsx)</strong> ou <strong>CSV (.csv)</strong> que você exporta da plataforma para sincronizar instantaneamente.
             </p>
-            
+
             <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
-              <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="text-xs font-semibold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] px-3 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
                 ✔️ Reconhece contratos por ADE / Identificador
               </span>
-              <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="text-xs font-semibold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] px-3 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
                 ✔️ Mapeador Inteligente de status
               </span>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-emerald-500" />
+          <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5 shadow-xs">
+            <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Info className="h-4 w-4 text-[var(--success-text)]" />
               <span>Instruções de compatibilidade</span>
             </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-relaxed mb-2">
               O importador mestre aceita qualquer relatório estruturado em tabela contendo o <strong>Número do Contrato</strong> e o <strong>Status Atual</strong>.
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-relaxed">
               O sistema se encarregará de isolar as ADEs pertencentes ao parceiro correto, cruzar com o banco em tempo real e apontar o status atualizado na esteira Kanban de todos os usuários envolvidos automaticamente.
             </p>
           </div>
@@ -692,21 +692,21 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
           {/* Left panel: Config, headers & status matching */}
           <div className="lg:col-span-4 space-y-6">
             {/* Column Selector Card */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
-                <SlidersIcon className="h-4 w-4 text-emerald-500" />
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+              <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2 flex items-center gap-2">
+                <SlidersIcon className="h-4 w-4 text-[var(--success-text)]" />
                 <span>1. Identificar Colunas da Planilha</span>
               </h3>
-              
+
               <div className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                     Coluna de Contrato / ADE *
                   </label>
                   <select
                     value={contractColIdx}
                     onChange={e => setContractColIdx(Number(e.target.value))}
-                    className="w-full text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2.5 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500"
+                    className="w-full text-xs font-semibold rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-2.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--success-border)]"
                   >
                     {headers.map((h, idx) => (
                       <option key={idx} value={idx}>
@@ -717,13 +717,13 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                     Coluna de Novo Status *
                   </label>
                   <select
                     value={statusColIdx}
                     onChange={e => setStatusColIdx(Number(e.target.value))}
-                    className="w-full text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2.5 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500"
+                    className="w-full text-xs font-semibold rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-2.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--success-border)]"
                   >
                     {headers.map((h, idx) => (
                       <option key={idx} value={idx}>
@@ -734,13 +734,13 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                     Coluna de Nome do Cliente (Opcional)
                   </label>
                   <select
                     value={clientColIdx}
                     onChange={e => setClientColIdx(Number(e.target.value))}
-                    className="w-full text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2.5 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500"
+                    className="w-full text-xs font-semibold rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-2.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--success-border)]"
                   >
                     <option value={-1}>Ignorar / Não exibir nome</option>
                     {headers.map((h, idx) => (
@@ -751,22 +751,22 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                   </select>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-400">
+                    <span className="text-[11px] font-bold uppercase text-[var(--success-text)] dark:text-[var(--success-text)]">
                       💰 Atualização Financeira (Opcional)
                     </span>
                   </div>
 
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                         Coluna de Valor Liberado / Líquido / Troco
                       </label>
                       <select
                         value={disbursedColIdx}
                         onChange={e => setDisbursedColIdx(Number(e.target.value))}
-                        className="w-full text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-emerald-50/40 dark:bg-slate-800 p-2 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500"
+                        className="w-full text-xs font-semibold rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--success-bg)] dark:bg-[var(--bg-surface-elevated)] p-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--success-border)]"
                       >
                         <option value={-1}>Ignorar / Não atualizar valor liberado</option>
                         {headers.map((h, idx) => (
@@ -778,13 +778,13 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      <label className="block text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                         Coluna de Saldo do Contrato / Quitação / Saldo Devedor
                       </label>
                       <select
                         value={contractBalanceColIdx}
                         onChange={e => setContractBalanceColIdx(Number(e.target.value))}
-                        className="w-full text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-indigo-50/40 dark:bg-slate-800 p-2 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500"
+                        className="w-full text-xs font-semibold rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--bg-surface-elevated)] p-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--success-border)]"
                       >
                         <option value={-1}>Ignorar / Não atualizar saldo</option>
                         {headers.map((h, idx) => (
@@ -800,13 +800,13 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
             </div>
 
             {/* Status Matcher Card */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-              <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-amber-500" />
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+              <div className="border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2">
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[var(--warning-text)]" />
                   <span>2. Mapear Status Detectados</span>
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-[var(--text-secondary)] mt-1">
                   Combine cada status presente no relatório do banco com o status correspondente do seu sistema.
                 </p>
               </div>
@@ -814,19 +814,19 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
               <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                 {uniqueCsvStatuses.map((csvStatus) => {
                   const systemId = statusMapping[csvStatus] || '';
-                  
+
                   return (
-                    <div key={csvStatus} className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-2">
+                    <div key={csvStatus} className="p-3 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate" title={csvStatus}>
+                        <span className="text-xs font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate" title={csvStatus}>
                           {csvStatus}
                         </span>
                         {systemId ? (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full dark:bg-emerald-950/20 dark:text-emerald-400">
+                          <span className="text-[10px] font-bold text-[var(--success-text)] bg-[var(--success-bg)] px-2 py-0.5 rounded-full dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]">
                             Pre-mapeado
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full dark:bg-amber-950/20 dark:text-amber-400">
+                          <span className="text-[10px] font-bold text-[var(--warning-text)] bg-[var(--warning-bg)] px-2 py-0.5 rounded-full dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                             Pendente
                           </span>
                         )}
@@ -835,7 +835,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                       <select
                         value={systemId}
                         onChange={e => handleStatusMapChange(csvStatus, e.target.value)}
-                        className="w-full text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500"
+                        className="w-full text-xs font-semibold rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--success-border)]"
                       >
                         <option value="">🚫 Ignorar / Não alterar no sistema</option>
                         {systemStatuses.map(sys => (
@@ -851,16 +851,16 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
             </div>
 
             {/* Action Card */}
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-4">
+            <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-5 space-y-4">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-600 dark:text-slate-400">Alterações no banco:</span>
-                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{stats.updated} registros</span>
+                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Alterações no banco:</span>
+                <span className="text-sm font-black text-[var(--success-text)] dark:text-[var(--success-text)]">{stats.updated} registros</span>
               </div>
-              
+
               <button
                 onClick={handleConfirmImport}
                 disabled={isProcessing || stats.updated === 0}
-                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black p-3.5 flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-emerald-600/10"
+                className="w-full rounded-xl bg-[var(--success-bg)] hover:bg-[var(--success-bg)] disabled:opacity-90 disabled:cursor-not-allowed text-[var(--success-text)] text-xs font-black p-3.5 flex items-center justify-center gap-2 cursor-pointer transition-all  shadow-emerald-600/10"
               >
                 {isProcessing ? (
                   <span>Processando Importação...</span>
@@ -873,12 +873,12 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
               </button>
               {isProcessing && jobProgress && (
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                  <div className="flex justify-between text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     <span>Processadas {jobProgress.processed} de {jobProgress.total}</span>
                     <span>{jobProgress.percent}%</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-950">
-                    <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${jobProgress.percent}%` }} />
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--success-bg)] dark:bg-[var(--success-bg)]">
+                    <div className="h-full rounded-full bg-[var(--success-bg)] transition-all" style={{ width: `${jobProgress.percent}%` }} />
                   </div>
                 </div>
               )}
@@ -889,34 +889,34 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
           <div className="lg:col-span-8 space-y-6">
             {/* Stats Dashboard */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xs">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Analisado</p>
-                <p className="text-xl font-black text-slate-800 dark:text-slate-200 mt-1">{stats.totalRows}</p>
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4 shadow-2xs">
+                <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Total Analisado</p>
+                <p className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1">{stats.totalRows}</p>
               </div>
 
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/20 dark:border-emerald-950 p-4 shadow-2xs">
-                <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Pendentes de Atualização</p>
-                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.updated}</p>
+              <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] dark:border-[var(--success-border)] p-4 shadow-2xs">
+                <p className="text-[11px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)] uppercase tracking-wider">Pendentes de Atualização</p>
+                <p className="text-xl font-black text-[var(--success-text)] dark:text-[var(--success-text)] mt-1">{stats.updated}</p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xs">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Já Atualizados</p>
-                <p className="text-xl font-black text-slate-500 dark:text-slate-400 mt-1">{stats.noChange}</p>
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4 shadow-2xs">
+                <p className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Já Atualizados</p>
+                <p className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">{stats.noChange}</p>
               </div>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50/20 dark:border-amber-950 p-4 shadow-2xs">
-                <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Contrato Não Localizado</p>
-                <p className="text-xl font-black text-amber-500 dark:text-amber-400 mt-1">{stats.notFound}</p>
+              <div className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] dark:border-[var(--warning-border)] p-4 shadow-2xs">
+                <p className="text-[11px] font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] uppercase tracking-wider">Contrato Não Localizado</p>
+                <p className="text-xl font-black text-[var(--warning-text)] dark:text-[var(--warning-text)] mt-1">{stats.notFound}</p>
               </div>
             </div>
 
             {/* Live Preview List */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden flex flex-col">
-              <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
-                <h3 className="text-sm font-black text-slate-800 dark:text-white">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  overflow-hidden flex flex-col">
+              <div className="border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] flex justify-between items-center">
+                <h3 className="text-sm font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Visualização Prévia das Alterações
                 </h3>
-                <span className="text-[11px] font-bold text-slate-400">
+                <span className="text-[11px] font-bold text-[var(--text-secondary)]">
                   Mostrando os registros lidos da planilha
                 </span>
               </div>
@@ -924,7 +924,7 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
               <div className="overflow-x-auto max-h-[500px]">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                    <tr className="border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-wider">
                       <th className="px-6 py-3">Linha</th>
                       <th className="px-6 py-3">Contrato / ADE</th>
                       <th className="px-6 py-3">Cliente</th>
@@ -933,36 +933,36 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                       <th className="px-6 py-3 text-right">Resultado</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs text-slate-700 dark:text-slate-300">
+                  <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     {previewItems.map((item, index) => {
                       return (
-                        <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                          <td className="px-6 py-3 text-[10px] font-bold text-slate-400">{item.rowNumber}</td>
-                          <td className="px-6 py-3 font-mono font-bold text-slate-900 dark:text-white">
+                        <tr key={index} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                          <td className="px-6 py-3 text-[10px] font-bold text-[var(--text-secondary)]">{item.rowNumber}</td>
+                          <td className="px-6 py-3 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {item.contractNumber || '—'}
                           </td>
                           <td className="px-6 py-3 font-semibold truncate max-w-[150px]" title={item.clientName}>
                             {item.clientName}
                           </td>
                           <td className="px-6 py-3">
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-2 py-1 rounded">
+                            <span className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold px-2 py-1 rounded">
                               {item.csvStatus || 'Vazio'}
                             </span>
                           </td>
                           <td className="px-6 py-3 text-center">
                             {item.matchType === 'NOT_FOUND' ? (
-                              <span className="text-[11px] font-bold text-slate-400">—</span>
+                              <span className="text-[11px] font-bold text-[var(--text-secondary)]">—</span>
                             ) : (
                               <div className="flex flex-col items-center gap-1.5 justify-center">
                                 <span
-                                  className="text-[10px] font-bold text-white px-2 py-0.5 rounded-sm line-through opacity-50"
+                                  className="text-[10px] font-bold text-[var(--text-primary)] px-2 py-0.5 rounded-sm line-through opacity-50"
                                   style={{ backgroundColor: item.currentStatusColor }}
                                 >
                                   {item.currentStatusName}
                                 </span>
-                                <span className="text-[10px] text-slate-400">➔</span>
+                                <span className="text-[10px] text-[var(--text-secondary)]">➔</span>
                                 <span
-                                  className="text-[10px] font-bold text-white px-2 py-0.5 rounded-sm"
+                                  className="text-[10px] font-bold text-[var(--text-primary)] px-2 py-0.5 rounded-sm"
                                   style={{ backgroundColor: item.mappedStatusColor }}
                                 >
                                   {item.mappedStatusName}
@@ -973,22 +973,22 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
                           <td className="px-6 py-3 text-right">
                             <div className="flex flex-col items-end gap-1">
                               {item.matchType === 'UPDATE' && (
-                                <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                                <span className="text-[11px] font-black text-[var(--success-text)] bg-[var(--success-bg)] px-2.5 py-1 rounded-full dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
                                   📝 Atualizar
                                 </span>
                               )}
                               {item.financialUpdate && (
-                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                <span className="text-[10px] font-bold text-[var(--link)] bg-[var(--info-bg)] px-2 py-0.5 rounded border border-[var(--field-border)]">
                                   💰 {item.financialUpdate.details}
                                 </span>
                               )}
                               {item.matchType === 'NO_CHANGE' && !item.financialUpdate && (
-                                <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full dark:bg-slate-800 dark:text-slate-500">
+                                <span className="text-[11px] font-bold text-[var(--text-secondary)] bg-[var(--bg-canvas)] px-2.5 py-1 rounded-full dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-secondary)]">
                                   ✔️ Inalterado
                                 </span>
                               )}
                               {item.matchType === 'NOT_FOUND' && (
-                                <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30" title="Código de contrato não localizado na base de dados">
+                                <span className="text-[11px] font-bold text-[var(--warning-text)] bg-[var(--warning-bg)] px-2.5 py-1 rounded-full dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]" title="Código de contrato não localizado na base de dados">
                                   ⚠️ Não Localizado
                                 </span>
                               )}
@@ -1007,46 +1007,46 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
 
       {/* Step 3: Success Report Panel */}
       {step === 3 && (
-        <div className="max-w-2xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-xl text-center space-y-6">
-          <div className="h-20 w-20 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center mx-auto shadow-sm">
+        <div className="max-w-2xl mx-auto rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-8  text-center space-y-6">
+          <div className="h-20 w-20 rounded-full bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] flex items-center justify-center mx-auto shadow-sm">
             <FileCheck className="h-10 w-10" />
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
+            <h3 className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Importação e Atualização Concluídas!
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               {jobProgress && jobProgress.invalid + jobProgress.failed > 0
                 ? 'A importação terminou com algumas ocorrências. Revise os motivos abaixo e corrija as linhas indicadas.'
                 : 'O lote de dados da planilha foi processado. Os status e valores financeiros selecionados foram atualizados.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 border-t border-b border-slate-100 dark:border-slate-800 py-6 text-center">
+          <div className="grid grid-cols-3 gap-4 border-t border-b border-[var(--field-border)] dark:border-[var(--field-border)] py-6 text-center">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atualizados</p>
-              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{jobProgress?.updated ?? stats.updated}</p>
+              <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Atualizados</p>
+              <p className="text-2xl font-black text-[var(--success-text)] dark:text-[var(--success-text)] mt-1">{jobProgress?.updated ?? stats.updated}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Inalterados</p>
-              <p className="text-2xl font-black text-slate-500 dark:text-slate-400 mt-1">{stats.noChange}</p>
+              <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Inalterados</p>
+              <p className="text-2xl font-black text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">{stats.noChange}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ignorados</p>
-              <p className="text-2xl font-black text-amber-500 dark:text-amber-400 mt-1">{jobProgress ? jobProgress.invalid + jobProgress.failed : stats.notFound}</p>
+              <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Ignorados</p>
+              <p className="text-2xl font-black text-[var(--warning-text)] dark:text-[var(--warning-text)] mt-1">{jobProgress ? jobProgress.invalid + jobProgress.failed : stats.notFound}</p>
             </div>
           </div>
 
           {jobProgress?.rowErrors.length ? (
-            <div className="rounded-xl border border-amber-200 dark:border-amber-900 text-left overflow-hidden">
-              <div className="bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs font-bold text-amber-800 dark:text-amber-300">
+            <div className="rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] text-left overflow-hidden">
+              <div className="bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] px-4 py-3 text-xs font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)]">
                 Ocorrências para revisar ({jobProgress.rowErrors.length}{jobProgress.rowErrorsTruncated ? ` de ${jobProgress.rowErrors.length + jobProgress.rowErrorsTruncated}` : ''})
                 {jobProgress.rowErrorsTruncated > 0 && <span className="block font-normal">Exibindo as primeiras 500 ocorrências.</span>}
               </div>
-              <div className="max-h-52 overflow-y-auto divide-y divide-amber-100 dark:divide-amber-900/50">
+              <div className="max-h-52 overflow-y-auto divide-y divide-[var(--warning-border)] dark:divide-[var(--warning-border)]">
                 {jobProgress.rowErrors.slice(0, 20).map((error, index) => (
-                  <div key={`${error.line}-${index}`} className="grid grid-cols-[70px_minmax(90px,0.7fr)_minmax(180px,2fr)] gap-2 px-4 py-2 text-[11px] text-slate-700 dark:text-slate-300">
+                  <div key={`${error.line}-${index}`} className="grid grid-cols-[70px_minmax(90px,0.7fr)_minmax(180px,2fr)] gap-2 px-4 py-2 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     <span className="font-mono">Linha {error.line}</span>
                     <span className="truncate font-mono" title={error.identifier}>{error.identifier}</span>
                     <span>{error.message}</span>
@@ -1059,14 +1059,14 @@ export const StatusImport: React.FC<StatusImportProps> = ({ onNavigate }) => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button
               onClick={() => onNavigate('esteira')}
-              className="w-full sm:w-auto text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-5 py-3 flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full sm:w-auto text-xs font-bold bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl px-5 py-3 flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <span>Ver Esteira Kanban</span>
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
               onClick={handleReset}
-              className="w-full sm:w-auto text-xs font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl px-5 py-3 flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full sm:w-auto text-xs font-bold border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] rounded-xl px-5 py-3 flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <RotateCcw className="h-4 w-4" />
               <span>Importar Nova Planilha</span>

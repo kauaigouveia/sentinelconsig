@@ -144,7 +144,7 @@ export const SupportCenter: React.FC = () => {
         title="Central de Suporte Operacional"
         subtitle="Gerenciamento de pendências, propostas estagnadas na esteira e controle de alçadas"
         badgeText="HELP DESK & SLA"
-        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
       />
 
       {/* Metric Cards */}
@@ -154,7 +154,7 @@ export const SupportCenter: React.FC = () => {
           value={isLoadingPendencies ? '…' : pendenciesTotal}
           subtext={pendenciesError ? 'Falha ao sincronizar' : 'Dados atuais do servidor'}
           tone="danger"
-          icon={<AlertCircle className="h-4 w-4 text-rose-600" />}
+          icon={<AlertCircle className="h-4 w-4 text-[var(--danger-text)]" />}
         />
 
         <MetricCard
@@ -162,7 +162,7 @@ export const SupportCenter: React.FC = () => {
           value={stuckProposals.length}
           subtext="Sem movimentação recente"
           tone="warning"
-          icon={<Clock className="h-4 w-4 text-amber-600" />}
+          icon={<Clock className="h-4 w-4 text-[var(--warning-text)]" />}
         />
 
         <MetricCard
@@ -170,19 +170,19 @@ export const SupportCenter: React.FC = () => {
           value={slaEfficiency}
           subtext={slaEligibleProposals.length ? `${proposalsWithinSla} de ${slaEligibleProposals.length} propostas dentro do SLA` : 'Sem propostas com SLA configurado'}
           tone="primary"
-          icon={<CheckCircle2 className="h-4 w-4 text-blue-600" />}
+          icon={<CheckCircle2 className="h-4 w-4 text-[var(--link)]" />}
         />
       </div>
 
       {/* Tabs & Content */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs space-y-4">
-        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)] gap-4 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
           <button
             onClick={() => setActiveTab('PENDENCIAS')}
             className={`py-2 border-b-2 transition-colors cursor-pointer ${
               activeTab === 'PENDENCIAS'
-                ? 'border-blue-600 text-blue-700 dark:text-blue-400 font-bold'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] font-bold'
+                : 'border-transparent hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             Todas as Pendências Abertas ({allOpenPendencies.length})
@@ -191,8 +191,8 @@ export const SupportCenter: React.FC = () => {
             onClick={() => setActiveTab('TRAVADAS')}
             className={`py-2 border-b-2 transition-colors cursor-pointer ${
               activeTab === 'TRAVADAS'
-                ? 'border-amber-600 text-amber-700 dark:text-amber-400 font-bold'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold'
+                : 'border-transparent hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             Propostas Travadas &gt; 3 Dias ({stuckProposals.length})
@@ -202,18 +202,18 @@ export const SupportCenter: React.FC = () => {
         {activeTab === 'PENDENCIAS' ? (
           <div className="space-y-3">
             {pendenciesError ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
+              <div className="rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] p-4 text-center text-xs text-[var(--danger-text)] dark:border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]" role="alert">
                 <p>{pendenciesError}</p>
                 <button type="button" onClick={() => void fetchPendencies()} className="mt-2 inline-flex items-center gap-1.5 font-bold underline underline-offset-2">
                   <RefreshCw className="h-3 w-3" /> Tentar novamente
                 </button>
               </div>
             ) : isLoadingPendencies ? (
-              <div className="flex items-center justify-center gap-2 py-10 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center justify-center gap-2 py-10 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando pendências...
               </div>
             ) : allOpenPendencies.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center py-10">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] italic text-center py-10">
                 Nenhuma pendência aberta no momento.
               </p>
             ) : (
@@ -222,24 +222,24 @@ export const SupportCenter: React.FC = () => {
                 return (
                   <div
                     key={pendency.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-4 text-xs transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-4 text-xs transition-colors"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                        <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {pendency.proposal?.proposalNumber ? `ADE ${pendency.proposal.proposalNumber}` : pendency.title}
                         </span>
-                        {pendency.proposal?.client?.fullName && <><span className="text-slate-400">•</span><span className="font-semibold text-slate-800 dark:text-slate-200">{pendency.proposal.client.fullName}</span></>}
-                        <span className="text-slate-400">•</span>
-                        <span className="rounded bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 px-2 py-0.5 font-bold text-[10px]">
+                        {pendency.proposal?.client?.fullName && <><span className="text-[var(--text-secondary)]">•</span><span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{pendency.proposal.client.fullName}</span></>}
+                        <span className="text-[var(--text-secondary)]">•</span>
+                        <span className="rounded bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] px-2 py-0.5 font-bold text-[10px]">
                           {pendency.type}
                         </span>
-                        <span className="text-slate-400 dark:text-slate-500 text-[10px]">
+                        <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[10px]">
                           Aberta em {formatDate(pendency.createdAt)}
                         </span>
                       </div>
-                      <p className="font-medium text-slate-800 dark:text-slate-200">{pendency.description || pendency.title}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{pendency.description || pendency.title}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         Parceiro: <strong>{pendency.partner?.code || pendency.partner?.name || 'Não vinculado'}</strong>
                       </p>
                     </div>
@@ -247,7 +247,7 @@ export const SupportCenter: React.FC = () => {
                     <div className="flex items-center gap-2 shrink-0">
                       {proposalId && <button
                         onClick={() => setDetailProposalId(proposalId)}
-                        className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                        className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                       >
                         Ver Proposta
                       </button>}
@@ -256,7 +256,7 @@ export const SupportCenter: React.FC = () => {
                           setResolvingPendency(pendency);
                           setResolutionNotes('');
                         }}
-                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1 transition-colors cursor-pointer"
+                        className="rounded-lg bg-[var(--success-bg)] hover:bg-[var(--success-bg)] px-3 py-1.5 text-xs font-bold text-[var(--success-text)]  flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Check className="h-3.5 w-3.5" />
                         <span>Resolver</span>
@@ -277,24 +277,24 @@ export const SupportCenter: React.FC = () => {
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-3 text-xs transition-colors"
+                  className="flex items-center justify-between rounded-lg border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] p-3 text-xs transition-colors"
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <span className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         ADE {p.proposalNumber}
                       </span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">{client?.fullName}</span>
+                      <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{client?.fullName}</span>
                       <StatusBadge status={status} />
                     </div>
-                    <p className="text-[11px] text-amber-900 dark:text-amber-300 font-semibold mt-1">
+                    <p className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-semibold mt-1">
                       Parada há {diffDays} dias neste mesmo status (Alçada: {status?.responsible})
                     </p>
                   </div>
 
                   <button
                     onClick={() => setDetailProposalId(p.id)}
-                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                   >
                     Ver Detalhes
                   </button>
@@ -306,14 +306,14 @@ export const SupportCenter: React.FC = () => {
       </div>
 
       {resolvingPendency && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs" role="presentation">
-          <form onSubmit={event => { event.preventDefault(); void handleResolvePendency(); }} className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900" role="dialog" aria-modal="true" aria-labelledby="resolve-pendency-title">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs" role="presentation">
+          <form onSubmit={event => { event.preventDefault(); void handleResolvePendency(); }} className="w-full max-w-lg space-y-4 rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-5  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]" role="dialog" aria-modal="true" aria-labelledby="resolve-pendency-title">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 id="resolve-pendency-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">Registrar resolução</h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Informe o que foi feito antes de concluir “{resolvingPendency.title}”.</p>
+                <h2 id="resolve-pendency-title" className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Registrar resolução</h2>
+                <p className="mt-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Informe o que foi feito antes de concluir “{resolvingPendency.title}”.</p>
               </div>
-              <button type="button" onClick={() => setResolvingPendency(null)} disabled={isResolving} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Fechar">
+              <button type="button" onClick={() => setResolvingPendency(null)} disabled={isResolving} className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]" aria-label="Fechar">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -324,11 +324,11 @@ export const SupportCenter: React.FC = () => {
               minLength={3}
               required
               placeholder="Descreva a solução aplicada..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-[var(--bg-canvas)] p-3 text-xs text-[var(--text-secondary)] outline-none focus:border-[var(--field-border)] dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)] dark:text-[var(--text-primary)]"
             />
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setResolvingPendency(null)} disabled={isResolving} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Cancelar</button>
-              <button type="submit" disabled={isResolving || resolutionNotes.trim().length < 3} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+              <button type="button" onClick={() => setResolvingPendency(null)} disabled={isResolving} className="rounded-lg border border-[var(--field-border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:text-[var(--text-primary)]">Cancelar</button>
+              <button type="submit" disabled={isResolving || resolutionNotes.trim().length < 3} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--success-bg)] px-3 py-2 text-xs font-bold text-[var(--success-text)] disabled:opacity-90">
                 {isResolving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                 {isResolving ? 'Salvando...' : 'Confirmar resolução'}
               </button>

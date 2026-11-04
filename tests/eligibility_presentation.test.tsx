@@ -53,7 +53,7 @@ it('FINANTO tables keep their own conditions and missing values remain absent',(
 it('is responsive and includes explicit light/dark styles without fixed widths',()=>{
  const {container}=render(<EligibilityResult input={{...data,commercial:[{label:'Saldo mínimo',value:'R$ 2.000,00'}]}}/>);
  expect(container.querySelector('dl')?.className).toContain('grid-cols-1');expect(container.querySelector('dl')?.className).toContain('sm:grid-cols-2');
- expect(container.querySelector('article')?.className).toContain('dark:bg-slate-900');
+ expect(container.querySelector('article')?.className).toContain('dark:bg-[var(--bg-surface)]');
 });
 it('presentation does not mutate any bank eligibility decision',()=>{
  for(const bank of ['facta','finanto','daycoval','parana','banrisul']){

@@ -102,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     fetchUnreadCounts();
-    
+
     const unsub = realtimeHub.subscribe('*', (event) => {
       if (
         event?.type === 'ANNOUNCEMENT_PUBLISHED' ||
@@ -115,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
 
     const handleNotificationsUpdated = () => fetchUnreadCounts();
     window.addEventListener('sentinel:notifications-updated', handleNotificationsUpdated);
-    
+
     return () => {
       unsub();
       window.removeEventListener('sentinel:notifications-updated', handleNotificationsUpdated);
@@ -374,7 +374,7 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchTerm}
             onChange={e => onGlobalSearch(e.target.value)}
             placeholder="Buscar cliente, CPF, ADE ou parceiro..."
-            className="ui-input w-full h-8.5 pl-9 pr-20 text-xs rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] placeholder-slate-400 dark:placeholder-slate-500 focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:outline-none focus:border-[var(--border-default)] focus:ring-1 focus:ring-[var(--field-border)] transition-transform "
+            className="ui-input w-full h-8.5 pl-9 pr-20 text-xs rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:outline-none focus:border-[var(--border-default)] focus:ring-1 focus:ring-[var(--field-border)] transition-transform "
           />
           <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center gap-0.5 rounded border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 text-[9.5px] font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] ">
             Ctrl + K
@@ -398,7 +398,7 @@ export const Header: React.FC<HeaderProps> = ({
                 isHealthChecking
                   ? 'bg-[var(--bg-surface-elevated)]'
                   : isHealthy
-                  ? 'bg-[var(--action)] -[0_0_8px_rgba(16,185,129,0.7)]'
+                  ? 'bg-[var(--action)] '
                   : 'bg-[var(--action)] animate-pulse'
               }`}
             />

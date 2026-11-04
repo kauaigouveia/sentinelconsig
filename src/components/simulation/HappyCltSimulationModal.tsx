@@ -292,19 +292,19 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
   };
 
   return (
-    <div className={embedded ? "min-w-0" : "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in"}>
-      <div className={embedded ? "w-full min-w-0 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" : "relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800"}>
+    <div className={embedded ? "min-w-0" : "fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in"}>
+      <div className={embedded ? "w-full min-w-0 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]" : "relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)]"}>
         {/* HEADER */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20">
+            <div className="h-9 w-9 rounded-xl bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center  shadow-indigo-600/20">
               <Briefcase className="h-5 w-5" />
             </div>
             <div>
-              <SimulationBack onBack={onBack}/><h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <SimulationBack onBack={onBack}/><h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Central de Simulações — Happy CLT
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Consignado Privado • Dataprev & Contrato
               </p>
             </div>
@@ -313,30 +313,30 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
             type="button"
             hidden={embedded}
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-lg"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer p-1 rounded-lg"
           >
             <XCircle className="h-5 w-5" />
           </button>
         </div>
 
         {/* PROGRESS STEP BAR */}
-        <div className="px-6 pt-4 pb-2 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-          <div className={`flex items-center gap-1.5 font-bold ${step === 'CLIENTE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+        <div className="px-6 pt-4 pb-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between text-xs">
+          <div className={`flex items-center gap-1.5 font-bold ${step === 'CLIENTE' ? 'text-[var(--link)] dark:text-[var(--link)]' : 'text-[var(--text-secondary)]'}`}>
             <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px]">1</span>
             <span>Cliente CLT</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-          <div className={`flex items-center gap-1.5 font-bold ${step === 'DATAPREV' ? 'text-indigo-600 dark:text-indigo-400' : (isApproved ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400')}`}>
+          <ChevronRight className="h-4 w-4 text-[var(--text-primary)] dark:text-[var(--text-secondary)]" />
+          <div className={`flex items-center gap-1.5 font-bold ${step === 'DATAPREV' ? 'text-[var(--link)] dark:text-[var(--link)]' : (isApproved ? 'text-[var(--text-secondary)] dark:text-[var(--text-primary)]' : 'text-[var(--text-secondary)]')}`}>
             <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px]">2</span>
             <span>Dataprev</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-          <div className={`flex items-center gap-1.5 font-bold ${step === 'SIMULACAO' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+          <ChevronRight className="h-4 w-4 text-[var(--text-primary)] dark:text-[var(--text-secondary)]" />
+          <div className={`flex items-center gap-1.5 font-bold ${step === 'SIMULACAO' ? 'text-[var(--link)] dark:text-[var(--link)]' : 'text-[var(--text-secondary)]'}`}>
             <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px]">3</span>
             <span>Contrato</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-          <div className={`flex items-center gap-1.5 font-bold ${step === 'RESULTADO' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+          <ChevronRight className="h-4 w-4 text-[var(--text-primary)] dark:text-[var(--text-secondary)]" />
+          <div className={`flex items-center gap-1.5 font-bold ${step === 'RESULTADO' ? 'text-[var(--link)] dark:text-[var(--link)]' : 'text-[var(--text-secondary)]'}`}>
             <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px]">4</span>
             <span>Resultado</span>
           </div>
@@ -345,7 +345,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
         {/* BODY */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
+            <div className="p-3.5 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-start gap-2.5">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <div>{error}</div>
             </div>
@@ -356,8 +356,8 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
             <form onSubmit={handleCadastrarClienteEConsultar} className="space-y-4">
               <div hidden={sharedIdentity} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    CPF DO CLIENTE <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
+                    CPF DO CLIENTE <span className="text-[var(--danger-text)]">*</span>
                   </label>
                   <input
                     type="text"
@@ -365,13 +365,13 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                     value={cpf}
                     onChange={handleCpfChange}
                     placeholder="000.000.000-00"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[var(--focus)]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    TELEFONE (COM DDD) <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
+                    TELEFONE (COM DDD) <span className="text-[var(--danger-text)]">*</span>
                   </label>
                   <input
                     type="text"
@@ -379,14 +379,14 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                     value={telefone}
                     onChange={(e) => setTelefone(e.target.value)}
                     placeholder="Ex: 11999998888"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--focus)]"
                   />
                 </div>
               </div>
 
               <div hidden={sharedIdentity}>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  NOME COMPLETO <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
+                  NOME COMPLETO <span className="text-[var(--danger-text)]">*</span>
                 </label>
                 <input
                   type="text"
@@ -394,13 +394,13 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Nome do trabalhador CLT"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--focus)]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     DATA/HORA AUTORIZAÇÃO DATAPREV (DDMMAAAAHHMMSS)
                   </label>
                   <input
@@ -409,21 +409,21 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                     required={sharedIdentity}
                     value={dataAutorizacaoDataprev}
                     onChange={(e) => setDataAutorizacaoDataprev(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[var(--focus)]"
                   />
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-[var(--text-secondary)]">
                     {sharedIdentity ? 'Informe a data/hora da autorização real, sem estimar ou registrar aceite em nome do cliente.' : 'Preenchido automaticamente no padrão Happy'}
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     PARCEIRO / AGENTE VINCULADO (OPCIONAL)
                   </label>
                   <select
                     value={selectedPartnerId}
                     onChange={(e) => setSelectedPartnerId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--focus)]"
                   >
                     <option value="">Nenhum parceiro específico</option>
                     {partners.map((p) => (
@@ -436,7 +436,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   CPF DO AGENTE AUTORIZADO (OPCIONAL)
                 </label>
                 <input
@@ -444,19 +444,19 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   value={canalCpfAgente}
                   onChange={(e) => setCanalCpfAgente(formatCpf(e.target.value))}
                   placeholder="000.000.000-00 (deixe em branco para usar o do parceiro ou sistema)"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[var(--focus)]"
                 />
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-[var(--text-secondary)]">
                   Enviado no campo canal_cpf_agente exigido pela Happy
                 </span>
               </div>
 
-              {sharedIdentity && <label className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" checked={consentConfirmed} onChange={event => setConsentConfirmed(event.target.checked)} />A autorização Dataprev já foi concedida pelo cliente e sua evidência está disponível.</label>}
+              {sharedIdentity && <label className="flex items-start gap-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"><input type="checkbox" checked={consentConfirmed} onChange={event => setConsentConfirmed(event.target.checked)} />A autorização Dataprev já foi concedida pelo cliente e sua evidência está disponível.</label>}
               <div className="pt-4 flex justify-end">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer transition-all"
+                  className="px-5 py-2.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs flex items-center gap-2   disabled:opacity-90 cursor-pointer transition-all"
                 >
                   {loading ? (
                     <>
@@ -477,25 +477,25 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
           {/* PASSO 2: DATAPREV STATUS / AUTORIZAÇÃO */}
           {step === 'DATAPREV' && (
             <div className="space-y-5">
-              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 space-y-3">
-                <div className="flex items-center gap-2 font-bold text-sm text-amber-800 dark:text-amber-300">
-                  <Clock className="h-5 w-5 text-amber-600" />
+              <div className="p-5 rounded-2xl bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)] space-y-3">
+                <div className="flex items-center gap-2 font-bold text-sm text-[var(--warning-text)] dark:text-[var(--warning-text)]">
+                  <Clock className="h-5 w-5 text-[var(--warning-text)]" />
                   <span>Aguardando Autorização Digital Dataprev</span>
                 </div>
-                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="text-xs leading-relaxed text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   O convênio CLT exige que o trabalhador autorize a consulta aos seus dados da carteira digital / Dataprev. Envie o link abaixo para o cliente.
                 </p>
 
                 {dataprevData?.url_consulta_autorizacao ? (
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200/80 dark:border-amber-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <span className="text-xs font-mono truncate text-slate-700 dark:text-slate-300 select-all">
+                  <div className="p-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <span className="text-xs font-mono truncate text-[var(--text-secondary)] dark:text-[var(--text-primary)] select-all">
                       {dataprevData.url_consulta_autorizacao}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={handleCopyLink}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold flex items-center gap-1.5 hover:bg-indigo-100 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--action)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-semibold flex items-center gap-1.5 hover:bg-[var(--info-bg)] cursor-pointer"
                       >
                         {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                         <span>{copiedLink ? 'Copiado!' : 'Copiar Link'}</span>
@@ -504,7 +504,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                         href={dataprevData.url_consulta_autorizacao}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                        className="p-1.5 rounded-lg bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]"
                         title="Abrir link de autorização"
                       >
                         <ExternalLink className="h-4 w-4" />
@@ -512,7 +512,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs italic text-slate-500">
+                  <div className="text-xs italic text-[var(--text-secondary)]">
                     Situação: {dataprevData?.situacao || 'Em processamento Dataprev'}
                   </div>
                 )}
@@ -522,7 +522,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                 <button
                   type="button"
                   onClick={() => setStep('CLIENTE')}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Voltar aos dados</span>
@@ -532,7 +532,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   type="button"
                   onClick={handleCheckDataprev}
                   disabled={loading}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs flex items-center gap-2   disabled:opacity-90 cursor-pointer"
                 >
                   {loading ? (
                     <>
@@ -553,17 +553,17 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
           {/* PASSO 3: CONDIÇÕES APROVADAS & SIMULAÇÃO DO CONTRATO */}
           {step === 'SIMULACAO' && (
             <div className="space-y-5">
-              <div className="p-4 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-bold text-xs text-indigo-800 dark:text-indigo-300">
-                    <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                  <div className="flex items-center gap-2 font-bold text-xs text-[var(--link)] dark:text-[var(--link)]">
+                    <CheckCircle2 className="h-4 w-4 text-[var(--link)]" />
                     <span>Aprovado pelo Motor de Crédito Dataprev</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]">
                     Condições Liberadas
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Selecione a faixa de crédito aprovada para o trabalhador CLT e configure os parâmetros da contratação:
                 </p>
 
@@ -575,8 +575,8 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                         key={idx}
                         className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                           selectedConditionIndex === idx
-                            ? 'border-indigo-600 bg-white dark:bg-slate-900 shadow-xs'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-900'
+                            ? 'border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shadow-xs'
+                            : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface)]'
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -589,25 +589,25 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                               setQuantidadeParcelas(cond.max_parcelas || 24);
                               setValorSolicitado(String(cond.max_valor || 1000));
                             }}
-                            className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                            className="mt-1 text-[var(--link)] focus:ring-[var(--focus)]"
                           />
                           <div className="text-xs space-y-1">
-                            <div className="font-bold text-slate-900 dark:text-slate-100">
+                            <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               {cond.min_parcelas} a {cond.max_parcelas} parcelas
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                            <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono">
                               Valor Liberado: R$ {Number(cond.min_valor || 0).toFixed(2)} até R$ {Number(cond.max_valor || 0).toFixed(2)}
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                            <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono">
                               Parcela: R$ {Number(cond.min_valor_parcela || 0).toFixed(2)} até R$ {Number(cond.max_valor_parcela || 0).toFixed(2)}
                             </div>
                           </div>
                         </div>
                         <div className="text-right text-xs">
-                          <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono block">
+                          <span className="font-bold text-[var(--link)] dark:text-[var(--link)] font-mono block">
                             Taxa: {cond.max_taxa}% a.m.
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-[var(--text-secondary)]">
                             Status: {cond.status_motor}
                           </span>
                         </div>
@@ -619,19 +619,19 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
               {/* PARÂMETROS DA SIMULAÇÃO */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     QUANTIDADE DE PARCELAS DESEJADA
                   </label>
                   <input
                     type="number"
                     value={quantidadeParcelas}
                     onChange={(e) => setQuantidadeParcelas(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[var(--focus)]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     VALOR SOLICITADO (R$)
                   </label>
                   <CurrencyInput
@@ -639,7 +639,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                     value={valorSolicitado}
                     onValueChange={value => setValorSolicitado(value)}
                     placeholder="Ex: 3.500,00"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[var(--focus)]"
                   />
                 </div>
               </div>
@@ -649,7 +649,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                   type="button"
                   onClick={handleSimularContrato}
                   disabled={loading || !quantidadeParcelas}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs flex items-center gap-2   disabled:opacity-90 cursor-pointer"
                 >
                   {loading ? (
                     <>
@@ -670,40 +670,40 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
           {/* PASSO 4: RESULTADO DA SIMULAÇÃO */}
           {step === 'RESULTADO' && (
             <div className="space-y-5">
-              <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100 space-y-3">
+              <div className="p-5 rounded-2xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-bold text-sm text-indigo-800 dark:text-indigo-300">
-                    <CheckCircle2 className="h-5 w-5 text-indigo-600" />
+                  <div className="flex items-center gap-2 font-bold text-sm text-[var(--link)] dark:text-[var(--link)]">
+                    <CheckCircle2 className="h-5 w-5 text-[var(--link)]" />
                     <span>Contrato CLT Simulado com Sucesso</span>
                   </div>
-                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-200/60 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200">
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]">
                     Consignado Privado
                   </span>
                 </div>
 
                 {!sharedResults && simulationResult && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs font-mono">
-                    <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
-                      <span className="text-[10px] text-slate-400 block font-sans">Valor Parcela</span>
-                      <strong className="text-indigo-600 text-sm">
+                    <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                      <span className="text-[10px] text-[var(--text-secondary)] block font-sans">Valor Parcela</span>
+                      <strong className="text-[var(--link)] text-sm">
                         R$ {Number(simulationResult.valor_parcela || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
-                      <span className="text-[10px] text-slate-400 block font-sans">Valor Líquido</span>
-                      <strong className="text-emerald-600 text-sm">
+                    <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                      <span className="text-[10px] text-[var(--text-secondary)] block font-sans">Valor Líquido</span>
+                      <strong className="text-[var(--success-text)] text-sm">
                         R$ {Number(simulationResult.valor_liquido || simulationResult.valor_cliente || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </strong>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
-                      <span className="text-[10px] text-slate-400 block font-sans">Prazo</span>
-                      <strong className="text-slate-800 dark:text-slate-200 text-sm">
+                    <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                      <span className="text-[10px] text-[var(--text-secondary)] block font-sans">Prazo</span>
+                      <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">
                         {simulationResult.quantidade_parcelas} parcelas
                       </strong>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900">
-                      <span className="text-[10px] text-slate-400 block font-sans">Taxa CET a.m.</span>
-                      <strong className="text-slate-800 dark:text-slate-200 text-sm">
+                    <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                      <span className="text-[10px] text-[var(--text-secondary)] block font-sans">Taxa CET a.m.</span>
+                      <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">
                         {simulationResult.taxa_cet_am ? `${simulationResult.taxa_cet_am}%` : 'N/A'}
                       </strong>
                     </div>
@@ -711,7 +711,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                 )}
 
                 <div className="pt-2">
-                  <pre className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-indigo-200/60 dark:border-indigo-900/60 text-[11px] font-mono overflow-x-auto max-h-52 text-slate-800 dark:text-slate-200">
+                  <pre className="p-3.5 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[11px] font-mono overflow-x-auto max-h-52 text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     {JSON.stringify(simulationResult, null, 2)}
                   </pre>
                 </div>
@@ -721,7 +721,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                 <button
                   type="button"
                   onClick={() => setStep('SIMULACAO')}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Nova Simulação de Contrato</span>
@@ -730,7 +730,7 @@ export const HappyCltSimulationModal: React.FC<HappyCltSimulationModalProps> = (
                 <button
                   type="button"
                   onClick={handleFinish}
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs flex items-center gap-2   cursor-pointer"
                 >
                   <Check className="h-4 w-4" />
                   <span>Salvar e Fechar</span>

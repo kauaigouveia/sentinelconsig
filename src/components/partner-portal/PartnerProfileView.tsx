@@ -86,34 +86,34 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
     <div className="max-w-3xl mx-auto space-y-5 select-none animate-in fade-in duration-150 text-xs">
       <PartnerTelegramSettings key={`${tenant.id}:${partner.id}:${access.mustChangePassword}`} />
       {/* Dados Cadastrais do Parceiro */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <Building2 className="h-4 w-4 text-blue-500" />
-          <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+      <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex items-center gap-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
+          <Building2 className="h-4 w-4 text-[var(--link)]" />
+          <h2 className="text-sm font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-tight">
             Dados Cadastrais do Parceiro
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Razão Social / Nome</span>
-            <p className="font-bold text-slate-900 dark:text-white text-sm">{partner.name}</p>
+            <span className="text-[10.5px] font-bold uppercase text-[var(--text-secondary)] block">Razão Social / Nome</span>
+            <p className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-sm">{partner.name}</p>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Código Operacional</span>
-            <p className="font-mono font-bold text-blue-600 dark:text-blue-400">{partner.code}</p>
+            <span className="text-[10.5px] font-bold uppercase text-[var(--text-secondary)] block">Código Operacional</span>
+            <p className="font-mono font-bold text-[var(--link)] dark:text-[var(--link)]">{partner.code}</p>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Documento (CPF/CNPJ)</span>
-            <p className="font-mono text-slate-700 dark:text-slate-300">{partner.document || 'Não informado'}</p>
+            <span className="text-[10.5px] font-bold uppercase text-[var(--text-secondary)] block">Documento (CPF/CNPJ)</span>
+            <p className="font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{partner.document || 'Não informado'}</p>
           </div>
         </div>
 
-        <form onSubmit={handleUpdateContact} className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+        <form onSubmit={handleUpdateContact} className="border-t border-[var(--field-border)] dark:border-[var(--field-border)] pt-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="space-y-1 text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+            <label className="space-y-1 text-[10.5px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> E-mail Comercial</span>
               <input
                 type="email"
@@ -121,10 +121,10 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
                 onChange={event => setEmail(event.target.value)}
                 maxLength={254}
                 autoComplete="email"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] px-3 py-2 text-xs font-normal text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
               />
             </label>
-            <label className="space-y-1 text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+            <label className="space-y-1 text-[10.5px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Telefone / WhatsApp</span>
               <input
                 type="tel"
@@ -133,16 +133,16 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
                 maxLength={30}
                 autoComplete="tel"
                 placeholder="DDD + número"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-canvas)] px-3 py-2 text-xs font-normal text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
               />
             </label>
           </div>
 
-          {contactSuccess && <p role="status" className="text-emerald-600 dark:text-emerald-400">{contactSuccess}</p>}
-          {contactError && <p role="alert" className="text-rose-600 dark:text-rose-400">{contactError}</p>}
+          {contactSuccess && <p role="status" className="text-[var(--success-text)] dark:text-[var(--success-text)]">{contactSuccess}</p>}
+          {contactError && <p role="alert" className="text-[var(--danger-text)] dark:text-[var(--danger-text)]">{contactError}</p>}
           <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-1.5 text-[10px] text-slate-400"><Shield className="h-3.5 w-3.5" /> Nome e documento são gerenciados pela organização {tenant.name}.</p>
-            <button type="submit" disabled={isSavingContact} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+            <p className="flex items-center gap-1.5 text-[10px] text-[var(--text-secondary)]"><Shield className="h-3.5 w-3.5" /> Nome e documento são gerenciados pela organização {tenant.name}.</p>
+            <button type="submit" disabled={isSavingContact} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[var(--action)] px-3 py-2 text-[11px] font-bold text-[var(--action-ink)] hover:bg-[var(--action-hover)] disabled:opacity-90">
               <Save className="h-3.5 w-3.5" /> {isSavingContact ? 'Salvando…' : 'Salvar contatos'}
             </button>
           </div>
@@ -150,42 +150,42 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
       </div>
 
       {/* Usuário de Acesso & Segurança */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <User className="h-4 w-4 text-indigo-500" />
-          <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+      <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex items-center gap-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
+          <User className="h-4 w-4 text-[var(--link)]" />
+          <h2 className="text-sm font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-tight">
             Credencial de Acesso ao Portal
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2">
           <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">Nome do Operador</span>
-            <p className="font-bold text-slate-900 dark:text-white">{access.name}</p>
+            <span className="text-[10.5px] font-bold uppercase text-[var(--text-secondary)] block">Nome do Operador</span>
+            <p className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{access.name}</p>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10.5px] font-bold uppercase text-slate-400 block">E-mail de Login</span>
-            <p className="font-mono text-slate-700 dark:text-slate-300">{access.email}</p>
+            <span className="text-[10.5px] font-bold uppercase text-[var(--text-secondary)] block">E-mail de Login</span>
+            <p className="font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{access.email}</p>
           </div>
         </div>
 
         {/* Alterar Senha */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
-          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
-            <Lock className="h-3.5 w-3.5 text-slate-400" />
+        <div className="pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+          <div className="flex items-center gap-1.5 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <Lock className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
             <span>Alterar Senha de Acesso</span>
           </div>
 
           {successMsg && (
-            <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <div className="p-3 rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {errorMsg && (
-            <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-500 flex items-center gap-2">
+            <div className="p-3 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger-text)] flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -194,7 +194,7 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
           <form onSubmit={handleChangePassword} className="space-y-3 max-w-md">
             {!access.mustChangePassword && (
               <div className="space-y-1">
-                <label htmlFor="partner-current-password" className="font-semibold text-slate-600 dark:text-slate-400 block">Senha Atual</label>
+                <label htmlFor="partner-current-password" className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Senha Atual</label>
                 <input
                   id="partner-current-password"
                   type="password"
@@ -203,12 +203,12 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
                   autoComplete="current-password"
                   required
                   disabled={isUpdating}
-                  className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  className="w-full h-9 px-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs"
                 />
               </div>
             )}
             <div className="space-y-1">
-              <label htmlFor="partner-new-password" className="font-semibold text-slate-600 dark:text-slate-400 block">Nova Senha</label>
+              <label htmlFor="partner-new-password" className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Nova Senha</label>
               <input
                 id="partner-new-password"
                 type="password"
@@ -219,12 +219,12 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
                 minLength={6}
                 autoComplete="new-password"
                 disabled={isUpdating}
-                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                className="w-full h-9 px-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="partner-confirm-password" className="font-semibold text-slate-600 dark:text-slate-400 block">Confirme a Nova Senha</label>
+              <label htmlFor="partner-confirm-password" className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Confirme a Nova Senha</label>
               <input
                 id="partner-confirm-password"
                 type="password"
@@ -235,14 +235,14 @@ export const PartnerProfileView: React.FC<PartnerProfileViewProps> = ({
                 minLength={6}
                 autoComplete="new-password"
                 disabled={isUpdating}
-                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                className="w-full h-9 px-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs"
               />
             </div>
 
             <button
               type="submit"
               disabled={isUpdating}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold transition-colors cursor-pointer shadow-2xs"
+              className="px-4 py-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] disabled:opacity-90 text-[var(--action-ink)] font-bold transition-colors cursor-pointer shadow-2xs"
             >
               {isUpdating ? 'Atualizando...' : 'Salvar Nova Senha'}
             </button>

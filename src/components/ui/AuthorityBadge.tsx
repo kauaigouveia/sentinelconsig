@@ -22,60 +22,60 @@ export const AuthorityBadge: React.FC<AuthorityBadgeProps> = ({
       case 'BANCO':
         return {
           label: 'Banco',
-          bg: 'bg-sky-50 dark:bg-sky-950/40',
-          text: 'text-sky-700 dark:text-sky-300 font-medium',
-          border: 'border-sky-200 dark:border-sky-800/80',
-          indicator: 'bg-sky-500',
+          bg: 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]',
+          text: 'text-[var(--link)] dark:text-[var(--link)] font-medium',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+          indicator: 'bg-[var(--info-bg)]',
         };
       case 'CLIENTE':
         return {
           label: 'Cliente',
-          bg: 'bg-amber-50 dark:bg-amber-950/40',
-          text: 'text-amber-700 dark:text-amber-300 font-medium',
-          border: 'border-amber-200 dark:border-amber-800/80',
-          indicator: 'bg-amber-500',
+          bg: 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)]',
+          text: 'text-[var(--warning-text)] dark:text-[var(--warning-text)] font-medium',
+          border: 'border-[var(--warning-border)] dark:border-[var(--warning-border)]',
+          indicator: 'bg-[var(--warning-bg)]',
         };
       case 'PARCEIRO':
         return {
           label: 'Parceiro',
-          bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-          text: 'text-emerald-700 dark:text-emerald-300 font-medium',
-          border: 'border-emerald-200 dark:border-emerald-800/80',
-          indicator: 'bg-emerald-500',
+          bg: 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)]',
+          text: 'text-[var(--success-text)] dark:text-[var(--success-text)] font-medium',
+          border: 'border-[var(--success-border)] dark:border-[var(--success-border)]',
+          indicator: 'bg-[var(--success-bg)]',
         };
       case 'NOSSA EQUIPE':
       case 'NOSSA_EQUIPE':
         return {
           label: 'Alçada Interna',
-          bg: 'bg-purple-50 dark:bg-purple-950/40',
-          text: 'text-purple-700 dark:text-purple-300 font-semibold',
-          border: 'border-purple-200 dark:border-purple-800/80',
-          indicator: 'bg-purple-500',
+          bg: 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]',
+          text: 'text-[var(--link)] dark:text-[var(--link)] font-semibold',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+          indicator: 'bg-[var(--info-bg)]',
         };
       case 'SISTEMA':
         return {
           label: 'Sistema',
-          bg: 'bg-slate-100 dark:bg-slate-800/60',
-          text: 'text-slate-700 dark:text-slate-300 font-medium',
-          border: 'border-slate-200 dark:border-slate-700',
-          indicator: 'bg-slate-400',
+          bg: 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)]',
+          text: 'text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+          indicator: 'bg-[var(--bg-surface-elevated)]',
         };
       case 'ORGAO_PAGADOR':
       case 'ORGAO PAGADOR':
         return {
           label: 'Órgão Pagador',
-          bg: 'bg-indigo-50 dark:bg-indigo-950/40',
-          text: 'text-indigo-700 dark:text-indigo-300 font-medium',
-          border: 'border-indigo-200 dark:border-indigo-800/80',
-          indicator: 'bg-indigo-500',
+          bg: 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]',
+          text: 'text-[var(--link)] dark:text-[var(--link)] font-medium',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+          indicator: 'bg-[var(--info-bg)]',
         };
       default:
         return {
           label: alçada || 'Cliente',
-          bg: 'bg-slate-100 dark:bg-slate-800/60',
-          text: 'text-slate-700 dark:text-slate-300 font-medium',
-          border: 'border-slate-200 dark:border-slate-700',
-          indicator: 'bg-slate-400',
+          bg: 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)]',
+          text: 'text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+          indicator: 'bg-[var(--bg-surface-elevated)]',
         };
     }
   };

@@ -1,0 +1,31 @@
+{
+  "paintOccurrencesInComponentsAndCSS": 0,
+  "retainedConfigurationOccurrences": 52,
+  "files": [
+    {
+      "file": "src/data/configurationColorValues.ts",
+      "count": 14,
+      "reason": "Stored branding, configurable status choices or synthetic service defaults; preserved to avoid changing tenant resolution, persisted data or API contracts."
+    },
+    {
+      "file": "src/hooks/useTenantBranding.ts",
+      "count": 6,
+      "reason": "Stored branding, configurable status choices or synthetic service defaults; preserved to avoid changing tenant resolution, persisted data or API contracts."
+    },
+    {
+      "file": "src/services/brandingService.ts",
+      "count": 4,
+      "reason": "Stored branding, configurable status choices or synthetic service defaults; preserved to avoid changing tenant resolution, persisted data or API contracts."
+    },
+    {
+      "file": "src/services/storageService.ts",
+      "count": 20,
+      "reason": "Stored branding, configurable status choices or synthetic service defaults; preserved to avoid changing tenant resolution, persisted data or API contracts."
+    },
+    {
+      "file": "src/services/testRunnerService.ts",
+      "count": 8,
+      "reason": "Stored branding, configurable status choices or synthetic service defaults; preserved to avoid changing tenant resolution, persisted data or API contracts."
+    }
+  ]
+}

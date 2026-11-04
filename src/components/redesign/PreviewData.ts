@@ -64,7 +64,7 @@ export function readPreviewRows(): PreviewRow[] {
         "Não informado",
       status: status?.name || proposal.statusName || "Não informado",
       statusId: proposal.statusId,
-      color: status?.color || "#64748b",
+      color: status?.color || "var(--text-primary)",
       amount:
         proposal.disbursedValue == null
           ? null
