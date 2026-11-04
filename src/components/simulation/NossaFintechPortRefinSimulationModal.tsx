@@ -20,7 +20,7 @@ import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
 
-type SimulationRow = { contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
+type SimulationRow = { installmentChanges?: {label?:string;originalInstallment:number;newInstallment:number|null}[]; originalInstallment?: number; contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
 type Props = { onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
 const currency = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
@@ -102,7 +102,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     const response=await request(`/api/${route}/calculate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(form.reviewMetadata??portabilityContext),birthDate:form.birthDate,benefitType:Number(form.benefitType),term:Number(form.numberOfInstallments),benefitContractCount:form.benefitContractCount?Number(form.benefitContractCount):undefined,refinanceRate:form.refinancingRate?parseCurrency(form.refinancingRate):undefined,contracts:group.map(contract=>({originBank:contract.originLenderCode,originalTerm:Number(contract.originalTerm),remaining:Number(contract.openedInstallmentNumber),balance:parseCurrency(contract.lastDueBalance),installment:parseCurrency(contract.installmentFaceValue)}))})});
     const result=await readJsonResponse(response);if(!response.ok)throw Error(result.error||`Não foi possível calcular ${provider}.`);
     if(!result.offers?.length)throw Error(result.message||'A planilha não retornou condições calculadas.');
-    return result.offers.map((offer:any)=>({provider,table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate},success:true,requiresReview:offer.requiresReview,term:offer.term,troco:offer.amount,data:offer,error:offer.requiresReview?'Estimativa calculada; validar condições documentais e vigência antes de salvar.':undefined}));
+    return result.offers.map((offer:any)=>({provider,table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate},success:true,requiresReview:offer.requiresReview,term:offer.term,troco:offer.amount,data:offer,installmentChanges:offer.installmentChanges,error:offer.requiresReview?'Estimativa calculada; validar condições documentais e vigência antes de salvar.':undefined}));
   };
 
   const calculateFinanto = async (form:FormSnapshot): Promise<SimulationRow[]> => {
@@ -174,12 +174,13 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
       for(const [index,contract] of contracts.entries()){
         if(transport.current?.signal.aborted)throw Error('Simulação interrompida. Verifique a sessão e as permissões.');
         const snapshot={...form,...contract};
+        const contractOrdinal=index+1;
         const label=`Contrato ${index+1} · banco ${contract.originLenderCode} · parcela ${currency(parseCurrency(contract.installmentFaceValue))}`;
         setProgress(`Simulando contrato ${index+1} de ${contracts.length}`);
         const calls=await Promise.allSettled([calculateNossaFintech(snapshot),calculateFinanto(snapshot),calculateFacta(snapshot),calculateWorkbook('DAYCOVAL',snapshot),calculateWorkbook('C6',snapshot),calculateWorkbook('PARANA',snapshot)]);
         calls.forEach((result,index)=>{
           const provider=['Nossa Fintech','FINANTO','FACTA','DAYCOVAL','C6','PARANA'][index];
-          if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot})));
+          if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot,originalInstallment:parseCurrency(snapshot.installmentFaceValue)??undefined,installmentChanges:row.installmentChanges?.map(change=>({...change,label:`Contrato ${contractOrdinal}`}))})));
           else notes.push(`${label} · ${provider}: ${result.reason?.message||'não foi possível simular'}`);
         });
         if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
@@ -197,7 +198,9 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         else for(const result of data.groups||[]){
           const label=`Unificação Daycoval · contratos ${result.indices.map((index:number)=>index+1).join(' + ')}`;
           if(result.error||!result.offers?.length)notes.push(`${label}: ${result.error||result.message||'Sem oferta'}`);
-          for(const offer of result.offers||[])combined.push({provider:'DAYCOVAL',contractLabel:label,unified:true,requiresReview:true,success:true,term:offer.term,troco:offer.amount,data:offer,table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate}});
+          const originals=result.indices.map((index:number)=>parseCurrency(contracts[index]?.installmentFaceValue));
+          const originalInstallment=originals.length&&originals.every((value:number|null)=>value!==null&&Number.isFinite(value)&&value>0)?Math.round(originals.reduce((sum:number,value:number)=>sum+value,0)*100)/100:undefined;
+          for(const offer of result.offers||[])combined.push({provider:'DAYCOVAL',contractLabel:label,originalInstallment,unified:true,requiresReview:true,success:true,term:offer.term,troco:offer.amount,data:offer,installmentChanges:offer.installmentChanges?.map((change:any,index:number)=>({...change,label:`Contrato ${result.indices[index]+1}`})),table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate}});
         }
         if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
         setRows(combined.filter(row=>row.troco==null||row.troco>=0));setProviderNotes([...notes]);

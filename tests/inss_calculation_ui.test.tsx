@@ -88,6 +88,8 @@ it('runs all six individual bank paths for two contracts and one explicit Daycov
  await screen.findByRole('button',{name:/Unificações Daycoval/});
  fireEvent.click(screen.getByRole('button',{name:/Unificações Daycoval/}));
  await screen.findByText('Synthetic unified');
+ expect(screen.getByText('Soma das parcelas originais').textContent).toContain('91,00');
+ expect(screen.getByText('Nova parcela unificada').textContent).toContain('80,00');
  for(const url of ['/api/daycoval/calculate','/api/c6-spreadsheet/calculate','/api/parana-spreadsheet/calculate','/api/integrations/finanto/config','/api/integrations/facta/inss/simulate','/api/integrations/nossa-fintech/port-refin/simulate-all'])expect(fetch.mock.calls.filter(([path])=>path===url)).toHaveLength(2);
  const groups=fetch.mock.calls.filter(([path])=>path==='/api/daycoval/calculate-groups');expect(groups).toHaveLength(1);
  expect(JSON.parse(String(groups[0][1]?.body)).contracts.map((c:any)=>c.contractNumber)).toEqual(['SYNTHETIC-A','SYNTHETIC-B']);
