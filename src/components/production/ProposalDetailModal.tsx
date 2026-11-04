@@ -395,11 +395,11 @@ const ProposalDetailModalContent: React.FC<
       await StorageService.updateProposalAsync(proposal.id, {
         statusId: selectedStatusId,
       }, statusObservation || `Status alterado para ${targetStatus?.name || 'novo status'}`);
-      
+
       setStatusSuccess(true);
       setStatusObservation('');
       toastService.success('Status Atualizado', `Status alterado para ${targetStatus?.name || 'novo status'}.`);
-      
+
       // Refresh timeline de forma desacoplada
       fetch(`/api/proposals/${proposal.id}/timeline`)
         .then(r => r.json())
@@ -410,7 +410,7 @@ const ProposalDetailModalContent: React.FC<
         .catch(err => {
           console.warn('[ProposalDetailModal] Erro secundário ao atualizar timeline pós-status:', err);
         });
-      
+
       setTimeout(() => {
         setStatusSuccess(false);
         setStatusUpdating(false);
@@ -540,7 +540,7 @@ const ProposalDetailModalContent: React.FC<
   const handleAddComment = async () => {
     const textToSubmit = commentText.trim();
     if (!textToSubmit) return;
-    
+
     // 1. Gravar comentário no PostgreSQL (Operação Primária)
     let commentSaved = false;
     try {
@@ -580,28 +580,28 @@ const ProposalDetailModalContent: React.FC<
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-5xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="relative w-full max-w-5xl rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  flex flex-col max-h-[92vh] border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden">
         {/* Header with Navigation and Copy Buttons */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-3.5 bg-slate-50 dark:bg-slate-950/60 shrink-0">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-5 py-3.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className="h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold shrink-0 shadow-xs"
-              style={{ backgroundColor: currentStatus?.color || '#3b82f6' }}
+              className="h-9 w-9 rounded-xl flex items-center justify-center text-[var(--text-primary)] font-bold shrink-0 shadow-xs"
+              style={{ backgroundColor: currentStatus?.color || "var(--bg-surface)" }}
             >
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
+                  <h2 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono tracking-tight">
                     ADE {proposal.proposalNumber}
                   </h2>
                   <button
                     onClick={() => toastService.copyToClipboard(proposal.proposalNumber, 'ADE')}
                     title="Copiar número da ADE"
                     aria-label="Copiar número da ADE"
-                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
@@ -609,15 +609,15 @@ const ProposalDetailModalContent: React.FC<
                 <StatusBadge status={currentStatus} />
                 <AuthorityBadge responsible={proposal?.currentResponsible || currentStatus?.responsibleGroup || currentStatus?.responsible} />
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate mt-0.5">
                 <span>Cliente:</span>
-                <strong className="text-slate-800 dark:text-slate-200 truncate font-semibold">
+                <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate font-semibold">
                   {clientFullName}
                 </strong>
                 {clientCpf && (
                   <button
                     onClick={() => toastService.copyToClipboard(clientCpf, 'CPF')}
-                    className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-[var(--link)] dark:text-[var(--link)] hover:underline cursor-pointer"
                     title="Clique para copiar CPF"
                   >
                     <span>({formatCpf(clientCpf)})</span>
@@ -631,18 +631,18 @@ const ProposalDetailModalContent: React.FC<
           <div className="flex items-center gap-2 shrink-0">
             {/* Sequential Proposals Navigator */}
             {proposalIdsList.length > 1 && onSelectProposal && (
-              <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0.5 shadow-2xs">
+              <div className="flex items-center rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-0.5 shadow-2xs">
                 <button
                   onClick={handleGoPrevious}
                   disabled={!hasPrevious}
                   title="Proposta Anterior (Alt + ←)"
                   aria-label="Proposta Anterior"
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:hover:bg-transparent transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <span className="hidden sm:inline text-[11px]">Anterior</span>
                 </button>
-                <div className="px-1.5 text-[10.5px] font-mono font-bold text-slate-400 dark:text-slate-500">
+                <div className="px-1.5 text-[10.5px] font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   {currentIndex + 1}/{proposalIdsList.length}
                 </div>
                 <button
@@ -650,7 +650,7 @@ const ProposalDetailModalContent: React.FC<
                   disabled={!hasNext}
                   title="Próxima Proposta (Alt + →)"
                   aria-label="Próxima Proposta"
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:hover:bg-transparent transition-colors cursor-pointer"
                 >
                   <span className="hidden sm:inline text-[11px]">Próxima</span>
                   <ChevronRight className="h-4 w-4" />
@@ -661,7 +661,7 @@ const ProposalDetailModalContent: React.FC<
             <button
               onClick={onClose}
               aria-label="Fechar Detalhes da Proposta"
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -669,48 +669,48 @@ const ProposalDetailModalContent: React.FC<
         </div>
 
         {/* Quick Info Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 py-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Produto</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100">{product?.name || '—'}</span>
+            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Produto</span>
+            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{product?.name || '—'}</span>
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Banco × Promotora</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100 truncate block">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Banco × Promotora</span>
+            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
               {bank?.name || '—'} / {promoter?.name || '—'}
             </span>
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Parceiro</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100 truncate block">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Parceiro</span>
+            <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
               {partner?.login || '—'}
             </span>
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Digitador / Cadastro</span>
-            <span className="font-medium text-slate-800 dark:text-slate-200 truncate block">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Digitador / Cadastro</span>
+            <span className="font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
               {digitizer?.name || 'Operador'} • {formatDate(proposal.createdAt)}
             </span>
           </div>
         </div>
 
         {/* Financial Information Bar */}
-        <div className="px-6 py-2.5 bg-slate-50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="px-6 py-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+              <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Valor Liberado Cliente:
               </span>
-              <span className="font-mono font-bold text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+              <span className="font-mono font-bold text-xs text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-2 py-0.5 rounded border border-[var(--success-border)] dark:border-[var(--success-border)]">
                 {proposal.disbursedValue !== undefined ? formatCurrency(proposal.disbursedValue) : 'Não informado'}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+              <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Saldo Contrato (Portabilidade):
               </span>
-              <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+              <span className="font-mono font-bold text-xs text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-2 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                 {proposal.contractBalance !== undefined ? formatCurrency(proposal.contractBalance) : 'Não informado'}
               </span>
             </div>
@@ -718,7 +718,7 @@ const ProposalDetailModalContent: React.FC<
 
           {canUpdateProposal && <button
             onClick={() => setIsEditingFinancials(prev => !prev)}
-            className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:border-blue-400 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-[11px] font-bold text-[var(--link)] dark:text-[var(--link)] hover:text-[var(--link)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] hover:border-[var(--field-border)] px-2.5 py-1 rounded-md transition-colors cursor-pointer"
           >
             <Edit3 className="h-3 w-3" />
             <span>{isEditingFinancials ? 'Cancelar Edição' : 'Ajustar Valores'}</span>
@@ -727,9 +727,9 @@ const ProposalDetailModalContent: React.FC<
 
         {/* Financial Inline Form */}
         {canUpdateProposal && isEditingFinancials && (
-          <div className="px-6 py-3 bg-blue-50/70 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900/60 flex flex-wrap items-end gap-3 text-xs animate-in fade-in duration-100">
+          <div className="px-6 py-3 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-wrap items-end gap-3 text-xs animate-in fade-in duration-100">
             <div>
-              <label className="block text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 Valor Liberado para Cliente (R$)
               </label>
               <input
@@ -737,11 +737,11 @@ const ProposalDetailModalContent: React.FC<
                 value={editDisbursedStr}
                 onChange={e => setEditDisbursedStr(e.target.value)}
                 placeholder="Ex: 1.250,00"
-                className="w-36 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                className="w-36 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[10px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 Saldo do Contrato / Quitação (R$)
               </label>
               <input
@@ -749,20 +749,20 @@ const ProposalDetailModalContent: React.FC<
                 value={editBalanceStr}
                 onChange={e => setEditBalanceStr(e.target.value)}
                 placeholder="Ex: 15.420,00"
-                className="w-36 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                className="w-36 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               />
             </div>
             <button
               onClick={handleSaveFinancials}
               disabled={financialsSaving}
               aria-busy={financialsSaving}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-wait px-3.5 py-1.5 text-xs font-bold text-white shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="rounded-lg bg-[var(--success-bg)] hover:bg-[var(--success-bg)] disabled:opacity-90 disabled:cursor-wait px-3.5 py-1.5 text-xs font-bold text-[var(--success-text)]  flex items-center gap-1.5 cursor-pointer"
             >
               {financialsSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
               <span>{financialsSaving ? 'Salvando...' : 'Salvar Valores'}</span>
             </button>
             {financialsSuccess && (
-              <span className="text-emerald-700 dark:text-emerald-400 font-bold text-xs py-1">
+              <span className="text-[var(--success-text)] dark:text-[var(--success-text)] font-bold text-xs py-1">
                 Valores atualizados com sucesso!
               </span>
             )}
@@ -771,37 +771,37 @@ const ProposalDetailModalContent: React.FC<
 
         {/* Related Portability Banner if exists */}
         {relatedPort && (
-          <div className="px-6 py-2 bg-purple-50 dark:bg-purple-950/40 border-b border-purple-200 dark:border-purple-900 flex items-center justify-between text-xs text-purple-900 dark:text-purple-300">
+          <div className="px-6 py-2 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between text-xs text-[var(--link)] dark:text-[var(--link)]">
             <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <Link2 className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
               <span>
                 Esta proposta é um <strong>REFIN DA PORTABILIDADE</strong> vinculado à Portabilidade ADE: <strong>{relatedPort.proposalNumber}</strong>
               </span>
             </div>
-            <span className="bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 font-bold px-2 py-0.5 rounded text-[10px]">
+            <span className="bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] font-bold px-2 py-0.5 rounded text-[10px]">
               VÍNCULO ATIVO
             </span>
           </div>
         )}
 
         {/* Status Update Action Bar */}
-        {canUpdateProposal ? <div className="px-6 py-3 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+        {canUpdateProposal ? <div className="px-6 py-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1.5">
             Alterar Status da Proposta
           </label>
 
           {statusesLoading ? (
-            <div className="flex items-center gap-2 py-2 text-xs text-slate-500 dark:text-slate-400">
-              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></span>
+            <div className="flex items-center gap-2 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-solid border-[var(--field-border)] border-r-transparent"></span>
               <span>Carregando status disponíveis...</span>
             </div>
           ) : statusesError || allStatuses.length === 0 ? (
-            <div className="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-center justify-between rounded-lg bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] px-3 py-2 text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)]">
               <span>{statusesError || 'Não foi possível carregar os status oficiais. Atualize a página ou tente novamente.'}</span>
               <button
                 type="button"
                 onClick={fetchOfficialStatuses}
-                className="underline hover:text-amber-900 dark:hover:text-amber-200 font-semibold ml-3 cursor-pointer"
+                className="underline hover:text-[var(--warning-text)] dark:hover:text-[var(--warning-text)] font-semibold ml-3 cursor-pointer"
               >
                 Tentar novamente
               </button>
@@ -812,7 +812,7 @@ const ProposalDetailModalContent: React.FC<
                 value={selectedStatusId}
                 onChange={e => setSelectedStatusId(e.target.value)}
                 disabled={statusesLoading || allStatuses.length === 0 || statusUpdating}
-                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden disabled:opacity-90 disabled:cursor-not-allowed"
               >
                 {allStatuses.map(s => {
                   const badge = s.responsible
@@ -832,13 +832,13 @@ const ProposalDetailModalContent: React.FC<
                 onChange={e => setStatusObservation(e.target.value)}
                 placeholder="Motivo / Observação da alteração..."
                 disabled={statusesLoading || allStatuses.length === 0 || statusUpdating}
-                className="flex-1 min-w-[200px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden disabled:opacity-50"
+                className="flex-1 min-w-[200px] rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] focus:outline-hidden disabled:opacity-90"
               />
 
               <button
                 onClick={handleUpdateStatus}
                 disabled={statusesLoading || allStatuses.length === 0 || statusUpdating || !selectedStatusId || (selectedStatusId === proposal.statusId && !statusObservation)}
-                className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-1.5 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-4 py-1.5 text-xs font-bold text-[var(--action-ink)] transition-colors flex items-center gap-1.5  cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span>{statusUpdating ? 'Gravando...' : 'Gravar Novo Status'}</span>
@@ -846,38 +846,38 @@ const ProposalDetailModalContent: React.FC<
             </div>
           )}
           {statusSuccess && (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+            <p className="text-[11px] text-[var(--success-text)] dark:text-[var(--success-text)] font-semibold mt-1">
               Status atualizado com sucesso e registrado na linha do tempo!
             </p>
           )}
-        </div> : <div className="px-6 py-3 bg-slate-50/80 text-xs text-slate-500 dark:bg-slate-950/40 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">Seu perfil pode consultar a proposta, mas não possui permissão para alterar status ou valores.</div>}
+        </div> : <div className="px-6 py-3 bg-[var(--bg-canvas)] text-xs text-[var(--text-secondary)] dark:bg-[var(--bg-canvas)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">Seu perfil pode consultar a proposta, mas não possui permissão para alterar status ou valores.</div>}
 
-        {proposal.workbankSource && <div className="px-6 py-3 text-sm border-b border-cyan-600 bg-cyan-500/10">Origem: WorkBank. Atualize pelo período na aba WorkBank da promotora vinculada. As APIs diretas dos bancos não são utilizadas nesta proposta.</div>}
+        {proposal.workbankSource && <div className="px-6 py-3 text-sm border-b border-[var(--field-border)] bg-[var(--info-bg)]">Origem: WorkBank. Atualize pelo período na aba WorkBank da promotora vinculada. As APIs diretas dos bancos não são utilizadas nesta proposta.</div>}
         {!proposal.workbankSource && !proposal.finantoSimulationId && !proposal.nossaFintechDebtKey && (bankCode === '254' || /PARAN[AÁ]/.test(bankName)) && <ParanaProposalSyncCard key={proposal.id} proposalId={proposal.id} onUpdated={onProposalUpdated} />}
         {/* Integração C6 Bank Status Bar */}
         {isC6Bank && (
-          <div className="px-6 py-2.5 bg-slate-900 text-white dark:bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="px-6 py-2.5 bg-[var(--bg-surface)] text-[var(--text-primary)] dark:bg-[var(--bg-canvas)] border-b border-[var(--field-border)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-                <span className="font-bold uppercase tracking-wider text-[10.5px] text-amber-300">C6 Bank</span>
+                <span className="h-2 w-2 rounded-full bg-[var(--warning-bg)] animate-pulse"></span>
+                <span className="font-bold uppercase tracking-wider text-[10.5px] text-[var(--warning-text)]">C6 Bank</span>
               </div>
-              <div className="flex items-center gap-1 text-slate-300 text-[11px]">
-                <span className="text-slate-400">Nº C6:</span>
-                <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+              <div className="flex items-center gap-1 text-[var(--text-primary)] text-[11px]">
+                <span className="text-[var(--text-secondary)]">Nº C6:</span>
+                <span className="font-mono font-bold text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 rounded border border-[var(--field-border)]">
                   {proposal.c6ProposalNumber || 'Não vinculado'}
                 </span>
               </div>
               {proposal.c6RawSituation && (
                 <div className="flex items-center gap-1 text-[11px]">
-                  <span className="text-slate-400">Situação:</span>
-                  <span className="font-semibold text-emerald-300">{proposal.c6RawSituation}</span>
+                  <span className="text-[var(--text-secondary)]">Situação:</span>
+                  <span className="font-semibold text-[var(--success-text)]">{proposal.c6RawSituation}</span>
                 </div>
               )}
               {proposal.c6CurrentActivity && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-300">
-                  <span className="text-slate-400">Atividade:</span>
-                  <span className="font-medium text-slate-200">
+                <div className="flex items-center gap-1 text-[11px] text-[var(--text-primary)]">
+                  <span className="text-[var(--text-secondary)]">Atividade:</span>
+                  <span className="font-medium text-[var(--text-primary)]">
                     {proposal.c6CurrentActivity} {proposal.c6ActivityDescription ? `— ${proposal.c6ActivityDescription}` : ''}
                   </span>
                 </div>
@@ -889,8 +889,8 @@ const ProposalDetailModalContent: React.FC<
                 onClick={() => setActiveTab('C6_BANK')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'C6_BANK'
-                    ? 'bg-amber-400 text-slate-950 shadow-xs'
-                    : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'
+                    ? 'bg-[var(--warning-bg)] text-[var(--text-secondary)] shadow-xs'
+                    : 'bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--warning-text)] border border-[var(--warning-border)]'
                 }`}
               >
                 <span>Ver Esteira C6 Completa</span>
@@ -902,38 +902,38 @@ const ProposalDetailModalContent: React.FC<
 
         {/* Integração FACTA Status Bar */}
         {isFactaBank && (
-          <div className="px-6 py-2.5 bg-gradient-to-r from-orange-950 via-slate-900 to-slate-950 text-white border-b border-orange-900/50 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="px-6 py-2.5     text-[var(--text-primary)] border-b border-[var(--warning-border)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-orange-400 animate-pulse"></span>
-                <span className="font-bold uppercase tracking-wider text-[10.5px] text-orange-300">FACTA Financeira</span>
+                <span className="h-2 w-2 rounded-full bg-[var(--warning-bg)] animate-pulse"></span>
+                <span className="font-bold uppercase tracking-wider text-[10.5px] text-[var(--warning-text)]">FACTA Financeira</span>
               </div>
               {proposal.factaAfCode && (
-                <div className="flex items-center gap-1 text-slate-300 text-[11px]">
-                  <span className="text-slate-400">Código AF:</span>
-                  <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                <div className="flex items-center gap-1 text-[var(--text-primary)] text-[11px]">
+                  <span className="text-[var(--text-secondary)]">Código AF:</span>
+                  <span className="font-mono font-bold text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 rounded border border-[var(--field-border)]">
                     {proposal.factaAfCode}
                   </span>
                 </div>
               )}
               {proposal.factaProposalNumber && (
-                <div className="flex items-center gap-1 text-slate-300 text-[11px]">
-                  <span className="text-slate-400">Nº FACTA:</span>
-                  <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                <div className="flex items-center gap-1 text-[var(--text-primary)] text-[11px]">
+                  <span className="text-[var(--text-secondary)]">Nº FACTA:</span>
+                  <span className="font-mono font-bold text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 rounded border border-[var(--field-border)]">
                     {proposal.factaProposalNumber}
                   </span>
                 </div>
               )}
               {proposal.factaRawStatus && (
                 <div className="flex items-center gap-1 text-[11px]">
-                  <span className="text-slate-400">Status:</span>
-                  <span className="font-semibold text-orange-300">{proposal.factaRawStatus}</span>
+                  <span className="text-[var(--text-secondary)]">Status:</span>
+                  <span className="font-semibold text-[var(--warning-text)]">{proposal.factaRawStatus}</span>
                 </div>
               )}
               {proposal.factaCrivoStatus && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-300">
-                  <span className="text-slate-400">Crivo:</span>
-                  <span className="font-medium text-slate-200">{proposal.factaCrivoStatus}</span>
+                <div className="flex items-center gap-1 text-[11px] text-[var(--text-primary)]">
+                  <span className="text-[var(--text-secondary)]">Crivo:</span>
+                  <span className="font-medium text-[var(--text-primary)]">{proposal.factaCrivoStatus}</span>
                 </div>
               )}
             </div>
@@ -943,8 +943,8 @@ const ProposalDetailModalContent: React.FC<
                 onClick={() => setActiveTab('FACTA')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'FACTA'
-                    ? 'bg-orange-500 text-white shadow-xs'
-                    : 'bg-slate-800 hover:bg-slate-700 text-orange-300 border border-orange-400/30'
+                    ? 'bg-[var(--warning-bg)] text-[var(--text-primary)] shadow-xs'
+                    : 'bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--warning-text)] border border-[var(--warning-border)]'
                 }`}
               >
                 <span>Ver Esteira FACTA Completa</span>
@@ -956,30 +956,30 @@ const ProposalDetailModalContent: React.FC<
 
         {/* Integração Happy / BYX Capital Status Bar */}
         {isHappyBank && (
-          <div className="px-6 py-2.5 bg-gradient-to-r from-pink-950 via-slate-900 to-slate-950 text-white border-b border-pink-900/50 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="px-6 py-2.5     text-[var(--text-primary)] border-b border-[var(--danger-border)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-pink-400 animate-pulse"></span>
-                <span className="font-bold uppercase tracking-wider text-[10.5px] text-pink-300">Happy / BYX Capital</span>
+                <span className="h-2 w-2 rounded-full bg-[var(--danger-bg)] animate-pulse"></span>
+                <span className="font-bold uppercase tracking-wider text-[10.5px] text-[var(--danger-text)]">Happy / BYX Capital</span>
               </div>
               {proposal.happyContractId && (
-                <div className="flex items-center gap-1 text-slate-300 text-[11px]">
-                  <span className="text-slate-400">Contrato:</span>
-                  <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                <div className="flex items-center gap-1 text-[var(--text-primary)] text-[11px]">
+                  <span className="text-[var(--text-secondary)]">Contrato:</span>
+                  <span className="font-mono font-bold text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 rounded border border-[var(--field-border)]">
                     {proposal.happyContractId}
                   </span>
                 </div>
               )}
               {proposal.happyStatusName && (
                 <div className="flex items-center gap-1 text-[11px]">
-                  <span className="text-slate-400">Status Happy:</span>
-                  <span className="font-semibold text-pink-300">{proposal.happyStatusName}</span>
+                  <span className="text-[var(--text-secondary)]">Status Happy:</span>
+                  <span className="font-semibold text-[var(--danger-text)]">{proposal.happyStatusName}</span>
                 </div>
               )}
               {proposal.happyLastSyncAt && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-300">
-                  <span className="text-slate-400">Última Sync:</span>
-                  <span className="font-medium text-slate-200">
+                <div className="flex items-center gap-1 text-[11px] text-[var(--text-primary)]">
+                  <span className="text-[var(--text-secondary)]">Última Sync:</span>
+                  <span className="font-medium text-[var(--text-primary)]">
                     {new Date(proposal.happyLastSyncAt).toLocaleTimeString('pt-BR')}
                   </span>
                 </div>
@@ -991,8 +991,8 @@ const ProposalDetailModalContent: React.FC<
                 onClick={() => setActiveTab('HAPPY')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'HAPPY'
-                    ? 'bg-pink-600 text-white shadow-xs'
-                    : 'bg-slate-800 hover:bg-slate-700 text-pink-300 border border-pink-400/30'
+                    ? 'bg-[var(--danger-bg)] text-[var(--text-primary)] shadow-xs'
+                    : 'bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--danger-text)] border border-[var(--danger-border)]'
                 }`}
               >
                 <span>Ver Esteira Happy Completa</span>
@@ -1003,13 +1003,13 @@ const ProposalDetailModalContent: React.FC<
         )}
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-slate-900 shrink-0">
+        <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shrink-0">
           <button
             onClick={() => setActiveTab('HISTORICO')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'HISTORICO'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             <Clock className="h-3.5 w-3.5" />
@@ -1020,8 +1020,8 @@ const ProposalDetailModalContent: React.FC<
             onClick={() => setActiveTab('PENDENCIAS')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'PENDENCIAS'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             <AlertCircle className="h-3.5 w-3.5" />
@@ -1032,8 +1032,8 @@ const ProposalDetailModalContent: React.FC<
             onClick={() => setActiveTab('COMENTARIOS')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'COMENTARIOS'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             <MessageSquare className="h-3.5 w-3.5" />
@@ -1044,8 +1044,8 @@ const ProposalDetailModalContent: React.FC<
             onClick={() => setActiveTab('CLIENTE')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'CLIENTE'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             <User className="h-3.5 w-3.5" />
@@ -1056,8 +1056,8 @@ const ProposalDetailModalContent: React.FC<
             onClick={() => setActiveTab('INTEGRACOES')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'INTEGRACOES'
-                ? 'border-violet-600 text-violet-600 dark:text-violet-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
             }`}
           >
             <Link2 className="h-3.5 w-3.5" />
@@ -1069,11 +1069,11 @@ const ProposalDetailModalContent: React.FC<
               onClick={() => setActiveTab('C6_BANK')}
               className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'C6_BANK'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
               }`}
             >
-              <div className="h-3.5 w-3.5 rounded-xs bg-black text-white flex items-center justify-center font-black text-[8px] leading-none">
+              <div className="h-3.5 w-3.5 rounded-xs bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center font-black text-[8px] leading-none">
                 C6
               </div>
               <span>Esteira C6 Bank</span>
@@ -1085,11 +1085,11 @@ const ProposalDetailModalContent: React.FC<
               onClick={() => setActiveTab('FACTA')}
               className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'FACTA'
-                  ? 'border-orange-600 text-orange-600 dark:text-orange-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
               }`}
             >
-              <div className="h-3.5 w-3.5 rounded-xs bg-orange-600 text-white flex items-center justify-center font-black text-[7px] leading-none">
+              <div className="h-3.5 w-3.5 rounded-xs bg-[var(--warning-bg)] text-[var(--warning-text)] flex items-center justify-center font-black text-[7px] leading-none">
                 FAC
               </div>
               <span>Esteira FACTA</span>
@@ -1101,11 +1101,11 @@ const ProposalDetailModalContent: React.FC<
               onClick={() => setActiveTab('HAPPY')}
               className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'HAPPY'
-                  ? 'border-pink-600 text-pink-600 dark:text-pink-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
               }`}
             >
-              <div className="h-3.5 w-3.5 rounded-xs bg-pink-600 text-white flex items-center justify-center font-black text-[7px] leading-none">
+              <div className="h-3.5 w-3.5 rounded-xs bg-[var(--danger-bg)] text-[var(--danger-text)] flex items-center justify-center font-black text-[7px] leading-none">
                 HP
               </div>
               <span>Esteira Happy</span>
@@ -1114,51 +1114,51 @@ const ProposalDetailModalContent: React.FC<
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-900 min-h-[360px]">
+        <div className="flex-1 overflow-y-auto p-6 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] min-h-[360px]">
           {bankCode === '318' && <BmgProposalCard key={proposal.id} proposalId={proposal.id} proposalNumber={proposal.proposalNumber} />}
           {/* TAB 1: HISTÓRICO */}
           {activeTab === 'HISTORICO' && (
             <div className="space-y-4">
-                            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
+                            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--bg-surface-elevated)] dark:before:bg-[var(--bg-surface-elevated)]">
                 {timeline
                   .map((t, i) => {
                     const isStatus = t.type === 'STATUS';
                     const isComment = t.type === 'COMMENT';
                     const isTask = t.type === 'TASK';
                     const isNotification = t.type === 'NOTIFICATION';
-                    
+
                     if (isStatus) {
                       const h = t.data;
                       const toSt = allStatuses.find(s => s.name === h.newStatusName);
                       return (
                         <div key={h.id || i} className="relative group">
                           <div
-                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs"
-                            style={{ backgroundColor: toSt?.color || '#3b82f6' }}
+                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs"
+                            style={{ backgroundColor: toSt?.color || "var(--bg-surface)" }}
                           />
-                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-3.5 text-xs shadow-2xs">
+                          <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-3.5 text-xs shadow-2xs">
                             <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
                               <div className="flex items-center gap-2">
                                 {h.previousStatusName && (
                                   <>
-                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                    <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                                       {h.previousStatusName}
                                     </span>
-                                    <span className="text-slate-400">→</span>
+                                    <span className="text-[var(--text-secondary)]">→</span>
                                   </>
                                 )}
-                                <span className="font-bold text-slate-900 dark:text-slate-100">
+                                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                   {h.newStatusName || 'Status Inicial'}
                                 </span>
                               </div>
-                              <span className="text-[11px] font-mono text-slate-400">
+                              <span className="text-[11px] font-mono text-[var(--text-secondary)]">
                                 {formatDate(h.createdAt)}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                               <span>Operador: <strong>{h.user?.name || h.userName || 'Sistema'}</strong> ({h.origin || 'N/A'})</span>
                               {h.observation && (
-                                <span className="italic text-slate-600 dark:text-slate-300">"{h.observation}"</span>
+                                <span className="italic text-[var(--text-secondary)] dark:text-[var(--text-primary)]">"{h.observation}"</span>
                               )}
                             </div>
                           </div>
@@ -1169,14 +1169,14 @@ const ProposalDetailModalContent: React.FC<
                       return (
                         <div key={c.id || i} className="relative group">
                           <div
-                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs bg-emerald-500"
+                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-[var(--field-border)] dark:border-[var(--field-border)]  bg-[var(--success-bg)]"
                           />
-                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs">
-                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                              <span className="font-bold text-slate-800 dark:text-slate-200">Comentário: {c.author?.name || c.userName || 'Sistema'}</span>
+                          <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-3 text-xs">
+                            <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
+                              <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Comentário: {c.author?.name || c.userName || 'Sistema'}</span>
                               <span className="font-mono text-[10px]">{formatDate(c.createdAt)}</span>
                             </div>
-                            <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{c.content || c.comment}</p>
+                            <p className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-relaxed">{c.content || c.comment}</p>
                           </div>
                         </div>
                       );
@@ -1185,14 +1185,14 @@ const ProposalDetailModalContent: React.FC<
                       return (
                         <div key={tk.id || i} className="relative group">
                           <div
-                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs bg-amber-500"
+                            className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-[var(--field-border)] dark:border-[var(--field-border)]  bg-[var(--warning-bg)]"
                           />
-                          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 text-xs">
-                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                              <span className="font-bold text-slate-800 dark:text-slate-200">Tarefa: {tk.title}</span>
+                          <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] p-3 text-xs">
+                            <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
+                              <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Tarefa: {tk.title}</span>
                               <span className="font-mono text-[10px]">{formatDate(tk.createdAt)}</span>
                             </div>
-                            <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{tk.description}</p>
+                            <p className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-relaxed">{tk.description}</p>
                           </div>
                         </div>
                       );
@@ -1208,20 +1208,20 @@ const ProposalDetailModalContent: React.FC<
           {activeTab === 'PENDENCIAS' && (
             <div className="space-y-4">
               {!canViewPendencies && (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:border-[var(--warning-border)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                   Seu perfil não possui permissão para consultar as pendências desta proposta.
                 </p>
               )}
               {canCreatePendency && (
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3">
-                <h4 className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
+              <div className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] space-y-3">
+                <h4 className="text-xs font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Cadastrar Nova Pendência
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <select
                     value={pendencyType}
                     onChange={e => setPendencyType(e.target.value as PendencyType)}
-                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200"
+                    className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                   >
                     <option value="DOCUMENTACAO">Documentação Incompleta</option>
                     <option value="BANCO">Banco / Formalização</option>
@@ -1234,7 +1234,7 @@ const ProposalDetailModalContent: React.FC<
                   <select
                     value={pendencyPriority}
                     onChange={e => setPendencyPriority(e.target.value as PendencyPriority)}
-                    className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200"
+                    className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                   >
                     <option value="NORMAL">Prioridade Normal</option>
                     <option value="ALTA">Prioridade Alta</option>
@@ -1244,7 +1244,7 @@ const ProposalDetailModalContent: React.FC<
                   <button
                     onClick={handleAddPendency}
                     disabled={isSavingPendency || !pendencyDesc.trim()}
-                    className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-lg bg-[var(--warning-bg)] hover:bg-[var(--warning-bg)] text-[var(--warning-text)] font-bold text-xs py-1.5 px-3 flex items-center justify-center gap-1.5  cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed"
                   >
                     <AlertCircle className="h-3.5 w-3.5" />
                     <span>{isSavingPendency ? 'Salvando...' : 'Adicionar Pendência'}</span>
@@ -1255,16 +1255,16 @@ const ProposalDetailModalContent: React.FC<
                   value={pendencyDesc}
                   onChange={e => setPendencyDesc(e.target.value)}
                   placeholder="Descreva a pendência com detalhes operacionais..."
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                 />
               </div>
               )}
 
               <div className="space-y-2">
                 {isLoadingPendencies ? (
-                  <p className="text-xs text-slate-400 italic text-center py-6">Carregando pendências...</p>
+                  <p className="text-xs text-[var(--text-secondary)] italic text-center py-6">Carregando pendências...</p>
                 ) : proposalPendencies.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic text-center py-6">
+                  <p className="text-xs text-[var(--text-secondary)] italic text-center py-6">
                     Nenhuma pendência ativa nesta proposta.
                   </p>
                 ) : (
@@ -1273,25 +1273,25 @@ const ProposalDetailModalContent: React.FC<
                       key={pen.id}
                       className={`flex items-center justify-between p-3.5 rounded-xl border text-xs ${
                         pen.status === 'RESOLVIDA'
-                          ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-70'
-                          : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
+                          ? 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border-[var(--field-border)] dark:border-[var(--field-border)] opacity-70'
+                          : 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border-[var(--warning-border)] dark:border-[var(--warning-border)]'
                       }`}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 dark:text-slate-200">{pen.type}</span>
+                          <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{pen.type}</span>
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               pen.status === 'RESOLVIDA'
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                                : 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
                             }`}
                           >
                             {pen.status}
                           </span>
                         </div>
-                        <p className="text-slate-700 dark:text-slate-300">{pen.description || pen.title}</p>
-                        <span className="text-[10px] text-slate-400 block">
+                        <p className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{pen.description || pen.title}</p>
+                        <span className="text-[10px] text-[var(--text-secondary)] block">
                           Aberta em {formatDate(pen.createdAt)} • Responsável: {pen.assignedTo?.name || 'Não atribuído'} • Prioridade: {pen.priority}
                         </span>
                       </div>
@@ -1300,7 +1300,7 @@ const ProposalDetailModalContent: React.FC<
                         {canResolvePendency && ['ABERTA', 'EM_ATENDIMENTO', 'AGUARDANDO'].includes(pen.status) && (
                           <button
                             onClick={() => handleResolvePendency(pen.id)}
-                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs cursor-pointer"
+                            className="px-2.5 py-1 rounded bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] font-bold text-xs flex items-center gap-1  cursor-pointer"
                           >
                             <CheckCircle2 className="h-3 w-3" />
                             <span>Resolver</span>
@@ -1308,7 +1308,7 @@ const ProposalDetailModalContent: React.FC<
                         )}
                         {canDeletePendency && <button
                           onClick={() => handleDeletePendency(pen)}
-                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-1 text-[var(--text-secondary)] hover:text-[var(--danger-text)] transition-colors"
                           title="Excluir pendência"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1330,11 +1330,11 @@ const ProposalDetailModalContent: React.FC<
                   value={commentText}
                   onChange={e => setCommentText(e.target.value)}
                   placeholder="Escreva um comentário interno (visível para a equipe)..."
-                  className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                  className="flex-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)]"
                 />
                 <button
                   onClick={handleAddComment}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="rounded-lg bg-[var(--action)] px-4 py-2 text-xs font-bold text-[var(--action-ink)] hover:bg-[var(--action-hover)] flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>Enviar</span>
@@ -1343,7 +1343,7 @@ const ProposalDetailModalContent: React.FC<
 
               <div className="space-y-2">
                                 {timeline.filter(t => t.type === 'COMMENT').length === 0 ? (
-                  <p className="text-xs text-slate-400 italic text-center py-6">
+                  <p className="text-xs text-[var(--text-secondary)] italic text-center py-6">
                     Nenhum comentário registrado ainda.
                   </p>
                 ) : (
@@ -1352,13 +1352,13 @@ const ProposalDetailModalContent: React.FC<
                     return (
                     <div
                       key={c.id || i}
-                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs"
+                      className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-3 text-xs"
                     >
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{c.author?.name || c.userName || 'Usuário'}</span>
+                      <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
+                        <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{c.author?.name || c.userName || 'Usuário'}</span>
                         <span className="font-mono text-[10px]">{formatDate(c.createdAt)}</span>
                       </div>
-                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{c.content || c.comment}</p>
+                      <p className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-relaxed">{c.content || c.comment}</p>
                     </div>
                   )})
                 )}
@@ -1369,49 +1369,49 @@ const ProposalDetailModalContent: React.FC<
           {/* TAB 4: CLIENTE 360 */}
           {activeTab === 'CLIENTE' && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-4 text-xs">
-                <h4 className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-2">
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-4 text-xs">
+                <h4 className="text-xs font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-2">
                   Dados do Cliente
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <span className="text-slate-400 block text-[10.5px]">Nome Completo:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{clientFullName}</strong>
+                    <span className="text-[var(--text-secondary)] block text-[10.5px]">Nome Completo:</span>
+                    <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{clientFullName}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10.5px]">CPF:</span>
+                    <span className="text-[var(--text-secondary)] block text-[10.5px]">CPF:</span>
                     {clientCpf ? (
                       <button
                         onClick={() => toastService.copyToClipboard(clientCpf, 'CPF')}
-                        className="text-left font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-left font-mono font-bold text-[var(--link)] dark:text-[var(--link)] hover:underline flex items-center gap-1 cursor-pointer"
                         title="Copiar CPF"
                       >
                         <span>{formatCpf(clientCpf)}</span>
                         <Copy className="h-3 w-3" />
                       </button>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-[var(--text-secondary)]">—</span>
                     )}
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10.5px]">Telefone:</span>
-                    <span className="text-slate-800 dark:text-slate-200">{client?.phone || 'Não informado'}</span>
+                    <span className="text-[var(--text-secondary)] block text-[10.5px]">Telefone:</span>
+                    <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{client?.phone || 'Não informado'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10.5px]">E-mail:</span>
-                    <span className="text-slate-800 dark:text-slate-200 truncate block">
+                    <span className="text-[var(--text-secondary)] block text-[10.5px]">E-mail:</span>
+                    <span className="text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
                       {client?.email || 'Não informado'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <h4 className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
+              <h4 className="text-xs font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Demais Propostas Cadastradas para este CPF ({otherClientProposals.length})
               </h4>
 
               {otherClientProposals.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">
+                <p className="text-xs text-[var(--text-secondary)] italic">
                   Este cliente possui apenas esta proposta cadastrada.
                 </p>
               ) : (
@@ -1426,23 +1426,23 @@ const ProposalDetailModalContent: React.FC<
                       <div
                         key={p.id}
                         onClick={() => onSelectProposal && onSelectProposal(p.id)}
-                        className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs shadow-2xs hover:border-blue-500/50 transition-colors cursor-pointer"
+                        className="flex items-center justify-between rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3 text-xs  hover:border-[var(--field-border)] transition-colors cursor-pointer"
                       >
                         <div>
-                          <div className="flex items-center gap-2 font-mono font-bold text-slate-900 dark:text-slate-100">
+                          <div className="flex items-center gap-2 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             <span>ADE {p.proposalNumber}</span>
-                            <span className="font-sans text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                            <span className="font-sans text-[11px] font-semibold text-[var(--link)] dark:text-[var(--link)]">
                               • {prod?.name}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                             Banco: {bk?.name} | Parceiro: {pt?.login}
                           </p>
                         </div>
 
                         <span
-                          className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs"
-                          style={{ backgroundColor: st?.color || '#64748b' }}
+                          className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-[var(--text-primary)] shadow-2xs"
+                          style={{ backgroundColor: st?.color || "var(--bg-surface)" }}
                         >
                           {st?.name}
                         </span>
@@ -1556,10 +1556,10 @@ const ProposalDetailModalContent: React.FC<
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-3 bg-slate-50 dark:bg-slate-950/60 rounded-b-2xl shrink-0">
+        <div className="flex items-center justify-between border-t border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-b-2xl shrink-0">
           {canDeleteProposal && <button
             onClick={handleDeleteProposal}
-            className="flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] px-3 py-1.5 text-xs font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] transition-colors cursor-pointer"
             title="Excluir proposta permanentemente"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -1567,7 +1567,7 @@ const ProposalDetailModalContent: React.FC<
           </button>}
           <button
             onClick={onClose}
-            className="rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] px-4 py-1.5 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
           >
             Fechar
           </button>

@@ -205,47 +205,47 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
   return (
     <div className={`rounded-xl border transition-all ${
       standalone
-        ? 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs'
-        : 'border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20'
+        ? 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shadow-xs'
+        : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)]'
     } p-4 text-xs`}>
       {/* Header do Card C6 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
         <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-black text-white flex items-center justify-center font-black text-xs tracking-tighter shadow-xs">
+          <div className="h-7 w-7 rounded-lg bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center font-black text-xs tracking-tighter shadow-xs">
             C6
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+              <span className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Integração C6 Bank
               </span>
               {/* Badge de Sincronização */}
               {syncStatus === 'SYNCED' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
                   <CheckCircle2 className="h-3 w-3" />
                   Sincronizado
                 </span>
               )}
               {syncStatus === 'PENDING' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
                   <Clock className="h-3 w-3" />
                   Pendente
                 </span>
               )}
               {syncStatus === 'ERROR' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                   <AlertTriangle className="h-3 w-3" />
                   Falha
                 </span>
               )}
               {syncStatus === 'MISSING_IDENTIFIER' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <LinkIcon className="h-3 w-3" />
                   Sem Identificador C6
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+            <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block mt-0.5">
               Última consulta: {formatDateTime(proposal.c6LastSyncAt)}
             </span>
           </div>
@@ -256,7 +256,7 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
           {canEditProposal && <button
             type="button"
             onClick={() => setShowLinkModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
             title="Vincular ou alterar número da proposta no C6"
           >
             <LinkIcon className="h-3.5 w-3.5" />
@@ -267,10 +267,10 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
             type="button"
             onClick={handleManualSync}
             disabled={isSyncing}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs text-white shadow-xs transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs text-[var(--text-primary)]  transition-all cursor-pointer ${
               isSyncing
-                ? 'bg-blue-400 dark:bg-blue-600 cursor-not-allowed opacity-80'
-                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+                ? 'bg-[var(--action)] dark:bg-[var(--action)] cursor-not-allowed opacity-80'
+                : 'bg-[var(--action)] hover:bg-[var(--action-hover)] active:scale-95'
             }`}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -284,25 +284,25 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
         <div
           className={`mt-3 p-2.5 rounded-lg flex items-start justify-between gap-2 text-xs border animate-in fade-in duration-150 ${
             syncFeedback.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
+              ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]'
               : syncFeedback.type === 'error'
-              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+              ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
               : syncFeedback.type === 'warning'
-              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800'
-              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800'
+              ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]'
+              : 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
           }`}
         >
           <div className="flex items-center gap-2">
-            {syncFeedback.type === 'success' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
-            {syncFeedback.type === 'error' && <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />}
-            {syncFeedback.type === 'warning' && <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />}
-            {syncFeedback.type === 'info' && <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />}
+            {syncFeedback.type === 'success' && <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)]" />}
+            {syncFeedback.type === 'error' && <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger-text)]" />}
+            {syncFeedback.type === 'warning' && <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--warning-text)]" />}
+            {syncFeedback.type === 'info' && <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--link)]" />}
             <span>{syncFeedback.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setSyncFeedback(null)}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -311,8 +311,8 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 
       {/* Erro persistente anterior, se houver */}
       {proposal.c6SyncError && !syncFeedback && (
-        <div className="mt-3 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+        <div className="mt-3 p-2.5 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger-text)] mt-0.5" />
           <div>
             <span className="font-bold block text-[11px]">Última sincronização com falha:</span>
             <span className="text-[11px]">{proposal.c6SyncError}</span>
@@ -322,56 +322,56 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 
       {/* Grid de Informações Retornadas do C6 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3.5 pt-1">
-        <div className="bg-white/80 dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-          <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
             Nº Proposta C6
           </span>
-          <span className="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 truncate block">
+          <span className="font-mono font-bold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
             {proposal.c6ProposalNumber || 'Não informado'}
           </span>
         </div>
 
-        <div className="bg-white/80 dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-          <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
             Nº Operação C6
           </span>
-          <span className="font-mono font-medium text-xs text-slate-800 dark:text-slate-200 truncate block">
+          <span className="font-mono font-medium text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
             {proposal.c6OperationNumber || '—'}
           </span>
         </div>
 
-        <div className="bg-white/80 dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-          <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
             Situação Esteira C6
           </span>
-          <span className="font-bold text-xs text-blue-700 dark:text-blue-300 truncate block">
+          <span className="font-bold text-xs text-[var(--link)] dark:text-[var(--link)] truncate block">
             {proposal.c6RawSituation || 'Ainda não consultada'}
           </span>
         </div>
 
-        <div className="bg-white/80 dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-          <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
             Formalização C6
           </span>
-          <span className="font-medium text-xs text-slate-800 dark:text-slate-200 truncate block">
+          <span className="font-medium text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate block">
             {proposal.c6FormalizationStatus || (proposal.c6FormalizationCode ? `Cód: ${proposal.c6FormalizationCode}` : '—')}
           </span>
         </div>
 
         {/* Linha inteira com atividade detalhada */}
-        <div className="col-span-2 md:col-span-4 bg-white/80 dark:bg-slate-900/90 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div className="col-span-2 md:col-span-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-wrap items-center justify-between gap-2">
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">
+            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">
               Atividade Atual da Esteira (loan_track)
             </span>
-            <span className="font-medium text-xs text-slate-900 dark:text-slate-100">
+            <span className="font-medium text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               {proposal.c6CurrentActivity ? `[Atividade ${proposal.c6CurrentActivity}] ` : ''}
               {proposal.c6ActivityDescription || 'Nenhuma atividade registrada'}
             </span>
           </div>
 
           {proposal.c6LastActivityDate && (
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+            <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono">
               Atualizado no C6: {formatDateTime(proposal.c6LastActivityDate)}
             </span>
           )}
@@ -379,13 +379,13 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
       </div>
 
       {/* Botão de Expansão do Histórico de Consultas C6 */}
-      <div className="mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
+      <div className="mt-3 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between">
         <button
           type="button"
           onClick={() => setShowHistory((prev) => !prev)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--link)] dark:hover:text-[var(--link)] transition-colors cursor-pointer"
         >
-          <History className="h-3.5 w-3.5 text-blue-500" />
+          <History className="h-3.5 w-3.5 text-[var(--link)]" />
           <span>Histórico de Consultas C6 Bank</span>
           {showHistory ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
@@ -393,54 +393,54 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 
       {/* Tabela do Histórico de Consultas */}
       {showHistory && (
-        <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-150">
+        <div className="mt-3 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] animate-in fade-in duration-150">
           {isLoadingHistory ? (
-            <div className="py-6 text-center text-slate-400">
-              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-1 text-blue-500" />
+            <div className="py-6 text-center text-[var(--text-secondary)]">
+              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-1 text-[var(--link)]" />
               <span>Carregando histórico C6...</span>
             </div>
           ) : historyItems.length === 0 ? (
-            <div className="py-4 text-center text-slate-400 text-xs">
+            <div className="py-4 text-center text-[var(--text-secondary)] text-xs">
               Nenhuma consulta ao C6 Bank registrada para esta proposta até o momento.
             </div>
           ) : (
-            <div className="max-h-60 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div className="max-h-60 overflow-y-auto rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 sticky top-0">
+                <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] sticky top-0">
                   <tr>
-                    <th className="py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Data / Hora</th>
-                    <th className="py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Situação C6</th>
-                    <th className="py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Atividade Atual</th>
-                    <th className="py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Status Interno</th>
-                    <th className="py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Origem</th>
-                    <th className="py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Resultado</th>
+                    <th className="py-2 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Data / Hora</th>
+                    <th className="py-2 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Situação C6</th>
+                    <th className="py-2 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Atividade Atual</th>
+                    <th className="py-2 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Status Interno</th>
+                    <th className="py-2 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Origem</th>
+                    <th className="py-2 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Resultado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                   {historyItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-2 px-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <tr key={item.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                      <td className="py-2 px-3 font-mono text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap">
                         {formatDateTime(item.queryDate)}
                       </td>
-                      <td className="py-2 px-3 text-slate-900 dark:text-slate-100 font-medium">
+                      <td className="py-2 px-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium">
                         {item.currentRawSituation || '—'}
                       </td>
-                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300 max-w-xs truncate" title={item.currentActivity || ''}>
+                      <td className="py-2 px-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)] max-w-xs truncate" title={item.currentActivity || ''}>
                         {item.currentActivity || '—'}
                       </td>
-                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300">
+                      <td className="py-2 px-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         {item.currentInternalStatus || '—'}
                       </td>
-                      <td className="py-2 px-3 text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      <td className="py-2 px-3 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap">
                         {item.queriedBy === 'AUTO_WORKER' ? 'Robô Automático' : 'Operador'}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         {item.success ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                             <CheckCircle2 className="h-3 w-3" /> Sucesso
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400" title={item.technicalError || ''}>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]" title={item.technicalError || ''}>
                             <AlertTriangle className="h-3 w-3" /> Falha
                           </span>
                         )}
@@ -456,19 +456,19 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 
       {/* Modal para Vincular ou Alterar Número da Proposta C6 */}
       {showLinkModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 max-w-md w-full shadow-xl animate-in zoom-in-95 duration-100">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] p-5 max-w-md w-full  animate-in zoom-in-95 duration-100">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2">
-                <LinkIcon className="h-4 w-4 text-blue-600" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                <LinkIcon className="h-4 w-4 text-[var(--link)]" />
+                <h3 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Vincular Proposta C6 Bank
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowLinkModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -476,7 +476,7 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
 
             <form onSubmit={handleSaveLink} className="space-y-4 mt-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Número da Proposta C6 *
                 </label>
                 <input
@@ -485,15 +485,15 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
                   value={linkProposalNum}
                   onChange={(e) => setLinkProposalNum(e.target.value)}
                   placeholder="Ex: 20240918001"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-[10px] text-[var(--text-secondary)] mt-1 block">
                   Identificador retornado pelo C6 Bank na inclusão da proposta.
                 </span>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Número da Operação C6 (Opcional)
                 </label>
                 <input
@@ -501,7 +501,7 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
                   value={linkOpNum}
                   onChange={(e) => setLinkOpNum(e.target.value)}
                   placeholder="Ex: OP-987654"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                 />
               </div>
 
@@ -509,14 +509,14 @@ export const C6ProposalCard: React.FC<C6ProposalCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowLinkModal(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isLinking}
-                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-xs font-bold text-[var(--action-ink)]  disabled:opacity-90 cursor-pointer"
                 >
                   {isLinking ? 'Salvando...' : 'Salvar Identificador'}
                 </button>

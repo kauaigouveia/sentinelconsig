@@ -98,15 +98,15 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
 
   const portalFilters = <>
       {/* Top Filter & Search Bar */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
+      <div className="p-4 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-blue-500" />
+            <FileSpreadsheet className="h-5 w-5 text-[var(--link)]" />
             <div>
-              <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+              <h2 className="text-sm font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-tight">
                 Minhas Propostas
               </h2>
-              <span className="text-[11px] text-slate-400 font-medium">
+              <span className="text-[11px] text-[var(--text-secondary)] font-medium">
                 Total de {pagination.total} contratos localizados
               </span>
             </div>
@@ -115,25 +115,25 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
           {/* Search Input */}
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por nº, cliente ou CPF..."
-                className="w-full h-8.5 pl-8 pr-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                className="w-full h-8.5 pl-8 pr-3 text-xs rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--field-border)]"
               />
             </div>
             <button
               type="submit"
-              className="h-8.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              className="h-8.5 px-3 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs  transition-colors cursor-pointer"
             >
               Buscar
             </button>
             <button
               type="button"
               onClick={() => fetchProposals(pagination.page, appliedSearchTerm)}
-              className="h-8.5 w-8.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
+              className="h-8.5 w-8.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-center cursor-pointer transition-colors"
               title="Atualizar"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -142,7 +142,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
         </div>
 
         {/* Categories Tabs & Dates */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
           <div className="flex flex-wrap items-center gap-1.5">
             {[
               { id: 'ALL', label: 'Todas' },
@@ -160,8 +160,8 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
                 }}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   standardCategory === cat.id
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-2xs'
+                    : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                 }`}
               >
                 {cat.label}
@@ -170,13 +170,13 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
           </div>
 
           {waitingReturnOnly && (
-            <span className="rounded-lg bg-purple-100 px-2.5 py-1 text-[11px] font-bold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+            <span className="rounded-lg bg-[var(--info-bg)] px-2.5 py-1 text-[11px] font-bold text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]">
               Filtrando: Aguardando CIP ou retorno
             </span>
           )}
 
           <fieldset className="w-full min-w-0 space-y-2 text-xs">
-            <legend className="text-slate-400 font-semibold">Período</legend>
+            <legend className="text-[var(--text-secondary)] font-semibold">Período</legend>
             <label className="block space-y-1">De
             <input
               type="date"
@@ -184,7 +184,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
               max={endDate || undefined}
               onChange={(e) => setStartDate(e.target.value)}
               aria-label="Data inicial das propostas"
-              className="block w-full min-w-0 h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+              className="block w-full min-w-0 h-8 px-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs"
             />
             </label>
             <label className="block space-y-1">Até
@@ -194,7 +194,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
               min={startDate || undefined}
               onChange={(e) => setEndDate(e.target.value)}
               aria-label="Data final das propostas"
-              className="block w-full min-w-0 h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+              className="block w-full min-w-0 h-8 px-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs"
             />
             </label>
           </fieldset>
@@ -206,24 +206,24 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
     <div className="space-y-4 select-none">
       <RecordWorkspace filters={portalFilters} count={pagination.total} mode={presentation} onMode={setPresentation}>
       {/* Proposals Table */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+      <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-3">
-            <div className="h-8 w-8 border-3 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-            <span className="text-xs text-slate-400">Carregando propostas...</span>
+            <div className="h-8 w-8 border-3 border-[var(--field-border)] border-t-[var(--focus)] rounded-full animate-spin" />
+            <span className="text-xs text-[var(--text-secondary)]">Carregando propostas...</span>
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-xs text-rose-400 font-semibold">{error}</div>
+          <div className="p-8 text-center text-xs text-[var(--danger-text)] font-semibold">{error}</div>
         ) : proposals.length === 0 ? (
-          <div className="p-12 text-center text-xs text-slate-400 space-y-2">
-            <FileSpreadsheet className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="font-bold text-slate-600 dark:text-slate-300">Nenhuma proposta encontrada</p>
+          <div className="p-12 text-center text-xs text-[var(--text-secondary)] space-y-2">
+            <FileSpreadsheet className="h-8 w-8 text-[var(--text-primary)] dark:text-[var(--text-secondary)] mx-auto" />
+            <p className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nenhuma proposta encontrada</p>
             <p className="text-[11px]">Tente alterar os filtros ou termo de busca.</p>
           </div>
         ) : presentation === 'cards' ? <div className="operation-card-grid p-3">{proposals.map(proposal => <OperationCard key={proposal.id} title={proposal.clientName || `ADE ${proposal.proposalNumber}`} eyebrow={proposal.bankName} status={proposal.statusName} statusColor={proposal.statusColor} amount={formatCurrency(proposal.releasedValue)} fields={[{ label: 'ADE', value: proposal.proposalNumber }, { label: 'CPF', value: proposal.clientCpfMasked }, { label: 'Produto', value: proposal.productName }, { label: 'Prazo', value: `${proposal.installmentsCount} meses` }]} onOpen={() => setSelectedProposalId(proposal.id)} actions={<button type="button" className="operation-card-action" onClick={() => onOpenChatForProposal(proposal.id, proposal.proposalNumber)}>Falar com a mesa</button>} />)}</div> : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] border-b border-slate-100 dark:border-slate-800">
+              <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-bold uppercase text-[10px] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <tr>
                   <th className="py-3 px-4">Proposta</th>
                   <th className="py-3 px-4">Cliente</th>
@@ -235,30 +235,30 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
                   <th className="py-3 px-4 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-800 dark:text-slate-200">
+              <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 {proposals.map((p) => (
                   <tr
                     key={p.id}
                     onClick={() => setSelectedProposalId(p.id)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+                    className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
                   >
-                    <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
+                    <td className="py-3 px-4 font-mono font-bold text-[var(--link)] dark:text-[var(--link)]">
                       #{p.proposalNumber}
                     </td>
                     <td className="py-3 px-4">
-                      <p className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]">
+                      <p className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate max-w-[180px]">
                         {p.clientName}
                       </p>
-                      <p className="text-[10.5px] font-mono text-slate-400">{p.clientCpfMasked}</p>
+                      <p className="text-[10.5px] font-mono text-[var(--text-secondary)]">{p.clientCpfMasked}</p>
                     </td>
                     <td className="py-3 px-4">
                       <p className="font-semibold truncate max-w-[150px]">{p.productName}</p>
-                      <p className="text-[10.5px] text-slate-400 truncate max-w-[150px]">{p.bankName}</p>
+                      <p className="text-[10.5px] text-[var(--text-secondary)] truncate max-w-[150px]">{p.bankName}</p>
                     </td>
                     <td className="py-3 px-4 font-mono font-bold">
                       {formatCurrency(p.contractValue)}
                     </td>
-                    <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <td className="py-3 px-4 font-mono font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                       {formatCurrency(p.releasedValue)}
                     </td>
                     <td className="py-3 px-4">
@@ -273,7 +273,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
                         {p.statusName}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-400 text-[11px] font-mono">
+                    <td className="py-3 px-4 text-[var(--text-secondary)] text-[11px] font-mono">
                       {new Date(p.updatedAt).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="py-3 px-4 text-right">
@@ -282,7 +282,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
                           e.stopPropagation();
                           setSelectedProposalId(p.id);
                         }}
-                        className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] transition-colors cursor-pointer"
                         title="Ver Detalhes"
                       >
                         <ArrowRight className="h-4 w-4" />
@@ -297,7 +297,7 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
 
         {/* Pagination Bar */}
         {pagination.totalPages > 1 && (
-          <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between text-xs text-slate-500">
+          <div className="p-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] flex items-center justify-between text-xs text-[var(--text-secondary)]">
             <span>
               Página <strong>{pagination.page}</strong> de <strong>{pagination.totalPages}</strong> (
               {pagination.total} itens)
@@ -307,14 +307,14 @@ export const PartnerProposalsView: React.FC<PartnerProposalsViewProps> = ({
               <button
                 disabled={pagination.page <= 1}
                 onClick={() => fetchProposals(pagination.page - 1, appliedSearchTerm)}
-                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] disabled:opacity-90 hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => fetchProposals(pagination.page + 1, appliedSearchTerm)}
-                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] disabled:opacity-90 hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

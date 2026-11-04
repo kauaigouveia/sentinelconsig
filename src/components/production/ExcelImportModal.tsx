@@ -404,20 +404,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-5xl rounded-xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-5xl rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  flex flex-col max-h-[92vh] border border-[var(--field-border)] dark:border-[var(--field-border)]">
         {/* Header */}
-        <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/60 rounded-t-xl space-y-3">
+        <div className="border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-t-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <div className="h-9 w-9 rounded-lg bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center shadow-xs">
                 <Upload className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Importação de Produção em Lote
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Importação segura de grandes arquivos com acompanhamento em tempo real
                 </p>
               </div>
@@ -425,7 +425,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <button
               onClick={handleClose}
               disabled={isDispatching || jobProgress?.status === 'PROCESSING'}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -443,10 +443,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <div
                       className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
                         isCompleted
-                          ? 'bg-emerald-600 text-white'
+                          ? 'bg-[var(--success-bg)] text-[var(--text-primary)]'
                           : isCurrent
-                          ? 'bg-blue-600 text-white ring-2 ring-blue-500/20'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          ? 'bg-[var(--info-bg)] text-[var(--text-primary)] ring-2 ring-[var(--focus)]'
+                          : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
                       {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.num}
@@ -454,10 +454,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <span
                       className={`text-xs font-semibold whitespace-nowrap ${
                         isCurrent
-                          ? 'text-blue-600 dark:text-blue-400 font-bold'
+                          ? 'text-[var(--link)] dark:text-[var(--link)] font-bold'
                           : isCompleted
-                          ? 'text-emerald-700 dark:text-emerald-400'
-                          : 'text-slate-400 dark:text-slate-500'
+                          ? 'text-[var(--success-text)] dark:text-[var(--success-text)]'
+                          : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
                       {s.label}
@@ -467,8 +467,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <div
                       className={`flex-1 h-0.5 mx-3 ${
                         currentStep > s.num
-                          ? 'bg-emerald-500'
-                          : 'bg-slate-200 dark:bg-slate-800'
+                          ? 'bg-[var(--success-bg)]'
+                          : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)]'
                       }`}
                     />
                   )}
@@ -483,22 +483,22 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           {/* Active Job Progress Bar View */}
           {jobProgress ? (
             <div className="space-y-6 py-4">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-6 space-y-4">
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     {jobProgress.status === 'PROCESSING' ? (
-                      <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                      <Loader2 className="h-5 w-5 text-[var(--link)] animate-spin" />
                     ) : jobProgress.status === 'COMPLETED' && jobProgress.invalid + jobProgress.failed > 0 ? (
-                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <AlertTriangle className="h-5 w-5 text-[var(--warning-text)]" />
                     ) : jobProgress.status === 'COMPLETED' ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      <CheckCircle2 className="h-5 w-5 text-[var(--success-text)]" />
                     ) : jobProgress.status === 'CANCELLED' ? (
-                      <StopCircle className="h-5 w-5 text-amber-600" />
+                      <StopCircle className="h-5 w-5 text-[var(--warning-text)]" />
                     ) : (
-                      <AlertCircle className="h-5 w-5 text-rose-600" />
+                      <AlertCircle className="h-5 w-5 text-[var(--danger-text)]" />
                     )}
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         {jobProgress.status === 'PROCESSING' && 'Processando importação de propostas...'}
                         {jobProgress.status === 'COMPLETED' && (jobProgress.invalid + jobProgress.failed > 0
                           ? 'Importação concluída com ocorrências'
@@ -506,7 +506,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         {jobProgress.status === 'CANCELLED' && 'Importação Cancelada pelo Usuário'}
                         {jobProgress.status === 'FAILED' && 'Falha no Processamento da Importação'}
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         {jobProgress.processed} de {jobProgress.totalRecords} registros processados ({jobProgress.percent}%)
                         {jobProgress.totalChunks > 1 && ` • Bloco ${jobProgress.currentChunk} de ${jobProgress.totalChunks}`}
                       </p>
@@ -517,7 +517,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <button
                       onClick={handleCancelJob}
                       disabled={isCancelling}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 rounded-lg transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] rounded-lg transition-colors cursor-pointer"
                     >
                       <StopCircle className="h-3.5 w-3.5" />
                       <span>{isCancelling ? 'Cancelando...' : 'Cancelar Importação'}</span>
@@ -526,18 +526,18 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+                <div className="w-full bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] h-3 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
                       jobProgress.status === 'COMPLETED' && jobProgress.invalid + jobProgress.failed > 0
-                        ? 'bg-amber-500'
+                        ? 'bg-[var(--warning-bg)]'
                         : jobProgress.status === 'COMPLETED'
-                        ? 'bg-emerald-600'
+                        ? 'bg-[var(--success-bg)]'
                         : jobProgress.status === 'CANCELLED'
-                        ? 'bg-amber-500'
+                        ? 'bg-[var(--warning-bg)]'
                         : jobProgress.status === 'FAILED'
-                        ? 'bg-rose-600'
-                        : 'bg-blue-600'
+                        ? 'bg-[var(--danger-bg)]'
+                        : 'bg-[var(--info-bg)]'
                     }`}
                     style={{ width: `${jobProgress.percent}%` }}
                   />
@@ -545,53 +545,53 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
                 {/* Metric cards */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Processados</span>
-                    <p className="text-base font-extrabold text-slate-900 dark:text-slate-100">{jobProgress.processed}</p>
+                  <div className="p-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Processados</span>
+                    <p className="text-base font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{jobProgress.processed}</p>
                   </div>
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Criados</span>
-                    <p className="text-base font-extrabold text-emerald-800 dark:text-emerald-300">{jobProgress.created}</p>
+                  <div className="p-3 bg-[var(--success-bg)] dark:bg-[var(--success-bg)] rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)]">
+                    <span className="text-[10px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)] uppercase">Criados</span>
+                    <p className="text-base font-extrabold text-[var(--success-text)] dark:text-[var(--success-text)]">{jobProgress.created}</p>
                   </div>
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase">Atualizados</span>
-                    <p className="text-base font-extrabold text-blue-800 dark:text-blue-300">{jobProgress.updated}</p>
+                  <div className="p-3 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                    <span className="text-[10px] font-bold text-[var(--link)] dark:text-[var(--link)] uppercase">Atualizados</span>
+                    <p className="text-base font-extrabold text-[var(--link)] dark:text-[var(--link)]">{jobProgress.updated}</p>
                   </div>
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800">
-                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Duplicados</span>
-                    <p className="text-base font-extrabold text-amber-800 dark:text-amber-300">{jobProgress.duplicates}</p>
+                  <div className="p-3 bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] rounded-lg border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
+                    <span className="text-[10px] font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] uppercase">Duplicados</span>
+                    <p className="text-base font-extrabold text-[var(--warning-text)] dark:text-[var(--warning-text)]">{jobProgress.duplicates}</p>
                   </div>
-                  <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-200 dark:border-rose-800">
-                    <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase">Inválidos / Falhas</span>
-                    <p className="text-base font-extrabold text-rose-800 dark:text-rose-300">{jobProgress.invalid + jobProgress.failed}</p>
+                  <div className="p-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+                    <span className="text-[10px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] uppercase">Inválidos / Falhas</span>
+                    <p className="text-base font-extrabold text-[var(--danger-text)] dark:text-[var(--danger-text)]">{jobProgress.invalid + jobProgress.failed}</p>
                   </div>
                 </div>
 
                 {jobProgress.errorMessage && (
-                  <div className="p-3 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 rounded-lg text-xs font-medium border border-rose-300 dark:border-rose-800">
+                  <div className="p-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] rounded-lg text-xs font-medium border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                     {jobProgress.errorMessage}
                   </div>
                 )}
                 {jobProgress.rowErrors.length > 0 && (
-                  <div className="rounded-lg border border-rose-200 dark:border-rose-800 overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 bg-rose-50 dark:bg-rose-950/40 px-3 py-2">
-                      <div className="text-xs font-semibold text-rose-800 dark:text-rose-200">
+                  <div className="rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] px-3 py-2">
+                      <div className="text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                         Motivos das ocorrências ({jobProgress.rowErrors.length}{jobProgress.rowErrorsTruncated > 0 ? ` de ${jobProgress.rowErrors.length + jobProgress.rowErrorsTruncated}` : ''})
                         {jobProgress.rowErrorsTruncated > 0 && <span className="block font-normal">O relatório mostra as primeiras 500 ocorrências.</span>}
                       </div>
-                      <button onClick={handleDownloadImportErrors} className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/50">
+                      <button onClick={handleDownloadImportErrors} className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)]">
                         <Download className="h-3.5 w-3.5" /> Baixar CSV
                       </button>
                     </div>
-                    <div className="max-h-40 overflow-auto divide-y divide-rose-100 dark:divide-rose-900/50">
+                    <div className="max-h-40 overflow-auto divide-y divide-[var(--danger-border)] dark:divide-[var(--danger-border)]">
                       {jobProgress.rowErrors.slice(0, 20).map((error, index) => (
-                        <div key={`${error.line}-${index}`} className="grid grid-cols-[70px_minmax(90px,0.7fr)_minmax(180px,2fr)] gap-2 px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300">
+                        <div key={`${error.line}-${index}`} className="grid grid-cols-[70px_minmax(90px,0.7fr)_minmax(180px,2fr)] gap-2 px-3 py-2 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           <span className="font-mono">Linha {error.line}</span>
                           <span className="truncate font-mono" title={error.identifier}>{error.identifier}</span>
                           <span>{error.message}</span>
                         </div>
                       ))}
-                      {jobProgress.rowErrors.length > 20 && <p className="px-3 py-2 text-[11px] text-slate-500">Mais ocorrências disponíveis no CSV.</p>}
+                      {jobProgress.rowErrors.length > 20 && <p className="px-3 py-2 text-[11px] text-[var(--text-secondary)]">Mais ocorrências disponíveis no CSV.</p>}
                     </div>
                   </div>
                 )}
@@ -607,8 +607,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               onClick={() => { if (!isAnalyzing) fileInputRef.current?.click(); }}
               className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
                 isDragging
-                  ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 scale-[0.99]'
-                  : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 bg-slate-50/50 dark:bg-slate-950/20'
+                  ? 'border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] scale-[0.99]'
+                  : 'border-[var(--field-border)] dark:border-[var(--field-border)] hover:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]'
               }`}
             >
               <input
@@ -623,17 +623,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   if (file) handleFileSelected(file);
                 }}
               />
-              <div className="h-14 w-14 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4">
+              <div className="h-14 w-14 rounded-full bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center mb-4">
                 {isAnalyzing ? <Loader2 className="h-7 w-7 animate-spin" /> : <FileSpreadsheet className="h-7 w-7" />}
               </div>
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
+              <p className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 {isAnalyzing ? 'Analisando planilha…' : 'Arraste sua planilha aqui ou clique para selecionar'}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-3">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] max-w-sm mb-3">
                 Formatos aceitos: <strong>.xlsx, .csv</strong>. O sistema identifica automaticamente colunas como CPF, ADE, Parceiro, Produto e Banco/Promotora.
               </p>
-              <div className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-full border border-blue-200 dark:border-blue-800">
-                <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center gap-1.5 text-xs text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-3 py-1.5 rounded-full border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <Sparkles className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)]" />
                 <span>Interpretação automática de modelo antigo (ex: "C6 - DG")</span>
               </div>
             </div>
@@ -642,36 +642,36 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div className="space-y-4">
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-2xs">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">Arquivo</span>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={analysisResult.fileName}>
+                <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase">Arquivo</span>
+                  <p className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate" title={analysisResult.fileName}>
                     {analysisResult.fileName}
                   </p>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{analysisResult.totalRows} linhas lidas</span>
+                  <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{analysisResult.totalRows} linhas lidas</span>
                 </div>
 
-                <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/40 p-3 shadow-2xs">
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Linhas Válidas</span>
-                  <p className="text-lg font-extrabold text-emerald-800 dark:text-emerald-300">
+                <div className="rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-3 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)] uppercase">Linhas Válidas</span>
+                  <p className="text-lg font-extrabold text-[var(--success-text)] dark:text-[var(--success-text)]">
                     {analysisResult.validRows.length}
                   </p>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Prontas para importação</span>
+                  <span className="text-[10px] text-[var(--success-text)] dark:text-[var(--success-text)]">Prontas para importação</span>
                 </div>
 
-                <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/40 p-3 shadow-2xs">
-                  <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase">Com Erros</span>
-                  <p className="text-lg font-extrabold text-rose-800 dark:text-rose-300">
+                <div className="rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-3 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] uppercase">Com Erros</span>
+                  <p className="text-lg font-extrabold text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                     {analysisResult.invalidRows.length}
                   </p>
-                  <span className="text-[10px] text-rose-600 dark:text-rose-400">Requerem correção</span>
+                  <span className="text-[10px] text-[var(--danger-text)] dark:text-[var(--danger-text)]">Requerem correção</span>
                 </div>
 
-                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/40 p-3 shadow-2xs">
-                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">Duplicadas (ADE)</span>
-                  <p className="text-lg font-extrabold text-amber-800 dark:text-amber-300">
+                <div className="rounded-lg border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] p-3 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] uppercase">Duplicadas (ADE)</span>
+                  <p className="text-lg font-extrabold text-[var(--warning-text)] dark:text-[var(--warning-text)]">
                     {analysisResult.duplicateRows.length}
                   </p>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400">ADEs já cadastradas</span>
+                  <span className="text-[10px] text-[var(--warning-text)] dark:text-[var(--warning-text)]">ADEs já cadastradas</span>
                 </div>
               </div>
 
@@ -680,7 +680,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <button
                   onClick={handleReplaceFile}
                   disabled={isAnalyzing || isDispatching}
-                  className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1 rounded cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] px-2.5 py-1 rounded cursor-pointer"
                 >
                   <RotateCcw className="h-3 w-3" />
                   <span>Substituir arquivo</span>
@@ -688,13 +688,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
 
               {/* Tabs */}
-              <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 text-xs font-semibold text-slate-500">
+              <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)] gap-4 text-xs font-semibold text-[var(--text-secondary)]">
                 <button
                   onClick={() => setActiveTab('VALIDAS')}
                   className={`py-2 border-b-2 transition-colors cursor-pointer ${
                     activeTab === 'VALIDAS'
-                      ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold'
-                      : 'border-transparent hover:text-slate-800 dark:hover:text-slate-300'
+                      ? 'border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold'
+                      : 'border-transparent hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Válidas ({analysisResult.validRows.length})
@@ -703,8 +703,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   onClick={() => setActiveTab('ERROS')}
                   className={`py-2 border-b-2 transition-colors cursor-pointer ${
                     activeTab === 'ERROS'
-                      ? 'border-rose-600 text-rose-700 dark:text-rose-400 font-bold'
-                      : 'border-transparent hover:text-slate-800 dark:hover:text-slate-300'
+                      ? 'border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold'
+                      : 'border-transparent hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Erros ({analysisResult.invalidRows.length})
@@ -713,8 +713,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   onClick={() => setActiveTab('DUPLICADAS')}
                   className={`py-2 border-b-2 transition-colors cursor-pointer ${
                     activeTab === 'DUPLICADAS'
-                      ? 'border-amber-600 text-amber-700 dark:text-amber-400 font-bold'
-                      : 'border-transparent hover:text-slate-800 dark:hover:text-slate-300'
+                      ? 'border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold'
+                      : 'border-transparent hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Duplicadas ({analysisResult.duplicateRows.length})
@@ -723,8 +723,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   onClick={() => setActiveTab('MAPA')}
                   className={`py-2 border-b-2 transition-colors cursor-pointer ${
                     activeTab === 'MAPA'
-                      ? 'border-blue-600 text-blue-700 dark:text-blue-400 font-bold'
-                      : 'border-transparent hover:text-slate-800 dark:hover:text-slate-300'
+                      ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] font-bold'
+                      : 'border-transparent hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Colunas Detectadas
@@ -732,22 +732,22 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               </div>
 
               {/* Table Preview */}
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 max-h-72">
+              <div className="overflow-x-auto rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] max-h-72">
                 {activeTab === 'MAPA' ? (
                   <div className="p-4 space-y-2 text-xs">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-2">Mapeamento Inteligente de Cabeçalhos:</h4>
+                    <h4 className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-2">Mapeamento Inteligente de Cabeçalhos:</h4>
                     {Object.entries(analysisResult.detectedColumns).map(([field, colName]) => (
-                      <div key={field} className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                        <span className="font-semibold text-slate-600 dark:text-slate-400">{field}:</span>
-                        <span className="font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded">
+                      <div key={field} className="flex items-center justify-between py-1 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+                        <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{field}:</span>
+                        <span className="font-mono text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-2 py-0.5 rounded">
                           {colName}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-                    <thead className="bg-slate-50 dark:bg-slate-950/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 border-b border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+                    <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] sticky top-0 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                       <tr>
                         <th className="px-3 py-2">Linha</th>
                         <th className="px-3 py-2">CPF</th>
@@ -761,23 +761,23 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         <th className="px-3 py-2">Status / Detalhes</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                       {(activeTab === 'VALIDAS'
                         ? analysisResult.validRows
                         : activeTab === 'ERROS'
                         ? analysisResult.invalidRows
                         : analysisResult.duplicateRows
                       ).map(row => (
-                        <tr key={row.rowNumber} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                          <td className="px-3 py-2 font-mono text-slate-400">{row.rowNumber}</td>
+                        <tr key={row.rowNumber} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                          <td className="px-3 py-2 font-mono text-[var(--text-secondary)]">{row.rowNumber}</td>
                           <td className="px-3 py-2 font-mono">{formatCpf(row.normalizedCpf || row.rawCpf)}</td>
                           <td className="px-3 py-2 font-medium">{row.fullName}</td>
-                          <td className="px-3 py-2 font-mono font-bold text-slate-900 dark:text-slate-100">{row.proposalNumber}</td>
+                          <td className="px-3 py-2 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{row.proposalNumber}</td>
                           <td className="px-3 py-2">
                             {row.matchedPartnerLogin ? (
-                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{row.matchedPartnerLogin}</span>
+                              <span className="text-[var(--success-text)] dark:text-[var(--success-text)] font-semibold">{row.matchedPartnerLogin}</span>
                             ) : (
-                              <span className="text-rose-600 dark:text-rose-400 font-mono">{row.rawPartner || 'Vazio'}</span>
+                              <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-mono">{row.rawPartner || 'Vazio'}</span>
                             )}
                           </td>
                           <td className="px-3 py-2">{row.matchedProductName || row.rawProduct}</td>
@@ -786,18 +786,18 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                           <td className="px-3 py-2 whitespace-nowrap">
                             <div className="flex flex-col text-[11px] font-mono">
                               {row.disbursedValue !== undefined ? (
-                                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                <span className="font-semibold text-[var(--success-text)] dark:text-[var(--success-text)]">
                                   Lib: {formatCurrency(row.disbursedValue)}
                                 </span>
                               ) : (
-                                <span className="text-slate-400">Lib: -</span>
+                                <span className="text-[var(--text-secondary)]">Lib: -</span>
                               )}
                               {row.contractBalance !== undefined ? (
-                                <span className="font-semibold text-indigo-700 dark:text-indigo-400">
+                                <span className="font-semibold text-[var(--link)] dark:text-[var(--link)]">
                                   Saldo: {formatCurrency(row.contractBalance)}
                                 </span>
                               ) : (
-                                <span className="text-slate-400">Saldo: -</span>
+                                <span className="text-[var(--text-secondary)]">Saldo: -</span>
                               )}
                             </div>
                           </td>
@@ -805,27 +805,27 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                             {row.isValid ? (
                               <div className="flex flex-col gap-0.5">
                                 {row.financialDifferenceDetected ? (
-                                  <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                  <span className="inline-flex items-center gap-1 text-[var(--link)] dark:text-[var(--link)] font-bold bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-1.5 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                                     <Sparkles className="h-3 w-3" /> Atualizar Valores
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold">
+                                  <span className="inline-flex items-center gap-1 text-[var(--success-text)] dark:text-[var(--success-text)] font-bold">
                                     <CheckCircle2 className="h-3 w-3" /> Válida
                                   </span>
                                 )}
                                 {row.financialDiffDetails && (
-                                  <span className="text-[10px] text-blue-700 dark:text-blue-300 font-medium">
+                                  <span className="text-[10px] text-[var(--link)] dark:text-[var(--link)] font-medium">
                                     {row.financialDiffDetails}
                                   </span>
                                 )}
                                 {row.isLegacyInterpretation && (
-                                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                  <span className="text-[10px] text-[var(--link)] dark:text-[var(--link)] font-medium">
                                     {row.legacyInterpretationText}
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-rose-600 dark:text-rose-400 font-medium text-[11px]">
+                              <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-medium text-[11px]">
                                 {row.errors.join(' | ')}
                               </span>
                             )}
@@ -840,21 +840,21 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           )}
 
           {errorMsg && (
-            <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 p-3 text-xs text-rose-800 dark:text-rose-200 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div className="rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-3 text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-[var(--danger-text)] dark:text-[var(--danger-text)] shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-950/60 rounded-b-xl">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div className="flex items-center justify-between border-t border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-b-xl">
+          <div className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium">
             {jobProgress ? (
-              <span>Status do Job: <strong className="text-slate-800 dark:text-slate-200">{jobProgress.status}</strong></span>
+              <span>Status do Job: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{jobProgress.status}</strong></span>
             ) : analysisResult ? (
               <span>
-                Total válido para importação: <strong className="text-slate-800 dark:text-slate-200">{analysisResult.validRows.length}</strong> de{' '}
+                Total válido para importação: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{analysisResult.validRows.length}</strong> de{' '}
                 {analysisResult.totalRows}
               </span>
             ) : (
@@ -866,7 +866,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <button
               onClick={handleClose}
               disabled={isDispatching || jobProgress?.status === 'PROCESSING'}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 cursor-pointer"
             >
               {jobProgress?.status === 'COMPLETED' ? 'Fechar' : 'Cancelar'}
             </button>
@@ -875,7 +875,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 id="btn-confirm-import-excel"
                 onClick={handleConfirmImport}
                 disabled={isDispatching || !analysisResult || analysisResult.validRows.length === 0}
-                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2 text-xs font-bold text-[var(--action-ink)] bg-[var(--action)] hover:bg-[var(--action-hover)] disabled:opacity-90 rounded-lg  transition-colors flex items-center gap-2 cursor-pointer"
               >
                 {isDispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck className="h-4 w-4" />}
                 <span>{isDispatching ? 'Enviando importação…' : `Importar Propostas (${analysisResult?.validRows.length || 0})`}</span>

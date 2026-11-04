@@ -39,10 +39,10 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
 }) => {
   const [existingProducts, setExistingProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
-  
+
   const [parsedRows, setParsedRows] = useState<ParsedProductRow[]>([]);
   const [importing, setImporting] = useState(false);
-  
+
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [summary, setSummary] = useState<any>(null);
@@ -60,7 +60,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
 
   const processRawData = (rows: any[]) => {
     const results: ParsedProductRow[] = [];
-    
+
     rows.forEach((row, idx) => {
       const rawName = String(row[0] || '').trim();
       if (!rawName) return; // Skip empty rows
@@ -99,7 +99,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
 
       if (status !== 'INVALID') {
         const existing = existingProducts.find(p => p.name.toUpperCase() === rawName.toUpperCase());
-        
+
         if (existing) {
           if (existing.type !== normalizedType || existing.requiresPortabilityRelation !== requiresPortability) {
             status = 'WARNING';
@@ -154,7 +154,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
         const worksheet = workbook.worksheets[0];
-        
+
         worksheet.eachRow((row, rowNumber) => {
           if (rowNumber > 1) { // Skip header
             const rowValues = row.values as any[];
@@ -168,7 +168,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
       setErrorMsg('Falha ao ler o arquivo. Certifique-se de usar o modelo correto.');
       console.error(err);
     }
-    
+
     if (e.target) e.target.value = '';
   };
 
@@ -233,7 +233,7 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
 
       setSummary(data.summary);
       setSuccessMsg(data.message || 'Importação concluída com sucesso!');
-      
+
       setTimeout(() => {
         onImportCompleted();
       }, 500);
@@ -253,27 +253,27 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
   const errorCount = parsedRows.filter(r => r.status === 'INVALID').length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col">
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-6 py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
           <div className="flex items-center gap-2.5">
-            <div className="rounded-lg bg-blue-600 p-2 text-white">
+            <div className="rounded-lg bg-[var(--info-bg)] p-2 text-[var(--text-primary)]">
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
+              <h2 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-tight">
                 Importar Produtos em Lote
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Upload de arquivos Excel (.xlsx) ou CSV para cadastro massivo
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -281,39 +281,39 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
 
         {/* Modal Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          
+
           {/* Status Messages */}
           {errorMsg && (
-            <div className="p-4 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 flex items-start gap-3 text-red-700 dark:text-red-400 text-sm">
+            <div className="p-4 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] dark:border-[var(--danger-border)] flex items-start gap-3 text-[var(--danger-text)] dark:text-[var(--danger-text)] text-sm">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <p>{errorMsg}</p>
             </div>
           )}
 
           {successMsg && !summary && (
-            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800/50 flex items-start gap-3 text-emerald-700 dark:text-emerald-400 text-sm">
+            <div className="p-4 rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] dark:border-[var(--success-border)] flex items-start gap-3 text-[var(--success-text)] dark:text-[var(--success-text)] text-sm">
               <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
               <p>{successMsg}</p>
             </div>
           )}
 
           {summary && (
-            <div className="p-5 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/50 space-y-3">
-              <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-bold mb-2">
+            <div className="p-5 rounded-xl border border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:border-[var(--field-border)] space-y-3">
+              <div className="flex items-center gap-2 text-[var(--link)] dark:text-[var(--link)] font-bold mb-2">
                 <CheckCircle2 className="h-5 w-5" />
                 <h3>Resultado da Importação</h3>
               </div>
-              <ul className="text-sm text-blue-900 dark:text-blue-200 space-y-1 ml-7">
+              <ul className="text-sm text-[var(--link)] dark:text-[var(--link)] space-y-1 ml-7">
                 <li>Total processado: <strong>{summary.total}</strong></li>
                 <li>Criados: <strong>{summary.created}</strong></li>
                 <li>Atualizados: <strong>{summary.updated}</strong></li>
                 <li>Ignorados (idênticos): <strong>{summary.ignored}</strong></li>
-                <li>Com erro: <strong className="text-red-600">{summary.errors}</strong></li>
+                <li>Com erro: <strong className="text-[var(--danger-text)]">{summary.errors}</strong></li>
               </ul>
               {summary.errorDetails && summary.errorDetails.length > 0 && (
-                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-900/50">
-                  <p className="text-xs font-bold text-red-800 dark:text-red-300 mb-2">Detalhes dos Erros:</p>
-                  <ul className="text-xs text-red-700 dark:text-red-400 list-disc list-inside">
+                <div className="mt-3 p-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] rounded border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
+                  <p className="text-xs font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] mb-2">Detalhes dos Erros:</p>
+                  <ul className="text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] list-disc list-inside">
                     {summary.errorDetails.map((err: any, i: number) => (
                       <li key={i}>{err.name}: {err.error}</li>
                     ))}
@@ -327,20 +327,20 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={handleDownloadTemplate}
-                className="flex items-center justify-center gap-2 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm font-semibold text-slate-700 dark:text-slate-200"
+                className="flex items-center justify-center gap-2 p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors text-sm font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               >
-                <Download className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Download className="h-5 w-5 text-[var(--link)] dark:text-[var(--link)]" />
                 Baixar Modelo (Excel)
               </button>
 
-              <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-white dark:bg-slate-900 transition-colors cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200 relative">
+              <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-[var(--field-border)] dark:border-[var(--field-border)] hover:border-[var(--field-border)] dark:hover:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] transition-colors cursor-pointer text-sm font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] relative">
                 <input
                   type="file"
                   accept=".xlsx,.csv"
                   onChange={handleFileUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Upload className="h-5 w-5 text-[var(--link)] dark:text-[var(--link)]" />
                 Selecionar Arquivo (.xlsx, .csv)
               </label>
             </div>
@@ -350,87 +350,87 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
             <div className="space-y-4">
               {/* Pre-validation Summary Breakdown */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400 block">Total de Linhas</span>
-                  <span className="text-lg font-bold text-slate-900 dark:text-white">{totalRows}</span>
+                <div className="p-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
+                  <span className="text-[10px] font-semibold uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Total de Linhas</span>
+                  <span className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{totalRows}</span>
                 </div>
-                <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-900/20">
-                  <span className="text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-400 block">Novos Produtos</span>
-                  <span className="text-lg font-bold text-emerald-800 dark:text-emerald-300">{newCount}</span>
+                <div className="p-3 rounded-xl border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)]">
+                  <span className="text-[10px] font-semibold uppercase text-[var(--success-text)] dark:text-[var(--success-text)] block">Novos Produtos</span>
+                  <span className="text-lg font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">{newCount}</span>
                 </div>
-                <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/20">
-                  <span className="text-[10px] font-semibold uppercase text-amber-700 dark:text-amber-400 block">A Atualizar</span>
-                  <span className="text-lg font-bold text-amber-800 dark:text-amber-300">{updateCount}</span>
+                <div className="p-3 rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)]">
+                  <span className="text-[10px] font-semibold uppercase text-[var(--warning-text)] dark:text-[var(--warning-text)] block">A Atualizar</span>
+                  <span className="text-lg font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)]">{updateCount}</span>
                 </div>
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400 block">Ignorados (Idênticos)</span>
-                  <span className="text-lg font-bold text-slate-600 dark:text-slate-400">{ignoreCount}</span>
+                <div className="p-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
+                  <span className="text-[10px] font-semibold uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block">Ignorados (Idênticos)</span>
+                  <span className="text-lg font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{ignoreCount}</span>
                 </div>
-                <div className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/20 col-span-2 sm:col-span-1">
-                  <span className="text-[10px] font-semibold uppercase text-red-700 dark:text-red-400 block">Com Erro</span>
-                  <span className="text-lg font-bold text-red-800 dark:text-red-300">{errorCount}</span>
+                <div className="p-3 rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] col-span-2 sm:col-span-1">
+                  <span className="text-[10px] font-semibold uppercase text-[var(--danger-text)] dark:text-[var(--danger-text)] block">Com Erro</span>
+                  <span className="text-lg font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]">{errorCount}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Prévia da Importação
                 </h3>
                 <div className="flex items-center gap-3 text-xs font-semibold">
-                  <span className="text-emerald-600 dark:text-emerald-400">{validCount} prontos para processar</span>
-                  {errorCount > 0 && <span className="text-red-600 dark:text-red-400 font-bold">{errorCount} com erros</span>}
+                  <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">{validCount} prontos para processar</span>
+                  {errorCount > 0 && <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold">{errorCount} com erros</span>}
                 </div>
               </div>
 
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+              <div className="border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl overflow-hidden bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]">
                 <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
                   <table className="w-full text-left text-xs whitespace-nowrap">
-                    <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 shadow-sm">
+                    <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] sticky top-0 z-10 shadow-sm">
                       <tr>
-                        <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Linha</th>
-                        <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Produto</th>
-                        <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Tipo Mapeado</th>
-                        <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Regras</th>
-                        <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Ação Prevista</th>
-                        <th className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Status</th>
+                        <th className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Linha</th>
+                        <th className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Produto</th>
+                        <th className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Tipo Mapeado</th>
+                        <th className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Regras</th>
+                        <th className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Ação Prevista</th>
+                        <th className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                    <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                       {parsedRows.map((row, i) => (
-                        <tr key={i} className={row.status === 'INVALID' ? 'bg-red-50/70 dark:bg-red-950/30' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'}>
-                          <td className="px-4 py-2.5 text-slate-500 font-bold">{row.rowIndex}</td>
-                          <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">
+                        <tr key={i} className={row.status === 'INVALID' ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)]' : 'hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]'}>
+                          <td className="px-4 py-2.5 text-[var(--text-secondary)] font-bold">{row.rowIndex}</td>
+                          <td className="px-4 py-2.5 font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {row.name}
                           </td>
                           <td className="px-4 py-2.5">
-                            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-slate-700 dark:text-slate-300">
+                            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               {row.type}
                             </span>
                           </td>
                           <td className="px-4 py-2.5">
                             {row.requiresPortability ? (
-                              <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-[10px] font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10 dark:bg-purple-900/20 dark:text-purple-400 dark:ring-purple-900/50">
+                              <span className="inline-flex items-center rounded-md bg-[var(--info-bg)] px-2 py-1 text-[10px] font-medium text-[var(--link)] ring-1 ring-inset ring-[var(--focus)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] dark:ring-[var(--focus)]">
                                 Exige Portabilidade
                               </span>
                             ) : (
-                              <span className="text-slate-400">—</span>
+                              <span className="text-[var(--text-secondary)]">—</span>
                             )}
                           </td>
                           <td className="px-4 py-2.5">
-                            {row.status === 'INVALID' && <span className="text-red-600 font-bold">Bloqueado</span>}
-                            {row.action === 'CREATE' && row.status !== 'INVALID' && <span className="text-emerald-600 font-semibold">Criar novo</span>}
-                            {row.action === 'UPDATE' && row.status !== 'INVALID' && <span className="text-amber-600 font-semibold">Atualizar existente</span>}
-                            {row.action === 'IGNORE' && row.status !== 'INVALID' && <span className="text-slate-400">Ignorar (Idêntico)</span>}
+                            {row.status === 'INVALID' && <span className="text-[var(--danger-text)] font-bold">Bloqueado</span>}
+                            {row.action === 'CREATE' && row.status !== 'INVALID' && <span className="text-[var(--success-text)] font-semibold">Criar novo</span>}
+                            {row.action === 'UPDATE' && row.status !== 'INVALID' && <span className="text-[var(--warning-text)] font-semibold">Atualizar existente</span>}
+                            {row.action === 'IGNORE' && row.status !== 'INVALID' && <span className="text-[var(--text-secondary)]">Ignorar (Idêntico)</span>}
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-1.5">
-                              {row.status === 'VALID' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
-                              {row.status === 'WARNING' && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-                              {row.status === 'INVALID' && <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                              {row.status === 'VALID' && <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success-text)]" />}
+                              {row.status === 'WARNING' && <AlertTriangle className="h-3.5 w-3.5 text-[var(--warning-text)]" />}
+                              {row.status === 'INVALID' && <AlertCircle className="h-3.5 w-3.5 text-[var(--danger-text)] shrink-0" />}
                               <span className={`truncate max-w-[320px] ${
-                                row.status === 'VALID' ? 'text-emerald-700 dark:text-emerald-400' :
-                                row.status === 'WARNING' ? 'text-amber-700 dark:text-amber-400' :
-                                'text-red-700 dark:text-red-400 font-medium'
+                                row.status === 'VALID' ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' :
+                                row.status === 'WARNING' ? 'text-[var(--warning-text)] dark:text-[var(--warning-text)]' :
+                                'text-[var(--danger-text)] dark:text-[var(--danger-text)] font-medium'
                               }`} title={row.statusMessage}>
                                 {row.statusMessage}
                               </span>
@@ -447,21 +447,21 @@ export const ProductImportModal: React.FC<ProductImportModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             {summary ? 'Fechar' : 'Cancelar'}
           </button>
-          
+
           {!summary && (
             <button
               type="button"
               onClick={handleConfirmImport}
               disabled={importing || validCount === 0}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-40 flex items-center gap-1.5"
+              className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-5 py-2 text-xs font-bold text-[var(--action-ink)]  transition-colors disabled:opacity-90 flex items-center gap-1.5"
             >
               {importing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -69,7 +69,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
   const journeyScope = `${StorageService.getCurrentTenantId()}:${activeUser?.id || ''}`;
   const canSetInitialStatus = hasPermission(activeUser?.role, activeUser?.customPermissions, 'simulations.update');
   const [activeTab, setActiveTab] = useState<TabType>('VISAO_GERAL');
-  const [presentation, setPresentation] = useState<RecordPresentation>('cards');
+  const [presentation, setPresentation] = useState<RecordPresentation>('list');
   const [simulations, setSimulations] = useState<SimulationRequest[]>([]);
   const [simulationsLoadError, setSimulationsLoadError] = useState<string | null>(null);
   const [isLoadingSimulations, setIsLoadingSimulations] = useState(true);
@@ -748,16 +748,16 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
     }
 
     // SLA Colors based on 72h max limit
-    let badgeClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+    let badgeClass = 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border-[var(--border-default)] dark:border-[var(--border-default)]';
     if (!matchedAt && status !== 'DIGITADA PELA MESA' && status !== 'NÃO PASSÍVEL DE CONTRATAÇÃO') {
       if (status === 'PERDIDA (NÃO DIGITADA)' || diffMins >= MAX_SLA_MINS) {
-        badgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700';
+        badgeClass = 'bg-[var(--bg-surface)] text-[var(--text-primary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border-[var(--border-default)] dark:border-[var(--border-default)]';
       } else if (diffMins > 60 * 60) { // > 60 hours
-        badgeClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse';
+        badgeClass = 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border-[var(--border-default)] dark:border-[var(--border-default)] animate-pulse';
       } else if (diffMins > 48 * 60) { // > 48 hours
-        badgeClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+        badgeClass = 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border-[var(--border-default)] dark:border-[var(--border-default)]';
       } else if (diffMins > 24 * 60) { // > 24 hours
-        badgeClass = 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800';
+        badgeClass = 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border-[var(--border-default)] dark:border-[var(--border-default)]';
       }
     }
 
@@ -878,34 +878,34 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
   const simulationFilters = <>
           {/* Filter Toolbar */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl p-4 ">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
               {/* Search CPF */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Buscar CPF
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--text-secondary)]" />
                   <input
                     type="text"
                     value={cpfSearch}
                     onChange={e => setCpfSearch(e.target.value)}
                     placeholder="Ex: 01138777498..."
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    className="ui-input-icon ui-input w-full pl-9 pr-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                   />
                 </div>
               </div>
 
               {/* Tipo / Fluxo Filter */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Tipo / Fluxo
                 </label>
                 <select
                   value={selectedTypeFilter}
                   onChange={e => setSelectedTypeFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="ui-input w-full px-2.5 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                 >
                   <option value="TODOS">Todos os Fluxos</option>
                   <option value="MANUAL">Manual</option>
@@ -933,13 +933,13 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
               {/* Responsável Filter */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Responsável
                 </label>
                 <select
                   value={selectedUserId}
                   onChange={e => setSelectedUserId(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="ui-input w-full px-2.5 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                 >
                   <option value="">Todos os Usuários</option>
                   {users.map(u => (
@@ -952,13 +952,13 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
               {/* Status Filter */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Status
                 </label>
                 <select
                   value={selectedStatus}
                   onChange={e => setSelectedStatus(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="ui-input w-full px-2.5 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                 >
                   <option value="TODOS">Todos os Status</option>
                   <option value="SIMULAÇÃO ENVIADA">SIMULAÇÃO ENVIADA</option>
@@ -970,7 +970,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
               {/* Date Filter */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Data Inicial
                 </label>
                 <input
@@ -978,12 +978,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   value={startDate}
                   max={endDate || undefined}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="ui-input w-full px-2.5 py-1.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                   Data Final
                 </label>
                 <input
@@ -991,19 +991,19 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   value={endDate}
                   min={startDate || undefined}
                   onChange={e => setEndDate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="ui-input w-full px-2.5 py-1.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                 />
               </div>
             </div>
 
             {hasActiveFilters && (
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-3 pt-3 border-t border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-between">
+                <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Mostrando <strong>{filteredSimulations.length}</strong> de <strong>{simulations.length}</strong> solicitações
                 </span>
                 <button
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--info-text)] hover:text-[var(--info-text)] dark:text-[var(--info-text)] cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Limpar Filtros
@@ -1013,23 +1013,23 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           </div>
 
   </>;
-  const simulationSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Conversão em digitação</span><strong>{metrics.taxaConversao}%</strong><p>{metrics.digitadas} de {metrics.total} simulações</p></div>{[{ label: 'Cadastradas', value: metrics.total, color: '#5c8dff' }, { label: 'Na fila da mesa', value: metrics.enviadas, color: '#ffbc52' }, { label: 'Digitadas', value: metrics.digitadas, color: '#32d9a4' }, { label: 'Ofertas perdidas', value: metrics.perdidas, color: '#fb7b97' }, { label: 'Não passíveis', value: metrics.naoPassivel, color: '#ad7bff' }].map(item => <div className="record-stat-row" key={item.label}><span className="record-stat-dot" style={{ background: item.color }} /><span>{item.label}</span><strong>{item.value}</strong></div>)}<div className="record-stat-note">As ofertas do portal têm prazo de 5 dias úteis para digitação.</div></div>;
+  const simulationSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Conversão em digitação</span><strong>{metrics.taxaConversao}%</strong><p>{metrics.digitadas} de {metrics.total} simulações</p></div>{[{ label: 'Cadastradas', value: metrics.total, color: 'var(--info-text)' }, { label: 'Na fila da mesa', value: metrics.enviadas, color: 'var(--warning-text)' }, { label: 'Digitadas', value: metrics.digitadas, color: 'var(--success-text)' }, { label: 'Ofertas perdidas', value: metrics.perdidas, color: 'var(--danger-text)' }, { label: 'Não passíveis', value: metrics.naoPassivel, color: 'var(--text-secondary)' }].map(item => <div className="record-stat-row" key={item.label}><span className="record-stat-dot" style={{ background: item.color }} /><span>{item.label}</span><strong>{item.value}</strong></div>)}<div className="record-stat-note">As ofertas do portal têm prazo de 5 dias úteis para digitação.</div></div>;
 
   return (
     <div className={`sentinel-simulation-page space-y-6 pb-6 ${premium ? 'p2-live-module p2-live-simulations' : ''}`}>
-      <BankPlaybooksPanel />
+      <details className="ui-operational-insights"><summary>Roteiros e critérios bancários</summary><BankPlaybooksPanel /></details>
       {/* Page Header */}
       <div className="module-command-header">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <div className="h-10 w-10 rounded-xl bg-[var(--action)] text-[var(--action-ink)] flex items-center justify-center ">
               <Calculator className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              <h1 className="text-xl font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                 Simulações de crédito
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Ofertas e digitação, do parceiro à mesa de crédito.
               </p>
             </div>
@@ -1039,7 +1039,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={handleExportCsv}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-xs font-semibold rounded-lg transition-transform cursor-pointer border border-[var(--border-default)] dark:border-[var(--border-default)]"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Exportar CSV</span>
@@ -1047,7 +1047,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-all border bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition-transform border bg-[var(--success-bg)] dark:bg-[var(--success-bg)] hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--border-default)] dark:border-[var(--border-default)] cursor-pointer"
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span>Importar em Lote</span>
@@ -1056,33 +1056,33 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           <button
             id="btn-nova-simulacao"
             onClick={handleOpenNewModal}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-all shrink-0 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg  transition-transform shrink-0 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] cursor-pointer"
             title="Iniciar uma simulação de crédito"
           >
             <Plus className="h-4 w-4" />
             <span>Nova simulação</span>
           </button>
-          <button type="button" onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className="inline-flex items-center gap-2 rounded-lg border border-blue-300 px-3 py-2 text-xs font-bold text-blue-600 dark:border-blue-800 dark:text-blue-300"><FileSpreadsheet size={16} />PORT + REFIN · Planilhas</button>
+          <button type="button" onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-bold text-[var(--info-text)] dark:border-[var(--border-default)] dark:text-[var(--info-text)]"><FileSpreadsheet size={16} />PORT + REFIN · Planilhas</button>
         </div>
       </div>
 
       <div className="module-process-strip"><span>01 · Solicitar simulação</span><ArrowRight size={13} /><span>02 · Comparar ofertas</span><ArrowRight size={13} /><span>03 · Acompanhar digitação</span></div>
-      {presentation === 'cards' && simulationsLoadError && <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">{simulationsLoadError}<button type="button" className="ml-4 underline" onClick={() => void loadData()}>Tentar novamente</button></div>}
+      {presentation === 'cards' && simulationsLoadError && <div role="alert" className="rounded-xl border border-[var(--border-default)] bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)] dark:border-[var(--border-default)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">{simulationsLoadError}<button type="button" className="ml-4 underline" onClick={() => void loadData()}>Tentar novamente</button></div>}
       {/* Navigation Sub-Tabs */}
       <div className="module-mode-tabs" role="navigation" aria-label="Áreas de simulação">
-        <button type="button" aria-current={premium && activeTab === 'PORT_REFIN_PLANILHAS' ? 'page' : undefined} onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'PORT_REFIN_PLANILHAS' ? 'text-blue-600' : 'text-slate-500'}`}><FileSpreadsheet size={15} className="mr-2 inline" />PORT + REFIN · Planilhas</button>
+        <button type="button" aria-current={premium && activeTab === 'PORT_REFIN_PLANILHAS' ? 'page' : undefined} onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'PORT_REFIN_PLANILHAS' ? 'text-[var(--info-text)]' : 'text-[var(--text-secondary)]'}`}><FileSpreadsheet size={15} className="mr-2 inline" />PORT + REFIN · Planilhas</button>
         <button
           aria-current={premium && activeTab === 'VISAO_GERAL' ? 'page' : undefined}
           onClick={() => setActiveTab('VISAO_GERAL')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-transform cursor-pointer ${
             activeTab === 'VISAO_GERAL'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--border-default)] text-[var(--info-text)] dark:text-[var(--info-text)] font-bold'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <ListFilter className="h-4 w-4" />
           <span>Solicitações</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 font-semibold">
+          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] font-semibold">
             {simulations.length}
           </span>
         </button>
@@ -1090,16 +1090,16 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         <button
           aria-current={premium && activeTab === 'AGUARDANDO_DIGITACAO' ? 'page' : undefined}
           onClick={() => setActiveTab('AGUARDANDO_DIGITACAO')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-transform cursor-pointer ${
             activeTab === 'AGUARDANDO_DIGITACAO'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--border-default)] text-[var(--info-text)] dark:text-[var(--info-text)] font-bold'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
-          <Clock className="h-4 w-4 text-amber-500" />
+          <Clock className="h-4 w-4 text-[var(--warning-text)]" />
           <span>Fila de digitação</span>
           {metrics.enviadas > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] font-bold">
               {metrics.enviadas}
             </span>
           )}
@@ -1108,10 +1108,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         <button
           aria-current={premium && activeTab === 'DASHBOARD_ANALISES' ? 'page' : undefined}
           onClick={() => setActiveTab('DASHBOARD_ANALISES')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-transform cursor-pointer ${
             activeTab === 'DASHBOARD_ANALISES'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--border-default)] text-[var(--info-text)] dark:text-[var(--info-text)] font-bold'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <BarChart2 className="h-4 w-4" />
@@ -1126,9 +1126,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           <RecordWorkspace premium={premium} filters={simulationFilters} summary={simulationSummary} count={filteredSimulations.length} mode={presentation} onMode={setPresentation}>
           {/* Bulk Actions Bar */}
           {selectedIds.length > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center justify-between animate-in fade-in">
-              <div className="flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
-                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+            <div className="bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl p-3 flex items-center justify-between animate-in fade-in">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--info-text)] dark:text-[var(--info-text)]">
+                <CheckCircle2 className="h-4 w-4 text-[var(--info-text)]" />
                 <span>
                   <strong>{selectedIds.length}</strong> solicitação(ões) selecionada(s)
                 </span>
@@ -1136,7 +1136,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedIds([])}
-                  className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
+                  className="px-2.5 py-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   Desmarcar Todas
                 </button>
@@ -1146,7 +1146,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     setBulkDeleteReason('');
                     setIsBulkDeleteModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer transition-all"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] text-xs font-semibold rounded-lg  cursor-pointer transition-transform"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span>Excluir Selecionados ({selectedIds.length})</span>
@@ -1157,14 +1157,14 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
           {presentation === 'cards' && <div className="operation-card-grid">{(isLoadingSimulations || simulationsLoadError ? [] : filteredSimulations).map(sim => {
             const partner = partners.find(item => item.id === sim.partnerId);
-            return <OperationCard key={sim.id} eyebrow={operationLabel(sim.operationType || sim.productName || sim.simulationType)} title={formatCpf(sim.cpf)} status={sim.status} amountLabel="Valor da oferta" statusColor={sim.status === 'DIGITADA PELA MESA' ? '#22c99a' : sim.status === 'PERDIDA (NÃO DIGITADA)' ? '#fb7185' : '#9581ff'} amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'ADE / Proposta', value: sim.matchedProposalNumber || 'Aguardando digitação' }, { label: 'Responsável', value: users.find(user => user.id === sim.createdById)?.name || '—' }]} onOpen={() => setDetailTarget(sim)} selected={selectedIds.includes(sim.id)} onSelect={canDeleteSimulationUI(activeUser, sim) ? () => handleToggleSelectRow(sim.id) : undefined} actions={<>{sim.matchedProposalId && onOpenProposalDetail && <button type="button" className="operation-card-action" onClick={() => onOpenProposalDetail(sim.matchedProposalId!)}>Ver ADE</button>}{canChangeStatusUI(activeUser, sim) && <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus(sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? sim.status : 'DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(sim.rejectionReason || ''); }}>Definir status</button>}</>} />;
+            return <OperationCard key={sim.id} eyebrow={operationLabel(sim.operationType || sim.productName || sim.simulationType)} title={formatCpf(sim.cpf)} status={sim.status} amountLabel="Valor da oferta" statusColor={sim.status === 'DIGITADA PELA MESA' ? 'var(--success-text)' : sim.status === 'PERDIDA (NÃO DIGITADA)' ? 'var(--danger-text)' : 'var(--info-text)'} amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'ADE / Proposta', value: sim.matchedProposalNumber || 'Aguardando digitação' }, { label: 'Responsável', value: users.find(user => user.id === sim.createdById)?.name || '—' }]} onOpen={() => setDetailTarget(sim)} selected={selectedIds.includes(sim.id)} onSelect={canDeleteSimulationUI(activeUser, sim) ? () => handleToggleSelectRow(sim.id) : undefined} actions={<>{sim.matchedProposalId && onOpenProposalDetail && <button type="button" className="operation-card-action" onClick={() => onOpenProposalDetail(sim.matchedProposalId!)}>Ver ADE</button>}{canChangeStatusUI(activeUser, sim) && <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus(sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? sim.status : 'DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(sim.rejectionReason || ''); }}>Definir status</button>}</>} />;
           })}{!isLoadingSimulations && !simulationsLoadError && !filteredSimulations.length && <div className="record-empty">Nenhuma simulação encontrada. Ajuste os filtros ou inicie uma nova simulação.</div>}{isLoadingSimulations && <div className="record-empty">Carregando simulações...</div>}</div>}
           {presentation === 'list' && <>
           {/* Main Table */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl overflow-hidden ">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+              <table className="ui-table w-full text-left text-xs">
+                <thead className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-semibold border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
                   <tr>
                     <th className="px-3 py-3 w-10 text-center">
                       <input
@@ -1174,7 +1174,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           selectedIds.length === filteredSimulations.length
                         }
                         onChange={handleSelectAll}
-                        className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        className="rounded border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--info-text)] focus:ring-[var(--field-border)] cursor-pointer"
                       />
                     </th>
                     <th className="px-4 py-3">CPF DO CLIENTE</th>
@@ -1189,25 +1189,25 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     <th className="px-4 py-3 text-right">AÇÕES</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                   {simulationsLoadError ? (
                     <tr>
                       <td colSpan={11} className="px-4 py-12 text-center">
-                        <ShieldAlert className="h-8 w-8 mx-auto mb-2 text-rose-500" />
-                        <p className="font-medium text-sm text-slate-700 dark:text-slate-200">Não foi possível carregar as simulações</p>
-                        <p className="text-xs mt-1 text-slate-500 dark:text-slate-400">{simulationsLoadError}</p>
-                        <button type="button" onClick={() => void loadData()} className="mt-4 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                        <ShieldAlert className="h-8 w-8 mx-auto mb-2 text-[var(--danger-text)]" />
+                        <p className="font-medium text-sm text-[var(--text-primary)] dark:text-[var(--text-primary)]">Não foi possível carregar as simulações</p>
+                        <p className="text-xs mt-1 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{simulationsLoadError}</p>
+                        <button type="button" onClick={() => void loadData()} className="mt-4 rounded-lg bg-[var(--action)] px-3 py-2 text-xs font-semibold text-[var(--action-ink)] bg-[var(--action)]">
                           Tentar novamente
                         </button>
                       </td>
                     </tr>
                   ) : isLoadingSimulations ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">Carregando solicitações...</td>
+                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Carregando solicitações...</td>
                     </tr>
                   ) : filteredSimulations.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
+                      <td colSpan={11} className="px-4 py-12 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         <Calculator className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         <p className="font-medium text-sm">Nenhuma solicitação de simulação encontrada.</p>
                         <p className="text-xs mt-1">Clique no botão "Nova simulação" para cadastrar.</p>
@@ -1224,8 +1224,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       return (
                         <tr
                           key={sim.id}
-                          className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
-                            isSelected ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                          className={`hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform ${
+                            isSelected ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]' : ''
                           }`}
                         >
                           {/* Checkbox */}
@@ -1240,21 +1240,21 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                                   ? "Selecionar para exclusão em massa"
                                   : "Sem permissão para excluir esta simulação"
                               }
-                              className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="rounded border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--info-text)] focus:ring-[var(--field-border)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             />
                           </td>
 
                           {/* CPF */}
-                          <td className="px-4 py-3 font-mono font-medium text-slate-900 dark:text-slate-100">
+                          <td className="px-4 py-3 font-mono font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                             <div className="flex items-center gap-1.5">
                               <span>{formatCpf(sim.cpf)}</span>
                               <button
                                 title="Copiar CPF"
                                 onClick={() => copyToClipboard(sim.cpf, sim.id)}
-                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
+                                className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer p-0.5"
                               >
                                 {isCopied ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                  <Check className="h-3.5 w-3.5 text-[var(--success-text)]" />
                                 ) : (
                                   <Copy className="h-3.5 w-3.5" />
                                 )}
@@ -1263,12 +1263,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                             {(sim.convenioName || sim.productName) && (
                               <div className="flex flex-wrap items-center gap-1 mt-1 font-sans">
                                 {sim.convenioName && (
-                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-xs bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--info-text)] dark:text-[var(--info-text)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                     {sim.convenioName}
                                   </span>
                                 )}
                                 {sim.productName && (
-                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-xs bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-xs bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                     {sim.productName}
                                   </span>
                                 )}
@@ -1278,18 +1278,18 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
                           {/* Tipo / Fluxo */}
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {['SPREADSHEET_INSS', 'DAYCOVAL_INSS'].includes(sim.simulationType || '') ? <span className="text-blue-600">Planilha · {sim.selectedCondition?.provider || 'Daycoval'}</span> : sim.simulationType === 'PARTNER_AUTO' ? <span className="text-violet-600">Portal · {sim.operationType}</span> : sim.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS</span> : sim.simulationType === 'FINANTO_INSS' ? (
-                              <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">FINANTO INSS</span>
+                            {['SPREADSHEET_INSS', 'DAYCOVAL_INSS'].includes(sim.simulationType || '') ? <span className="text-[var(--info-text)]">Planilha · {sim.selectedCondition?.provider || 'Daycoval'}</span> : sim.simulationType === 'PARTNER_AUTO' ? <span className="text-[var(--info-text)]">Portal · {sim.operationType}</span> : sim.simulationType === 'INSS_MULTI' ? <span className="text-[var(--info-text)]">INSS</span> : sim.simulationType === 'FINANTO_INSS' ? (
+                              <span className="inline-flex items-center rounded-full border border-[var(--border-default)] bg-[var(--info-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--info-text)] dark:border-[var(--border-default)] dark:bg-[var(--info-bg)] dark:text-[var(--info-text)]">FINANTO INSS</span>
                             ) : sim.simulationType === 'HAPPY_INSS' ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                 HAPPY INSS
                               </span>
                             ) : sim.simulationType === 'HAPPY_CLT' ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--info-bg)] text-[var(--info-text)] dark:bg-[var(--info-bg)] dark:text-[var(--info-text)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                 HAPPY CLT
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--bg-surface)] text-[var(--text-primary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                 MANUAL
                               </span>
                             )}
@@ -1298,25 +1298,25 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           {/* Partner */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                                 {sim.partnerCodeSnapshot || partner?.login || 'DESCONHECIDO'}
                               </span>
-                              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={partner?.fullName}>
+                              <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate max-w-[140px]" title={partner?.fullName}>
                                 {partner?.fullName}
                               </span>
                             </div>
                           </td>
 
                           {/* Responsável */}
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                          <td className="px-4 py-3 text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                             <div className="flex items-center gap-1.5">
-                              <User className="h-3.5 w-3.5 text-slate-400" />
+                              <User className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
                               <span>{creator?.name || sim.portalAccessName || 'Sistema'}</span>
                             </div>
                           </td>
 
                           {/* Data de Cadastro */}
-                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          <td className="px-4 py-3 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap">
                             {new Date(sim.createdAt).toLocaleString('pt-BR', {
                               day: '2-digit',
                               month: '2-digit',
@@ -1355,26 +1355,26 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                                     }
                                   }
                                 }}
-                                className={`text-[11px] font-bold rounded-lg px-2 py-1 border cursor-pointer focus:outline-hidden transition-colors ${
+                                className={`ui-input ${`text-[11px] font-bold rounded-lg px-2 py-1 border cursor-pointer focus:outline-hidden transition-transform ${
                                   sim.status === 'SIMULAÇÃO ENVIADA'
-                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                    ? 'bg-[var(--info-bg)] text-[var(--info-text)] dark:bg-[var(--info-bg)] dark:text-[var(--info-text)] border-[var(--border-default)] dark:border-[var(--border-default)]'
                                     : sim.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
-                                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                    ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border-[var(--border-default)] dark:border-[var(--border-default)]'
                                     : sim.status === 'DIGITADA PELA MESA'
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                                }`}
+                                    ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border-[var(--border-default)] dark:border-[var(--border-default)]'
+                                    : 'bg-[var(--bg-surface)] text-[var(--text-primary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border-[var(--border-default)] dark:border-[var(--border-default)]'
+                                }`}`}
                               >
-                                <option value="SIMULAÇÃO ENVIADA" className="bg-white text-slate-900">
+                                <option value="SIMULAÇÃO ENVIADA" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                                   Enviada (Pendente)
                                 </option>
-                                <option value="NÃO PASSÍVEL DE CONTRATAÇÃO" className="bg-white text-slate-900">
+                                <option value="NÃO PASSÍVEL DE CONTRATAÇÃO" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                                   Inviável (Recusada)
                                 </option>
-                                <option value="DIGITADA PELA MESA" className="bg-white text-slate-900">
+                                <option value="DIGITADA PELA MESA" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                                   Digitada pela Mesa
                                 </option>
-                                <option value="PERDIDA (NÃO DIGITADA)" className="bg-white text-slate-900">
+                                <option value="PERDIDA (NÃO DIGITADA)" className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                                   Perdida (72h)
                                 </option>
                               </select>
@@ -1390,25 +1390,25 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                                     onOpenProposalDetail(sim.matchedProposalId);
                                   }
                                 }}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:underline cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] hover:underline cursor-pointer"
                               >
                                 <FileCheck2 className="h-3 w-3" />
                                 {sim.matchedProposalNumber}
                                 {onOpenProposalDetail && <ExternalLink className="h-2.5 w-2.5 opacity-60" />}
                               </button>
                             ) : (
-                              <span className="text-slate-400">—</span>
+                              <span className="text-[var(--text-secondary)]">—</span>
                             )}
                           </td>
 
                           {/* Digitador */}
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          <td className="px-4 py-3 text-[var(--text-primary)] dark:text-[var(--text-primary)] whitespace-nowrap">
                             {sim.matchedDigitizerName ? (
-                              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                              <span className="font-medium text-[var(--success-text)] dark:text-[var(--success-text)]">
                                 {sim.matchedDigitizerName}
                               </span>
                             ) : (
-                              <span className="text-slate-400">—</span>
+                              <span className="text-[var(--text-secondary)]">—</span>
                             )}
                           </td>
 
@@ -1429,7 +1429,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                               <button
                                 title="Ver Detalhes e Histórico"
                                 onClick={() => setDetailTarget(sim)}
-                                className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+                                className="p-1 text-[var(--text-secondary)] hover:text-[var(--info-text)] dark:hover:text-[var(--info-text)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-md transition-transform cursor-pointer"
                               >
                                 <Info className="h-3.5 w-3.5" />
                               </button>
@@ -1446,7 +1446,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                                     setSelectedAdeNumber(sim.matchedProposalNumber || '');
                                     setRejectionReason(sim.rejectionReason || '');
                                   }}
-                                  className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 rounded-md transition-colors cursor-pointer border border-blue-200 dark:border-blue-800 flex items-center gap-1"
+                                  className="px-2.5 py-1 text-[11px] font-semibold text-[var(--info-text)] hover:text-[var(--info-text)] dark:text-[var(--info-text)] bg-[var(--info-bg)] hover:bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] rounded-md transition-transform cursor-pointer border border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center gap-1"
                                 >
                                   <span>Definir Status</span>
                                 </button>
@@ -1460,7 +1460,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                                     setDeleteReason('');
                                     setDeleteError(null);
                                   }}
-                                  className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors cursor-pointer"
+                                  className="p-1 text-[var(--text-secondary)] hover:text-[var(--danger-text)] dark:hover:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] rounded-md transition-transform cursor-pointer"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -1483,18 +1483,18 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       {/* TAB 2: FILA DA MESA (AGUARDANDO DIGITAÇÃO) */}
       {activeTab === 'AGUARDANDO_DIGITACAO' && (
         <div className="p2-simulation-queue space-y-4 animate-in fade-in">
-          <div className="p2-queue-context p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between">
+          <div className="p2-queue-context p-4 rounded-xl bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--warning-text)] dark:text-[var(--warning-text)] text-xs flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Clock className="h-5 w-5 text-amber-600 shrink-0" />
+              <Clock className="h-5 w-5 text-[var(--warning-text)] shrink-0" />
               <div>
                 <h3 className="font-bold text-sm">Fila de Acompanhamento da Mesa</h3>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                <p className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)]">
                   Exibindo exclusivamente simulações pendentes (SIMULAÇÃO ENVIADA), ordenadas pela mais antiga primeiro.
                   Ofertas do portal têm prazo de <strong>5 dias úteis sem digitação</strong>; os registros manuais mantêm o prazo de 72 horas.
                 </p>
               </div>
             </div>
-            <span className="px-3 py-1 bg-amber-600 text-white font-bold rounded-lg text-xs shrink-0">
+            <span className="px-3 py-1 bg-[var(--action)] text-[var(--action-ink)] font-bold rounded-lg text-xs shrink-0">
               {pendingQueueSimulations.length} pendente(s)
             </span>
           </div>
@@ -1502,12 +1502,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           <div className="record-results-toolbar"><span>{pendingQueueSimulations.length} operações na fila · mais antigas primeiro</span><div className="record-view-switch"><button type="button" aria-pressed={presentation === 'cards'} onClick={() => setPresentation('cards')}>Cartões</button><button type="button" aria-pressed={presentation === 'list'} onClick={() => setPresentation('list')}>Lista</button></div></div>
           {presentation === 'cards' && <div className="operation-card-grid">{pendingQueueSimulations.map((sim, index) => {
             const partner = partners.find(item => item.id === sim.partnerId), elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status, sim.offerExpiresAt);
-            return <OperationCard key={sim.id} title={formatCpf(sim.cpf)} eyebrow={`POSIÇÃO ${index + 1} · ${operationLabel(sim.operationType || sim.simulationType)}`} status="Aguardando digitação" amountLabel="Valor da oferta" statusColor="#ffbc52" amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'Tempo na fila', value: elapsed.text }, { label: 'Próximo passo', value: 'Digitação pela mesa' }]} onOpen={() => setDetailTarget(sim)} actions={canChangeStatusUI(activeUser, sim) ? <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus('DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(''); }}>Definir status</button> : undefined} />;
+            return <OperationCard key={sim.id} title={formatCpf(sim.cpf)} eyebrow={`POSIÇÃO ${index + 1} · ${operationLabel(sim.operationType || sim.simulationType)}`} status="Aguardando digitação" amountLabel="Valor da oferta" statusColor="var(--warning-text)" amount={sim.selectedCondition?.amount ? `R$ ${sim.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : undefined} fields={[{ label: 'Parceiro', value: `${sim.partnerCodeSnapshot || partner?.login || '—'} · ${partner?.fullName || ''}` }, { label: 'Solicitada em', value: new Date(sim.createdAt).toLocaleString('pt-BR') }, { label: 'Tempo na fila', value: elapsed.text }, { label: 'Próximo passo', value: 'Digitação pela mesa' }]} onOpen={() => setDetailTarget(sim)} actions={canChangeStatusUI(activeUser, sim) ? <button type="button" className="operation-card-action" onClick={() => { setStatusModalTarget(sim); setSelectedTargetStatus('DIGITADA PELA MESA'); setSelectedAdeNumber(sim.matchedProposalNumber || ''); setRejectionReason(''); }}>Definir status</button> : undefined} />;
           })}{!pendingQueueSimulations.length && <div className="record-empty">Fila zerada. Nenhuma simulação aguardando digitação.</div>}</div>}
           {presentation === 'list' && <>
-          <div className="p2-queue-table bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+          <div className="p2-queue-table bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl overflow-hidden ">
+            <table className="ui-table w-full text-left text-xs">
+              <thead className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-semibold border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
                 <tr>
                   <th className="px-4 py-3">POSIÇÃO</th>
                   <th className="px-4 py-3">CPF DO CLIENTE</th>
@@ -1519,12 +1519,12 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <th className="px-4 py-3 text-right">AÇÕES</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                 {pendingQueueSimulations.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
-                      <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500 opacity-60" />
-                      <p className="font-semibold text-sm text-slate-700 dark:text-slate-300">Fila zerada!</p>
+                    <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-secondary)]">
+                      <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-[var(--success-text)] opacity-60" />
+                      <p className="font-semibold text-sm text-[var(--text-primary)] dark:text-[var(--text-primary)]">Fila zerada!</p>
                       <p className="text-xs">Não existem solicitações de simulação aguardando digitação no momento.</p>
                     </td>
                   </tr>
@@ -1535,19 +1535,19 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     const elapsed = getElapsedTimeInfo(sim.createdAt, sim.matchedAt, sim.status, sim.offerExpiresAt);
 
                     return (
-                      <tr key={sim.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                        <td className="px-4 py-3 font-bold text-slate-400">#{index + 1}</td>
-                        <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <tr key={sim.id} className="hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                        <td className="px-4 py-3 font-bold text-[var(--text-secondary)]">#{index + 1}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                           {formatCpf(sim.cpf)}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md mr-1.5">
+                          <span className="font-mono font-bold bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded-md mr-1.5">
                             {partner?.login}
                           </span>
-                          <span className="text-slate-500">{partner?.fullName}</span>
+                          <span className="text-[var(--text-secondary)]">{partner?.fullName}</span>
                         </td>
-                        <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{creator?.name}</td>
-                        <td className="px-4 py-3 text-slate-500">
+                        <td className="px-4 py-3 text-[var(--text-primary)] dark:text-[var(--text-primary)]">{creator?.name}</td>
+                        <td className="px-4 py-3 text-[var(--text-secondary)]">
                           {new Date(sim.createdAt).toLocaleString('pt-BR')}
                         </td>
                         <td className="px-4 py-3">
@@ -1572,7 +1572,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                               setStatusModalTarget(sim);
                               setRejectionReason('');
                             }}
-                            className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md border border-rose-200 dark:border-rose-900/60 cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-semibold text-[var(--danger-text)] hover:text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] cursor-pointer"
                           >
                             Inviabilizar
                           </button>
@@ -1593,57 +1593,57 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         <div className="p2-simulation-analytics space-y-6 animate-in fade-in">
           <PartnerSimulationMonthlyReport simulations={simulations} partners={partners} />
           {/* Top Summary Banner */}
-          <div className="p2-simulation-funnel bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-              <BarChart2 className="h-4 w-4 text-blue-600" />
+          <div className="p2-simulation-funnel bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl p-5 ">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-3 flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-[var(--info-text)]" />
               Funil de Conversão & Tempo Médio
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
-                <div className="text-xs text-slate-500">Total de Simulações Enviadas</div>
-                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{metrics.total}</div>
-                <div className="text-[11px] text-blue-600 mt-1">100% das solicitações registradas</div>
+              <div className="p-4 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
+                <div className="text-xs text-[var(--text-secondary)]">Total de Simulações Enviadas</div>
+                <div className="text-2xl font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mt-1">{metrics.total}</div>
+                <div className="text-[11px] text-[var(--info-text)] mt-1">100% das solicitações registradas</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
-                <div className="text-xs text-slate-500">Digitadas pela Mesa (Identificadas)</div>
-                <div className="text-2xl font-bold text-emerald-600 mt-1">{metrics.digitadas}</div>
-                <div className="text-[11px] text-emerald-600 mt-1">{metrics.taxaConversao}% taxa de conversão</div>
+              <div className="p-4 rounded-xl bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
+                <div className="text-xs text-[var(--text-secondary)]">Digitadas pela Mesa (Identificadas)</div>
+                <div className="text-2xl font-bold text-[var(--success-text)] mt-1">{metrics.digitadas}</div>
+                <div className="text-[11px] text-[var(--success-text)] mt-1">{metrics.taxaConversao}% taxa de conversão</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
-                <div className="text-xs text-slate-500">Tempo Médio até Digitação</div>
-                <div className="text-2xl font-bold text-indigo-600 mt-1">{averageMatchTime}</div>
-                <div className="text-[11px] text-indigo-600 mt-1">Tempo entre solicitação e ADE digitada</div>
+              <div className="p-4 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)]">
+                <div className="text-xs text-[var(--text-secondary)]">Tempo Médio até Digitação</div>
+                <div className="text-2xl font-bold text-[var(--info-text)] mt-1">{averageMatchTime}</div>
+                <div className="text-[11px] text-[var(--info-text)] mt-1">Tempo entre solicitação e ADE digitada</div>
               </div>
             </div>
           </div>
 
           {/* Análise por Parceiro */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-blue-600" />
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl p-5 ">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-[var(--info-text)]" />
               Análise de Simulações por Parceiro
             </h3>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+              <table className="ui-table w-full text-left text-xs">
+                <thead className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-semibold border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
                   <tr>
                     <th className="px-4 py-3">PARCEIRO</th>
                     <th className="px-4 py-3 text-center">CADASTRADAS</th>
                     <th className="px-4 py-3 text-center">AGUARDANDO</th>
-                    <th className="px-4 py-3 text-center text-emerald-600">DIGITADAS</th>
-                    <th className="px-4 py-3 text-center text-rose-600">NÃO PASSÍVEIS</th>
-                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS</th>
+                    <th className="px-4 py-3 text-center text-[var(--success-text)]">DIGITADAS</th>
+                    <th className="px-4 py-3 text-center text-[var(--danger-text)]">NÃO PASSÍVEIS</th>
+                    <th className="px-4 py-3 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">PERDIDAS</th>
                     <th className="px-4 py-3 text-right">TAXA CONVERSÃO (%)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                   {partnerStats.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={7} className="px-4 py-6 text-center text-[var(--text-secondary)]">
                         Nenhum dado por parceiro registrado.
                       </td>
                     </tr>
@@ -1651,19 +1651,19 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     partnerStats.map(stat => {
                       const conv = stat.total > 0 ? ((stat.digitadas / stat.total) * 100).toFixed(1) : '0.0';
                       return (
-                        <tr key={stat.partner.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                            <span className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md mr-2">
+                        <tr key={stat.partner.id} className="hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                          <td className="px-4 py-3 font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)]">
+                            <span className="font-mono font-bold bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded-md mr-2">
                               {stat.partner.login}
                             </span>
                             <span>{stat.partner.fullName}</span>
                           </td>
                           <td className="px-4 py-3 text-center font-bold">{stat.total}</td>
-                          <td className="px-4 py-3 text-center text-amber-600 font-medium">{stat.enviadas}</td>
-                          <td className="px-4 py-3 text-center text-emerald-600 font-bold">{stat.digitadas}</td>
-                          <td className="px-4 py-3 text-center text-rose-600 font-medium">{stat.naoPassivel}</td>
-                          <td className="px-4 py-3 text-center text-slate-600 font-semibold">{stat.perdidas}</td>
-                          <td className="px-4 py-3 text-right font-bold text-indigo-600">{conv}%</td>
+                          <td className="px-4 py-3 text-center text-[var(--warning-text)] font-medium">{stat.enviadas}</td>
+                          <td className="px-4 py-3 text-center text-[var(--success-text)] font-bold">{stat.digitadas}</td>
+                          <td className="px-4 py-3 text-center text-[var(--danger-text)] font-medium">{stat.naoPassivel}</td>
+                          <td className="px-4 py-3 text-center text-[var(--text-secondary)] font-semibold">{stat.perdidas}</td>
+                          <td className="px-4 py-3 text-right font-bold text-[var(--info-text)]">{conv}%</td>
                         </tr>
                       );
                     })
@@ -1674,29 +1674,29 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
           </div>
 
           {/* Análise por Responsável */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-600" />
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl p-5 ">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <Users className="h-4 w-4 text-[var(--info-text)]" />
               Análise de Simulações por Responsável (Usuário Criador)
             </h3>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+              <table className="ui-table w-full text-left text-xs">
+                <thead className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-semibold border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
                   <tr>
                     <th className="px-4 py-3">RESPONSÁVEL</th>
                     <th className="px-4 py-3">PERFIL / ROLE</th>
                     <th className="px-4 py-3 text-center">CADASTRADAS</th>
-                    <th className="px-4 py-3 text-center text-emerald-600">DIGITADAS</th>
-                    <th className="px-4 py-3 text-center text-rose-600">NÃO PASSÍVEIS</th>
-                    <th className="px-4 py-3 text-center text-slate-600 dark:text-slate-400">PERDIDAS</th>
+                    <th className="px-4 py-3 text-center text-[var(--success-text)]">DIGITADAS</th>
+                    <th className="px-4 py-3 text-center text-[var(--danger-text)]">NÃO PASSÍVEIS</th>
+                    <th className="px-4 py-3 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">PERDIDAS</th>
                     <th className="px-4 py-3 text-right">TAXA CONVERSÃO (%)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                   {userStats.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={7} className="px-4 py-6 text-center text-[var(--text-secondary)]">
                         Nenhum dado por usuário registrado.
                       </td>
                     </tr>
@@ -1704,16 +1704,16 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     userStats.map(stat => {
                       const conv = stat.total > 0 ? ((stat.digitadas / stat.total) * 100).toFixed(1) : '0.0';
                       return (
-                        <tr key={stat.user.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                        <tr key={stat.user.id} className="hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                          <td className="px-4 py-3 font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                             {stat.user.name}
                           </td>
-                          <td className="px-4 py-3 text-slate-500">{stat.user.role}</td>
+                          <td className="px-4 py-3 text-[var(--text-secondary)]">{stat.user.role}</td>
                           <td className="px-4 py-3 text-center font-bold">{stat.total}</td>
-                          <td className="px-4 py-3 text-center text-emerald-600 font-bold">{stat.digitadas}</td>
-                          <td className="px-4 py-3 text-center text-rose-600 font-medium">{stat.naoPassivel}</td>
-                          <td className="px-4 py-3 text-center text-slate-600 font-semibold">{stat.perdidas}</td>
-                          <td className="px-4 py-3 text-right font-bold text-indigo-600">{conv}%</td>
+                          <td className="px-4 py-3 text-center text-[var(--success-text)] font-bold">{stat.digitadas}</td>
+                          <td className="px-4 py-3 text-center text-[var(--danger-text)] font-medium">{stat.naoPassivel}</td>
+                          <td className="px-4 py-3 text-center text-[var(--text-secondary)] font-semibold">{stat.perdidas}</td>
+                          <td className="px-4 py-3 text-right font-bold text-[var(--info-text)]">{conv}%</td>
                         </tr>
                       );
                     })
@@ -1727,25 +1727,25 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal: Nova Simulação (com Combobox de Parceiro e Alerta de Duplicidade) */}
       {isNewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-surface-elevated)] p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]  border border-[var(--border-default)] dark:border-[var(--border-default)] p-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-[var(--action)] text-[var(--action-ink)] flex items-center justify-center">
                   <Calculator className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                     Nova Solicitação de Simulação
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                     Informe o CPF do cliente e pesquise o parceiro solicitante
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsNewModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <XCircle className="h-5 w-5" />
               </button>
@@ -1756,20 +1756,20 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             {/* AVISO DE DUPLICIDADE (SE HOUVER) */}
             {duplicateWarning ? (
               <div className="mt-5 space-y-4">
-                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-sm text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+                <div className="p-4 rounded-xl bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--warning-text)] dark:text-[var(--warning-text)] text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-sm text-[var(--warning-text)] dark:text-[var(--warning-text)]">
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-[var(--warning-text)]" />
                     Solicitação Pendente em Duplicidade Detectada
                   </div>
                   <p>
                     Já existe uma solicitação de simulação para este CPF e parceiro aguardando digitação.
                   </p>
-                  <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-amber-200/60 font-mono text-[11px] space-y-1">
+                  <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] font-mono text-[11px] space-y-1">
                     <div>CPF: <strong>{formatCpf(duplicateWarning.cleanCpf)}</strong></div>
                     <div>Parceiro: <strong>{selectedPartner?.login} — {selectedPartner?.fullName}</strong></div>
                     <div>Cadastrado em: <strong>{new Date(duplicateWarning.pendingSim.createdAt).toLocaleString('pt-BR')}</strong></div>
                   </div>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  <p className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)]">
                     Deseja cancelar ou continuar registrando uma nova solicitação mesmo assim?
                   </p>
                 </div>
@@ -1778,7 +1778,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <button
                     type="button"
                     onClick={() => setDuplicateWarning(null)}
-                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-200 cursor-pointer"
+                    className="px-4 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-xs font-semibold rounded-lg hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
                   >
                     CANCELAR
                   </button>
@@ -1786,7 +1786,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     type="button"
                     onClick={() => executeCreateSimulation(duplicateWarning.cleanCpf, duplicateWarning.partnerId, initialStatus, initialRejectionReason)}
                     disabled={isCreatingSimulation}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer transition-all"
+                    className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] text-xs font-semibold rounded-lg  cursor-pointer transition-transform"
                   >
                     {isCreatingSimulation ? 'REGISTRANDO...' : 'CONTINUAR'}
                   </button>
@@ -1795,7 +1795,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             ) : (
               <form onSubmit={handleSubmitSimulation} className="mt-5 space-y-4">
                 {modalError && (
-                  <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <div className="p-3 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{modalError}</span>
                   </div>
@@ -1803,8 +1803,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
                 {/* 1. CPF DO CLIENTE */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    CPF DO CLIENTE <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
+                    CPF DO CLIENTE <span className="text-[var(--danger-text)]">*</span>
                   </label>
                   <input
                     type="text"
@@ -1813,26 +1813,26 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     value={newCpf}
                     onChange={handleCpfChange}
                     placeholder="000.000.000-00"
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    className="ui-input w-full px-3 py-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-sm font-mono text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                   />
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
                     O CPF é normalizado e validado automaticamente.
                   </p>
                 </div>
 
                 {/* 2. PARCEIRO — AUTOCOMPLETE COMBOBOX */}
                 <div ref={comboboxRef} className="relative">
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    PARCEIRO <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
+                    PARCEIRO <span className="text-[var(--danger-text)]">*</span>
                   </label>
 
                   {selectedPartner ? (
-                    <div className="flex items-center justify-between p-2.5 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-center justify-between p-2.5 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                        <span className="font-mono font-bold text-xs bg-[var(--action)] text-[var(--action-ink)] px-2 py-0.5 rounded-md">
                           {selectedPartner.login}
                         </span>
-                        <span className="text-xs font-medium text-slate-900 dark:text-slate-100">
+                        <span className="text-xs font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                           {selectedPartner.fullName}
                         </span>
                       </div>
@@ -1843,7 +1843,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           setPartnerQuery('');
                           setIsPartnerDropdownOpen(true);
                         }}
-                        className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                        className="text-[var(--text-secondary)] hover:text-[var(--danger-text)] p-1 cursor-pointer"
                         title="Limpar seleção de parceiro"
                       >
                         <XCircle className="h-4 w-4" />
@@ -1852,7 +1852,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   ) : (
                     <div>
                       <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-[var(--text-secondary)]" />
                         <input
                           type="text"
                           value={partnerQuery}
@@ -1863,14 +1863,14 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           }}
                           onFocus={() => setIsPartnerDropdownOpen(true)}
                           placeholder="Digite o código, login ou nome do parceiro..."
-                          className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                          className="ui-input-icon ui-input w-full pl-9 pr-3 py-2.5 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                         />
                       </div>
 
                       {isPartnerDropdownOpen && (
-                        <div className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl divide-y divide-slate-100 dark:divide-slate-800">
+                        <div className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg  divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                           {filteredPartnerOptions.length === 0 ? (
-                            <div className="p-3 text-xs text-slate-400 text-center">
+                            <div className="p-3 text-xs text-[var(--text-secondary)] text-center">
                               Nenhum parceiro encontrado.
                             </div>
                           ) : (
@@ -1883,17 +1883,17 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                                   setIsPartnerDropdownOpen(false);
                                   setModalError(null);
                                 }}
-                                className="w-full text-left p-2.5 hover:bg-blue-50 dark:hover:bg-slate-800 flex items-center justify-between cursor-pointer transition-colors"
+                                className="w-full text-left p-2.5 hover:bg-[var(--info-bg)] dark:hover:bg-[var(--bg-surface-elevated)] flex items-center justify-between cursor-pointer transition-transform"
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono font-bold text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-xs text-slate-800 dark:text-slate-200">
+                                  <span className="font-mono font-bold text-[11px] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 rounded-xs text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                                     {p.login}
                                   </span>
-                                  <span className="text-xs text-slate-800 dark:text-slate-200 font-medium">
+                                  <span className="text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] font-medium">
                                     {p.fullName}
                                   </span>
                                 </div>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                                <ChevronRight className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
                               </button>
                             ))
                           )}
@@ -1901,7 +1901,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       )}
                     </div>
                   )}
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
                     Pesquise por código (ex: 16740), login (ex: KAUAI@16740) ou nome do parceiro.
                   </p>
                 </div>
@@ -1909,7 +1909,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 {/* CONVÊNIO E PRODUTO */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <label className="block text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
                       CONVÊNIO (OPCIONAL)
                     </label>
                     <select
@@ -1924,7 +1924,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                           }
                         }
                       }}
-                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      className="ui-input w-full text-xs font-medium bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg p-2.5 text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--field-border)] focus:outline-hidden"
                     >
                       <option value="">(Todos / Geral)</option>
                       {conveniosList.map(c => (
@@ -1935,13 +1935,13 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <label className="block text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
                       PRODUTO (OPCIONAL)
                     </label>
                     <select
                       value={selectedProductId}
                       onChange={e => setSelectedProductId(e.target.value)}
-                      className="w-full text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      className="ui-input w-full text-xs font-medium bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg p-2.5 text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--field-border)] focus:outline-hidden"
                     >
                       <option value="">(Nenhum selecionado)</option>
                       {(selectedConvenioId
@@ -1958,48 +1958,48 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
                 {/* 3. STATUS DA SIMULAÇÃO */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    STATUS DA SIMULAÇÃO <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
+                    STATUS DA SIMULAÇÃO <span className="text-[var(--danger-text)]">*</span>
                   </label>
                   {canSetInitialStatus ? <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setInitialStatus('SIMULAÇÃO ENVIADA')}
-                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 cursor-pointer transition-all ${
+                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 cursor-pointer transition-transform ${
                         initialStatus === 'SIMULAÇÃO ENVIADA'
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                          ? 'border-[var(--border-default)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold '
+                          : 'border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'
                       }`}
                     >
-                      <div className={`h-3 w-3 rounded-full ${initialStatus === 'SIMULAÇÃO ENVIADA' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      <div className={`h-3 w-3 rounded-full ${initialStatus === 'SIMULAÇÃO ENVIADA' ? 'bg-[var(--action)]' : 'bg-[var(--bg-surface-elevated)]'}`} />
                       <div>
                         <div className="text-xs font-bold">SIMULAÇÃO ENVIADA</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Aguardando digitação pela mesa</div>
+                        <div className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-normal">Aguardando digitação pela mesa</div>
                       </div>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setInitialStatus('NÃO PASSÍVEL DE CONTRATAÇÃO')}
-                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 cursor-pointer transition-all ${
+                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 cursor-pointer transition-transform ${
                         initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
-                          ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 font-bold shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                          ? 'border-[var(--border-default)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold '
+                          : 'border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'
                       }`}
                     >
-                      <div className={`h-3 w-3 rounded-full ${initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'bg-rose-500' : 'bg-slate-300'}`} />
+                      <div className={`h-3 w-3 rounded-full ${initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? 'bg-[var(--action)]' : 'bg-[var(--bg-surface-elevated)]'}`} />
                       <div>
                         <div className="text-xs font-bold">INVIÁVEL / NÃO PASSÍVEL</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Sem margem / política reprovada</div>
+                        <div className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-normal">Sem margem / política reprovada</div>
                       </div>
                     </button>
-                  </div> : <p className="text-xs text-slate-500 dark:text-slate-400">SIMULAÇÃO ENVIADA — aguardando digitação pela mesa</p>}
+                  </div> : <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">SIMULAÇÃO ENVIADA — aguardando digitação pela mesa</p>}
                 </div>
 
                 {/* MOTIVO DE INVIABILIDADE (Se selecionado) */}
                 {canSetInitialStatus && initialStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && (
-                  <div className="animate-in fade-in slide-in-from-top-1 duration-150">
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  <div className="animate-in fade-in slide-in- duration-150">
+                    <label className="block text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
                       MOTIVO DA INVIABILIDADE (OPCIONAL)
                     </label>
                     <input
@@ -2007,23 +2007,23 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       value={initialRejectionReason}
                       onChange={e => setInitialRejectionReason(e.target.value)}
                       placeholder="Ex: Cliente sem margem disponível / Idade fora da política"
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                      className="ui-input w-full px-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
                     />
                   </div>
                 )}
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+                <div className="pt-3 border-t border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-end gap-2.5">
                   <button
                     type="button"
                     onClick={() => setIsNewModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                    className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isCreatingSimulation}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                    className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] disabled:opacity-60 disabled:cursor-not-allowed text-[var(--action-ink)] text-xs font-semibold rounded-lg  transition-transform cursor-pointer"
                   >
                     {isCreatingSimulation ? 'Registrando...' : 'Registrar Simulação'}
                   </button>
@@ -2036,17 +2036,17 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal: Seletor de Status da Simulação */}
       {statusModalTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center gap-3 text-blue-600 mb-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-surface-elevated)] p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]  border border-[var(--border-default)] dark:border-[var(--border-default)] p-6">
+            <div className="flex items-center gap-3 text-[var(--info-text)] mb-3">
+              <div className="h-10 w-10 rounded-full bg-[var(--info-bg)] dark:bg-[var(--info-bg)] flex items-center justify-center">
                 <Calculator className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                   Definir Status da Simulação
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--text-secondary)]">
                   CPF: <strong className="font-mono">{formatCpf(statusModalTarget.cpf)}</strong>
                 </p>
               </div>
@@ -2054,25 +2054,25 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
             <div className="space-y-4 my-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1.5 uppercase tracking-wider">
                   Selecione o Novo Status
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedTargetStatus('DIGITADA PELA MESA')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
+                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-transform cursor-pointer ${
                       selectedTargetStatus === 'DIGITADA PELA MESA'
-                        ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        ? 'border-[var(--border-default)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] ring-2 ring-[var(--field-border)]'
+                        : 'border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)]'
                     }`}
                   >
                     <div>
-                      <div className="font-bold text-xs flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-[var(--success-text)] dark:text-[var(--success-text)]">
                         <CheckCircle2 className="h-4 w-4" />
                         DIGITADA PELA MESA (Enviada com Sucesso)
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                         Proposta gerada e vinculada à simulação.
                       </div>
                     </div>
@@ -2081,18 +2081,18 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <button
                     type="button"
                     onClick={() => setSelectedTargetStatus('NÃO PASSÍVEL DE CONTRATAÇÃO')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
+                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-transform cursor-pointer ${
                       selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO'
-                        ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 ring-2 ring-rose-500/20'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        ? 'border-[var(--border-default)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] ring-2 ring-[var(--field-border)]'
+                        : 'border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)]'
                     }`}
                   >
                     <div>
-                      <div className="font-bold text-xs flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                         <XCircle className="h-4 w-4" />
                         NÃO PASSÍVEL DE CONTRATAÇÃO (Inviável)
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                         Sem margem, reprovado em política ou inviável.
                       </div>
                     </div>
@@ -2101,18 +2101,18 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <button
                     type="button"
                     onClick={() => setSelectedTargetStatus('SIMULAÇÃO ENVIADA')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
+                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-transform cursor-pointer ${
                       selectedTargetStatus === 'SIMULAÇÃO ENVIADA'
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        ? 'border-[var(--border-default)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--info-text)] dark:text-[var(--info-text)] ring-2 ring-[var(--field-border)]'
+                        : 'border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)]'
                     }`}
                   >
                     <div>
-                      <div className="font-bold text-xs flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
+                      <div className="font-bold text-xs flex items-center gap-1.5 text-[var(--info-text)] dark:text-[var(--info-text)]">
                         <Clock className="h-4 w-4" />
                         SIMULAÇÃO ENVIADA (Pendente)
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                         Aguardando retorno da mesa de digitação.
                       </div>
                     </div>
@@ -2121,8 +2121,8 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
               </div>
 
               {selectedTargetStatus === 'DIGITADA PELA MESA' && (
-                <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-lg space-y-2">
-                  <label className="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                <div className="p-3 bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg space-y-2">
+                  <label className="block text-[11px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                     Número da ADE / Proposta Vinculada (Opcional)
                   </label>
                   <input
@@ -2130,17 +2130,17 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     value={selectedAdeNumber}
                     onChange={e => setSelectedAdeNumber(e.target.value)}
                     placeholder="Ex: 833085808"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
+                    className="ui-input w-full px-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs font-mono font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--field-border)]"
                   />
-                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                  <p className="text-[10px] text-[var(--success-text)] dark:text-[var(--success-text)]">
                     Se a ADE corresponder a uma proposta deste cliente, o sistema fará o vínculo automaticamente.
                   </p>
                 </div>
               )}
 
               {selectedTargetStatus === 'NÃO PASSÍVEL DE CONTRATAÇÃO' && (
-                <div className="p-3 bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 rounded-lg space-y-2">
-                  <label className="block text-[11px] font-bold text-rose-800 dark:text-rose-300">
+                <div className="p-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg space-y-2">
+                  <label className="block text-[11px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                     Motivo da Inviabilidade
                   </label>
                   <textarea
@@ -2148,24 +2148,24 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                     onChange={e => setRejectionReason(e.target.value)}
                     placeholder="Ex: Cliente sem margem consignável disponível no momento..."
                     rows={2}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-rose-500"
+                    className="ui-input w-full px-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--field-border)]"
                   />
                 </div>
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+            <div className="pt-3 border-t border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setStatusModalTarget(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleConfirmStatusChange}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+                className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] text-xs font-bold rounded-lg  transition-transform cursor-pointer"
               >
                 Salvar Status
               </button>
@@ -2176,36 +2176,36 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal: Excluir Solicitação de Simulação (Individual) */}
       {deleteModalTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-surface-elevated)] p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]  border border-[var(--border-default)] dark:border-[var(--border-default)] p-6">
+            <div className="flex items-center gap-3 text-[var(--danger-text)] mb-3">
+              <div className="h-10 w-10 rounded-full bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] flex items-center justify-center">
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                   Excluir Solicitação
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--text-secondary)]">
                   Ação irreversível com registro em auditoria
                 </p>
               </div>
             </div>
 
             {deleteError && (
-              <div className="mb-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+              <div className="mb-3 p-3 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{deleteError}</span>
               </div>
             )}
 
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-2">
               Tem certeza que deseja excluir permanentemente a solicitação de simulação do CPF{' '}
               <strong>{formatCpf(deleteModalTarget.cpf)}</strong>?
             </p>
 
             <div className="mt-4">
-              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
                 Motivo da Exclusão (Opcional)
               </label>
               <textarea
@@ -2213,22 +2213,22 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 onChange={e => setDeleteReason(e.target.value)}
                 placeholder="Ex: Cadastro em duplicidade / solicitação incorreta..."
                 rows={2}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                className="ui-input w-full px-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
               />
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+            <div className="mt-5 pt-3 border-t border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setDeleteModalTarget(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] text-xs font-semibold rounded-lg  transition-transform cursor-pointer"
               >
                 Confirmar Exclusão
               </button>
@@ -2239,35 +2239,35 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal: Exclusão em Massa (Bulk Delete) */}
       {isBulkDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-surface-elevated)] p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]  border border-[var(--border-default)] dark:border-[var(--border-default)] p-6">
+            <div className="flex items-center gap-3 text-[var(--danger-text)] mb-3">
+              <div className="h-10 w-10 rounded-full bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] flex items-center justify-center">
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                   Exclusão em Massa ({selectedIds.length})
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--text-secondary)]">
                   Remoção permanente de múltiplas solicitações
                 </p>
               </div>
             </div>
 
             {bulkDeleteError && (
-              <div className="mb-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+              <div className="mb-3 p-3 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{bulkDeleteError}</span>
               </div>
             )}
 
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-2">
               Confirma a exclusão em massa de <strong>{selectedIds.length}</strong> solicitação(ões) de simulação selecionada(s)?
             </p>
 
             <div className="mt-4">
-              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-1">
                 Motivo da Exclusão em Massa (Opcional)
               </label>
               <textarea
@@ -2275,22 +2275,22 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 onChange={e => setBulkDeleteReason(e.target.value)}
                 placeholder="Ex: Limpeza de solicitações de simulação antigas / duplicadas..."
                 rows={2}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                className="ui-input w-full px-3 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--field-border)]"
               />
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+            <div className="mt-5 pt-3 border-t border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setIsBulkDeleteModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] rounded-lg cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleConfirmBulkDelete}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] text-xs font-semibold rounded-lg  transition-transform cursor-pointer"
               >
                 Confirmar Exclusão em Massa
               </button>
@@ -2301,66 +2301,66 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
       {/* Modal: Detalhes da Solicitação */}
       {detailTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
-          <div role="dialog" aria-modal="true" aria-labelledby="simulation-detail-title" className="relative flex w-full max-w-4xl max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5">
-            <div className="flex shrink-0 items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-surface-elevated)] p-2 sm:p-4 backdrop-blur-xs animate-in fade-in">
+          <div role="dialog" aria-modal="true" aria-labelledby="simulation-detail-title" className="relative flex w-full max-w-4xl max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)]  border border-[var(--border-default)] dark:border-[var(--border-default)] p-4 sm:p-5">
+            <div className="flex shrink-0 items-center justify-between gap-3 pb-3 border-b border-[var(--border-default)] dark:border-[var(--border-default)]">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-[var(--action)] text-[var(--action-ink)] flex items-center justify-center">
                   <Info className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 id="simulation-detail-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h3 id="simulation-detail-title" className="text-base font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                     Detalhes da Simulação
                   </h3>
-                  <p className="break-all text-xs text-slate-500 font-mono">ID: {detailTarget.id}</p>
+                  <p className="break-all text-xs text-[var(--text-secondary)] font-mono">ID: {detailTarget.id}</p>
                 </div>
               </div>
               <button
                 onClick={() => setDetailTarget(null)}
                 aria-label="Fechar detalhes da simulação"
-                className="shrink-0 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="shrink-0 p-2 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <XCircle className="h-5 w-5" />
               </button>
             </div>
 
             <div className="mt-3 min-h-0 overflow-y-auto overscroll-contain space-y-3 pr-1 text-xs [overflow-wrap:anywhere]">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)]">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">CPF DO CLIENTE</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">CPF DO CLIENTE</span>
                   <span className="font-mono font-bold text-sm">{formatCpf(detailTarget.cpf)}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">TIPO / FLUXO</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">TIPO / FLUXO</span>
                   <span className="font-bold text-xs">
-                    {['SPREADSHEET_INSS', 'DAYCOVAL_INSS'].includes(detailTarget.simulationType || '') ? <span className="text-blue-600">Planilha · {detailTarget.selectedCondition?.provider || 'Daycoval'}</span> : detailTarget.simulationType === 'PARTNER_AUTO' ? <span className="text-violet-600">Portal do parceiro</span> : detailTarget.simulationType === 'INSS_MULTI' ? <span className="text-violet-600">INSS · {({ NEW: 'Novo', PORT: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + Refinanciamento' } as Record<string, string>)[detailTarget.operationType || ''] || 'Simulação'}</span> : detailTarget.simulationType === 'FINANTO_INSS' ? (
-                      <span className="text-violet-600 dark:text-violet-400">FINANTO INSS · Contrato novo</span>
+                    {['SPREADSHEET_INSS', 'DAYCOVAL_INSS'].includes(detailTarget.simulationType || '') ? <span className="text-[var(--info-text)]">Planilha · {detailTarget.selectedCondition?.provider || 'Daycoval'}</span> : detailTarget.simulationType === 'PARTNER_AUTO' ? <span className="text-[var(--info-text)]">Portal do parceiro</span> : detailTarget.simulationType === 'INSS_MULTI' ? <span className="text-[var(--info-text)]">INSS · {({ NEW: 'Novo', PORT: 'Portabilidade', REFIN: 'Refinanciamento', PORT_REFIN: 'Portabilidade + Refinanciamento' } as Record<string, string>)[detailTarget.operationType || ''] || 'Simulação'}</span> : detailTarget.simulationType === 'FINANTO_INSS' ? (
+                      <span className="text-[var(--info-text)] dark:text-[var(--info-text)]">FINANTO INSS · Contrato novo</span>
                     ) : detailTarget.simulationType === 'HAPPY_INSS' ? (
-                      <span className="text-emerald-600 dark:text-emerald-400">Happy INSS</span>
+                      <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Happy INSS</span>
                     ) : detailTarget.simulationType === 'HAPPY_CLT' ? (
-                      <span className="text-indigo-600 dark:text-indigo-400">Happy CLT</span>
+                      <span className="text-[var(--info-text)] dark:text-[var(--info-text)]">Happy CLT</span>
                     ) : (
-                      <span className="text-slate-600 dark:text-slate-400">Manual</span>
+                      <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Manual</span>
                     )}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">PARCEIRO</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">PARCEIRO</span>
                   <span className="font-mono font-bold text-xs">
                     {detailTarget.partnerCodeSnapshot || partners.find(p => p.id === detailTarget.partnerId)?.login}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">RESPONSÁVEL</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">RESPONSÁVEL</span>
                   <span className="font-semibold">{detailTarget.portalAccessName || users.find(u => u.id === detailTarget.createdById)?.name || 'Não informado'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">DATA SOLICITAÇÃO</span>
+                  <span className="text-[var(--text-secondary)] block text-[10px]">DATA SOLICITAÇÃO</span>
                   <span>{new Date(detailTarget.createdAt).toLocaleString('pt-BR')}</span>
                 </div>
                 {detailTarget.operationType && (
                   <div>
-                    <span className="text-slate-400 block text-[10px]">OPERAÇÃO</span>
+                    <span className="text-[var(--text-secondary)] block text-[10px]">OPERAÇÃO</span>
                     <span className="font-semibold">{detailTarget.operationType}</span>
                   </div>
                 )}
@@ -2368,33 +2368,33 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
 
               {/* Happy Metadata if applicable */}
               {(detailTarget.happyClientId || detailTarget.happySimulationId || detailTarget.happyBeneficioNumero || detailTarget.happyJourneyStatus) && (
-                <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-lg space-y-2">
-                  <h5 className="font-bold text-[11px] text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
-                    <Check className="h-3.5 w-3.5 text-indigo-600" />
+                <div className="p-3 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-lg space-y-2">
+                  <h5 className="font-bold text-[11px] text-[var(--info-text)] dark:text-[var(--info-text)] flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-[var(--info-text)]" />
                     Dados Happy Consignado
                   </h5>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     {detailTarget.happyBeneficioNumero && (
                       <div>
-                        <span className="text-slate-500 block text-[10px]">Nº BENEFÍCIO</span>
+                        <span className="text-[var(--text-secondary)] block text-[10px]">Nº BENEFÍCIO</span>
                         <span className="font-mono font-bold">{detailTarget.happyBeneficioNumero}</span>
                       </div>
                     )}
                     {detailTarget.happyJourneyStatus && (
                       <div>
-                        <span className="text-slate-500 block text-[10px]">SITUAÇÃO / STATUS</span>
-                        <span className="font-bold text-indigo-700 dark:text-indigo-300">{detailTarget.happyJourneyStatus}</span>
+                        <span className="text-[var(--text-secondary)] block text-[10px]">SITUAÇÃO / STATUS</span>
+                        <span className="font-bold text-[var(--info-text)] dark:text-[var(--info-text)]">{detailTarget.happyJourneyStatus}</span>
                       </div>
                     )}
                     {detailTarget.happyClientId && (
                       <div>
-                        <span className="text-slate-500 block text-[10px]">CLIENT ID</span>
+                        <span className="text-[var(--text-secondary)] block text-[10px]">CLIENT ID</span>
                         <span className="font-mono text-[10px] truncate block" title={detailTarget.happyClientId}>{detailTarget.happyClientId}</span>
                       </div>
                     )}
                     {detailTarget.happySimulationId && (
                       <div>
-                        <span className="text-slate-500 block text-[10px]">SIMULATION ID</span>
+                        <span className="text-[var(--text-secondary)] block text-[10px]">SIMULATION ID</span>
                         <span className="font-mono text-[10px] truncate block" title={detailTarget.happySimulationId}>{detailTarget.happySimulationId}</span>
                       </div>
                     )}
@@ -2402,58 +2402,58 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                 </div>
               )}
 
-              {['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(detailTarget.simulationType || '') && <section className="rounded-xl border p-4 text-sm dark:border-slate-700">
+              {['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(detailTarget.simulationType || '') && <section className="rounded-xl border p-4 text-sm dark:border-[var(--border-default)]">
                 {((detailTarget.customerData as any)?.daycoval || (detailTarget.customerData as any)?.spreadsheet) && <div className="mb-3"><h4 className="font-bold">{detailTarget.selectedCondition?.provider || "Daycoval"} · INSS por planilha</h4><p>Versão: {((detailTarget.customerData as any).spreadsheet || (detailTarget.customerData as any).daycoval).version.fileName}</p><p>Data da simulação: {(detailTarget.customerData as any).simulationDate?.split('-').reverse().join('/')}</p><details className="mt-2"><summary className="cursor-pointer">Contratos utilizados no cálculo</summary>{((detailTarget.customerData as any).contracts || []).map((contract: any, index: number) => <p key={index} className="mt-1">Contrato {index + 1} · saldo R$ {Number(contract.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · parcela R$ {Number(contract.installment).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · restantes {contract.remaining}</p>)}</details></div>}
                 <h4 className="font-bold">Consulta do parceiro · {detailTarget.partnerCodeSnapshot}</h4>
                 <p>Prazo: {detailTarget.offerExpiresAt ? new Date(detailTarget.offerExpiresAt).toLocaleString('pt-BR') : '—'}</p>
-                {detailTarget.matchedAfterDeadline && <p className="text-amber-600">Digitada após o prazo de 5 dias úteis.</p>}
+                {detailTarget.matchedAfterDeadline && <p className="text-[var(--warning-text)]">Digitada após o prazo de 5 dias úteis.</p>}
                 <p className="mt-2">Cliente: {detailTarget.customerData?.name || 'Não informado'} · CPF: {formatCpf(detailTarget.cpf)}</p>
                 {(detailTarget.customerData as any)?.originalContract && <p>Contrato de origem: {(detailTarget.customerData as any).originalContract} · banco {(detailTarget.customerData as any).originalBank} · saldo R$ {Number((detailTarget.customerData as any).debt).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>}
-                <details className="mt-3"><summary className="cursor-pointer font-semibold">Todas as ofertas retornadas</summary><div className="mt-2 space-y-2">{((detailTarget.customerData as any)?.offers || []).map((offer: any, index: number) => <article key={index} className="rounded-lg border p-2 dark:border-slate-700"><strong>{offer.name || offer.table || offer.institution}</strong><p>{offer.provider} · {offer.institution}</p><p>Liberado: R$ {Number(offer.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · parcela: {offer.installment ? `R$ ${Number(offer.installment).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informada'} · {offer.term || '—'} meses · taxa {offer.rate ?? '—'}%</p></article>)}</div></details>
+                <details className="mt-3"><summary className="cursor-pointer font-semibold">Todas as ofertas retornadas</summary><div className="mt-2 space-y-2">{((detailTarget.customerData as any)?.offers || []).map((offer: any, index: number) => <article key={index} className="rounded-lg border p-2 dark:border-[var(--border-default)]"><strong>{offer.name || offer.table || offer.institution}</strong><p>{offer.provider} · {offer.institution}</p><p>Liberado: R$ {Number(offer.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · parcela: {offer.installment ? `R$ ${Number(offer.installment).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informada'} · {offer.term || '—'} meses · taxa {offer.rate ?? '—'}%</p></article>)}</div></details>
               </section>}
-              {detailTarget.selectedCondition && <section className="space-y-3 rounded-xl border border-violet-200 p-4 dark:border-violet-800">
+              {detailTarget.selectedCondition && <section className="space-y-3 rounded-xl border border-[var(--border-default)] p-4 dark:border-[var(--border-default)]">
                 <h4 className="font-bold">{detailTarget.simulationType === 'PARTNER_AUTO' ? 'Oferta de referência (maior valor liberado)' : 'Condição selecionada'}</h4>
                 <p className="text-sm">{detailTarget.selectedCondition.tableName} · {detailTarget.selectedCondition.provider} · tabela {detailTarget.selectedCondition.tableId}</p>
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                  <div><dt className="text-slate-500">Valor liberado / contrato</dt><dd>R$ {detailTarget.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</dd></div>
-                  <div><dt className="text-slate-500">Parcela</dt><dd>R$ {detailTarget.selectedCondition.installment?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'Não informada'}</dd></div>
-                  <div><dt className="text-slate-500">Prazo / taxa mensal</dt><dd>{detailTarget.selectedCondition.term || 'Não informado'} {detailTarget.simulationType === 'FGTS_MULTI' ? 'saques' : 'meses'} · {detailTarget.selectedCondition.rate != null ? `${detailTarget.selectedCondition.rate}%` : 'Não informada'}</dd></div>
-                  {detailTarget.simulationType !== 'FGTS_MULTI' && <div><dt className="text-slate-500">Benefício / espécie</dt><dd>{detailTarget.customerData?.benefitNumber} · {detailTarget.customerData?.benefitType}</dd></div>}
-                  <div><dt className="text-slate-500">Cliente</dt><dd>{detailTarget.customerData?.name || 'Não informado'}</dd></div>
-                  {detailTarget.customerData?.birthDate && <div><dt className="text-slate-500">Nascimento</dt><dd>{detailTarget.customerData.birthDate.split('-').reverse().join('/')}</dd></div>}
+                  <div><dt className="text-[var(--text-secondary)]">Valor liberado / contrato</dt><dd>R$ {detailTarget.selectedCondition.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</dd></div>
+                  <div><dt className="text-[var(--text-secondary)]">Parcela</dt><dd>R$ {detailTarget.selectedCondition.installment?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || 'Não informada'}</dd></div>
+                  <div><dt className="text-[var(--text-secondary)]">Prazo / taxa mensal</dt><dd>{detailTarget.selectedCondition.term || 'Não informado'} {detailTarget.simulationType === 'FGTS_MULTI' ? 'saques' : 'meses'} · {detailTarget.selectedCondition.rate != null ? `${detailTarget.selectedCondition.rate}%` : 'Não informada'}</dd></div>
+                  {detailTarget.simulationType !== 'FGTS_MULTI' && <div><dt className="text-[var(--text-secondary)]">Benefício / espécie</dt><dd>{detailTarget.customerData?.benefitNumber} · {detailTarget.customerData?.benefitType}</dd></div>}
+                  <div><dt className="text-[var(--text-secondary)]">Cliente</dt><dd>{detailTarget.customerData?.name || 'Não informado'}</dd></div>
+                  {detailTarget.customerData?.birthDate && <div><dt className="text-[var(--text-secondary)]">Nascimento</dt><dd>{detailTarget.customerData.birthDate.split('-').reverse().join('/')}</dd></div>}
                 </dl>
                 {detailTarget.customerData && ['originContract', 'refinancing', 'address', 'document', 'creditBankAccount'].map(key => {
                   const value = detailTarget.customerData?.[key as 'address'];
                   const labels: Record<string, string> = { originContract: 'Contrato de origem', refinancing: 'Refinanciamento adicional', rate: 'Taxa mensal', additionalInstallment: 'Parcela adicional', key: 'Referência do contrato', address: 'Endereço', document: 'Documento', creditBankAccount: 'Conta para crédito', lenderCode: 'Banco de origem', contractNumber: 'Contrato', term: 'Prazo original', installmentsRemaining: 'Parcelas restantes', installmentValue: 'Parcela atual', dueBalanceValue: 'Saldo devedor', street: 'Logradouro', number: 'Número', complement: 'Complemento', district: 'Bairro', city: 'Cidade', state: 'UF', zipCode: 'CEP', type: 'Tipo', issuingDate: 'Emissão', issuingEntity: 'Órgão emissor', issuingState: 'UF emissora', bank: 'Banco', branch: 'Agência', digit: 'Dígito' };
-                  return value && Object.values(value).some(Boolean) ? <div key={key}><h5 className="font-semibold">{labels[key]}</h5><dl className="grid grid-cols-2 gap-2 text-sm">{Object.entries(value).filter(([, text]) => text).map(([field, text]) => <div key={field}><dt className="text-xs text-slate-500">{labels[field] || field}</dt><dd>{text}</dd></div>)}</dl></div> : null;
+                  return value && Object.values(value).some(Boolean) ? <div key={key}><h5 className="font-semibold">{labels[key]}</h5><dl className="grid grid-cols-2 gap-2 text-sm">{Object.entries(value).filter(([, text]) => text).map(([field, text]) => <div key={field}><dt className="text-xs text-[var(--text-secondary)]">{labels[field] || field}</dt><dd>{text}</dd></div>)}</dl></div> : null;
                 })}
                 {detailTarget.customerData?.phone && <p className="text-sm">Telefone: {detailTarget.customerData.phone} · E-mail: {detailTarget.customerData.email || 'Não informado'} · Renda: {detailTarget.customerData.income || 'Não informada'}</p>}
               </section>}
 
               {detailTarget.simulationType === 'FINANTO_INSS' && (
-                <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-800/60 dark:bg-violet-950/30">
-                  <h5 className="flex items-center gap-1.5 text-[11px] font-bold text-violet-900 dark:text-violet-200"><Building2 className="h-3.5 w-3.5" />Dados FINANTO / JoinBank</h5>
+                <div className="space-y-2 rounded-lg border border-[var(--border-default)] bg-[var(--info-bg)] p-3 dark:border-[var(--border-default)] dark:bg-[var(--info-bg)]">
+                  <h5 className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--info-text)] dark:text-[var(--info-text)]"><Building2 className="h-3.5 w-3.5" />Dados FINANTO / JoinBank</h5>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div><span className="block text-[10px] text-slate-500">ID DA SIMULAÇÃO</span><span className="block truncate font-mono" title={detailTarget.finantoSimulationId}>{detailTarget.finantoSimulationId || '—'}</span></div>
-                    <div><span className="block text-[10px] text-slate-500">ETAPA NO FINANTO</span><span className="font-semibold text-violet-700 dark:text-violet-300">{detailTarget.finantoJourneyStatus || '—'}</span></div>
+                    <div><span className="block text-[10px] text-[var(--text-secondary)]">ID DA SIMULAÇÃO</span><span className="block truncate font-mono" title={detailTarget.finantoSimulationId}>{detailTarget.finantoSimulationId || '—'}</span></div>
+                    <div><span className="block text-[10px] text-[var(--text-secondary)]">ETAPA NO FINANTO</span><span className="font-semibold text-[var(--info-text)] dark:text-[var(--info-text)]">{detailTarget.finantoJourneyStatus || '—'}</span></div>
                     {detailTarget.finantoSelectedCondition && <>
-                      <div><span className="block text-[10px] text-slate-500">CRÉDITO</span><span className="font-semibold">R$ {Number(detailTarget.finantoSelectedCondition.loanValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
-                      <div><span className="block text-[10px] text-slate-500">PARCELA · PRAZO</span><span className="font-semibold">R$ {Number(detailTarget.finantoSelectedCondition.installmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · {detailTarget.finantoSelectedCondition.term} meses</span></div>
+                      <div><span className="block text-[10px] text-[var(--text-secondary)]">CRÉDITO</span><span className="font-semibold">R$ {Number(detailTarget.finantoSelectedCondition.loanValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
+                      <div><span className="block text-[10px] text-[var(--text-secondary)]">PARCELA · PRAZO</span><span className="font-semibold">R$ {Number(detailTarget.finantoSelectedCondition.installmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · {detailTarget.finantoSelectedCondition.term} meses</span></div>
                     </>}
                   </div>
                 </div>
               )}
 
               {/* Timeline Flow */}
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
-                <h4 className="font-bold text-slate-800 dark:text-slate-200">Linha do Tempo da Simulação</h4>
+              <div className="p-4 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] space-y-3">
+                <h4 className="font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">Linha do Tempo da Simulação</h4>
 
-                <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
+                <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--bg-surface-elevated)] dark:before:bg-[var(--bg-surface-elevated)]">
                   {/* Step 1 */}
                   <div className="relative pl-7">
-                    <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-blue-600 border-2 border-white dark:border-slate-900" />
-                    <div className="font-bold text-slate-900 dark:text-slate-100">SIMULAÇÃO ENVIADA</div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
+                    <div className="font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">SIMULAÇÃO ENVIADA</div>
+                    <div className="text-[11px] text-[var(--text-secondary)]">
                       Cadastrado em {new Date(detailTarget.createdAt).toLocaleString('pt-BR')} por{' '}
                       {detailTarget.portalAccessName || users.find(u => u.id === detailTarget.createdById)?.name || 'Não informado'}
                     </div>
@@ -2463,14 +2463,14 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                   <div className="relative pl-7">
                     {detailTarget.status === 'DIGITADA PELA MESA' ? (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
-                        <div className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
+                        <div className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-1.5">
                           DIGITADA PELA MESA
-                          <span className="px-1.5 py-0.2 text-[9px] bg-emerald-100 text-emerald-800 font-bold rounded-xs">
+                          <span className="px-1.5 py-0.2 text-[9px] bg-[var(--success-bg)] text-[var(--success-text)] font-bold rounded-xs">
                             AUTOMÁTICO PELO SISTEMA
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 space-y-0.5">
+                        <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1 space-y-0.5">
                           <div>
                             ADE Gerada: <strong>{detailTarget.matchedProposalNumber}</strong>
                           </div>
@@ -2487,45 +2487,45 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
                       </>
                     ) : detailTarget.status === 'NÃO PASSÍVEL DE CONTRATAÇÃO' ? (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-rose-500 border-2 border-white dark:border-slate-900" />
-                        <div className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--action)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
+                        <div className="font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center gap-1.5">
                           NÃO PASSÍVEL DE CONTRATAÇÃO
-                          <span className="px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-800 font-bold rounded-xs">
+                          <span className="px-1.5 py-0.2 text-[9px] bg-[var(--danger-bg)] text-[var(--danger-text)] font-bold rounded-xs">
                             ALTERAÇÃO MANUAL
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                           Atualizado em {new Date(detailTarget.updatedAt).toLocaleString('pt-BR')}
                         </div>
                       </>
                     ) : detailTarget.status === 'PERDIDA (NÃO DIGITADA)' ? (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-slate-500 border-2 border-white dark:border-slate-900" />
-                        <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--bg-surface-elevated)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
+                        <div className="font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
                           PERDIDA (NÃO DIGITADA)
-                          <span className="px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold rounded-xs">
+                          <span className="px-1.5 py-0.2 text-[9px] bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] font-bold rounded-xs">
                             {['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(detailTarget.simulationType || '') ? 'EXPIRAÇÃO EM 5 DIAS ÚTEIS' : 'EXPIRAÇÃO AUTOMÁTICA 72H'}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                           Prazo máximo de {['PARTNER_AUTO', 'DAYCOVAL_INSS', 'SPREADSHEET_INSS'].includes(detailTarget.simulationType || '') ? '5 dias úteis' : '72 horas'} excedido sem digitação da proposta. Expirado em {new Date(detailTarget.offerLostAt || detailTarget.updatedAt).toLocaleString('pt-BR')}
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-white dark:border-slate-900" />
-                        <div className="font-semibold text-slate-400">Aguardando Identificação da Mesa...</div>
+                        <div className="absolute left-1.5 top-0.5 h-3.5 w-3.5 rounded-full bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] border-2 border-[var(--field-border)] dark:border-[var(--border-default)]" />
+                        <div className="font-semibold text-[var(--text-secondary)]">Aguardando Identificação da Mesa...</div>
                       </>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+              <div className="pt-3 border-t border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => setDetailTarget(null)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] text-xs font-semibold rounded-lg hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
                 >
                   Fechar
                 </button>
@@ -2629,11 +2629,11 @@ export const SimulationView: React.FC<SimulationViewProps> = (props) => {
   if (activeUser?.role === 'DIGITADOR') {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
-        <div className="h-16 w-16 bg-rose-100 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mb-4">
+        <div className="h-16 w-16 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] rounded-full flex items-center justify-center mb-4">
           <ShieldAlert className="h-8 w-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Acesso Restrito</h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-md">
+        <h2 className="text-xl font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-2">Acesso Restrito</h2>
+        <p className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] max-w-md">
           Seu perfil de <strong>DIGITADOR</strong> não possui permissão para visualizar a Central de Simulações.
         </p>
       </div>

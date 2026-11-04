@@ -322,35 +322,35 @@ export const CentralAutomacoes: React.FC = () => {
       {/* Toast Notification */}
       {toastMessage && (
         <div
-          className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-semibold border ${
+          className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl  flex items-center gap-3 text-sm font-semibold border ${
             toastMessage.type === 'success'
-              ? 'bg-emerald-950 text-emerald-200 border-emerald-800'
-              : 'bg-rose-950 text-rose-200 border-rose-800'
+              ? 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]'
+              : 'bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)]'
           }`}
         >
           {toastMessage.type === 'success' ? (
-            <Check className="w-5 h-5 text-emerald-400" />
+            <Check className="w-5 h-5 text-[var(--success-text)]" />
           ) : (
-            <AlertTriangle className="w-5 h-5 text-rose-400" />
+            <AlertTriangle className="w-5 h-5 text-[var(--danger-text)]" />
           )}
           {toastMessage.text}
         </div>
       )}
 
       {/* Main Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl p2-automation-header">
+      <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6 text-[var(--text-primary)] flex flex-col md:flex-row md:items-center justify-between gap-4  p2-automation-header">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-violet-600/20 text-violet-400 rounded-2xl border border-violet-500/30">
+          <div className="p-3 bg-[var(--info-bg)] text-[var(--link)] rounded-2xl border border-[var(--field-border)]">
             <Bot className="w-8 h-8" />
           </div>
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
               Central de Automação & Workflows
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30 uppercase">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-[var(--info-bg)] text-[var(--link)] border border-[var(--field-border)] uppercase">
                 Fase 3
               </span>
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
               Construtor visual de fluxos orientados a eventos da esteira com idempotência e proteção contra loops.
             </p>
           </div>
@@ -360,7 +360,7 @@ export const CentralAutomacoes: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-colors"
+            className="p-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl border border-[var(--field-border)] transition-colors"
             title="Atualizar dados"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -368,9 +368,9 @@ export const CentralAutomacoes: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('TEMPLATES')}
-            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-2"
+            className="px-3.5 py-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl text-xs font-semibold border border-[var(--field-border)] transition-colors flex items-center gap-2"
           >
-            <BookOpen className="w-4 h-4 text-violet-400" />
+            <BookOpen className="w-4 h-4 text-[var(--link)]" />
             <span className="hidden sm:inline">Modelos Prontos</span>
           </button>
 
@@ -379,7 +379,7 @@ export const CentralAutomacoes: React.FC = () => {
               setEditingAutomation(null);
               setBuilderOpen(true);
             }}
-            className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold text-xs shadow-lg shadow-violet-600/20 transition-all flex items-center gap-2"
+            className="px-4 py-2.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl font-semibold text-xs   transition-all flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Nova Automação
@@ -388,7 +388,7 @@ export const CentralAutomacoes: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-800 gap-2 overflow-x-auto pb-1 p2-automation-tabs">
+      <div className="flex border-b border-[var(--field-border)] gap-2 overflow-x-auto pb-1 p2-automation-tabs">
         <button
           onClick={() => {
             setActiveTab('RULES');
@@ -396,8 +396,8 @@ export const CentralAutomacoes: React.FC = () => {
           }}
           className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'RULES' && !builderOpen
-              ? 'bg-violet-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-md'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <Sliders className="w-4 h-4" />
@@ -411,8 +411,8 @@ export const CentralAutomacoes: React.FC = () => {
           }}
           className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'HISTORY'
-              ? 'bg-violet-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-md'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <Clock className="w-4 h-4" />
@@ -426,8 +426,8 @@ export const CentralAutomacoes: React.FC = () => {
           }}
           className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'METRICS'
-              ? 'bg-violet-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-md'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -441,8 +441,8 @@ export const CentralAutomacoes: React.FC = () => {
           }}
           className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'TEMPLATES'
-              ? 'bg-violet-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-md'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <BookOpen className="w-4 h-4" />
@@ -471,26 +471,26 @@ export const CentralAutomacoes: React.FC = () => {
           {activeTab === 'RULES' && (
             <div className="space-y-4">
               {/* Filter and Search Bar */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="relative w-full sm:w-80">
-                  <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-[var(--text-secondary)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar regras por nome ou gatilho..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
+                    className="w-full bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-xl pl-9 pr-4 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--field-border)]"
                   />
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-auto">
-                  <span className="text-xs font-semibold text-slate-400 mr-1">Filtrar:</span>
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] mr-1">Filtrar:</span>
                   <button
                     onClick={() => setStatusFilter('ALL')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                       statusFilter === 'ALL'
-                        ? 'bg-violet-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-[var(--action)] text-[var(--text-primary)]'
+                        : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     Todas ({automations.length})
@@ -499,8 +499,8 @@ export const CentralAutomacoes: React.FC = () => {
                     onClick={() => setStatusFilter('ACTIVE')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                       statusFilter === 'ACTIVE'
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-[var(--success-bg)] text-[var(--text-primary)]'
+                        : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     Ativas ({automations.filter((a) => a.active).length})
@@ -509,8 +509,8 @@ export const CentralAutomacoes: React.FC = () => {
                     onClick={() => setStatusFilter('PAUSED')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                       statusFilter === 'PAUSED'
-                        ? 'bg-slate-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]'
+                        : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     Pausadas ({automations.filter((a) => !a.active).length})
@@ -520,17 +520,17 @@ export const CentralAutomacoes: React.FC = () => {
 
               {/* Automation Rules List */}
               {isLoading ? (
-                <div className="p-12 text-center text-slate-500">
-                  <RefreshCw className="w-8 h-8 mx-auto animate-spin text-violet-500 mb-3" />
-                  <div className="text-sm font-semibold text-slate-300">Carregando automações...</div>
+                <div className="p-12 text-center text-[var(--text-secondary)]">
+                  <RefreshCw className="w-8 h-8 mx-auto animate-spin text-[var(--link)] mb-3" />
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">Carregando automações...</div>
                 </div>
               ) : filteredAutomations.length === 0 ? (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 space-y-3">
-                  <Zap className="w-12 h-12 mx-auto text-violet-500/40" />
-                  <div className="text-base font-bold text-slate-300">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-12 text-center text-[var(--text-secondary)] space-y-3">
+                  <Zap className="w-12 h-12 mx-auto text-[var(--link)]" />
+                  <div className="text-base font-bold text-[var(--text-primary)]">
                     Nenhuma regra de automação encontrada
                   </div>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto">
                     {searchQuery
                       ? 'Nenhum resultado corresponde à sua busca.'
                       : 'Comece criando sua primeira regra automatizada ou escolha um modelo pré-configurado na biblioteca.'}
@@ -541,13 +541,13 @@ export const CentralAutomacoes: React.FC = () => {
                         setEditingAutomation(null);
                         setBuilderOpen(true);
                       }}
-                      className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all shadow"
+                      className="px-4 py-2 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-bold transition-all shadow"
                     >
                       + Criar Nova Regra
                     </button>
                     <button
                       onClick={() => setActiveTab('TEMPLATES')}
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700 transition-colors"
+                      className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-xl text-xs font-semibold border border-[var(--field-border)] transition-colors"
                     >
                       Ver Modelos Prontos
                     </button>
@@ -565,7 +565,7 @@ export const CentralAutomacoes: React.FC = () => {
                     return (
                       <div
                         key={rule.id}
-                        className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all space-y-4 shadow-lg"
+                        className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5 hover:border-[var(--field-border)] transition-all space-y-4 shadow-lg"
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                           <div className="space-y-1.5 flex-1 min-w-0">
@@ -573,30 +573,30 @@ export const CentralAutomacoes: React.FC = () => {
                               <span
                                 className={`px-2.5 py-0.5 rounded-md text-xs font-bold border ${
                                   rule.active
-                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                                    ? 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]'
+                                    : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--field-border)]'
                                 }`}
                               >
                                 {rule.active ? 'ATIVO' : 'PAUSADO'}
                               </span>
 
-                              <span className="text-xs font-mono text-violet-300 bg-violet-950/40 border border-violet-800/30 px-2.5 py-0.5 rounded-md">
+                              <span className="text-xs font-mono text-[var(--link)] bg-[var(--info-bg)] border border-[var(--field-border)] px-2.5 py-0.5 rounded-md">
                                 Gatilho: {rule.event}
                               </span>
 
-                              <span className="text-xs text-slate-400 bg-slate-800/80 px-2.5 py-0.5 rounded-md">
+                              <span className="text-xs text-[var(--text-secondary)] bg-[var(--bg-surface-elevated)] px-2.5 py-0.5 rounded-md">
                                 {ruleConditions.length} condição(ões) • {ruleActions.length} ação(ões)
                               </span>
                             </div>
 
-                            <h3 className="text-base font-bold text-white">{rule.name}</h3>
+                            <h3 className="text-base font-bold text-[var(--text-primary)]">{rule.name}</h3>
 
                             {rule.description && (
-                              <p className="text-xs text-slate-400 line-clamp-2">{rule.description}</p>
+                              <p className="text-xs text-[var(--text-secondary)] line-clamp-2">{rule.description}</p>
                             )}
 
                             {/* Summary Footer */}
-                            <div className="flex items-center gap-4 text-xs text-slate-500 pt-1 flex-wrap">
+                            <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)] pt-1 flex-wrap">
                               <span>Criado por {rule.createdBy?.name || 'Sistema'}</span>
                               <span>•</span>
                               <span>{rule._count?.executions || 0} execuções totais</span>
@@ -608,10 +608,10 @@ export const CentralAutomacoes: React.FC = () => {
                                     <span
                                       className={`font-semibold ${
                                         lastExec.status === 'SUCCESS'
-                                          ? 'text-emerald-400'
+                                          ? 'text-[var(--success-text)]'
                                           : lastExec.status === 'FAILED'
-                                          ? 'text-rose-400'
-                                          : 'text-slate-400'
+                                          ? 'text-[var(--danger-text)]'
+                                          : 'text-[var(--text-secondary)]'
                                       }`}
                                     >
                                       {lastExec.status} ({lastExec.durationMs}ms)
@@ -626,7 +626,7 @@ export const CentralAutomacoes: React.FC = () => {
                           <div className="flex items-center gap-2 shrink-0 flex-wrap">
                             <button
                               onClick={() => setTestingAutomation(rule)}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-violet-300 border border-violet-800/30 transition-colors flex items-center gap-1.5"
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--link)] border border-[var(--field-border)] transition-colors flex items-center gap-1.5"
                               title="Simular sem alterar banco"
                             >
                               <Play className="w-3.5 h-3.5 fill-current" />
@@ -635,15 +635,15 @@ export const CentralAutomacoes: React.FC = () => {
 
                             <button
                               onClick={() => handleToggle(rule.id)}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1.5"
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] border border-[var(--field-border)] transition-colors flex items-center gap-1.5"
                             >
                               {rule.active ? (
                                 <>
-                                  <ToggleRight className="w-4 h-4 text-emerald-400" /> Pausar
+                                  <ToggleRight className="w-4 h-4 text-[var(--success-text)]" /> Pausar
                                 </>
                               ) : (
                                 <>
-                                  <ToggleLeft className="w-4 h-4 text-slate-500" /> Ativar
+                                  <ToggleLeft className="w-4 h-4 text-[var(--text-secondary)]" /> Ativar
                                 </>
                               )}
                             </button>
@@ -663,7 +663,7 @@ export const CentralAutomacoes: React.FC = () => {
                                 });
                                 setBuilderOpen(true);
                               }}
-                              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] rounded-lg transition-colors border border-transparent hover:border-[var(--field-border)]"
                               title="Editar automação"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -671,7 +671,7 @@ export const CentralAutomacoes: React.FC = () => {
 
                             <button
                               onClick={() => handleDuplicate(rule.id)}
-                              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                              className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] rounded-lg transition-colors border border-transparent hover:border-[var(--field-border)]"
                               title="Duplicar automação (pausada por padrão)"
                             >
                               <Copy className="w-4 h-4" />
@@ -679,7 +679,7 @@ export const CentralAutomacoes: React.FC = () => {
 
                             <button
                               onClick={() => handleDelete(rule.id, rule.name)}
-                              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                              className="p-2 text-[var(--text-secondary)] hover:text-[var(--danger-text)] hover:bg-[var(--bg-surface-elevated)] rounded-lg transition-colors border border-transparent hover:border-[var(--field-border)]"
                               title="Excluir automação"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -699,20 +699,20 @@ export const CentralAutomacoes: React.FC = () => {
           {/* ========================================================= */}
           {activeTab === 'HISTORY' && (
             <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-bold text-white">Log de Execuções Automatizadas</h3>
-                  <p className="text-xs text-slate-400">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Log de Execuções Automatizadas</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">
                     Acompanhe em tempo real cada evento recebido e o resultado das ações executadas.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-400">Filtrar Status:</span>
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">Filtrar Status:</span>
                   <select
                     value={historyStatusFilter}
                     onChange={(e) => setHistoryStatusFilter(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+                    className="bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--field-border)]"
                   >
                     <option value="ALL">Todos os Status</option>
                     <option value="SUCCESS">Apenas Sucesso</option>
@@ -723,18 +723,18 @@ export const CentralAutomacoes: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl overflow-hidden shadow-xl">
                 {executions.length === 0 ? (
-                  <div className="p-12 text-center text-slate-500">
-                    <Clock className="w-10 h-10 mx-auto text-slate-600 mb-2" />
-                    <div className="text-sm font-semibold text-slate-300">
+                  <div className="p-12 text-center text-[var(--text-secondary)]">
+                    <Clock className="w-10 h-10 mx-auto text-[var(--text-secondary)] mb-2" />
+                    <div className="text-sm font-semibold text-[var(--text-primary)]">
                       Nenhuma execução registrada no histórico
                     </div>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
+                      <thead className="bg-[var(--bg-canvas)] border-b border-[var(--field-border)] text-[var(--text-secondary)] uppercase tracking-wider font-semibold">
                         <tr>
                           <th className="px-5 py-3">Data / Hora</th>
                           <th className="px-5 py-3">Automação</th>
@@ -744,40 +744,40 @@ export const CentralAutomacoes: React.FC = () => {
                           <th className="px-5 py-3 text-right">Ação</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800">
+                      <tbody className="divide-y divide-[var(--field-border)]">
                         {executions.map((exec) => (
-                          <tr key={exec.id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="px-5 py-3 font-mono text-slate-400 whitespace-nowrap">
+                          <tr key={exec.id} className="hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                            <td className="px-5 py-3 font-mono text-[var(--text-secondary)] whitespace-nowrap">
                               {new Date(exec.createdAt).toLocaleString('pt-BR')}
                             </td>
-                            <td className="px-5 py-3 font-medium text-white max-w-[200px] truncate">
+                            <td className="px-5 py-3 font-medium text-[var(--text-primary)] max-w-[200px] truncate">
                               {exec.automation?.name || 'Regra Removida'}
                             </td>
-                            <td className="px-5 py-3 font-mono text-violet-300 text-[11px]">
+                            <td className="px-5 py-3 font-mono text-[var(--link)] text-[11px]">
                               {exec.event}
                             </td>
                             <td className="px-5 py-3">
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold ${
                                   exec.status === 'SUCCESS'
-                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    ? 'bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]'
                                     : exec.status === 'FAILED'
-                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                    ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] border border-[var(--danger-border)]'
                                     : exec.status === 'PARTIAL'
-                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                    : 'bg-slate-800 text-slate-400'
+                                    ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]'
+                                    : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
                                 }`}
                               >
                                 {exec.status}
                               </span>
                             </td>
-                            <td className="px-5 py-3 text-slate-400 font-mono">
+                            <td className="px-5 py-3 text-[var(--text-secondary)] font-mono">
                               {exec.durationMs} ms
                             </td>
                             <td className="px-5 py-3 text-right">
                               <button
                                 onClick={() => setSelectedExecution(exec)}
-                                className="px-2.5 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-violet-300 rounded border border-slate-700 transition-colors"
+                                className="px-2.5 py-1 text-xs font-semibold bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--link)] rounded border border-[var(--field-border)] transition-colors"
                               >
                                 Ver Timeline
                               </button>
@@ -799,82 +799,82 @@ export const CentralAutomacoes: React.FC = () => {
             <div className="space-y-6">
               {/* Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5 shadow-lg">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                     Regras Configuradas
                   </span>
-                  <div className="text-3xl font-extrabold text-white mt-1">
+                  <div className="text-3xl font-extrabold text-[var(--text-primary)] mt-1">
                     {metrics?.totalRules || 0}
                   </div>
-                  <div className="text-xs text-emerald-400 mt-2 font-medium">
+                  <div className="text-xs text-[var(--success-text)] mt-2 font-medium">
                     {metrics?.activeRules || 0} regras ativas
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5 shadow-lg">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                     Execuções Hoje
                   </span>
-                  <div className="text-3xl font-extrabold text-violet-400 mt-1">
+                  <div className="text-3xl font-extrabold text-[var(--link)] mt-1">
                     {metrics?.todayExecutions || 0}
                   </div>
-                  <div className="text-xs text-slate-400 mt-2">Disparos de esteira nas últimas 24h</div>
+                  <div className="text-xs text-[var(--text-secondary)] mt-2">Disparos de esteira nas últimas 24h</div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5 shadow-lg">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                     Taxa de Sucesso
                   </span>
-                  <div className="text-3xl font-extrabold text-emerald-400 mt-1">
+                  <div className="text-3xl font-extrabold text-[var(--success-text)] mt-1">
                     {metrics?.successRate || 100}%
                   </div>
-                  <div className="text-xs text-slate-400 mt-2">
+                  <div className="text-xs text-[var(--text-secondary)] mt-2">
                     {metrics?.failedCount || 0} falhas registradas
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5 shadow-lg">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                     Tempo Médio
                   </span>
-                  <div className="text-3xl font-extrabold text-white mt-1">
+                  <div className="text-3xl font-extrabold text-[var(--text-primary)] mt-1">
                     {metrics?.avgDurationMs || 0} ms
                   </div>
-                  <div className="text-xs text-slate-400 mt-2">Latência de execução sequencial</div>
+                  <div className="text-xs text-[var(--text-secondary)] mt-2">Latência de execução sequencial</div>
                 </div>
               </div>
 
               {/* Status Breakdown & Pendencies Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6  space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
                     Distribuição de Execuções
                   </h3>
 
                   <div className="space-y-3 pt-2">
                     <div>
-                      <div className="flex justify-between text-xs text-slate-300 font-semibold mb-1">
+                      <div className="flex justify-between text-xs text-[var(--text-primary)] font-semibold mb-1">
                         <span>Sucesso ({metrics?.successCount || 0})</span>
-                        <span className="text-emerald-400">{metrics?.successRate || 0}%</span>
+                        <span className="text-[var(--success-text)]">{metrics?.successRate || 0}%</span>
                       </div>
-                      <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-[var(--bg-canvas)] h-2.5 rounded-full overflow-hidden">
                         <div
-                          className="bg-emerald-500 h-full rounded-full transition-all"
+                          className="bg-[var(--success-bg)] h-full rounded-full transition-all"
                           style={{ width: `${metrics?.successRate || 0}%` }}
                         />
                       </div>
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-xs text-slate-300 font-semibold mb-1">
+                      <div className="flex justify-between text-xs text-[var(--text-primary)] font-semibold mb-1">
                         <span>Falhas ({metrics?.failedCount || 0})</span>
-                        <span className="text-rose-400">
+                        <span className="text-[var(--danger-text)]">
                           {100 - (metrics?.successRate || 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-[var(--bg-canvas)] h-2.5 rounded-full overflow-hidden">
                         <div
-                          className="bg-rose-500 h-full rounded-full transition-all"
+                          className="bg-[var(--danger-bg)] h-full rounded-full transition-all"
                           style={{ width: `${100 - (metrics?.successRate || 100)}%` }}
                         />
                       </div>
@@ -882,19 +882,19 @@ export const CentralAutomacoes: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-6  space-y-4">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
                     Impacto Operacional na Esteira
                   </h3>
                   <div className="flex items-center gap-4 pt-2">
-                    <div className="p-4 bg-violet-600/20 text-violet-400 rounded-2xl border border-violet-500/30">
+                    <div className="p-4 bg-[var(--info-bg)] text-[var(--link)] rounded-2xl border border-[var(--field-border)]">
                       <Zap className="w-8 h-8" />
                     </div>
                     <div>
-                      <div className="text-3xl font-extrabold text-white">
+                      <div className="text-3xl font-extrabold text-[var(--text-primary)]">
                         {metrics?.pendenciesCreated || 0}
                       </div>
-                      <div className="text-xs text-slate-400 mt-1">
+                      <div className="text-xs text-[var(--text-secondary)] mt-1">
                         Pendências operacionais criadas automaticamente por regras de automação
                       </div>
                     </div>
@@ -909,9 +909,9 @@ export const CentralAutomacoes: React.FC = () => {
           {/* ========================================================= */}
           {activeTab === 'TEMPLATES' && (
             <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-white">Modelos Prontos para Uso</h3>
-                <p className="text-xs text-slate-400">
+              <div className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-xl p-4">
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Modelos Prontos para Uso</h3>
+                <p className="text-xs text-[var(--text-secondary)]">
                   Fluxos testados para SLA, integrações e esteira de crédito. Clique em "+ Usar Modelo" para personalizar e ativar.
                 </p>
               </div>
@@ -920,22 +920,22 @@ export const CentralAutomacoes: React.FC = () => {
                 {templates.map((tpl) => (
                   <div
                     key={tpl.id}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-violet-500/40 transition-all flex flex-col justify-between space-y-4 shadow-lg"
+                    className="bg-[var(--bg-surface)] border border-[var(--field-border)] rounded-2xl p-5 hover:border-[var(--field-border)] transition-all flex flex-col justify-between space-y-4 shadow-lg"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-mono text-violet-400 bg-violet-950/40 border border-violet-800/30 px-2 py-0.5 rounded">
+                        <span className="text-[11px] font-mono text-[var(--link)] bg-[var(--info-bg)] border border-[var(--field-border)] px-2 py-0.5 rounded">
                           {tpl.event}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-white">{tpl.name}</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed">{tpl.description}</p>
+                      <h4 className="text-sm font-bold text-[var(--text-primary)]">{tpl.name}</h4>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{tpl.description}</p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-800">
+                    <div className="pt-3 border-t border-[var(--field-border)]">
                       <button
                         onClick={() => handleUseTemplate(tpl)}
-                        className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                        className="w-full py-2 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-xl text-xs font-bold transition-all  flex items-center justify-center gap-2"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Usar Este Modelo

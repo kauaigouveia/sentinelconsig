@@ -147,75 +147,75 @@ export const HolidayManagement: React.FC = () => {
         title="Feriados Nacionais & SLA Regulatório CIP"
         subtitle="Calendário oficial de dias úteis para cálculo de SLA de portabilidade e retenção bancária"
         badgeText="CALENDÁRIO REGULATÓRIO"
-        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
       />
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 font-mono">
-        <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between font-sans">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
               Feriados Registrados
             </span>
-            <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <CalendarIcon className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
           </div>
-          <p className="text-2xl font-black text-blue-950 dark:text-blue-200">
+          <p className="text-2xl font-black text-[var(--link)] dark:text-[var(--link)]">
             {holidays.length} dias
           </p>
-          <span className="text-[11px] text-blue-700 dark:text-blue-400 font-bold block font-sans">
+          <span className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-bold block font-sans">
             Desconsiderados na contagem útil
           </span>
         </div>
 
-        <div className="rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between font-sans">
-            <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 dark:text-purple-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
               Prazo Regulatório CIP
             </span>
-            <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <Clock className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
           </div>
-          <p className="text-2xl font-black text-purple-950 dark:text-purple-200">
+          <p className="text-2xl font-black text-[var(--link)] dark:text-[var(--link)]">
             {balanceDays} dias úteis
           </p>
-          <span className="text-[11px] text-purple-700 dark:text-purple-400 font-bold block font-sans">
+          <span className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-bold block font-sans">
             Resolução BACEN / CIP
           </span>
         </div>
 
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 shadow-2xs space-y-1.5">
+        <div className="rounded-xl border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-4  space-y-1.5">
           <div className="flex items-center justify-between font-sans">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--success-text)] dark:text-[var(--success-text)]">
               Motor de Contagem
             </span>
-            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <ShieldCheck className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)]" />
           </div>
-          <p className="text-lg font-black text-emerald-950 dark:text-emerald-200">
+          <p className="text-lg font-black text-[var(--success-text)] dark:text-[var(--success-text)]">
             AUTOMÁTICO
           </p>
-          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold block font-sans">
+          <span className="text-[11px] text-[var(--success-text)] dark:text-[var(--success-text)] font-bold block font-sans">
             Fins de semana e feriados expurgados
           </span>
         </div>
       </div>
 
       {message && (
-        <div role={messageIsError ? 'alert' : 'status'} className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${messageIsError ? 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300' : 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'}`}>
+        <div role={messageIsError ? 'alert' : 'status'} className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${messageIsError ? 'border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]' : 'border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]'}`}>
           {messageIsError ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
           <span>{message}</span>
         </div>
       )}
 
       {/* SLA Configuration Box */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-3">
-        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <Sliders className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-3">
+        <div className="flex items-center gap-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
+          <Sliders className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
+          <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             Parâmetros de SLA para Retorno de Saldo Devedor (CIP)
           </h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <label className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             Meta Regulamentar em Dias Úteis:
           </label>
           <input
@@ -225,12 +225,12 @@ export const HolidayManagement: React.FC = () => {
             value={balanceDays}
             onChange={e => setBalanceDays(Number(e.target.value))}
             disabled={!canManageCalendar || isSaving}
-            className="w-20 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono font-bold text-center focus:outline-hidden"
+            className="w-20 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono font-bold text-center focus:outline-hidden"
           />
           {canManageCalendar && <button
             onClick={handleSaveConfig}
             disabled={isSaving}
-            className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-4 py-2  transition-colors cursor-pointer"
           >
             <Save className="h-3.5 w-3.5" />
             <span>{isSaving ? 'Salvando…' : 'Salvar Parâmetro'}</span>
@@ -239,14 +239,14 @@ export const HolidayManagement: React.FC = () => {
       </div>
 
       {/* Add Holiday Form */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
           Adicionar Feriado ao Calendário
         </h3>
 
         {canManageCalendar ? <form onSubmit={handleAddHoliday} className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end">
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Data do Feriado *
             </label>
             <input
@@ -255,12 +255,12 @@ export const HolidayManagement: React.FC = () => {
               value={date}
               onChange={e => setDate(e.target.value)}
               disabled={isSaving}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+              className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Nome do Feriado / Descrição *
             </label>
             <input
@@ -270,35 +270,35 @@ export const HolidayManagement: React.FC = () => {
               onChange={e => setName(e.target.value)}
               disabled={isSaving}
               placeholder="Ex: Tiradentes"
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+              className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2.5 shadow-xs transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs py-2.5  transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>{isSaving ? 'Salvando…' : 'Adicionar Feriado'}</span>
           </button>
-        </form> : <p className="text-xs text-slate-500 dark:text-slate-400">Você tem acesso somente para consulta. Solicite a permissão de gestão de configurações para alterar feriados ou prazos.</p>}
+        </form> : <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Você tem acesso somente para consulta. Solicite a permissão de gestão de configurações para alterar feriados ou prazos.</p>}
       </div>
 
       {/* Holiday Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <CalendarDays className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Calendário de Feriados Ativos ({sortedHolidays.length})
             </h3>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="px-3.5 py-2.5 font-mono">Data (AAAA-MM-DD)</th>
                 <th className="px-3.5 py-2.5">Nome / Motivo</th>
@@ -306,15 +306,15 @@ export const HolidayManagement: React.FC = () => {
                 {canManageCalendar && <th className="px-3.5 py-2.5 text-center">Ações</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
               {sortedHolidays.map(h => (
-                <tr key={h.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                  <td className="px-3.5 py-2.5 font-mono font-bold text-blue-600 dark:text-blue-400">
+                <tr key={h.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
+                  <td className="px-3.5 py-2.5 font-mono font-bold text-[var(--link)] dark:text-[var(--link)]">
                     {h.date}
                   </td>
-                  <td className="px-3.5 py-2.5 text-slate-900 dark:text-white font-bold">{h.name}</td>
+                  <td className="px-3.5 py-2.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold">{h.name}</td>
                   <td className="px-3.5 py-2.5 text-center">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       NÃO ÚTIL
                     </span>
                   </td>
@@ -322,7 +322,7 @@ export const HolidayManagement: React.FC = () => {
                     <button
                       onClick={() => handleRemoveHoliday(h)}
                       disabled={isSaving}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--danger-text)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                       title="Excluir feriado"
                     >
                       <Trash2 className="h-4 w-4" />

@@ -289,11 +289,11 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
         title="Gestão Financeira Geral da Promotora"
         subtitle="Controle de receitas operacionais, despesas administrativas, fluxo Previsto vs. Realizado"
         badgeText="FLUXO DE CAIXA & DRE"
-        badgeColor="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+        badgeColor="bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]"
         actions={canCreate ? (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-2 bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] font-bold text-xs px-4 py-2 rounded-xl  transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>Novo Lançamento Financeiro</span>
@@ -308,7 +308,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
           value={formatCurrency(totalReceitas)}
           subtext={`Previsto a receber: ${formatCurrency(pendingReceitas)}`}
           tone="success"
-          icon={<ArrowUpRight className="h-4 w-4 text-emerald-600" />}
+          icon={<ArrowUpRight className="h-4 w-4 text-[var(--success-text)]" />}
         />
 
         <MetricCard
@@ -316,7 +316,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
           value={formatCurrency(totalDespesas)}
           subtext={`Previsto a pagar: ${formatCurrency(pendingDespesas)}`}
           tone="danger"
-          icon={<ArrowDownRight className="h-4 w-4 text-rose-600" />}
+          icon={<ArrowDownRight className="h-4 w-4 text-[var(--danger-text)]" />}
         />
 
         <MetricCard
@@ -324,7 +324,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
           value={formatCurrency(netResult)}
           subtext="Saldo apurado em caixa"
           tone={netResult >= 0 ? 'success' : 'danger'}
-          icon={<DollarSign className={`h-4 w-4 ${netResult >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />}
+          icon={<DollarSign className={`h-4 w-4 ${netResult >= 0 ? 'text-[var(--success-text)]' : 'text-[var(--danger-text)]'}`} />}
         />
 
         <MetricCard
@@ -332,28 +332,28 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
           value={`${entries.length} registros`}
           subtext="Auditoria contábil completa"
           tone="neutral"
-          icon={<Layers className="h-4 w-4 text-slate-500" />}
+          icon={<Layers className="h-4 w-4 text-[var(--text-secondary)]" />}
         />
       </div>
 
       {/* Filter Bar */}
-      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-2xs dark:border-slate-800 dark:bg-slate-900 ${premium ? 'p2-finance-filters' : ''}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-3 text-xs  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] ${premium ? 'p2-finance-filters' : ''}`}>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
           <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-secondary)]" />
             <input
               type="search"
               value={searchTerm}
               onChange={event => setSearchTerm(event.target.value)}
               placeholder="Buscar descrição ou categoria..."
               aria-label="Buscar lançamento financeiro"
-              className="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] py-1.5 pl-8 pr-3 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
             />
           </div>
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
+            className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
           >
             <option value="ALL">Todos os Tipos (Entradas e Saídas)</option>
             <option value="ENTRADA">Apenas Entradas</option>
@@ -363,7 +363,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-700 dark:text-slate-200 focus:outline-hidden"
+            className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
           >
             <option value="ALL">Todos os Status</option>
             <option value="REALIZADO">Realizado</option>
@@ -374,13 +374,13 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
             value={filterDue}
             onChange={e => setFilterDue(e.target.value as typeof filterDue)}
             aria-label="Filtrar por vencimento"
-            className="rounded-lg border border-slate-300 bg-white p-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-1.5 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
           >
             <option value="ALL">Todos os vencimentos</option>
             <option value="OVERDUE">Vencidos em aberto</option>
             <option value="UPCOMING">A vencer</option>
           </select>
-          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
             De
             <input
               type="date"
@@ -388,10 +388,10 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
               max={endDueDate || undefined}
               onChange={event => setStartDueDate(event.target.value)}
               aria-label="Data inicial do vencimento"
-              className="rounded-lg border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-1.5 py-1 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
             />
           </label>
-          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
             Até
             <input
               type="date"
@@ -399,28 +399,28 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
               min={startDueDate || undefined}
               onChange={event => setEndDueDate(event.target.value)}
               aria-label="Data final do vencimento"
-              className="rounded-lg border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-1.5 py-1 text-xs text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
             />
           </label>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+          <span className="text-[11px] font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
             {filteredEntries.length} de {entries.length} registros
           </span>
-          <button type="button" onClick={handleExportCsv} disabled={filteredEntries.length === 0} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <button type="button" onClick={handleExportCsv} disabled={filteredEntries.length === 0} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] disabled:cursor-not-allowed disabled:opacity-90 dark:border-[var(--field-border)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-surface-elevated)]">
             <Download className="h-3.5 w-3.5" /> Exportar CSV
           </button>
-          <button type="button" onClick={() => void loadEntries()} disabled={isLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <button type="button" onClick={() => void loadEntries()} disabled={isLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] disabled:opacity-90 dark:border-[var(--field-border)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-surface-elevated)]">
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Atualizar
           </button>
         </div>
       </div>
 
       {/* Financial Entries Table */}
-      <div className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs ${premium ? 'p2-finance-results' : ''}`}>
+      <div className={`rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] overflow-hidden  ${premium ? 'p2-finance-results' : ''}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800">
+            <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="p-3.5">Descrição</th>
                 <th className="p-3.5">Categoria</th>
@@ -432,51 +432,51 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                 <th className="p-3.5 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-slate-700 dark:text-slate-300">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               {filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={8} className="p-8 text-center text-[var(--text-secondary)] italic">
                     {isLoading ? 'Carregando lançamentos financeiros…' : loadError || 'Nenhum lançamento financeiro encontrado.'}
-                    {loadError && <button type="button" onClick={() => void loadEntries()} className="ml-2 font-semibold text-blue-600 underline">Tentar novamente</button>}
+                    {loadError && <button type="button" onClick={() => void loadEntries()} className="ml-2 font-semibold text-[var(--link)] underline">Tentar novamente</button>}
                   </td>
                 </tr>
               ) : (
                 filteredEntries.map(e => (
-                  <tr key={e.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">{e.title || e.description}</td>
-                    <td className="p-3.5 text-slate-600 dark:text-slate-400 font-medium">{financialCategoryLabels[e.category] || e.category}</td>
+                  <tr key={e.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                    <td className="p-3.5 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{e.title || e.description}</td>
+                    <td className="p-3.5 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium">{financialCategoryLabels[e.category] || e.category}</td>
                     <td className="p-3.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                         e.type === 'ENTRADA'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
-                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                          ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                          : 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                       }`}>
                         {e.type}
                       </span>
                     </td>
-                    <td className="p-3.5 font-mono text-slate-600 dark:text-slate-400">{formatFinancialDate(e.dueDate)}</td>
-                    <td className="p-3.5 font-mono text-slate-600 dark:text-slate-400">{e.paymentDate ? formatFinancialDate(e.paymentDate) : '—'}</td>
+                    <td className="p-3.5 font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{formatFinancialDate(e.dueDate)}</td>
+                    <td className="p-3.5 font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{e.paymentDate ? formatFinancialDate(e.paymentDate) : '—'}</td>
                     <td className="p-3.5">
                       {canUpdate ? <select
                         value={e.status}
                         onChange={event => void handleToggleStatus(e, event.target.value as FinancialStatus)}
                         disabled={updatingIds.has(e.id)}
                         aria-label={`Alterar status financeiro de ${e.title}`}
-                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        className="rounded-full border border-[var(--field-border)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-bold text-[var(--text-secondary)] disabled:opacity-90 dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]"
                       >
                         <option value="PREVISTO">Previsto</option>
                         <option value="REALIZADO">Realizado</option>
                         <option value="CANCELADO">Cancelado</option>
                       </select> : <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         e.status === 'REALIZADO'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                          ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
                           : e.status === 'PREVISTO'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                          ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
+                          : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-secondary)]'
                       }`}>{e.status}</span>}
                     </td>
                     <td className={`p-3.5 text-right font-mono font-bold ${
-                      e.type === 'ENTRADA' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
+                      e.type === 'ENTRADA' ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : 'text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                     }`}>
                       {e.type === 'ENTRADA' ? '+' : '-'} {formatCurrency(e.amount)}
                     </td>
@@ -486,7 +486,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                           type="button"
                           onClick={() => void handleDeleteEntry(e.id)}
                           disabled={deletingIds.has(e.id)}
-                          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-500 disabled:cursor-wait disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                          className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--danger-text)] disabled:cursor-wait disabled:opacity-90 dark:hover:bg-[var(--bg-surface-elevated)] dark:hover:text-[var(--danger-text)]"
                           title="Excluir lançamento"
                           aria-label={`Excluir lançamento: ${e.title}`}
                         >
@@ -504,13 +504,13 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
 
       {/* Modal Novo Lançamento */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Novo Lançamento Financeiro</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] p-6  space-y-4">
+            <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Novo Lançamento Financeiro</h3>
 
             <form onSubmit={handleCreateEntry} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300">Descrição do Lançamento</label>
+                <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Descrição do Lançamento</label>
                 <input
                   type="text"
                   value={description}
@@ -518,13 +518,13 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                   maxLength={180}
                   required
                   placeholder="Ex: Recebimento de Spread Bancário"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Tipo</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Tipo</label>
                   <select
                     value={type}
                     onChange={e => {
@@ -534,7 +534,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                         setCategory(nextType === 'ENTRADA' ? 'RECEBIMENTO_OPERACIONAL' : 'DESPESA_VARIAVEL');
                       }
                     }}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   >
                     <option value="ENTRADA">Entrada (Receita)</option>
                     <option value="SAIDA">Saída (Despesa)</option>
@@ -542,7 +542,7 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Valor (R$)</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Valor (R$)</label>
                   <input
                     type="text"
                     value={amount}
@@ -550,18 +550,18 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                     inputMode="decimal"
                     required
                     placeholder="Ex: 1.500,00"
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-hidden"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-mono focus:outline-hidden"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Categoria</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Categoria</label>
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value as FinancialCategory)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   >
                     {getFinancialCategories(type).map(value => (
                       <option key={value} value={value}>{financialCategoryLabels[value]}</option>
@@ -570,13 +570,13 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Data de Vencimento</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Data de Vencimento</label>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={e => setDueDate(e.target.value)}
                     required
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   />
                 </div>
               </div>
@@ -591,39 +591,39 @@ export const GeneralFinanceView: React.FC<{ premium?: boolean }> = ({ premium = 
                     setIsPaid(checked);
                     if (checked && !paymentDate) setPaymentDate(localDateInputValue());
                   }}
-                  className="rounded border-slate-300 text-blue-600"
+                  className="rounded border-[var(--field-border)] text-[var(--link)]"
                 />
-                <label htmlFor="isPaidCheck" className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                <label htmlFor="isPaidCheck" className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer">
                   Marcar como já pago / realizado
                 </label>
               </div>
 
               {isPaid && (
                 <div className="space-y-1">
-                  <label htmlFor="financial-payment-date" className="font-bold text-slate-700 dark:text-slate-300">Data do pagamento</label>
+                  <label htmlFor="financial-payment-date" className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Data do pagamento</label>
                   <input
                     id="financial-payment-date"
                     type="date"
                     value={paymentDate}
                     onChange={e => setPaymentDate(e.target.value)}
                     required
-                    className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs text-slate-900 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-2 text-xs text-[var(--text-secondary)] focus:outline-hidden dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]"
                   />
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                  className="px-4 py-2 rounded-lg bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 cursor-pointer shadow-xs transition-colors disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-[var(--success-bg)] text-[var(--success-text)] font-bold hover:bg-[var(--success-bg)] cursor-pointer  transition-colors disabled:opacity-90"
                 >
                   {isSaving ? 'Salvando…' : 'Salvar Lançamento'}
                 </button>

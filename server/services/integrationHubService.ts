@@ -1,3 +1,4 @@
+import {readCatalogConnections,type CatalogSlug} from './integrationCatalogConnections.js';
 import { PrismaClient, IncidentSeverity, IncidentStatus, PriorityLevel } from '@prisma/client';
 import { logger } from '../logger.js';
 import { CentralEventBus } from './eventBus.js';
@@ -15,10 +16,15 @@ export interface IntegrationDefinition {
   id: string;
   name: string;
   code: string;
-  slug: IntegrationSlug | 'vctex';
+  slug: CatalogSlug;
+  configured?: boolean;
+  configurationUnavailable?: boolean;
+  connectionCount?: number;
+  enabledConnectionCount?: number;
+  environments?: string[];
   type: 'BANK' | 'FINTECH';
   protocol: string;
-  environment: 'production' | 'staging' | 'homologation';
+  environment: 'production' | 'staging' | 'homologation' | 'unknown';
   active: boolean;
   status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING';
   maskedBaseUrl: string;
@@ -139,7 +145,7 @@ export class IntegrationHubService {
       const parsed = new URL(url);
       return `${parsed.protocol}//${parsed.hostname}/***`;
     } catch {
-      return url.split('/')[0] + '/***';
+      return 'Não informada';
     }
   }
 
@@ -203,7 +209,8 @@ export class IntegrationHubService {
    */
   public static async getCatalog(
     prisma: PrismaClient,
-    tenantId: string | null
+    tenantId: string | null,
+    readConnections = readCatalogConnections
   ): Promise<{
     integrations: IntegrationDefinition[];
     summary: {
@@ -220,22 +227,8 @@ export class IntegrationHubService {
     if (!tenantId) throw new Error('Empresa obrigatória para consultar integrações.');
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Carregar configurações de cada banco para o tenant
-    const configs = await prisma.systemConfig.findMany({
-      where: {
-        ...(tenantId ? { tenantId } : {}),
-        configKey: {
-          in: [
-            'c6_active', 'c6_ambiente', 'c6_base_url',
-            'facta_active', 'facta_ambiente', 'facta_base_url',
-            'bmg_active', 'bmg_ambiente', 'bmg_base_url',
-            'happy_ativo', 'happy_ambiente', 'happy_base_url',
-          ],
-        },
-      },
-    });
-    const configMap = new Map(configs.map((c) => [c.configKey, c.configValue]));
-
+    const promoters = await prisma.promoter.findMany({where:{tenantId,status:'ATIVO'},select:{id:true}});
+    const configuredConnections = await readConnections(prisma,tenantId,promoters);
     // Buscar histórico recente de sincronizações
     const [c6Sync, factaSync, happySync] = await Promise.all([
       prisma.c6SyncHistory.findFirst({
@@ -289,47 +282,36 @@ export class IntegrationHubService {
     let disabledCount = 0;
     let totalErrors24h = 0;
 
-    for (const base of BASE_INTEGRATION_CATALOG) {
-      const slug = base.slug;
-      const bankUpper = slug.toUpperCase();
-
-      // Checar se está ativo
-      let isActive = true;
-      let env: 'production' | 'staging' | 'homologation' = 'production';
-      let baseUrl = base.defaultBaseUrl;
-
-      if (slug === 'c6') {
-        isActive = configMap.get('c6_active') !== 'false';
-        env = (configMap.get('c6_ambiente') as any) || 'production';
-        baseUrl = configMap.get('c6_base_url') || baseUrl;
-      } else if (slug === 'facta') {
-        isActive = configMap.get('facta_active') !== 'false';
-        env = (configMap.get('facta_ambiente') as any) || 'production';
-        baseUrl = configMap.get('facta_base_url') || baseUrl;
-      } else if (slug === 'bmg') {
-        isActive = configMap.get('bmg_active') === 'true'; // BMG disabled by default
-        env = (configMap.get('bmg_ambiente') as any) || 'staging';
-        baseUrl = configMap.get('bmg_base_url') || baseUrl;
-      } else if (slug === 'happy') {
-        isActive = configMap.get('happy_ativo') !== 'false';
-        env = (configMap.get('happy_ambiente') as any) || 'staging';
-        baseUrl = configMap.get('happy_base_url') || baseUrl;
-      }
-
+    const additional = [
+      {slug:'finanto',name:'FINANTO',code:'FINANTO'}, {slug:'nossa-fintech',name:'Nossa Fintech',code:'NOSSA'},
+      {slug:'workbank',name:'WorkBank',code:'WB'}, {slug:'parana',name:'Paraná Banco · API',code:'254'},
+      {slug:'presenca',name:'Presença Bank',code:'PRESENCA'}, {slug:'v8',name:'V8 Digital',code:'V8'},
+    ].map(bank=>({...bank,id:bank.slug,slug:bank.slug as CatalogSlug,type:'FINTECH' as const,protocol:'API',defaultBaseUrl:'',capabilities:[] as string[]}));
+    for (const base of [...BASE_INTEGRATION_CATALOG,...additional]) {
+      const slug=base.slug,bankUpper=slug.toUpperCase();
+      const metadata=configuredConnections[slug];
+      const connections=metadata.connections,enabled=connections.filter(c=>c.enabled);
+      const isActive=enabled.length>0,configured=connections.some(c=>c.configured);
+      const environments=[...new Set(connections.filter(c=>c.configured).flatMap(c=>c.environment?[c.environment]:[]))];
+      const env=(environments.length===1?environments[0]:'unknown') as IntegrationDefinition['environment'];
+      const baseUrl=connections.find(c=>c.configured&&c.baseUrl)?.baseUrl||null;
       // Métricas 24h para esse banco
-      const bankLogs24h = stats24h.filter((l) => l.bank.toUpperCase() === bankUpper);
+      const normalizedBank=bankUpper.replace(/[^A-Z0-9]/g,'');
+      const bankLogs24h = stats24h.filter((l) => l.bank.toUpperCase().replace(/[^A-Z0-9]/g,'') === normalizedBank);
       const totalReqs = bankLogs24h.length;
       const errors = bankLogs24h.filter((l) => !l.success).length;
       totalErrors24h += errors;
       const successRate = totalReqs > 0 ? Math.round(((totalReqs - errors) / totalReqs) * 100) : undefined;
 
       // Último Health Check
-      const lastCheck = healthLogs.find((l) => l.bank.toUpperCase() === bankUpper);
+      const lastCheck = healthLogs.find((l) => l.bank.toUpperCase().replace(/[^A-Z0-9]/g,'') === normalizedBank);
 
       // Determinar status baseado em dados reais
       let status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING' = 'ONLINE';
 
-      if (!isActive) {
+      if (metadata.unavailable || (isActive && enabled.some(c=>!c.configured)) || enabled.length>1) {
+        status='ATTENTION'; attentionCount++;
+      } else if (!isActive) {
         status = 'DISABLED';
         disabledCount++;
       } else if (activeIncidentsByBank.has(slug)) {
@@ -370,6 +352,7 @@ export class IntegrationHubService {
         protocol: base.protocol,
         environment: env,
         active: isActive,
+        configured, configurationUnavailable:metadata.unavailable,connectionCount:connections.filter(c=>c.configured).length,enabledConnectionCount:enabled.length,environments,
         status,
         maskedBaseUrl: this.maskUrl(baseUrl),
         capabilities: base.capabilities,
@@ -392,15 +375,16 @@ export class IntegrationHubService {
     }
 
     // Read the exact existing tenant/promoter configuration; never authenticate during catalog reads.
-    const promoters = await prisma.promoter.findMany({where:{tenantId,status:'ATIVO'},select:{id:true}});
-    const connections = await Promise.all(promoters.map(p=>VctexBankService.status(prisma,tenantId,p.id)));
+    const connectionResults = await Promise.allSettled(promoters.map(p=>VctexBankService.status(prisma,tenantId,p.id)));
+    const vctexUnavailable=connectionResults.some(result=>result.status==='rejected');
+    const connections=connectionResults.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
     const active = connections.filter(c=>c.enabled);
-    const status = !active.length ? 'DISABLED' : active.some(c=>c.status==='OFFLINE') ? 'OFFLINE' : active.every(c=>c.status==='ONLINE') ? 'ONLINE' : 'ATTENTION';
+    const status = vctexUnavailable ? 'ATTENTION' : !active.length ? 'DISABLED' : active.some(c=>c.status==='OFFLINE') ? 'OFFLINE' : active.every(c=>c.status==='ONLINE') ? 'ONLINE' : 'ATTENTION';
     if(status==='DISABLED')disabledCount++;else if(status==='OFFLINE')offlineCount++;else if(status==='ONLINE')onlineCount++;else attentionCount++;
-    const diagnostics=connections.flatMap(c=>c.history).sort((a,b)=>b.timestamp.localeCompare(a.timestamp)),last=diagnostics[0];
+    const diagnostics=active.flatMap(c=>c.history).sort((a,b)=>b.timestamp.localeCompare(a.timestamp)),last=diagnostics[0];
     const errors=connections.reduce((n,c)=>n+c.metrics.errors24h,0),requests=connections.reduce((n,c)=>n+c.metrics.requests24h,0);
     totalErrors24h+=errors;
-    integrations.push({id:'vctex',name:'VCTEX CLT',code:'VCTEX',slug:'vctex',type:'FINTECH',protocol:'REST via Oracle',environment:'production',active:!!active.length,status,
+    integrations.push({id:'vctex',name:'VCTEX CLT',code:'VCTEX',slug:'vctex',type:'FINTECH',protocol:'REST via Oracle',environment:'production',active:!!active.length,status,configurationUnavailable:vctexUnavailable,configured:connections.some(c=>c.hasCredentials),connectionCount:connections.filter(c=>c.hasCredentials).length,enabledConnectionCount:active.length,
       maskedBaseUrl:'Oracle · /vctex',capabilities:['AUTH','CLT'],lastHealthCheck:last?{timestamp:last.timestamp,success:last.authenticationRecognized,latencyMs:last.latencyMs,httpStatus:last.httpStatus,errorMessage:last.error}:null,
       totalRequests24h:requests,errorCount24h:errors,successRate24h:requests?Math.round((requests-errors)*100/requests):undefined,metricsPartial:connections.some(c=>!c.metrics.complete)});
     return {
@@ -413,7 +397,7 @@ export class IntegrationHubService {
         disabled: disabledCount,
         errors24h: totalErrors24h,
         requests24h: stats24h.length + requests,
-        metricsPartial: connections.some(c=>!c.metrics.complete),
+        metricsPartial: vctexUnavailable || connections.some(c=>!c.metrics.complete) || Object.values(configuredConnections).some(c=>c.unavailable),
       },
     };
   }

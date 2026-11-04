@@ -121,17 +121,17 @@ export const SentinelaAIChat: React.FC = () => {
         title="Sentinela IA — Copiloto de Mesa & Crédito"
         subtitle="Inteligência operacional conectada à base em tempo real para auditoria de SLA, conversão e liquidação"
         badgeText="COPILOTO ANALÍTICO"
-        badgeColor="bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
       />
 
       {/* Main Copilot Shell */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] shadow-2xs overflow-hidden flex flex-col md:flex-row h-[700px]">
+      <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  overflow-hidden flex flex-col md:flex-row h-[700px]">
         {/* LEFT SIDEBAR: Conversas & Contexto da Mesa */}
-        <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#090e1a] p-4 flex flex-col justify-between shrink-0">
+        <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-4 flex flex-col justify-between shrink-0">
           <div className="space-y-4">
             <button
               onClick={handleNewConversation}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs py-2.5 shadow-xs transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs py-2.5  transition-colors cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Nova Consulta / Conversa</span>
@@ -139,28 +139,28 @@ export const SentinelaAIChat: React.FC = () => {
 
             {/* Quick Context Pillars */}
             <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] block">
                 Contexto Atual da Mesa
               </span>
               <div className="space-y-1.5 font-mono text-xs">
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-500 text-[11px]">Volume Total:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(totalVolume)}</span>
+                <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between">
+                  <span className="text-[var(--text-secondary)] text-[11px]">Volume Total:</span>
+                  <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{formatCurrency(totalVolume)}</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-500 text-[11px]">Pagas:</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{pagasCount} contratos</span>
+                <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between">
+                  <span className="text-[var(--text-secondary)] text-[11px]">Pagas:</span>
+                  <span className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">{pagasCount} contratos</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-500 text-[11px]">Retido CIP:</span>
-                  <span className="font-bold text-purple-600 dark:text-purple-400">{cipCount} em espera</span>
+                <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between">
+                  <span className="text-[var(--text-secondary)] text-[11px]">Retido CIP:</span>
+                  <span className="font-bold text-[var(--link)] dark:text-[var(--link)]">{cipCount} em espera</span>
                 </div>
               </div>
             </div>
 
             {/* Quick Suggestions */}
             <div className="space-y-2 pt-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] block">
                 Tópicos Frequentes
               </span>
               <div className="space-y-1">
@@ -168,38 +168,38 @@ export const SentinelaAIChat: React.FC = () => {
                   <button
                     key={p.label}
                     onClick={() => handleSend(p.query)}
-                    className="w-full text-left p-2 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800/80 transition-colors flex items-center justify-between group cursor-pointer"
+                    className="w-full text-left p-2 rounded-lg text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors flex items-center justify-between group cursor-pointer"
                   >
                     <span className="truncate">{p.label}</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="h-3.5 w-3.5 text-[var(--text-secondary)] group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[var(--success-bg)] animate-pulse" />
             <span>Motor de IA Conectado à Base</span>
           </div>
         </div>
 
         {/* RIGHT AREA: Chat Flow */}
-        <div className="flex-1 flex flex-col justify-between bg-white dark:bg-[#0f172a]">
+        <div className="flex-1 flex flex-col justify-between bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]">
           {/* Header */}
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0c1220] flex items-center justify-between">
+          <div className="p-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-xs">
+              <div className="h-9 w-9 rounded-xl bg-[var(--info-bg)] flex items-center justify-center text-[var(--text-primary)] shadow-xs">
                 <Bot className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
                   <span>Sentinela Copilot</span>
-                  <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]">
                     ONLINE
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-500">Respostas baseadas nos dados oficiais da sua empresa.</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">Respostas baseadas nos dados oficiais da sua empresa.</p>
               </div>
             </div>
           </div>
@@ -216,8 +216,8 @@ export const SentinelaAIChat: React.FC = () => {
                   <div
                     className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
                       isAi
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-[var(--info-bg)] text-[var(--text-primary)] shadow-xs'
+                        : 'bg-[var(--info-bg)] text-[var(--text-primary)]'
                     }`}
                   >
                     {isAi ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
@@ -226,14 +226,14 @@ export const SentinelaAIChat: React.FC = () => {
                   <div
                     className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                       isAi
-                        ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700/60'
-                        : 'bg-blue-600 text-white shadow-xs'
+                        ? 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]'
+                        : 'bg-[var(--info-bg)] text-[var(--text-primary)] shadow-xs'
                     }`}
                   >
                     <div className="whitespace-pre-wrap">{m.text}</div>
                     <span
                       className={`text-[9px] mt-1.5 block ${
-                        isAi ? 'text-slate-400' : 'text-blue-200'
+                        isAi ? 'text-[var(--text-secondary)]' : 'text-[var(--link)]'
                       }`}
                     >
                       {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -244,7 +244,7 @@ export const SentinelaAIChat: React.FC = () => {
             })}
 
             {isLoading && (
-              <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 p-2 font-medium animate-pulse">
+              <div className="flex items-center gap-2 text-xs text-[var(--link)] dark:text-[var(--link)] p-2 font-medium animate-pulse">
                 <Bot className="h-4 w-4" />
                 <span>Sentinela IA está analisando a esteira de crédito...</span>
               </div>
@@ -253,14 +253,14 @@ export const SentinelaAIChat: React.FC = () => {
           </div>
 
           {/* Input & Prompt Chips */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0c1220] space-y-2.5">
+          <div className="p-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-2.5">
             {/* Prompt Chips Bar */}
             <div className="flex gap-1.5 overflow-x-auto pb-1 text-[11px]">
               {quickPrompts.map(qp => (
                 <button
                   key={qp.label}
                   onClick={() => handleSend(qp.query)}
-                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-purple-400 whitespace-nowrap transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:border-[var(--field-border)] whitespace-nowrap transition-colors cursor-pointer"
                 >
                   {qp.label}
                 </button>
@@ -281,12 +281,12 @@ export const SentinelaAIChat: React.FC = () => {
                 onChange={e => setInput(e.target.value)}
                 placeholder="Pergunte ao Sentinela IA sobre propostas, bancos, atrasos ou metas..."
                 disabled={isLoading}
-                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-hidden transition-colors"
+                className="flex-1 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-4 py-2.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] focus:outline-hidden transition-colors"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="rounded-xl bg-purple-600 hover:bg-purple-500 text-white p-2.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] p-2.5  transition-colors cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
               </button>

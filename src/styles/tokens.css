@@ -1,0 +1,47 @@
+/* Official blue palette. All themes, paint and legacy aliases are defined here. */
+:root {
+ --bg-canvas:#EEF7FF; --bg-surface:#FFFFFF; --bg-surface-elevated:#E2EFFB;
+ --border-default:#8BAAC7; --border-strong:#7DA0CA; --field-border:#5483B3;
+ --text-primary:#021024; --text-secondary:#052659; --text-muted:var(--text-secondary);
+ --action-default:#052659; --action-default-ink:#C1E8FF; --action-hover-default:#021024;
+ --action:var(--primary-color,var(--action-default)); --action-hover:var(--primary-color,var(--action-hover-default)); --action-ink:var(--brand-ink,var(--action-default-ink));
+ --link:#052659; --focus:#052659;
+ --success-bg:#E0EEE9; --success-border:#4E776B; --success-text:#224C40;
+ --warning-bg:#F0E9DC; --warning-border:#866735; --warning-text:#60491F;
+ --danger-bg:#F2E4EA; --danger-border:#9C5F72; --danger-text:#713D50;
+ --info-bg:#E4EDF8; --info-border:#607E9F; --info-text:#28486D;
+ /* Extreme derived tints are reserved for accessible ink on arbitrary custom brands. */
+ --contrast-dark:#010203; --contrast-light:#FEFFFF;
+ --scrim:rgb(2 16 36 / .70);
+ --chart-series-1:#5483B3; --chart-series-2:#7DA0CA; --chart-series-3:#C1E8FF; --chart-series-4:color-mix(in srgb,#5483B3 70%,#C1E8FF);
+ --chart-ink:#052659; --chart-grid:color-mix(in srgb,var(--text-secondary) 24%,transparent);
+ --font-ui:'Plus Jakarta Sans',system-ui,sans-serif; --font-code:'JetBrains Mono',monospace;
+ --text-heading:20px; --text-display:40px; --text-xs:12px; --text-sm:13px; --text-base:14px; --text-title:28px;
+ --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
+ --radius-control:5px; --radius-panel:8px; --radius-dialog:12px; --shadow-panel:none;
+ --motion-fast:160ms; --motion-normal:220ms; --z-header:30; --z-drawer:60; --z-dialog:70; --z-toast:100;
+ --sidebar-width:208px; --header-height:56px;
+ --primary-main:var(--action); --primary-hover:var(--action-hover); --primary-dark:var(--action);
+ --border-subtle:var(--border-default); --bg-primary:var(--bg-canvas);
+ --s2-bg:var(--bg-canvas); --s2-sidebar:var(--bg-surface); --s2-surface:var(--bg-surface); --s2-elevated:var(--bg-surface-elevated); --s2-border:var(--border-default); --s2-text:var(--text-primary); --s2-muted:var(--text-secondary); --s2-text-muted:var(--text-secondary); --s2-blue:var(--action); --s2-cyan:var(--link);
+ --sentinel-accent:var(--link); --sentinel-accent-soft:var(--bg-surface-elevated); --sentinel-shadow:none; --sentinel-sidebar:var(--bg-surface);
+}
+.dark {
+ --bg-canvas:#021024; --bg-surface:#041B3F; --bg-surface-elevated:#052659;
+ --border-default:rgb(84 131 179 / .30); --border-strong:#5483B3; --field-border:#7DA0CA;
+ --text-primary:#C1E8FF; --text-secondary:#7DA0CA; --text-muted:var(--text-secondary);
+ --action-default:#5483B3; --action-default-ink:#021024; --action-hover-default:#7DA0CA;
+ --link:#7DA0CA; --focus:#7DA0CA;
+ --success-bg:#0C2C36; --success-border:#7EA99C; --success-text:#B6DACF;
+ --warning-bg:#302B29; --warning-border:#B39A6D; --warning-text:#E0CFAC;
+ --danger-bg:#352536; --danger-border:#B991A5; --danger-text:#E8C3D5;
+ --info-bg:#102B47; --info-border:#829CB9; --info-text:#C0D4EA;
+ --chart-ink:#C1E8FF;
+}
+@media(prefers-reduced-motion:reduce){:root{--motion-fast:0ms;--motion-normal:0ms}}
+:where(.sentinel-app,.sentinel-auth,.s2-root) {--action:var(--primary-color,var(--action-default));--action-hover:var(--primary-color,var(--action-hover-default));--action-ink:var(--brand-ink,var(--action-default-ink));--primary-main:var(--action);--primary-hover:var(--action-hover);--primary-dark:var(--action);--s2-blue:var(--action)}
+@theme {
+ --font-sans:var(--font-ui);
+ --color-slate-50:var(--bg-surface);--color-slate-100:var(--bg-canvas);--color-slate-200:var(--text-primary);--color-slate-300:var(--text-secondary);--color-slate-400:var(--text-secondary);--color-slate-500:var(--text-secondary);--color-slate-600:var(--text-secondary);--color-slate-700:var(--bg-surface-elevated);--color-slate-800:var(--bg-surface-elevated);--color-slate-900:var(--bg-surface);--color-slate-950:var(--bg-canvas);
+ --color-blue-500:var(--link);--color-blue-600:var(--action);--color-blue-700:var(--action-hover);--color-indigo-500:var(--link);--color-indigo-600:var(--action);
+}

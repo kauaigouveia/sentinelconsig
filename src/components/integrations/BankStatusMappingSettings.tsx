@@ -17,7 +17,7 @@ export function BankStatusMappingSettings({ promoterId, initialProvider }: { pro
     try { const response = await fetch(promoterApiUrl(`/api/integrations/${provider}/status-mappings`, promoterId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mappings: rows }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setRows(data.mappings); setNotice('Mapeamento salvo. Será aplicado nas próximas consultas das propostas desta promotora.'); }
     catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível salvar.'); } finally { setSaving(false); }
   };
-  return <details className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+  return <details className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] p-4">
     <summary className="cursor-pointer text-sm font-bold">Mapeamento de status bancários</summary>
     <div className="mt-4 space-y-3">
       <p>Vincule o código ou texto recebido do banco a um status ativo da empresa. Cada mapeamento pertence à conexão da promotora selecionada. O status interno deve permitir alteração automática.</p>
@@ -28,9 +28,9 @@ export function BankStatusMappingSettings({ promoterId, initialProvider }: { pro
           <select aria-label={`Status interno ${index + 1}`} disabled={saving} value={row.internalStatusId} onChange={e => setRows(previous => previous.map((item, i) => i === index ? { ...item, internalStatusId: e.target.value } : item))} className="min-w-0 flex-1 rounded-lg border bg-transparent p-2"><option value="">Selecione o status interno</option>{statuses.map(status => <option key={status.id} value={status.id} disabled={!status.automaticChangeAllowed}>{status.name}{status.automaticChangeAllowed ? '' : ' (automação desativada)'}</option>)}</select>
           <button disabled={saving} onClick={() => setRows(previous => previous.filter((_, i) => i !== index))}>Remover</button>
         </div>)}
-        <div className="flex gap-2"><button disabled={saving || !statuses.length} onClick={() => setRows(previous => [...previous, { externalStatus: '', internalStatusId: '' }])} className="rounded-lg border px-3 py-2">Adicionar mapeamento</button><button disabled={saving || !statuses.length} onClick={save} className="rounded-lg bg-blue-600 px-3 py-2 text-white">{saving ? 'Salvando…' : 'Salvar mapeamentos'}</button></div>
+        <div className="flex gap-2"><button disabled={saving || !statuses.length} onClick={() => setRows(previous => [...previous, { externalStatus: '', internalStatusId: '' }])} className="rounded-lg border px-3 py-2">Adicionar mapeamento</button><button disabled={saving || !statuses.length} onClick={save} className="rounded-lg bg-[var(--action)] px-3 py-2 text-[var(--action-ink)]">{saving ? 'Salvando…' : 'Salvar mapeamentos'}</button></div>
       </>}
-      {error && <p role="alert" className="text-rose-600 dark:text-rose-400">{error}</p>}{notice && <p role="status" className="text-emerald-600 dark:text-emerald-400">{notice}</p>}
+      {error && <p role="alert" className="text-[var(--danger-text)] dark:text-[var(--danger-text)]">{error}</p>}{notice && <p role="status" className="text-[var(--success-text)] dark:text-[var(--success-text)]">{notice}</p>}
     </div>
   </details>;
 }

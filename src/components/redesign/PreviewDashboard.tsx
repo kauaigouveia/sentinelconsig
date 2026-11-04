@@ -1,3 +1,4 @@
+import {TokenDonut} from '../ui/ChartPatterns';
 import React, { useState } from "react";
 import {
   Layers,
@@ -128,7 +129,7 @@ export function PreviewDashboard({
       detail: "Carteira disponível",
       definition: "Propostas operacionais ativas no conjunto carregado.",
       icon: Layers,
-      color: "#3b82f6",
+      color: "var(--chart-series-1)",
     },
     {
       label: "Volume liberado · pagas",
@@ -137,7 +138,7 @@ export function PreviewDashboard({
       definition:
         "Soma dos valores liberados das propostas com status pago. Não representa data de pagamento.",
       icon: CircleDollarSign,
-      color: "#06b6d4",
+      color: "var(--chart-series-2)",
     },
     {
       label: "Produção do período",
@@ -146,7 +147,7 @@ export function PreviewDashboard({
       definition:
         "Valor de contrato das propostas criadas no período escolhido.",
       icon: FileText,
-      color: "#8b5cf6",
+      color: "var(--chart-series-3)",
     },
     {
       label: "Propostas pagas",
@@ -155,7 +156,7 @@ export function PreviewDashboard({
       definition:
         "Quantidade de propostas atualmente pagas no conjunto carregado.",
       icon: CheckCircle2,
-      color: "#10b981",
+      color: "var(--chart-series-4)",
     },
     {
       label: "Pendências abertas",
@@ -164,7 +165,7 @@ export function PreviewDashboard({
       definition:
         "Entidades de pendência abertas. Fonte não conectada na prévia autenticada; não confundir com status pendente.",
       icon: ListChecks,
-      color: "#f59e0b",
+      color: "var(--text-secondary)",
     },
     {
       label: "Propostas fora do SLA",
@@ -175,7 +176,7 @@ export function PreviewDashboard({
       definition:
         "Contagem fornecida pela análise de permanência existente, sem recalcular regras de SLA.",
       icon: Clock3,
-      color: "#f43f5e",
+      color: "var(--text-secondary)",
     },
   ];
   const bankCounts = Array.from(
@@ -218,25 +219,25 @@ export function PreviewDashboard({
           label: "Pendências documentais críticas",
           count: 3,
           path: "/central-pendencias",
-          color: "#f43f5e",
+          color: "url(#sentinel-chart-pattern-6)",
         },
         {
           label: "Propostas fora do SLA",
           count: 7,
           path: "/relatorio-gargalos",
-          color: "#f59e0b",
+          color: "url(#sentinel-chart-pattern-5)",
         },
         {
           label: "Aguardando retorno CIP",
           count: 9,
           path: "/portabilidade",
-          color: "#06b6d4",
+          color: "var(--chart-series-2)",
         },
         {
           label: "Fila de formalização",
           count: 9,
           path: "/propostas",
-          color: "#8b5cf6",
+          color: "var(--chart-series-3)",
         },
       ]
     : (bottlenecks?.byStatus || [])
@@ -246,7 +247,7 @@ export function PreviewDashboard({
           label: s.statusName,
           count: s.overSlaCount,
           path: "/propostas",
-          color: "#f59e0b",
+          color: "url(#sentinel-chart-pattern-5)",
           id: s.statusId,
         }));
   const refresh = () => {
@@ -478,16 +479,7 @@ export function PreviewDashboard({
                   margin={{ top: 12, right: 8, left: 0, bottom: 0 }}
                 >
                   <defs>
-                    <linearGradient
-                      id="production-fill"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop offset="0" stopColor="#06b6d4" stopOpacity={0.38} />
-                      <stop offset="1" stopColor="#2563eb" stopOpacity={0.01} />
-                    </linearGradient>
+
                   </defs>
                   <CartesianGrid
                     vertical={false}
@@ -526,9 +518,9 @@ export function PreviewDashboard({
                   <Area
                     type="monotone"
                     dataKey={series}
-                    stroke="#06b6d4"
+                    stroke="var(--chart-series-2)"
                     strokeWidth={3}
-                    fill="url(#production-fill)"
+                    fill="var(--chart-series-1)"
                     isAnimationActive={false}
                   />
                 </AreaChart>
@@ -726,10 +718,8 @@ export function PreviewDashboard({
                   className="p2-donut"
                   role="img"
                   aria-label={`${permittedRows.length} propostas distribuídas por status`}
-                  style={{
-                    background: `conic-gradient(${statuses.map((s, i) => `${s.color} ${(statuses.slice(0, i).reduce((a, v) => a + v.count, 0) / permittedRows.length) * 100}% ${(statuses.slice(0, i + 1).reduce((a, v) => a + v.count, 0) / permittedRows.length) * 100}%`).join(",")})`,
-                  }}
                 >
+                  <TokenDonut data={statuses} total={permittedRows.length}/>
                   <div>
                     <strong>{permittedRows.length}</strong>
                     <small>propostas</small>

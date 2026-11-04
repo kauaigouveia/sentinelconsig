@@ -54,28 +54,28 @@ export class ErrorBoundary extends Component<Props, State> {
   public render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-slate-900 text-slate-100 p-6 selection:bg-rose-500 selection:text-white">
-          <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center">
+        <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-surface)] text-[var(--text-primary)] p-6 selection:bg-[var(--danger-bg)] selection:text-[var(--text-primary)]">
+          <div className="w-full max-w-md bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] rounded-2xl p-8  text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-[var(--danger-bg)] border border-[var(--danger-border)] text-[var(--danger-text)] mx-auto flex items-center justify-center">
               <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
 
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-[var(--text-secondary)] uppercase">
                 SENTINEL CONSIG
               </span>
-              <h1 className="text-xl font-black text-white tracking-tight">
+              <h1 className="text-xl font-black text-[var(--text-primary)] tracking-tight">
                 Não foi possível carregar o Sentinel Consig
               </h1>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 Veja. Antecipe. Comande.
               </p>
             </div>
 
             {this.state.error?.message && (
-              <div className="text-left bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono text-rose-300 max-h-24 overflow-y-auto break-words">
+              <div className="text-left bg-[var(--bg-canvas)] border border-[var(--field-border)] rounded-lg p-3 text-[11px] font-mono text-[var(--danger-text)] max-h-24 overflow-y-auto break-words">
                 {this.state.error.message}
               </div>
             )}
@@ -85,7 +85,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 id="btn-reload-app"
                 type="button"
                 onClick={this.handleReload}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md cursor-pointer"
+                className="w-full py-2.5 px-4 bg-[var(--action)] hover:bg-[var(--action-hover)] active:bg-[var(--action)] text-[var(--action-ink)] text-xs font-bold rounded-xl transition  cursor-pointer"
               >
                 Recarregar aplicação
               </button>
@@ -94,7 +94,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 id="btn-clear-cache-reload"
                 type="button"
                 onClick={this.handleClearCacheAndReload}
-                className="w-full py-2.5 px-4 bg-slate-700/80 hover:bg-slate-700 active:bg-slate-600 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-600 transition cursor-pointer"
+                className="w-full py-2.5 px-4 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] active:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] hover:text-[var(--text-primary)] text-xs font-semibold rounded-xl border border-[var(--field-border)] transition cursor-pointer"
               >
                 Limpar cache local e recarregar
               </button>

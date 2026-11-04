@@ -42,7 +42,7 @@ export const GamificationCenter: React.FC = () => {
         .filter(p => p.statusId === paidStatus?.id)
         .reduce((sum, p) => sum + (p.disbursedValue || 0), 0);
       const conversion = totalProps > 0 ? Math.round((pagas / totalProps) * 100) : 0;
-      
+
       // Calculate XP: 100 XP per proposal + 500 XP per paid proposal + 1 XP per R$ 100 disbursed
       const xp = totalProps * 100 + pagas * 500 + Math.round(volumePago / 100);
       const level = Math.floor(xp / 2000) + 1;
@@ -90,72 +90,72 @@ export const GamificationCenter: React.FC = () => {
         title="Centro de Conquistas & Performance Corporativa"
         subtitle="Reconhecimento de mérito, pontuação por liquidação e acompanhamento de produtividade dos operadores"
         badgeText="ENGINE DE PERFORMANCE"
-        badgeColor="bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+        badgeColor="bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]"
       />
 
       {/* 1. SEÇÃO MINHA PERFORMANCE */}
-      <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
+      <div className="rounded-2xl border border-[var(--warning-border)] dark:border-[var(--warning-border)]    to-transparent p-5  space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--warning-border)] dark:border-[var(--warning-border)] pb-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-base shadow-xs">
+            <div className="h-10 w-10 rounded-xl bg-[var(--warning-bg)] text-[var(--warning-text)] flex items-center justify-center font-black text-base shadow-xs">
               {myStats.level}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Meu Painel: {activeUser.name}
                 </h3>
-                <span className="px-2 py-0.2 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                <span className="px-2 py-0.2 rounded-full text-[10px] font-black bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                   NÍVEL {myStats.level}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
-                Posição no Ranking Geral: <strong className="text-amber-600 dark:text-amber-400">#{myRankIndex >= 0 ? myRankIndex + 1 : '—'}</strong> de {leaderboard.length} operadores
+              <p className="text-xs text-[var(--text-secondary)]">
+                Posição no Ranking Geral: <strong className="text-[var(--warning-text)] dark:text-[var(--warning-text)]">#{myRankIndex >= 0 ? myRankIndex + 1 : '—'}</strong> de {leaderboard.length} operadores
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="text-slate-500">Pontuação Total:</span>
-            <span className="text-base font-black text-amber-600 dark:text-amber-400">
+            <span className="text-[var(--text-secondary)]">Pontuação Total:</span>
+            <span className="text-base font-black text-[var(--warning-text)] dark:text-[var(--warning-text)]">
               {myStats.xp.toLocaleString()} XP
             </span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
-          <div className="p-3 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Propostas Digitadas</span>
-            <p className="text-lg font-black text-slate-900 dark:text-white mt-0.5">{myStats.totalProps}</p>
+          <div className="p-3 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Propostas Digitadas</span>
+            <p className="text-lg font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-0.5">{myStats.totalProps}</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">Pagas / Liquidadas</span>
-            <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 mt-0.5">{myStats.pagas}</p>
+          <div className="p-3 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[10px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)] uppercase block">Pagas / Liquidadas</span>
+            <p className="text-lg font-black text-[var(--success-text)] dark:text-[var(--success-text)] mt-0.5">{myStats.pagas}</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase block">Taxa de Conversão</span>
-            <p className="text-lg font-black text-blue-700 dark:text-blue-400 mt-0.5">{myStats.conversion}%</p>
+          <div className="p-3 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[10px] font-bold text-[var(--link)] dark:text-[var(--link)] uppercase block">Taxa de Conversão</span>
+            <p className="text-lg font-black text-[var(--link)] dark:text-[var(--link)] mt-0.5">{myStats.conversion}%</p>
           </div>
 
-          <div className="p-3 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase block">Volume Liquidado</span>
-            <p className="text-lg font-black text-slate-900 dark:text-white mt-0.5 truncate">{formatCurrency(myStats.volumePago)}</p>
+          <div className="p-3 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+            <span className="text-[10px] font-bold text-[var(--warning-text)] dark:text-[var(--warning-text)] uppercase block">Volume Liquidado</span>
+            <p className="text-lg font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-0.5 truncate">{formatCurrency(myStats.volumePago)}</p>
           </div>
         </div>
       </div>
 
       {/* 2. LEADERBOARD CORPORATIVO */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
           <div className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-amber-500" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <Trophy className="h-4 w-4 text-[var(--warning-text)]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Ranking Geral de Produtividade dos Operadores
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-bold uppercase">Ordenado por XP Operacional</span>
+          <span className="text-[11px] text-[var(--text-secondary)] font-bold uppercase">Ordenado por XP Operacional</span>
         </div>
 
         <div className="space-y-2">
@@ -169,20 +169,20 @@ export const GamificationCenter: React.FC = () => {
                 key={user.id}
                 className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
                   user.id === activeUser.id
-                    ? 'border-blue-300 dark:border-blue-700 bg-blue-50/40 dark:bg-blue-950/30 shadow-2xs'
-                    : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-900/40'
+                    ? 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] shadow-2xs'
+                    : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`h-8 w-8 rounded-xl font-black text-xs flex items-center justify-center ${
                       isTop1
-                        ? 'bg-amber-500 text-white shadow-xs'
+                        ? 'bg-[var(--warning-bg)] text-[var(--text-primary)] shadow-xs'
                         : isTop2
-                        ? 'bg-slate-400 text-white'
+                        ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]'
                         : isTop3
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        ? 'bg-[var(--warning-bg)] text-[var(--text-primary)]'
+                        : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                     }`}
                   >
                     {isTop1 ? <Crown className="h-4 w-4" /> : `#${idx + 1}`}
@@ -190,26 +190,26 @@ export const GamificationCenter: React.FC = () => {
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      <h4 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         {user.name}
                       </h4>
                       {user.id === activeUser.id && (
-                        <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]">
                           VOCÊ
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                       Nível {user.level} • {user.totalProps} propostas ({user.conversion}% conversão)
                     </span>
                   </div>
                 </div>
 
                 <div className="text-right font-mono">
-                  <span className="text-xs font-black text-amber-600 dark:text-amber-400 block">
+                  <span className="text-xs font-black text-[var(--warning-text)] dark:text-[var(--warning-text)] block">
                     {user.xp.toLocaleString()} XP
                   </span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-[var(--text-secondary)]">
                     {formatCurrency(user.volumePago)} pago
                   </span>
                 </div>
@@ -220,15 +220,15 @@ export const GamificationCenter: React.FC = () => {
       </div>
 
       {/* 3. MATRIZ DE CONQUISTAS */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
           <div className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-amber-500" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <Award className="h-4 w-4 text-[var(--warning-text)]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Galeria de Medalhas & Conquistas Desbloqueáveis
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-bold uppercase">{achievements.length} medalhas atribuídas</span>
+          <span className="text-[11px] text-[var(--text-secondary)] font-bold uppercase">{achievements.length} medalhas atribuídas</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
@@ -241,19 +241,19 @@ export const GamificationCenter: React.FC = () => {
                 key={badge.code}
                 className={`p-4 rounded-xl border transition-all space-y-2.5 ${
                   isUnlocked
-                    ? 'border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 shadow-2xs'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 opacity-60'
+                    ? 'border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shadow-2xs'
+                    : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] opacity-60'
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl shadow-2xs border border-amber-100 dark:border-amber-900/60">
+                  <div className="h-10 w-10 rounded-xl bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-center justify-center text-xl  border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
                     {badge.icon}
                   </div>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[9.5px] font-black ${
                       isUnlocked
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                        : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                        : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-secondary)]'
                     }`}
                   >
                     {isUnlocked ? `${unlockedInstances.length} Conquistada(s)` : 'Bloqueada'}
@@ -261,16 +261,16 @@ export const GamificationCenter: React.FC = () => {
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">{badge.title}</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{badge.description}</p>
+                  <h4 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{badge.title}</h4>
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{badge.description}</p>
                 </div>
 
                 {isUnlocked && (
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 flex flex-wrap gap-1">
+                  <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] flex flex-wrap gap-1">
                     {unlockedInstances.map(inst => (
                       <span
                         key={inst.id}
-                        className="bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded"
+                        className="bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold px-1.5 py-0.5 rounded"
                       >
                         {inst.operatorName}
                       </span>

@@ -174,35 +174,35 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end overflow-hidden bg-slate-900/30 backdrop-blur-xs" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="notifications-title" className="flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-        
+    <div className="fixed inset-0 z-50 flex justify-end overflow-hidden bg-[var(--scrim)] backdrop-blur-xs" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="notifications-title" className="flex h-full w-full max-w-md flex-col border-l border-[var(--field-border)] bg-[var(--bg-surface)]  dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]">
+
         {/* Header Tabs */}
-        <div className="flex flex-col border-b border-slate-200 bg-slate-50 px-4 pt-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col border-b border-[var(--field-border)] bg-[var(--bg-canvas)] px-4 pt-4 dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
           <div className="flex items-center justify-between mb-4">
-            <h3 id="notifications-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">Central de notificações</h3>
+            <h3 id="notifications-title" className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Central de notificações</h3>
             <button
               onClick={onClose}
               aria-label="Fechar notificações"
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-surface-elevated)] dark:hover:text-[var(--text-primary)]"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
             <button
               onClick={() => setActiveTab('notifications')}
               className={`pb-3 text-xs font-bold flex items-center gap-1.5 transition-colors border-b-2 ${
-                activeTab === 'notifications' 
-                  ? 'border-blue-600 text-blue-600' 
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'
+                activeTab === 'notifications'
+                  ? 'border-[var(--field-border)] text-[var(--link)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
               }`}
             >
               <Bell className="h-4 w-4" />
               Notificações
               {unreadNotifCount > 0 && (
-                <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-1">
+                <span className="bg-[var(--danger-bg)] text-[var(--text-primary)] text-[9px] px-1.5 py-0.5 rounded-full ml-1">
                   {unreadNotifCount}
                 </span>
               )}
@@ -211,15 +211,15 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
             <button
               onClick={() => setActiveTab('announcements')}
               className={`pb-3 text-xs font-bold flex items-center gap-1.5 transition-colors border-b-2 ${
-                activeTab === 'announcements' 
-                  ? 'border-blue-600 text-blue-600' 
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'
+                activeTab === 'announcements'
+                  ? 'border-[var(--field-border)] text-[var(--link)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
               }`}
             >
               <Megaphone className="h-4 w-4" />
               Comunicados
               {unreadAnnounceCount > 0 && (
-                <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-1">
+                <span className="bg-[var(--danger-bg)] text-[var(--text-primary)] text-[9px] px-1.5 py-0.5 rounded-full ml-1">
                   {unreadAnnounceCount}
                 </span>
               )}
@@ -229,10 +229,10 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
 
         {/* Action Bar */}
         {activeTab === 'notifications' && unreadNotifCount > 0 && (
-          <div className="flex justify-end border-b border-slate-100 bg-slate-50 px-4 py-2 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="flex justify-end border-b border-[var(--field-border)] bg-[var(--bg-canvas)] px-4 py-2 dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
             <button
               onClick={handleMarkAllRead}
-              className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+              className="text-[11px] text-[var(--link)] hover:text-[var(--link)] font-semibold flex items-center gap-1"
             >
               <CheckCheck className="h-3.5 w-3.5" />
               <span>Marcar todas como lidas</span>
@@ -241,24 +241,24 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
         )}
 
         {/* Content */}
-        <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50/50 p-4 dark:bg-slate-950">
+        <div className="flex-1 space-y-3 overflow-y-auto bg-[var(--bg-canvas)] p-4 dark:bg-[var(--bg-canvas)]">
           {isLoading ? (
-            <div role="status" className="flex items-center justify-center gap-2 py-12 text-xs text-slate-500 dark:text-slate-400">
+            <div role="status" className="flex items-center justify-center gap-2 py-12 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               <RefreshCw className="h-4 w-4 animate-spin" /> Carregando notificações e comunicados...
             </div>
           ) : <>
           {loadError && (
-            <div role="alert" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            <div role="alert" className="flex items-center gap-2 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:border-[var(--warning-border)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span className="flex-1">{loadError}</span>
               <button type="button" onClick={() => void fetchData()} className="shrink-0 font-bold underline">Tentar novamente</button>
             </div>
           )}
-          
+
           {activeTab === 'notifications' && (
             <>
               {notifications.length === 0 ? (
-                <p className="py-12 text-center text-xs italic text-slate-400 dark:text-slate-500">
+                <p className="py-12 text-center text-xs italic text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Nenhuma notificação no momento.
                 </p>
               ) : (
@@ -267,19 +267,19 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
                     key={n.id}
                     type="button"
                     onClick={() => void handleNotifClick(n)}
-                    className={`w-full rounded-xl border p-3 text-left text-xs transition-all hover:shadow-xs ${
+                    className={`w-full rounded-xl border p-3 text-left text-xs transition-all  ${
                       n.read
-                        ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
-                        : 'border-blue-200 bg-blue-50/70 font-medium text-slate-900 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-slate-100'
+                        ? 'border-[var(--field-border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)] dark:text-[var(--text-primary)]'
+                        : 'border-[var(--field-border)] bg-[var(--info-bg)] font-medium text-[var(--text-secondary)] dark:border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--text-primary)]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100">{n.title}</span>
-                      <span className="text-[10px] text-slate-400">{formatDate(n.createdAt)}</span>
+                      <span className="text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{n.title}</span>
+                      <span className="text-[10px] text-[var(--text-secondary)]">{formatDate(n.createdAt)}</span>
                     </div>
-                    <p className="text-slate-600 dark:text-slate-300">{n.message}</p>
+                    <p className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{n.message}</p>
                     {n.proposalId && (
-                      <span className="text-[10px] text-blue-600 font-bold block mt-1.5">
+                      <span className="text-[10px] text-[var(--link)] font-bold block mt-1.5">
                         → Clique para abrir a proposta
                       </span>
                     )}
@@ -292,7 +292,7 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
           {activeTab === 'announcements' && (
             <>
               {announcements.length === 0 ? (
-                <p className="py-12 text-center text-xs italic text-slate-400 dark:text-slate-500">
+                <p className="py-12 text-center text-xs italic text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Nenhum comunicado disponível.
                 </p>
               ) : (
@@ -301,37 +301,37 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
                     key={a.id}
                     className={`p-4 rounded-xl border text-xs transition-all flex flex-col ${
                       a.read
-                        ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
-                        : 'border-amber-200 bg-amber-50/70 shadow-xs dark:border-amber-900/70 dark:bg-amber-950/25'
+                        ? 'border-[var(--field-border)] bg-[var(--bg-surface)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]'
+                        : 'border-[var(--warning-border)] bg-[var(--warning-bg)]  dark:border-[var(--warning-border)] dark:bg-[var(--warning-bg)]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                        a.priority === 'URGENT' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
-                        a.priority === 'HIGH' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
-                        'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                        a.priority === 'URGENT' ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]' :
+                        a.priority === 'HIGH' ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]' :
+                        'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
                       }`}>
                         {a.priority}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                         {formatDate(a.publishedAt)}
                       </span>
                     </div>
-                    <h4 className="mb-1.5 text-sm font-black text-slate-900 dark:text-slate-100">{a.title}</h4>
-                    <p className="mb-3 leading-relaxed text-slate-600 dark:text-slate-300">{a.content}</p>
-                    
-                    <div className="mt-auto flex items-center gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+                    <h4 className="mb-1.5 text-sm font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{a.title}</h4>
+                    <p className="mb-3 leading-relaxed text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{a.content}</p>
+
+                    <div className="mt-auto flex items-center gap-2 border-t border-[var(--field-border)] pt-2 dark:border-[var(--field-border)]">
                       {!a.read && (
-                        <button 
+                        <button
                           onClick={() => handleAnnounceRead(a)}
-                          className="flex-1 cursor-pointer rounded-lg bg-blue-50 px-3 py-1.5 font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-900/60"
+                          className="flex-1 cursor-pointer rounded-lg bg-[var(--info-bg)] px-3 py-1.5 font-bold text-[var(--link)] transition-colors hover:bg-[var(--info-bg)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] dark:hover:bg-[var(--info-bg)]"
                         >
                           Marcar Lida
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={() => handleAnnounceDismiss(a)}
-                        className="flex-1 cursor-pointer rounded-lg bg-slate-100 px-3 py-1.5 font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        className="flex-1 cursor-pointer rounded-lg bg-[var(--bg-surface-elevated)] px-3 py-1.5 font-bold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-surface-elevated)]"
                       >
                         Ocultar (Dismiss)
                       </button>

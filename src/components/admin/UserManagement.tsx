@@ -494,14 +494,14 @@ export const UserManagement: React.FC = () => {
   };
 
   const roleColors: Record<Role, string> = {
-    PLATFORM_MASTER: 'bg-indigo-100 text-indigo-900 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200',
-    MASTER: 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200',
-    TENANT_ADMIN: 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-200',
-    GESTOR: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200',
-    GERENTE: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200',
-    SUPORTE: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200',
-    DIGITADOR: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200',
-    SIMULACAO: 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-200',
+    PLATFORM_MASTER: 'bg-[var(--info-bg)] text-[var(--link)] border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]',
+    MASTER: 'bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]',
+    TENANT_ADMIN: 'bg-[var(--info-bg)] text-[var(--link)] border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]',
+    GESTOR: 'bg-[var(--info-bg)] text-[var(--link)] border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]',
+    GERENTE: 'bg-[var(--info-bg)] text-[var(--link)] border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]',
+    SUPORTE: 'bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--warning-border)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]',
+    DIGITADOR: 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]',
+    SIMULACAO: 'bg-[var(--info-bg)] text-[var(--link)] border-[var(--field-border)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]',
   };
 
   return (
@@ -514,7 +514,7 @@ export const UserManagement: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowCreateCard(!showCreateCard)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-4 py-2  transition-colors cursor-pointer"
           >
             {showCreateCard ? <X className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
             <span>{showCreateCard ? 'Fechar Cadastro' : 'Novo Operador'}</span>
@@ -550,14 +550,14 @@ export const UserManagement: React.FC = () => {
       </div>
 
       {message && (
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 p-3.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2.5 shadow-2xs">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <div className="rounded-xl border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-3.5 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2.5 shadow-2xs">
+          <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)] shrink-0" />
           <span className="font-semibold">{message}</span>
         </div>
       )}
 
       {loadError && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] px-4 py-3 text-xs text-[var(--danger-text)] dark:border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]" role="alert">
           <span>{loadError}</span>
           <button type="button" onClick={() => void fetchUsers()} disabled={isLoading} className="shrink-0 font-bold underline underline-offset-2 disabled:opacity-50">
             {isLoading ? 'Carregando...' : 'Tentar novamente'}
@@ -567,13 +567,13 @@ export const UserManagement: React.FC = () => {
 
       {/* User Creation Card (Toggleable or Expandable) */}
       {showCreateCard && canCreateUsers && (
-        <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/20 dark:bg-blue-950/20 p-5 shadow-2xs space-y-4 animate-in fade-in duration-150">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center justify-between">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-5  space-y-4 animate-in fade-in duration-150">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <UserPlus className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
               <span>Cadastrar Novo Operador</span>
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+            <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-normal">
               Sessão Ativa: <strong>{activeUser.email}</strong> ({activeUser.role})
             </span>
           </h3>
@@ -581,7 +581,7 @@ export const UserManagement: React.FC = () => {
           <form onSubmit={handleCreateUser} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Nome Completo *
                 </label>
                 <input
@@ -589,13 +589,13 @@ export const UserManagement: React.FC = () => {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="Ex: Carlos Oliveira"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   E-mail Global (Login Único) *
                 </label>
                 <input
@@ -603,20 +603,20 @@ export const UserManagement: React.FC = () => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="usuario@empresa.com.br"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Empresa / Tenant *
                 </label>
                 {isPlatformMaster ? (
                   <select
                     value={selectedTenantId}
                     onChange={e => setSelectedTenantId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                   >
                     <option value="">⚡ MASTER OP Global (Sem Tenant)</option>
                     {tenants.map(t => (
@@ -626,8 +626,8 @@ export const UserManagement: React.FC = () => {
                     ))}
                   </select>
                 ) : (
-                  <div className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)] shrink-0" />
                     <span className="truncate">
                       {tenants.find(t => t.id === selectedTenantId)?.name || 'Organização Atual'}
                     </span>
@@ -636,13 +636,13 @@ export const UserManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Perfil na Empresa *
                 </label>
                 <select
                   value={role}
                   onChange={e => handleRoleChange(e.target.value as any)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                 >
                   {isPlatformMaster && !selectedTenantId && (
                     <option value="PLATFORM_MASTER">⚡ MASTER OP (Global)</option>
@@ -659,17 +659,17 @@ export const UserManagement: React.FC = () => {
 
             {/* Extra Multi-Tenant Memberships (Opcional para MASTER OP) */}
             {isPlatformMaster && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 p-3 space-y-2.5">
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3 space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-[var(--link)]" />
                     <span>Vincular a Mais Empresas Simultaneamente (Opcional)</span>
                   </span>
                   <div className="flex items-center gap-2 flex-wrap">
                     <select
                       value={newExtraTenantId}
                       onChange={e => setNewExtraTenantId(e.target.value)}
-                      className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-slate-100"
+                      className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                     >
                       <option value="">Selecione outra empresa...</option>
                       {tenants
@@ -684,7 +684,7 @@ export const UserManagement: React.FC = () => {
                     <select
                       value={newExtraRole}
                       onChange={e => setNewExtraRole(e.target.value as Role)}
-                      className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-900 dark:text-slate-100 font-semibold"
+                      className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-semibold"
                     >
                       <option value="TENANT_ADMIN">TENANT_ADMIN</option>
                       <option value="GESTOR">GESTOR</option>
@@ -702,7 +702,7 @@ export const UserManagement: React.FC = () => {
                         setExtraMemberships(prev => [...prev, { tenantId: newExtraTenantId, role: newExtraRole }]);
                         setNewExtraTenantId('');
                       }}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold disabled:opacity-40 cursor-pointer"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-lg text-xs font-bold disabled:opacity-90 cursor-pointer"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       <span>Adicionar</span>
@@ -717,17 +717,17 @@ export const UserManagement: React.FC = () => {
                       return (
                         <span
                           key={em.tenantId}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                         >
-                          <Building2 className="h-3 w-3 text-blue-500" />
+                          <Building2 className="h-3 w-3 text-[var(--link)]" />
                           <span>{t?.name || em.tenantId}</span>
-                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                          <span className="text-[10px] text-[var(--link)] dark:text-[var(--link)] font-bold">
                             ({em.role})
                           </span>
                           <button
                             type="button"
                             onClick={() => setExtraMemberships(prev => prev.filter(x => x.tenantId !== em.tenantId))}
-                            className="text-slate-400 hover:text-rose-500 ml-1"
+                            className="text-[var(--text-secondary)] hover:text-[var(--danger-text)] ml-1"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -744,9 +744,9 @@ export const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowPermissionSelector(!showPermissionSelector)}
-                className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1.5 cursor-pointer py-1"
+                className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--link)] dark:hover:text-[var(--link)] flex items-center gap-1.5 cursor-pointer py-1"
               >
-                <Shield className="h-3.5 w-3.5 text-blue-500" />
+                <Shield className="h-3.5 w-3.5 text-[var(--link)]" />
                 <span>
                   Personalizar Permissões Granulares (Opcional — o perfil selecionado já atribui {selectedPermissions.length} permissões padrão)
                 </span>
@@ -756,14 +756,14 @@ export const UserManagement: React.FC = () => {
 
             {/* Granular Permission Selector Collapsible */}
             {showPermissionSelector && (
-              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4 space-y-4">
+                <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                      <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <h4 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                      <Shield className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
                       <span>Ajuste Fino de Permissões Individuais</span>
                     </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                       O perfil <strong>{getRoleLabel(role)}</strong> inicia com {getPermissionsForRole(role).length} permissões padrão. Você pode personalizar abaixo.
                     </p>
                   </div>
@@ -771,14 +771,14 @@ export const UserManagement: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleSelectAllPermissions}
-                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      className="text-[11px] font-bold text-[var(--link)] dark:text-[var(--link)] hover:underline px-2 py-1 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded border border-[var(--field-border)] dark:border-[var(--field-border)] cursor-pointer"
                     >
                       Selecionar Todas
                     </button>
                     <button
                       type="button"
                       onClick={handleClearAllPermissions}
-                      className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      className="text-[11px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:underline px-2 py-1 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded border border-[var(--field-border)] dark:border-[var(--field-border)] cursor-pointer"
                     >
                       Limpar Todas
                     </button>
@@ -801,15 +801,15 @@ export const UserManagement: React.FC = () => {
                     };
 
                     return (
-                      <div key={cat.category} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3 space-y-2">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
-                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                      <div key={cat.category} className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-3 space-y-2">
+                        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-1.5">
+                          <span className="text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider">
                             {cat.label}
                           </span>
                           <button
                             type="button"
                             onClick={toggleCategory}
-                            className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer"
+                            className="text-[10px] text-[var(--link)] dark:text-[var(--link)] font-bold hover:underline cursor-pointer"
                           >
                             {allCatSelected ? 'Desmarcar Módulo' : 'Marcar Módulo'}
                           </button>
@@ -820,13 +820,13 @@ export const UserManagement: React.FC = () => {
                             return (
                               <label
                                 key={perm.id}
-                                className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                                className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]"
                               >
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={() => togglePermission(perm.id)}
-                                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                                  className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-3.5 w-3.5"
                                 />
                                 <span>{perm.label}</span>
                               </label>
@@ -844,13 +844,13 @@ export const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowCreateCard(false)}
-                className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-5 py-2 shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-5 py-2  flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
                 <span>Cadastrar Usuário</span>
@@ -861,17 +861,17 @@ export const UserManagement: React.FC = () => {
       )}
 
       {/* User Table List */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-0">
+      <div className="overflow-hidden rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-0">
         {/* Table Filter Header */}
-        <div className="p-4 bg-slate-50/70 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="p-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Buscar por nome ou e-mail..."
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
             />
           </div>
 
@@ -880,7 +880,7 @@ export const UserManagement: React.FC = () => {
             <select
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+              className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
             >
               <option value="ALL">Todos os Perfis</option>
               {isPlatformMaster && <option value="PLATFORM_MASTER">MASTER OP</option>}
@@ -897,14 +897,14 @@ export const UserManagement: React.FC = () => {
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+              className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
             >
               <option value="ALL">Todos os Status</option>
               <option value="ACTIVE">Somente Ativos</option>
               <option value="INACTIVE">Somente Inativos</option>
             </select>
 
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 pl-1">
+            <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] pl-1">
               {filteredUsers.length} de {users.length}
             </span>
           </div>
@@ -912,10 +912,10 @@ export const UserManagement: React.FC = () => {
 
         {/* Multi-selection Contextual Action Bar */}
         {canDeleteUsers && selectedUserIds.size > 0 && (
-          <div className="px-4 py-2.5 bg-indigo-50/90 dark:bg-indigo-950/60 border-b border-indigo-200 dark:border-indigo-800/80 flex items-center justify-between gap-3 animate-in fade-in duration-100">
+          <div className="px-4 py-2.5 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between gap-3 animate-in fade-in duration-100">
             <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse" />
-              <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+              <span className="flex h-2 w-2 rounded-full bg-[var(--info-bg)] animate-pulse" />
+              <span className="text-xs font-bold text-[var(--link)] dark:text-[var(--link)]">
                 {selectedUserIds.size} {selectedUserIds.size === 1 ? 'usuário selecionado' : 'usuários selecionados'}
               </span>
             </div>
@@ -923,7 +923,7 @@ export const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClearSelection}
-                className="px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer"
+                className="px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] cursor-pointer"
               >
                 Limpar seleção
               </button>
@@ -933,7 +933,7 @@ export const UserManagement: React.FC = () => {
                   setBulkDeleteConfirmationText('');
                   setIsBulkDeleteModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-[var(--danger-text)] bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] rounded-lg  cursor-pointer transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Excluir selecionados</span>
@@ -943,8 +943,8 @@ export const UserManagement: React.FC = () => {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-canvas)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="px-3 py-3 w-10 text-center">
                   {canDeleteUsers && (
@@ -956,7 +956,7 @@ export const UserManagement: React.FC = () => {
                       if (el) el.indeterminate = isSomeVisibleSelected;
                     }}
                     onChange={handleToggleSelectAll}
-                    className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                    className="rounded border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-4 w-4 cursor-pointer"
                     title={isAllVisibleSelected ? 'Desmarcar todos' : 'Selecionar todos visíveis'}
                   />
                   )}
@@ -970,17 +970,17 @@ export const UserManagement: React.FC = () => {
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
               {isLoading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-xs">
+                  <td colSpan={8} className="px-4 py-10 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
                     <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
                     Carregando usuários...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                  <td colSpan={8} className="px-4 py-8 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
                     Nenhum operador encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -995,8 +995,8 @@ export const UserManagement: React.FC = () => {
                   return (
                     <tr
                       key={u.id}
-                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
-                        isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''
+                      className={`hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors ${
+                        isSelected ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]' : ''
                       }`}
                     >
                       <td className="px-3 py-3 text-center">
@@ -1007,36 +1007,36 @@ export const UserManagement: React.FC = () => {
                           onChange={() => handleToggleSelectUser(u.id)}
                           disabled={!canSelectUserForDeletion(u)}
                           title={u.id === activeUser.id ? 'Não é possível excluir seu próprio usuário.' : u.role === 'PLATFORM_MASTER' && !isPlatformMaster ? 'Somente um PLATFORM_MASTER pode excluir este usuário.' : undefined}
-                          className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
                         />
                         )}
                       </td>
-                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
+                      <td className="px-4 py-3 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setDetailsUser(u)}
-                            className="text-left font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
+                            className="text-left font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--link)] dark:hover:text-[var(--link)] hover:underline cursor-pointer"
                             title="Ver detalhes e empresas vinculadas"
                           >
                             {u.name}
                           </button>
                           {isActive && (
-                            <span className="text-blue-600 dark:text-blue-400 text-[10px] font-bold bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                            <span className="text-[var(--link)] dark:text-[var(--link)] text-[10px] font-bold bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-1.5 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                               (Você)
                             </span>
                           )}
                           {isMasterProtected && (
                             <span title="Usuário Protegido">
-                              <Lock className="h-3 w-3 text-amber-500" />
+                              <Lock className="h-3 w-3 text-[var(--warning-text)]" />
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{u.email}</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono text-[11px]">{u.email}</td>
                       <td className="px-4 py-3">
                         {u.role === 'PLATFORM_MASTER' && (!u.memberships || u.memberships.length === 0) ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-2 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                             ⚡ MASTER OP (Global)
                           </span>
                         ) : u.memberships && u.memberships.length > 0 ? (
@@ -1045,8 +1045,8 @@ export const UserManagement: React.FC = () => {
                               const tName = m.tenant?.name || tenants.find(t => t.id === m.tenantId)?.name || 'Empresa';
                               return (
                                 <div key={m.id || m.tenantId} className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                                    <Building2 className="h-3 w-3 text-blue-500 shrink-0" />
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                                    <Building2 className="h-3 w-3 text-[var(--link)] shrink-0" />
                                     <span className="truncate max-w-[140px]">{tName}</span>
                                   </span>
                                   <span
@@ -1057,15 +1057,15 @@ export const UserManagement: React.FC = () => {
                                     <span>{getRoleEmoji(m.role as Role)}</span>
                                     <span>{getRoleLabel(m.role as Role)}</span>
                                   </span>
-                                  {!m.active && <span className="text-[9px] text-rose-500 font-bold">(Inativo)</span>}
+                                  {!m.active && <span className="text-[9px] text-[var(--danger-text)] font-bold">(Inativo)</span>}
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                              <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                              <Building2 className="h-3 w-3 text-[var(--text-secondary)] shrink-0" />
                               <span className="truncate max-w-[140px]">
                                 {tenants.find(t => t.id === u.tenantId)?.name || 'Empresa Principal'}
                               </span>
@@ -1082,24 +1082,24 @@ export const UserManagement: React.FC = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold border border-slate-200 dark:border-slate-700">
-                          <Shield className="h-3 w-3 text-blue-500" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                          <Shield className="h-3 w-3 text-[var(--link)]" />
                           {u.role === 'PLATFORM_MASTER' ? 'Global (Total)' : `${effectivePerms.length} de ${maxPerms}`}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="space-y-0.5">
                           {u.active ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold text-[11px]">
+                            <span className="inline-flex items-center gap-1 text-[var(--success-text)] dark:text-[var(--success-text)] font-bold text-[11px]">
                               <CheckCircle2 className="h-3 w-3" /> Ativo
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-bold text-[11px]">
+                            <span className="inline-flex items-center gap-1 text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold text-[11px]">
                               Desativado
                             </span>
                           )}
                           {u.mustChangePassword && (
-                            <span className="block text-[9px] text-amber-800 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/60 w-max">
+                            <span className="block text-[9px] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] px-1.5 py-0.5 rounded border border-[var(--warning-border)] dark:border-[var(--warning-border)] w-max">
                               🔑 1º Acesso
                             </span>
                           )}
@@ -1109,7 +1109,7 @@ export const UserManagement: React.FC = () => {
                         {!isActive && (
                           <button
                             onClick={() => handleSwitchUser(u)}
-                            className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shadow-2xs"
+                            className="rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1 text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer shadow-2xs"
                           >
                             Assumir Perfil
                           </button>
@@ -1119,7 +1119,7 @@ export const UserManagement: React.FC = () => {
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => setDetailsUser(u)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--link)] rounded hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] transition-colors cursor-pointer"
                             title="Ver Detalhes do Usuário & Empresas"
                           >
                             <Building2 className="h-4 w-4" />
@@ -1127,7 +1127,7 @@ export const UserManagement: React.FC = () => {
 
                           {canUpdateUsers && <button
                             onClick={() => handleOpenEditModal(u)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--link)] rounded hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] transition-colors cursor-pointer"
                             title="Editar Usuário e Permissões"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -1135,7 +1135,7 @@ export const UserManagement: React.FC = () => {
 
                           {canResetPasswords && <button
                             onClick={() => handleResetPassword(u)}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 rounded hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--warning-text)] rounded hover:bg-[var(--warning-bg)] dark:hover:bg-[var(--warning-bg)] transition-colors cursor-pointer"
                             title="Redefinir Senha Temporária"
                           >
                             <KeyRound className="h-4 w-4" />
@@ -1144,7 +1144,7 @@ export const UserManagement: React.FC = () => {
                           {!isActive && canDeleteUsers && (
                             <button
                               onClick={() => handleDeleteUser(u)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--danger-text)] rounded hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] transition-colors cursor-pointer"
                               title="Excluir Usuário"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1163,18 +1163,18 @@ export const UserManagement: React.FC = () => {
 
       {/* EDIT USER & PERMISSIONS MODAL */}
       {editingUser && canUpdateUsers && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
               <div className="flex items-center gap-2">
-                <Edit2 className="h-5 w-5 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                <Edit2 className="h-5 w-5 text-[var(--link)]" />
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Editar Usuário & Permissões Granulares
                 </h3>
               </div>
               <button
                 onClick={() => setEditingUser(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] rounded"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1182,31 +1182,31 @@ export const UserManagement: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nome Completo</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">Nome Completo</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">E-mail (Inalterável)</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">E-mail (Inalterável)</label>
                 <input
                   type="email"
                   value={editingUser.email}
                   disabled
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs text-slate-500 cursor-not-allowed"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs text-[var(--text-secondary)] cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Perfil na Empresa *</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">Perfil na Empresa *</label>
                 <select
                   value={editRole}
                   onChange={e => handleEditRoleChange(e.target.value as any)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                 >
                   {isPlatformMaster && <option value="PLATFORM_MASTER">⚡ MASTER OP</option>}
                   <option value="TENANT_ADMIN">🏢 TENANT_ADMIN</option>
@@ -1220,11 +1220,11 @@ export const UserManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Status da Conta</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">Status da Conta</label>
                 <select
                   value={editActive ? 'active' : 'inactive'}
                   onChange={e => setEditActive(e.target.value === 'active')}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                 >
                   <option value="active">✅ Ativo</option>
                   <option value="inactive">🚫 Desativado / Suspenso</option>
@@ -1234,23 +1234,23 @@ export const UserManagement: React.FC = () => {
 
             {/* Granular Permissions Section in Modal */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Shield className="h-4 w-4 text-blue-600" />
+              <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2">
+                <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                  <Shield className="h-4 w-4 text-[var(--link)]" />
                   <span>Permissões Específicas do Usuário ({editPermissions.length} de {isPlatformMaster ? ALL_PERMISSIONS.length : DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN.length})</span>
                 </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setEditPermissions([...(isPlatformMaster ? ALL_PERMISSIONS : DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN)])}
-                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    className="text-[10px] font-bold text-[var(--link)] dark:text-[var(--link)] hover:underline"
                   >
                     Marcar Todas
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditPermissions([])}
-                    className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
+                    className="text-[10px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:underline"
                   >
                     Desmarcar Todas
                   </button>
@@ -1259,17 +1259,17 @@ export const UserManagement: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {(isPlatformMaster ? PERMISSION_CATEGORIES : PERMISSION_CATEGORIES.filter(c => c.category !== 'TENANTS')).map(cat => (
-                  <div key={cat.category} className="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5 bg-slate-50/50 dark:bg-slate-800/40 space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block border-b border-slate-200 dark:border-slate-700 pb-1">
+                  <div key={cat.category} className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] p-2.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] space-y-1.5">
+                    <span className="text-[10px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider block border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-1">
                       {cat.label}
                     </span>
                     {cat.permissions.map(perm => (
-                      <label key={perm.id} className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <label key={perm.id} className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={editPermissions.includes(perm.id)}
                           onChange={() => toggleEditPermission(perm.id)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                          className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] h-3.5 w-3.5"
                         />
                         <span>{perm.label}</span>
                       </label>
@@ -1279,18 +1279,18 @@ export const UserManagement: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               <button
                 type="button"
                 onClick={() => setEditingUser(null)}
-                className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleSaveEditUser}
-                className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-xs cursor-pointer"
+                className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-5 py-2 text-xs font-bold text-[var(--action-ink)]  cursor-pointer"
               >
                 Salvar Alterações
               </button>
@@ -1301,19 +1301,19 @@ export const UserManagement: React.FC = () => {
 
       {/* BULK DELETE CONFIRMATION MODAL */}
       {isBulkDeleteModalOpen && canDeleteUsers && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-2xl border border-rose-300 dark:border-rose-900/80 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 my-8 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="p-2.5 bg-rose-100 dark:bg-rose-950/80 rounded-xl text-rose-600 dark:text-rose-400 shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-xl rounded-2xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  space-y-4 my-8 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-4">
+              <div className="p-2.5 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] rounded-xl text-[var(--danger-text)] dark:text-[var(--danger-text)] shrink-0">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-rose-950 dark:text-rose-200">
+                <h3 className="text-sm font-black text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                   ATENÇÃO — Exclusão em Massa de Usuários
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                   Você está prestes a excluir{' '}
-                  <strong className="text-rose-600 dark:text-rose-400 font-bold">
+                  <strong className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold">
                     {selectedUsers.length} usuários
                   </strong>
                   . Os acessos serão revogados e os registros serão preservados conforme as regras de soft delete.
@@ -1323,12 +1323,12 @@ export const UserManagement: React.FC = () => {
 
             {/* Blocked Protection Warning */}
             {isBulkDeleteBlocked && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800/80 rounded-xl text-xs text-amber-900 dark:text-amber-200 space-y-1">
+              <div className="p-3 bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] rounded-xl text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)] space-y-1">
                 <p className="font-bold flex items-center gap-1.5">
-                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <AlertCircle className="h-4 w-4 text-[var(--warning-text)] shrink-0" />
                   <span>Operação Bloqueada por Proteção do Sistema</span>
                 </p>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                <p className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)]">
                   {containsSelf && '• A seleção inclui seu próprio usuário logado.'}
                   {containsPlatformMaster && ' • A seleção inclui usuário(s) com perfil MASTER OP.'}
                   {containsProtectedRoot && ' • A seleção inclui usuário(s) raiz/master protegidos.'}
@@ -1341,23 +1341,23 @@ export const UserManagement: React.FC = () => {
 
             {/* Selected Users List Preview */}
             <div className="space-y-1.5">
-              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              <span className="text-[10.5px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] uppercase tracking-wider block">
                 Usuários selecionados ({selectedUsers.length}):
               </span>
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-2 divide-y divide-slate-200/60 dark:divide-slate-800/60 text-xs">
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-2 divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] text-xs">
                 {selectedUsers.slice(0, 10).map(u => (
                   <div key={u.id} className="py-1.5 px-2 flex items-center justify-between gap-2">
                     <div className="truncate flex-1">
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{u.name}</span>
-                      <span className="text-slate-500 dark:text-slate-400 text-[11px] ml-1.5">({u.email})</span>
+                      <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{u.name}</span>
+                      <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[11px] ml-1.5">({u.email})</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         {getRoleLabel(u.role)}
                       </span>
                       <span
                         className={`text-[9.5px] font-semibold px-1 rounded ${
-                          u.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
+                          u.active ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : 'text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                         }`}
                       >
                         {u.active ? 'Ativo' : 'Inativo'}
@@ -1366,7 +1366,7 @@ export const UserManagement: React.FC = () => {
                   </div>
                 ))}
                 {selectedUsers.length > 10 && (
-                  <div className="py-1.5 px-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/80 rounded">
+                  <div className="py-1.5 px-2 text-center text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface)] rounded">
                     + {selectedUsers.length - 10} outros usuários selecionados
                   </div>
                 )}
@@ -1375,24 +1375,24 @@ export const UserManagement: React.FC = () => {
 
             {/* Confirmation typing requirement */}
             <div className="space-y-1.5 pt-1">
-              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                Para confirmar a exclusão em lote, digite <span className="text-rose-600 dark:text-rose-400 font-mono font-black">EXCLUIR</span> abaixo:
+              <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+                Para confirmar a exclusão em lote, digite <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-mono font-black">EXCLUIR</span> abaixo:
               </label>
               <input
                 type="text"
                 value={bulkDeleteConfirmationText}
                 onChange={e => setBulkDeleteConfirmationText(e.target.value)}
                 placeholder="Digite EXCLUIR para confirmar"
-                className="w-full rounded-xl border border-rose-300 dark:border-rose-900/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono font-bold text-rose-600 dark:text-rose-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500/30"
+                className="w-full rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)]"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               <button
                 type="button"
                 onClick={() => setIsBulkDeleteModalOpen(false)}
                 disabled={isBulkDeleting}
-                className="rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+                className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer disabled:opacity-90"
               >
                 Cancelar
               </button>
@@ -1404,7 +1404,7 @@ export const UserManagement: React.FC = () => {
                   isBulkDeleting ||
                   isBulkDeleteBlocked
                 }
-                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2 shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="rounded-xl bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] text-[var(--danger-text)] font-bold text-xs px-5 py-2  flex items-center gap-2 cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed transition-colors"
               >
                 {isBulkDeleting ? (
                   <>
@@ -1425,14 +1425,14 @@ export const UserManagement: React.FC = () => {
 
       {/* BULK DELETE FEEDBACK MODAL */}
       {bulkDeleteFeedback?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 animate-in fade-in duration-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  space-y-4 animate-in fade-in duration-100">
             <div className="flex items-start gap-3">
               <div
                 className={`p-2 rounded-xl shrink-0 ${
                   bulkDeleteFeedback.success
-                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-400'
-                    : 'bg-rose-100 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400'
+                    ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
+                    : 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                 }`}
               >
                 {bulkDeleteFeedback.success ? (
@@ -1442,20 +1442,20 @@ export const UserManagement: React.FC = () => {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {bulkDeleteFeedback.success ? 'Operação Concluída' : 'Falha na Operação'}
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                   {bulkDeleteFeedback.message}
                 </p>
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               <button
                 type="button"
                 onClick={() => setBulkDeleteFeedback(null)}
-                className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 cursor-pointer shadow-xs"
+                className="rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-4 py-2 cursor-pointer shadow-xs"
               >
                 Entendido
               </button>

@@ -1,5 +1,7 @@
-import React, { useEffect, useRef } from "react";
-import { X, Info } from "lucide-react";
+import {MetricCard} from '../ui/MetricCard';
+import {Badge,Drawer} from '../ui/DesignSystem';
+import {EmptyState as SharedEmptyState} from '../ui/EmptyState';
+import React from "react";
 export function SectionHeader({
   title,
   subtitle,
@@ -26,16 +28,9 @@ export function StatusBadge({
   label: string;
   color: string;
 }) {
-  return (
-    <span
-      className="p2-badge"
-      style={{ "--badge-color": color } as React.CSSProperties}
-    >
-      <i />
-      {label}
-    </span>
-  );
+  return <span style={{'--status-color':color} as React.CSSProperties}><Badge>{label}</Badge></span>;
 }
+
 export function PremiumStatCard({
   label,
   value,
@@ -53,42 +48,9 @@ export function PremiumStatCard({
   definition: string;
   state?: "ready" | "loading" | "empty" | "error";
 }) {
-  return (
-    <section
-      className="p2-stat"
-      style={{ "--accent": color } as React.CSSProperties}
-      aria-busy={state === "loading"}
-    >
-      <div>
-        <span className="p2-stat-icon">
-          <Icon size={17} />
-        </span>
-        <span
-          title={definition}
-          tabIndex={0}
-          aria-label={`${label}: ${definition}`}
-        >
-          <Info size={13} />
-        </span>
-      </div>
-      <span>{label}</span>
-      <strong className={state === "loading" ? "p2-skeleton" : ""}>
-        {state === "loading"
-          ? "…"
-          : state === "error" || state === "empty"
-            ? "—"
-            : value}
-      </strong>
-      <small>
-        {state === "error"
-          ? "Não foi possível carregar"
-          : state === "empty"
-            ? "Fonte indisponível nesta prévia"
-            : detail}
-      </small>
-    </section>
-  );
+  return <div aria-busy={state==='loading'} title={definition}><MetricCard label={label} value={state==='loading'?'…':state==='error'||state==='empty'?'—':value} subValue={state==='error'?'Não foi possível carregar':state==='empty'?'Fonte indisponível nesta prévia':detail} icon={<Icon size={16}/>}/></div>;
 }
+
 export function DetailDrawer({
   title,
   close,
@@ -98,60 +60,9 @@ export function DetailDrawer({
   close: () => void;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement;
-    ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-      if (e.key === "Tab") {
-        const items = Array.from(
-          ref.current?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), input, select, textarea, a[href], [tabindex="0"]',
-          ) || [],
-        );
-        if (e.shiftKey && document.activeElement === items[0]) {
-          e.preventDefault();
-          items.at(-1)?.focus();
-        } else if (!e.shiftKey && document.activeElement === items.at(-1)) {
-          e.preventDefault();
-          items[0]?.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("keydown", key);
-      previous?.focus();
-    };
-  }, []);
-  return (
-    <div className="p2-drawer-backdrop" onClick={close}>
-      <aside
-        ref={ref}
-        className="p2-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <SectionHeader
-          title={title}
-          subtitle="Demonstração · sem alteração de registros"
-        >
-          <button
-            className="s2-button"
-            aria-label="Fechar detalhes"
-            onClick={close}
-          >
-            <X size={18} />
-          </button>
-        </SectionHeader>
-        {children}
-      </aside>
-    </div>
-  );
+  return <Drawer open title={title} onClose={close} closeLabel="Fechar detalhes">{children}</Drawer>;
 }
+
 export function EmptyState({
   title,
   detail,
@@ -159,10 +70,5 @@ export function EmptyState({
   title: string;
   detail?: string;
 }) {
-  return (
-    <div className="s2-empty">
-      <h3>{title}</h3>
-      <p>{detail}</p>
-    </div>
-  );
+  return <SharedEmptyState title={title} description={detail || ""}/>;
 }

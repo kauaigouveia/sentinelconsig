@@ -327,34 +327,34 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/70 p-4 pt-[10vh] backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-[var(--scrim)] p-4 pt-[10vh] backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+        className="relative w-full max-w-2xl rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden"
         onKeyDown={handleKeyDown}
       >
         {/* Search Bar Input */}
-        <div className="flex items-center px-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-          <Search className="h-5 w-5 text-slate-400 dark:text-slate-500 mr-3 shrink-0" />
+        <div className="flex items-center px-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
+          <Search className="h-5 w-5 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mr-3 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Digite para buscar ADE, cliente, CPF, telas ou comandos rápidos..."
-            className="w-full bg-transparent py-4 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none"
+            className="w-full bg-transparent py-4 text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] outline-none"
           />
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-md"
+            className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-md"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Results List */}
-        <div className="max-h-[60vh] overflow-y-auto p-2 divide-y divide-slate-100 dark:divide-slate-800/60">
+        <div className="max-h-[60vh] overflow-y-auto p-2 divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
           {matchingItems.length === 0 ? (
-            <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">
+            <div className="py-12 text-center text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
               Nenhum comando ou registro encontrado para "{searchTerm}".
             </div>
           ) : (
@@ -371,41 +371,41 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
                     isSelected
-                      ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-blue-100'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]'
+                      : 'hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
                         isSelected
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          ? 'bg-[var(--info-bg)] text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                      <p className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
                         {item.title}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate">
                         {item.subtitle}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">
+                    <span className="text-[10px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                       {item.category}
                     </span>
                     {(item as any).shortcut && (
-                      <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
+                      <kbd className="rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                         {(item as any).shortcut}
                       </kbd>
                     )}
                     {isSelected && (
-                      <ArrowRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <ArrowRight className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)]" />
                     )}
                   </div>
                 </div>
@@ -415,7 +415,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
           <div className="flex items-center gap-3">
             <span>
               <kbd className="font-mono font-bold">↑↓</kbd> navegar
@@ -427,7 +427,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
               <kbd className="font-mono font-bold">Esc</kbd> fechar
             </span>
           </div>
-          <span className="font-semibold text-blue-600 dark:text-blue-400">Sentinel Spotlight</span>
+          <span className="font-semibold text-[var(--link)] dark:text-[var(--link)]">Sentinel Spotlight</span>
         </div>
       </div>
     </div>

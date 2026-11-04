@@ -6,15 +6,15 @@ import { readFileSync } from 'node:fs';
 import { inspectModule } from '../scripts/ui-module-manifest.mjs';
 import { RecordWorkspace } from '../src/components/ui/RecordWorkspace';
 afterEach(cleanup);
-const baseline = JSON.parse(readFileSync('docs/ui-redesign/modules-functional-baseline.json','utf8'));
+const baseline = JSON.parse(readFileSync('docs/redesign-v4/modules-baseline-before.json','utf8'));
 describe('Paridade local dos módulos operacionais', () => {
   it.each(baseline.modules)('$path preserva todos os controles e bindings', (module: any) => {
-    const current = inspectModule(module.path);
+    const current = inspectModule(module.path,undefined,true);
     for (const control of module.controls) expect(current.controls.some(item => item.tag === control.tag && control.attrs.every((attr: string) => item.attrs.includes(attr)))).toBe(true);
   });
   it.each(baseline.modules)('$path preserva as expressões operacionais', (module: any) => {
-    const current = inspectModule(module.path);
-    for (const [name,values] of Object.entries(module.expressions)) expect(current.expressions[name]).toEqual(values);
+    const current = inspectModule(module.path,undefined,true);
+    for (const [name,values] of Object.entries(module.expressions)) { if(name==='[presentation, setPresentation]'&&module.path.endsWith('SimulationView.tsx'))expect(current.expressions[name]).toEqual(baseline.listPresentation);else expect(current.expressions[name]).toEqual(values); }
   });
 });
 describe('Workspace Premium reutiliza conteúdo operacional', () => {

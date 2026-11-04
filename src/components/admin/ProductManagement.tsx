@@ -220,18 +220,18 @@ export const ProductManagement: React.FC = () => {
         title="Módulo de Convênios, Produtos & Regras"
         subtitle="Gerenciamento unificado de convênios de crédito, catálogo de produtos e matriz de regras operacionais com suporte a escopo Global e Exclusivo"
         badgeText="CONVÊNIOS & PRODUTOS"
-        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
       />
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
         <button
           type="button"
           onClick={() => setActiveTab('convenios')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
             activeTab === 'convenios'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/30 dark:bg-blue-950/20'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <FileText className="h-4 w-4" />
@@ -243,8 +243,8 @@ export const ProductManagement: React.FC = () => {
           onClick={() => setActiveTab('produtos')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
             activeTab === 'produtos'
-              ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-purple-50/30 dark:bg-purple-950/20'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -256,8 +256,8 @@ export const ProductManagement: React.FC = () => {
           onClick={() => setActiveTab('regras')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
             activeTab === 'regras'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <SlidersHorizontal className="h-4 w-4" />
@@ -276,47 +276,47 @@ export const ProductManagement: React.FC = () => {
         <div className="space-y-6">
           {/* Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 font-mono">
-            <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 p-4 shadow-2xs space-y-1.5">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4  space-y-1.5">
               <div className="flex items-center justify-between font-sans">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
                   Total de Produtos
                 </span>
-                <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <Layers className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
               </div>
-              <p className="text-2xl font-black text-blue-950 dark:text-blue-200">
+              <p className="text-2xl font-black text-[var(--link)] dark:text-[var(--link)]">
                 {products.length} linhas
               </p>
-              <span className="text-[11px] text-blue-700 dark:text-blue-400 font-bold block font-sans">
+              <span className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-bold block font-sans">
                 Opções disponíveis no formulário de digitação
               </span>
             </div>
 
-            <div className="rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 p-4 shadow-2xs space-y-1.5">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4  space-y-1.5">
               <div className="flex items-center justify-between font-sans">
-                <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 dark:text-purple-300">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
                   Portabilidade / Refin da Port
                 </span>
-                <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <ShieldCheck className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
               </div>
-              <p className="text-2xl font-black text-purple-950 dark:text-purple-200">
+              <p className="text-2xl font-black text-[var(--link)] dark:text-[var(--link)]">
                 {portCount} produtos
               </p>
-              <span className="text-[11px] text-purple-700 dark:text-purple-400 font-bold block font-sans">
+              <span className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-bold block font-sans">
                 Exigem vínculo de saldo CIP
               </span>
             </div>
 
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-1.5">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  space-y-1.5">
               <div className="flex items-center justify-between font-sans">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)]">
                   Consignado & Cartão
                 </span>
-                <Tag className="h-4 w-4 text-slate-400" />
+                <Tag className="h-4 w-4 text-[var(--text-secondary)]" />
               </div>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
+              <p className="text-2xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 {standardCount} produtos
               </p>
-              <span className="text-[11px] text-slate-500 font-bold block font-sans">
+              <span className="text-[11px] text-[var(--text-secondary)] font-bold block font-sans">
                 Novo, Refin, Cartão RMC/RCC
               </span>
             </div>
@@ -326,27 +326,27 @@ export const ProductManagement: React.FC = () => {
             <div
               className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${
                 message.type === 'success'
-                  ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
-                  : 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
+                  ? 'border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]'
+                  : 'border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
               }`}
             >
               {message.type === 'success' ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)]" />
               ) : (
-                <X className="h-4 w-4 shrink-0 text-rose-600" />
+                <X className="h-4 w-4 shrink-0 text-[var(--danger-text)]" />
               )}
               <span>{message.text}</span>
             </div>
           )}
 
           {/* Form Criar/Editar Produto */}
-          {(isEditing ? canUpdateProducts : canCreateProducts) && <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          {(isEditing ? canUpdateProducts : canCreateProducts) && <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
               <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                <div className="h-7 w-7 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center font-bold">
                   {isEditing ? <Edit2 className="h-3.5 w-3.5" /> : <Plus className="h-4 w-4" />}
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {isEditing ? 'Editar Linha de Produto' : 'Cadastrar Nova Linha de Produto'}
                 </h3>
               </div>
@@ -355,7 +355,7 @@ export const ProductManagement: React.FC = () => {
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer font-semibold mr-2"
+                    className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer font-semibold mr-2"
                   >
                     Cancelar Edição
                   </button>
@@ -363,9 +363,9 @@ export const ProductManagement: React.FC = () => {
                 {canCreateProducts && <button
                   type="button"
                   onClick={() => setIsImportModalOpen(true)}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)]" />
                   Importar Produtos
                 </button>}
               </div>
@@ -374,7 +374,7 @@ export const ProductManagement: React.FC = () => {
             <form onSubmit={handleSaveProduct} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Nome da Linha de Produto *
                   </label>
                   <input
@@ -383,12 +383,12 @@ export const ProductManagement: React.FC = () => {
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="Ex: NOVO DIGITAL DATAPREV"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white uppercase focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase focus:outline-hidden focus:ring-1 focus:ring-[var(--focus)]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Código / Sigla (Opcional)
                   </label>
                   <input
@@ -396,12 +396,12 @@ export const ProductManagement: React.FC = () => {
                     value={code}
                     onChange={e => setCode(e.target.value)}
                     placeholder="Ex: NOVO, CARTAO"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white uppercase font-mono focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase font-mono focus:outline-hidden focus:ring-1 focus:ring-[var(--focus)]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Tipo de Operação *
                   </label>
                   <select
@@ -412,7 +412,7 @@ export const ProductManagement: React.FC = () => {
                         setRequiresPort(true);
                       }
                     }}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--focus)]"
                   >
                     <option value="NOVO">Empréstimo Consignado (NOVO)</option>
                     <option value="REFIN">Refinanciamento (REFIN)</option>
@@ -426,13 +426,13 @@ export const ProductManagement: React.FC = () => {
 
                 {isMaster && !isEditing && (
                   <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       Escopo de Disponibilidade *
                     </label>
                     <select
                       value={scope}
                       onChange={e => setScope(e.target.value as 'GLOBAL' | 'EXCLUSIVE')}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--focus)]"
                     >
                       <option value="GLOBAL">GLOBAL (Todas as empresas da plataforma)</option>
                       <option value="EXCLUSIVE">EXCLUSIVO (Apenas a empresa atual)</option>
@@ -441,7 +441,7 @@ export const ProductManagement: React.FC = () => {
                 )}
 
                 <div className="sm:col-span-2 space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Descrição Detalhada
                   </label>
                   <input
@@ -449,24 +449,24 @@ export const ProductManagement: React.FC = () => {
                     value={description}
                     onChange={e => setDescription(e.target.value)}
                     placeholder="Ex: Contrato de crédito consignado para aposentados"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--focus)]"
                   />
                 </div>
               </div>
 
               {/* Vínculo com Convênios */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-2">
+              <div className="p-3.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-[var(--link)]" />
                     <span>Convênios Compatíveis com este Produto</span>
                   </span>
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                     <input
                       type="checkbox"
                       checked={appliesToAllConvenios}
                       onChange={e => setAppliesToAllConvenios(e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                      className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                     />
                     <span>Compatível com Todos os Convênios</span>
                   </label>
@@ -483,8 +483,8 @@ export const ProductManagement: React.FC = () => {
                           onClick={() => toggleConvenioSelection(c.id)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
                             isSelected
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                              ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)]'
+                              : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)]'
                           }`}
                         >
                           {isSelected && <Check className="h-3 w-3" />}
@@ -497,16 +497,16 @@ export const ProductManagement: React.FC = () => {
               </div>
 
               {/* Checkboxes de Parâmetros */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={requiresPort}
                       onChange={e => setRequiresPort(e.target.checked)}
-                      className="rounded border-slate-300 text-purple-600 focus:ring-0"
+                      className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                     />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       Exige vínculo com Portabilidade (Refin da Port)
                     </span>
                   </label>
@@ -516,9 +516,9 @@ export const ProductManagement: React.FC = () => {
                       type="checkbox"
                       checked={allowsMultipleAde}
                       onChange={e => setAllowsMultipleAde(e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                      className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                     />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       Permite Multi-ADE
                     </span>
                   </label>
@@ -528,9 +528,9 @@ export const ProductManagement: React.FC = () => {
                       type="checkbox"
                       checked={active}
                       onChange={e => setActive(e.target.checked)}
-                      className="rounded border-slate-300 text-emerald-600 focus:ring-0"
+                      className="rounded border-[var(--field-border)] text-[var(--success-text)] focus:ring-0"
                     />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       Produto Ativo
                     </span>
                   </label>
@@ -538,7 +538,7 @@ export const ProductManagement: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 shadow-xs transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-4 py-2  transition-colors cursor-pointer"
                 >
                   {isEditing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   <span>{isEditing ? 'Atualizar Produto' : 'Salvar Produto'}</span>
@@ -556,27 +556,27 @@ export const ProductManagement: React.FC = () => {
           />}
 
           {/* Filters Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-[#0f172a] p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Pesquisar por nome ou código..."
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                className="w-full pl-9 pr-3 py-1.5 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
               />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                 <Filter className="h-3.5 w-3.5" />
                 <span>Escopo:</span>
               </div>
               <select
                 value={scopeFilter}
                 onChange={e => setScopeFilter(e.target.value as any)}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               >
                 <option value="ALL">Todos os escopos</option>
                 <option value="GLOBAL">Globais</option>
@@ -596,25 +596,25 @@ export const ProductManagement: React.FC = () => {
               return (
                 <div
                   key={p.id}
-                  className={`p-4 rounded-xl border bg-white dark:bg-[#0f172a] shadow-2xs space-y-3 flex flex-col justify-between transition-all ${
+                  className={`p-4 rounded-xl border bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-3 flex flex-col justify-between transition-all ${
                     p.active
-                      ? 'border-slate-200 dark:border-slate-800'
-                      : 'border-slate-200/60 dark:border-slate-800/60 opacity-70 bg-slate-50/50'
+                      ? 'border-[var(--field-border)] dark:border-[var(--field-border)]'
+                      : 'border-[var(--field-border)] dark:border-[var(--field-border)] opacity-70 bg-[var(--bg-canvas)]'
                   }`}
                 >
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">{p.name}</span>
+                          <span className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{p.name}</span>
                           {p.code && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                               {p.code}
                             </span>
                           )}
                         </div>
                         {p.description && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                          <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5 line-clamp-2">
                             {p.description}
                           </p>
                         )}
@@ -624,8 +624,8 @@ export const ProductManagement: React.FC = () => {
                         <span
                           className={`px-2 py-0.5 rounded text-[9.5px] font-bold ${
                             isPort
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                              ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
+                              : 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
                           }`}
                         >
                           {p.type || (isPort ? 'PORTABILIDADE' : 'CONSIGNADO')}
@@ -633,8 +633,8 @@ export const ProductManagement: React.FC = () => {
                         <span
                           className={`px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 ${
                             isGlobal
-                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
-                              : 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                              ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
+                              : 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
                           }`}
                         >
                           {isGlobal ? <Globe className="h-2.5 w-2.5" /> : <Building className="h-2.5 w-2.5" />}
@@ -643,18 +643,18 @@ export const ProductManagement: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-1 text-[11px] text-slate-500">
+                    <div className="space-y-1 text-[11px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-1.5">
-                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        <Check className="h-3.5 w-3.5 text-[var(--success-text)]" />
                         <span>Permite Multi-ADE / Desdobramentos</span>
                       </div>
                       {isPort && (
-                        <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-medium">
+                        <div className="flex items-center gap-1.5 text-[var(--link)] dark:text-[var(--link)] font-medium">
                           <ShieldAlert className="h-3.5 w-3.5" />
                           <span>Exige vínculo de saldo CIP</span>
                         </div>
                       )}
-                      <div className="text-[10px] text-slate-600 dark:text-slate-400 pt-1">
+                      <div className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] pt-1">
                         <strong>Convênios:</strong>{' '}
                         {p.convenioIds && p.convenioIds.length > 0
                           ? convenios
@@ -666,10 +666,10 @@ export const ProductManagement: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between">
                     <span
                       className={`text-[10px] font-bold ${
-                        p.active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                        p.active ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : 'text-[var(--text-secondary)]'
                       }`}
                     >
                       {p.active ? 'ATIVO NA ESTEIRA' : 'INATIVO'}
@@ -681,7 +681,7 @@ export const ProductManagement: React.FC = () => {
                           {canEdit && <>
                           <button
                             onClick={() => handleEditProduct(p)}
-                            className="text-slate-400 hover:text-blue-600 p-1 rounded-lg transition-colors cursor-pointer"
+                            className="text-[var(--text-secondary)] hover:text-[var(--link)] p-1 rounded-lg transition-colors cursor-pointer"
                             title="Editar produto"
                           >
                             <Edit2 className="h-3.5 w-3.5" />
@@ -690,7 +690,7 @@ export const ProductManagement: React.FC = () => {
                           {canDelete && <>
                           <button
                             onClick={() => handleDeleteProduct(p)}
-                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
+                            className="text-[var(--text-secondary)] hover:text-[var(--danger-text)] p-1 rounded-lg transition-colors cursor-pointer"
                             title="Excluir produto"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -699,7 +699,7 @@ export const ProductManagement: React.FC = () => {
                         </>
                       )}
                       {!canEdit && !canDelete && (
-                        <span className="text-[10px] text-slate-400 italic">Padrão da Plataforma</span>
+                        <span className="text-[10px] text-[var(--text-secondary)] italic">Padrão da Plataforma</span>
                       )}
                     </div>
                   </div>

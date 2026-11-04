@@ -19,34 +19,34 @@ export const ToastContainer: React.FC = () => {
             case 'success':
               return {
                 icon: CheckCircle2,
-                color: 'text-emerald-500',
-                border: 'border-emerald-200 dark:border-emerald-800',
-                bg: 'bg-white dark:bg-slate-900',
-                badge: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300',
+                color: 'text-[var(--success-text)]',
+                border: 'border-[var(--success-border)] dark:border-[var(--success-border)]',
+                bg: 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]',
+                badge: 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]',
               };
             case 'error':
               return {
                 icon: AlertCircle,
-                color: 'text-rose-500',
-                border: 'border-rose-200 dark:border-rose-800',
-                bg: 'bg-white dark:bg-slate-900',
-                badge: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300',
+                color: 'text-[var(--danger-text)]',
+                border: 'border-[var(--danger-border)] dark:border-[var(--danger-border)]',
+                bg: 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]',
+                badge: 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]',
               };
             case 'warning':
               return {
                 icon: AlertTriangle,
-                color: 'text-amber-500',
-                border: 'border-amber-200 dark:border-amber-800',
-                bg: 'bg-white dark:bg-slate-900',
-                badge: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+                color: 'text-[var(--warning-text)]',
+                border: 'border-[var(--warning-border)] dark:border-[var(--warning-border)]',
+                bg: 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]',
+                badge: 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)]',
               };
             default:
               return {
                 icon: Info,
-                color: 'text-sky-500',
-                border: 'border-sky-200 dark:border-sky-800',
-                bg: 'bg-white dark:bg-slate-900',
-                badge: 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300',
+                color: 'text-[var(--link)]',
+                border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+                bg: 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]',
+                badge: 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]',
               };
           }
         };
@@ -56,22 +56,22 @@ export const ToastContainer: React.FC = () => {
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-2.5 p-3 rounded-lg border ${border} ${bg} shadow-lg transition-all transform translate-y-0`}
+            className={`pointer-events-auto flex items-start gap-2.5 p-3 rounded-lg border ${border} ${bg}  transition-all transform translate-y-0`}
           >
             <Icon className={`h-4 w-4 ${color} shrink-0 mt-0.5`} />
             <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+              <h4 className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] leading-tight">
                 {toast.title}
               </h4>
               {toast.message && (
-                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed break-words">
+                <p className="mt-0.5 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] leading-relaxed break-words">
                   {toast.message}
                 </p>
               )}
             </div>
             <button
               onClick={() => toastService.dismiss(toast.id)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer shrink-0"
+              className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] p-0.5 rounded cursor-pointer shrink-0"
             >
               <X className="h-3.5 w-3.5" />
             </button>

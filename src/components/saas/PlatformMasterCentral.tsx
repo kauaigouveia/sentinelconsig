@@ -1,3 +1,4 @@
+import {configurationColorValues} from '../../data/configurationColorValues';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2,
@@ -124,9 +125,9 @@ export const PlatformMasterCentral: React.FC = () => {
   );
 
   // WhiteLabel edit fields
-  const [primaryColor, setPrimaryColor] = useState('#2563eb');
-  const [secondaryColor, setSecondaryColor] = useState('#1e40af');
-  const [accentColor, setAccentColor] = useState('#3b82f6');
+  const [primaryColor, setPrimaryColor] = useState(configurationColorValues.color_2563eb);
+  const [secondaryColor, setSecondaryColor] = useState(configurationColorValues.color_1e40af);
+  const [accentColor, setAccentColor] = useState(configurationColorValues.color_3b82f6);
   const [logoUrl, setLogoUrl] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
   const handlePlatformLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetTenantId: string) => {
@@ -222,38 +223,38 @@ export const PlatformMasterCentral: React.FC = () => {
     switch (status) {
       case 'EXCEEDED':
         return {
-          bg: 'bg-red-100 dark:bg-red-950/40',
-          text: 'text-red-800 dark:text-red-300',
-          border: 'border-red-200 dark:border-red-900/50',
-          bar: 'bg-red-600'
+          bg: 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)]',
+          text: 'text-[var(--danger-text)] dark:text-[var(--danger-text)]',
+          border: 'border-[var(--danger-border)] dark:border-[var(--danger-border)]',
+          bar: 'bg-[var(--danger-bg)]'
         };
       case 'CRITICAL':
         return {
-          bg: 'bg-rose-100 dark:bg-rose-950/40',
-          text: 'text-rose-800 dark:text-rose-300',
-          border: 'border-rose-200 dark:border-rose-900/50',
-          bar: 'bg-rose-600'
+          bg: 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)]',
+          text: 'text-[var(--danger-text)] dark:text-[var(--danger-text)]',
+          border: 'border-[var(--danger-border)] dark:border-[var(--danger-border)]',
+          bar: 'bg-[var(--danger-bg)]'
         };
       case 'ALERT':
         return {
-          bg: 'bg-amber-100 dark:bg-amber-950/40',
-          text: 'text-amber-800 dark:text-amber-300',
-          border: 'border-amber-200 dark:border-amber-900/50',
-          bar: 'bg-amber-500'
+          bg: 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)]',
+          text: 'text-[var(--warning-text)] dark:text-[var(--warning-text)]',
+          border: 'border-[var(--warning-border)] dark:border-[var(--warning-border)]',
+          bar: 'bg-[var(--warning-bg)]'
         };
       case 'WARNING':
         return {
-          bg: 'bg-blue-100 dark:bg-blue-950/40',
-          text: 'text-blue-800 dark:text-blue-300',
-          border: 'border-blue-200 dark:border-blue-900/50',
-          bar: 'bg-blue-500'
+          bg: 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]',
+          text: 'text-[var(--link)] dark:text-[var(--link)]',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]',
+          bar: 'bg-[var(--info-bg)]'
         };
       default: // NORMAL
         return {
-          bg: 'bg-emerald-100 dark:bg-emerald-950/40',
-          text: 'text-emerald-800 dark:text-emerald-300',
-          border: 'border-emerald-200 dark:border-emerald-900/50',
-          bar: 'bg-emerald-500'
+          bg: 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)]',
+          text: 'text-[var(--success-text)] dark:text-[var(--success-text)]',
+          border: 'border-[var(--success-border)] dark:border-[var(--success-border)]',
+          bar: 'bg-[var(--success-bg)]'
         };
     }
   };
@@ -262,34 +263,34 @@ export const PlatformMasterCentral: React.FC = () => {
     switch (status) {
       case 'EXCELLENT':
         return {
-          bg: 'bg-emerald-100 dark:bg-emerald-950/40',
-          text: 'text-emerald-800 dark:text-emerald-300',
-          border: 'border-emerald-200 dark:border-emerald-900/50'
+          bg: 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)]',
+          text: 'text-[var(--success-text)] dark:text-[var(--success-text)]',
+          border: 'border-[var(--success-border)] dark:border-[var(--success-border)]'
         };
       case 'GOOD':
         return {
-          bg: 'bg-teal-100 dark:bg-teal-950/40',
-          text: 'text-teal-800 dark:text-teal-300',
-          border: 'border-teal-200 dark:border-teal-900/50'
+          bg: 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)]',
+          text: 'text-[var(--success-text)] dark:text-[var(--success-text)]',
+          border: 'border-[var(--success-border)] dark:border-[var(--success-border)]'
         };
       case 'ATTENTION':
         return {
-          bg: 'bg-blue-100 dark:bg-blue-950/40',
-          text: 'text-blue-800 dark:text-blue-300',
-          border: 'border-blue-200 dark:border-blue-900/50'
+          bg: 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]',
+          text: 'text-[var(--link)] dark:text-[var(--link)]',
+          border: 'border-[var(--field-border)] dark:border-[var(--field-border)]'
         };
       case 'RISK':
         return {
-          bg: 'bg-amber-100 dark:bg-amber-950/40',
-          text: 'text-amber-800 dark:text-amber-300',
-          border: 'border-amber-200 dark:border-amber-900/50'
+          bg: 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)]',
+          text: 'text-[var(--warning-text)] dark:text-[var(--warning-text)]',
+          border: 'border-[var(--warning-border)] dark:border-[var(--warning-border)]'
         };
       case 'CRITICAL':
       default:
         return {
-          bg: 'bg-rose-100 dark:bg-rose-950/40',
-          text: 'text-rose-800 dark:text-rose-300',
-          border: 'border-rose-200 dark:border-rose-900/50'
+          bg: 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)]',
+          text: 'text-[var(--danger-text)] dark:text-[var(--danger-text)]',
+          border: 'border-[var(--danger-border)] dark:border-[var(--danger-border)]'
         };
     }
   };
@@ -362,9 +363,9 @@ export const PlatformMasterCentral: React.FC = () => {
     setStorageLimitMb(5000);
     setMaxProposals(10000);
     setSelectedModules(AVAILABLE_MODULES.map((m) => m.id));
-    setPrimaryColor('#2563eb');
-    setSecondaryColor('#1e40af');
-    setAccentColor('#3b82f6');
+    setPrimaryColor(configurationColorValues.color_2563eb);
+    setSecondaryColor(configurationColorValues.color_1e40af);
+    setAccentColor(configurationColorValues.color_3b82f6);
     setLogoUrl('');
     setSupportEmail('');
     setFormError(null);
@@ -388,9 +389,9 @@ export const PlatformMasterCentral: React.FC = () => {
         ? t.enabledModules
         : AVAILABLE_MODULES.map((m) => m.id)
     );
-    setPrimaryColor(t.whiteLabel?.primaryColor || '#2563eb');
-    setSecondaryColor(t.whiteLabel?.secondaryColor || '#1e40af');
-    setAccentColor(t.whiteLabel?.accentColor || '#3b82f6');
+    setPrimaryColor(t.whiteLabel?.primaryColor || configurationColorValues.color_2563eb);
+    setSecondaryColor(t.whiteLabel?.secondaryColor || configurationColorValues.color_1e40af);
+    setAccentColor(t.whiteLabel?.accentColor || configurationColorValues.color_3b82f6);
     setLogoUrl(t.whiteLabel?.logoUrl || '');
     setSupportEmail(t.whiteLabel?.supportEmail || '');
     setFormError(null);
@@ -720,14 +721,14 @@ export const PlatformMasterCentral: React.FC = () => {
     <div className="space-y-6 p2-platform-workspace">
       {/* Active Context Banner */}
       {adminContext.active && adminContext.context && (
-        <div className="flex items-center justify-between p-4 rounded-xl bg-purple-900 text-white border border-purple-500 shadow-md">
+        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--info-bg)] text-[var(--text-primary)] border border-[var(--field-border)] shadow-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-800 rounded-lg">
-              <Eye className="h-5 w-5 text-purple-300" />
+            <div className="p-2 bg-[var(--info-bg)] rounded-lg">
+              <Eye className="h-5 w-5 text-[var(--link)]" />
             </div>
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-300">Modo de Inspeção Ativo (Admin Scope)</span>
-              <p className="text-sm font-black text-white">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--link)]">Modo de Inspeção Ativo (Admin Scope)</span>
+              <p className="text-sm font-black text-[var(--text-primary)]">
                 Inspecionando dados operacionais de: <span className="underline">{adminContext.context.targetTenantName}</span>
               </p>
             </div>
@@ -735,7 +736,7 @@ export const PlatformMasterCentral: React.FC = () => {
 
           <button
             onClick={handleExitContextSwitch}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] text-[var(--danger-text)] font-bold text-xs  transition-colors cursor-pointer"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>Sair da Inspeção</span>
@@ -752,7 +753,7 @@ export const PlatformMasterCentral: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchTenants}
-              className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
+              className="flex items-center gap-1.5 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-xs font-semibold px-3 py-2 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] cursor-pointer transition-colors"
               title="Atualizar lista"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -761,7 +762,7 @@ export const PlatformMasterCentral: React.FC = () => {
 
             <button
               onClick={handleOpenCreateModal}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-2 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-4 py-2 rounded-xl  transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Nova Empresa</span>
@@ -772,8 +773,8 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+        <div className="p-4 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] dark:text-[var(--danger-text)] shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -807,13 +808,13 @@ export const PlatformMasterCentral: React.FC = () => {
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 p2-platform-tabs">
+      <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)] p2-platform-tabs">
         <button
           onClick={() => setActiveTab('tenants')}
           className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
             activeTab === 'tenants'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <Building2 className="h-4 w-4" />
@@ -823,8 +824,8 @@ export const PlatformMasterCentral: React.FC = () => {
           onClick={() => setActiveTab('health_consumo')}
           className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
             activeTab === 'health_consumo'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           <Activity className="h-4 w-4" />
@@ -833,17 +834,17 @@ export const PlatformMasterCentral: React.FC = () => {
       </div>
 
       {activeTab === 'tenants' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] overflow-hidden shadow-2xs">
           {/* Table Toolbar / Filter Header */}
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="p-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por nome, slug, CNPJ ou domínio..."
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               />
             </div>
 
@@ -851,7 +852,7 @@ export const PlatformMasterCentral: React.FC = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               >
                 <option value="ALL">Todos os Status</option>
                 <option value="ACTIVE">Somente Ativos</option>
@@ -861,7 +862,7 @@ export const PlatformMasterCentral: React.FC = () => {
               <select
                 value={planFilter}
                 onChange={(e) => setPlanFilter(e.target.value)}
-                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               >
                 <option value="ALL">Todos os Planos</option>
                 <option value="STARTER">STARTER</option>
@@ -870,7 +871,7 @@ export const PlatformMasterCentral: React.FC = () => {
                 <option value="CUSTOM">CUSTOM</option>
               </select>
 
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 pl-1">
+              <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] pl-1">
                 {filteredTenants.length} de {tenants.length}
               </span>
             </div>
@@ -878,12 +879,12 @@ export const PlatformMasterCentral: React.FC = () => {
 
           {/* Contextual Bulk Action Bar */}
           {selectedTenantIds.size > 0 && (
-            <div className="p-3 bg-slate-900 text-white border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1">
+            <div className="p-3 bg-[var(--bg-surface)] text-[var(--text-primary)] border-b border-[var(--field-border)] flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1">
               <div className="flex items-center gap-2.5">
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-black text-xs">
+                <span className="px-2.5 py-0.5 rounded-full bg-[var(--info-bg)] text-[var(--text-primary)] font-black text-xs">
                   {selectedTenantIds.size}
                 </span>
-                <span className="text-xs font-bold text-slate-200">
+                <span className="text-xs font-bold text-[var(--text-primary)]">
                   {selectedTenantIds.size === 1 ? 'empresa selecionada' : 'empresas selecionadas'}
                 </span>
               </div>
@@ -892,7 +893,7 @@ export const PlatformMasterCentral: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleToggleSelectAllFiltered}
-                  className="px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                  className="px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] rounded transition-colors cursor-pointer"
                 >
                   {isAllFilteredSelected ? 'Desmarcar visíveis' : 'Selecionar todos'}
                 </button>
@@ -900,7 +901,7 @@ export const PlatformMasterCentral: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleClearSelection}
-                  className="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                  className="px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] rounded transition-colors cursor-pointer"
                 >
                   Limpar seleção
                 </button>
@@ -912,7 +913,7 @@ export const PlatformMasterCentral: React.FC = () => {
                     setBulkDeleteError(null);
                     setIsBulkDeleteModalOpen(true);
                   }}
-                  className="px-3 py-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-md shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-1 text-xs font-bold text-[var(--danger-text)] bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] rounded-md  flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span>Excluir selecionadas</span>
@@ -922,8 +923,8 @@ export const PlatformMasterCentral: React.FC = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider">
+            <table className="w-full text-xs text-left text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+              <thead className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold border-b border-[var(--field-border)] dark:border-[var(--field-border)] text-[11px] uppercase tracking-wider">
                 <tr>
                   <th className="p-3.5 w-10 text-center">
                     <input
@@ -931,7 +932,7 @@ export const PlatformMasterCentral: React.FC = () => {
                       checked={isAllFilteredSelected}
                       onChange={handleToggleSelectAllFiltered}
                       disabled={selectableFilteredTenants.length === 0}
-                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40"
+                      className="h-4 w-4 rounded border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] cursor-pointer disabled:opacity-90"
                       title="Selecionar todos os resultados visíveis do filtro atual"
                     />
                   </th>
@@ -945,10 +946,10 @@ export const PlatformMasterCentral: React.FC = () => {
                   <th className="p-3.5 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                 {filteredTenants.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    <td colSpan={9} className="p-8 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
                       Nenhuma empresa encontrada com os filtros atuais.
                     </td>
                   </tr>
@@ -962,13 +963,13 @@ export const PlatformMasterCentral: React.FC = () => {
                     return (
                       <tr
                         key={t.id}
-                        className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
-                          isCurrentInspected ? 'bg-purple-50/60 dark:bg-purple-950/30' : ''
-                        } ${isSelected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}
+                        className={`hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors ${
+                          isCurrentInspected ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]' : ''
+                        } ${isSelected ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]' : ''}`}
                       >
                         <td className="p-3.5 w-10 text-center">
                           {isRoot ? (
-                            <div className="flex items-center justify-center text-amber-500 dark:text-amber-400" title="Empresa Raiz Protegida (Exclusão Bloqueada)">
+                            <div className="flex items-center justify-center text-[var(--warning-text)] dark:text-[var(--warning-text)]" title="Empresa Raiz Protegida (Exclusão Bloqueada)">
                               <ShieldAlert className="h-4 w-4" />
                             </div>
                           ) : (
@@ -976,7 +977,7 @@ export const PlatformMasterCentral: React.FC = () => {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => handleToggleSelectTenant(t.id)}
-                              className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              className="h-4 w-4 rounded border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] cursor-pointer"
                             />
                           )}
                         </td>
@@ -986,48 +987,48 @@ export const PlatformMasterCentral: React.FC = () => {
                               <img
                                 src={t.whiteLabel.logoUrl}
                                 alt={t.name}
-                                className="h-7 w-7 rounded object-contain border border-slate-200 dark:border-slate-700 bg-white"
+                                className="h-7 w-7 rounded object-contain border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)]"
                                 referrerPolicy="no-referrer"
                               />
                             ) : (
                               <div
-                                className="h-7 w-7 rounded text-white font-bold flex items-center justify-center text-[10px]"
-                                style={{ backgroundColor: t.whiteLabel?.primaryColor || '#2563eb' }}
+                                className="h-7 w-7 rounded text-[var(--text-primary)] font-bold flex items-center justify-center text-[10px]"
+                                style={{ backgroundColor: t.whiteLabel?.primaryColor || "var(--bg-surface)" }}
                               >
                                 {t.name.slice(0, 2).toUpperCase()}
                               </div>
                             )}
                             <div>
-                              <div className="font-bold text-slate-900 dark:text-slate-100">{t.name}</div>
-                              <div className="text-[11px] text-slate-400 dark:text-slate-500">{t.cnpj || 'CNPJ não informado'}</div>
+                              <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{t.name}</div>
+                              <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">{t.cnpj || 'CNPJ não informado'}</div>
                             </div>
                           </div>
                         </td>
                         <td className="p-3.5 font-mono text-[11px]">
-                          <span className="text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded font-bold">
+                          <span className="text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] px-2 py-0.5 rounded font-bold">
                             {t.slug}.sentinelconsig.com.br
                           </span>
                         </td>
                         <td className="p-3.5 font-mono text-[11px]">
                           {t.customDomain ? (
-                            <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-900/60 px-2 py-0.5 rounded font-bold flex items-center gap-1 w-fit">
+                            <span className="text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--success-border)] dark:border-[var(--success-border)] px-2 py-0.5 rounded font-bold flex items-center gap-1 w-fit">
                               <Globe className="h-3 w-3" />
                               <span>{t.customDomain}</span>
                             </span>
                           ) : (
-                            <span className="text-slate-400 italic">Nenhum</span>
+                            <span className="text-[var(--text-secondary)] italic">Nenhum</span>
                           )}
                         </td>
                         <td className="p-3.5">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
                               t.plan === 'ENTERPRISE'
-                                ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800'
+                                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
                                 : t.plan === 'PRO'
-                                ? 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
                                 : t.plan === 'CUSTOM'
-                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                                : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]'
+                                : 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]'
                             }`}
                           >
                             {t.plan}
@@ -1037,8 +1038,8 @@ export const PlatformMasterCentral: React.FC = () => {
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                               isActive
-                                ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                                : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                                ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]'
+                                : 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                             }`}
                           >
                             {isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -1046,28 +1047,28 @@ export const PlatformMasterCentral: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-3.5">
-                          <div className="font-semibold text-slate-900 dark:text-slate-100">
+                          <div className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {t._count?.users || 0} / {t.maxUsers} usuários
                           </div>
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                             {t._count?.proposals || 0} propostas cadastradas
                           </div>
                         </td>
-                        <td className="p-3.5 font-semibold text-slate-800 dark:text-slate-200">
+                        <td className="p-3.5 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                           {(t.storageLimitMb / 1024).toFixed(1)} GB
                         </td>
                         <td className="p-3.5 text-right space-x-1.5">
                           {isCurrentInspected ? (
                             <button
                               onClick={handleExitContextSwitch}
-                              className="px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 hover:bg-rose-200 rounded border border-rose-300 dark:border-rose-800 transition-all cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] rounded border border-[var(--danger-border)] dark:border-[var(--danger-border)] transition-all cursor-pointer"
                             >
                               Sair Inspeção
                             </button>
                           ) : (
                             <button
                               onClick={() => handleStartContextSwitch(t.id, t.name)}
-                              className="px-2.5 py-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/70 hover:bg-purple-100 dark:hover:bg-purple-900/60 rounded border border-purple-200 dark:border-purple-800 transition-all cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-bold text-[var(--link)] dark:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] rounded border border-[var(--field-border)] dark:border-[var(--field-border)] transition-all cursor-pointer"
                               title="Inspecionar dados operacionais desta empresa"
                             >
                               Inspecionar
@@ -1076,7 +1077,7 @@ export const PlatformMasterCentral: React.FC = () => {
 
                           <button
                             onClick={() => handleOpenEditModal(t)}
-                            className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] rounded cursor-pointer"
                             title="Editar Empresa & Identidade Visual"
                           >
                             <Edit2 className="h-3.5 w-3.5" />
@@ -1085,7 +1086,7 @@ export const PlatformMasterCentral: React.FC = () => {
                           {isActive ? (
                             <button
                               onClick={() => handleSuspendTenant(t.id, t.name)}
-                              className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded cursor-pointer"
+                              className="p-1.5 text-[var(--warning-text)] dark:text-[var(--warning-text)] hover:bg-[var(--warning-bg)] dark:hover:bg-[var(--warning-bg)] rounded cursor-pointer"
                               title="Suspender Empresa Imediatamente"
                             >
                               <Lock className="h-3.5 w-3.5" />
@@ -1093,7 +1094,7 @@ export const PlatformMasterCentral: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => handleReactivateTenant(t.id)}
-                              className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded cursor-pointer"
+                              className="p-1.5 text-[var(--success-text)] dark:text-[var(--success-text)] hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] rounded cursor-pointer"
                               title="Reativar Empresa"
                             >
                               <Unlock className="h-3.5 w-3.5" />
@@ -1103,7 +1104,7 @@ export const PlatformMasterCentral: React.FC = () => {
                           {t.id !== 'sentinel-consig' && (
                             <button
                               onClick={() => handleRequestDelete(t)}
-                              className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded cursor-pointer animate-in fade-in"
+                              className="p-1.5 text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] rounded cursor-pointer animate-in fade-in"
                               title="Excluir Empresa (Soft-Delete)"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1124,45 +1125,45 @@ export const PlatformMasterCentral: React.FC = () => {
         <div className="space-y-6">
           {/* Health Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total de Empresas</span>
-              <div className="text-2xl font-black text-slate-950 dark:text-slate-50 mt-1">{overviewData.length}</div>
-              <p className="text-xs text-slate-500 mt-1">Empresas registradas</p>
+            <div className="p-4 rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Total de Empresas</span>
+              <div className="text-2xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1">{overviewData.length}</div>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">Empresas registradas</p>
             </div>
-            
-            <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/60 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 font-bold">Empresas em Operação Normal</span>
-              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+
+            <div className="p-4 rounded-xl bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--success-border)] dark:border-[var(--success-border)] shadow-2xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--success-text)] dark:text-[var(--success-text)] font-bold">Empresas em Operação Normal</span>
+              <div className="text-2xl font-black text-[var(--success-text)] dark:text-[var(--success-text)] mt-1">
                 {overviewData.filter(d => d.healthStatus === 'EXCELLENT' || d.healthStatus === 'GOOD').length}
               </div>
-              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-1 font-semibold">Excelente / Saudável (THS &gt;= 75)</p>
+              <p className="text-xs text-[var(--success-text)] dark:text-[var(--success-text)] mt-1 font-semibold">Excelente / Saudável (THS &gt;= 75)</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/60 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-500 font-bold">Empresas em Atenção</span>
-              <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
+            <div className="p-4 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)] font-bold">Empresas em Atenção</span>
+              <div className="text-2xl font-black text-[var(--link)] dark:text-[var(--link)] mt-1">
                 {overviewData.filter(d => d.healthStatus === 'ATTENTION').length}
               </div>
-              <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-1 font-semibold">Acompanhamento preventivo (THS 60-74)</p>
+              <p className="text-xs text-[var(--link)] dark:text-[var(--link)] mt-1 font-semibold">Acompanhamento preventivo (THS 60-74)</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/60 shadow-2xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-500 font-bold">Risco / Crítico</span>
-              <div className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1">
+            <div className="p-4 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] shadow-2xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold">Risco / Crítico</span>
+              <div className="text-2xl font-black text-[var(--danger-text)] dark:text-[var(--danger-text)] mt-1">
                 {overviewData.filter(d => d.healthStatus === 'CRITICAL' || d.healthStatus === 'RISK').length}
               </div>
-              <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-1 font-semibold">Ação corretiva necessária (THS &lt; 60)</p>
+              <p className="text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] mt-1 font-semibold">Ação corretiva necessária (THS &lt; 60)</p>
             </div>
           </div>
 
           {/* Warning list */}
           {overviewData.some(d => d.users.percent >= 95 || d.storage.percent >= 95) && (
-            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200">
+            <div className="p-4 rounded-xl bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)]">
               <h3 className="text-xs font-bold flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-[var(--warning-text)] dark:text-[var(--warning-text)] shrink-0" />
                 <span>ALERTAS DE SATURAÇÃO DE CAPACIDADE ATIVOS</span>
               </h3>
-              <p className="text-[11px] text-amber-700 dark:text-amber-300 mb-2">
+              <p className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] mb-2">
                 As seguintes empresas atingiram ou excederam 95% das cotas de recursos contratadas e necessitam de upgrade de plano:
               </p>
               <div className="flex flex-wrap gap-2">
@@ -1170,7 +1171,7 @@ export const PlatformMasterCentral: React.FC = () => {
                   const nearLimit = d.users.percent >= 95 || d.storage.percent >= 95;
                   if (!nearLimit) return null;
                   return (
-                    <span key={d.id} className="text-[10px] font-extrabold bg-amber-100 dark:bg-amber-900/80 border border-amber-200 dark:border-amber-800 px-2 py-1 rounded-lg">
+                    <span key={d.id} className="text-[10px] font-extrabold bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border border-[var(--warning-border)] dark:border-[var(--warning-border)] px-2 py-1 rounded-lg">
                       {d.name} ({d.users.percent >= 95 ? 'Usuários ' : ''}{d.storage.percent >= 95 ? 'Espaço' : ''})
                     </span>
                   );
@@ -1180,13 +1181,13 @@ export const PlatformMasterCentral: React.FC = () => {
           )}
 
           {/* Consolidado Overview Table */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850 flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Monitoramento de Capacidade & Saúde Individual</h3>
+          <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] overflow-hidden shadow-2xs">
+            <div className="p-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex items-center justify-between">
+              <h3 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wider">Monitoramento de Capacidade & Saúde Individual</h3>
               <button
                 onClick={fetchOverviewData}
                 disabled={isOverviewLoading}
-                className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-extrabold uppercase px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-[10px] font-extrabold uppercase px-2.5 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] cursor-pointer transition-colors"
               >
                 <RefreshCw className={`h-3 w-3 ${isOverviewLoading ? 'animate-spin' : ''}`} />
                 <span>Recarregar</span>
@@ -1194,8 +1195,8 @@ export const PlatformMasterCentral: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300">
-                <thead className="bg-slate-100/80 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider">
+              <table className="w-full text-xs text-left text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+                <thead className="bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-canvas)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold border-b border-[var(--field-border)] dark:border-[var(--field-border)] text-[11px] uppercase tracking-wider">
                   <tr>
                     <th className="p-3.5">Empresa</th>
                     <th className="p-3.5">Plano</th>
@@ -1205,16 +1206,16 @@ export const PlatformMasterCentral: React.FC = () => {
                     <th className="p-3.5">Espaço Utilizado (Cota)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                   {isOverviewLoading && overviewData.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                      <td colSpan={6} className="p-8 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
                         Carregando dados de consumo do servidor...
                       </td>
                     </tr>
                   ) : overviewData.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                      <td colSpan={6} className="p-8 text-center text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-xs">
                         Nenhum dado consolidado disponível.
                       </td>
                     </tr>
@@ -1226,11 +1227,11 @@ export const PlatformMasterCentral: React.FC = () => {
                       const sStyles = getStatusStyles(d.storage.status);
 
                       return (
-                        <tr key={d.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">
+                        <tr key={d.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                          <td className="p-3.5 font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {d.name}
                           </td>
-                          <td className="p-3.5 font-bold text-slate-500 dark:text-slate-400">
+                          <td className="p-3.5 font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                             {d.plan}
                           </td>
                           <td className="p-3.5">
@@ -1238,9 +1239,9 @@ export const PlatformMasterCentral: React.FC = () => {
                               <span className={`text-[11px] font-black px-2.5 py-1 border rounded-lg ${hStyles.bg} ${hStyles.text} ${hStyles.border}`}>
                                 {d.healthScore} - {d.healthStatus}
                               </span>
-                              <div className="w-20 bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full overflow-hidden shrink-0">
+                              <div className="w-20 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] h-1.5 rounded-full overflow-hidden shrink-0">
                                 <div
-                                  className="h-full bg-blue-600"
+                                  className="h-full bg-[var(--info-bg)]"
                                   style={{ width: `${d.healthScore}%` }}
                                 />
                               </div>
@@ -1249,10 +1250,10 @@ export const PlatformMasterCentral: React.FC = () => {
                           <td className="p-3.5">
                             <div className="space-y-1">
                               <div className="flex items-center justify-between text-[11px]">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">{d.users.active} / {d.users.limit || '∞'}</span>
+                                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{d.users.active} / {d.users.limit || '∞'}</span>
                                 <span className={`font-black ${uStyles.text}`}>{d.users.percent}%</span>
                               </div>
-                              <div className="w-28 bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full overflow-hidden">
+                              <div className="w-28 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] h-1.5 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full ${uStyles.bar}`}
                                   style={{ width: `${Math.min(100, d.users.percent)}%` }}
@@ -1263,10 +1264,10 @@ export const PlatformMasterCentral: React.FC = () => {
                           <td className="p-3.5">
                             <div className="space-y-1">
                               <div className="flex items-center justify-between text-[11px]">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">{d.proposals.total} / {d.proposals.limit || '∞'}</span>
+                                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{d.proposals.total} / {d.proposals.limit || '∞'}</span>
                                 <span className={`font-black ${pStyles.text}`}>{d.proposals.percent}%</span>
                               </div>
-                              <div className="w-28 bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full overflow-hidden">
+                              <div className="w-28 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] h-1.5 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full ${pStyles.bar}`}
                                   style={{ width: `${Math.min(100, d.proposals.percent)}%` }}
@@ -1277,10 +1278,10 @@ export const PlatformMasterCentral: React.FC = () => {
                           <td className="p-3.5">
                             <div className="space-y-1">
                               <div className="flex items-center justify-between text-[11px]">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">{d.storage.usedMb} MB / {d.storage.limitMb} MB</span>
+                                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{d.storage.usedMb} MB / {d.storage.limitMb} MB</span>
                                 <span className={`font-black ${sStyles.text}`}>{d.storage.percent}%</span>
                               </div>
-                              <div className="w-28 bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full overflow-hidden">
+                              <div className="w-28 bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] h-1.5 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full ${sStyles.bar}`}
                                   style={{ width: `${Math.min(100, d.storage.percent)}%` }}
@@ -1301,37 +1302,37 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Modal Create/Edit Tenant */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] p-6  space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 {editingTenant ? 'Editar Empresa & Identidade Visual' : 'Cadastrar Nova Empresa'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-base"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer text-base"
               >
                 ✕
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+              <div className="p-3 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-[var(--danger-text)] shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
 
             {editingTenant && (
-              <div className="flex border-b border-slate-100 dark:border-slate-800 mb-4">
+              <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)] mb-4">
                 <button
                   type="button"
                   onClick={() => setModalTab('config')}
                   className={`px-4 py-2 border-b-2 text-xs font-bold transition-all ${
                     modalTab === 'config'
-                      ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                      : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Configurações Gerais
@@ -1341,8 +1342,8 @@ export const PlatformMasterCentral: React.FC = () => {
                   onClick={() => setModalTab('domains')}
                   className={`px-4 py-2 border-b-2 text-xs font-bold transition-all ${
                     modalTab === 'domains'
-                      ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      ? 'border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)]'
+                      : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Domínios da Empresa
@@ -1354,27 +1355,27 @@ export const PlatformMasterCentral: React.FC = () => {
               <form onSubmit={handleSaveTenant} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Nome da Empresa *</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nome da Empresa *</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                     placeholder="Ex: CredFácil Financeira"
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--field-border)]"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Slug (Subdomínio) *</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Slug (Subdomínio) *</label>
                   <input
                     type="text"
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                     required
                     placeholder="Ex: credfacil"
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--field-border)]"
                   />
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                  <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                     Acesso: {slug ? `${slug.toLowerCase().trim()}.sentinelconsig.com.br` : 'slug.sentinelconsig.com.br'}
                   </span>
                 </div>
@@ -1382,45 +1383,45 @@ export const PlatformMasterCentral: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Domínio Personalizado (Opcional)</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Domínio Personalizado (Opcional)</label>
                   <input
                     type="text"
                     value={customDomain}
                     onChange={(e) => setCustomDomain(e.target.value)}
                     placeholder="Ex: app.credfacil.com.br"
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--field-border)]"
                   />
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">CNAME apontando para a plataforma</span>
+                  <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">CNAME apontando para a plataforma</span>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">CNPJ</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">CNPJ</label>
                   <input
                     type="text"
                     value={cnpj}
                     onChange={(e) => setCnpj(e.target.value)}
                     placeholder="00.000.000/0001-00"
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--field-border)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Nome Fantasia / Comercial</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nome Fantasia / Comercial</label>
                   <input
                     type="text"
                     value={tradeName}
                     onChange={(e) => setTradeName(e.target.value)}
                     placeholder="Ex: CredFácil Consignados"
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--field-border)]"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Plano SaaS</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Plano SaaS</label>
                   <select
                     value={plan}
                     onChange={(e) => setPlan(e.target.value as TenantPlan)}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-blue-500"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden focus:border-[var(--field-border)]"
                   >
                     <option value="STARTER">STARTER (Até 5 Usuários)</option>
                     <option value="PRO">PRO (Até 15 Usuários)</option>
@@ -1432,29 +1433,29 @@ export const PlatformMasterCentral: React.FC = () => {
 
               {/* Se for criação, solicita dados do admin do tenant */}
               {!editingTenant && (
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] block uppercase tracking-wider">
+                <div className="p-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                  <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-[11px] block uppercase tracking-wider">
                     Usuário Administrador Inicial da Empresa
                   </span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700 dark:text-slate-300">Nome do Administrador</label>
+                      <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nome do Administrador</label>
                       <input
                         type="text"
                         value={adminName}
                         onChange={(e) => setAdminName(e.target.value)}
                         placeholder="Ex: Carlos Mendes"
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700 dark:text-slate-300">E-mail do Administrador</label>
+                      <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">E-mail do Administrador</label>
                       <input
                         type="email"
                         value={adminEmail}
                         onChange={(e) => setAdminEmail(e.target.value)}
                         placeholder="admin@empresa.com.br"
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -1462,60 +1463,60 @@ export const PlatformMasterCentral: React.FC = () => {
               )}
 
               {/* White Label Settings */}
-              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/50 space-y-3">
-                <span className="font-bold text-blue-900 dark:text-blue-300 text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
-                  <Palette className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
+                <span className="font-bold text-[var(--link)] dark:text-[var(--link)] text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
+                  <Palette className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)]" />
                   <span>Identidade Visual & Cores (White Label)</span>
                 </span>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 dark:text-slate-300">Cor Primária</label>
+                    <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Cor Primária</label>
                     <div className="flex items-center gap-1.5">
                       <input
                         type="color"
                         value={primaryColor}
                         onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 dark:border-slate-700 p-0"
+                        className="h-8 w-8 rounded cursor-pointer border border-[var(--field-border)] dark:border-[var(--field-border)] p-0"
                       />
                       <input
                         type="text"
                         value={primaryColor}
                         onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 text-[11px] font-mono text-slate-900 dark:text-slate-100"
+                        className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1 text-[11px] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 dark:text-slate-300">Cor Secundária</label>
+                    <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Cor Secundária</label>
                     <div className="flex items-center gap-1.5">
                       <input
                         type="color"
                         value={secondaryColor}
                         onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 dark:border-slate-700 p-0"
+                        className="h-8 w-8 rounded cursor-pointer border border-[var(--field-border)] dark:border-[var(--field-border)] p-0"
                       />
                       <input
                         type="text"
                         value={secondaryColor}
                         onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 text-[11px] font-mono text-slate-900 dark:text-slate-100"
+                        className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1 text-[11px] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 dark:text-slate-300">Cor Destaque</label>
+                    <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Cor Destaque</label>
                     <div className="flex items-center gap-1.5">
                       <input
                         type="color"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        className="h-8 w-8 rounded cursor-pointer border border-slate-300 dark:border-slate-700 p-0"
+                        className="h-8 w-8 rounded cursor-pointer border border-[var(--field-border)] dark:border-[var(--field-border)] p-0"
                       />
                       <input
                         type="text"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 text-[11px] font-mono text-slate-900 dark:text-slate-100"
+                        className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1 text-[11px] font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                       />
                     </div>
                   </div>
@@ -1523,16 +1524,16 @@ export const PlatformMasterCentral: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 dark:text-slate-300">Logo (URL ou Arquivo)</label>
+                    <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Logo (URL ou Arquivo)</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={logoUrl}
                         onChange={(e) => setLogoUrl(e.target.value)}
                         placeholder="https://..."
-                        className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                       />
-                      <label className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded text-xs font-bold flex items-center justify-center cursor-pointer transition-colors shrink-0">
+                      <label className="px-2 py-1.5 bg-[var(--info-bg)] dark:bg-[var(--info-bg)] hover:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded text-xs font-bold flex items-center justify-center cursor-pointer transition-colors shrink-0">
                         Upload
                         <input
                           type="file"
@@ -1545,13 +1546,13 @@ export const PlatformMasterCentral: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 dark:text-slate-300">E-mail de Suporte White Label</label>
+                    <label className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">E-mail de Suporte White Label</label>
                     <input
                       type="email"
                       value={supportEmail}
                       onChange={(e) => setSupportEmail(e.target.value)}
                       placeholder="suporte@empresa.com.br"
-                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                      className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -1560,49 +1561,49 @@ export const PlatformMasterCentral: React.FC = () => {
               {/* Limites & Cotas */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Limite de Usuários</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Limite de Usuários</label>
                   <input
                     type="number"
                     value={maxUsers}
                     onChange={(e) => setMaxUsers(Number(e.target.value))}
                     min={1}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Armazenamento (MB)</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Armazenamento (MB)</label>
                   <input
                     type="number"
                     value={storageLimitMb}
                     onChange={(e) => setStorageLimitMb(Number(e.target.value))}
                     min={100}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Cota Propostas</label>
+                  <label className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Cota Propostas</label>
                   <input
                     type="number"
                     value={maxProposals}
                     onChange={(e) => setMaxProposals(Number(e.target.value))}
                     min={100}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                    className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                   />
                 </div>
               </div>
 
               {/* Módulos Habilitados */}
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="p-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)]" />
                     <span>Módulos Habilitados para esta Empresa</span>
                   </span>
                   <div className="flex items-center gap-2 text-[10px]">
                     <button
                       type="button"
                       onClick={() => setSelectedModules(AVAILABLE_MODULES.map((m) => m.id))}
-                      className="text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer"
+                      className="text-[var(--link)] dark:text-[var(--link)] font-bold hover:underline cursor-pointer"
                     >
                       Marcar Todos
                     </button>
@@ -1610,7 +1611,7 @@ export const PlatformMasterCentral: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setSelectedModules([])}
-                      className="text-slate-500 hover:underline cursor-pointer"
+                      className="text-[var(--text-secondary)] hover:underline cursor-pointer"
                     >
                       Desmarcar Todos
                     </button>
@@ -1625,15 +1626,15 @@ export const PlatformMasterCentral: React.FC = () => {
                         key={mod.id}
                         className={`flex items-center gap-2 p-2 rounded-lg border text-[11px] font-medium transition-colors cursor-pointer select-none ${
                           isChecked
-                            ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-slate-900 dark:text-slate-100'
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'
+                            ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]'
+                            : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleModule(mod.id)}
-                          className="h-3.5 w-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700"
+                          className="h-3.5 w-3.5 rounded text-[var(--link)] focus:ring-[var(--focus)] border-[var(--field-border)] dark:border-[var(--field-border)]"
                         />
                         <span>{mod.label}</span>
                       </label>
@@ -1642,19 +1643,19 @@ export const PlatformMasterCentral: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 rounded-xl bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer disabled:opacity-90 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[var(--action)] text-[var(--action-ink)] font-bold hover:bg-[var(--action-hover)] cursor-pointer  disabled:opacity-90 flex items-center gap-1.5"
                 >
                   {isSubmitting ? 'Salvando...' : 'Salvar Empresa'}
                 </button>
@@ -1663,11 +1664,11 @@ export const PlatformMasterCentral: React.FC = () => {
           ) : (
             <div className="p-1">
               <DomainManagement tenantId={editingTenant?.id} />
-              <div className="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-slate-800 mt-4">
+              <div className="flex items-center justify-end pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] mt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors text-xs"
+                  className="px-4 py-2 rounded-xl bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer transition-colors text-xs"
                 >
                   Fechar
                 </button>
@@ -1680,48 +1681,48 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Soft Delete Confirmation Modal */}
       {isDeleteModalOpen && tenantToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-rose-100 dark:border-rose-950/60 shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)]  max-w-md w-full p-6 animate-in zoom-in-95 duration-150">
             <div className="flex items-start gap-4 mb-5">
-              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400">
+              <div className="p-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] rounded-lg text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-black text-rose-950 dark:text-rose-300">Excluir Empresa</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <h3 className="text-lg font-black text-[var(--danger-text)] dark:text-[var(--danger-text)]">Excluir Empresa</h3>
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                   Esta ação desativa a empresa de forma permanente no ambiente operacional e encerra todas as sessões.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-lg p-3.5 mb-5 space-y-2 text-xs">
+            <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg p-3.5 mb-5 space-y-2 text-xs">
               <div>
-                <span className="font-bold text-slate-400 block uppercase text-[10px]">Empresa</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete.name}</span>
+                <span className="font-bold text-[var(--text-secondary)] block uppercase text-[10px]">Empresa</span>
+                <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{tenantToDelete.name}</span>
               </div>
               <div>
-                <span className="font-bold text-slate-400 block uppercase text-[10px]">Slug / Domínio</span>
-                <span className="font-mono text-slate-800 dark:text-slate-200">{tenantToDelete.slug}.sentinelconsig.com.br</span>
+                <span className="font-bold text-[var(--text-secondary)] block uppercase text-[10px]">Slug / Domínio</span>
+                <span className="font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{tenantToDelete.slug}.sentinelconsig.com.br</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <div>
-                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Usuários</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete._count?.users ?? 0}</span>
+                  <span className="font-bold text-[var(--text-secondary)] block uppercase text-[9px]">Usuários</span>
+                  <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{tenantToDelete._count?.users ?? 0}</span>
                 </div>
                 <div>
-                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Propostas</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete._count?.proposals ?? 0}</span>
+                  <span className="font-bold text-[var(--text-secondary)] block uppercase text-[9px]">Propostas</span>
+                  <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{tenantToDelete._count?.proposals ?? 0}</span>
                 </div>
                 <div>
-                  <span className="font-bold text-slate-400 block uppercase text-[9px]">Documentos</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{tenantToDelete._count?.documents ?? 0}</span>
+                  <span className="font-bold text-[var(--text-secondary)] block uppercase text-[9px]">Documentos</span>
+                  <span className="font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{tenantToDelete._count?.documents ?? 0}</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1.5">
                   Para confirmar, digite o nome completo da empresa abaixo:
                 </label>
                 <input
@@ -1729,12 +1730,12 @@ export const PlatformMasterCentral: React.FC = () => {
                   value={confirmName}
                   onChange={(e) => setConfirmName(e.target.value)}
                   placeholder={tenantToDelete.name}
-                  className="w-full text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-rose-500 focus:border-rose-500"
+                  className="w-full text-xs rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 />
               </div>
 
               {deleteError && (
-                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                <p className="text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-2.5 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                   {deleteError}
                 </p>
               )}
@@ -1744,7 +1745,7 @@ export const PlatformMasterCentral: React.FC = () => {
                   type="button"
                   onClick={() => setIsDeleteModalOpen(false)}
                   disabled={isDeleting}
-                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs text-slate-700 dark:text-slate-300 cursor-pointer disabled:opacity-50"
+                  className="px-3.5 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] font-semibold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer disabled:opacity-90"
                 >
                   Cancelar
                 </button>
@@ -1752,7 +1753,7 @@ export const PlatformMasterCentral: React.FC = () => {
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={isDeleting || confirmName !== tenantToDelete.name}
-                  className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 font-semibold text-xs text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-xs"
+                  className="px-3.5 py-1.5 rounded-lg bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] font-semibold text-xs text-[var(--danger-text)] cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-xs"
                 >
                   {isDeleting ? (
                     <>
@@ -1771,46 +1772,46 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Bulk Delete Confirmation Modal */}
       {isBulkDeleteModalOpen && selectedTenantsList.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-rose-200 dark:border-rose-900/80 shadow-2xl max-w-xl w-full p-6 animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)]  max-w-xl w-full p-6 animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
             <div className="flex items-start gap-4 mb-4">
-              <div className="p-3 bg-rose-100 dark:bg-rose-950/60 rounded-xl text-rose-600 dark:text-rose-400">
+              <div className="p-3 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] rounded-xl text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-black text-rose-950 dark:text-rose-300">
+                <h3 className="text-lg font-black text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                   ATENÇÃO — Exclusão em Massa de Empresas
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  Você está prestes a excluir <strong className="text-rose-600 dark:text-rose-400">{selectedTenantsList.length} empresas</strong>.
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1">
+                  Você está prestes a excluir <strong className="text-[var(--danger-text)] dark:text-[var(--danger-text)]">{selectedTenantsList.length} empresas</strong>.
                   A operação fará soft delete das empresas selecionadas e invalidará seus acessos/sessões conforme as regras existentes.
                 </p>
               </div>
             </div>
 
             {/* List of Selected Tenants (first 10 preview) */}
-            <div className="flex-1 overflow-y-auto mb-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 p-3 space-y-2">
-              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+            <div className="flex-1 overflow-y-auto mb-4 border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-3 space-y-2">
+              <div className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1">
                 Empresas Selecionadas para Cancelamento ({selectedTenantsList.length})
               </div>
-              <div className="divide-y divide-slate-200 dark:divide-slate-700/60 text-xs">
+              <div className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] text-xs">
                 {selectedTenantsList.slice(0, 10).map((t) => (
                   <div key={t.id} className="py-2 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-bold text-slate-900 dark:text-slate-100 truncate">{t.name}</div>
-                      <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">{t.name}</div>
+                      <div className="font-mono text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate">
                         {t.slug}.sentinelconsig.com.br
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-right text-[11px] shrink-0">
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
                         t.status === 'ACTIVE'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
-                          : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+                          ? 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)] dark:border-[var(--success-border)]'
+                          : 'bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] dark:border-[var(--danger-border)]'
                       }`}>
                         {t.status === 'ACTIVE' ? 'Ativo' : 'Suspenso'}
                       </span>
-                      <span className="text-slate-500 dark:text-slate-400">
+                      <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         {t._count?.users ?? 0} usuários · {t._count?.proposals ?? 0} propostas · {t._count?.clients ?? 0} clientes
                       </span>
                     </div>
@@ -1819,29 +1820,29 @@ export const PlatformMasterCentral: React.FC = () => {
               </div>
 
               {selectedTenantsList.length > 10 && (
-                <div className="pt-2 text-center text-xs font-bold text-blue-600 dark:text-blue-400 border-t border-slate-200 dark:border-slate-700">
+                <div className="pt-2 text-center text-xs font-bold text-[var(--link)] dark:text-[var(--link)] border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                   + {selectedTenantsList.length - 10} outras empresas selecionadas
                 </div>
               )}
             </div>
 
             {/* Extra Confirmation Step */}
-            <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div className="space-y-4 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Digite <strong className="text-rose-600 dark:text-rose-400">EXCLUIR</strong> para confirmar a operação em lote:
+                <label className="block text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1.5">
+                  Digite <strong className="text-[var(--danger-text)] dark:text-[var(--danger-text)]">EXCLUIR</strong> para confirmar a operação em lote:
                 </label>
                 <input
                   type="text"
                   value={bulkConfirmText}
                   onChange={(e) => setBulkConfirmText(e.target.value)}
                   placeholder="EXCLUIR"
-                  className="w-full text-xs font-mono font-bold uppercase rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                  className="w-full text-xs font-mono font-bold uppercase rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-hidden focus:ring-2 focus:ring-[var(--danger-border)] focus:border-[var(--danger-border)]"
                 />
               </div>
 
               {bulkDeleteError && (
-                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 p-2.5 rounded-lg border border-rose-200 dark:border-rose-900/50">
+                <p className="text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-2.5 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                   {bulkDeleteError}
                 </p>
               )}
@@ -1855,7 +1856,7 @@ export const PlatformMasterCentral: React.FC = () => {
                     setBulkDeleteError(null);
                   }}
                   disabled={isBulkDeleting}
-                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs text-slate-700 dark:text-slate-300 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] font-semibold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer disabled:opacity-90"
                 >
                   Cancelar
                 </button>
@@ -1863,7 +1864,7 @@ export const PlatformMasterCentral: React.FC = () => {
                   type="button"
                   onClick={handleConfirmBulkDelete}
                   disabled={isBulkDeleting || bulkConfirmText !== 'EXCLUIR'}
-                  className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 font-bold text-xs text-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm transition-all"
+                  className="px-4 py-2 rounded-lg bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] font-bold text-xs text-[var(--danger-text)] cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed flex items-center gap-1.5  transition-all"
                 >
                   {isBulkDeleting ? (
                     <>
@@ -1885,13 +1886,13 @@ export const PlatformMasterCentral: React.FC = () => {
 
       {/* Bulk Delete Result Feedback Modal */}
       {bulkResultSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--scrim)] backdrop-blur-xs">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]  max-w-md w-full p-6 animate-in zoom-in-95 duration-150">
             <div className="flex items-start gap-4 mb-4">
               <div className={`p-3 rounded-xl ${
                 bulkResultSummary.failed === 0
-                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                  ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]'
+                  : 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
               }`}>
                 {bulkResultSummary.failed === 0 ? (
                   <CheckCircle className="h-6 w-6" />
@@ -1900,37 +1901,37 @@ export const PlatformMasterCentral: React.FC = () => {
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {bulkResultSummary.failed === 0 ? 'EXCLUSÃO CONCLUÍDA' : 'EXCLUSÃO CONCLUÍDA COM RESSALVAS'}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
                   Resumo detalhado da operação em lote:
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 space-y-2 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
-                <span className="text-slate-500">Solicitadas / Processadas:</span>
-                <span className="font-bold text-slate-900 dark:text-slate-100">{bulkResultSummary.processed}</span>
+            <div className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg p-3.5 mb-4 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="text-[var(--text-secondary)]">Solicitadas / Processadas:</span>
+                <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{bulkResultSummary.processed}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Canceladas com sucesso:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">{bulkResultSummary.cancelled}</span>
+              <div className="flex justify-between py-1 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="text-[var(--success-text)] dark:text-[var(--success-text)] font-semibold">Canceladas com sucesso:</span>
+                <span className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">{bulkResultSummary.cancelled}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-rose-600 dark:text-rose-400 font-semibold">Falhas:</span>
-                <span className="font-bold text-rose-600 dark:text-rose-400">{bulkResultSummary.failed}</span>
+                <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold">Falhas:</span>
+                <span className="font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]">{bulkResultSummary.failed}</span>
               </div>
 
               {bulkResultSummary.failedDetails && bulkResultSummary.failedDetails.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-[11px]">
+                <div className="mt-3 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
+                  <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] block mb-1 text-[11px]">
                     Detalhes das falhas:
                   </span>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {bulkResultSummary.failedDetails.map((f, i) => (
-                      <div key={i} className="text-[10px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded border border-rose-200 dark:border-rose-900/40">
+                      <div key={i} className="text-[10px] text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-1.5 rounded border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                         <strong className="font-mono">{f.tenantId}</strong>: {f.reason}
                       </div>
                     ))}
@@ -1943,7 +1944,7 @@ export const PlatformMasterCentral: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setBulkResultSummary(null)}
-                className="px-4 py-2 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs hover:bg-slate-800 dark:hover:bg-white cursor-pointer transition-colors"
+                className="px-4 py-2 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-secondary)] font-bold text-xs hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface)] cursor-pointer transition-colors"
               >
                 Concluir
               </button>

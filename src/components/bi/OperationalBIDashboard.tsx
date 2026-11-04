@@ -201,15 +201,15 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <LayoutDashboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+              <LayoutDashboard className="w-6 h-6 text-[var(--link)] dark:text-[var(--link)]" />
               <span>Dashboard Operacional — Torre de Controle</span>
             </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
               Operação P1
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
             Monitoramento em tempo real de esteira, gargalos, retenção CIP e conformidade de SLA.
           </p>
         </div>
@@ -217,7 +217,7 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
         <button
           onClick={handleExportCsv}
           disabled={isExporting}
-          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50 self-start md:self-auto"
+          className="px-3.5 py-2 rounded-xl bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] font-bold text-xs flex items-center gap-2 transition  cursor-pointer disabled:opacity-90 self-start md:self-auto"
           title="Exportar relatório operacional em CSV"
         >
           <Download className="w-4 h-4" />
@@ -239,14 +239,14 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
 
       {/* Error Alert */}
       {error && (
-        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl flex items-center justify-between text-xs text-rose-700 dark:text-rose-300">
+        <div className="p-3.5 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] rounded-xl flex items-center justify-between text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)]">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
             <span>{error}</span>
           </div>
           <button
             onClick={loadData}
-            className="px-2 py-1 font-semibold text-rose-700 dark:text-rose-300 hover:underline cursor-pointer"
+            className="px-2 py-1 font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:underline cursor-pointer"
           >
             Tentar novamente
           </button>
@@ -256,108 +256,108 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
       {/* Operational Operational Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         {/* 1. Backlog em Aberto */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider">VALORES NA ESTEIRA</span>
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center">
               <Layers className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 dark:text-slate-100 truncate">
+          <div className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
             {overview ? formatCurrency(overview.backlog.retainedValue) : '...'}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
             <span>{overview ? `${overview.backlog.count} em curso` : '...'}</span>
-            <span className="text-blue-600 dark:text-blue-400 font-semibold font-mono">Retido</span>
+            <span className="text-[var(--link)] dark:text-[var(--link)] font-semibold font-mono">Retido</span>
           </div>
         </div>
 
         {/* 2. Propostas em Risco de SLA */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider">SLA em Risco</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] flex items-center justify-center">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-amber-600 dark:text-amber-400">
+          <div className="text-xl font-black text-[var(--warning-text)] dark:text-[var(--warning-text)]">
             {overview ? overview.proposalsAtRisk : '...'}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
             <span>&gt; 75% do prazo</span>
-            <span className="text-amber-600 dark:text-amber-400 font-semibold">Preventivo</span>
+            <span className="text-[var(--warning-text)] dark:text-[var(--warning-text)] font-semibold">Preventivo</span>
           </div>
         </div>
 
         {/* 3. Propostas SLA Estourado */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider">SLA Estourado</span>
-            <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-rose-600 dark:text-rose-400">
+          <div className="text-xl font-black text-[var(--danger-text)] dark:text-[var(--danger-text)]">
             {overview ? overview.proposalsOverSla : '...'}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
             <span>Fora da meta</span>
-            <span className="text-rose-600 dark:text-rose-400 font-semibold">Crítico</span>
+            <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold">Crítico</span>
           </div>
         </div>
 
         {/* 4. Retenção Portabilidades (CIP) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider">Saldo na CIP</span>
-            <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center">
               <Coins className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 dark:text-slate-100 truncate">
+          <div className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
             {formatCurrency(cipRetainedDebt)}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
             <span>{portInCip.length} contratos CIP</span>
-            <span className="text-violet-600 dark:text-violet-400 font-semibold">
+            <span className="text-[var(--link)] dark:text-[var(--link)] font-semibold">
               {cipAt5thDay + cipOverdue} urgentes
             </span>
           </div>
         </div>
 
         {/* 5. Tarefas Operacionais */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider">Tarefas Pendentes</span>
-            <div className="w-7 h-7 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center">
               <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 dark:text-slate-100">
+          <div className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             {pendingTasks.length}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            <span className={overdueTasks.length > 0 ? 'text-rose-500 font-bold' : ''}>
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
+            <span className={overdueTasks.length > 0 ? 'text-[var(--danger-text)] font-bold' : ''}>
               {overdueTasks.length} vencidas
             </span>
-            <span className="text-slate-400">Backoffice</span>
+            <span className="text-[var(--text-secondary)]">Backoffice</span>
           </div>
         </div>
 
         {/* 6. Conformidade SLA Geral */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider">Índice Conformidade</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 dark:text-slate-100">
+          <div className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
             {overview ? `${overview.slaCompliancePercent}%` : '...'}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1">
             <span>Dentro do SLA</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">Meta: 90%</span>
+            <span className="text-[var(--success-text)] dark:text-[var(--success-text)] font-semibold font-mono">Meta: 90%</span>
           </div>
         </div>
       </div>
@@ -365,18 +365,18 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
       {/* Two Columns: Gargalos de Esteira vs Aging das Propostas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Gargalos de Esteira (Bottlenecks) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-2xs">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-4 shadow-2xs">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-500" />
+              <h2 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[var(--warning-text)]" />
                 <span>Gargalos Operacionais na Esteira</span>
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Fases com maior tempo de retenção (dwell time médio)
               </p>
             </div>
-            <span className="text-xs font-mono font-semibold text-slate-400">
+            <span className="text-xs font-mono font-semibold text-[var(--text-secondary)]">
               {bottlenecks?.byStatus.length || 0} status ativos
             </span>
           </div>
@@ -386,36 +386,36 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
               bottlenecks.byStatus.slice(0, 6).map((b) => (
                 <div
                   key={b.statusId}
-                  className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                  className="p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex items-center justify-between hover:border-[var(--field-border)] dark:hover:border-[var(--field-border)] transition-colors"
                 >
                   <div className="min-w-0 flex-1 pr-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                      <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
                         {b.statusName}
                       </span>
                       {b.overSlaCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                           {b.overSlaCount} estouradas
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                       {b.count} propostas • Volume: {formatCurrency(b.totalValue)}
                     </div>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                    <div className="text-xs font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {b.avgHours.toFixed(1)}h
                     </div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className="text-[10px] text-[var(--text-secondary)]">
                       SLA: {b.slaHours}h
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="py-8 text-center text-xs text-[var(--text-secondary)]">
                 {isLoading ? 'Calculando dwell times...' : 'Nenhum gargalo identificado no fluxo atual.'}
               </div>
             )}
@@ -423,18 +423,18 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
         </div>
 
         {/* Aging das Propostas em Aberto */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-2xs">
+        <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-4 shadow-2xs">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[var(--link)] dark:text-[var(--link)]" />
                 <span>Aging das Propostas em Aberto</span>
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Distribuição de idade das propostas em esteira
               </p>
             </div>
-            <span className="text-xs font-mono font-semibold text-slate-400">
+            <span className="text-xs font-mono font-semibold text-[var(--text-secondary)]">
               {aging?.summary.totalOpenProposals || 0} propostas
             </span>
           </div>
@@ -444,28 +444,28 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
               <div className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={aging.buckets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.15} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" strokeOpacity={0.15} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-secondary)" }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "var(--text-secondary)" }} tickLine={false} />
                     <Tooltip
                       formatter={(value: any, name: any) => [
                         name === 'count' ? `${value} propostas` : formatCurrency(Number(value)),
                         name === 'count' ? 'Quantidade' : 'Volume',
                       ]}
                       contentStyle={{
-                        backgroundColor: '#0f172a',
-                        borderColor: '#334155',
+                        backgroundColor: "var(--bg-surface)",
+                        borderColor: "var(--field-border)",
                         borderRadius: 8,
                         fontSize: 12,
-                        color: '#fff',
+                        color: "var(--text-primary)",
                       }}
                     />
-                    <Bar dataKey="count" name="count" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={28}>
+                    <Bar dataKey="count" name="count" fill="var(--chart-series-1)" radius={[4, 4, 0, 0]} barSize={28}>
                       {aging.buckets.map((b, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={
-                            index >= 3 ? '#ef4444' : index === 2 ? '#f59e0b' : '#3b82f6'
+                            index >= 3 ? "var(--chart-series-2)" : index === 2 ? "var(--chart-series-3)" : "var(--chart-series-1)"
                           }
                         />
                       ))}
@@ -475,16 +475,16 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
               </div>
 
               {/* Bucket details */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] text-center">
                 {aging.buckets.map((b) => (
-                  <div key={b.bucket} className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-                    <span className="block text-[10px] font-semibold text-slate-400 uppercase">
+                  <div key={b.bucket} className="p-1.5 rounded-lg bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
+                    <span className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase">
                       {b.label}
                     </span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                    <span className="text-xs font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {b.count} ({b.percentageCount}%)
                     </span>
-                    <span className="block text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    <span className="block text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] truncate">
                       {formatCurrency(b.totalValue)}
                     </span>
                   </div>
@@ -492,7 +492,7 @@ export const OperationalBIDashboard: React.FC<OperationalBIDashboardProps> = ({
               </div>
             </div>
           ) : (
-            <div className="h-[240px] flex items-center justify-center text-xs text-slate-400">
+            <div className="h-[240px] flex items-center justify-center text-xs text-[var(--text-secondary)]">
               {isLoading ? 'Calculando faixas de aging...' : 'Nenhuma proposta em aberto.'}
             </div>
           )}

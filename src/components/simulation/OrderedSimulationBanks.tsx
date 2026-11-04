@@ -11,5 +11,5 @@ export function OrderedSimulationBanks({ operation, groups }: { operation: strin
   return <div className="space-y-4">{groups.filter(group => group.visible).sort((a, b) => {
     const rank = (bank: string) => { const index = order.indexOf(bankKey(bank)); return index < 0 ? order.length : index; };
     return (a.resultRank??2)-(b.resultRank??2)||rank(a.bank) - rank(b.bank);
-  }).map(group => <section key={group.bank} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><h3 className="mb-3 font-bold">{BANK_LABELS[bankKey(group.bank)] || group.bank}</h3>{group.content}</section>)}</div>;
+  }).map(group => <section key={group.bank} className="rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><h3 className="mb-3 font-bold">{BANK_LABELS[bankKey(group.bank)] || group.bank}</h3>{group.content}</section>)}</div>;
 }

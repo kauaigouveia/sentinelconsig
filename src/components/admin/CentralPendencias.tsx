@@ -1,3 +1,4 @@
+import {PageHeader} from '../ui/DesignSystem';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AlertTriangle,
@@ -468,8 +469,8 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
   const renderSlaBadge = (metrics: SlaMetrics) => {
     if (metrics.isTerminalProposal) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5" title="A proposta vinculada já foi finalizada; SLA não contabilizado.">
-          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)] flex items-center gap-1.5" title="A proposta vinculada já foi finalizada; SLA não contabilizado.">
+          <CheckCircle2 className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
           Proposta Concluída (SLA Inativo)
         </span>
       );
@@ -477,7 +478,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
     if (metrics.slaStatus === 'RESOLVIDA') {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--action)] text-[var(--action-ink)] border border-[var(--border-default)] flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" /> Resolvida
         </span>
       );
@@ -485,7 +486,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
     if (metrics.slaStatus === 'CANCELADA') {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5">
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)] flex items-center gap-1.5">
           <Ban className="w-3.5 h-3.5" /> Cancelada
         </span>
       );
@@ -493,8 +494,8 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
     if (metrics.slaStatus === 'SLA_ESTOURADO') {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1.5 animate-pulse">
-          <AlertOctagon className="w-3.5 h-3.5 text-rose-400" />
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--action)] text-[var(--action-ink)] border border-[var(--border-default)] flex items-center gap-1.5 animate-pulse">
+          <AlertOctagon className="w-3.5 h-3.5 text-[var(--danger-text)]" />
           SLA Estourado (+{metrics.exceededHours}h)
         </span>
       );
@@ -502,15 +503,15 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
     if (metrics.slaStatus === 'PROXIMO_SLA') {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5">
-          <Timer className="w-3.5 h-3.5 text-amber-400" />
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--action)] text-[var(--action-ink)] border border-[var(--border-default)] flex items-center gap-1.5">
+          <Timer className="w-3.5 h-3.5 text-[var(--warning-text)]" />
           SLA Crítico ({metrics.remainingHours}h rest.)
         </span>
       );
     }
 
     return (
-      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--action)] text-[var(--action-ink)] border border-[var(--border-default)] flex items-center gap-1.5">
         <Clock className="w-3.5 h-3.5" />
         No Prazo ({metrics.remainingHours}h rest.)
       </span>
@@ -520,136 +521,118 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
   return (
     <div className={`space-y-6 ${premium ? 'p2-live-module p2-live-pendencies' : ''}`}>
       {uiError && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger-text)] dark:border-[var(--border-default)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">
           <span>{uiError}</span>
           <button type="button" onClick={handleRefresh} className="shrink-0 font-semibold underline">Tentar novamente</button>
         </div>
       )}
-      {/* Top Header Card */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${premium ? 'p2-pendency-header' : ''}`}>
-        <div className="flex items-center gap-4">
-          <div className="p-3.5 bg-rose-500/15 text-rose-400 rounded-xl border border-rose-500/30">
-            <ShieldAlert className="w-8 h-8" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-xl font-bold tracking-tight">Central de Pendências & SLA</h2>
-              <span className="px-2 py-0.5 text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full">
-                Operacional
-              </span>
-            </div>
-            <p className="text-sm text-slate-400 mt-1">
-              Tratamento centralizado de impedimentos da esteira com rastreabilidade de SLA, fila de atendimento e automações.
-            </p>
-          </div>
-        </div>
+      <PageHeader title="Central de Pendências & SLA" description="Impedimentos, responsáveis e prazos da operação.">
 
-        <div className="flex items-center gap-3">
           {canManageSla && <button
             onClick={() => {
               fetchSlaConfig();
               setShowSlaConfigModal(true);
             }}
-            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors text-xs font-semibold flex items-center gap-2"
+            className="px-3.5 py-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg border border-[var(--border-default)] transition-transform text-xs font-semibold flex items-center gap-2"
             title="Matriz de Prazos de SLA por Categoria"
           >
-            <Settings className="w-4 h-4 text-slate-400" />
+            <Settings className="w-4 h-4 text-[var(--text-secondary)]" />
             Configurar SLA
           </button>}
           <button
             onClick={handleRefresh}
-            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors"
+            className="p-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg border border-[var(--border-default)] transition-transform"
             title="Atualizar lista"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading || isSummaryLoading ? 'animate-spin text-rose-400' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading || isSummaryLoading ? 'animate-spin text-[var(--danger-text)]' : ''}`} />
           </button>
           {canCreate && <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold text-xs shadow-lg shadow-rose-600/20 transition-all flex items-center gap-2"
+            className="px-4 py-2.5 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg font-semibold text-xs   transition-transform flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Nova Pendência
           </button>}
-        </div>
-      </div>
+
+      </PageHeader>
 
       {/* KPI Counters & SLA Health */}
-      <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 ${premium ? 'p2-pendency-metrics' : ''}`}>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+      <div className="ui-metrics-strip">
+        <div className="ui-metric">
+          <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider flex items-center justify-between">
             <span>Total Fila</span>
-            <Layers className="w-4 h-4 text-slate-500" />
+            <Layers className="w-4 h-4 text-[var(--text-secondary)]" />
           </div>
-          <div className="text-2xl font-bold text-white mt-2">
+          <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">
             {summary?.total ?? totalCount}
           </div>
-          <div className="text-xs text-slate-500 mt-1">pendências no tenant</div>
+          <div className="text-xs text-[var(--text-secondary)] mt-1">pendências no tenant</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-          <div className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center justify-between">
+        <div className="ui-metric">
+          <div className="text-xs font-semibold text-[var(--warning-text)] uppercase tracking-wider flex items-center justify-between">
             <span>Abertas</span>
-            <AlertCircle className="w-4 h-4 text-amber-400" />
+            <AlertCircle className="w-4 h-4 text-[var(--warning-text)]" />
           </div>
-          <div className="text-2xl font-bold text-amber-400 mt-2">
+          <div className="text-2xl font-bold text-[var(--warning-text)] mt-2">
             {summary?.abertas ?? 0}
           </div>
-          <div className="text-xs text-slate-500 mt-1">aguardando operador</div>
+          <div className="text-xs text-[var(--text-secondary)] mt-1">aguardando operador</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-          <div className="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
+        <div className="ui-metric">
+          <div className="text-xs font-semibold text-[var(--info-text)] uppercase tracking-wider flex items-center justify-between">
             <span>Em Atendimento</span>
-            <UserCheck className="w-4 h-4 text-indigo-400" />
+            <UserCheck className="w-4 h-4 text-[var(--info-text)]" />
           </div>
-          <div className="text-2xl font-bold text-indigo-400 mt-2">
+          <div className="text-2xl font-bold text-[var(--info-text)] mt-2">
             {summary?.emAtendimento ?? 0}
           </div>
-          <div className="text-xs text-slate-500 mt-1">sendo tratadas</div>
+          <div className="text-xs text-[var(--text-secondary)] mt-1">sendo tratadas</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-          <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+        <div className="ui-metric">
+          <div className="text-xs font-semibold text-[var(--success-text)] uppercase tracking-wider flex items-center justify-between">
             <span>Dentro do SLA</span>
-            <Check className="w-4 h-4 text-emerald-400" />
+            <Check className="w-4 h-4 text-[var(--success-text)]" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mt-2">
+          <div className="text-2xl font-bold text-[var(--success-text)] mt-2">
             {summary?.dentroSla ?? 0}
           </div>
-          <div className="text-xs text-slate-500 mt-1">prazos confortáveis</div>
+          <div className="text-xs text-[var(--text-secondary)] mt-1">prazos confortáveis</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between border-rose-500/20 bg-rose-950/10">
-          <div className="text-xs font-semibold text-rose-400 uppercase tracking-wider flex items-center justify-between">
+        <div className="bg-[var(--action)] border border-[var(--border-default)] rounded-xl p-4 flex flex-col justify-between border-[var(--border-default)] bg-[var(--action)]">
+          <div className="text-xs font-semibold text-[var(--danger-text)] uppercase tracking-wider flex items-center justify-between">
             <span>SLA Estourado</span>
-            <AlertOctagon className="w-4 h-4 text-rose-400" />
+            <AlertOctagon className="w-4 h-4 text-[var(--danger-text)]" />
           </div>
-          <div className="text-2xl font-bold text-rose-400 mt-2">
+          <div className="text-2xl font-bold text-[var(--danger-text)] mt-2">
             {summary?.slaEstourado ?? 0}
           </div>
-          <div className="text-xs text-rose-400/70 mt-1">atenção imediata</div>
+          <div className="text-xs text-[var(--danger-text)] mt-1">atenção imediata</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-          <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+        <div className="ui-metric">
+          <div className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider flex items-center justify-between">
             <span>Resolvidas</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--success-text)]" />
           </div>
-          <div className="text-2xl font-bold text-slate-200 mt-2">
+          <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">
             {summary?.resolvidas ?? 0}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-[var(--text-secondary)] mt-1">
             méd: {summary?.avgResolutionTimeHours ?? 0}h por baixa
           </div>
         </div>
       </div>
 
       {/* Advanced Filter and Search Bar */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 ${premium ? 'p2-pendency-filters' : ''}`}>
+      <div className={`bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-4 space-y-3 ${premium ? 'p2-pendency-filters' : ''}`}>
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           {/* Status buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg p-1">
-            <span className="text-xs text-slate-400 px-2 font-medium">Status:</span>
+          <div className="flex flex-wrap items-center gap-1.5 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg p-1">
+            <span className="text-xs text-[var(--text-secondary)] px-2 font-medium">Status:</span>
             {[
               { id: 'ALL', label: 'Todos' },
               { id: 'ABERTA', label: 'Abertas' },
@@ -661,8 +644,8 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
               <button
                 key={s.id}
                 onClick={() => setStatusFilter(s.id)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  statusFilter === s.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-transform ${
+                  statusFilter === s.id ? 'bg-[var(--action)] text-[var(--action-ink)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {s.label}
@@ -671,25 +654,25 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
           </div>
 
           {/* SLA Filter */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg p-1">
-            <span className="text-xs text-slate-400 px-2 font-medium">SLA:</span>
+          <div className="flex flex-wrap items-center gap-1.5 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg p-1">
+            <span className="text-xs text-[var(--text-secondary)] px-2 font-medium">SLA:</span>
             {[
               { id: 'ALL', label: 'Todos' },
-              { id: 'DENTRO_SLA', label: 'No Prazo', color: 'hover:text-emerald-400' },
-              { id: 'PROXIMO_SLA', label: 'Crítico', color: 'hover:text-amber-400' },
-              { id: 'SLA_ESTOURADO', label: 'Estourado', color: 'hover:text-rose-400' },
+              { id: 'DENTRO_SLA', label: 'No Prazo', color: 'hover:text-[var(--success-text)]' },
+              { id: 'PROXIMO_SLA', label: 'Crítico', color: 'hover:text-[var(--warning-text)]' },
+              { id: 'SLA_ESTOURADO', label: 'Estourado', color: 'hover:text-[var(--danger-text)]' },
             ].map((sla) => (
               <button
                 key={sla.id}
                 onClick={() => setSlaFilter(sla.id)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-transform ${
                   slaFilter === sla.id
                     ? sla.id === 'SLA_ESTOURADO'
-                      ? 'bg-rose-600 text-white'
+                      ? 'bg-[var(--action)] text-[var(--action-ink)]'
                       : sla.id === 'PROXIMO_SLA'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-emerald-600 text-white'
-                    : `text-slate-400 ${sla.color || 'hover:text-white'}`
+                      ? 'bg-[var(--action)] text-[var(--action-ink)]'
+                      : 'bg-[var(--action)] text-[var(--action-ink)]'
+                    : `text-[var(--text-secondary)] ${sla.color || 'hover:text-[var(--text-primary)]'}`
                 }`}
               >
                 {sla.label}
@@ -701,10 +684,10 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
             type="button"
             aria-pressed={mineOnly}
             onClick={() => setMineOnly(current => !current)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-transform ${
               mineOnly
-                ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
-                : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-indigo-500/60 hover:text-white'
+                ? 'border-[var(--border-default)] bg-[var(--action)] text-[var(--action-ink)] '
+                : 'border-[var(--border-default)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] hover:border-[var(--border-default)] hover:text-[var(--text-primary)]'
             }`}
           >
             <UserCheck className="h-3.5 w-3.5" />
@@ -713,20 +696,20 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
           {/* Search */}
           <form onSubmit={handleSearchSubmit} className="relative w-full min-w-0 lg:w-[320px] lg:flex-none">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[var(--text-secondary)] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="search"
               placeholder="Buscar contrato, cliente, CPF, título..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Buscar pendências por contrato, cliente, CPF ou título"
-              className="w-full pl-9 pr-16 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-rose-500 placeholder-slate-500"
+              className="ui-input-icon ui-input w-full pl-9 pr-16 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] placeholder-[var(--text-secondary)]"
             />
             <button
               type="submit"
               aria-label="Buscar pendências"
               title="Buscar pendências"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--field-border)]"
             >
               <Search className="h-3.5 w-3.5" />
             </button>
@@ -739,7 +722,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                 }}
                 aria-label="Limpar busca"
                 title="Limpar busca"
-                className="absolute right-9 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="absolute right-9 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--field-border)]"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -748,13 +731,13 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
         </div>
 
         {/* Secondary filters (Priority and Type) */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/60 text-xs">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[var(--border-default)] text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-medium">Prioridade:</span>
+            <span className="text-[var(--text-secondary)] font-medium">Prioridade:</span>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-rose-500"
+              className="ui-input bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
             >
               <option value="ALL">Todas</option>
               <option value="URGENT">Crítica / Urgente</option>
@@ -765,11 +748,11 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-medium">Categoria / Tipo:</span>
+            <span className="text-[var(--text-secondary)] font-medium">Categoria / Tipo:</span>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-rose-500"
+              className="ui-input bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
             >
               <option value="ALL">Todas as Categorias</option>
               {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
@@ -790,7 +773,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                 setSearchQuery('');
                 setMineOnly(false);
               }}
-              className="text-rose-400 hover:text-rose-300 ml-auto flex items-center gap-1 font-semibold"
+              className="text-[var(--danger-text)] hover:text-[var(--danger-text)] ml-auto flex items-center gap-1 font-semibold"
             >
               <RotateCcw className="w-3 h-3" /> Limpar Filtros
             </button>
@@ -799,43 +782,43 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
       </div>
 
       {/* Main List */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm ${premium ? 'p2-pendency-list' : ''}`}>
+      <div className={`bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl overflow-hidden  ${premium ? 'p2-pendency-list' : ''}`}>
         {isLoading ? (
-          <div className="p-16 text-center text-slate-500 space-y-3">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-rose-500" />
+          <div className="p-16 text-center text-[var(--text-secondary)] space-y-3">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[var(--danger-text)]" />
             <div className="text-sm font-medium">Carregando pendências operacionais...</div>
           </div>
         ) : pendencies.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 space-y-2">
-            <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500/40 mb-2" />
-            <div className="text-base font-semibold text-slate-300">Nenhuma pendência encontrada</div>
-            <div className="text-xs text-slate-500 max-w-sm mx-auto">
+          <div className="p-16 text-center text-[var(--text-secondary)] space-y-2">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-[var(--success-text)] mb-2" />
+            <div className="text-base font-semibold text-[var(--text-primary)]">Nenhuma pendência encontrada</div>
+            <div className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
               Não há impedimentos operacionais para os filtros selecionados ou a fila está 100% em dia.
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-slate-800/80">
+          <div className="divide-y divide-[var(--field-border)]">
             {pendencies.map((item) => {
               const sla = item.slaMetrics;
               return (
                 <div
                   key={item.id}
-                  className="p-4 hover:bg-slate-800/40 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                  className="p-4 hover:bg-[var(--bg-surface-elevated)] transition-transform flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                 >
                   {/* Left Column: Context, Title, Badges */}
                   <div className="space-y-2 min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded uppercase tracking-wider border border-slate-700/60">
+                      <span className="px-2 py-0.5 bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] text-xs font-semibold rounded uppercase tracking-wider border border-[var(--border-default)]">
                         {CATEGORY_LABELS[item.type] || item.type}
                       </span>
 
                       <span
                         className={`px-2 py-0.5 text-xs font-bold rounded ${
                           item.priority === 'URGENT'
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                            ? 'bg-[var(--action)] text-[var(--action-ink)] border border-[var(--border-default)]'
                             : item.priority === 'HIGH'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            ? 'bg-[var(--action)] text-[var(--action-ink)] border border-[var(--border-default)]'
+                            : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                         }`}
                       >
                         {item.priority === 'URGENT' ? 'CRÍTICA' : item.priority === 'HIGH' ? 'ALTA' : item.priority === 'MEDIUM' ? 'NORMAL' : 'BAIXA'}
@@ -843,34 +826,34 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
                       {renderSlaBadge(sla)}
 
-                      <span className="text-xs text-slate-500 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-slate-600" />
+                      <span className="text-xs text-[var(--text-secondary)] flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-[var(--text-secondary)]" />
                         {new Date(item.createdAt).toLocaleDateString('pt-BR')} às {new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
 
                     <h4
                       onClick={() => openDrawer(item)}
-                      className="text-sm md:text-base font-bold text-white hover:text-rose-400 cursor-pointer transition-colors flex items-center gap-2"
+                      className="text-sm md:text-base font-bold text-[var(--text-primary)] hover:text-[var(--danger-text)] cursor-pointer transition-transform flex items-center gap-2"
                     >
                       {item.title}
-                      <ChevronRight className="w-4 h-4 text-slate-500" />
+                      <ChevronRight className="w-4 h-4 text-[var(--text-secondary)]" />
                     </h4>
 
                     {item.description && (
-                      <p className="text-xs text-slate-400 line-clamp-2 max-w-3xl">{item.description}</p>
+                      <p className="text-xs text-[var(--text-secondary)] line-clamp-2 max-w-3xl">{item.description}</p>
                     )}
 
                     {/* Progress Bar of SLA */}
                     {!sla.isTerminalProposal && item.status !== 'RESOLVIDA' && item.status !== 'CANCELADA' && (
-                      <div className="w-full max-w-md bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                      <div className="w-full max-w-md bg-[var(--bg-surface-elevated)] rounded-full h-1.5 overflow-hidden border border-[var(--border-default)]">
                         <div
-                          className={`h-full transition-all duration-300 ${
+                          className={`h-full transition-transform duration-300 ${
                             sla.isBreached
-                              ? 'bg-rose-500'
+                              ? 'bg-[var(--action)]'
                               : sla.isWarning
-                              ? 'bg-amber-400'
-                              : 'bg-emerald-400'
+                              ? 'bg-[var(--warning-bg)]'
+                              : 'bg-[var(--success-bg)]'
                           }`}
                           style={{ width: `${Math.min(100, sla.percentageElapsed)}%` }}
                         />
@@ -878,28 +861,28 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                     )}
 
                     {/* Linked Proposal / Bank Context */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 pt-0.5">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)] pt-0.5">
                       {item.proposal && (
-                        <span className="flex items-center gap-1 text-slate-200 font-semibold bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                          <FileText className="w-3.5 h-3.5 text-rose-400" />
+                        <span className="flex items-center gap-1 text-[var(--text-primary)] font-semibold bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded border border-[var(--border-default)]">
+                          <FileText className="w-3.5 h-3.5 text-[var(--danger-text)]" />
                           Proposta #{item.proposal.proposalNumber}
                           {item.proposal.client && ` • ${item.proposal.client.fullName || 'Cliente'}`}
                           {item.proposal.contractValue ? ` (R$ ${Number(item.proposal.contractValue).toLocaleString('pt-BR')})` : ''}
                         </span>
                       )}
                       {item.bank && (
-                        <span className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                          <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="flex items-center gap-1 bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded border border-[var(--border-default)]">
+                          <Building2 className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                           {item.bank.name}
                         </span>
                       )}
                       {item.assignedTo ? (
-                        <span className="flex items-center gap-1 text-indigo-300 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-800/40 font-medium">
-                          <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                        <span className="flex items-center gap-1 text-[var(--action-ink)] bg-[var(--action)] px-2 py-0.5 rounded border border-[var(--border-default)] font-medium">
+                          <UserCheck className="w-3.5 h-3.5 text-[var(--info-text)]" />
                           {item.assignedTo.name}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-amber-400 bg-amber-950/30 px-2 py-0.5 rounded border border-amber-800/30">
+                        <span className="flex items-center gap-1 text-[var(--action-ink)] bg-[var(--action)] px-2 py-0.5 rounded border border-[var(--border-default)]">
                           <UserIcon className="w-3.5 h-3.5" /> Fila Geral
                         </span>
                       )}
@@ -913,14 +896,14 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                         {!item.assignedTo && canAssign && (
                           <button
                             onClick={() => handleAssignToMe(item.id)}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                            className="px-3 py-1.5 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-xs font-semibold transition-transform flex items-center gap-1.5"
                           >
                             <UserCheck className="w-3.5 h-3.5" /> Assumir
                           </button>
                         )}
                         {canResolve && <button
                           onClick={() => setResolvingPendency(item)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                          className="px-3 py-1.5 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-xs font-semibold transition-transform flex items-center gap-1.5"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Baixar
                         </button>}
@@ -929,16 +912,16 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
                     <button
                       onClick={() => openDrawer(item)}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-xs font-semibold border border-[var(--border-default)] transition-transform flex items-center gap-1.5"
                       title="Histórico e Acompanhamento"
                     >
-                      <History className="w-3.5 h-3.5 text-slate-400" /> Detalhes
+                      <History className="w-3.5 h-3.5 text-[var(--text-secondary)]" /> Detalhes
                     </button>
 
                     {(item.status === 'RESOLVIDA' || item.status === 'CANCELADA') && canReopen && (
                       <button
                         onClick={() => handleReopen(item)}
-                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition-colors flex items-center gap-1"
+                        className="px-2.5 py-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-xs font-medium border border-[var(--border-default)] transition-transform flex items-center gap-1"
                         title="Reabrir pendência"
                       >
                         <RotateCcw className="w-3 h-3" /> Reabrir
@@ -954,24 +937,24 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Drawer Lateral: Detalhes Completos & Timeline Histórico */}
       {isDrawerOpen && selectedPendency && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-xl bg-slate-900 border-l border-slate-800 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--scrim)] backdrop-blur-xs flex justify-end">
+          <div className="w-full max-w-xl bg-[var(--bg-surface-elevated)] border-l border-[var(--border-default)] h-full flex flex-col  animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
-            <div className="p-5 border-b border-slate-800 flex items-start justify-between gap-4">
+            <div className="p-5 border-b border-[var(--border-default)] flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-xs font-semibold rounded uppercase">
+                  <span className="px-2 py-0.5 bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] text-xs font-semibold rounded uppercase">
                     {selectedPendency.type}
                   </span>
                   {renderSlaBadge(selectedPendency.slaMetrics)}
                 </div>
-                <h3 className="text-lg font-bold text-white leading-snug">
+                <h3 className="text-lg font-bold text-[var(--text-primary)] leading-snug">
                   {selectedPendency.title}
                 </h3>
               </div>
               <button
                 onClick={closeDrawer}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 rounded-lg hover:bg-[var(--bg-surface-elevated)]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -981,30 +964,30 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
               {/* Context Cards */}
               {selectedPendency.proposal && (
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
-                  <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-xl p-4 space-y-2">
+                  <div className="text-xs font-bold text-[var(--danger-text)] uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" /> Dados da Proposta Vinculada
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-slate-500">Contrato / Número:</span>
-                      <div className="text-white font-semibold">#{selectedPendency.proposal.proposalNumber}</div>
+                      <span className="text-[var(--text-secondary)]">Contrato / Número:</span>
+                      <div className="text-[var(--text-primary)] font-semibold">#{selectedPendency.proposal.proposalNumber}</div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Valor Contrato:</span>
-                      <div className="text-white font-semibold">
+                      <span className="text-[var(--text-secondary)]">Valor Contrato:</span>
+                      <div className="text-[var(--text-primary)] font-semibold">
                         R$ {Number(selectedPendency.proposal.contractValue || 0).toLocaleString('pt-BR')}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Cliente:</span>
-                      <div className="text-slate-200 font-medium">
+                      <span className="text-[var(--text-secondary)]">Cliente:</span>
+                      <div className="text-[var(--text-primary)] font-medium">
                         {selectedPendency.proposal.client?.fullName || 'Não informado'}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500">CPF:</span>
-                      <div className="text-slate-200 font-mono">
+                      <span className="text-[var(--text-secondary)]">CPF:</span>
+                      <div className="text-[var(--text-primary)] font-mono">
                         {selectedPendency.proposal.client?.cpf || 'Não informado'}
                       </div>
                     </div>
@@ -1014,12 +997,12 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
               {/* Resolution Note if Resolved */}
               {selectedPendency.status === 'RESOLVIDA' && selectedPendency.resolution && (
-                <div className="bg-emerald-950/20 border border-emerald-800/40 rounded-xl p-4 space-y-1.5">
-                  <div className="text-xs font-bold text-emerald-400 uppercase flex items-center gap-1.5">
+                <div className="bg-[var(--action)] border border-[var(--border-default)] rounded-xl p-4 space-y-1.5">
+                  <div className="text-xs font-bold text-[var(--success-text)] uppercase flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4" /> Parecer Formal de Resolução
                   </div>
-                  <p className="text-xs text-slate-200 whitespace-pre-wrap">{selectedPendency.resolution}</p>
-                  <div className="text-[11px] text-slate-400 pt-1">
+                  <p className="text-xs text-[var(--text-primary)] whitespace-pre-wrap">{selectedPendency.resolution}</p>
+                  <div className="text-[11px] text-[var(--text-secondary)] pt-1">
                     Baixada por {selectedPendency.resolvedBy?.name || 'Operador'} em{' '}
                     {selectedPendency.resolvedAt ? new Date(selectedPendency.resolvedAt).toLocaleString('pt-BR') : ''}
                   </div>
@@ -1029,8 +1012,8 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
               {/* Description */}
               {selectedPendency.description && (
                 <div className="space-y-1">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Instruções / Descrição</div>
-                  <p className="text-xs text-slate-300 bg-slate-950 p-3 rounded-lg border border-slate-800 whitespace-pre-wrap">
+                  <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase">Instruções / Descrição</div>
+                  <p className="text-xs text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-default)] whitespace-pre-wrap">
                     {selectedPendency.description}
                   </p>
                 </div>
@@ -1038,52 +1021,52 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
               {/* Timeline of Histories */}
               <div className="space-y-3">
-                <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <History className="w-4 h-4 text-indigo-400" /> Linha do Tempo & Auditoria
+                <div className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
+                  <History className="w-4 h-4 text-[var(--info-text)]" /> Linha do Tempo & Auditoria
                 </div>
 
-                <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800 pl-8">
+                <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--bg-surface-elevated)] pl-8">
                   {selectedPendency.histories && selectedPendency.histories.length > 0 ? (
                     selectedPendency.histories.map((h) => (
                       <div key={h.id} className="relative text-xs space-y-1">
-                        <div className="absolute -left-8 top-0.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-500 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                        <div className="absolute -left-8 top-0.5 w-4 h-4 rounded-full bg-[var(--bg-surface-elevated)] border-2 border-[var(--border-default)] flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[var(--info-bg)]" />
                         </div>
-                        <div className="flex items-center justify-between text-slate-400">
-                          <span className="font-semibold text-white">{h.userName || 'Sistema'}</span>
+                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                          <span className="font-semibold text-[var(--text-primary)]">{h.userName || 'Sistema'}</span>
                           <span className="text-[11px]">
                             {new Date(h.createdAt).toLocaleDateString('pt-BR')} às {new Date(h.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <div className="text-indigo-300 font-medium">{h.action}</div>
+                        <div className="text-[var(--info-text)] font-medium">{h.action}</div>
                         {h.notes && (
-                          <div className="text-slate-300 bg-slate-950/80 p-2 rounded border border-slate-800/80">
+                          <div className="text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] p-2 rounded border border-[var(--border-default)]">
                             {h.notes}
                           </div>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-500">Nenhum evento registrado ainda.</div>
+                    <div className="text-xs text-[var(--text-secondary)]">Nenhum evento registrado ainda.</div>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Drawer Footer: Add Comment & Quick Resolution */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950 space-y-3">
+            <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-surface-elevated)] space-y-3">
               {canUpdate && <form onSubmit={handleAddComment} className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Adicionar nota ou comentário na timeline..."
                   value={newCommentText}
                   onChange={(e) => setNewCommentText(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="ui-input flex-1 px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                 />
                 <button
                   type="submit"
                   disabled={isAddingComment || !newCommentText.trim()}
-                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-3 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-xs font-semibold transition-transform disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" /> Enviar
                 </button>
@@ -1094,13 +1077,13 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                   <>
                     {canCancel && <button
                       onClick={() => setCancellingPendency(selectedPendency)}
-                      className="px-3 py-1.5 text-xs text-slate-400 hover:text-rose-400 font-semibold"
+                      className="px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--danger-text)] font-semibold"
                     >
                       Cancelar Pendência
                     </button>}
                     {canResolve && <button
                       onClick={() => setResolvingPendency(selectedPendency)}
-                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                      className="px-4 py-1.5 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-xs font-semibold flex items-center gap-1.5"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Baixar Pendência
                     </button>}
@@ -1114,16 +1097,16 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Nova Pendência */}
       {showCreateModal && canCreate && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-rose-500" />
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-lg p-6 space-y-4 ">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
+              <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-[var(--danger-text)]" />
                 Abrir Nova Pendência Operacional
               </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1131,7 +1114,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                   Título da Pendência *
                 </label>
                 <input
@@ -1140,12 +1123,12 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                   placeholder="Ex: Documento de identidade divergente ou ilegível"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                  className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                   Descrição detalhada
                 </label>
                 <textarea
@@ -1153,19 +1136,19 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                   placeholder="Instruções para o correspondente, digitador ou operador..."
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                  className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                     Categoria / Tipo
                   </label>
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                    className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                   >
                     {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
                       <option key={k} value={k}>
@@ -1176,13 +1159,13 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                     Prioridade
                   </label>
                   <select
                     value={newPriority}
                     onChange={(e) => setNewPriority(e.target.value as PriorityLevel)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                    className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                   >
                     <option value="LOW">Baixa (48h)</option>
                     <option value="MEDIUM">Normal (24h)</option>
@@ -1194,7 +1177,7 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                     Prazo SLA Customizado (Horas)
                   </label>
                   <input
@@ -1204,11 +1187,11 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                     value={newSlaHours}
                     onChange={(e) => setNewSlaHours(e.target.value)}
                     placeholder="Padrão da Matriz"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                    className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                     Nº Proposta (Opcional)
                   </label>
                   <input
@@ -1216,23 +1199,23 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                     value={newProposalNumber}
                     onChange={(e) => setNewProposalNumber(e.target.value)}
                     placeholder="Ex: 100234"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                    className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-default)]">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-sm font-semibold transition-transform"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !newTitle.trim()}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-sm font-semibold transition-transform disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Salvando...' : 'Abrir Pendência'}
                 </button>
@@ -1244,29 +1227,29 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Baixar / Resolver Pendência */}
       {resolvingPendency && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-md p-6 space-y-4 ">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
+              <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-[var(--success-text)]" />
                 Baixar / Resolver Pendência
               </h3>
               <button
                 onClick={() => setResolvingPendency(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="text-xs text-slate-300 bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-              <span className="text-slate-500">Pendência:</span>
-              <div className="font-semibold text-white">{resolvingPendency.title}</div>
+            <div className="text-xs text-[var(--text-primary)] bg-[var(--bg-surface-elevated)] p-3 rounded-lg border border-[var(--border-default)] space-y-1">
+              <span className="text-[var(--text-secondary)]">Pendência:</span>
+              <div className="font-semibold text-[var(--text-primary)]">{resolvingPendency.title}</div>
             </div>
 
             <form onSubmit={handleResolve} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase mb-1">
                   Parecer Formal de Resolução * (Obrigatório)
                 </label>
                 <textarea
@@ -1275,22 +1258,22 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                   placeholder="Ex: Documento complementar anexado e validado com sucesso junto ao banco parceiro."
                   value={resolveNotes}
                   onChange={(e) => setResolveNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
                 <button
                   type="button"
                   onClick={() => setResolvingPendency(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition-colors"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-sm font-semibold transition-transform"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isResolving || resolveNotes.trim().length < 3}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-sm font-semibold transition-transform disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   {isResolving ? 'Gravando...' : 'Confirmar Resolução'}
@@ -1303,22 +1286,22 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Cancelar Pendência */}
       {cancellingPendency && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Ban className="w-5 h-5 text-rose-500" />
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-md p-6 space-y-4 ">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
+              <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Ban className="w-5 h-5 text-[var(--danger-text)]" />
                 Cancelar Pendência
               </h3>
               <button
                 onClick={() => setCancellingPendency(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-[var(--text-primary)]">
               Informe a justificativa do cancelamento (ex: proposta cancelada, duplicidade, etc.):
             </p>
 
@@ -1329,21 +1312,21 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                 placeholder="Justificativa formal do cancelamento..."
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-rose-500"
+                className="ui-input w-full px-3 py-2 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)]"
               />
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-default)]">
                 <button
                   type="button"
                   onClick={() => setCancellingPendency(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-sm font-semibold"
                 >
                   Voltar
                 </button>
                 <button
                   type="submit"
                   disabled={isCancelling || !cancelReason.trim()}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-sm font-semibold transition-transform disabled:cursor-not-allowed"
                 >
                   {isCancelling ? 'Cancelando...' : 'Confirmar Cancelamento'}
                 </button>
@@ -1355,30 +1338,30 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
 
       {/* Modal Matriz de SLA */}
       {showSlaConfigModal && canManageSla && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Settings className="w-5 h-5 text-indigo-400" />
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-2xl w-full max-w-xl p-6 space-y-4 ">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-default)]">
+              <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Settings className="w-5 h-5 text-[var(--info-text)]" />
                 Matriz de Prazos de SLA por Categoria (Horas)
               </h3>
               <button
                 onClick={() => setShowSlaConfigModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[var(--text-secondary)]">
               Configure o tempo máximo de atendimento padrão para cada categoria de pendência no seu tenant.
             </p>
 
             <form onSubmit={handleSaveSlaConfig} className="space-y-4">
               <div className="grid grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
                 {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
-                  <div key={k} className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <div key={k} className="bg-[var(--bg-surface-elevated)] p-2.5 rounded-lg border border-[var(--border-default)]">
+                    <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
                       {label}
                     </label>
                     <div className="flex items-center gap-2">
@@ -1393,26 +1376,26 @@ export const CentralPendencias: React.FC<{ premium?: boolean }> = ({ premium = f
                             [k]: parseInt(e.target.value, 10) || 24,
                           }))
                         }
-                        className="w-20 px-2 py-1 bg-slate-900 border border-slate-800 rounded text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                        className="ui-input w-20 px-2 py-1 bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded text-xs text-[var(--text-primary)] text-center focus:outline-none focus:border-[var(--border-default)]"
                       />
-                      <span className="text-xs text-slate-500">horas</span>
+                      <span className="text-xs text-[var(--text-secondary)]">horas</span>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-default)]">
                 <button
                   type="button"
                   onClick={() => setShowSlaConfigModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold"
+                  className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-sm font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingSlaConfig}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--action)] bg-[var(--action)] text-[var(--action-ink)] rounded-lg text-sm font-semibold transition-transform disabled:cursor-not-allowed"
                 >
                   {isSavingSlaConfig ? 'Salvando...' : 'Salvar Configurações de SLA'}
                 </button>

@@ -1,3 +1,5 @@
+import {Table,Badge,Button} from '../ui/DesignSystem';
+import {watchIntegrationCatalog} from '../../lib/integrationCatalogRefresh';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Landmark,
@@ -37,16 +39,21 @@ import { PremiumContent } from '../redesign/PremiumContent';
 import { TelegramIntegrationSettings } from '../integrations/TelegramIntegrationSettings';
 import { StorageService } from '../../services/storageService';
 
-export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'v8' | 'vctex' | 'health' | 'incidents' | 'logs';
+export type HubTab = 'overview' | 'telegram' | 'c6' | 'facta' | 'bmg' | 'happy' | 'finanto' | 'nossa-fintech' | 'workbank' | 'parana' | 'presenca' | 'v8' | 'vctex' | 'daycoval' | 'outros' | 'health' | 'incidents' | 'logs';
 
 export interface IntegrationDefinition {
   id: string;
   name: string;
   code: string;
-  slug: 'c6' | 'facta' | 'bmg' | 'happy' | 'vctex';
+  slug: Exclude<HubTab,'overview'|'telegram'|'health'|'incidents'|'logs'>;
+  configured?:boolean;
+  configurationUnavailable?:boolean;
+  connectionCount?:number;
+  enabledConnectionCount?:number;
+  environments?:string[];
   type: 'BANK' | 'FINTECH';
   protocol: string;
-  environment: 'production' | 'staging' | 'homologation';
+  environment: 'production' | 'staging' | 'homologation' | 'unknown';
   active: boolean;
   status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING';
   maskedBaseUrl: string;
@@ -150,6 +157,8 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   const [overallStatus, setOverallStatus] = useState<string>('CHECKING');
   const [isLoading, setIsLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
+  const [catalogUpdatedAt,setCatalogUpdatedAt]=useState<string|null>(null);
+  const catalogLoaded=useRef(false);
   const catalogController = useRef<AbortController | null>(null);
 
   // Ações de teste e diagnóstico
@@ -195,14 +204,14 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   const fetchHealthCatalog = useCallback(async () => {
     catalogController.current?.abort();
     const controller = new AbortController(); catalogController.current = controller;
-    setIsLoading(true); setCatalogError('');
+    if(!catalogLoaded.current)setIsLoading(true); setCatalogError('');
     try {
       const res = await fetch('/api/integrations/health', {cache:'no-store',signal:controller.signal});
       if (!res.ok) throw Error('CATALOG_UNAVAILABLE');
       const data = await res.json();
       if (!Array.isArray(data.integrations) || !data.summary || data.summary.total < 1) throw Error('CATALOG_INCOMPLETE');
       if(controller.signal.aborted)return;
-      setIntegrations(data.integrations); setSummary(data.summary); setOverallStatus(data.overallStatus || 'UNKNOWN');
+      setIntegrations(data.integrations); setSummary(data.summary); setOverallStatus(data.integrations.some((item:IntegrationDefinition)=>item.active)?data.overallStatus||'UNKNOWN':'UNKNOWN');catalogLoaded.current=true;setCatalogUpdatedAt(data.timestamp||new Date().toISOString());
     } catch {
       if(controller.signal.aborted)return;
       setIntegrations([]);setCatalogError('Catálogo indisponível ou incompleto. Confira a empresa e sua permissão; atualize para tentar novamente.');setOverallStatus('UNKNOWN');
@@ -210,10 +219,8 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   }, []);
 
   useEffect(() => {
-    void fetchHealthCatalog();
-    const refresh = () => { void fetchHealthCatalog(); };
-    window.addEventListener('sentinel-integration-status-updated', refresh);
-    return () => {catalogController.current?.abort();window.removeEventListener('sentinel-integration-status-updated',refresh);};
+    const stop=watchIntegrationCatalog(fetchHealthCatalog);
+    return () => {stop();catalogController.current?.abort();};
   }, [fetchHealthCatalog]);
 
   // Carregar Estatísticas de Saúde quando a aba ou filtros mudam
@@ -418,6 +425,8 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
     { id: 'presenca', label: 'Presença Bank', icon: Landmark },
     { id: 'v8', label: 'V8 Digital', icon: Plug },
     { id: 'vctex', label: 'VCTEX CLT', icon: Plug },
+    { id: 'daycoval', label: 'Planilhas INSS', icon: FileText },
+    { id: 'outros', label: 'Outras conexões', icon: Plug },
     { id: 'health', label: 'Saúde das APIs', icon: Activity },
     { id: 'incidents', label: 'Incidentes', icon: AlertTriangle },
     { id: 'logs', label: 'Logs & Auditoria', icon: History },
@@ -426,20 +435,18 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
   return (
     <div className={`space-y-6 ${premium ? 'p2-live-module p2-live-integrations' : ''}`}>
       {/* Top Banner do Hub */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${premium ? 'p2-integration-header' : ''}`}>
+      <div className={`bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-6 text-[var(--text-primary)] flex flex-col md:flex-row md:items-center justify-between gap-4  ${premium ? 'p2-integration-header' : ''}`}>
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/30">
+          <div className="p-3 bg-[var(--info-bg)] text-[var(--info-text)] rounded-xl border border-[var(--info-border)]">
             <Zap className="w-8 h-8" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold">Hub de Integrações Bancárias</h2>
-              <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-cyan-950/60 border border-cyan-800/40 text-cyan-300 rounded">
-                FASE 4
-              </span>
+
             </div>
-            <p className="text-sm text-slate-400">
-              Central unificada para monitorar, diagnosticar, auditar, medir e testar integrações bancárias e conexões CLT por empresa.
+            <p className="text-sm text-[var(--text-secondary)]">
+              Conexões, configurações e monitoramento da empresa.
             </p>
           </div>
         </div>
@@ -448,12 +455,12 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
           <span
             className={`px-3 py-1.5 text-xs font-semibold rounded-full flex items-center gap-1.5 border ${
               overallStatus === 'OPERATIONAL'
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                ? 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]'
               : overallStatus === 'ATTENTION'
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--warning-border)]'
                 : overallStatus === 'CHECKING' || overallStatus === 'UNKNOWN'
-                  ? 'bg-slate-500/10 text-slate-300 border-slate-500/20'
-                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] border-[var(--border-default)]'
+                  : 'bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)]'
             }`}
           >
             <Activity className="w-3.5 h-3.5 animate-pulse" />
@@ -470,7 +477,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
           <button
             onClick={fetchHealthCatalog}
             disabled={isLoading}
-            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors cursor-pointer"
+            className="p-2.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg border border-[var(--border-default)] transition-colors cursor-pointer"
             title="Atualizar status geral"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -478,57 +485,62 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
         </div>
       </div>
 
-      {catalogError && <p role="alert" className="text-sm text-amber-600 dark:text-amber-300">{catalogError}</p>}
+      {catalogError && <p role="alert" className="text-sm text-[var(--warning-text)] dark:text-[var(--warning-text)]">{catalogError}</p>}
       {/* Cards de Métricas e Contadores no Topo */}
       <div className={`grid grid-cols-2 md:grid-cols-5 gap-3 ${premium ? 'p2-integration-metrics' : ''}`}>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-            <span>INTEGRAÇÕES ATIVAS</span>
-            <Layers className="w-4 h-4 text-cyan-400" />
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs mb-1">
+            <span>INTEGRAÇÕES HABILITADAS</span>
+            <Layers className="w-4 h-4 text-[var(--info-text)]" />
           </div>
-          <div className="text-2xl font-bold text-white">
-            {isLoading || catalogError ? <span className="text-sm">{isLoading ? 'Carregando…' : 'Indisponível'}</span> : <>{summary.total - summary.disabled} <span className="text-xs text-slate-500 font-normal">/ {summary.total}</span></>}
+          <div className="text-2xl font-bold text-[var(--text-primary)]">
+            {isLoading || catalogError ? <span className="text-sm">{isLoading ? 'Carregando…' : 'Indisponível'}</span> : <>{integrations.filter(item=>item.active).length} <span className="text-xs text-[var(--text-secondary)] font-normal">/ {summary.total}</span></>}
           </div>
+          {!isLoading&&!catalogError&&<p className="text-xs text-[var(--text-secondary)]">{integrations.filter(item=>item.configured).length} configuradas{summary.metricsPartial?' · leitura parcial':''}</p>}
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs mb-1">
             <span>ONLINE</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--success-text)]" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400">{isLoading || catalogError ? '—' : summary.online}</div>
+          <div className="text-2xl font-bold text-[var(--success-text)]">{isLoading || catalogError ? '—' : summary.online}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs mb-1">
             <span>ATENÇÃO</span>
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <AlertTriangle className="w-4 h-4 text-[var(--warning-text)]" />
           </div>
-          <div className="text-2xl font-bold text-amber-400">{isLoading || catalogError ? '—' : summary.attention}</div>
+          <div className="text-2xl font-bold text-[var(--warning-text)]">{isLoading || catalogError ? '—' : summary.attention}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs mb-1">
             <span>OFFLINE</span>
-            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <AlertCircle className="w-4 h-4 text-[var(--danger-text)]" />
           </div>
-          <div className="text-2xl font-bold text-rose-400">{isLoading || catalogError ? '—' : summary.offline}</div>
+          <div className="text-2xl font-bold text-[var(--danger-text)]">{isLoading || catalogError ? '—' : summary.offline}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 col-span-2 md:col-span-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between text-[var(--text-secondary)] text-xs mb-1">
             <span>ERROS 24H</span>
-            <ShieldAlert className="w-4 h-4 text-slate-400" />
+            <ShieldAlert className="w-4 h-4 text-[var(--text-secondary)]" />
           </div>
-          <div className={`text-2xl font-bold ${summary.errors24h > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+          <div className={`text-2xl font-bold ${summary.errors24h > 0 ? 'text-[var(--warning-text)]' : 'text-[var(--text-primary)]'}`}>
             {isLoading || catalogError ? '—' : summary.requests24h===0 ? 'Sem amostra' : summary.errors24h}{!isLoading&&!catalogError&&summary.metricsPartial?' (parcial)':''}
           </div>
         </div>
       </div>
 
       {/* Barra de Subnavegação das 8 Abas do Hub */}
-      <div className={`flex items-center gap-1 overflow-x-auto border-b border-slate-800 pb-2 ${premium ? 'p2-integration-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Áreas de integração' : undefined}>
-        {tabs.map((tab) => {
+      <div className={`flex items-center gap-1 overflow-x-auto border-b border-[var(--border-default)] pb-2 ${premium ? 'p2-integration-tabs' : ''}`} role={premium ? 'navigation' : undefined} aria-label={premium ? 'Áreas de integração' : undefined}>
+        <select aria-label="Integração bancária" className="ui-input" style={{width:'auto',maxWidth:'100%'}} value={['overview','telegram','health','incidents','logs'].includes(activeTab)?'':activeTab} onChange={event=>setActiveTab(event.target.value as HubTab)}>
+          <option value="" disabled>Selecionar integração</option>
+          {tabs.filter(tab=>!['overview','telegram','health','incidents','logs'].includes(tab.id)).map(tab=><option key={tab.id} value={tab.id}>{tab.label}</option>)}
+        </select>
+        {tabs.filter(tab=>['overview','telegram','health','incidents','logs'].includes(tab.id)).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -538,8 +550,8 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
               aria-current={premium && isActive ? 'page' : undefined}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-[var(--action)] text-[var(--action-ink)]  '
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -550,27 +562,28 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       </div>
 
       {/* Feedback de Ações (Mensagens de Sucesso ou Erro) */}
+      <p className="text-xs text-[var(--text-secondary)]" role="status">Atualização automática de leitura a cada 60 segundos enquanto esta tela estiver visível.{catalogUpdatedAt?` Última leitura: ${new Date(catalogUpdatedAt).toLocaleTimeString('pt-BR')}.`:''} Habilitada não significa online. O catálogo agrega as promotoras ativas da empresa; cada configuração mantém sua própria promotora.</p>
       <PremiumContent active={premium} className="p2-integration-body space-y-6">
       {activeTab === 'telegram' && <TelegramIntegrationSettings key={StorageService.getCurrentTenantId() || 'platform'} />}
       {actionFeedback && (
         <div
           className={`p-3.5 rounded-lg border text-xs flex items-center justify-between ${
             actionFeedback.type === 'success'
-              ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-200'
-              : 'bg-rose-950/40 border-rose-800/50 text-rose-200'
+              ? 'bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text)]'
+              : 'bg-[var(--danger-bg)] border-[var(--danger-border)] text-[var(--danger-text)]'
           }`}
         >
           <div className="flex items-center gap-2">
             {actionFeedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-[var(--success-text)] shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-[var(--danger-text)] shrink-0" />
             )}
             <span>{actionFeedback.message}</span>
           </div>
           <button
             onClick={() => setActionFeedback(null)}
-            className="text-slate-400 hover:text-white cursor-pointer ml-3"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer ml-3"
           >
             <X className="w-4 h-4" />
           </button>
@@ -578,7 +591,16 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       )}
 
       {/* ABA 1: VISÃO GERAL */}
-      {activeTab === 'overview' && (
+      {activeTab === 'overview' && <>
+        {!catalogError&&!isLoading&&<Table caption="Integrações da empresa" rows={integrations} rowKey={bank=>bank.slug} columns={[
+          {key:'name',label:'Instituição',render:bank=><strong>{bank.name}</strong>,compare:(a,b)=>a.name.localeCompare(b.name,'pt-BR')},
+          {key:'configured',label:'Configuração',render:bank=>bank.configurationUnavailable?'Não conferida':bank.configured?'Configurada':'Pendente'},
+          {key:'enabled',label:'Habilitação',render:bank=>bank.active?'Habilitada':'Desabilitada'},
+          {key:'status',label:'Monitoramento',render:bank=><Badge tone={bank.status==='ONLINE'?'success':bank.status==='OFFLINE'?'danger':bank.status==='ATTENTION'?'warning':'neutral'}>{bank.status==='ONLINE'?'Última verificação OK':bank.status==='OFFLINE'?'Falha registrada':bank.status==='ATTENTION'?'Atenção / não verificada':'Desabilitada'}</Badge>},
+          {key:'checked',label:'Última verificação',render:bank=>bank.lastHealthCheck?new Date(bank.lastHealthCheck.timestamp).toLocaleString('pt-BR'):'Não aferida'},
+          {key:'action',label:'Ação',render:bank=><Button onClick={()=>setActiveTab(bank.slug)}>Abrir conexão</Button>},
+        ]}/>}
+        <details><summary>Diagnósticos e ações detalhadas</summary>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {integrations.map((bank) => {
             const isChecking = actionInProgress === `check_${bank.slug}`;
@@ -587,44 +609,45 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             return (
               <div
                 key={bank.id}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 hover:border-slate-700 transition-all flex flex-col justify-between"
+                className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 space-y-4 hover:border-[var(--border-default)] transition-all flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   {/* Cabeçalho do Card */}
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                        <span className="text-xs font-mono font-bold text-[var(--text-secondary)] bg-[var(--bg-surface-elevated)] px-2 py-0.5 rounded">
                           CÓD: {bank.code}
                         </span>
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-400">
-                          {bank.environment.toUpperCase()}
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)] text-[var(--text-secondary)]">
+                          {bank.environments && bank.environments.length>1?'MÚLTIPLOS AMBIENTES':bank.environment==='unknown'?'AMBIENTE NÃO INFORMADO':bank.environment.toUpperCase()}
                         </span>
                       </div>
-                      <h3 className="text-lg font-bold text-white mt-1.5">{bank.name}</h3>
+                      <h3 className="text-lg font-bold text-[var(--text-primary)] mt-1.5">{bank.name}</h3>
+                      <p className="text-xs text-[var(--text-secondary)]">{bank.configurationUnavailable?'Configuração não pôde ser conferida':bank.configured?`Configurada · ${bank.connectionCount??1} conexão(ões)`:'Sem credenciais configuradas'} · {bank.active?'Habilitada':'Não habilitada'}</p>
                     </div>
 
                     {/* Status Badge */}
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
                         bank.status === 'ONLINE'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]'
                           : bank.status === 'ATTENTION'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--warning-border)]'
                           : bank.status === 'OFFLINE'
-                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                          ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)]'
+                          : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)]'
                       }`}
                     >
                       <span
                         className={`w-2 h-2 rounded-full ${
                           bank.status === 'ONLINE'
-                            ? 'bg-emerald-400 animate-pulse'
+                            ? 'bg-[var(--success-bg)] animate-pulse'
                             : bank.status === 'ATTENTION'
-                            ? 'bg-amber-400'
+                            ? 'bg-[var(--warning-bg)]'
                             : bank.status === 'OFFLINE'
-                            ? 'bg-rose-400 animate-ping'
-                            : 'bg-slate-500'
+                            ? 'bg-[var(--danger-bg)] animate-ping'
+                            : 'bg-[var(--bg-surface-elevated)]'
                         }`}
                       />
                       {bank.status === 'ONLINE'
@@ -638,45 +661,45 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                   </div>
 
                   {/* Informações Operacionais */}
-                  <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3.5 text-xs space-y-2">
-                    <div className="flex items-center justify-between text-slate-400">
+                  <div className="bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg p-3.5 text-xs space-y-2">
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
                       <span>URL do Serviço:</span>
-                      <span className="font-mono text-slate-300 font-medium">{bank.maskedBaseUrl}</span>
+                      <span className="font-mono text-[var(--text-primary)] font-medium">{bank.maskedBaseUrl}</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
                       <span>Último Health Check:</span>
-                      <span className="text-slate-300">
+                      <span className="text-[var(--text-primary)]">
                         {bank.lastHealthCheck?.timestamp
                           ? `${new Date(bank.lastHealthCheck.timestamp).toLocaleTimeString('pt-BR')} (${bank.lastHealthCheck.latencyMs}ms)`
                           : 'Ainda não aferido'}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
                       <span>Taxa de Sucesso 24h:</span>
                       <span
                         className={`font-semibold ${
                           (bank.successRate24h ?? 100) >= 95
-                            ? 'text-emerald-400'
+                            ? 'text-[var(--success-text)]'
                             : (bank.successRate24h ?? 100) >= 80
-                            ? 'text-amber-400'
-                            : 'text-rose-400'
+                            ? 'text-[var(--warning-text)]'
+                            : 'text-[var(--danger-text)]'
                         }`}
                       >
                         {bank.successRate24h === undefined ? 'Sem amostra' : `${bank.successRate24h}% (${bank.totalRequests24h ?? 0} reqs)`}{bank.metricsPartial ? ' · parcial' : ''}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Última Sincronização:</span>
-                      <span className="text-slate-300">
+                    <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                      <span>Última sincronização registrada:</span>
+                      <span className="text-[var(--text-primary)]">
                         {bank.lastSyncAt ? new Date(bank.lastSyncAt).toLocaleString('pt-BR') : 'Nenhuma recente'}
                       </span>
                     </div>
 
                     {/* Aviso específico de Cloudflare se houver Ray ID */}
                     {bank.lastHealthCheck?.rayId && (
-                      <div className="pt-2 border-t border-slate-800 text-[11px] text-amber-300 flex items-center justify-between">
+                      <div className="pt-2 border-t border-[var(--border-default)] text-[11px] text-[var(--warning-text)] flex items-center justify-between">
                         <span>Bloqueio Cloudflare (Ray ID):</span>
-                        <span className="font-mono font-bold text-amber-400">{bank.lastHealthCheck.rayId}</span>
+                        <span className="font-mono font-bold text-[var(--warning-text)]">{bank.lastHealthCheck.rayId}</span>
                       </div>
                     )}
                   </div>
@@ -686,7 +709,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     {bank.capabilities.map((cap) => (
                       <span
                         key={cap}
-                        className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-700/60"
+                        className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)]"
                       >
                         {cap}
                       </span>
@@ -695,36 +718,36 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                 </div>
 
                 {/* Barra de Ações do Card */}
-                <div className="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800">
+                <div className="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)]">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setActiveTab(bank.slug as HubTab)}
-                      className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-[var(--info-text)] hover:text-[var(--info-text)] font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       Configurar <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-slate-700">|</span>
+                    {['c6','facta','happy'].includes(bank.slug)&&<><span className="text-[var(--text-secondary)]">|</span>
                     <button
                       onClick={() => handleTriggerSync(bank.slug)}
-                      disabled={isSyncing || bank.slug==='vctex'} title={bank.slug==='vctex'?'Sincronização não disponível nesta integração':undefined}
-                      className="text-xs text-slate-400 hover:text-slate-200 font-medium flex items-center gap-1 cursor-pointer"
+                      disabled={isSyncing || !['c6','facta','happy'].includes(bank.slug)} title={bank.slug==='vctex'?'Sincronização não disponível nesta integração':undefined}
+                      className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} /> Sincronizar
-                    </button>
+                    </button></>}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  {['c6','facta','bmg','happy'].includes(bank.slug)&&<div className="flex items-center gap-2">
                     <button
-                      onClick={() => bank.slug==='vctex'?setActiveTab('vctex'):handleOpenDiagnostics(bank.slug, bank.name)}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      onClick={() => !['c6','facta','bmg','happy'].includes(bank.slug)?setActiveTab(bank.slug):handleOpenDiagnostics(bank.slug, bank.name)}
+                      className="px-2.5 py-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-xs font-semibold border border-[var(--border-default)] transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
-                      <Activity className="w-3.5 h-3.5 text-amber-400" /> Diagnóstico
+                      <Activity className="w-3.5 h-3.5 text-[var(--warning-text)]" /> Diagnóstico
                     </button>
 
                     <button
-                      onClick={() => bank.slug==='vctex'?setActiveTab('vctex'):handleRunHealthCheck(bank.slug)}
+                      onClick={() => !['c6','facta','bmg','happy'].includes(bank.slug)?setActiveTab(bank.slug):handleRunHealthCheck(bank.slug)}
                       disabled={isChecking}
-                      className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] rounded-lg text-xs font-semibold  transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       {isChecking ? (
                         <>
@@ -732,34 +755,36 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                         </>
                       ) : (
                         <>
-                          <Zap className="w-3.5 h-3.5" /> Testar Conexão
+                          <Zap className="w-3.5 h-3.5" /> {['c6','facta','bmg','happy'].includes(bank.slug)?'Testar Conexão':'Abrir conexão'}
                         </>
                       )}
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </div>
             );
           })}
-        </div>
-      )}
+        </div></details></>
+      }
 
       {/* ABA 2: C6 BANK */}
-      {activeTab === 'c6' && <BankIntegrationsView initialTab="c6" />}
+      {activeTab === 'c6' && <BankIntegrationsView embedded initialTab="c6" />}
 
       {/* ABA 3: FACTA */}
-      {activeTab === 'facta' && <BankIntegrationsView initialTab="facta" />}
+      {activeTab === 'facta' && <BankIntegrationsView embedded initialTab="facta" />}
 
       {/* ABA 4: BMG */}
-      {activeTab === 'bmg' && <BankIntegrationsView initialTab="bmg" />}
+      {activeTab === 'bmg' && <BankIntegrationsView embedded initialTab="bmg" />}
 
       {/* ABA 5: HAPPY */}
-      {activeTab === 'happy' && <BankIntegrationsView initialTab="happy" />}
-      {activeTab === 'workbank' && <BankIntegrationsView initialTab="workbank" />}
-      {activeTab === 'parana' && <BankIntegrationsView initialTab="parana" />}
-      {activeTab === 'presenca' && <BankIntegrationsView initialTab="presenca" />}
-      {activeTab === 'v8' && <BankIntegrationsView initialTab="v8" />}
-      {activeTab === 'vctex' && <BankIntegrationsView initialTab="vctex" />}
+      {activeTab === 'happy' && <BankIntegrationsView embedded initialTab="happy" />}
+      {activeTab === 'daycoval' && <BankIntegrationsView embedded initialTab="daycoval" />}
+      {activeTab === 'outros' && <BankIntegrationsView embedded initialTab="outros" />}
+      {activeTab === 'workbank' && <BankIntegrationsView embedded initialTab="workbank" />}
+      {activeTab === 'parana' && <BankIntegrationsView embedded initialTab="parana" />}
+      {activeTab === 'presenca' && <BankIntegrationsView embedded initialTab="presenca" />}
+      {activeTab === 'v8' && <BankIntegrationsView embedded initialTab="v8" />}
+      {activeTab === 'vctex' && <BankIntegrationsView embedded initialTab="vctex" />}
 
       {/* ABA FINANTO / JOINBANK */}
       {activeTab === 'finanto' && <FinantoIntegrationTab />}
@@ -769,18 +794,18 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       {activeTab === 'health' && (
         <div className="space-y-6">
           {/* Controles de Filtro da Aba Saúde */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400">INTEGRAÇÃO:</span>
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">INTEGRAÇÃO:</span>
+              <div className="flex items-center gap-1 bg-[var(--bg-canvas)] p-1 rounded-lg border border-[var(--border-default)]">
                 {(['c6', 'facta', 'bmg', 'happy'] as const).map((slug) => (
                   <button
                     key={slug}
                     onClick={() => setHealthSelectedSlug(slug)}
                     className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
                       healthSelectedSlug === slug
-                        ? 'bg-cyan-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-[var(--action)] text-[var(--action-ink)] '
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     {slug.toUpperCase()}
@@ -790,14 +815,14 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400">PERÍODO:</span>
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">PERÍODO:</span>
+              <div className="flex items-center gap-1 bg-[var(--bg-canvas)] p-1 rounded-lg border border-[var(--border-default)]">
                 {(['1h', '24h', '7d', '30d'] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => setHealthPeriod(p)}
                     className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
-                      healthPeriod === p ? 'bg-slate-800 text-cyan-300' : 'text-slate-400 hover:text-white'
+                      healthPeriod === p ? 'bg-[var(--bg-surface-elevated)] text-[var(--info-text)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     {p}
@@ -808,100 +833,100 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
           </div>
 
           {healthLoading ? (
-            <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-              <RefreshCw className="w-8 h-8 animate-spin text-cyan-400" />
+            <div className="p-12 text-center text-[var(--text-secondary)] flex flex-col items-center justify-center gap-3">
+              <RefreshCw className="w-8 h-8 animate-spin text-[var(--info-text)]" />
               <span>Calculando métricas agregadas de saúde da API...</span>
             </div>
           ) : healthStats ? (
             <div className="space-y-6">
               {/* Grid de Indicadores Estatísticos */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                  <div className="text-xs text-slate-400 mb-1">Disponibilidade</div>
-                  <div className="text-2xl font-bold text-emerald-400">{healthStats.availability}%</div>
-                  <div className="text-[11px] text-slate-500 mt-1">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+                  <div className="text-xs text-[var(--text-secondary)] mb-1">Disponibilidade</div>
+                  <div className="text-2xl font-bold text-[var(--success-text)]">{healthStats.availability}%</div>
+                  <div className="text-[11px] text-[var(--text-secondary)] mt-1">
                     {healthStats.successCount} de {healthStats.totalRequests} requisições
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                  <div className="text-xs text-slate-400 mb-1">Latência Média</div>
-                  <div className="text-2xl font-bold text-white">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+                  <div className="text-xs text-[var(--text-secondary)] mb-1">Latência Média</div>
+                  <div className="text-2xl font-bold text-[var(--text-primary)]">
                     {healthStats.avgLatencyMs !== null ? `${healthStats.avgLatencyMs}ms` : '—'}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">Média aritmética do período</div>
+                  <div className="text-[11px] text-[var(--text-secondary)] mt-1">Média aritmética do período</div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                  <div className="text-xs text-slate-400 mb-1">Latência P95</div>
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+                  <div className="text-xs text-[var(--text-secondary)] mb-1">Latência P95</div>
                   <div
                     className={`text-xl font-bold ${
-                      typeof healthStats.p95LatencyMs === 'number' ? 'text-cyan-400' : 'text-slate-400 text-base'
+                      typeof healthStats.p95LatencyMs === 'number' ? 'text-[var(--info-text)]' : 'text-[var(--text-secondary)] text-base'
                     }`}
                   >
                     {typeof healthStats.p95LatencyMs === 'number'
                       ? `${healthStats.p95LatencyMs}ms`
                       : healthStats.p95LatencyMs}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">95% das chamadas mais rápidas</div>
+                  <div className="text-[11px] text-[var(--text-secondary)] mt-1">95% das chamadas mais rápidas</div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                  <div className="text-xs text-slate-400 mb-1">Taxa de Erros</div>
-                  <div className={`text-2xl font-bold ${healthStats.errorCount > 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+                  <div className="text-xs text-[var(--text-secondary)] mb-1">Taxa de Erros</div>
+                  <div className={`text-2xl font-bold ${healthStats.errorCount > 0 ? 'text-[var(--danger-text)]' : 'text-[var(--text-secondary)]'}`}>
                     {healthStats.errorCount}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">Total de falhas registradas</div>
+                  <div className="text-[11px] text-[var(--text-secondary)] mt-1">Total de falhas registradas</div>
                 </div>
               </div>
 
               {/* Detalhes de Erros HTTP e Rate Limits */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 space-y-3">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-[var(--warning-text)]" />
                     Distribuição de Falhas ({healthPeriod})
                   </h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <span className="text-slate-400">Erros de Cliente (HTTP 4xx):</span>
-                      <span className="font-mono font-bold text-amber-400">{healthStats.http4xxCount}</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)]">
+                      <span className="text-[var(--text-secondary)]">Erros de Cliente (HTTP 4xx):</span>
+                      <span className="font-mono font-bold text-[var(--warning-text)]">{healthStats.http4xxCount}</span>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <span className="text-slate-400">Erros de Servidor (HTTP 5xx):</span>
-                      <span className="font-mono font-bold text-rose-400">{healthStats.http5xxCount}</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)]">
+                      <span className="text-[var(--text-secondary)]">Erros de Servidor (HTTP 5xx):</span>
+                      <span className="font-mono font-bold text-[var(--danger-text)]">{healthStats.http5xxCount}</span>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <span className="text-slate-400">Timeouts de Conexão:</span>
-                      <span className="font-mono font-bold text-purple-400">{healthStats.timeoutCount}</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)]">
+                      <span className="text-[var(--text-secondary)]">Timeouts de Conexão:</span>
+                      <span className="font-mono font-bold text-[var(--info-text)]">{healthStats.timeoutCount}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-cyan-400" />
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 space-y-3">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-[var(--info-text)]" />
                     Rate Limit e Cotas da API
                   </h4>
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <span className="text-slate-400">Limite Informado:</span>
-                      <span className="font-mono text-slate-300">{healthStats.rateLimit.limit}</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)]">
+                      <span className="text-[var(--text-secondary)]">Limite Informado:</span>
+                      <span className="font-mono text-[var(--text-primary)]">{healthStats.rateLimit.limit}</span>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <span className="text-slate-400">Consumo Atual:</span>
-                      <span className="font-mono text-slate-300">{healthStats.rateLimit.used}</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)]">
+                      <span className="text-[var(--text-secondary)]">Consumo Atual:</span>
+                      <span className="font-mono text-[var(--text-primary)]">{healthStats.rateLimit.used}</span>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800/80">
-                      <span className="text-slate-400">Reinício da Janela:</span>
-                      <span className="font-mono text-slate-300">{healthStats.rateLimit.reset}</span>
+                    <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-canvas)] border border-[var(--border-default)]">
+                      <span className="text-[var(--text-secondary)]">Reinício da Janela:</span>
+                      <span className="font-mono text-[var(--text-primary)]">{healthStats.rateLimit.reset}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-slate-400">Nenhum dado estatístico disponível.</div>
+            <div className="p-8 text-center text-[var(--text-secondary)]">Nenhum dado estatístico disponível.</div>
           )}
         </div>
       )}
@@ -910,71 +935,71 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       {activeTab === 'incidents' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white">Histórico e Gestão de Incidentes</h3>
+            <h3 className="text-base font-bold text-[var(--text-primary)]">Histórico e Gestão de Incidentes</h3>
             <button
               onClick={fetchIncidents}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] text-xs font-semibold rounded-lg border border-[var(--border-default)] flex items-center gap-1.5 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${incidentsLoading ? 'animate-spin' : ''}`} /> Atualizar
             </button>
           </div>
 
           {incidentsLoading ? (
-            <div className="p-8 text-center text-slate-400">Carregando incidentes...</div>
+            <div className="p-8 text-center text-[var(--text-secondary)]">Carregando incidentes...</div>
           ) : incidents.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-              <h4 className="text-sm font-bold text-white">Nenhum incidente ativo ou recente</h4>
-              <p className="text-xs text-slate-400">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-8 text-center space-y-2">
+              <CheckCircle2 className="w-10 h-10 text-[var(--success-text)] mx-auto" />
+              <h4 className="text-sm font-bold text-[var(--text-primary)]">Nenhum incidente ativo ou recente</h4>
+              <p className="text-xs text-[var(--text-secondary)]">
                 Todas as integrações estão operando dentro dos padrões contratuais de estabilidade.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {incidents.map((inc) => (
-                <div key={inc.id} className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div key={inc.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[var(--border-default)] pb-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             inc.status === 'RESOLVED'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                              ? 'bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]'
+                              : 'bg-[var(--danger-bg)] text-[var(--danger-text)] border border-[var(--danger-border)]'
                           }`}
                         >
                           {inc.status}
                         </span>
-                        <span className="text-xs font-bold text-slate-400">{inc.bank}</span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs font-bold text-[var(--text-secondary)]">{inc.bank}</span>
+                        <span className="text-xs text-[var(--text-secondary)]">
                           Duração: {inc.durationMinutes} min
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-white mt-1">{inc.title}</h4>
+                      <h4 className="text-sm font-bold text-[var(--text-primary)] mt-1">{inc.title}</h4>
                     </div>
 
-                    <div className="text-xs text-slate-400 font-mono">
+                    <div className="text-xs text-[var(--text-secondary)] font-mono">
                       Início: {new Date(inc.identifiedAt).toLocaleString('pt-BR')}
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-300">{inc.description}</p>
+                  <p className="text-xs text-[var(--text-primary)]">{inc.description}</p>
 
                   {/* Linha do Tempo do Incidente */}
-                  <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg p-3 space-y-2">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg p-3 space-y-2">
+                    <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
                       Timeline do Incidente
                     </span>
                     <div className="space-y-2 pt-1">
                       {inc.timeline.map((step, idx) => (
                         <div key={idx} className="flex items-start gap-2 text-xs">
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] shrink-0">
+                          <span className="px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] font-mono text-[10px] shrink-0">
                             {step.step}
                           </span>
-                          <span className="text-slate-400 text-[11px]">
+                          <span className="text-[var(--text-secondary)] text-[11px]">
                             {new Date(step.timestamp).toLocaleTimeString('pt-BR')} —
                           </span>
-                          <span className="text-slate-300">{step.note}</span>
+                          <span className="text-[var(--text-primary)]">{step.note}</span>
                         </div>
                       ))}
                     </div>
@@ -990,10 +1015,10 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
       {activeTab === 'logs' && (
         <div className="space-y-4">
           {/* Barra de Filtros dos Logs */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 space-y-3">
             <div className="flex flex-col md:flex-row items-center justify-between gap-3">
               <div className="relative w-full md:w-80">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Search className="w-4 h-4 text-[var(--text-secondary)] absolute left-3 top-3" />
                 <input
                   type="text"
                   placeholder="Filtrar por endpoint, erro, Ray ID..."
@@ -1002,7 +1027,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     setLogsSearch(e.target.value);
                     setLogsPage(1);
                   }}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="ui-input w-full pl-9 pr-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--info-border)]"
                 />
               </div>
 
@@ -1013,7 +1038,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     setLogsBankFilter(e.target.value);
                     setLogsPage(1);
                   }}
-                  className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                  className="ui-input px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--info-border)]"
                 >
                   <option value="ALL">Todos os Bancos</option>
                   <option value="C6">C6 Bank</option>
@@ -1028,7 +1053,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     setLogsStatusFilter(e.target.value as any);
                     setLogsPage(1);
                   }}
-                  className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                  className="ui-input px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--info-border)]"
                 >
                   <option value="ALL">Todos os Resultados</option>
                   <option value="SUCCESS">Apenas Sucesso</option>
@@ -1041,7 +1066,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     setLogsPeriodFilter(e.target.value as any);
                     setLogsPage(1);
                   }}
-                  className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                  className="ui-input px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--info-border)]"
                 >
                   <option value="1h">Última 1 hora</option>
                   <option value="24h">Últimas 24 horas</option>
@@ -1052,7 +1077,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
                 <button
                   onClick={fetchLogs}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                  className="p-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg border border-[var(--border-default)] cursor-pointer"
                   title="Atualizar logs"
                 >
                   <RefreshCw className={`w-4 h-4 ${logsLoading ? 'animate-spin' : ''}`} />
@@ -1062,10 +1087,10 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
           </div>
 
           {/* Tabela de Logs */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-800">
+              <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                <thead className="bg-[var(--bg-canvas)] text-[var(--text-secondary)] font-semibold uppercase tracking-wider text-[11px] border-b border-[var(--border-default)]">
                   <tr>
                     <th className="py-3 px-4">Data / Hora</th>
                     <th className="py-3 px-4">Banco</th>
@@ -1076,22 +1101,22 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     <th className="py-3 px-4">Ray ID / ReqID</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-[var(--field-border)]">
                   {logsLoading ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                      <td colSpan={7} className="py-8 text-center text-[var(--text-secondary)]">
                         Carregando registros de auditoria...
                       </td>
                     </tr>
                   ) : logsError ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-amber-400">
+                      <td colSpan={7} className="py-8 text-center text-[var(--warning-text)]">
                         <div className="flex flex-col items-center gap-3">
                           <span>{logsError}</span>
                           <button
                             type="button"
                             onClick={fetchLogs}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200 hover:bg-slate-700"
+                            className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]"
                           >
                             <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
                           </button>
@@ -1100,40 +1125,40 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                     </tr>
                   ) : logs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                      <td colSpan={7} className="py-8 text-center text-[var(--text-secondary)]">
                         Nenhum registro encontrado para os filtros selecionados.
                       </td>
                     </tr>
                   ) : (
                     logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-850 transition-colors">
-                        <td className="py-3 px-4 whitespace-nowrap text-slate-400 font-mono">
+                      <tr key={log.id} className="hover:bg-[var(--bg-surface)] transition-colors">
+                        <td className="py-3 px-4 whitespace-nowrap text-[var(--text-secondary)] font-mono">
                           {new Date(log.timestamp).toLocaleString('pt-BR')}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-bold text-white">{log.bank}</td>
-                        <td className="py-3 px-4 font-mono text-slate-300">{log.endpoint}</td>
+                        <td className="py-3 px-4 whitespace-nowrap font-bold text-[var(--text-primary)]">{log.bank}</td>
+                        <td className="py-3 px-4 font-mono text-[var(--text-primary)]">{log.endpoint}</td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                               log.success
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                ? 'bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]'
+                                : 'bg-[var(--danger-bg)] text-[var(--danger-text)] border border-[var(--danger-border)]'
                             }`}
                           >
                             {log.httpStatus || (log.success ? '200' : 'ERR')}
                           </span>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap font-mono">{log.latencyMs}ms</td>
-                        <td className="py-3 px-4 max-w-xs truncate text-slate-300">
+                        <td className="py-3 px-4 max-w-xs truncate text-[var(--text-primary)]">
                           {log.errorMessage ? (
-                            <span className="text-amber-400">{log.errorMessage}</span>
+                            <span className="text-[var(--warning-text)]">{log.errorMessage}</span>
                           ) : (
-                            <span className="text-emerald-400">OK</span>
+                            <span className="text-[var(--success-text)]">OK</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-400">
+                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-[var(--text-secondary)]">
                           {log.rayId ? (
-                            <span className="text-amber-400 font-bold">{log.rayId}</span>
+                            <span className="text-[var(--warning-text)] font-bold">{log.rayId}</span>
                           ) : (
                             log.requestId?.slice(0, 12) || '—'
                           )}
@@ -1146,23 +1171,23 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             </div>
 
             {/* Paginação dos Logs */}
-            <div className="bg-slate-950 p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <div className="bg-[var(--bg-canvas)] p-4 border-t border-[var(--border-default)] flex items-center justify-between text-xs text-[var(--text-secondary)]">
               <div>
-                Total de <strong className="text-white">{logsTotal}</strong> registros (Página {logsPage} de{' '}
+                Total de <strong className="text-[var(--text-primary)]">{logsTotal}</strong> registros (Página {logsPage} de{' '}
                 {logsTotalPages})
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setLogsPage((p) => Math.max(1, p - 1))}
                   disabled={logsPage <= 1}
-                  className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 cursor-pointer flex items-center gap-1"
+                  className="px-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-surface-elevated)] cursor-pointer flex items-center gap-1"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Anterior
                 </button>
                 <button
                   onClick={() => setLogsPage((p) => Math.min(logsTotalPages, p + 1))}
                   disabled={logsPage >= logsTotalPages}
-                  className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 cursor-pointer flex items-center gap-1"
+                  className="px-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-surface-elevated)] cursor-pointer flex items-center gap-1"
                 >
                   Próxima <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -1174,26 +1199,26 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
 
       {/* MODAL DE DIAGNÓSTICO AVANÇADO */}
       {diagnosticModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[var(--scrim)] backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl w-full max-w-lg p-6 space-y-4 ">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-3">
               <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-bold text-white">
+                <Activity className="w-5 h-5 text-[var(--info-text)]" />
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
                   Diagnóstico de Conectividade — {diagnosticModal.bank}
                 </h3>
               </div>
               <button
                 onClick={() => setDiagnosticModal({ isOpen: false, loading: false, bank: '' })}
-                className="text-slate-400 hover:text-white cursor-pointer"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {diagnosticModal.loading ? (
-              <div className="py-12 text-center text-slate-400 flex flex-col items-center gap-3">
-                <RefreshCw className="w-8 h-8 animate-spin text-cyan-400" />
+              <div className="py-12 text-center text-[var(--text-secondary)] flex flex-col items-center gap-3">
+                <RefreshCw className="w-8 h-8 animate-spin text-[var(--info-text)]" />
                 <span>Executando testes de conectividade, DNS e TLS...</span>
               </div>
             ) : diagnosticModal.result ? (
@@ -1202,16 +1227,16 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                 <div
                   className={`p-3 rounded-lg border flex items-center gap-3 ${
                     diagnosticModal.result.success
-                      ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-200'
+                      ? 'bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text)]'
                       : diagnosticModal.result.isCloudflareBlocked
-                      ? 'bg-amber-950/40 border-amber-800/40 text-amber-200'
-                      : 'bg-rose-950/40 border-rose-800/40 text-rose-200'
+                      ? 'bg-[var(--warning-bg)] border-[var(--warning-border)] text-[var(--warning-text)]'
+                      : 'bg-[var(--danger-bg)] border-[var(--danger-border)] text-[var(--danger-text)]'
                   }`}
                 >
                   {diagnosticModal.result.success ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-6 h-6 text-[var(--success-text)] shrink-0" />
                   ) : (
-                    <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />
+                    <AlertTriangle className="w-6 h-6 text-[var(--warning-text)] shrink-0" />
                   )}
                   <div>
                     <h4 className="font-bold text-sm">
@@ -1226,45 +1251,45 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                 </div>
 
                 {/* Dados Técnicos Sanitizados */}
-                <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-2 font-mono">
+                <div className="bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-lg p-3 space-y-2 font-mono">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Endpoint Testado:</span>
-                    <span className="text-slate-300">{diagnosticModal.result.logicalEndpoint}</span>
+                    <span className="text-[var(--text-secondary)]">Endpoint Testado:</span>
+                    <span className="text-[var(--text-primary)]">{diagnosticModal.result.logicalEndpoint}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Status HTTP:</span>
-                    <span className="text-slate-300">{diagnosticModal.result.httpStatus || 'N/A'}</span>
+                    <span className="text-[var(--text-secondary)]">Status HTTP:</span>
+                    <span className="text-[var(--text-primary)]">{diagnosticModal.result.httpStatus || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Latência:</span>
-                    <span className="text-slate-300">{diagnosticModal.result.latencyMs}ms</span>
+                    <span className="text-[var(--text-secondary)]">Latência:</span>
+                    <span className="text-[var(--text-primary)]">{diagnosticModal.result.latencyMs}ms</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Resolução DNS:</span>
-                    <span className="text-emerald-400">RESOLVIDO COM SUCESSO</span>
+                    <span className="text-[var(--text-secondary)]">Resolução DNS:</span>
+                    <span className="text-[var(--success-text)]">RESOLVIDO COM SUCESSO</span>
                   </div>
                   {diagnosticModal.result.rayId && (
-                    <div className="flex justify-between text-amber-400 font-bold">
+                    <div className="flex justify-between text-[var(--warning-text)] font-bold">
                       <span>Cloudflare Ray ID:</span>
                       <span>{diagnosticModal.result.rayId}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Request ID:</span>
-                    <span className="text-slate-400">{diagnosticModal.result.requestId}</span>
+                    <span className="text-[var(--text-secondary)]">Request ID:</span>
+                    <span className="text-[var(--text-secondary)]">{diagnosticModal.result.requestId}</span>
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-500 italic">
+                <div className="text-[11px] text-[var(--text-secondary)] italic">
                   * Este diagnóstico foi executado de forma não destrutiva, sem criar propostas ou clientes fictícios.
                 </div>
               </div>
             ) : null}
 
-            <div className="pt-2 flex justify-end border-t border-slate-800">
+            <div className="pt-2 flex justify-end border-t border-[var(--border-default)]">
               <button
                 onClick={() => setDiagnosticModal({ isOpen: false, loading: false, bank: '' })}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold cursor-pointer"
+                className="px-4 py-2 bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Fechar
               </button>

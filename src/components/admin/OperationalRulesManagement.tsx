@@ -203,27 +203,27 @@ export const OperationalRulesManagement: React.FC = () => {
         <div
           className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${
             message.type === 'success'
-              ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
-              : 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
+              ? 'border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)]'
+              : 'border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
           }`}
         >
           {message.type === 'success' ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)]" />
           ) : (
-            <X className="h-4 w-4 shrink-0 text-rose-600" />
+            <X className="h-4 w-4 shrink-0 text-[var(--danger-text)]" />
           )}
           <span>{message.text}</span>
         </div>
       )}
 
       {/* Cadastro / Edição Form */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-3">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+            <div className="h-7 w-7 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center font-bold">
               <SlidersHorizontal className="h-4 w-4" />
             </div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               {isEditing ? 'Editar Regra Operacional' : 'Cadastrar Nova Regra Operacional'}
             </h3>
           </div>
@@ -231,7 +231,7 @@ export const OperationalRulesManagement: React.FC = () => {
             <button
               type="button"
               onClick={resetForm}
-              className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer font-semibold"
+              className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer font-semibold"
             >
               Cancelar Edição
             </button>
@@ -241,7 +241,7 @@ export const OperationalRulesManagement: React.FC = () => {
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Nome da Regra *
               </label>
               <input
@@ -250,12 +250,12 @@ export const OperationalRulesManagement: React.FC = () => {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Ex: Padrão INSS ou Regra Portabilidade"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Descrição da Regra
               </label>
               <input
@@ -263,19 +263,19 @@ export const OperationalRulesManagement: React.FC = () => {
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Ex: Parâmetros de prazos e valores permitidos"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
               />
             </div>
 
             {isMaster && !isEditing && (
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Escopo da Regra *
                 </label>
                 <select
                   value={scope}
                   onChange={e => setScope(e.target.value as any)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden"
+                  className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:outline-hidden"
                 >
                   <option value="GLOBAL">GLOBAL (Todas as empresas)</option>
                   <option value="EXCLUSIVE">EXCLUSIVO (Empresa atual)</option>
@@ -285,18 +285,18 @@ export const OperationalRulesManagement: React.FC = () => {
           </div>
 
           {/* Vínculo de Convênios */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-2">
+          <div className="p-3.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-blue-600" />
+              <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-[var(--link)]" />
                 <span>Convênios Aplicáveis</span>
               </span>
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-400">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 <input
                   type="checkbox"
                   checked={appliesToAllConvenios}
                   onChange={e => setAppliesToAllConvenios(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                  className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                 />
                 <span>Aplica-se a Todos os Convênios</span>
               </label>
@@ -313,8 +313,8 @@ export const OperationalRulesManagement: React.FC = () => {
                       onClick={() => toggleConvenioSelection(c.id)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)]'
+                          : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)]'
                       }`}
                     >
                       {isSelected && <Check className="h-3 w-3" />}
@@ -327,18 +327,18 @@ export const OperationalRulesManagement: React.FC = () => {
           </div>
 
           {/* Vínculo de Produtos */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-2">
+          <div className="p-3.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-purple-600" />
+              <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-[var(--link)]" />
                 <span>Produtos Aplicáveis</span>
               </span>
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-400">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 <input
                   type="checkbox"
                   checked={appliesToAllProducts}
                   onChange={e => setAppliesToAllProducts(e.target.checked)}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-0"
+                  className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                 />
                 <span>Aplica-se a Todos os Produtos</span>
               </label>
@@ -355,8 +355,8 @@ export const OperationalRulesManagement: React.FC = () => {
                       onClick={() => toggleProductSelection(p.id)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
                         isSelected
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)]'
+                          : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)]'
                       }`}
                     >
                       {isSelected && <Check className="h-3 w-3" />}
@@ -371,7 +371,7 @@ export const OperationalRulesManagement: React.FC = () => {
           {/* Parâmetros Operacionais */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Parcelas Mínimas
               </label>
               <input
@@ -380,12 +380,12 @@ export const OperationalRulesManagement: React.FC = () => {
                 value={minInstallments}
                 onChange={e => setMinInstallments(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="Ex: 12"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Parcelas Máximas
               </label>
               <input
@@ -394,12 +394,12 @@ export const OperationalRulesManagement: React.FC = () => {
                 value={maxInstallments}
                 onChange={e => setMaxInstallments(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="Ex: 84 ou 96"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Valor Mínimo (R$)
               </label>
               <input
@@ -408,12 +408,12 @@ export const OperationalRulesManagement: React.FC = () => {
                 value={minContractValue}
                 onChange={e => setMinContractValue(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="Ex: 500"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Valor Máximo (R$)
               </label>
               <input
@@ -422,21 +422,21 @@ export const OperationalRulesManagement: React.FC = () => {
                 value={maxContractValue}
                 onChange={e => setMaxContractValue(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="Ex: 150000"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+                className="w-full rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={requiresCipBalance}
                   onChange={e => setRequiresCipBalance(e.target.checked)}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-0"
+                  className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                 />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Exige saldo devedor retornado (CIP)
                 </span>
               </label>
@@ -446,9 +446,9 @@ export const OperationalRulesManagement: React.FC = () => {
                   type="checkbox"
                   checked={allowsMultipleAde}
                   onChange={e => setAllowsMultipleAde(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                  className="rounded border-[var(--field-border)] text-[var(--link)] focus:ring-0"
                 />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Permite Multi-ADE
                 </span>
               </label>
@@ -458,9 +458,9 @@ export const OperationalRulesManagement: React.FC = () => {
                   type="checkbox"
                   checked={active}
                   onChange={e => setActive(e.target.checked)}
-                  className="rounded border-slate-300 text-emerald-600 focus:ring-0"
+                  className="rounded border-[var(--field-border)] text-[var(--success-text)] focus:ring-0"
                 />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Regra Ativa
                 </span>
               </label>
@@ -468,7 +468,7 @@ export const OperationalRulesManagement: React.FC = () => {
 
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-xl bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs px-4 py-2  transition-colors cursor-pointer"
             >
               {isEditing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               <span>{isEditing ? 'Atualizar Regra' : 'Salvar Regra'}</span>
@@ -486,21 +486,21 @@ export const OperationalRulesManagement: React.FC = () => {
           return (
             <div
               key={r.id}
-              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] shadow-2xs space-y-3 flex flex-col justify-between"
+              className="p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-3 flex flex-col justify-between"
             >
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">{r.name}</h4>
+                    <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{r.name}</h4>
                     {r.description && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{r.description}</p>
+                      <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">{r.description}</p>
                     )}
                   </div>
                   <span
                     className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
                       isGlobal
-                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
-                        : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                        ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
+                        : 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
                     }`}
                   >
                     {isGlobal ? <Globe className="h-3 w-3" /> : <Building className="h-3 w-3" />}
@@ -508,7 +508,7 @@ export const OperationalRulesManagement: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] space-y-1 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <div>
                     <strong>Convênios:</strong>{' '}
                     {r.appliesToAllConvenios
@@ -539,7 +539,7 @@ export const OperationalRulesManagement: React.FC = () => {
                     </div>
                   )}
                   {r.requiresCipBalance && (
-                    <div className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
+                    <div className="text-[var(--link)] dark:text-[var(--link)] font-semibold flex items-center gap-1">
                       <ShieldAlert className="h-3 w-3" />
                       <span>Exige saldo CIP</span>
                     </div>
@@ -547,8 +547,8 @@ export const OperationalRulesManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className={`text-[10px] font-bold ${r.active ? 'text-emerald-600' : 'text-slate-400'}`}>
+              <div className="pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between">
+                <span className={`text-[10px] font-bold ${r.active ? 'text-[var(--success-text)]' : 'text-[var(--text-secondary)]'}`}>
                   {r.active ? 'ATIVA' : 'INATIVA'}
                 </span>
 
@@ -556,14 +556,14 @@ export const OperationalRulesManagement: React.FC = () => {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleEdit(r)}
-                      className="text-slate-400 hover:text-blue-600 p-1 rounded-lg transition-colors cursor-pointer"
+                      className="text-[var(--text-secondary)] hover:text-[var(--link)] p-1 rounded-lg transition-colors cursor-pointer"
                       title="Editar regra"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => handleDelete(r)}
-                      className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
+                      className="text-[var(--text-secondary)] hover:text-[var(--danger-text)] p-1 rounded-lg transition-colors cursor-pointer"
                       title="Excluir regra"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

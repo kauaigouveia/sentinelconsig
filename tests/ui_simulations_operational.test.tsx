@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 const context = vi.hoisted(() => ({ role: 'MASTER' }));
 vi.mock('../src/services/storageService', () => ({ StorageService: {
   getActiveUser: () => ({ id: 'local-user', role: context.role, customPermissions: [] }),
-  getCurrentTenant: () => null,
+  getCurrentTenant: () => null, getCurrentTenantId:()=> 'synthetic-tenant',
   getPartners: () => [], getUsers: () => [], getConvenios: () => [], getProducts: () => [],
 } }));
 vi.mock('../src/components/simulation/DaycovalSimulationModal', () => ({ DaycovalSimulationModal: ({bank, portal}: any) => <div data-testid="sheet-form">{bank} · {portal ? 'portal' : 'interno'}</div> }));
@@ -40,7 +40,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('Simulações reais com transporte local isolado', () => {
   it('navega nas quatro áreas, preserva a fila, análises e os três bancos de planilha', async () => {
     const {container} = render(<SimulationView premium />);
-    await screen.findByText(/LOCAL.*Parceiro fictício/);
+    await screen.findByText('Parceiro fictício');
     const navigation = within(screen.getByRole('navigation', {name: 'Áreas de simulação'}));
     expect(navigation.getAllByRole('button')).toHaveLength(4);
     fireEvent.click(navigation.getByRole('button', {name: /Fila de digitação/}));
@@ -61,7 +61,7 @@ describe('Simulações reais com transporte local isolado', () => {
   });
   it('abre os destinos existentes de importação e seleção sem executar simulações', async () => {
     render(<SimulationView premium />);
-    await screen.findByText(/LOCAL.*Parceiro fictício/);
+    await screen.findByText('Parceiro fictício');
     fireEvent.click(screen.getByRole('button', {name: 'Importar em Lote'}));
     expect(screen.getByTestId('import-form')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', {name: 'Nova simulação'}));

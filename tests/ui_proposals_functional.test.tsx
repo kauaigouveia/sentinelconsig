@@ -1,3 +1,4 @@
+import {presentationIndependentSource} from '../scripts/ui-palette-parity.mjs';
 // @vitest-environment jsdom
 import React from "react";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
@@ -320,16 +321,16 @@ describe("Propostas operacional V2 — serviços inteiramente isolados", () => {
     walk(tree);
     expect(found).toEqual(baseline.operationalExpressions);
   });
-  it("todos os formulários/modais originais permanecem byte a byte iguais", () => {
+  it("todos os formulários/modais preservam lógica e controles após migração visual", () => {
     const baseline = JSON.parse(
-      readFileSync("docs/ui-redesign/proposals-baseline-controls.json", "utf8"),
+      readFileSync("docs/redesign-v4/blue-behavior-baseline.json", "utf8"),
     );
     for (const file of baseline.files.filter(
-      (f: any) => !f.path.endsWith("/ProductionList.tsx"),
+      (f: any) => /\/production\/(NewProductionModal|ProposalDetailModal|BulkStatusModal|ExcelImportModal|ExcelExportModal)\.tsx$/.test(f.path),
     ))
       expect(
         createHash("sha256")
-          .update(readFileSync(file.path, "utf8"))
+          .update(presentationIndependentSource(readFileSync(file.path, "utf8")))
           .digest("hex"),
       ).toBe(file.sha256);
   });

@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowRight, Moon, Sun, ShieldCheck } from 'lucide-react';
+import { Moon, Sun, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import {paletteStyle} from '../../lib/presentationPalette';
 import { SYSTEM_IDENTITY } from '../../lib/branding';
 
 function SentinelLoginBrand() {
@@ -10,31 +11,14 @@ function SentinelLoginBrand() {
   </div>;
 }
 
-export function AuthFrame({ company, logo, portal = false, children }: { company: string; logo?: string | null; portal?: boolean; children: React.ReactNode }) {
-  const { isDark, toggleTheme } = useTheme();
-  const customLogo = logo && !logo.startsWith('/branding/sentinel-') ? logo : null;
-  return <div className="sentinel-auth">
-    <aside className="sentinel-auth-story">
-      <SentinelLoginBrand />
-      <div>
-        <div className="sentinel-eyebrow !text-[#64d3b9]">{portal ? 'Portal do parceiro' : 'Gestão de crédito'}</div>
-        <h2>{portal ? <>Suas propostas.<br /><em>Tudo em um só lugar.</em></> : <>Sua operação.<br /><em>Mais simples.</em></>}</h2>
-        <p>{portal ? 'Simule, envie propostas e acompanhe o andamento de cada contrato.' : 'Da simulação ao pagamento, acompanhe suas propostas e organize o trabalho da equipe.'}</p>
-      </div>
-      <div className="sentinel-auth-flow"><span>Simular</span><ArrowRight size={14} /><span>Enviar proposta</span><ArrowRight size={14} /><span>Acompanhar</span></div>
-    </aside>
-    <main className="sentinel-auth-form-side">
-      <button type="button" onClick={toggleTheme} className="sentinel-auth-theme" aria-label={isDark ? 'Usar tema claro' : 'Usar tema escuro'}>{isDark ? <Sun size={18} /> : <Moon size={18} />}</button>
-      <div className="sentinel-auth-card">
-        <div className="sentinel-auth-tenant">
-          {customLogo ? <><img src={customLogo} alt={company} referrerPolicy="no-referrer" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/branding/sentinel-icon-transparent-v3.png'; }} /><span>{company}</span></> : <SentinelLoginBrand />}
-        </div>
-        <div className="sentinel-eyebrow">{portal ? 'Portal do parceiro' : 'Acesso da equipe'}</div>
-        <h1>{portal ? 'Entre no seu portal' : 'Acesse sua conta'}</h1>
-        <p>Informe seu e-mail e senha para continuar.</p>
-        {children}
-        <div className="sentinel-auth-footer"><ShieldCheck size={14} /><span>Ambiente de {company}</span></div>
-      </div>
-    </main>
-  </div>;
+export function AuthFrame({ company, logo, portal = false, brandColor, children }: { company: string; logo?: string | null; portal?: boolean; brandColor?:string|null; children: React.ReactNode }) {
+ const {isDark,toggleTheme}=useTheme();const customLogo=logo&&!logo.startsWith('/branding/sentinel-')?logo:null;
+ return <div className="sentinel-auth" style={paletteStyle(brandColor)}>
+  <main className="sentinel-auth-form-side"><button type="button" onClick={toggleTheme} className="sentinel-auth-theme" aria-label={isDark?'Usar tema claro':'Usar tema escuro'}>{isDark?<Sun size={18}/>:<Moon size={18}/>}</button>
+   <div className="sentinel-auth-card"><div className="sentinel-auth-tenant">{customLogo?<><img src={customLogo} alt={company} referrerPolicy="no-referrer" onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src='/branding/sentinel-icon-transparent-v3.png';}}/><span>{company}</span></>:<SentinelLoginBrand/>}</div>
+    <div className="sentinel-eyebrow">{portal?'Portal do parceiro':'Área de trabalho'}</div><h1>{portal?'Bem-vindo ao seu portal':'Bom trabalho começa aqui.'}</h1><p>Entre para acompanhar sua operação.</p>{children}<div className="sentinel-auth-footer"><ShieldCheck size={14}/><span>Ambiente de {company}</span></div>
+   </div>
+  </main>
+  <aside className="sentinel-auth-story"><span className="sentinel-eyebrow">SENTINEL / OPERAÇÕES</span><div><h2>Clareza para cada<br/>decisão.</h2><p>Seu trabalho, organizado.<br/>Do primeiro contato ao contrato concluído.</p></div><ol className="sentinel-auth-flow"><li><span>01</span>Simule condições</li><li><span>02</span>Organize propostas</li><li><span>03</span>Acompanhe resultados</li></ol></aside>
+ </div>;
 }

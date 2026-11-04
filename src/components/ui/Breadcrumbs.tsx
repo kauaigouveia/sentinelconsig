@@ -275,11 +275,11 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={`flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 select-none ${className}`}
+      className={`flex items-center gap-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] select-none ${className}`}
     >
       <button
         onClick={() => handleNavigate('/dashboard')}
-        className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
+        className="flex items-center gap-1 hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         title="Início"
       >
         <Home className="h-3.5 w-3.5" />
@@ -292,15 +292,15 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
 
         return (
           <React.Fragment key={idx}>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
+            <ChevronRight className="h-3.5 w-3.5 text-[var(--text-primary)] dark:text-[var(--text-secondary)] shrink-0" />
             {isLast ? (
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
+              <span className="font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                 {item.label}
               </span>
             ) : target ? (
               <button
                 onClick={() => handleNavigate(target)}
-                className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                className="hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
                 {item.label}
               </button>
@@ -313,8 +313,8 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
 
       {subItem && (
         <>
-          <ChevronRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
-          <span className="font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[200px]">
+          <ChevronRight className="h-3.5 w-3.5 text-[var(--text-primary)] dark:text-[var(--text-secondary)] shrink-0" />
+          <span className="font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] truncate max-w-[200px]">
             {subItem}
           </span>
         </>

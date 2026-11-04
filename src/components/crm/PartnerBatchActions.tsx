@@ -44,25 +44,25 @@ export function PartnerBatchActions({ partners, selected, onSelection, canDelete
   };
   if (!canDelete && !canReset) return null;
   return <>
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3 text-sm">
       <label className="flex items-center gap-2"><input type="checkbox" disabled={busy || !partners.length} checked={partners.length > 0 && partners.every(p => selected.has(p.id))} onChange={e => onSelection(e.target.checked ? new Set(partners.map(p => p.id)) : new Set())} />Selecionar todos os resultados carregados ({partners.length})</label>
       <span>{selected.size} selecionados</span>
-      {canReset && <button disabled={!selected.size || busy} onClick={() => open('reset')} className="rounded-lg bg-blue-600 px-3 py-2 text-white disabled:opacity-40">Redefinir senhas em lote</button>}
-      {canDelete && <button disabled={!selected.size || busy} onClick={() => open('delete')} className="rounded-lg bg-rose-600 px-3 py-2 text-white disabled:opacity-40">Excluir selecionados</button>}
+      {canReset && <button disabled={!selected.size || busy} onClick={() => open('reset')} className="rounded-lg bg-[var(--action)] px-3 py-2 text-[var(--action-ink)] disabled:opacity-90">Redefinir senhas em lote</button>}
+      {canDelete && <button disabled={!selected.size || busy} onClick={() => open('delete')} className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-[var(--danger-text)] disabled:opacity-90">Excluir selecionados</button>}
     </div>
-    {action && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
-      <section role="dialog" aria-modal="true" aria-labelledby="partner-batch-title" className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6">
+    {action && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4">
+      <section role="dialog" aria-modal="true" aria-labelledby="partner-batch-title" className="w-full max-w-lg space-y-4 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6">
         <h2 id="partner-batch-title" className="text-lg font-bold">{action === 'delete' ? 'Excluir parceiros em massa' : 'Redefinir senhas em lote'}</h2>
         <p>{targets.length} parceiros. {action === 'delete' ? 'Os acessos serão revogados. O histórico das propostas será preservado.' : 'As senhas anteriores deixarão de funcionar e as sessões serão encerradas. A planilha terá as novas senhas, com troca obrigatória no primeiro acesso.'}</p>
         <ul className="max-h-32 overflow-y-auto text-sm">{targets.map(p => <li key={p.id}>{p.name || p.fullName} — {p.code || p.login}</li>)}</ul>
-        {!results && <label className="block text-sm">Digite {action === 'delete' ? 'EXCLUIR' : 'REDEFINIR'} para confirmar<input disabled={busy} value={confirmation} onChange={e => setConfirmation(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent p-2" /></label>}
+        {!results && <label className="block text-sm">Digite {action === 'delete' ? 'EXCLUIR' : 'REDEFINIR'} para confirmar<input disabled={busy} value={confirmation} onChange={e => setConfirmation(e.target.value)} className="mt-2 w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-transparent p-2" /></label>}
         <p role="status">{busy ? `Processando ${progress}/${targets.length}… Mantenha esta tela aberta até concluir.` : results ? `${results.filter(row => row.success).length} concluídos; ${results.filter(row => !row.success).length} falhas.` : ''}</p>
-        {results?.some(row => !row.success) && <ul className="max-h-28 overflow-y-auto text-sm text-rose-600 dark:text-rose-400">{results.filter(row => !row.success).map(row => <li key={row.id}>{row.name}: {row.status}</li>)}</ul>}
-        {error && <p role="alert" className="text-rose-600 dark:text-rose-400">{error}</p>}
+        {results?.some(row => !row.success) && <ul className="max-h-28 overflow-y-auto text-sm text-[var(--danger-text)] dark:text-[var(--danger-text)]">{results.filter(row => !row.success).map(row => <li key={row.id}>{row.name}: {row.status}</li>)}</ul>}
+        {error && <p role="alert" className="text-[var(--danger-text)] dark:text-[var(--danger-text)]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <button disabled={busy} onClick={() => { setAction(null); setResults(null); }} className="rounded-lg border px-3 py-2">{results ? 'Fechar' : 'Cancelar'}</button>
-          {results && action === 'reset' && <button onClick={() => download(results).catch(err => setError(err.message))} className="rounded-lg bg-blue-600 px-3 py-2 text-white">Baixar planilha de acessos</button>}
-          {!results && <button disabled={busy || confirmation !== (action === 'delete' ? 'EXCLUIR' : 'REDEFINIR') || (action === 'reset' && !excel)} onClick={execute} className="rounded-lg bg-blue-600 px-3 py-2 text-white disabled:opacity-40">Confirmar</button>}
+          {results && action === 'reset' && <button onClick={() => download(results).catch(err => setError(err.message))} className="rounded-lg bg-[var(--action)] px-3 py-2 text-[var(--action-ink)]">Baixar planilha de acessos</button>}
+          {!results && <button disabled={busy || confirmation !== (action === 'delete' ? 'EXCLUIR' : 'REDEFINIR') || (action === 'reset' && !excel)} onClick={execute} className="rounded-lg bg-[var(--action)] px-3 py-2 text-[var(--action-ink)] disabled:opacity-90">Confirmar</button>}
         </div>
       </section>
     </div>}

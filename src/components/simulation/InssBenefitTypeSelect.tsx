@@ -60,12 +60,12 @@ export const InssBenefitTypeSelect: React.FC<Props> = ({ value, onChange, classN
         }
         if (event.key === 'Enter' && open) { event.preventDefault(); if (options[activeIndex]) choose(options[activeIndex]); }
       }}
-      placeholder="Ex.: 4, 41, aposentadoria ou LOAS" className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
-    {open && <ul id={`${id}-options`} role="listbox" className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-300 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+      placeholder="Ex.: 4, 41, aposentadoria ou LOAS" className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]" />
+    {open && <ul id={`${id}-options`} role="listbox" className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] p-1  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
       {options.map((option, index) => <li key={option[0]} id={`${id}-option-${index}`} role="option" aria-selected={String(option[0]) === value}>
-        <button type="button" tabIndex={-1} onMouseDown={event => event.preventDefault()} onClick={() => choose(option)} className={`w-full rounded-md px-3 py-2 text-left text-xs leading-relaxed hover:bg-violet-100 dark:hover:bg-violet-900/40 ${index === activeIndex ? 'bg-violet-100 dark:bg-violet-900/40' : ''}`}>{option[0]} - {option[1]}</button>
+        <button type="button" tabIndex={-1} onMouseDown={event => event.preventDefault()} onClick={() => choose(option)} className={`w-full rounded-md px-3 py-2 text-left text-xs leading-relaxed hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] ${index === activeIndex ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]' : ''}`}>{option[0]} - {option[1]}</button>
       </li>)}
-      {!options.length && <li className="px-3 py-2 text-xs text-slate-500">Nenhuma espécie encontrada.</li>}
+      {!options.length && <li className="px-3 py-2 text-xs text-[var(--text-secondary)]">Nenhuma espécie encontrada.</li>}
     </ul>}
   </div>;
 };

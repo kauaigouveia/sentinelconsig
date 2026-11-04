@@ -1,0 +1,24 @@
+{
+  "safeSuite": {
+    "files": 45,
+    "passed": 481,
+    "failed": 0
+  },
+  "finalUiSubset": {
+    "files": 20,
+    "passed": 132,
+    "failed": 0
+  },
+  "typescript": "passed",
+  "build": "passed",
+  "diffCheck": "passed",
+  "buildWarning": "chunks larger than 500 kB",
+  "databaseConnected": false,
+  "bankingCalls": false,
+  "protectedFilesUnchanged": 195,
+  "finalSmokeSubset": {
+    "files": 3,
+    "passed": 35,
+    "failed": 0
+  }
+}

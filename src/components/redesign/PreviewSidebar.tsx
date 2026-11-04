@@ -40,16 +40,6 @@ const icons: Record<string, React.ElementType> = {
   "/esteira": Workflow,
   "/agenda-operacional": CalendarDays,
 };
-const colors = [
-  "#2563eb",
-  "#8b5cf6",
-  "#06b6d4",
-  "#10b981",
-  "#f59e0b",
-  "#3b82f6",
-  "#f43f5e",
-  "#8b5cf6",
-];
 export function PreviewSidebar({
   role,
   permissions = [],
@@ -75,11 +65,10 @@ export function PreviewSidebar({
 }) {
   const [compact, setCompact] = useState(false),
     [query, setQuery] = useState(""),
-    [closed, setClosed] = useState<string[]>([
-      "Gestão",
-      "Administração",
-      "Plataforma",
-    ]),
+    [closed, setClosed] = useState<string[]>(() => {
+      const activeGroup = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
+      return GROUPS.filter(group => group !== activeGroup);
+    }),
     [hint, setHint] = useState<{ label: string; x: number; y: number } | null>(
       null,
     );
@@ -96,11 +85,15 @@ export function PreviewSidebar({
   }, []);
   const ref = useRef<HTMLElement>(null),
     opener = useRef<HTMLElement | null>(null);
-  const items = visibleNavigation(role, permissions).filter((route) =>
-    route.title
-      .toLocaleLowerCase("pt-BR")
-      .includes(query.toLocaleLowerCase("pt-BR")),
+  const permitted = visibleNavigation(role, permissions);
+  const hasHub=permitted.some(route=>route.path==='/integracoes');
+  const items = permitted.filter(route=>!hasHub || route.path!=='/saude-apis').filter(route=>
+    `${route.title}${route.path==='/integracoes'?' Saúde das APIs':''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR'))
   );
+  useEffect(() => {
+    const group = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
+    if (group) setClosed(GROUPS.filter(item => item !== group));
+  }, [path, role, permissions.join("|")]);
   useEffect(() => {
     if (!mobileOpen) return;
     opener.current = document.activeElement as HTMLElement;
@@ -152,7 +145,6 @@ export function PreviewSidebar({
           />
           <div>
             <strong>{brandName}</strong>
-            <small>OPERAÇÃO E GESTÃO</small>
           </div>
           <button
             className="s2-mobile-close"
@@ -172,13 +164,12 @@ export function PreviewSidebar({
           />
         </div>
         <nav>
-          {!compact &&
-            !query &&
-            [
+          {!compact && !query && (favorites.length > 0 || recent.length > 0) && <details className="s2-quick-access"><summary>Acesso rápido</summary>{[
+
               ["Favoritos", favorites],
-              ["Recentes", recent.slice(0, 2)],
+              ["Recentes", [...new Set(recent)].filter(item => !favorites.includes(item)).slice(0, 2)],
             ].map(([title, paths]) => {
-              const shortcuts = (paths as string[])
+              const shortcuts = [...new Set((paths as string[]).map(p=>hasHub&&p==='/saude-apis'?'/integracoes':p))]
                 .map((p) => items.find((r) => r.path === p))
                 .filter(Boolean);
               return shortcuts.length ? (
@@ -211,18 +202,18 @@ export function PreviewSidebar({
                   )}
                 </section>
               ) : null;
-            })}
-          {GROUPS.map((group, index) => {
+            })}</details>}
+          {GROUPS.map(group => {
             const entries = items.filter((item) => item.group === group);
             if (!entries.length) return null;
             return (
               <section
                 key={group}
-                style={{ "--nav-color": colors[index] } as React.CSSProperties}
+                style={{ "--nav-color": "var(--text-secondary)" } as React.CSSProperties}
               >
                 <button
                   className="s2-group"
-                  aria-expanded={!closed.includes(group)}
+                  aria-expanded={Boolean(query) || compact || !closed.includes(group)}
                   onClick={() =>
                     setClosed((current) =>
                       current.includes(group)
@@ -246,6 +237,7 @@ export function PreviewSidebar({
                       }[group] ||
                       Star;
                     const active =
+                      route.path === '/integracoes' && path === '/saude-apis' ? true :
                       route.path === "/"
                         ? path === "/" || path === "/dashboard"
                         : path === route.path ||

@@ -235,27 +235,27 @@ export const C6BankConfigView: React.FC = () => {
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto text-xs animate-in fade-in duration-150">
       {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-black text-white flex items-center justify-center font-black text-base tracking-tighter shadow-md">
+          <div className="h-10 w-10 rounded-xl bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center font-black text-base tracking-tighter shadow-md">
             C6
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
+              <h1 className="text-lg font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Integração C6 Bank — Consulta de Status
               </h1>
               {config.isConfigured ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)]">
                   Operacional
                 </span>
               ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border border-[var(--warning-border)] dark:border-[var(--warning-border)]">
                   Não configurado
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
               Sincronização automática e em tempo real das esteiras de crédito FGTS e Consignado do Banco C6
             </p>
           </div>
@@ -266,7 +266,7 @@ export const C6BankConfigView: React.FC = () => {
             type="button"
             onClick={fetchConfigAndStatus}
             disabled={isLoadingConfig}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-semibold hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoadingConfig ? 'animate-spin' : ''}`} />
             <span>Atualizar Painel</span>
@@ -279,17 +279,17 @@ export const C6BankConfigView: React.FC = () => {
         {/* Coluna 1 & 2: Status do Robô Automático + Mapeamento de Status */}
         <div className="lg:col-span-2 space-y-6">
           {/* Card de Monitoramento do Worker */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                <div className="p-2 rounded-lg bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]">
                   <Zap className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  <h2 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Robô Automático de Sincronização (Worker C6)
                   </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                     Varre periodicamente propostas em andamento sem intervenção manual
                   </p>
                 </div>
@@ -299,7 +299,7 @@ export const C6BankConfigView: React.FC = () => {
                 type="button"
                 onClick={handleRunBatchSync}
                 disabled={isTriggeringSync || !config.isConfigured}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs disabled:opacity-50 transition-all shadow-xs cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs disabled:opacity-90 transition-all  cursor-pointer"
               >
                 <Play className={`h-3.5 w-3.5 ${isTriggeringSync ? 'animate-spin' : ''}`} />
                 <span>{isTriggeringSync ? 'Processando Lote...' : 'Sincronizar Lote Agora'}</span>
@@ -308,104 +308,104 @@ export const C6BankConfigView: React.FC = () => {
 
             {/* Métricas do Worker */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/70 dark:border-slate-800/70">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Sincronizador</span>
-                <span className={`font-black text-sm block mt-1 ${config.autoSyncEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+              <div className="p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Sincronizador</span>
+                <span className={`font-black text-sm block mt-1 ${config.autoSyncEnabled ? 'text-[var(--success-text)] dark:text-[var(--success-text)]' : 'text-[var(--text-secondary)]'}`}>
                   {config.autoSyncEnabled ? 'ATIVO' : 'DESATIVADO'}
                 </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
+                <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                   A cada {config.syncIntervalMinutes} min
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/70 dark:border-slate-800/70">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Propostas Pendentes</span>
-                <span className="font-black text-sm font-mono text-slate-900 dark:text-slate-100 block mt-1">
+              <div className="p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Propostas Pendentes</span>
+                <span className="font-black text-sm font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] block mt-1">
                   {workerStatus?.pendingProposalsCount ?? '0'}
                 </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
+                <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                   Aguardando ciclo
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/70 dark:border-slate-800/70">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Última Execução</span>
-                <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block mt-1 truncate">
+              <div className="p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Última Execução</span>
+                <span className="font-bold text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] block mt-1 truncate">
                   {workerStatus?.lastRunAt ? new Date(workerStatus.lastRunAt).toLocaleTimeString('pt-BR') : 'Nunca executou'}
                 </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
+                <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                   {workerStatus?.lastRunItemCount ? `${workerStatus.lastRunItemCount} consultadas` : 'Sem lote anterior'}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/70 dark:border-slate-800/70">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Falhas de Conexão</span>
-                <span className={`font-black text-sm font-mono block mt-1 ${workerStatus?.recentFailuresCount ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              <div className="p-3 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Falhas de Conexão</span>
+                <span className={`font-black text-sm font-mono block mt-1 ${workerStatus?.recentFailuresCount ? 'text-[var(--danger-text)]' : 'text-[var(--success-text)] dark:text-[var(--success-text)]'}`}>
                   {workerStatus?.recentFailuresCount ?? 0}
                 </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
+                <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                   Nas últimas 24 horas
                 </span>
               </div>
             </div>
 
             {batchSyncResult && (
-              <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-800 flex items-center gap-2">
-                <Info className="h-4 w-4 shrink-0 text-blue-600" />
+              <div className="mt-4 p-3 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center gap-2">
+                <Info className="h-4 w-4 shrink-0 text-[var(--link)]" />
                 <span>{batchSyncResult}</span>
               </div>
             )}
           </div>
 
           {/* Mapeamento de Status da Esteira C6 */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <Activity className="h-4 w-4 text-purple-600" />
-              <h2 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+          <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5 shadow-xs">
+            <div className="flex items-center gap-2 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+              <Activity className="h-4 w-4 text-[var(--link)]" />
+              <h2 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Regras de Mapeamento C6 Bank → Status Interno Sentinel
               </h2>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+            <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-2">
               Conforme as diretrizes oficiais do manual de integração, as situações e atividades retornadas pelo C6 Bank são convertidas automaticamente:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30">
-                <div className="font-bold text-slate-900 dark:text-slate-100">APROVADA / PAGA / LIBERADA</div>
-                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+              <div className="p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
+                <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">APROVADA / PAGA / LIBERADA</div>
+                <div className="text-[11px] text-[var(--success-text)] dark:text-[var(--success-text)] font-semibold mt-0.5">
                   → Status: PAGO / CONCLUIDO
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
                   Marca a data de pagamento e finaliza o ciclo de produção.
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30">
-                <div className="font-bold text-slate-900 dark:text-slate-100">PENDENCIA / FORMALIZAÇÃO PENDENTE</div>
-                <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+              <div className="p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
+                <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">PENDENCIA / FORMALIZAÇÃO PENDENTE</div>
+                <div className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-semibold mt-0.5">
                   → Status: PENDENTE
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
                   Exibe pendência documental ou assinatura do cliente pendente.
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30">
-                <div className="font-bold text-slate-900 dark:text-slate-100">CANCELADA / RECUSADA / REPROVADA</div>
-                <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-0.5">
+              <div className="p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
+                <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">CANCELADA / RECUSADA / REPROVADA</div>
+                <div className="text-[11px] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold mt-0.5">
                   → Status: CANCELADO / REPROVADO
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
                   Registra motivo do cancelamento e encerra o acompanhamento.
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30">
-                <div className="font-bold text-slate-900 dark:text-slate-100">AGUARDANDO MARGEM / CIP / RETORNO</div>
-                <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+              <div className="p-2.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
+                <div className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">AGUARDANDO MARGEM / CIP / RETORNO</div>
+                <div className="text-[11px] text-[var(--link)] dark:text-[var(--link)] font-semibold mt-0.5">
                   → Status: AGUARDAR RETORNO CIP / SALDO
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">
                   Atualiza o SLA de portabilidade e acompanha o saldo devedor.
                 </div>
               </div>
@@ -415,21 +415,21 @@ export const C6BankConfigView: React.FC = () => {
 
         {/* Coluna 3: Formulário de Credenciais e Conexão Segura */}
         <div className="space-y-6">
-          <form onSubmit={handleSaveConfig} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
-            <label className="block text-sm">Código de promotora C6<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.promoterCode || ''} onChange={e => setConfig({ ...config, promoterCode: e.target.value })} /></label>
-                <p className="text-sm text-slate-500">C6 CLT temporariamente suspenso.</p>
+          <form onSubmit={handleSaveConfig} className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-4">
+            <label className="block text-sm">Código de promotora C6<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" value={config.promoterCode || ''} onChange={e => setConfig({ ...config, promoterCode: e.target.value })} /></label>
+                <p className="text-sm text-[var(--text-secondary)]">C6 CLT temporariamente suspenso.</p>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!config.simulationEnabled} onChange={e => setConfig({ ...config, simulationEnabled: e.target.checked })} />Habilitar C6 nas simulações INSS</label>
-            <label className="block text-sm">Código do digitador C6<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.typistCode || ''} onChange={e => setConfig({ ...config, typistCode: e.target.value })} /></label>
-            <label className="block text-sm">CPF do agente certificado<input className="mt-1 block w-full rounded-lg border border-slate-700 bg-transparent p-2" value={config.certifiedAgentCpf || ''} onChange={e => setConfig({ ...config, certifiedAgentCpf: e.target.value })} /></label>
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <Lock className="h-4 w-4 text-blue-600" />
-              <h2 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+            <label className="block text-sm">Código do digitador C6<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" value={config.typistCode || ''} onChange={e => setConfig({ ...config, typistCode: e.target.value })} /></label>
+            <label className="block text-sm">CPF do agente certificado<input className="mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-transparent p-2" value={config.certifiedAgentCpf || ''} onChange={e => setConfig({ ...config, certifiedAgentCpf: e.target.value })} /></label>
+            <div className="flex items-center gap-2 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
+              <Lock className="h-4 w-4 text-[var(--link)]" />
+              <h2 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Credenciais C6 Bank
               </h2>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 Usuário C6 Bank (username) *
               </label>
               <input
@@ -438,12 +438,12 @@ export const C6BankConfigView: React.FC = () => {
                 value={config.username}
                 onChange={(e) => setConfig({ ...config, username: e.target.value })}
                 placeholder="Ex: usuario_parceiro"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 Senha C6 Bank (password) {config.hasPassword ? '(Cadastrada)' : '*'}
               </label>
               <div className="relative">
@@ -452,23 +452,23 @@ export const C6BankConfigView: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={config.hasPassword ? '•••••••• (Preencha para alterar)' : 'Digite a senha do C6'}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden pr-9"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden pr-9"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">
+              <span className="text-[10px] text-[var(--text-secondary)] mt-1 block">
                 As credenciais são armazenadas de forma segura e protegidas no servidor.
               </span>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 URL da API C6
               </label>
               <input
@@ -476,26 +476,26 @@ export const C6BankConfigView: React.FC = () => {
                 required
                 value={config.baseUrl}
                 onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-2 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
               />
             </div>
 
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] space-y-3">
               <div className="flex items-center gap-2.5">
                 <input
                   type="checkbox"
                   id="autoSyncViewToggle"
                   checked={config.autoSyncEnabled}
                   onChange={(e) => setConfig({ ...config, autoSyncEnabled: e.target.checked })}
-                  className="h-4 w-4 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  className="h-4 w-4 rounded-sm border-[var(--field-border)] text-[var(--link)] focus:ring-[var(--focus)] cursor-pointer"
                 />
-                <label htmlFor="autoSyncViewToggle" className="cursor-pointer font-bold text-slate-900 dark:text-slate-100">
+                <label htmlFor="autoSyncViewToggle" className="cursor-pointer font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Consulta Periódica em Background
                 </label>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                   Intervalo (Minutos)
                 </label>
                 <input
@@ -504,7 +504,7 @@ export const C6BankConfigView: React.FC = () => {
                   max={1440}
                   value={config.syncIntervalMinutes}
                   onChange={(e) => setConfig({ ...config, syncIntervalMinutes: parseInt(e.target.value, 10) || 15 })}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs font-mono text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                 />
               </div>
             </div>
@@ -513,7 +513,7 @@ export const C6BankConfigView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-all cursor-pointer"
+                className="w-full py-2.5 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-[var(--action-ink)] font-bold text-xs  disabled:opacity-90 transition-all cursor-pointer"
               >
                 {isSaving ? 'Salvando Configurações...' : 'Salvar Configurações'}
               </button>
@@ -522,7 +522,7 @@ export const C6BankConfigView: React.FC = () => {
                 type="button"
                 onClick={handleTestConnection}
                 disabled={isTesting || !config.username}
-                className="w-full py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold text-xs disabled:opacity-90 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Server className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
                 <span>{isTesting ? 'Testando Conexão...' : 'Testar Conexão com C6'}</span>
@@ -530,8 +530,8 @@ export const C6BankConfigView: React.FC = () => {
             </div>
 
             {saveSuccessMsg && (
-              <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <div className="p-2.5 rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)] flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)]" />
                 <span>{saveSuccessMsg}</span>
               </div>
             )}
@@ -540,14 +540,14 @@ export const C6BankConfigView: React.FC = () => {
               <div
                 className={`p-2.5 rounded-lg border flex items-start gap-2 ${
                   testResult.success
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
-                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+                    ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]'
+                    : 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                 }`}
               >
                 {testResult.success ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)] mt-0.5" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger-text)] mt-0.5" />
                 )}
                 <div>
                   <span className="font-bold block">
@@ -562,74 +562,74 @@ export const C6BankConfigView: React.FC = () => {
       </div>
 
       {/* Histórico Geral de Consultas do C6 Bank */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5 shadow-xs">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
           <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-blue-600" />
-            <h2 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+            <History className="h-4 w-4 text-[var(--link)]" />
+            <h2 className="font-bold text-sm text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
               Últimas Consultas e Auditoria C6 Bank
             </h2>
           </div>
           <button
             type="button"
             onClick={fetchRecentLogs}
-            className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer"
+            className="text-xs text-[var(--link)] dark:text-[var(--link)] font-semibold hover:underline cursor-pointer"
           >
             Atualizar logs
           </button>
         </div>
 
         {isLoadingLogs ? (
-          <div className="py-8 text-center text-slate-400">
-            <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-1 text-blue-500" />
+          <div className="py-8 text-center text-[var(--text-secondary)]">
+            <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-1 text-[var(--link)]" />
             <span>Carregando logs de auditoria...</span>
           </div>
         ) : recentLogs.length === 0 ? (
-          <div className="py-6 text-center text-slate-400 text-xs">
+          <div className="py-6 text-center text-[var(--text-secondary)] text-xs">
             Nenhuma consulta ao C6 Bank registrada recentemente no sistema.
           </div>
         ) : (
           <div className="overflow-x-auto mt-3">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800">
+              <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <tr>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Data / Hora</th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Nº Proposta C6</th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Situação C6</th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Atividade Esteira</th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Status Interno</th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Executor</th>
-                  <th className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">Resultado</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Data / Hora</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nº Proposta C6</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Situação C6</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Atividade Esteira</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Status Interno</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Executor</th>
+                  <th className="py-2.5 px-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Resultado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)]">
                 {recentLogs.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2 px-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  <tr key={item.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                    <td className="py-2 px-3 font-mono text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap">
                       {formatDateTime(item.queryDate)}
                     </td>
-                    <td className="py-2 px-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                    <td className="py-2 px-3 font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {item.c6ProposalNumber}
                     </td>
-                    <td className="py-2 px-3 text-slate-800 dark:text-slate-200 font-medium">
+                    <td className="py-2 px-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium">
                       {item.currentRawSituation || '—'}
                     </td>
-                    <td className="py-2 px-3 text-slate-600 dark:text-slate-300 max-w-xs truncate" title={item.currentActivity || ''}>
+                    <td className="py-2 px-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)] max-w-xs truncate" title={item.currentActivity || ''}>
                       {item.currentActivity || '—'}
                     </td>
-                    <td className="py-2 px-3 text-slate-700 dark:text-slate-300">
+                    <td className="py-2 px-3 text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {item.currentInternalStatus || '—'}
                     </td>
-                    <td className="py-2 px-3 text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <td className="py-2 px-3 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap">
                       {item.queriedBy === 'AUTO_WORKER' ? 'Robô Automático' : 'Manual'}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
                       {item.success ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                           <CheckCircle2 className="h-3 w-3" /> Sucesso
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400" title={item.technicalError || ''}>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]" title={item.technicalError || ''}>
                           <AlertTriangle className="h-3 w-3" /> Falha
                         </span>
                       )}

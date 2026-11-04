@@ -198,42 +198,42 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl space-y-4 my-6 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="w-full max-w-2xl rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  space-y-4 my-6 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between bg-slate-50/70 dark:bg-slate-850">
+        <div className="p-5 border-b border-[var(--field-border)] dark:border-[var(--field-border)] flex items-start justify-between bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)]">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-200 dark:border-blue-800">
+            <div className="h-10 w-10 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center font-bold text-sm shrink-0 border border-[var(--field-border)] dark:border-[var(--field-border)]">
               {user.name.slice(0, 2).toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {user.name}
                 </h3>
                 {user.role === 'PLATFORM_MASTER' && (
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
                     ⚡ MASTER OP (Global)
                   </span>
                 )}
                 {user.active ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Ativo
                   </span>
                 ) : (
-                  <span className="text-[11px] font-bold text-rose-500">
+                  <span className="text-[11px] font-bold text-[var(--danger-text)]">
                     Suspenso
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                 {user.email} • ID: <span className="font-mono text-[11px]">{user.id}</span>
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -245,14 +245,14 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
             <div
               className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
                 feedback.type === 'success'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+                  ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border-[var(--success-border)] dark:border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)]'
+                  : 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
               }`}
             >
               {feedback.type === 'success' ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--success-text)] dark:text-[var(--success-text)]" />
               ) : (
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                <AlertCircle className="h-4 w-4 shrink-0 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
               )}
               <span>{feedback.text}</span>
             </div>
@@ -262,12 +262,12 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
         {/* Body Content */}
         <div className="p-5 space-y-5 max-h-[68vh] overflow-y-auto">
           {/* Architecture Rule Banner */}
-          <div className="rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 p-3 text-xs text-blue-900 dark:text-blue-200">
+          <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-3 text-xs text-[var(--link)] dark:text-[var(--link)]">
             <div className="flex items-center gap-2 font-bold mb-0.5">
-              <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <Building2 className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
               <span>Arquitetura Multi-Tenant Sentinel: 1 User = 1 Identidade Global = 1 Login</span>
             </div>
-            <p className="text-[11px] text-blue-800 dark:text-blue-300">
+            <p className="text-[11px] text-[var(--link)] dark:text-[var(--link)]">
               O operador acessa as empresas através de suas <strong>Memberships</strong>. Para cada empresa vinculada, ele possui exatamente <strong>1 perfil/role</strong> e suas permissões correspondentes.
             </p>
           </div>
@@ -275,15 +275,15 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
           {/* Tenants / Memberships List */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-1.5">
+                <Building2 className="h-4 w-4 text-[var(--link)] dark:text-[var(--link)]" />
                 <span>Empresas Vinculadas ({memberships.length})</span>
               </h4>
               {!isAddingNew && availableTenantsToAdd.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setIsAddingNew(true)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[var(--link)] dark:text-[var(--link)] hover:text-[var(--link)] dark:hover:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] px-2.5 py-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] transition-colors cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Vincular Nova Empresa</span>
@@ -295,17 +295,17 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
             {isAddingNew && (
               <form
                 onSubmit={handleAddNewMembership}
-                className="rounded-xl border border-blue-200 dark:border-blue-800/80 bg-blue-50/30 dark:bg-blue-950/30 p-3.5 space-y-3 animate-in fade-in duration-100"
+                className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-3.5 space-y-3 animate-in fade-in duration-100"
               >
-                <div className="flex items-center justify-between border-b border-blue-100 dark:border-blue-900/50 pb-2">
-                  <span className="text-xs font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
-                    <Plus className="h-4 w-4 text-blue-600" />
+                <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2">
+                  <span className="text-xs font-bold text-[var(--link)] dark:text-[var(--link)] flex items-center gap-1.5">
+                    <Plus className="h-4 w-4 text-[var(--link)]" />
                     <span>Adicionar Vínculo com Empresa</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsAddingNew(false)}
-                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    className="text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]"
                   >
                     Cancelar
                   </button>
@@ -313,13 +313,13 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                       Empresa / Tenant *
                     </label>
                     <select
                       value={newTenantId}
                       onChange={e => setNewTenantId(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:border-blue-500"
+                      className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-semibold focus:border-[var(--field-border)]"
                       required
                     >
                       <option value="">Selecione uma empresa...</option>
@@ -332,13 +332,13 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                       Perfil nesta Empresa *
                     </label>
                     <select
                       value={newRole}
                       onChange={e => setNewRole(e.target.value as Role)}
-                      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:border-blue-500"
+                      className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-semibold focus:border-[var(--field-border)]"
                     >
                       <option value="TENANT_ADMIN">🏢 TENANT_ADMIN (Admin da Empresa)</option>
                       <option value="GESTOR">🛡️ GESTOR</option>
@@ -354,14 +354,14 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsAddingNew(false)}
-                    className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="px-3 py-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]"
                   >
                     Descartar
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting || !newTenantId}
-                    className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                    className="px-4 py-1.5 rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] text-xs font-bold text-[var(--action-ink)]  disabled:opacity-90 flex items-center gap-1.5"
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -376,7 +376,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
 
             {/* Memberships Cards */}
             {memberships.length === 0 ? (
-              <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400">
+              <div className="p-4 rounded-xl border border-dashed border-[var(--field-border)] dark:border-[var(--field-border)] text-center text-xs text-[var(--text-secondary)]">
                 Nenhum vínculo empresarial cadastrado para este operador.
               </div>
             ) : (
@@ -399,33 +399,33 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                   return (
                     <div
                       key={m.id || m.tenantId}
-                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 p-3.5 space-y-3 transition-colors hover:border-slate-300 dark:hover:border-slate-700"
+                      className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-3.5 space-y-3 transition-colors hover:border-[var(--field-border)] dark:hover:border-[var(--field-border)]"
                     >
                       {/* Membership Row Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5">
-                          <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 shrink-0">
+                          <div className="p-2 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--link)] dark:text-[var(--link)] shrink-0">
                             <Building2 className="h-4 w-4" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                              <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {tenant?.name || `Empresa (${m.tenantId})`}
                               </span>
                               {tenant?.slug && (
-                                <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
+                                <span className="font-mono text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                                   @{tenant.slug}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                               <span>Status:</span>
                               {m.active ? (
-                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                <span className="text-[var(--success-text)] dark:text-[var(--success-text)] font-bold">
                                   Ativo na empresa
                                 </span>
                               ) : (
-                                <span className="text-rose-500 font-bold">Inativo</span>
+                                <span className="text-[var(--danger-text)] font-bold">Inativo</span>
                               )}
                             </div>
                           </div>
@@ -442,7 +442,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                   setEditingRole(nr);
                                   setEditingPermissions(getPermissionsForRole(nr));
                                 }}
-                                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-900 dark:text-slate-100"
+                                className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                               >
                                 <option value="TENANT_ADMIN">🏢 TENANT_ADMIN</option>
                                 <option value="GESTOR">🛡️ GESTOR</option>
@@ -456,7 +456,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                 type="button"
                                 onClick={() => handleSaveMembership(m.id)}
                                 disabled={isSubmitting}
-                                className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                                className="p-1.5 rounded-lg bg-[var(--success-bg)] hover:bg-[var(--success-bg)] text-[var(--success-text)] shadow-2xs"
                                 title="Salvar Alterações"
                               >
                                 <Save className="h-3.5 w-3.5" />
@@ -464,7 +464,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={cancelEditMembership}
-                                className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                                className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]"
                                 title="Cancelar"
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -475,7 +475,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                               <span
                                 className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-bold text-[10px] border ${
                                   ROLE_CONFIG[m.role]?.badgeClass ||
-                                  'bg-slate-100 text-slate-800 border-slate-200'
+                                  'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--field-border)]'
                                 }`}
                               >
                                 <span>{getRoleEmoji(m.role)}</span>
@@ -485,7 +485,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => startEditMembership(m)}
-                                className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                className="p-1 text-[var(--text-secondary)] hover:text-[var(--link)] rounded hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                                 title="Alterar Perfil nesta Empresa"
                               >
                                 <Edit2 className="h-3.5 w-3.5" />
@@ -495,7 +495,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteMembership(m)}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                  className="p-1 text-[var(--text-secondary)] hover:text-[var(--danger-text)] rounded hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                                   title="Remover Vínculo desta Empresa"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -507,12 +507,12 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                       </div>
 
                       {/* Permissions Summary & Accordion Toggle */}
-                      <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                          <Shield className="h-3.5 w-3.5 text-blue-500" />
+                      <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-2 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
+                          <Shield className="h-3.5 w-3.5 text-[var(--link)]" />
                           <span>
                             {hasCustom ? (
-                              <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                              <span className="text-[var(--warning-text)] dark:text-[var(--warning-text)] font-semibold">
                                 Permissões personalizadas ({effectivePerms.length} ativas)
                               </span>
                             ) : (
@@ -528,7 +528,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                           onClick={() =>
                             setShowPermsAccordion(isAccordionOpen ? null : m.id)
                           }
-                          className="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          className="font-bold text-[var(--link)] dark:text-[var(--link)] hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <span>{isAccordionOpen ? 'Ocultar detalhes' : 'Ver permissões'}</span>
                           {isAccordionOpen ? (
@@ -541,8 +541,8 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
 
                       {/* Accordion Detail View */}
                       {isAccordionOpen && (
-                        <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 animate-in fade-in duration-100">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                        <div className="p-3 rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-2 animate-in fade-in duration-100">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-1.5">
                             <span>Módulos e Acessos Habilitados:</span>
                             {isEditing && (
                               <div className="flex gap-2">
@@ -553,14 +553,14 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                       DEFAULT_ROLE_PERMISSIONS.TENANT_ADMIN
                                     )
                                   }
-                                  className="text-[10px] text-blue-600 hover:underline"
+                                  className="text-[10px] text-[var(--link)] hover:underline"
                                 >
                                   Marcar Todas
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setEditingPermissions([])}
-                                  className="text-[10px] text-rose-600 hover:underline"
+                                  className="text-[10px] text-[var(--danger-text)] hover:underline"
                                 >
                                   Limpar
                                 </button>
@@ -578,9 +578,9 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                               return (
                                 <div
                                   key={cat.category}
-                                  className="p-2 rounded bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 space-y-1"
+                                  className="p-2 rounded bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] space-y-1"
                                 >
-                                  <div className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-500">
+                                  <div className="flex items-center justify-between text-[10px] font-bold uppercase text-[var(--text-secondary)]">
                                     <span>{cat.label}</span>
                                     <span>
                                       {activeInCat.length}/{catPerms.length}
@@ -597,13 +597,13 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                         return (
                                           <label
                                             key={p.id}
-                                            className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300 cursor-pointer"
+                                            className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer"
                                           >
                                             <input
                                               type="checkbox"
                                               checked={isChecked}
                                               onChange={() => togglePermission(p.id)}
-                                              className="rounded text-blue-600 h-3 w-3"
+                                              className="rounded text-[var(--link)] h-3 w-3"
                                             />
                                             <span>{p.label}</span>
                                           </label>
@@ -615,13 +615,13 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                                           key={p.id}
                                           className={`flex items-center gap-1.5 text-[11px] ${
                                             isChecked
-                                              ? 'text-slate-800 dark:text-slate-200 font-medium'
-                                              : 'text-slate-400 dark:text-slate-600 line-through'
+                                              ? 'text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium'
+                                              : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] line-through'
                                           }`}
                                         >
                                           <span
                                             className={`h-1.5 w-1.5 rounded-full ${
-                                              isChecked ? 'bg-emerald-500' : 'bg-slate-300'
+                                              isChecked ? 'bg-[var(--success-bg)]' : 'bg-[var(--bg-surface-elevated)]'
                                             }`}
                                           />
                                           <span>{p.label}</span>
@@ -644,7 +644,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
         </div>
 
         {/* Modal Footer with Actions */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850 flex flex-wrap items-center justify-between gap-2">
+        <div className="p-4 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {onResetPassword && (
               <button
@@ -653,9 +653,9 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
                   onResetPassword(user);
                   onClose();
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
               >
-                <KeyRound className="h-3.5 w-3.5 text-amber-500" />
+                <KeyRound className="h-3.5 w-3.5 text-[var(--warning-text)]" />
                 <span>Redefinir Senha</span>
               </button>
             )}
@@ -664,9 +664,9 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
               <button
                 type="button"
                 onClick={() => onSwitchUser(user)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] cursor-pointer"
               >
-                <UserCheck className="h-3.5 w-3.5 text-blue-500" />
+                <UserCheck className="h-3.5 w-3.5 text-[var(--link)]" />
                 <span>Assumir Perfil</span>
               </button>
             )}
@@ -675,7 +675,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 transition-colors"
+            className="px-4 py-1.5 rounded-xl bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] transition-colors"
           >
             Fechar
           </button>

@@ -1,0 +1,802 @@
+[
+  {
+    "name": "azul-login-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-login-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-login-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-login-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-login-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-login-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-login-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-login-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-portal-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-portal-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-portal-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-portal-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-portal-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-portal-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-portal-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-portal-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-shell-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-shell-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-shell-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-shell-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-shell-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-shell-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-shell-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-shell-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-propostas-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-propostas-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-propostas-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-propostas-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-propostas-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-propostas-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-propostas-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-propostas-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-simulacoes-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-simulacoes-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-simulacoes-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-simulacoes-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-simulacoes-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-simulacoes-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-simulacoes-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-simulacoes-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-kanban-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 390,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-kanban-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-kanban-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-kanban-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-kanban-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 390,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-kanban-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-kanban-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-kanban-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-pendencias-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-pendencias-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-pendencias-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-pendencias-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-pendencias-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-pendencias-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-pendencias-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-pendencias-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-hub-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-hub-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-hub-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-hub-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-hub-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-hub-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1001,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-hub-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1343,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-hub-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1897,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-financeiro-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-financeiro-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-financeiro-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-financeiro-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-financeiro-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-financeiro-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-financeiro-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-financeiro-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-primitivas-dark-390.jpg",
+    "requested": 390,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-primitivas-dark-1024.jpg",
+    "requested": 1024,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-primitivas-dark-1366.jpg",
+    "requested": 1366,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-primitivas-dark-1920.jpg",
+    "requested": 1920,
+    "theme": "dark",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  },
+  {
+    "name": "azul-primitivas-light-390.jpg",
+    "requested": 390,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 367,
+      "width": 390
+    }
+  },
+  {
+    "name": "azul-primitivas-light-1024.jpg",
+    "requested": 1024,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1024,
+      "width": 1024
+    }
+  },
+  {
+    "name": "azul-primitivas-light-1366.jpg",
+    "requested": 1366,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1365,
+      "width": 1365
+    }
+  },
+  {
+    "name": "azul-primitivas-light-1920.jpg",
+    "requested": 1920,
+    "theme": "light",
+    "metrics": {
+      "height": 900,
+      "scrollWidth": 1920,
+      "width": 1920
+    }
+  }
+]

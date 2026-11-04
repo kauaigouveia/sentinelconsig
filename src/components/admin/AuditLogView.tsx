@@ -293,23 +293,23 @@ export const AuditLogView: React.FC = () => {
         title="Auditoria e Segurança"
         subtitle="Consulte o histórico das ações realizadas no sistema com rastreabilidade completa."
         badgeText="REGISTRO OFICIAL"
-        badgeColor="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        badgeColor="bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]"
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {/* Source of truth badge */}
-            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--success-border)] dark:border-[var(--success-border)] text-[11px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
               <Database className="h-3 w-3" />
               <span>Base Oficial Protegida</span>
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 p-1">
+            <div className="flex rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] p-1">
               <button
                 onClick={() => setActiveTab('SUMMARY')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   activeTab === 'SUMMARY'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--link)] dark:text-[var(--link)] shadow-xs'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
                 <Layers className="h-3.5 w-3.5" />
@@ -319,8 +319,8 @@ export const AuditLogView: React.FC = () => {
                 onClick={() => setActiveTab('ALL_LOGS')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   activeTab === 'ALL_LOGS'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--link)] dark:text-[var(--link)] shadow-xs'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
                 <FileCheck2 className="h-3.5 w-3.5" />
@@ -330,14 +330,14 @@ export const AuditLogView: React.FC = () => {
                 onClick={() => setActiveTab('EXCEPTIONS')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all relative cursor-pointer ${
                   activeTab === 'EXCEPTIONS'
-                    ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--danger-text)] dark:text-[var(--danger-text)] shadow-xs'
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Bug className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                <Bug className="h-3.5 w-3.5 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
                 <span>Ocorrências</span>
                 {unresolvedExceptionsCount > 0 && (
-                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
+                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--danger-bg)] px-1 text-[9px] font-black text-[var(--danger-text)]">
                     {unresolvedExceptionsCount}
                   </span>
                 )}
@@ -347,7 +347,7 @@ export const AuditLogView: React.FC = () => {
             <button
               onClick={refreshLogs}
               disabled={isLoading}
-              className="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer disabled:opacity-50"
+              className="p-2 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--link)] dark:hover:text-[var(--link)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer disabled:opacity-90"
               title="Atualizar Registros"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -357,8 +357,8 @@ export const AuditLogView: React.FC = () => {
       />
 
       {loadError && (
-        <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+        <div className="p-3 rounded-xl bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[var(--danger-text)]" />
           <span>{loadError}</span>
         </div>
       )}
@@ -368,27 +368,27 @@ export const AuditLogView: React.FC = () => {
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Importations Card */}
-            <div className="rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/20 p-4 shadow-2xs">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4 shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
                   Importações Excel
                 </span>
-                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                <div className="h-8 w-8 rounded-lg bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center shadow-xs">
                   <FileSpreadsheet className="h-4 w-4" />
                 </div>
               </div>
               <div className="mt-2.5">
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+                <span className="text-2xl font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {summaryMetrics.totalImportedProposals}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium ml-1.5">propostas criadas</span>
+                <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium ml-1.5">propostas criadas</span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold">
-                <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                <span className="text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-2 py-0.5 rounded border border-[var(--success-border)] dark:border-[var(--success-border)]">
                   {summaryMetrics.totalImportBatches} lote(s)
                 </span>
                 {summaryMetrics.totalImportErrors > 0 && (
-                  <span className="text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                  <span className="text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] px-2 py-0.5 rounded border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                     {summaryMetrics.totalImportErrors} erro(s)
                   </span>
                 )}
@@ -396,69 +396,69 @@ export const AuditLogView: React.FC = () => {
             </div>
 
             {/* Bulk Deletion Card */}
-            <div className="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20 p-4 shadow-2xs">
+            <div className="rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-4 shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                   Exclusões em Lote
                 </span>
-                <div className="h-8 w-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shadow-xs">
+                <div className="h-8 w-8 rounded-lg bg-[var(--danger-bg)] text-[var(--danger-text)] flex items-center justify-center shadow-xs">
                   <Trash2 className="h-4 w-4" />
                 </div>
               </div>
               <div className="mt-2.5">
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+                <span className="text-2xl font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {summaryMetrics.totalDeletedProposals}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium ml-1.5">propostas excluídas</span>
+                <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium ml-1.5">propostas excluídas</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
-                <span className="bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)]">
+                <span className="bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] px-2 py-0.5 rounded border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                   {summaryMetrics.totalDeleteBatches} rotina(s) em massa
                 </span>
               </div>
             </div>
 
             {/* Bulk Status Card */}
-            <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 p-4 shadow-2xs">
+            <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] p-4 shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--link)] dark:text-[var(--link)]">
                   Alterações em Lote
                 </span>
-                <div className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <div className="h-8 w-8 rounded-lg bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center shadow-xs">
                   <Layers className="h-4 w-4" />
                 </div>
               </div>
               <div className="mt-2.5">
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+                <span className="text-2xl font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {summaryMetrics.totalStatusBulkUpdates}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium ml-1.5">status alterados</span>
+                <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium ml-1.5">status alterados</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
-                <span className="bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-[var(--link)] dark:text-[var(--link)]">
+                <span className="bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-2 py-0.5 rounded border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   {summaryMetrics.totalStatusBatches} lote(s)
                 </span>
               </div>
             </div>
 
             {/* Operational Health Card */}
-            <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 shadow-2xs">
+            <div className="rounded-xl border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-4 shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--success-text)] dark:text-[var(--success-text)]">
                   Taxa de Sucesso
                 </span>
-                <div className="h-8 w-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                <div className="h-8 w-8 rounded-lg bg-[var(--success-bg)] text-[var(--success-text)] flex items-center justify-center shadow-xs">
                   <TrendingUp className="h-4 w-4" />
                 </div>
               </div>
               <div className="mt-2.5">
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+                <span className="text-2xl font-extrabold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   {summaryMetrics.successRate}%
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium ml-1.5">sucesso operacional</span>
+                <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium ml-1.5">sucesso operacional</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                <span className="bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-[var(--success-text)] dark:text-[var(--success-text)]">
+                <span className="bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-2 py-0.5 rounded border border-[var(--success-border)] dark:border-[var(--success-border)]">
                   Auditoria 100% Oficial
                 </span>
               </div>
@@ -466,18 +466,18 @@ export const AuditLogView: React.FC = () => {
           </div>
 
           {/* Filter Bar & Search */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-2xs">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mr-1 flex items-center gap-1">
-                <Filter className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+              <span className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mr-1 flex items-center gap-1">
+                <Filter className="h-3.5 w-3.5 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]" />
                 Tipo:
               </span>
               <button
                 onClick={() => setBulkFilter('ALL')}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                   bulkFilter === 'ALL'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)] shadow-2xs'
+                    : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 Todas ({bulkOperations.length})
@@ -486,8 +486,8 @@ export const AuditLogView: React.FC = () => {
                 onClick={() => setBulkFilter('IMPORT')}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                   bulkFilter === 'IMPORT'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)] shadow-2xs'
+                    : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 Importações Excel
@@ -496,8 +496,8 @@ export const AuditLogView: React.FC = () => {
                 onClick={() => setBulkFilter('DELETE')}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                   bulkFilter === 'DELETE'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)] shadow-2xs'
+                    : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 Exclusões em Lote
@@ -506,8 +506,8 @@ export const AuditLogView: React.FC = () => {
                 onClick={() => setBulkFilter('STATUS')}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                   bulkFilter === 'STATUS'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] border-[var(--field-border)] shadow-2xs'
+                    : 'bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-[var(--field-border)] dark:border-[var(--field-border)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 Alterações de Status
@@ -515,7 +515,7 @@ export const AuditLogView: React.FC = () => {
             </div>
 
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
@@ -524,7 +524,7 @@ export const AuditLogView: React.FC = () => {
                   setPage(1);
                 }}
                 placeholder="Buscar operações..."
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:outline-hidden"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--field-border)] focus:outline-hidden"
               />
             </div>
           </div>
@@ -532,15 +532,15 @@ export const AuditLogView: React.FC = () => {
           {/* Bulk Operations List */}
           <div className="space-y-3">
             {isLoading ? (
-              <div className="p-12 text-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Carregando histórico de auditoria...</p>
+              <div className="p-12 text-center rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]">
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--link)] mx-auto mb-2" />
+                <p className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Carregando histórico de auditoria...</p>
               </div>
             ) : filteredBulkOps.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-2xs">
-                <Layers className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Nenhuma operação em lote registrada</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+              <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-8 text-center shadow-2xs">
+                <Layers className="mx-auto h-8 w-8 text-[var(--text-primary)] dark:text-[var(--text-secondary)] mb-2" />
+                <p className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nenhuma operação em lote registrada</p>
+                <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                   Quando importar planilhas ou excluir propostas em massa, o resumo detalhado aparecerá aqui.
                 </p>
               </div>
@@ -558,20 +558,20 @@ export const AuditLogView: React.FC = () => {
                 return (
                   <div
                     key={op.id}
-                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs overflow-hidden transition-all"
+                    className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  overflow-hidden transition-all"
                   >
                     {/* Operation Summary Header */}
-                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800">
+                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                       <div className="flex items-start gap-3">
                         <div
-                          className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                          className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0  ${
                             isImport
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-[var(--info-bg)] text-[var(--text-primary)]'
                               : isDelete
-                              ? 'bg-rose-600 text-white'
+                              ? 'bg-[var(--danger-bg)] text-[var(--text-primary)]'
                               : isSentinela
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-indigo-600 text-white'
+                              ? 'bg-[var(--info-bg)] text-[var(--text-primary)]'
+                              : 'bg-[var(--info-bg)] text-[var(--text-primary)]'
                           }`}
                         >
                           {isImport ? (
@@ -590,12 +590,12 @@ export const AuditLogView: React.FC = () => {
                             <span
                               className={`px-2 py-0.5 text-[10px] font-extrabold rounded uppercase tracking-wide border ${
                                 isImport
-                                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                  ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
                                   : isDelete
-                                  ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                  ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                                   : isSentinela
-                                  ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                                  : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                                  ? 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
+                                  : 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
                               }`}
                             >
                               {isImport
@@ -606,20 +606,20 @@ export const AuditLogView: React.FC = () => {
                                 ? 'Consulta Sentinela AI'
                                 : 'Alteração de Status em Lote'}
                             </span>
-                            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                            <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono">
                               {formatDate(op.createdAt)}
                             </span>
                             {op.tenant?.name && (
-                              <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                              <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] px-1.5 py-0.5 rounded">
                                 <Building2 className="h-3 w-3" />
                                 {op.tenant.name}
                               </span>
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-1">
-                            Executado por: <strong className="text-slate-900 dark:text-white">{op.userName || op.user?.name || 'Sistema'}</strong> {op.user?.role ? `(${op.user.role})` : ''}
-                            {op.ipAddress && <span className="text-slate-400 font-mono ml-2 text-[11px]">IP: {op.ipAddress}</span>}
+                          <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-medium mt-1">
+                            Executado por: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{op.userName || op.user?.name || 'Sistema'}</strong> {op.user?.role ? `(${op.user.role})` : ''}
+                            {op.ipAddress && <span className="text-[var(--text-secondary)] font-mono ml-2 text-[11px]">IP: {op.ipAddress}</span>}
                           </p>
                         </div>
                       </div>
@@ -627,22 +627,22 @@ export const AuditLogView: React.FC = () => {
                       {/* Success / Failure Metrics Badges */}
                       <div className="flex items-center gap-2 shrink-0">
                         {successCount > 0 && (
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--success-border)] dark:border-[var(--success-border)] text-[var(--success-text)] dark:text-[var(--success-text)] text-xs font-bold">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success-text)] dark:text-[var(--success-text)]" />
                             <span>{successCount} com Sucesso</span>
                           </div>
                         )}
 
                         {failCount > 0 && (
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-bold">
-                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border border-[var(--danger-border)] dark:border-[var(--danger-border)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-xs font-bold">
+                            <AlertTriangle className="h-3.5 w-3.5 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
                             <span>{failCount} com Falha / Recusa</span>
                           </div>
                         )}
 
                         <button
                           onClick={() => setExpandedLogId(isExpanded ? null : op.id)}
-                          className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
+                          className="flex items-center gap-1 text-xs font-bold text-[var(--link)] dark:text-[var(--link)] hover:text-[var(--link)] dark:hover:text-[var(--link)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] px-3 py-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] transition-colors cursor-pointer"
                         >
                           <span>{isExpanded ? 'Recolher' : 'Ver Detalhes'}</span>
                           {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -652,13 +652,13 @@ export const AuditLogView: React.FC = () => {
 
                     {/* Expandable Breakdown Drawer */}
                     {isExpanded && (
-                      <div className="p-4 space-y-3 bg-white dark:bg-slate-900 animate-in fade-in duration-150">
+                      <div className="p-4 space-y-3 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] animate-in fade-in duration-150">
                         {/* Summary details banner */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                           {/* Success Section */}
-                          <div className="p-3 rounded-lg border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
-                            <div className="flex items-center gap-1.5 font-bold text-emerald-900 dark:text-emerald-300 mb-1">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <div className="p-3 rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)]">
+                            <div className="flex items-center gap-1.5 font-bold text-[var(--success-text)] dark:text-[var(--success-text)] mb-1">
+                              <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)]" />
                               <span>Registros Processados com Sucesso ({successCount})</span>
                             </div>
                             {successfulItems.length > 0 ? (
@@ -666,7 +666,7 @@ export const AuditLogView: React.FC = () => {
                                 {successfulItems.map((ade, i) => (
                                   <span
                                     key={i}
-                                    className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[10px] font-mono font-bold"
+                                    className="px-1.5 py-0.5 rounded bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] text-[10px] font-mono font-bold"
                                   >
                                     {ade}
                                   </span>
@@ -677,23 +677,23 @@ export const AuditLogView: React.FC = () => {
                                 {deletedAdes.map((ade, i) => (
                                   <span
                                     key={i}
-                                    className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 text-[10px] font-mono font-bold"
+                                    className="px-1.5 py-0.5 rounded bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] text-[10px] font-mono font-bold"
                                   >
                                     Excluída: {ade}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic mt-1">
+                              <p className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] italic mt-1">
                                 {successCount} registro(s) processado(s) com sucesso.
                               </p>
                             )}
                           </div>
 
                           {/* Failures / Errors Section */}
-                          <div className="p-3 rounded-lg border border-rose-100 dark:border-rose-900/40 bg-rose-50/40 dark:bg-rose-950/20">
-                            <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-300 mb-1">
-                              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                          <div className="p-3 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)]">
+                            <div className="flex items-center gap-1.5 font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)] mb-1">
+                              <AlertCircle className="h-4 w-4 text-[var(--danger-text)] dark:text-[var(--danger-text)]" />
                               <span>Registros com Falha ou Recusa ({failCount})</span>
                             </div>
                             {errors.length > 0 ? (
@@ -701,14 +701,14 @@ export const AuditLogView: React.FC = () => {
                                 {errors.map((err, i) => (
                                   <div
                                     key={i}
-                                    className="text-[11px] text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-900 p-1.5 rounded border border-rose-200 dark:border-rose-800 font-mono"
+                                    className="text-[11px] text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-1.5 rounded border border-[var(--danger-border)] dark:border-[var(--danger-border)] font-mono"
                                   >
                                     {err}
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 italic mt-1 font-medium">
+                              <p className="text-[11px] text-[var(--success-text)] dark:text-[var(--success-text)] italic mt-1 font-medium">
                                 Nenhuma falha ou erro reportado nesta operação.
                               </p>
                             )}
@@ -717,12 +717,12 @@ export const AuditLogView: React.FC = () => {
 
                         {/* Observation / Payload info */}
                         {observation && (
-                          <div className="text-xs p-2.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                          <div className="text-xs p-2.5 rounded bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             <strong>Observação:</strong> {observation}
                           </div>
                         )}
 
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono break-all pt-1 border-t border-slate-100 dark:border-slate-800">
+                        <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono break-all pt-1 border-t border-[var(--field-border)] dark:border-[var(--field-border)]">
                           Identificador do Lote: {op.entityId || '-'} • Detalhes: {op.newData || op.oldData || '-'}
                         </div>
                       </div>
@@ -736,10 +736,10 @@ export const AuditLogView: React.FC = () => {
       ) : activeTab === 'ALL_LOGS' ? (
         /* Complete All Logs Table */
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]  space-y-3">
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
                 <input
                   type="text"
                   value={searchTerm}
@@ -748,7 +748,7 @@ export const AuditLogView: React.FC = () => {
                     setPage(1);
                   }}
                   placeholder="Buscar por ação, usuário, entidade ou dados..."
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--field-border)] focus:outline-hidden"
                 />
               </div>
 
@@ -760,7 +760,7 @@ export const AuditLogView: React.FC = () => {
                     setSelectedAction(e.target.value);
                     setPage(1);
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                 >
                   <option value="ALL">Todas as Ações</option>
                   <option value="IMPORTAR_EXCEL">IMPORTAR_EXCEL</option>
@@ -788,7 +788,7 @@ export const AuditLogView: React.FC = () => {
                     setSelectedEntity(e.target.value);
                     setPage(1);
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-blue-500 focus:outline-hidden"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] focus:outline-hidden"
                 >
                   <option value="ALL">Todas as Entidades</option>
                   <option value="Proposal">Proposal</option>
@@ -807,7 +807,7 @@ export const AuditLogView: React.FC = () => {
                     setStartDate(e.target.value);
                     setPage(1);
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-200"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                   title="Data Inicial"
                 />
                 <input
@@ -817,7 +817,7 @@ export const AuditLogView: React.FC = () => {
                     setEndDate(e.target.value);
                     setPage(1);
                   }}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-200"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 py-1 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]"
                   title="Data Final"
                 />
 
@@ -831,7 +831,7 @@ export const AuditLogView: React.FC = () => {
                       setSearchTerm('');
                       setPage(1);
                     }}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] transition-colors"
                   >
                     Limpar Filtros
                   </button>
@@ -839,20 +839,20 @@ export const AuditLogView: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-t border-[var(--field-border)] dark:border-[var(--field-border)] pt-2">
               <span>
                 Exibindo <strong>{logs.length}</strong> de <strong>{pagination.total}</strong> registros (Página {pagination.page} de {pagination.totalPages || 1})
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-[var(--text-secondary)]">
                 Base Oficial • Registro Imutável
               </span>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+          <div className="overflow-hidden rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shadow-2xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-slate-950/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+                <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <tr>
                     <th className="px-4 py-3">Data / Hora</th>
                     <th className="px-4 py-3">Usuário</th>
@@ -862,54 +862,54 @@ export const AuditLogView: React.FC = () => {
                     <th className="px-4 py-3">Detalhes / Dados</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
+                      <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-secondary)]">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--link)]" />
                         Carregando registros de auditoria...
                       </td>
                     </tr>
                   ) : logs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                      <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-secondary)]">
                         Nenhum registro de auditoria encontrado com os filtros selecionados.
                       </td>
                     </tr>
                   ) : (
                     logs.map(l => (
-                      <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px]">
+                      <tr key={l.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                        <td className="px-4 py-3 font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap text-[11px]">
                           {formatDate(l.createdAt)}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                        <td className="px-4 py-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] whitespace-nowrap">
                           {l.userName || l.user?.name || 'Sistema'}
                           {l.user?.role && (
-                            <span className="text-[10px] text-slate-400 font-normal ml-1">({l.user.role})</span>
+                            <span className="text-[10px] text-[var(--text-secondary)] font-normal ml-1">({l.user.role})</span>
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span
                             className={`rounded font-mono font-bold px-2 py-0.5 text-[10px] border ${
                               l.action.includes('EXCLUIR') || l.action.includes('DELETED') || l.action.includes('SUSPENDED')
-                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                                 : l.action.includes('IMPORT') || l.action.includes('CREATED') || l.action.includes('REACTIVATED')
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                ? 'bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] border-[var(--success-border)] dark:border-[var(--success-border)]'
                                 : l.action.includes('SENTINELA')
-                                ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
+                                : 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]'
                             }`}
                           >
                             {l.action}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        <td className="px-4 py-3 font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] whitespace-nowrap">
                           {l.entity} {l.entityId ? `(${l.entityId})` : ''}
                         </td>
-                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                        <td className="px-4 py-3 text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono text-[11px] whitespace-nowrap">
                           {l.ipAddress || '127.0.0.1'}
                         </td>
-                        <td className="px-4 py-3 max-w-md truncate text-slate-500 dark:text-slate-400 font-mono text-[11px]" title={l.newData || l.oldData || '-'}>
+                        <td className="px-4 py-3 max-w-md truncate text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono text-[11px]" title={l.newData || l.oldData || '-'}>
                           {l.newData || l.oldData || '-'}
                         </td>
                       </tr>
@@ -921,15 +921,15 @@ export const AuditLogView: React.FC = () => {
 
             {/* Pagination footer */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center justify-between p-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)]">
+                <span className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Página <strong>{pagination.page}</strong> de <strong>{pagination.totalPages}</strong>
                 </span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={!pagination.hasPrevPage || isLoading}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] disabled:opacity-90 cursor-pointer disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
                     Anterior
@@ -937,7 +937,7 @@ export const AuditLogView: React.FC = () => {
                   <button
                     onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
                     disabled={!pagination.hasNextPage || isLoading}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-canvas)] disabled:opacity-90 cursor-pointer disabled:cursor-not-allowed"
                   >
                     Próxima
                     <ChevronRight className="h-3.5 w-3.5" />
@@ -951,16 +951,16 @@ export const AuditLogView: React.FC = () => {
         /* Technical Support Exceptions & Diagnostics Center */
         <div className="space-y-4">
           {/* Top Filter and Actions Bar */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+          <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]  space-y-3">
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-secondary)]" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   placeholder="Pesquisar por erro, ADE, ocorrência, usuário ou ação..."
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:border-rose-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--danger-border)] focus:outline-hidden"
                 />
               </div>
 
@@ -969,7 +969,7 @@ export const AuditLogView: React.FC = () => {
                 <select
                   value={exceptionSeverity}
                   onChange={e => setExceptionSeverity(e.target.value as ExceptionSeverityFilter)}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-rose-500 focus:outline-hidden"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--danger-border)] focus:outline-hidden"
                 >
                   <option value="ALL">Todas Severidades</option>
                   <option value="CRITICAL">🔴 CRÍTICO</option>
@@ -982,7 +982,7 @@ export const AuditLogView: React.FC = () => {
                 <select
                   value={exceptionOperation}
                   onChange={e => setExceptionOperation(e.target.value)}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-rose-500 focus:outline-hidden"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--danger-border)] focus:outline-hidden"
                 >
                   <option value="ALL">Todas Operações</option>
                   <option value="IMPORT_EXCEL">Importação Excel</option>
@@ -997,7 +997,7 @@ export const AuditLogView: React.FC = () => {
                 <select
                   value={exceptionStatusFilter}
                   onChange={e => setExceptionStatusFilter(e.target.value as any)}
-                  className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-rose-500 focus:outline-hidden"
+                  className="rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--danger-border)] focus:outline-hidden"
                 >
                   <option value="ALL">Todos os Status</option>
                   <option value="OPEN">Somente Abertos / Pendentes</option>
@@ -1007,17 +1007,17 @@ export const AuditLogView: React.FC = () => {
                 {/* Export Diagnostics Button */}
                 <button
                   onClick={handleExportExceptionsJson}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]  transition-colors cursor-pointer"
                   title="Exportar relatório de ocorrências em JSON"
                 >
-                  <Download className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                  <Download className="h-3.5 w-3.5 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]" />
                   <span>Exportar Relatório (.json)</span>
                 </button>
 
                 {/* Clear Exceptions */}
                 <button
                   onClick={handleClearExceptions}
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] text-[var(--text-secondary)] hover:text-[var(--danger-text)] dark:hover:text-[var(--danger-text)] hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] transition-colors cursor-pointer"
                   title="Limpar Histórico de Ocorrências"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -1026,19 +1026,19 @@ export const AuditLogView: React.FC = () => {
             </div>
 
             {/* Sub-bar with quick stats */}
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-t border-[var(--field-border)] dark:border-[var(--field-border)] pt-2">
               <div className="flex items-center gap-3">
                 <span>
                   Exibindo <strong>{filteredExceptions.length}</strong> de{' '}
                   <strong>{exceptions.length}</strong> exceção(ões)
                 </span>
                 {unresolvedExceptionsCount > 0 && (
-                  <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold">
+                  <span className="inline-flex items-center gap-1 text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold">
                     <AlertCircle className="h-3.5 w-3.5" /> {unresolvedExceptionsCount} requerem atenção
                   </span>
                 )}
               </div>
-              <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              <span className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Os logs detalhados isolam falhas em importações e operações em massa para rápida resolução
               </span>
             </div>
@@ -1047,10 +1047,10 @@ export const AuditLogView: React.FC = () => {
           {/* Exceptions List */}
           <div className="space-y-2.5">
             {filteredExceptions.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 text-center shadow-2xs space-y-2">
-                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Nenhuma exceção encontrada</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+              <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-8 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] text-center  space-y-2">
+                <CheckCircle2 className="h-8 w-8 text-[var(--success-text)] mx-auto" />
+                <h4 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nenhuma exceção encontrada</h4>
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Todas as operações em massa e importações recentes foram executadas sem falhas ativas.
                 </p>
               </div>
@@ -1061,34 +1061,34 @@ export const AuditLogView: React.FC = () => {
 
                 const severityBadge =
                   exc.severity === 'CRITICAL'
-                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                    ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                     : exc.severity === 'ERROR'
-                    ? 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
+                    ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] border-[var(--danger-border)] dark:border-[var(--danger-border)]'
                     : exc.severity === 'WARNING'
-                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                    : 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+                    ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]'
+                    : 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border-[var(--field-border)] dark:border-[var(--field-border)]';
 
                 return (
                   <div
                     key={exc.id}
-                    className={`rounded-xl border bg-white dark:bg-slate-900 shadow-2xs transition-all ${
-                      exc.resolved ? 'border-slate-200 dark:border-slate-800 opacity-80' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    className={`rounded-xl border bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  transition-all ${
+                      exc.resolved ? 'border-[var(--field-border)] dark:border-[var(--field-border)] opacity-80' : 'border-[var(--field-border)] dark:border-[var(--field-border)] hover:border-[var(--field-border)] dark:hover:border-[var(--field-border)]'
                     }`}
                   >
                     <div
                       onClick={() => setExpandedExceptionId(isExpanded ? null : exc.id)}
-                      className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-850"
+                      className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]"
                     >
                       <div className="flex items-start gap-3">
                         <div
                           className={`mt-0.5 p-2 rounded-lg ${
                             exc.severity === 'CRITICAL'
-                              ? 'bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
+                              ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                               : exc.severity === 'ERROR'
-                              ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300'
+                              ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                               : exc.severity === 'WARNING'
-                              ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300'
-                              : 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300'
+                              ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+                              : 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)]'
                           }`}
                         >
                           <Bug className="h-4 w-4" />
@@ -1099,26 +1099,26 @@ export const AuditLogView: React.FC = () => {
                             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${severityBadge}`}>
                               {exc.severity}
                             </span>
-                            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
                               {exc.operation}
                             </span>
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white">{exc.title}</h4>
+                            <h4 className="text-xs font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{exc.title}</h4>
                             {exc.resolved && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-2 py-0.5 rounded border border-[var(--success-border)] dark:border-[var(--success-border)]">
                                 <CheckCircle2 className="h-3 w-3" /> Resolvido
                               </span>
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-2">{exc.message}</p>
+                          <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] mt-1 line-clamp-2">{exc.message}</p>
 
-                          <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                          <div className="flex items-center gap-3 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1.5">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" /> {formatDate(exc.timestamp)}
                             </span>
                             {exc.userName && (
                               <span>
-                                Usuário: <strong className="text-slate-700 dark:text-slate-300">{exc.userName}</strong> ({exc.userRole || 'SISTEMA'})
+                                Usuário: <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{exc.userName}</strong> ({exc.userRole || 'SISTEMA'})
                               </span>
                             )}
                           </div>
@@ -1131,17 +1131,17 @@ export const AuditLogView: React.FC = () => {
                             e.stopPropagation();
                             handleCopyDiagnostic(exc);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors  cursor-pointer"
                           title="Copiar JSON com diagnóstico para abrir chamado de suporte"
                         >
                           {isCopied ? (
                             <>
-                              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span className="text-emerald-700 dark:text-emerald-300">Copiado!</span>
+                              <Check className="h-3.5 w-3.5 text-[var(--success-text)] dark:text-[var(--success-text)]" />
+                              <span className="text-[var(--success-text)] dark:text-[var(--success-text)]">Copiado!</span>
                             </>
                           ) : (
                             <>
-                              <Copy className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                              <Copy className="h-3.5 w-3.5 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]" />
                               <span>Copiar Diagnóstico</span>
                             </>
                           )}
@@ -1153,7 +1153,7 @@ export const AuditLogView: React.FC = () => {
                               e.stopPropagation();
                               handleResolveException(exc.id);
                             }}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] text-[11px] font-bold text-[var(--success-text)] dark:text-[var(--success-text)] border border-[var(--success-border)] dark:border-[var(--success-border)] transition-colors cursor-pointer"
                             title="Marcar exceção como analisada / resolvida"
                           >
                             <UserCheck className="h-3.5 w-3.5" />
@@ -1161,7 +1161,7 @@ export const AuditLogView: React.FC = () => {
                           </button>
                         )}
 
-                        <div className="text-slate-400 dark:text-slate-500 p-1">
+                        <div className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] p-1">
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
                       </div>
@@ -1169,13 +1169,13 @@ export const AuditLogView: React.FC = () => {
 
                     {/* Collapsible Deep Diagnostic Inspector */}
                     {isExpanded && (
-                      <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/40 p-4 space-y-3 rounded-b-xl">
+                      <div className="border-t border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] p-4 space-y-3 rounded-b-xl">
                         {exc.details && (
                           <div>
-                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block mb-1">
+                            <span className="text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wide block mb-1">
                               Detalhes da Ocorrência:
                             </span>
-                            <div className="rounded-lg bg-slate-900 dark:bg-black p-3 font-mono text-[11px] text-slate-100 overflow-x-auto whitespace-pre-wrap leading-relaxed border border-slate-800">
+                            <div className="rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] p-3 font-mono text-[11px] text-[var(--text-primary)] overflow-x-auto whitespace-pre-wrap leading-relaxed border border-[var(--field-border)]">
                               {exc.details}
                             </div>
                           </div>
@@ -1183,18 +1183,18 @@ export const AuditLogView: React.FC = () => {
 
                         {exc.contextData && (
                           <div>
-                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block mb-1">
+                            <span className="text-[11px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] uppercase tracking-wide block mb-1">
                               Informações Técnicas Complementares:
                             </span>
-                            <pre className="rounded-lg bg-slate-900 dark:bg-black p-3 font-mono text-[11px] text-emerald-400 overflow-x-auto border border-slate-800">
+                            <pre className="rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-canvas)] p-3 font-mono text-[11px] text-[var(--success-text)] overflow-x-auto border border-[var(--field-border)]">
                               {JSON.stringify(exc.contextData, null, 2)}
                             </pre>
                           </div>
                         )}
 
                         {exc.resolved && exc.resolvedBy && (
-                          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-2.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <div className="rounded-lg bg-[var(--success-bg)] dark:bg-[var(--success-bg)] border border-[var(--success-border)] dark:border-[var(--success-border)] p-2.5 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)] shrink-0" />
                             <span>
                               <strong>Resolvido em:</strong> {formatDate(exc.resolvedAt || '')} por {exc.resolvedBy}
                             </span>

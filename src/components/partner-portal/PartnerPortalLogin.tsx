@@ -72,11 +72,11 @@ export const PartnerPortalLogin: React.FC<PartnerPortalLoginProps> = ({
     }
   };
 
-  return <AuthFrame company={effectiveTenantName} logo={effectiveLogoUrl} portal>
+  return <AuthFrame company={effectiveTenantName} logo={effectiveLogoUrl} brandColor={branding.status==='ACTIVE'?branding.primaryColor:null} portal>
     {error && <p role="alert" className="sentinel-auth-error">{error}</p>}
     <form onSubmit={handleSubmit}>
-      <label htmlFor="partner-email">E-mail cadastrado<input id="partner-email" name="email" type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)} disabled={isLoading} placeholder="seu.email@empresa.com.br" /></label>
-      <label htmlFor="partner-password">Senha de acesso<input id="partner-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} disabled={isLoading} /></label>
+      <label htmlFor="partner-email">E-mail cadastrado<input className="ui-input" id="partner-email" name="email" type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)} disabled={isLoading} placeholder="seu.email@empresa.com.br" /></label>
+      <label htmlFor="partner-password">Senha de acesso<input className="ui-input" id="partner-password" name="password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} disabled={isLoading} /></label>
       <button type="submit" className="sentinel-primary-button disabled:opacity-50" disabled={isLoading}>{isLoading ? 'Entrando...' : <>Entrar no portal<ArrowRight size={16} /></>}</button>
     </form>
   </AuthFrame>;

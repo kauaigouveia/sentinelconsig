@@ -94,7 +94,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
       const c = StorageService.getConvenios().filter(x => x.active);
       const b = StorageService.getBanks().filter(x => x.active);
       const pr = StorageService.getPromoters().filter(x => x.active);
-      
+
       setProducts(p);
       setConvenios(c);
       setBanks(b);
@@ -616,17 +616,17 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
   const currentPartnerCode = currentPartner ? currentPartner.login : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 p-2 sm:p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-[98vw] 2xl:max-w-7xl rounded-xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col max-h-[96vh] border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] dark:bg-[var(--scrim)] p-2 sm:p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-[98vw] 2xl:max-w-7xl rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]  flex flex-col max-h-[96vh] border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden">
         {/* Modal Header */}
-        <div className="shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 dark:bg-slate-950/40 rounded-t-xl">
+        <div className="shrink-0 flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] px-4 sm:px-6 py-3.5 sm:py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-t-xl">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+            <div className="h-9 w-9 rounded-lg bg-[var(--success-bg)] text-[var(--success-text)] flex items-center justify-center shadow-xs">
               <Plus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Nova Produção</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h2 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nova Produção</h2>
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Inclusão de propostas individuais ou múltiplas ADEs para o mesmo cliente
               </p>
             </div>
@@ -636,7 +636,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -644,29 +644,29 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <fieldset disabled={isSaving} aria-busy={isSaving} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-white dark:bg-slate-900 border-0 m-0 min-w-0">
+        <fieldset disabled={isSaving} aria-busy={isSaving} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border-0 m-0 min-w-0">
           {/* Visual Error Log with Retry Mechanism */}
           {linkingErrorLog && (
-            <div className="rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 p-4 shadow-sm animate-shake">
+            <div className="rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-4  animate-shake">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-rose-200 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 shrink-0">
+                  <div className="p-2 rounded-lg bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] shrink-0">
                     <AlertTriangle className="h-5 w-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-black text-rose-900 dark:text-rose-200 uppercase tracking-wide">
+                      <h4 className="text-xs font-black text-[var(--danger-text)] dark:text-[var(--danger-text)] uppercase tracking-wide">
                         {linkingErrorLog.title}
                       </h4>
-                      <span className="text-[10px] font-mono text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 rounded-md">
+                      <span className="text-[10px] font-mono text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] px-1.5 py-0.5 rounded-md">
                         {linkingErrorLog.timestamp}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs font-semibold text-rose-800 dark:text-rose-300">
+                    <p className="mt-1 text-xs font-semibold text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                       {linkingErrorLog.message}
                     </p>
                     {linkingErrorLog.details && (
-                      <p className="mt-1 text-[11px] font-mono text-rose-700 dark:text-rose-300 bg-white/60 dark:bg-slate-900/70 p-2 rounded-lg border border-rose-200 dark:border-rose-900/60">
+                      <p className="mt-1 text-[11px] font-mono text-[var(--danger-text)] dark:text-[var(--danger-text)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-2 rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)]">
                         {linkingErrorLog.details}
                       </p>
                     )}
@@ -677,7 +677,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--danger-bg)] hover:bg-[var(--danger-bg)] text-[var(--danger-text)] rounded-lg text-xs font-bold  transition-all cursor-pointer"
                   >
                     <RefreshCw className="h-3.5 w-3.5 animate-spin-hover" />
                     Tentar Novamente
@@ -685,7 +685,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setLinkingErrorLog(null)}
-                    className="p-1 text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 rounded-md cursor-pointer transition-colors"
+                    className="p-1 text-[var(--danger-text)] hover:text-[var(--danger-text)] dark:hover:text-[var(--danger-text)] rounded-md cursor-pointer transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -695,14 +695,14 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           )}
 
           {/* Mode Selector */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMode('RAPIDO')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   mode === 'RAPIDO'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+                    : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 Modo Rápido (Multi-ADE)
@@ -711,8 +711,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                 onClick={() => setMode('COMPLETO')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   mode === 'COMPLETO'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+                    : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 Modo Completo (com Observações)
@@ -720,8 +720,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             </div>
 
             {existingClient && (
-              <div className="flex items-center gap-2 text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div className="flex items-center gap-2 text-xs font-medium bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] px-3 py-1 rounded-full border border-[var(--success-border)] dark:border-[var(--success-border)]">
+                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success-text)] dark:text-[var(--success-text)] shrink-0" />
                 <span>
                   Cliente existente no banco ({existingProposalCount} propostas anteriores)
                 </span>
@@ -730,9 +730,9 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           </div>
 
           {/* Section 1: Client & Partner Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] p-4 rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 CPF do Cliente *
               </label>
               <input
@@ -741,15 +741,15 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                 value={cpf}
                 onChange={e => handleCpfChange(e.target.value)}
                 placeholder="000.000.000-00 ou 00000000000"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
               />
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 block">
+              <span className="text-[10px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-1 block">
                 {cpf ? `Formatado: ${formatCpf(cpf)}` : 'Digite o CPF para buscar cliente'}
               </span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                 Nome Completo do Cliente *
               </label>
               <input
@@ -758,7 +758,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
                 placeholder="Ex: MARIA JOSE ALEXANDRE"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden uppercase transition-colors"
+                className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden uppercase transition-colors"
               />
             </div>
 
@@ -772,7 +772,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                 required
               />
               {currentPartner && (
-                <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 mt-1 block">
+                <span className="text-[10px] font-medium text-[var(--link)] dark:text-[var(--link)] mt-1 block">
                   Identificador Institucional selecionado: <strong>{currentPartnerCode}</strong>
                 </span>
               )}
@@ -781,7 +781,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
             {mode === 'COMPLETO' && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     Telefone (Opcional)
                   </label>
                   <input
@@ -789,11 +789,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     placeholder="(00) 00000-0000"
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] mb-1">
                     E-mail (Opcional)
                   </label>
                   <input
@@ -801,7 +801,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="email@cliente.com"
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                    className="w-full rounded-lg border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                   />
                 </div>
               </>
@@ -811,22 +811,22 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
           {/* Section 2: Table of ADEs */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Linhas de Produção / ADEs ({adeRows.length})
               </h3>
               <button
                 id="btn-add-ade-row"
                 onClick={handleAddRow}
-                className="flex items-center gap-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] px-3 py-1.5 text-xs font-bold text-[var(--success-text)] dark:text-[var(--success-text)] hover:bg-[var(--success-bg)] dark:hover:bg-[var(--success-bg)] transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>+ Adicionar ADE</span>
               </button>
             </div>
 
-            <div className="w-full overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-              <table className="w-full min-w-[1100px] text-left text-xs text-slate-700 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+            <div className="w-full overflow-x-auto rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] shadow-xs">
+              <table className="w-full min-w-[1100px] text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+                <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                   <tr>
                     <th className="px-3 py-2.5 w-12 text-center shrink-0">#</th>
                     <th className="px-3 py-2.5 min-w-[160px]">ADE / Nº Proposta *</th>
@@ -843,7 +843,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                     <th className="px-3 py-2.5 w-14 text-center shrink-0">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
                   {adeRows.map((row, idx) => {
                     const allowedPromoters = StorageService.getPromotersForBank(row.bankId);
                     const selectedProd = products.find(p => p.id === row.productId);
@@ -855,8 +855,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                       : products;
 
                     return (
-                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="px-3 py-2 text-center font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                      <tr key={row.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                        <td className="px-3 py-2 text-center font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)] shrink-0">
                           {idx + 1}
                         </td>
                         <td className="px-3 py-2">
@@ -865,7 +865,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             value={row.proposalNumber}
                             onChange={e => handleUpdateRow(idx, 'proposalNumber', e.target.value)}
                             placeholder="833085808 ou UUID"
-                            className="w-full font-mono rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                            className="w-full font-mono rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                           />
                         </td>
                         <td className="px-3 py-2">
@@ -873,11 +873,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             value={row.convenioId || ''}
                             onChange={e => handleUpdateRow(idx, 'convenioId', e.target.value)}
                             title={convenios.find(c => c.id === row.convenioId)?.name || 'Todos os Convênios'}
-                            className="w-full min-w-[130px] rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                            className="w-full min-w-[130px] rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                           >
-                            <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">(Todos / Geral)</option>
+                            <option value="" className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">(Todos / Geral)</option>
                             {convenios.map(c => (
-                              <option key={c.id} value={c.id} title={c.name} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                              <option key={c.id} value={c.id} title={c.name} className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {c.name} {c.code ? `(${c.code})` : ''}
                               </option>
                             ))}
@@ -888,30 +888,30 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             value={row.productId}
                             onChange={e => handleUpdateRow(idx, 'productId', e.target.value)}
                             title={products.find(p => p.id === row.productId)?.name || 'Produto'}
-                            className="w-full min-w-[165px] rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                            className="w-full min-w-[165px] rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                           >
                             {(availableProducts.length > 0 ? availableProducts : products).map(p => (
-                              <option key={p.id} value={p.id} title={p.name} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                              <option key={p.id} value={p.id} title={p.name} className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {p.name}
                               </option>
                             ))}
                           </select>
                         </td>
                         <td className="px-3 py-2">
-                          <input aria-label={`Prazo da proposta ${idx + 1} (meses)`} type="number" min="1" step="1" value={row.installmentsCount ?? '84'} onChange={e => handleUpdateRow(idx, 'installmentsCount', e.target.value)} className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs" />
+                          <input aria-label={`Prazo da proposta ${idx + 1} (meses)`} type="number" min="1" step="1" value={row.installmentsCount ?? '84'} onChange={e => handleUpdateRow(idx, 'installmentsCount', e.target.value)} className="w-full rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1.5 text-xs" />
                         </td>
                         <td className="px-3 py-2">
-                          <input aria-label={`Valor da parcela da proposta ${idx + 1}`} type="text" inputMode="decimal" value={row.installmentValue ?? ''} placeholder="0,00" onChange={e => handleUpdateRow(idx, 'installmentValue', e.target.value)} className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs" />
+                          <input aria-label={`Valor da parcela da proposta ${idx + 1}`} type="text" inputMode="decimal" value={row.installmentValue ?? ''} placeholder="0,00" onChange={e => handleUpdateRow(idx, 'installmentValue', e.target.value)} className="w-full rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1.5 text-xs" />
                         </td>
                         <td className="px-3 py-2">
                           <select
                             value={row.bankId}
                             onChange={e => handleUpdateRow(idx, 'bankId', e.target.value)}
                             title={banks.find(b => b.id === row.bankId)?.name || 'Banco'}
-                            className="w-full min-w-[195px] rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                            className="w-full min-w-[195px] rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                           >
                             {banks.map(b => (
-                              <option key={b.id} value={b.id} title={b.name} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                              <option key={b.id} value={b.id} title={b.name} className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {b.name}
                               </option>
                             ))}
@@ -922,10 +922,10 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                             value={row.promoterId}
                             onChange={e => handleUpdateRow(idx, 'promoterId', e.target.value)}
                             title={allowedPromoters.find(pr => pr.id === row.promoterId)?.name || 'Promotora'}
-                            className="w-full min-w-[185px] rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                            className="w-full min-w-[185px] rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                           >
                             {allowedPromoters.map(pr => (
-                              <option key={pr.id} value={pr.id} title={pr.name} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                              <option key={pr.id} value={pr.id} title={pr.name} className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                 {pr.name}
                               </option>
                             ))}
@@ -935,7 +935,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                         {/* Valor Liberado */}
                         <td className="px-3 py-2">
                           <div className="relative rounded-md">
-                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                               R$
                             </span>
                             <input
@@ -944,7 +944,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                               onChange={e => handleUpdateRow(idx, 'disbursedValue', e.target.value)}
                               placeholder="0,00"
                               title="Valor liberado para o cliente"
-                              className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-7 pr-2 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                              className="w-full rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] pl-7 pr-2 py-1.5 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                             />
                           </div>
                         </td>
@@ -954,7 +954,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           <div className="relative rounded-md">
                             <span
                               className={`pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-[10px] font-bold ${
-                                isPort ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400 dark:text-slate-500'
+                                isPort ? 'text-[var(--link)] dark:text-[var(--link)]' : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                               }`}
                             >
                               R$
@@ -967,8 +967,8 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                               title={isPort ? 'Informe o saldo do contrato a ser portado' : 'Saldo do contrato'}
                               className={`w-full rounded-md border pl-7 pr-2 py-1.5 text-xs font-semibold focus:outline-hidden transition-all ${
                                 isPort
-                                  ? 'border-purple-300 dark:border-purple-700 bg-purple-50/70 dark:bg-purple-950/40 text-purple-950 dark:text-purple-200 placeholder-purple-400 dark:placeholder-purple-500 focus:border-purple-500 dark:focus:border-purple-400 ring-1 ring-purple-200 dark:ring-purple-900/60'
-                                  : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500'
+                                  ? 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] placeholder-[var(--link)] dark:placeholder-[var(--link)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] ring-1 ring-[var(--focus)] dark:ring-[var(--focus)]'
+                                  : 'border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)]'
                               }`}
                             />
                           </div>
@@ -977,7 +977,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                         <td className="px-3 py-2">
                           {isRefinPort ? (
                             <div className="flex items-center gap-1">
-                              <Link2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                              <Link2 className="h-3.5 w-3.5 text-[var(--link)] dark:text-[var(--link)] shrink-0" />
                               <select
                                 value={row.linkWithPortabilityIndex ?? ''}
                                 onChange={e =>
@@ -987,14 +987,14 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                                     e.target.value === '' ? undefined : Number(e.target.value)
                                   )
                                 }
-                                className="w-full rounded border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/40 text-xs font-semibold text-purple-900 dark:text-purple-200 px-2 py-1 focus:border-purple-500 dark:focus:border-purple-400 focus:outline-hidden transition-colors"
+                                className="w-full rounded border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-xs font-semibold text-[var(--link)] dark:text-[var(--link)] px-2 py-1 focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:outline-hidden transition-colors"
                               >
-                                <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Nenhum Vínculo</option>
+                                <option value="" className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Nenhum Vínculo</option>
                                 {adeRows.map((other, oIdx) => {
                                   if (oIdx === idx) return null;
                                   const otherProd = products.find(p => p.id === other.productId);
                                   return (
-                                    <option key={other.id} value={oIdx} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                    <option key={other.id} value={oIdx} className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                                       Linha #{oIdx + 1} ({other.proposalNumber ? `ADE ${other.proposalNumber}` : 'Sem ADE'}) - {otherProd?.name || 'Produto'}
                                     </option>
                                   );
@@ -1017,15 +1017,15 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                               const linkingRow = adeRows[linkingRowIdx];
                               const linkingProd = products.find(p => p.id === linkingRow.productId);
                               return (
-                                <div className="flex items-center gap-1.5 text-[10px] text-purple-700 dark:text-purple-300 font-semibold bg-purple-50 dark:bg-purple-950/40 px-2 py-1 rounded border border-purple-200 dark:border-purple-900/60 w-fit">
-                                  <Link2 className="h-3 w-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                                <div className="flex items-center gap-1.5 text-[10px] text-[var(--link)] dark:text-[var(--link)] font-semibold bg-[var(--info-bg)] dark:bg-[var(--info-bg)] px-2 py-1 rounded border border-[var(--field-border)] dark:border-[var(--field-border)] w-fit">
+                                  <Link2 className="h-3 w-3 text-[var(--link)] dark:text-[var(--link)] shrink-0" />
                                   <span>Será vinculado ao salvar ({linkingProd?.name || 'PORTAB/REFIN'})</span>
                                 </div>
                               );
                             }
-                            return <span className="text-slate-400 dark:text-slate-600 text-[10px] block text-center">-</span>;
+                            return <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[10px] block text-center">-</span>;
                           })() : (
-                            <span className="text-slate-400 dark:text-slate-600 text-[10px] block text-center">-</span>
+                            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[10px] block text-center">-</span>
                           )}
                         </td>
 
@@ -1036,7 +1036,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                               value={row.notes || ''}
                               onChange={e => handleUpdateRow(idx, 'notes', e.target.value)}
                               placeholder="Observação"
-                              className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-[11px] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden transition-colors"
+                              className="w-full rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1.5 text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-primary)] placeholder-[var(--text-secondary)] dark:placeholder-[var(--text-secondary)] focus:border-[var(--field-border)] dark:focus:border-[var(--field-border)] focus:ring-1 focus:ring-[var(--focus)] focus:outline-hidden transition-colors"
                             />
                           </td>
                         )}
@@ -1045,7 +1045,7 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
                           <button
                             onClick={() => handleRemoveRow(idx)}
                             disabled={adeRows.length <= 1}
-                            className="text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-30 cursor-pointer transition-colors"
+                            className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--danger-text)] dark:hover:text-[var(--danger-text)] disabled:opacity-90 cursor-pointer transition-colors"
                             title="Remover linha"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1061,32 +1061,32 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
 
           {/* Feedback Messages */}
           {errorMsg && (
-            <div className="rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div className="rounded-lg border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-3 text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-[var(--danger-text)] dark:text-[var(--danger-text)] shrink-0 mt-0.5" />
               <div className="whitespace-pre-line">{errorMsg}</div>
             </div>
           )}
 
           {successMsg && (
-            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="rounded-lg border border-[var(--success-border)] dark:border-[var(--success-border)] bg-[var(--success-bg)] dark:bg-[var(--success-bg)] p-3 text-xs text-[var(--success-text)] dark:text-[var(--success-text)] flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[var(--success-text)] dark:text-[var(--success-text)] shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
         </fieldset>
 
         {/* Modal Footer */}
-        <div className="shrink-0 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 dark:bg-slate-950/40 rounded-b-xl">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div className="shrink-0 flex items-center justify-between border-t border-[var(--field-border)] dark:border-[var(--field-border)] px-4 sm:px-6 py-3.5 sm:py-4 bg-[var(--bg-canvas)] dark:bg-[var(--bg-canvas)] rounded-b-xl">
+          <div className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium">
             Total de propostas para salvar:{' '}
-            <strong className="text-slate-900 dark:text-slate-100">{adeRows.length}</strong>
+            <strong className="text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{adeRows.length}</strong>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-lg hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -1094,11 +1094,11 @@ export const NewProductionModal: React.FC<NewProductionModalProps> = ({
               id="btn-save-all-ades"
               onClick={handleSave}
               disabled={isSaving}
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2 text-xs font-bold text-[var(--success-text)] bg-[var(--success-bg)] hover:bg-[var(--success-bg)] disabled:bg-[var(--success-bg)] disabled:cursor-not-allowed rounded-lg  transition-colors flex items-center gap-2 cursor-pointer"
             >
               {isSaving ? (
                 <>
-                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span className="h-4 w-4 border-2 border-[var(--field-border)] border-t-transparent rounded-full animate-spin shrink-0" />
                   <span>SALVANDO...</span>
                 </>
               ) : (

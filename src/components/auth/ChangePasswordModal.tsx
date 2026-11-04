@@ -50,20 +50,20 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
     }
   };
 
-  const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
+  const inputClass = 'w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2.5 pr-10 text-sm text-[var(--text-secondary)] focus:border-[var(--field-border)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)] dark:border-[var(--field-border)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !isSaving) onClose(); }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="change-password-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !isSaving) onClose(); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="change-password-title" className="w-full max-w-md rounded-2xl border border-[var(--field-border)] bg-[var(--bg-surface)] p-6  dark:border-[var(--field-border)] dark:bg-[var(--bg-surface)]">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><KeyRound className="h-5 w-5" /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]"><KeyRound className="h-5 w-5" /></span>
             <div>
-              <h2 id="change-password-title" className="text-base font-bold text-slate-900 dark:text-white">Alterar senha</h2>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Confirme sua senha atual para continuar.</p>
+              <h2 id="change-password-title" className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">Alterar senha</h2>
+              <p className="mt-0.5 text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">Confirme sua senha atual para continuar.</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={isSaving} aria-label="Fechar" className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} disabled={isSaving} aria-label="Fechar" className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] disabled:opacity-90 dark:hover:bg-[var(--bg-surface-elevated)]"><X className="h-4 w-4" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -73,9 +73,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
             { id: 'confirm-password', label: 'Confirmar nova senha', value: confirmPassword, setValue: setConfirmPassword, autoComplete: 'new-password' },
           ].map(field => (
             <div key={field.id} className="space-y-1">
-              <label htmlFor={field.id} className="text-xs font-semibold text-slate-700 dark:text-slate-300">{field.label}</label>
+              <label htmlFor={field.id} className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">{field.label}</label>
               <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" />
                 <input
                   id={field.id}
                   type={showPasswords ? 'text' : 'password'}
@@ -91,16 +91,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
             </div>
           ))}
 
-          <button type="button" onClick={() => setShowPasswords(value => !value)} className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
+          <button type="button" onClick={() => setShowPasswords(value => !value)} className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]">
             {showPasswords ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             {showPasswords ? 'Ocultar senhas' : 'Mostrar senhas'}
           </button>
 
-          {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
+          {error && <p role="alert" className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-text)] dark:border-[var(--danger-border)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]">{error}</p>}
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cancelar</button>
-            <button type="submit" disabled={isSaving} className="rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">{isSaving ? 'Salvando…' : 'Salvar senha'}</button>
+          <div className="flex justify-end gap-2 border-t border-[var(--field-border)] pt-4 dark:border-[var(--field-border)]">
+            <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg border border-[var(--field-border)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-canvas)] disabled:opacity-90 dark:border-[var(--field-border)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-surface-elevated)]">Cancelar</button>
+            <button type="submit" disabled={isSaving} className="rounded-lg bg-[var(--action)] px-3.5 py-2 text-xs font-semibold text-[var(--action-ink)] hover:bg-[var(--action-hover)] disabled:cursor-wait disabled:opacity-90">{isSaving ? 'Salvando…' : 'Salvar senha'}</button>
           </div>
         </form>
       </section>

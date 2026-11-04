@@ -63,20 +63,20 @@ export const OperationsCentral: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Principal da Central Inteligente de Operações */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#080d18] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] shadow-xs">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+            <div className="p-2 rounded-xl bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] border border-[var(--field-border)]">
               <Zap className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+              <h1 className="text-xl font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] tracking-tight flex items-center gap-2">
                 Central Inteligente de Operações
-                <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
+                <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)] border border-[var(--field-border)] dark:border-[var(--field-border)]">
                   Sentinel Consig
                 </span>
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mt-0.5">
                 Saúde de APIs em tempo real, Copilot Operacional com IA generativa e Central de Comunicados da equipe.
               </p>
             </div>
@@ -84,21 +84,21 @@ export const OperationsCentral: React.FC = () => {
         </div>
 
         {/* Badge de Conformidade & Isolamento */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 self-start md:self-auto text-xs text-slate-600 dark:text-slate-300">
-          <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] border border-[var(--field-border)] dark:border-[var(--field-border)] self-start md:self-auto text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+          <ShieldCheck className="h-4 w-4 text-[var(--success-text)] shrink-0" />
           <span className="font-semibold text-[11px]">Tenant Isolado & Multi-Tenant Seguro</span>
         </div>
       </div>
 
       {/* Navegação por Abas Integradas */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto p2-operation-tabs">
+      <div className="flex items-center gap-2 border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2 overflow-x-auto p2-operation-tabs">
         {/* Aba 1: Monitoramento de APIs */}
         <button
           onClick={() => setActiveTab('MONITORING')}
           className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'MONITORING'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+              : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <Activity className="h-4 w-4" />
@@ -106,12 +106,12 @@ export const OperationsCentral: React.FC = () => {
           <span
             className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
               activeTab === 'MONITORING'
-                ? 'bg-white/20 text-white'
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)]'
               : healthStatus === 'OPERATIONAL'
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+              ? 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
               : healthStatus === 'CHECKING' || healthStatus === 'UNKNOWN'
-              ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+              ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)]'
+              : 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
             }`}
           >
             {healthStatus === 'OPERATIONAL' ? 'Status OK' : healthStatus === 'CHECKING' ? 'Verificando' : healthStatus === 'UNKNOWN' ? 'Sem resposta' : 'Alerta'}
@@ -123,8 +123,8 @@ export const OperationsCentral: React.FC = () => {
           onClick={() => setActiveTab('AI_ASSISTANT')}
           className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'AI_ASSISTANT'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+              : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <Bot className="h-4 w-4" />
@@ -132,8 +132,8 @@ export const OperationsCentral: React.FC = () => {
           <span
             className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
               activeTab === 'AI_ASSISTANT'
-                ? 'bg-white/20 text-white'
-                : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)]'
+                : 'bg-[var(--info-bg)] text-[var(--link)] dark:bg-[var(--info-bg)] dark:text-[var(--link)]'
             }`}
           >
             Gemini 3.8
@@ -145,8 +145,8 @@ export const OperationsCentral: React.FC = () => {
           onClick={() => setActiveTab('ANNOUNCEMENTS')}
           className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'ANNOUNCEMENTS'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+              ? 'bg-[var(--action)] text-[var(--text-primary)] shadow-xs'
+              : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)]'
           }`}
         >
           <Megaphone className="h-4 w-4" />
@@ -155,8 +155,8 @@ export const OperationsCentral: React.FC = () => {
             <span
               className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
                 activeTab === 'ANNOUNCEMENTS'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-blue-500 text-white animate-pulse'
+                  ? 'bg-[var(--bg-surface)] text-[var(--link)]'
+                  : 'bg-[var(--info-bg)] text-[var(--text-primary)] animate-pulse'
               }`}
             >
               {unreadAnnouncementsCount} novos
@@ -174,23 +174,23 @@ export const OperationsCentral: React.FC = () => {
 
       {activeTab === 'AI_ASSISTANT' && (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="     border border-[var(--field-border)] dark:border-[var(--field-border)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-xl bg-[var(--info-bg)] text-[var(--text-primary)] flex items-center justify-center shrink-0">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                   Assistente Operacional Sentinela AI
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
+                <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   Consultas seguras em linguagem natural sobre APIs, comunicados, esteira e esteiras bancárias do seu tenant.
                 </p>
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 self-end sm:self-auto font-medium">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+            <div className="text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] flex items-center gap-1.5 self-end sm:self-auto font-medium">
+              <ShieldCheck className="h-3.5 w-3.5 text-[var(--success-text)]" />
               <span>Apenas leitura (Read-Only) com Mascaramento PII</span>
             </div>
           </div>

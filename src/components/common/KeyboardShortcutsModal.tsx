@@ -104,19 +104,19 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
   const categories = ['Produção & Ações', 'Navegação', 'Visualização'] as const;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl rounded-2xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6  border border-[var(--field-border)] dark:border-[var(--field-border)] overflow-hidden">
         {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--link)] dark:text-[var(--link)] flex items-center justify-center">
               <Keyboard className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <h3 className="text-base font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                 Atalhos de Teclado Globais
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                 Otimize seu fluxo diário de trabalho com comandos rápidos
               </p>
             </div>
@@ -124,7 +124,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -136,7 +136,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
             const items = SHORTCUTS.filter(s => s.category === cat);
             return (
               <div key={cat} className="space-y-2">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                   {cat}
                 </h4>
                 <div className="grid grid-cols-1 gap-1.5">
@@ -145,11 +145,11 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
                     return (
                       <div
                         key={idx}
-                        className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 px-3.5 py-2.5 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                        className="flex items-center justify-between rounded-xl bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] dark:border-[var(--field-border)] px-3.5 py-2.5 hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-colors"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Icon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          <Icon className="h-4 w-4 text-[var(--text-secondary)] dark:text-[var(--text-secondary)]" />
+                          <span className="text-xs font-semibold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                             {item.description}
                           </span>
                         </div>
@@ -158,7 +158,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
                           {item.keys.map((k, kIdx) => (
                             <kbd
                               key={kIdx}
-                              className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 shadow-2xs"
+                              className="rounded-md border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-2 py-1 text-[11px] font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] shadow-2xs"
                             >
                               {k}
                             </kbd>
@@ -174,11 +174,11 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
-          <span>Dica: Pressione <kbd className="font-mono font-bold text-slate-700 dark:text-slate-300">?</kbd> a qualquer momento para abrir esta janela.</span>
+        <div className="flex items-center justify-between pt-3 border-t border-[var(--field-border)] dark:border-[var(--field-border)] text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
+          <span>Dica: Pressione <kbd className="font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">?</kbd> a qualquer momento para abrir esta janela.</span>
           <button
             onClick={onClose}
-            className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs"
+            className="rounded-lg bg-[var(--action)] hover:bg-[var(--action-hover)] px-3.5 py-1.5 text-xs font-bold text-[var(--action-ink)] shadow-xs"
           >
             Entendido
           </button>

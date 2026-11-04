@@ -23,11 +23,11 @@ export function SimulationWhatsAppConnection() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Falha na conexão.'); }
     finally { setBusy(false); }
   }
-  const inputClass = 'rounded-lg border border-slate-300 bg-transparent p-2 text-xs dark:border-slate-700';
-  return <details className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+  const inputClass = 'rounded-lg border border-[var(--field-border)] bg-transparent p-2 text-xs dark:border-[var(--field-border)]';
+  return <details className="rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]">
     <summary className="cursor-pointer text-sm font-bold">WhatsApp do canal de simulação</summary>
     <div className="mt-3 space-y-3 text-xs">
-      {config.companyName && <p className="font-bold text-blue-600 dark:text-blue-400">Conexão da empresa: {config.companyName}</p>}
+      {config.companyName && <p className="font-bold text-[var(--link)] dark:text-[var(--link)]">Conexão da empresa: {config.companyName}</p>}
       <p>Alterar o nome da instância não troca a empresa. Esta conexão e os atendimentos pertencem ao ambiente atual.</p>
       <p>Nas conversas individuais, o parceiro informa seu código cadastrado no Sentinel antes de escolher o convênio. Grupos não recebem respostas automáticas.</p>
       <div className="grid gap-2 sm:grid-cols-3">
@@ -36,10 +36,10 @@ export function SimulationWhatsAppConnection() {
         <label className="flex flex-col gap-1">Chave da API<input type="password" autoComplete="new-password" className={inputClass} value={apiKey} placeholder={config.hasApiKey ? 'Cadastrada — preencha para alterar' : 'Chave da Evolution'} onChange={e => setApiKey(e.target.value)} /></label>
       </div>
       <label className="flex items-center gap-2"><input type="checkbox" checked={config.enabled} onChange={e => setConfig({ ...config, enabled: e.target.checked })} />Habilitar canal de simulação</label>
-      <div className="flex flex-wrap gap-2">{([['save', 'Salvar'], ['connect', 'Conectar / gerar QR Code'], ['state', 'Consultar conexão']] as const).map(([action, label]) => <button type="button" key={action} disabled={busy} onClick={() => void act(action)} className="rounded-lg bg-blue-600 px-3 py-2 font-bold text-white disabled:opacity-50">{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{([['save', 'Salvar'], ['connect', 'Conectar / gerar QR Code'], ['state', 'Consultar conexão']] as const).map(([action, label]) => <button type="button" key={action} disabled={busy} onClick={() => void act(action)} className="rounded-lg bg-[var(--action)] px-3 py-2 font-bold text-[var(--action-ink)] disabled:opacity-90">{label}</button>)}</div>
       {status && <p role="status">{status}</p>}
-      {error && <p role="alert" className="text-rose-500">{error}</p>}
-      {qr && <img src={qr} alt="QR Code para conectar o WhatsApp de simulação" className="h-64 w-64 rounded-lg bg-white p-3" />}
+      {error && <p role="alert" className="text-[var(--danger-text)]">{error}</p>}
+      {qr && <img src={qr} alt="QR Code para conectar o WhatsApp de simulação" className="h-64 w-64 rounded-lg bg-[var(--bg-surface)] p-3" />}
     </div>
   </details>;
 }

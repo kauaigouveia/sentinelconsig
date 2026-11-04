@@ -15,7 +15,7 @@ export function V8CltActions({ capabilities, form, setForm, start, busy, executi
     {configurations.length>0&&<label className="block text-xs">Configuração V8<select className="ml-2 rounded border bg-transparent p-2" value={form.v8ConfigId||''} onChange={e=>{const id=e.target.value;setForm((old:any)=>({...old,v8ConfigId:id}));}}><option value="">Todas as configurações elegíveis</option>{configurations.map((c:any)=><option key={c.id} value={c.id}>{c.name} · {c.terms.join(', ')} meses</option>)}</select></label>}
     {selected?.reasons?.length > 0 && <ul className="list-inside list-disc text-xs">{selected.reasons.map((reason: string) => <li key={reason}>{reason}</li>)}</ul>}
     {!references.length&&<button type="button" title={createReasons.join(' ')} disabled={createReasons.length>0} onClick={() => start('v8', 'CREATE_CONSULT')} className="rounded border p-2">Criar consulta V8</button>}
-    {createReasons.length>0&&<p className="text-xs text-slate-500">{createReasons.join(' ')}</p>}
+    {createReasons.length>0&&<p className="text-xs text-[var(--text-secondary)]">{createReasons.join(' ')}</p>}
     {missing.length>0&&onCompleteData&&<button type="button" disabled={busy} onClick={onCompleteData} className="rounded border p-2">Completar dados na etapa Cliente</button>}
 
   </details>;

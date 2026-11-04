@@ -1,0 +1,254 @@
+[
+  {
+    "theme": "light",
+    "foreground": "--text-primary",
+    "background": "--bg-canvas",
+    "ratio": 15.719,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--text-secondary",
+    "background": "--bg-canvas",
+    "ratio": 5.829,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--field-border",
+    "background": "--bg-canvas",
+    "ratio": 5.829,
+    "required": 3
+  },
+  {
+    "theme": "light",
+    "foreground": "--text-primary",
+    "background": "--bg-surface",
+    "ratio": 17.413,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--text-secondary",
+    "background": "--bg-surface",
+    "ratio": 6.457,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--field-border",
+    "background": "--bg-surface",
+    "ratio": 6.457,
+    "required": 3
+  },
+  {
+    "theme": "light",
+    "foreground": "--text-primary",
+    "background": "--bg-surface-elevated",
+    "ratio": 18.689,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--text-secondary",
+    "background": "--bg-surface-elevated",
+    "ratio": 6.93,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--field-border",
+    "background": "--bg-surface-elevated",
+    "ratio": 6.93,
+    "required": 3
+  },
+  {
+    "theme": "light",
+    "foreground": "--action-default-ink",
+    "background": "--action-default",
+    "ratio": 11.435,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--success-text",
+    "background": "--success-bg",
+    "ratio": 7.676,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--success-border",
+    "background": "--success-bg",
+    "ratio": 4.929,
+    "required": 3
+  },
+  {
+    "theme": "light",
+    "foreground": "--warning-text",
+    "background": "--warning-bg",
+    "ratio": 7.345,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--warning-border",
+    "background": "--warning-bg",
+    "ratio": 4.479,
+    "required": 3
+  },
+  {
+    "theme": "light",
+    "foreground": "--danger-text",
+    "background": "--danger-bg",
+    "ratio": 6.773,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--danger-border",
+    "background": "--danger-bg",
+    "ratio": 4.492,
+    "required": 3
+  },
+  {
+    "theme": "light",
+    "foreground": "--info-text",
+    "background": "--info-bg",
+    "ratio": 6.999,
+    "required": 4.5
+  },
+  {
+    "theme": "light",
+    "foreground": "--info-border",
+    "background": "--info-bg",
+    "ratio": 3.858,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--text-primary",
+    "background": "--bg-canvas",
+    "ratio": 12.006,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--text-secondary",
+    "background": "--bg-canvas",
+    "ratio": 7.638,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--field-border",
+    "background": "--bg-canvas",
+    "ratio": 7.638,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--text-primary",
+    "background": "--bg-surface",
+    "ratio": 10.546,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--text-secondary",
+    "background": "--bg-surface",
+    "ratio": 6.709,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--field-border",
+    "background": "--bg-surface",
+    "ratio": 6.709,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--text-primary",
+    "background": "--bg-surface-elevated",
+    "ratio": 7.884,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--text-secondary",
+    "background": "--bg-surface-elevated",
+    "ratio": 5.016,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--field-border",
+    "background": "--bg-surface-elevated",
+    "ratio": 5.016,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--action-default-ink",
+    "background": "--action-default",
+    "ratio": 7.638,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--success-text",
+    "background": "--success-bg",
+    "ratio": 8.941,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--success-border",
+    "background": "--success-bg",
+    "ratio": 4.88,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--warning-text",
+    "background": "--warning-bg",
+    "ratio": 8.426,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--warning-border",
+    "background": "--warning-bg",
+    "ratio": 4.829,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--danger-text",
+    "background": "--danger-bg",
+    "ratio": 8.38,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--danger-border",
+    "background": "--danger-bg",
+    "ratio": 4.976,
+    "required": 3
+  },
+  {
+    "theme": "dark",
+    "foreground": "--info-text",
+    "background": "--info-bg",
+    "ratio": 8.711,
+    "required": 4.5
+  },
+  {
+    "theme": "dark",
+    "foreground": "--info-border",
+    "background": "--info-bg",
+    "ratio": 4.543,
+    "required": 3
+  }
+]

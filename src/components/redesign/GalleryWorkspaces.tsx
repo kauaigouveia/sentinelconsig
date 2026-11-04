@@ -574,7 +574,7 @@ export function GalleryKanban({ open }: { open: (r: GalleryRow) => void }) {
             desativada
           </p>
         </div>
-        <StatusBadge label="Demonstração · sem persistência" color="#06b6d4" />
+        <StatusBadge label="Demonstração · sem persistência" color="var(--text-secondary)" />
       </header>
       <div className="p2-kanban">
         {galleryStatuses.map((s, i) => {
@@ -627,7 +627,7 @@ export function GalleryClient({ open }: { open: (r: GalleryRow) => void }) {
           <div>
             <h2>Marina Exemplo</h2>
             <p>***.***.***-** · pessoa fictícia</p>
-            <StatusBadge label="Carteira demonstrativa" color="#06b6d4" />
+            <StatusBadge label="Carteira demonstrativa" color="var(--text-secondary)" />
           </div>
           <div className="p2-customer-totals">
             <span>
@@ -780,7 +780,7 @@ export function GallerySimulations({
                     ? "Aguardando digitação"
                     : "Condições disponíveis"
                 }
-                color="#06b6d4"
+                color="var(--text-secondary)"
               />
             </div>
           ))}
@@ -951,7 +951,7 @@ export function GallerySimulations({
                     <strong>{b}</strong>
                     <StatusBadge
                       label="Exemplo"
-                      color={["#06b6d4", "#8b5cf6", "#10b981"][i]}
+                      color={["var(--text-secondary)", "var(--text-secondary)", "var(--text-secondary)"][i]}
                     />
                   </div>
                   <strong>{money(6900 + i * 250)}</strong>

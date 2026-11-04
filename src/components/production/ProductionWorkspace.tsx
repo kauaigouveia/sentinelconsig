@@ -87,9 +87,9 @@ export function ProductionWorkspace({
       className="p2-panel p2-production-live"
       aria-label="Workspace operacional de propostas"
     >
-      <div className="p2-live-summary">{summary}</div>
+
       <div className="p2-table-tools">
-        <span>{count} propostas · carteira carregada</span>
+        <div className="ui-production-context"><span>{count} propostas</span>{summary}</div>
         <div className="p2-actions">
           <button
             className="s2-button"

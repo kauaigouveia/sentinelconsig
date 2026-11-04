@@ -133,22 +133,22 @@ export const TVOperationsMonitor: React.FC = () => {
     .slice(0, 6);
 
   return (
-    <div className="min-h-[850px] rounded-3xl bg-[#070b14] text-white p-6 shadow-2xl border border-slate-800/80 space-y-5 select-none font-sans">
+    <div className="min-h-[850px] rounded-3xl bg-[var(--bg-surface)] text-[var(--text-primary)] p-6  border border-[var(--field-border)] space-y-5 select-none font-sans">
       {/* Top Mission Control Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--field-border)] pb-5">
         <div className="flex items-center gap-4">
-          <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/25 ring-1 ring-blue-400/30">
-            <Tv className="h-7 w-7 text-white" />
+          <div className="h-13 w-13 rounded-2xl     flex items-center justify-center   ring-1 ring-[var(--focus)]">
+            <Tv className="h-7 w-7 text-[var(--text-primary)]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)] flex items-center gap-1.5 ">
+                <span className="h-2 w-2 rounded-full bg-[var(--success-bg)] animate-ping" />
                 SALA DE OPERAÇÕES EM TEMPO REAL
               </span>
-              <span className="text-xs text-slate-400 font-black uppercase tracking-wider">{currentTenant.name}</span>
+              <span className="text-xs text-[var(--text-secondary)] font-black uppercase tracking-wider">{currentTenant.name}</span>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-white mt-1">
+            <h1 className="text-2xl font-black tracking-tight text-[var(--text-primary)] mt-1">
               Sentinel Command Center — Mesa Consignado
             </h1>
           </div>
@@ -156,14 +156,14 @@ export const TVOperationsMonitor: React.FC = () => {
 
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-3xl font-black font-mono tracking-wider text-cyan-400 drop-shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+            <div className="text-3xl font-black font-mono tracking-wider text-[var(--link)] ">
               {timeStr}
             </div>
-            <div className="text-xs text-slate-400 font-semibold capitalize mt-0.5">{dateStr}</div>
+            <div className="text-xs text-[var(--text-secondary)] font-semibold capitalize mt-0.5">{dateStr}</div>
           </div>
           <button
             onClick={toggleFullscreen}
-            className="p-3 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer shadow-lg hover:border-blue-500/50"
+            className="p-3 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] border border-[var(--field-border)] text-[var(--text-primary)] hover:text-[var(--text-primary)] rounded-xl transition-all cursor-pointer  hover:border-[var(--field-border)]"
             title="Alternar Tela Cheia"
           >
             {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
@@ -172,39 +172,39 @@ export const TVOperationsMonitor: React.FC = () => {
       </div>
 
       {/* Main Goal Progress Bar */}
-      <div className="rounded-2xl bg-gradient-to-r from-slate-900/90 via-[#0d1527] to-[#0a192f] p-5 border border-slate-800/90 shadow-xl space-y-3">
+      <div className="rounded-2xl     p-5 border border-[var(--field-border)]  space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
-              <Flame className="h-4 w-4 text-amber-400 animate-bounce" />
+            <div className="h-7 w-7 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center border border-[var(--warning-border)]">
+              <Flame className="h-4 w-4 text-[var(--warning-text)] animate-bounce" />
             </div>
             <div>
-              <span className="text-sm font-black uppercase tracking-wider text-slate-100 block">
+              <span className="text-sm font-black uppercase tracking-wider text-[var(--text-primary)] block">
                 Termômetro de Liquidação Mensal
               </span>
-              <span className="text-[11px] text-slate-400">Meta estipulada para a mesa no mês corrente</span>
+              <span className="text-[11px] text-[var(--text-secondary)]">Meta estipulada para a mesa no mês corrente</span>
             </div>
           </div>
           <div className="flex items-baseline gap-2 font-mono">
-            <span className="text-xs text-slate-400 font-semibold">Liquidado:</span>
-            <span className="text-xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]">
+            <span className="text-xs text-[var(--text-secondary)] font-semibold">Liquidado:</span>
+            <span className="text-xl font-black text-[var(--success-text)] ">
               {formatCurrency(paidVolume)}
             </span>
-            <span className="text-xs text-slate-500">/ Meta {formatCurrency(targetMonthly)}</span>
+            <span className="text-xs text-[var(--text-secondary)]">/ Meta {formatCurrency(targetMonthly)}</span>
           </div>
         </div>
 
         {/* Progress Bar Container */}
-        <div className="h-5 w-full rounded-full bg-slate-950 overflow-hidden p-0.5 border border-slate-800 shadow-inner">
+        <div className="h-5 w-full rounded-full bg-[var(--bg-canvas)] overflow-hidden p-0.5 border border-[var(--field-border)] shadow-inner">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 transition-all duration-1000 shadow-[0_0_12px_rgba(59,130,246,0.5)]"
+            className="h-full rounded-full     transition-all duration-1000 "
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+        <div className="flex items-center justify-between text-xs font-bold text-[var(--text-secondary)]">
           <span>0%</span>
-          <span className="text-emerald-400 font-mono font-black text-sm bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+          <span className="text-[var(--success-text)] font-mono font-black text-sm bg-[var(--success-bg)] px-2.5 py-0.5 rounded-full border border-[var(--success-border)]">
             {progressPercent}% Atingido
           </span>
           <span>100% Meta</span>
@@ -213,77 +213,77 @@ export const TVOperationsMonitor: React.FC = () => {
 
       {/* 4 Large Highlight Counters */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0c1220] border border-slate-800/80 p-5 shadow-lg space-y-1 relative overflow-hidden">
+        <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-5  space-y-1 relative overflow-hidden">
           <div className="absolute -right-2 -bottom-2 opacity-5">
-            <DollarSign className="h-24 w-24 text-white" />
+            <DollarSign className="h-24 w-24 text-[var(--text-primary)]" />
           </div>
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] block">
             Volume Total Digitado
           </span>
-          <div className="text-2xl font-black font-mono text-cyan-400 tracking-tight">
+          <div className="text-2xl font-black font-mono text-[var(--link)] tracking-tight">
             {formatCurrency(totalVolume)}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
             {totalCount} propostas em esteira
           </span>
         </div>
 
-        <div className="rounded-2xl bg-[#0c1220] border border-slate-800/80 p-5 shadow-lg space-y-1 relative overflow-hidden">
+        <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-5  space-y-1 relative overflow-hidden">
           <div className="absolute -right-2 -bottom-2 opacity-5">
-            <CheckCircle2 className="h-24 w-24 text-white" />
+            <CheckCircle2 className="h-24 w-24 text-[var(--text-primary)]" />
           </div>
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] block">
             Total Pago / Liquidado
           </span>
-          <div className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
+          <div className="text-2xl font-black font-mono text-[var(--success-text)] tracking-tight">
             {formatCurrency(paidVolume)}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
             {paidCount} contratos finalizados com sucesso
           </span>
         </div>
 
-        <div className="rounded-2xl bg-[#0c1220] border border-slate-800/80 p-5 shadow-lg space-y-1 relative overflow-hidden">
+        <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-5  space-y-1 relative overflow-hidden">
           <div className="absolute -right-2 -bottom-2 opacity-5">
-            <Clock className="h-24 w-24 text-white" />
+            <Clock className="h-24 w-24 text-[var(--text-primary)]" />
           </div>
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] block">
             Saldo em Retorno CIP
           </span>
-          <div className="text-2xl font-black font-mono text-amber-400 tracking-tight">
+          <div className="text-2xl font-black font-mono text-[var(--warning-text)] tracking-tight">
             {formatCurrency(totalBalance)}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
             Portabilidades em liquidação
           </span>
         </div>
 
-        <div className="rounded-2xl bg-[#0c1220] border border-slate-800/80 p-5 shadow-lg space-y-1 relative overflow-hidden">
+        <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-5  space-y-1 relative overflow-hidden">
           <div className="absolute -right-2 -bottom-2 opacity-5">
-            <TrendingUp className="h-24 w-24 text-white" />
+            <TrendingUp className="h-24 w-24 text-[var(--text-primary)]" />
           </div>
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] block">
             Ticket Médio
           </span>
-          <div className="text-2xl font-black font-mono text-purple-400 tracking-tight">
+          <div className="text-2xl font-black font-mono text-[var(--link)] tracking-tight">
             {formatCurrency(totalCount > 0 ? totalVolume / totalCount : 0)}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
             Média por proposta cadastrada
           </span>
         </div>
       </div>
 
       {/* Live Operational Ticker */}
-      <div className="rounded-2xl bg-[#0b101c] border border-slate-800/90 p-4 shadow-lg space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+      <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-4  space-y-3">
+        <div className="flex items-center justify-between border-b border-[var(--field-border)] pb-2">
           <div className="flex items-center gap-2">
-            <Radio className="h-4 w-4 text-cyan-400 animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-wider text-slate-200">
+            <Radio className="h-4 w-4 text-[var(--link)] animate-pulse" />
+            <span className="text-xs font-black uppercase tracking-wider text-[var(--text-primary)]">
               Feed de Movimentação Recente
             </span>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+          <span className="text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-surface)] px-2 py-0.5 rounded border border-[var(--field-border)]">
             Últimas Operações
           </span>
         </div>
@@ -297,26 +297,26 @@ export const TVOperationsMonitor: React.FC = () => {
             return (
               <div
                 key={p.id}
-                className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-blue-500/40 transition-all flex items-center justify-between"
+                className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] transition-all flex items-center justify-between"
               >
                 <div className="min-w-0 pr-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-white truncate">
+                    <span className="text-xs font-black text-[var(--text-primary)] truncate">
                       {client?.fullName || 'Cliente'}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[10px] font-mono text-[var(--text-secondary)]">
                       {p.proposalNumber ? `#${p.proposalNumber}` : ''}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                  <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] mt-0.5">
                     <span>{bank?.name || 'Banco'}</span>
                     <span>•</span>
-                    <span className="text-emerald-400 font-mono font-bold">
+                    <span className="text-[var(--success-text)] font-mono font-bold">
                       {formatCurrency(p.disbursedValue || 0)}
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 shrink-0 border border-slate-700/60 truncate max-w-[100px]">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] shrink-0 border border-[var(--field-border)] truncate max-w-[100px]">
                   {status?.name || 'Em Análise'}
                 </span>
               </div>
@@ -328,49 +328,49 @@ export const TVOperationsMonitor: React.FC = () => {
       {/* Real-time Rankings Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Top Operators / Digitizers */}
-        <div className="rounded-2xl bg-[#0b101c] border border-slate-800/80 p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+        <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-5  space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--field-border)] pb-3">
             <div className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-amber-400" />
-              <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              <Award className="h-5 w-5 text-[var(--warning-text)]" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-[var(--text-primary)]">
                 Ranking de Operadores & Digitadores
               </h3>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--warning-text)] bg-[var(--warning-bg)] px-2.5 py-0.5 rounded-full border border-[var(--warning-border)]">
               LEADERBOARD
             </span>
           </div>
 
           <div className="space-y-2.5">
             {digitizerRankings.length === 0 ? (
-              <p className="text-xs text-slate-500 italic py-4 text-center">Nenhuma proposta digitada ainda.</p>
+              <p className="text-xs text-[var(--text-secondary)] italic py-4 text-center">Nenhuma proposta digitada ainda.</p>
             ) : (
               digitizerRankings.slice(0, 5).map((op, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all"
+                  className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className={`h-7 w-7 rounded-lg flex items-center justify-center font-black text-xs ${
                         idx === 0
-                          ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                          ? 'bg-[var(--warning-bg)] text-[var(--text-secondary)]  shadow-amber-400/20'
                           : idx === 1
-                          ? 'bg-slate-300 text-slate-950'
+                          ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
                           : idx === 2
-                          ? 'bg-amber-700 text-white'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-[var(--warning-bg)] text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
                       }`}
                     >
                       #{idx + 1}
                     </span>
                     <div>
-                      <span className="font-bold text-xs text-white block">{op.name}</span>
-                      <span className="text-[11px] text-slate-400">{op.count} propostas cadastradas</span>
+                      <span className="font-bold text-xs text-[var(--text-primary)] block">{op.name}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)]">{op.count} propostas cadastradas</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="font-mono font-black text-emerald-400 text-sm block">
+                    <span className="font-mono font-black text-[var(--success-text)] text-sm block">
                       {formatCurrency(op.volume)}
                     </span>
                   </div>
@@ -381,49 +381,49 @@ export const TVOperationsMonitor: React.FC = () => {
         </div>
 
         {/* Top Partners (Correspondentes) */}
-        <div className="rounded-2xl bg-[#0b101c] border border-slate-800/80 p-5 shadow-lg space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+        <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--field-border)] p-5  space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--field-border)] pb-3">
             <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-blue-400" />
-              <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              <Building2 className="h-5 w-5 text-[var(--link)]" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-[var(--text-primary)]">
                 Ranking de Parceiros (Corbans)
               </h3>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--link)] bg-[var(--info-bg)] px-2.5 py-0.5 rounded-full border border-[var(--field-border)]">
               ORIGINAÇÃO
             </span>
           </div>
 
           <div className="space-y-2.5">
             {partnerRankings.length === 0 ? (
-              <p className="text-xs text-slate-500 italic py-4 text-center">Nenhum parceiro movimentou propostas.</p>
+              <p className="text-xs text-[var(--text-secondary)] italic py-4 text-center">Nenhum parceiro movimentou propostas.</p>
             ) : (
               partnerRankings.slice(0, 5).map((pt, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all"
+                  className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--field-border)] hover:border-[var(--field-border)] transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className={`h-7 w-7 rounded-lg flex items-center justify-center font-black text-xs ${
                         idx === 0
-                          ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                          ? 'bg-[var(--info-bg)] text-[var(--text-primary)]  shadow-blue-500/20'
                           : idx === 1
-                          ? 'bg-indigo-500 text-white'
+                          ? 'bg-[var(--info-bg)] text-[var(--text-primary)]'
                           : idx === 2
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-[var(--info-bg)] text-[var(--text-primary)]'
+                          : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
                       }`}
                     >
                       #{idx + 1}
                     </span>
                     <div>
-                      <span className="font-bold text-xs text-white font-mono block">{pt.login}</span>
-                      <span className="text-[11px] text-slate-400">{pt.count} ADEs enviadas</span>
+                      <span className="font-bold text-xs text-[var(--text-primary)] font-mono block">{pt.login}</span>
+                      <span className="text-[11px] text-[var(--text-secondary)]">{pt.count} ADEs enviadas</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="font-mono font-black text-blue-400 text-sm block">
+                    <span className="font-mono font-black text-[var(--link)] text-sm block">
                       {formatCurrency(pt.volume)}
                     </span>
                   </div>

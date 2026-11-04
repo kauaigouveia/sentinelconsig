@@ -1,0 +1,670 @@
+{
+  "sourceCommit": "b0af51d",
+  "normalization": "Only presentation classes/styles/paint; all operational bindings retained",
+  "files": [
+    {
+      "path": "src/components/CommandCenter/CommandCenterView.tsx",
+      "sha256": "ae5df926eb0cd871b2b44053733a6900816c4f9a3278d03f31d702cbaf0576dc"
+    },
+    {
+      "path": "src/components/admin/AnnouncementsManagement.tsx",
+      "sha256": "46b88839c8248a39d43678a55253b8a7c7b58ba3a4b17f3196d258faef2e8893"
+    },
+    {
+      "path": "src/components/admin/AuditLogView.tsx",
+      "sha256": "3220dd595bf3df2cb5417fc7d77555dd251d3147056ac8c1935de78602939c2d"
+    },
+    {
+      "path": "src/components/admin/BackupManagementModal.tsx",
+      "sha256": "4f558b7bc8c8223d1b95d47333e62e49c26e7e5db2df4325a833a6a9fc928674"
+    },
+    {
+      "path": "src/components/admin/BankBatchImport.tsx",
+      "sha256": "cf8c356989f463994208dd9e62eefb428999fbdc1f911d862c368d6bdd89daf0"
+    },
+    {
+      "path": "src/components/admin/BankPromoterManagement.tsx",
+      "sha256": "95e5c08f4e5d4cac7a6f6a0dbf4f4bfb425a58e36ca69028144164d7c227eb54"
+    },
+    {
+      "path": "src/components/admin/CentralAdministracao.tsx",
+      "sha256": "5a641562817f4236fd5f8c293737c8bbb262705cd2ad0ef80937c3b96a910469"
+    },
+    {
+      "path": "src/components/admin/CentralAutomacoes.tsx",
+      "sha256": "16b8b88770acc3a50239c4b4c18d985ab99e56739156a986585eb51a8030c48d"
+    },
+    {
+      "path": "src/components/admin/CentralPendencias.tsx",
+      "sha256": "fafe9822ff79ce0dd7e238933a984c04c3a92802b7972f1db69b1608446aa18d"
+    },
+    {
+      "path": "src/components/admin/ConvenioManagement.tsx",
+      "sha256": "1b1af27b17d2c1e250b3d9f6fce06f5413a52eaa98b6562ed4cd85acd1344d3d"
+    },
+    {
+      "path": "src/components/admin/DomainManagement.tsx",
+      "sha256": "6ed7aa34512455c77346f30ee9d5791b11796554d5cf12b5e34dafbef396a45d"
+    },
+    {
+      "path": "src/components/admin/HolidayManagement.tsx",
+      "sha256": "73e384f3b53c08384043ce592fd0fd50d39007ffe6e4419045cacf1186a2e0ae"
+    },
+    {
+      "path": "src/components/admin/HubIntegracoes.tsx",
+      "sha256": "a695a1fb15edcff434ba97ff7dd19cb9cc9a19884c89189d00893567ff215489"
+    },
+    {
+      "path": "src/components/admin/NewUserCredentialsModal.tsx",
+      "sha256": "a4ac139acd45b9ed795fd6a067a9b7ba15bb66859a2f28be8d8a5574703cc0fc"
+    },
+    {
+      "path": "src/components/admin/OperationalRulesManagement.tsx",
+      "sha256": "8961eddaab75848cc4ece1dc19671c704ed8128a76fcd47989eb012ba82e675e"
+    },
+    {
+      "path": "src/components/admin/PartnerImportModal.tsx",
+      "sha256": "ddf813fcb4311f3fc81b22f62374fd18b5be6614661433eb49450253b0581e54"
+    },
+    {
+      "path": "src/components/admin/PerfisPermissoesView.tsx",
+      "sha256": "6d826f44e207b6ff127de307a3fb2cb0f6d42ce624c10e38a9726ca31759b4b3"
+    },
+    {
+      "path": "src/components/admin/ProductImportModal.tsx",
+      "sha256": "eae2ea26f31949f00a888c5b58a4317c00aea6afef0a5a8286ea9d73db5cb0b5"
+    },
+    {
+      "path": "src/components/admin/ProductManagement.tsx",
+      "sha256": "3644b890b5423ff6ac36d48329755dd4acd1cb5f5283114ce354495e78d301f9"
+    },
+    {
+      "path": "src/components/admin/StatusImport.tsx",
+      "sha256": "8507f6d53af47607c1efa9b749a7c62572b28d5aa07d4749020bc23e1f34af17"
+    },
+    {
+      "path": "src/components/admin/StatusManagement.tsx",
+      "sha256": "f4a246f61c6a13354b27ea5e91dab83dd330a3f75558fed020d1e4bd8f853365"
+    },
+    {
+      "path": "src/components/admin/TenantSaaSCapacityView.tsx",
+      "sha256": "1a7b0fc94b293b78484c8b0fe8b064361b495782c002db8aa45da439882e50cb"
+    },
+    {
+      "path": "src/components/admin/TestRunnerModal.tsx",
+      "sha256": "a0861385240de3985952a01a95e496fd3e7bd98e97022b25b0b1bf169651e1d8"
+    },
+    {
+      "path": "src/components/admin/UserDetailsModal.tsx",
+      "sha256": "c93a0f1bee186009c11a2e4433e942d6e7721354a6fc32eb49cab831c1448e77"
+    },
+    {
+      "path": "src/components/admin/UserManagement.tsx",
+      "sha256": "d10ddf854baa009396295018793f46fbeb11ac1419cf1810fb2ffecc74ad8731"
+    },
+    {
+      "path": "src/components/admin/WhiteLabelModal.tsx",
+      "sha256": "c5191ba00fe00e731b062c68051956d28b718c314d1c02b787e0e1a828036a46"
+    },
+    {
+      "path": "src/components/admin/automations/AutomationExecutionTimelineModal.tsx",
+      "sha256": "ca83968805f79a075642226ccc6ec5cb343b2905f9271827be50cded1b22e744"
+    },
+    {
+      "path": "src/components/admin/automations/AutomationTestModal.tsx",
+      "sha256": "f5649c35f37421f2302afb0404526e05891a61326a88dd96d1ed97d2be0c4945"
+    },
+    {
+      "path": "src/components/admin/automations/AutomationVisualBuilder.tsx",
+      "sha256": "7e9794b1d04e9002b464d208149dcde45395fc46cabb952d1020ce895e56b753"
+    },
+    {
+      "path": "src/components/agenda/MyTaskQueueView.tsx",
+      "sha256": "9802eaa1fa1ee2dc89a9bb36ebdfff85623e673aeb543a787ff1be6e81c16472"
+    },
+    {
+      "path": "src/components/agenda/OperationalAgendaView.tsx",
+      "sha256": "b0b4f194a42dcd3ebc7ab35a3fdab88dd6652bc6d8a8e38b4610e98a378adfe0"
+    },
+    {
+      "path": "src/components/ai/SentinelaAIChat.tsx",
+      "sha256": "e0829e84a2c312b325cc9a33911c9f2d98c0a8fa669011a16697cbfbb1751864"
+    },
+    {
+      "path": "src/components/auth/ChangePasswordModal.tsx",
+      "sha256": "3ef6749e526b983b216a5283c7c884d8307d73cc94bd663c435f9692ff922acd"
+    },
+    {
+      "path": "src/components/auth/ForcePasswordChangeModal.tsx",
+      "sha256": "4efc701d4722f5e63017b807ffeac3cea9b733074417291351713af5c6589154"
+    },
+    {
+      "path": "src/components/auth/TenantSelectionView.tsx",
+      "sha256": "ea17d2226454eebea21ae86186098f415333633110df9156c94425ff5235d42d"
+    },
+    {
+      "path": "src/components/bi/BIFilterBar.tsx",
+      "sha256": "e43c1bad2c0fc1cc804b4914ae4e0e9baf301c9f747b01a9dcb0a2425bc438ee"
+    },
+    {
+      "path": "src/components/bi/CommercialRadarView.tsx",
+      "sha256": "fdd2812daa695818413d52db16f3532cfca72103483fb413ea5e05b5b52cad95"
+    },
+    {
+      "path": "src/components/bi/ExecutiveBIDashboard.tsx",
+      "sha256": "94b6bc9f02ad8dfdfe8ec2986bfa930dc8961fa70135d0ad63bf35a8c4cb09b6"
+    },
+    {
+      "path": "src/components/bi/ExecutiveInsightsWidget.tsx",
+      "sha256": "60220d62eee269d862afad7c64cf078b26bda3497887526e4c5c4a3edea4072b"
+    },
+    {
+      "path": "src/components/bi/MarkdownRenderer.tsx",
+      "sha256": "bd158f595e7b24ac6f2cf3a8fb548c7c3f8540ebe7c3f987ec61652718f8ad71"
+    },
+    {
+      "path": "src/components/bi/OperationalBIDashboard.tsx",
+      "sha256": "fc44701da8c4ee30772912e363a64794067788c5ad708cab687c9d672ceb1e99"
+    },
+    {
+      "path": "src/components/bi/OperationalHealthCard.tsx",
+      "sha256": "d9c317d1bdb5711b9967b52485bef53b4be3d60a3e354720647105a5777af74e"
+    },
+    {
+      "path": "src/components/bi/SentinelaAIChat.tsx",
+      "sha256": "f2b41ba2946ef49e33417972b3104e352768bb96f279c72dae30aa655f1531d1"
+    },
+    {
+      "path": "src/components/clients/Client360View.tsx",
+      "sha256": "2ad1336bbc712e664dd38c0a275f23dfc9e3f749b9d5573258e66aea11ca8f9f"
+    },
+    {
+      "path": "src/components/common/AccessDeniedView.tsx",
+      "sha256": "12b6b2d6a57960348ef974bf03aeb607bab7fd1d4c8cb101732bbea80c2208e6"
+    },
+    {
+      "path": "src/components/common/BankCodeSelect.tsx",
+      "sha256": "dc9f68ee527b583474770429aab28907d5c0913f764e09493b059d4c8838d512"
+    },
+    {
+      "path": "src/components/common/CommandPaletteModal.tsx",
+      "sha256": "63562f55e33b5460e8abd70487018e15830f1ed8be3c5b7cf5a9cb664c7d701e"
+    },
+    {
+      "path": "src/components/common/DeleteConfirmationModal.tsx",
+      "sha256": "f9bf6879eff2e0bdd60946edd39992566a1270ac6c00df79dd3a9b3974de4636"
+    },
+    {
+      "path": "src/components/common/ErrorBoundary.tsx",
+      "sha256": "3d970d1884dab80e7eb7292bb009f4400de973e7b95c2ac38c256e3cfca98619"
+    },
+    {
+      "path": "src/components/common/InteractiveTourModal.tsx",
+      "sha256": "38d84615a93e054a360cb7a9d265b05ac247cea1dc02208f1dbfdeeea232a09f"
+    },
+    {
+      "path": "src/components/common/KeyboardShortcutsModal.tsx",
+      "sha256": "666d6c81c0b2eb4950a76a70fb6305f4eaafb45dd7ae263a2e15f4b342d748d8"
+    },
+    {
+      "path": "src/components/common/NotFoundView.tsx",
+      "sha256": "2ee0ad287a0c9468c737e980f9be011ae649beeb79677d46aa6c965eb367a7cd"
+    },
+    {
+      "path": "src/components/common/PartnerSearchSelect.tsx",
+      "sha256": "61fc088a1c1294212a1e7b3d6e1e7718984344604c619e48d7098b88c354b112"
+    },
+    {
+      "path": "src/components/common/UniversalConfirmationModal.tsx",
+      "sha256": "681d09e6e35bbc79e9eef0d8e287b16910e2c938079bfcde845fff19e1d2ff58"
+    },
+    {
+      "path": "src/components/crm/PartnerBatchActions.tsx",
+      "sha256": "7c421ef2ca10f9105db6c2b2b2a7d706cbaf85c4f5368f9fca11d3adcfb53301"
+    },
+    {
+      "path": "src/components/crm/PartnerCrmHub.tsx",
+      "sha256": "8c33c97b8f0ff2e0a2700d1d6b11162d8236d03630c33e8e41441a61ecf628d1"
+    },
+    {
+      "path": "src/components/crm/PartnerDetailModal.tsx",
+      "sha256": "0783ae1352d72a55913f8fbe185a333b8a94f3ba87795d3108a9b10b6b1d42b9"
+    },
+    {
+      "path": "src/components/crm/PartnerFormModal.tsx",
+      "sha256": "0b9572c7d5a412d58e295d87e8b86c6ebf0b4e70ca4e3b8d151870de40c7df0d"
+    },
+    {
+      "path": "src/components/dashboard/ControlTower.tsx",
+      "sha256": "074e2b0710f224f517a8f108c328885a598dd496fabcc71e7fbbeb65e68b8089"
+    },
+    {
+      "path": "src/components/dashboard/CustomizeWidgetsModal.tsx",
+      "sha256": "a80c239a756bee7fe210a416096f4c220ddbbea06025e472914d0a62e98984e5"
+    },
+    {
+      "path": "src/components/dashboard/DigitizerHome.tsx",
+      "sha256": "c669a4447675f88bd3592f2ab2bc603286178f3e4a38bc773b651d45a5a16c57"
+    },
+    {
+      "path": "src/components/dashboard/ExecutiveDashboard.tsx",
+      "sha256": "44be2f4d7225575f1b774fec839a7d56d7b2f625edfbf413bd56afb28461adb9"
+    },
+    {
+      "path": "src/components/dashboard/StatusBottleneckReport.tsx",
+      "sha256": "66be06ffacfec2b4ec25c8c259608f204c2139c481cf25d3fce4b82e2b6a665b"
+    },
+    {
+      "path": "src/components/finance/GeneralFinanceView.tsx",
+      "sha256": "39d5337762c28218638fbdec10c5337a135b684ce39a852be210bd09c3254d4e"
+    },
+    {
+      "path": "src/components/gamification/GamificationCenter.tsx",
+      "sha256": "4b7c5431829a89fb1d90dd1e8107f02db67c09ddf7e6cac0d828a4c682be379a"
+    },
+    {
+      "path": "src/components/integrations/BankIntegrationsView.tsx",
+      "sha256": "b02da5af25e8757b7ec0b705205cfcc2ba307a6645632fc3db7711508a9a7878"
+    },
+    {
+      "path": "src/components/integrations/BankPromoterConnection.tsx",
+      "sha256": "305a36c7ee63f5c41dc1d6b1bb6344af9e2eb7135c662096fae97b4acd3e86db"
+    },
+    {
+      "path": "src/components/integrations/BankStatusMappingSettings.tsx",
+      "sha256": "c413959d4ff1f46dff89fd019f41f163cd9e4b69a181c085a3cf9ca58563ae68"
+    },
+    {
+      "path": "src/components/integrations/BmgIntegrationTab.tsx",
+      "sha256": "ec8cb24017435da3ccfc3398defa23922c2266f96391e914d5e97db12c6c61a2"
+    },
+    {
+      "path": "src/components/integrations/C6BankConfigModal.tsx",
+      "sha256": "ac785c375c49fb68b6f6d9890cfdc5158ac616ae0fd3ef5305e7a7b8aad94a84"
+    },
+    {
+      "path": "src/components/integrations/C6BankConfigView.tsx",
+      "sha256": "1d3ad2a3adde98676177dc6c3dc31b101685781ca25b7baf32112bdb0594fe98"
+    },
+    {
+      "path": "src/components/integrations/DaycovalWorkbookSettings.tsx",
+      "sha256": "d1358915b84b595d3daf0646469322b448a25f152147a1c81164d239203a2c9b"
+    },
+    {
+      "path": "src/components/integrations/FactaCredentialFields.tsx",
+      "sha256": "8122c86751d56c1cc0cc907a91d378a853dc013a7dc8e6eafaac412e8fe175a4"
+    },
+    {
+      "path": "src/components/integrations/FinantoIntegrationTab.tsx",
+      "sha256": "484a90869f6a8c50455d5ab7e88b81100291a9b850ee3cadf9486f690f2e88a9"
+    },
+    {
+      "path": "src/components/integrations/HappyIntegrationTab.tsx",
+      "sha256": "61e2763852fa25e672457b4b7122ad4443ab156d5edaee95f481c386161b1af4"
+    },
+    {
+      "path": "src/components/integrations/NossaFintechIntegrationTab.tsx",
+      "sha256": "00370a48ba2a8a76ad78046f9522905e67d13fdd90d6bde6aa305fa3cfeee6e7"
+    },
+    {
+      "path": "src/components/integrations/ParanaIntegrationTab.tsx",
+      "sha256": "87463d80149797228ed110107b7934f625493f6e61a283404a59054b91817efc"
+    },
+    {
+      "path": "src/components/integrations/PresencaIntegrationTab.tsx",
+      "sha256": "427bc9b210f4daa071e2c5177b949aa51c2d8c597c2a27fbea33c3c86e3495c3"
+    },
+    {
+      "path": "src/components/integrations/SimulationBankOrderSettings.tsx",
+      "sha256": "48143b62a4a27e1cfbc5323f7c32d406976ae4222ef7fe15c207390d05ae5dea"
+    },
+    {
+      "path": "src/components/integrations/TelegramIntegrationSettings.tsx",
+      "sha256": "3529fa9af4a86ac9304d7255319e5532c2d2d4a2fa8e6f01d51f715f20ccfff6"
+    },
+    {
+      "path": "src/components/integrations/V8IntegrationTab.tsx",
+      "sha256": "bd4430e9c488b28aecee719a3baed2c209b6e3767611257da3cd95a6e06694cd"
+    },
+    {
+      "path": "src/components/integrations/VctexIntegrationTab.tsx",
+      "sha256": "1d007b7927a2fd85c8ff5e2b8fb978ea7ad3cebcdace1a96ed549ecf59d80e31"
+    },
+    {
+      "path": "src/components/integrations/WorkbankIntegrationTab.tsx",
+      "sha256": "5615e41db5498d94094c35fc2c971e50feeeb0f7d0fe93790cdd54e225873d7d"
+    },
+    {
+      "path": "src/components/intelligence/SentinelIntelligenceDashboard.tsx",
+      "sha256": "185f3d29ba2f8dce27a201fbbb67c33683b59324ce56d8a66bd28f000de06598"
+    },
+    {
+      "path": "src/components/layout/Header.tsx",
+      "sha256": "9802147a648ac681f68a5c550e4b05c2e697b37fa5cf74170d0830e0d6223b01"
+    },
+    {
+      "path": "src/components/layout/NotificationsDrawer.tsx",
+      "sha256": "bc1179f8a8ceacf064acc83a67823ceab5703a07aa04fecb018bec067246adea"
+    },
+    {
+      "path": "src/components/layout/Sidebar.tsx",
+      "sha256": "37f71711662fad6926f447c3de8f0a3648e36f204f63140d19bd34a70c570f6e"
+    },
+    {
+      "path": "src/components/monitor/TVOperationsMonitor.tsx",
+      "sha256": "6b9f85a8e7da3ddb2ab672c05c0d7a36369865333ee4ace5043628f5bbce357d"
+    },
+    {
+      "path": "src/components/operations/AnnouncementsTab.tsx",
+      "sha256": "2aefc5b9e155e2c64b0dd143316020b9a8ac1a8efa31fb3e6bdae0e24fceecd0"
+    },
+    {
+      "path": "src/components/operations/ApiMonitoringTab.tsx",
+      "sha256": "06c7b26fff0e9c0afa8a03e42bde32e51df4f5a9ad4e76a17e5a6ea35335be32"
+    },
+    {
+      "path": "src/components/operations/OperationsCentral.tsx",
+      "sha256": "0c795c92cdea0b19d5461ea9953d432f44ba2a86fd7c8e0e007018279a411ea9"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerPortalDashboard.tsx",
+      "sha256": "56f8ebb54209791c97b99837ca2e4f5ef26d1b5dc4ccc6f6f44f506d7c23c006"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerProfileView.tsx",
+      "sha256": "7c2e1da3c0398548d0e3dfa6542b1d693bf6bf064bfe4848cf40428f9da0b95c"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerProposalDetailModal.tsx",
+      "sha256": "dc1da1b74a67b0026f8d7aa1822ddc57cbe70aab6af5be9402c13652609ee679"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerProposalsView.tsx",
+      "sha256": "3c08cddf7afd42cf9cf87193a8486852f712b3f20cac006b8cd0d47b71d19708"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerSimulationsView.tsx",
+      "sha256": "828b377385d49b459b5337f3f1b4d9c1b3791f0fa494d3758d105c0e6d2a2f3e"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerSupportView.tsx",
+      "sha256": "76e643c35b15b20a2b57f251546d94093b5b012bf09a2e6dce8291e1561e19f6"
+    },
+    {
+      "path": "src/components/partner-portal/PartnerTelegramSettings.tsx",
+      "sha256": "31fc55e972824dba288278dfdf9576d878fd462f85ee3589cc002b159a71ff14"
+    },
+    {
+      "path": "src/components/partner-portal/SupportRating.tsx",
+      "sha256": "1f9ec2d9fbfffde44e58bf12324ab6fd961cfa448ca96c0552a03fd053f13546"
+    },
+    {
+      "path": "src/components/production/BmgProposalCard.tsx",
+      "sha256": "cb40aeccb95325ca0730e9d426f3e3af269e9a1910282f593b560f084894a920"
+    },
+    {
+      "path": "src/components/production/BulkStatusModal.tsx",
+      "sha256": "552a620702f2f1385d0941e4e5c63406fd8f2ff582b539886ee877b95921d9cd"
+    },
+    {
+      "path": "src/components/production/C6ProposalCard.tsx",
+      "sha256": "7c1d7c8e3976f4e7ec74f9cd85670b434f81e34e98ce81ca890cf8529408d59e"
+    },
+    {
+      "path": "src/components/production/ExcelExportModal.tsx",
+      "sha256": "736a9ab081a799735e960edacb90f10c39330581fc7186c7da19c196f28a609c"
+    },
+    {
+      "path": "src/components/production/ExcelImportModal.tsx",
+      "sha256": "c0cda006a4b03dbc07d1c6d0e34fc64389ce281a8a23524ded39b25c6d43ddc5"
+    },
+    {
+      "path": "src/components/production/FactaProposalCard.tsx",
+      "sha256": "6e924cef9dc66750b6dd7fe795acee0b337b74b67c09f6dfa881ea9677f673bf"
+    },
+    {
+      "path": "src/components/production/HappyProposalCard.tsx",
+      "sha256": "cf33aec433fb217498e6b6fa2235161057f4d4dac1b902f2b447e2595c181961"
+    },
+    {
+      "path": "src/components/production/KanbanBoard.tsx",
+      "sha256": "2486a805d918a643938047972ef21a11f768290d5162730fd80149257937133f"
+    },
+    {
+      "path": "src/components/production/NewProductionModal.tsx",
+      "sha256": "43a9d682254c093f56300076abad342cd85c2e4394d732e620c03e799e82fea7"
+    },
+    {
+      "path": "src/components/production/ParanaProposalSyncCard.tsx",
+      "sha256": "28e5c23010e44a2f1dc329d727526f7b2803febc6abf16581f4a57d752128535"
+    },
+    {
+      "path": "src/components/production/PortabilityFinancialSummary.tsx",
+      "sha256": "6c140fe33b905c3a3e469d093a9bc5a830f1829c2a0a89782afa32bc86a53a65"
+    },
+    {
+      "path": "src/components/production/PortabilityView.tsx",
+      "sha256": "6aed041594bbd520be53706a7731a2902d995bf9c84c28228989d6b7aa31d135"
+    },
+    {
+      "path": "src/components/production/ProposalBatchSyncButton.tsx",
+      "sha256": "078457948e3ec43e3e48d9e0526b04adbee69a90dfb770b17c00f6996dc55688"
+    },
+    {
+      "path": "src/components/production/ProposalDetailModal.tsx",
+      "sha256": "cb87c20bb83134428a0c011202ce95b3abab8ef7a59fc328db51669cdd3705f6"
+    },
+    {
+      "path": "src/components/production/ProviderProposalSyncCard.tsx",
+      "sha256": "c1d803f5d43a3532d6eba471b30dd9b227a364e77dd561e449a2e10a5ec7eb30"
+    },
+    {
+      "path": "src/components/redesign/GalleryWorkspaces.tsx",
+      "sha256": "83aa3a829777da0312a29dd04d1ddfa3f528d829e0cf5cae4bb082a3d0c1a715"
+    },
+    {
+      "path": "src/components/redesign/KanbanStageNavigator.tsx",
+      "sha256": "c10df95630c53c4b00de1debdb458e3ad2994eedb73c659aedb51763b841e30a"
+    },
+    {
+      "path": "src/components/saas/PlatformMasterCentral.tsx",
+      "sha256": "e63f819a4339f04bca4163000d75ea24023f0b4f98fd1e0a20adb2fe63d687ff"
+    },
+    {
+      "path": "src/components/search/UniversalCommandPalette.tsx",
+      "sha256": "bb0c6234b69b853ee739565767d9c1e2c7275554461b98c3fbb180ba8e6680fb"
+    },
+    {
+      "path": "src/components/simulation/BankPlaybooksPanel.tsx",
+      "sha256": "542d4caec09bc5a513d6143119a94bb61a2e4b6bbc0fb31afbd19bd4142578ec"
+    },
+    {
+      "path": "src/components/simulation/BankPlaybooksView.tsx",
+      "sha256": "8b08bbd717769395d6a4615095625d115705747e13aa7c5c7b27fcefb469ea08"
+    },
+    {
+      "path": "src/components/simulation/BmgCltProposalForm.tsx",
+      "sha256": "a5eb0369af453dce61965c74182e504a4092dfcac1dc3b1c7f278e72bdd7e253"
+    },
+    {
+      "path": "src/components/simulation/BmgCustomerAuthorization.tsx",
+      "sha256": "8d5710802681bb828342d67a4c39225e130ae4927a63263615336e90b3947072"
+    },
+    {
+      "path": "src/components/simulation/C6CltAuthorization.tsx",
+      "sha256": "744fe5124ddd4c6f21721f5259cfa8ab3aed74410f839519c880ff57e6d72f22"
+    },
+    {
+      "path": "src/components/simulation/C6SimulationResults.tsx",
+      "sha256": "d9ce56bd8dadc059f55f054cad672385377c7ba65e5cd3df5b2cbe3f4b1a0af6"
+    },
+    {
+      "path": "src/components/simulation/CltCustomerDataCard.tsx",
+      "sha256": "6002b89e107ae1cf97bb124319d08ca0bee2281bd59f2c0db296c13261d0a3b1"
+    },
+    {
+      "path": "src/components/simulation/CltJourneyWorkspace.tsx",
+      "sha256": "ceafa36b4e55c9ed33306ebeabbe7702fb1cdc59748dc001f12bbb05224aade7"
+    },
+    {
+      "path": "src/components/simulation/CltResults.tsx",
+      "sha256": "d96240a96296f583bdd8cffe899a4ad0fa22fd179a115019f82ba691864653a2"
+    },
+    {
+      "path": "src/components/simulation/DaycovalSimulationModal.tsx",
+      "sha256": "df39f9a46f2efe8e832bb68ec7c929fa262548b2e36dee6ebc8c45bd278eb64f"
+    },
+    {
+      "path": "src/components/simulation/EligibilityResult.tsx",
+      "sha256": "a97700dd3ef763779defdc1569d598849092de99a483bb289a751e37400fc26d"
+    },
+    {
+      "path": "src/components/simulation/FactaSimulationResults.tsx",
+      "sha256": "ec680d703d4c78483f7980aed73cf248455cd9ee3d9ab8cd3003c182bbccea45"
+    },
+    {
+      "path": "src/components/simulation/FinantoInssSimulationModal.tsx",
+      "sha256": "7e572bffad4f28acac7f9906ee8c8dfec150026847f1805a0ffa04f7fcc15894"
+    },
+    {
+      "path": "src/components/simulation/HappyCltSimulationModal.tsx",
+      "sha256": "61200aa2b78a0013936ec823472a45bde4b1e82fdc9e63c6ba3f29bfc5e93abb"
+    },
+    {
+      "path": "src/components/simulation/HappyInssSimulationModal.tsx",
+      "sha256": "c0705f8ed77864c3828093cecb9315a43d9eee3d21778be5e2440c32c4a85289"
+    },
+    {
+      "path": "src/components/simulation/InssBenefitTypeSelect.tsx",
+      "sha256": "dcf6e21ebdbdd272d2709210e82f0bfe751f2b96b6d5dfc4406faa35715ec910"
+    },
+    {
+      "path": "src/components/simulation/OrderedSimulationBanks.tsx",
+      "sha256": "78df6c845ea41b6f2928c24135615e7571a0f544c424af06f2109e6e2e2d48c3"
+    },
+    {
+      "path": "src/components/simulation/ParanaCltSimulation.tsx",
+      "sha256": "0366597aba612ca09cec47fcaeb78b8ec700cb35e108e00b98612828755f1522"
+    },
+    {
+      "path": "src/components/simulation/ParanaNovoOpportunities.tsx",
+      "sha256": "e0fa32861f9f57eb46db35acbaad99b027ba22b295dc47575e0a732a833e7904"
+    },
+    {
+      "path": "src/components/simulation/PartnerSimulationMonthlyReport.tsx",
+      "sha256": "b1a575889396c10b9b8c00f8d26d39909a125c07fc4a6e61949d4e020edc0ff2"
+    },
+    {
+      "path": "src/components/simulation/PortabilityReviewFields.tsx",
+      "sha256": "cd84f66fc208dfcf545a9d2f94b8ebb6eb819e248c7d8bcf05fa163fed00e67e"
+    },
+    {
+      "path": "src/components/simulation/PresencaCltSimulation.tsx",
+      "sha256": "c5b9975eb5985ce6f0c063bfa4fc0eb6b86ce810dce50e38dc0fdc230138d8d6"
+    },
+    {
+      "path": "src/components/simulation/PresencaFgtsSimulation.tsx",
+      "sha256": "d092325d6d3d054b92525f0219154b3045f895acbac82e7142e029605581a4c2"
+    },
+    {
+      "path": "src/components/simulation/PresencaInssBenefits.tsx",
+      "sha256": "82b9e57bad76e471c4daaa70723bdb15858257aab9ba7a6ff21315871e39f7e2"
+    },
+    {
+      "path": "src/components/simulation/ProductSimulationModal.tsx",
+      "sha256": "bea92025d463c4fd3c1c81a7f877514c3a4bc2a1de70ade314b9e87982291aad"
+    },
+    {
+      "path": "src/components/simulation/SimulationCustomerSummary.tsx",
+      "sha256": "078c91035ef731aa172c8e31bd5162a26666aa2293d51cc7442a4e4442417078"
+    },
+    {
+      "path": "src/components/simulation/SimulationFlowSelectorModal.tsx",
+      "sha256": "f31bde72851dd74d7fd33beb9a5d58bbd136a792c7d06d1f6eab4d77042cb13a"
+    },
+    {
+      "path": "src/components/simulation/SimulationImportModal.tsx",
+      "sha256": "58e5c4b7fd3e42d816a0271ce310677ac15e8a82358ae0f3f260d9063f47827c"
+    },
+    {
+      "path": "src/components/simulation/SimulationOfferCard.tsx",
+      "sha256": "14ba90df96f45ae9028b30916b7d1db41149fda2e87a5490352d8dfbba83ab10"
+    },
+    {
+      "path": "src/components/simulation/SimulationSteps.tsx",
+      "sha256": "ab966031050cf5a9ec79570802960eeb8d8b095283f7284c8545395f63f1e611"
+    },
+    {
+      "path": "src/components/simulation/SimulationView.tsx",
+      "sha256": "aedb7ff3a3a4803f778fdc0e589e569946aa80422307f22bd8953a5881e42607"
+    },
+    {
+      "path": "src/components/simulation/SpreadsheetPortRefinWorkspace.tsx",
+      "sha256": "2270578d2cafd9ccc85e93799e49a3bc14940ef2c79f75a853083e24ce1a546c"
+    },
+    {
+      "path": "src/components/simulation/V8ApiAuthorization.tsx",
+      "sha256": "aa32516cc5b0e43772524310e6f6dec61bb2bb43e7b22e129fa65532cfb24121"
+    },
+    {
+      "path": "src/components/simulation/V8CltActions.tsx",
+      "sha256": "f91e4960332ed9c67878bcb9d6d68598ddf021b55c6a292955d1babd3999fce3"
+    },
+    {
+      "path": "src/components/simulation/V8CltConsultation.tsx",
+      "sha256": "15395d89a5bf5525787717446dad68f3b456ec39649898708051a4bdced7dfaf"
+    },
+    {
+      "path": "src/components/simulation/V8WorkerConsentPage.tsx",
+      "sha256": "c0755068af64ab5f7cd06c810a862f88a0cc70eda35ce780f5559e150d1ea352"
+    },
+    {
+      "path": "src/components/simulation/VctexCltActions.tsx",
+      "sha256": "84289919c71da0921c18520b7a4456dd4d98a07a538c05665bf6a659b4e1553b"
+    },
+    {
+      "path": "src/components/support/CentralAtendimentoView.tsx",
+      "sha256": "f38bf6a31e378252e20d6aa48a8a7db2428bdeef40c6b12acd478c6fb0e6bc1f"
+    },
+    {
+      "path": "src/components/support/SimulationWhatsAppConnection.tsx",
+      "sha256": "e59083a18cf260bb26ff1d2ef98eee6ce0dbd9272051ca521371171e49746257"
+    },
+    {
+      "path": "src/components/support/SupportCenter.tsx",
+      "sha256": "3059c9e513a35af9cf1d7fd9c12b7225893a0f4fc36e288a40d8310600a20fd7"
+    },
+    {
+      "path": "src/components/support/SupportReplyTemplates.tsx",
+      "sha256": "71313ef911aec96b2442272c918d650d6dc49f6f409a6e7a89acb1daf32fedbc"
+    },
+    {
+      "path": "src/components/ui/AuthorityBadge.tsx",
+      "sha256": "e27b8bd6d040c4bea831fcba2d71b458f317656843888a1d1e03cf8ddc92f346"
+    },
+    {
+      "path": "src/components/ui/EmptyState.tsx",
+      "sha256": "73de4c8477ee0079e94c34160f2a896dd791ca627b49e247c714446fd6e64dd0"
+    },
+    {
+      "path": "src/components/ui/ErrorState.tsx",
+      "sha256": "d8a19389dea70ed198d019bc8bc9b8962a877363d5bc34e82bd824722a4eecae"
+    },
+    {
+      "path": "src/components/ui/RecordWorkspace.tsx",
+      "sha256": "6ed5dd0a0d9b41c27587b08f9cd62e9ada94c0ddeb8a6044c48500e8013c4261"
+    },
+    {
+      "path": "src/components/ui/Skeleton.tsx",
+      "sha256": "b070e2a7c5495bc536a2bd598a92d6d49768c7e123fbf1218b12c3c2689dfe15"
+    },
+    {
+      "path": "src/components/ui/ToastContainer.tsx",
+      "sha256": "7ef30c2cc919953d2360bfaa024d7f77f019a790356872b925c94ab2970990cd"
+    },
+    {
+      "path": "src/layout-preview.tsx",
+      "sha256": "26800682d3b38a18a48bb731271827894798c681b3012944b986a1486e5a7bfe"
+    }
+  ]
+}

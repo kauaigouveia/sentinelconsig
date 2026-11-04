@@ -1,4 +1,8 @@
 /// <reference types="vite/client" />
+import {paletteStyle} from '../../src/lib/presentationPalette';
+import {ChartPatternDefinitions} from '../../src/components/ui/ChartPatterns';
+import {ThemeProvider,useTheme} from '../../src/context/ThemeContext';
+import {RedesignGallery,ShellGallery} from './RedesignGallery';
 /* Standalone development harness. Never imported by the authenticated application. */
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -17,7 +21,9 @@ const partners = [{id:'visual-partner', login:'DEMO', fullName:'Parceiro de demo
 const users = [{id:'visual-user', name:'Atendente de demonstração', role:'MASTER', customPermissions:[]}];
 const simulations = Array.from({length:4},(_,index)=>({id:`visual-${index}`,cpf:'00000000000',partnerId:'visual-partner',createdById:'visual-user',simulationType:'PORT_REFIN',operationType:'PORT_REFIN',status:index===3?'DIGITADA PELA MESA':'SIMULAÇÃO ENVIADA',createdAt:new Date(Date.now()-index*3600000).toISOString(),selectedCondition:{amount:2500+index*1000},matchedProposalNumber:index===3?'DEMO-004':undefined}));
 StorageService.getActiveUser = () => users[0] as any;
-StorageService.getCurrentTenant = () => null;
+StorageService.getCurrentTenant = () => ({id:'visual-tenant',name:'Empresa de demonstração'}) as any;
+StorageService.getCurrentTenantId=()=> 'visual-tenant';
+StorageService.getWhiteLabel=()=>({companyName:'Empresa de demonstração'}) as any;
 StorageService.getPartners = () => partners as any;
 StorageService.getUsers = () => users as any;
 StorageService.getProducts = () => [];
@@ -46,6 +52,12 @@ realtimeHub.subscribe = () => () => {};
 window.fetch = async (input, options) => {
   const path = typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url;
   if (options?.method && options.method !== 'GET') throw new Error('Escrita bloqueada nesta revisão local');
+  if(path==='/api/public/tenant-branding') return new Response(JSON.stringify({status:'PLATFORM_DEFAULT',domainType:'PLATFORM_DEFAULT',companyName:'Sentinel Consig'}),{status:200,headers:{'Content-Type':'application/json'}});
+  if(path==='/api/integrations/health') {
+    const banks=[['c6','C6 Bank'],['facta','FACTA'],['bmg','BMG'],['happy','Happy'],['finanto','FINANTO'],['nossa-fintech','Nossa Fintech'],['workbank','WorkBank'],['parana','Paraná Banco'],['presenca','Presença Bank'],['v8','V8 Digital'],['vctex','VCTEX CLT']];
+    const integrations=banks.map(([slug,name],index)=>({id:slug,slug,name,code:slug.toUpperCase(),type:'FINTECH',protocol:'Dados sintéticos',environment:'production',active:index<8,configured:index<9,connectionCount:index<9?1:0,enabledConnectionCount:index<8?1:0,status:index===0?'ONLINE':index<8?'ATTENTION':'DISABLED',maskedBaseUrl:'Endereço fictício · sem acesso externo',capabilities:[],lastHealthCheck:index===0?{timestamp:new Date().toISOString(),success:true,latencyMs:12,httpStatus:200}:null,metricsPartial:true}));
+    return new Response(JSON.stringify({timestamp:new Date().toISOString(),overallStatus:'ATTENTION',integrations,summary:{total:11,online:1,attention:7,offline:0,disabled:3,errors24h:0,requests24h:0,metricsPartial:true}}),{status:200,headers:{'Content-Type':'application/json'}});
+  }
   const payloads: Record<string,unknown> = {'/api/simulations':simulations,'/api/partners':partners,'/api/users':users,'/api/products':[],'/api/convenios':[],'/api/settings/simulation-access':{happySimulationAccessEnabled:false},'/api/integrations/finanto/config':{enabled:false},'/api/integrations/nossa-fintech/config':{enabled:false},'/api/simulation-spreadsheets/active?bank=DAYCOVAL':null};
   if (['/api/daycoval','/api/c6-spreadsheet','/api/parana-spreadsheet'].includes(path)) return new Response(JSON.stringify({fileName:'Arquivo fictício para revisão visual.xlsx',versionDate:'2026-10-14',terms:[108,96,84],ratePolicies:[]}),{status:200,headers:{'Content-Type':'application/json'}});
   if (path === '/api/financial') return new Response(JSON.stringify([{id:'visual-entry',title:'Receita fictícia',type:'ENTRADA',amount:1500,category:'SERVICO',status:'REALIZADO',dueDate:'2026-10-14',paymentDate:'2026-10-14'}]),{status:200,headers:{'Content-Type':'application/json'}});
@@ -62,27 +74,40 @@ const {ProductionList} = await import('../../src/components/production/Productio
 const {KanbanBoard} = await import('../../src/components/production/KanbanBoard');
 const {Client360View} = await import('../../src/components/clients/Client360View');
 const {PortabilityView} = await import('../../src/components/production/PortabilityView');
+const {HubIntegracoes} = await import('../../src/components/admin/HubIntegracoes');
 const {CentralPendencias} = await import('../../src/components/admin/CentralPendencias');
 const {GeneralFinanceView} = await import('../../src/components/finance/GeneralFinanceView');
 const {NewProductionModal} = await import('../../src/components/production/NewProductionModal');
 const {CentralAdministracao} = await import('../../src/components/admin/CentralAdministracao');
 const {CentralAutomacoes} = await import('../../src/components/admin/CentralAutomacoes');
 const {SentinelIntelligenceDashboard} = await import('../../src/components/intelligence/SentinelIntelligenceDashboard');
+const {LoginView}=await import('../../src/components/auth/LoginView');
+const {PartnerPortalLayout}=await import('../../src/components/partner-portal/PartnerPortalLayout');
+const {PartnerPortalClient}=await import('../../src/services/partnerPortalClient');
+PartnerPortalClient.getSession=async()=>({authenticated:true,access:{id:'visual-access',name:'Acesso sintético'},partner:{id:'visual-partner',name:'Parceiro de demonstração',code:'DEMO'},tenant:{id:'visual-tenant',name:'Empresa de demonstração'}} as any);
+PartnerPortalClient.getUnreadCount=async()=>0;
+PartnerPortalClient.getDashboard=async()=>({partner:{id:'visual-partner',name:'Parceiro de demonstração',code:'DEMO'},tenant:{id:'visual-tenant',name:'Empresa de demonstração'},metrics:{totalProposals:0,inProgressCount:0,completedCount:0,pendingCount:0,waitingReturnCount:0,totalDisbursed:0,totalContract:0},recentProposals:[]} as any);
 function LocalReview() {
-  const [dark,setDark] = useState(true);
+  const {isDark:dark,toggleTheme}=useTheme();
   const [premium,setPremium] = useState(true);
-  const [module,setModule] = useState('Simulações');
+  const [module,setModule] = useState('Shell');
   const [newProposal,setNewProposal] = useState(false);
-  document.documentElement.classList.toggle('dark',dark);
-  return <main className={premium?'s2-root':'sentinel-app'} style={{minHeight:'100vh',padding:24,background:dark?'#080f1e':'#f1f5fc'}}>
-    <header style={{display:'flex',gap:16,alignItems:'center',marginBottom:24,color:dark?'#f8fafc':'#14243b'}}>
+
+  return <main className={premium?'s2-root':'sentinel-app'} style={{...paletteStyle(null),minHeight:'100vh',padding:['Login','Portal do parceiro'].includes(module)?0:24,background:'var(--bg-canvas)'}}>
+    <ChartPatternDefinitions/>
+    <header style={{display:'flex',gap:16,alignItems:'center',marginBottom:24,color:'var(--text-primary)'}}>
       <strong>REVISÃO LOCAL · Dados fictícios · Sem autenticação</strong>
-      <button onClick={()=>setDark(!dark)}>Alternar tema</button>
+      <button onClick={toggleTheme}>Alternar tema</button>
       <button onClick={()=>setPremium(!premium)}>Comparar {premium?'legado':'V2'}</button>
       <span>Rede externa e gravações bloqueadas</span>
     </header>
-    <nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid #64748b',borderRadius:8,color:dark?'#f8fafc':'#14243b',background:module===name?(dark?'#1b2e48':'#dbeafe'):'transparent'}}>{name}</button>)}</nav>
+    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Login','Portal do parceiro','Design system','Shell','Hub de Integrações','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
     <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
+    {module==='Login'&&<LoginView onLoginSuccess={()=>{}}/>}
+    {module==='Portal do parceiro'&&<PartnerPortalLayout/>}
+    {module==='Design system'&&<RedesignGallery/>}
+    {module==='Hub de Integrações'&&<HubIntegracoes premium/>}
+    {module==='Shell'&&<ShellGallery renderContent={(path,navigate)=>path==='/integracoes'?<HubIntegracoes premium/>:path==='/simulacoes'?<SimulationView premium/>:path==='/propostas'?<ProductionList premium onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>navigate('/esteira')}/>:path==='/esteira'?<KanbanBoard premium/>:path==='/central-pendencias'?<CentralPendencias premium/>:null}/>}
     {module==='Propostas' && <ProductionList premium={premium} onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>setModule('Kanban')} />}
     {module==='Simulações' && <SimulationView premium={premium} />}
     {module==='Kanban' && <KanbanBoard premium={premium} />}
@@ -97,4 +122,4 @@ function LocalReview() {
     <NewProductionModal isOpen={newProposal} onClose={()=>setNewProposal(false)} onSuccess={()=>{}} />
   </main>;
 }
-createRoot(document.getElementById('root')!).render(<LocalReview />);
+createRoot(document.getElementById('root')!).render(<ThemeProvider><LocalReview /></ThemeProvider>);

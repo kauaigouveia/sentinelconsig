@@ -99,7 +99,7 @@ export const StatusBottleneckReport: React.FC = () => {
         name: s.name,
         alcada: s.responsibleGroup || s.responsible,
         slaHours: s.slaHours || 24,
-        colorHex: s.color || '#3b82f6',
+        colorHex: s.color || "var(--text-secondary)",
         count,
         volume,
       };
@@ -150,56 +150,56 @@ export const StatusBottleneckReport: React.FC = () => {
         title="Gargalos & Tempo de Permanência na Esteira"
         subtitle="Mapeamento de retenção de propostas por alçada, tempo de permanência e identificação de gargalos de liquidação"
         badgeText="AUDITORIA DE TEMPO & FLUXO"
-        badgeColor="bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+        badgeColor="bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)] border-[var(--warning-border)] dark:border-[var(--warning-border)]"
       />
 
       {/* Top Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono">
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-4 shadow-2xs space-y-1.5">
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 block font-sans">
+        <div className="rounded-xl border border-[var(--warning-border)] dark:border-[var(--warning-border)] bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] p-4  space-y-1.5">
+          <span className="text-[10px] font-black uppercase tracking-wider text-[var(--warning-text)] dark:text-[var(--warning-text)] block font-sans">
             Volume em Andamento / Retenção
           </span>
-          <p className="text-2xl font-black text-amber-950 dark:text-amber-200">
+          <p className="text-2xl font-black text-[var(--warning-text)] dark:text-[var(--warning-text)]">
             {formatCurrency(totalVolumeTravado)}
           </p>
-          <span className="text-[11px] text-amber-700 dark:text-amber-400 font-bold block font-sans">
+          <span className="text-[11px] text-[var(--warning-text)] dark:text-[var(--warning-text)] font-bold block font-sans">
             Aguardando avanço na esteira
           </span>
         </div>
 
-        <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-4 shadow-2xs space-y-1.5">
-          <span className="text-[10px] font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 block font-sans">
+        <div className="rounded-xl border border-[var(--danger-border)] dark:border-[var(--danger-border)] bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] p-4  space-y-1.5">
+          <span className="text-[10px] font-black uppercase tracking-wider text-[var(--danger-text)] dark:text-[var(--danger-text)] block font-sans">
             Propostas Fora do SLA
           </span>
-          <p className="text-2xl font-black text-rose-950 dark:text-rose-200">
+          <p className="text-2xl font-black text-[var(--danger-text)] dark:text-[var(--danger-text)]">
             {totalOverSlaCount} propostas
           </p>
-          <span className="text-[11px] text-rose-700 dark:text-rose-400 font-bold block font-sans">
+          <span className="text-[11px] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold block font-sans">
             Excederam o tempo limite do status
           </span>
         </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs space-y-1.5">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block font-sans">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  space-y-1.5">
+          <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] block font-sans">
             Status Mais Crítico
           </span>
-          <p className="text-lg font-black text-slate-900 dark:text-white truncate">
+          <p className="text-lg font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)] truncate">
             {statusAnalysis[0]?.name || 'Nenhum'}
           </p>
-          <span className="text-[11px] text-slate-500 block font-sans">
+          <span className="text-[11px] text-[var(--text-secondary)] block font-sans">
             {statusAnalysis[0]?.count || 0} propostas ({formatCurrency(statusAnalysis[0]?.volume || 0)})
           </span>
         </div>
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-bold gap-2 p2-analytics-tabs">
+      <div className="flex border-b border-[var(--field-border)] dark:border-[var(--field-border)] text-xs font-bold gap-2 p2-analytics-tabs">
         <button
           onClick={() => setActiveTab('ALCADA')}
           className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'ALCADA'
-              ? 'border-amber-600 text-amber-600 dark:text-amber-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           Onde a Operação Para? (Por Alçada)
@@ -208,8 +208,8 @@ export const StatusBottleneckReport: React.FC = () => {
           onClick={() => setActiveTab('STATUS_LIST')}
           className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'STATUS_LIST'
-              ? 'border-amber-600 text-amber-600 dark:text-amber-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           Distribuição por Status
@@ -218,8 +218,8 @@ export const StatusBottleneckReport: React.FC = () => {
           onClick={() => setActiveTab('STUCK_PROPOSALS')}
           className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'STUCK_PROPOSALS'
-              ? 'border-amber-600 text-amber-600 dark:text-amber-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[var(--warning-border)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]'
           }`}
         >
           Fila de Atenção Crítica ({stuckProposals.length})
@@ -236,27 +236,27 @@ export const StatusBottleneckReport: React.FC = () => {
             return (
               <div
                 key={alc}
-                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-5 shadow-2xs space-y-3"
+                className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-5  space-y-3"
               >
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                <div className="flex items-center justify-between border-b border-[var(--field-border)] dark:border-[var(--field-border)] pb-2.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     Alçada: {alc}
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-mono">
                     {data.count} propostas
                   </span>
                 </div>
 
                 <div className="space-y-1 font-mono">
-                  <span className="text-[10px] text-slate-400 uppercase block font-sans">Volume Retido</span>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">
+                  <span className="text-[10px] text-[var(--text-secondary)] uppercase block font-sans">Volume Retido</span>
+                  <p className="text-lg font-black text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     {formatCurrency(data.volume)}
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between">
-                  <span className="text-slate-500">Fora do SLA:</span>
-                  <span className={`font-bold font-mono ${data.stuckLonger > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                <div className="pt-2 border-t border-[var(--field-border)] dark:border-[var(--field-border)] text-xs flex items-center justify-between">
+                  <span className="text-[var(--text-secondary)]">Fora do SLA:</span>
+                  <span className={`font-bold font-mono ${data.stuckLonger > 0 ? 'text-[var(--danger-text)] dark:text-[var(--danger-text)]' : 'text-[var(--success-text)] dark:text-[var(--success-text)]'}`}>
                     {data.stuckLonger} contratos
                   </span>
                 </div>
@@ -268,9 +268,9 @@ export const StatusBottleneckReport: React.FC = () => {
 
       {/* TAB CONTENT 2: STATUS LIST */}
       {activeTab === 'STATUS_LIST' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  overflow-x-auto">
+          <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+            <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
               <tr>
                 <th className="px-3.5 py-2.5">Status da Esteira</th>
                 <th className="px-3.5 py-2.5">Alçada</th>
@@ -279,19 +279,19 @@ export const StatusBottleneckReport: React.FC = () => {
                 <th className="px-3.5 py-2.5 text-right font-mono">Volume Total (R$)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+            <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
               {statusAnalysis.map(s => (
-                <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                <tr key={s.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
                   <td className="px-3.5 py-2.5">
-                    <span className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)] flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.colorHex }} />
                       <span>{s.name}</span>
                     </span>
                   </td>
-                  <td className="px-3.5 py-2.5 text-slate-500 font-bold">{s.alcada}</td>
-                  <td className="px-3.5 py-2.5 text-center font-mono text-slate-500">{s.slaHours}h</td>
+                  <td className="px-3.5 py-2.5 text-[var(--text-secondary)] font-bold">{s.alcada}</td>
+                  <td className="px-3.5 py-2.5 text-center font-mono text-[var(--text-secondary)]">{s.slaHours}h</td>
                   <td className="px-3.5 py-2.5 text-right font-mono font-bold">{s.count}</td>
-                  <td className="px-3.5 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                  <td className="px-3.5 py-2.5 text-right font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                     {formatCurrency(s.volume)}
                   </td>
                 </tr>
@@ -303,14 +303,14 @@ export const StatusBottleneckReport: React.FC = () => {
 
       {/* TAB CONTENT 3: STUCK PROPOSALS */}
       {activeTab === 'STUCK_PROPOSALS' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] p-4 shadow-2xs overflow-x-auto">
+        <div className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-4  overflow-x-auto">
           {stuckProposals.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">
+            <div className="text-center py-8 text-[var(--text-secondary)] text-xs">
               Nenhuma proposta fora do prazo de SLA no momento. Esteira em conformidade!
             </div>
           ) : (
-            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-900/80 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+            <table className="w-full text-left text-xs text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
+              <thead className="bg-[var(--bg-canvas)] dark:bg-[var(--bg-surface)] text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--field-border)] dark:border-[var(--field-border)]">
                 <tr>
                   <th className="px-3.5 py-2.5 font-mono">ADE / Proposta</th>
                   <th className="px-3.5 py-2.5">Cliente</th>
@@ -320,28 +320,28 @@ export const StatusBottleneckReport: React.FC = () => {
                   <th className="px-3.5 py-2.5 text-right font-mono">Valor Liberado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+              <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
                 {stuckProposals.map(item => (
-                  <tr key={item.proposal.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                  <tr key={item.proposal.id} className="hover:bg-[var(--bg-canvas)] dark:hover:bg-[var(--bg-surface-elevated)]">
                     <td className="px-3.5 py-2.5">
                       <button
                         onClick={() => setDetailProposalId(item.proposal.id)}
-                        className="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        className="font-mono font-bold text-[var(--link)] dark:text-[var(--link)] hover:underline"
                       >
                         {item.proposal.proposalNumber}
                       </button>
                     </td>
-                    <td className="px-3.5 py-2.5 text-slate-900 dark:text-white font-bold">{item.client?.fullName}</td>
-                    <td className="px-3.5 py-2.5 text-slate-500">{item.bank?.name}</td>
+                    <td className="px-3.5 py-2.5 text-[var(--text-secondary)] dark:text-[var(--text-primary)] font-bold">{item.client?.fullName}</td>
+                    <td className="px-3.5 py-2.5 text-[var(--text-secondary)]">{item.bank?.name}</td>
                     <td className="px-3.5 py-2.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">
                         {item.status?.name}
                       </span>
                     </td>
-                    <td className="px-3.5 py-2.5 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
+                    <td className="px-3.5 py-2.5 text-center font-mono font-bold text-[var(--danger-text)] dark:text-[var(--danger-text)]">
                       {item.dwellHours}h (SLA: {item.slaHours}h)
                     </td>
-                    <td className="px-3.5 py-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="px-3.5 py-2.5 text-right font-mono font-bold text-[var(--text-secondary)] dark:text-[var(--text-primary)]">
                       {formatCurrency(item.proposal.disbursedValue || 0)}
                     </td>
                   </tr>
