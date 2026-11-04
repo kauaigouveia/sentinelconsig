@@ -609,7 +609,7 @@ function AppMainContent() {
               onClick={() => setIsMobileNavigationOpen(false)}
             />
           )}
-          {newUI ? <PreviewSidebar favorites={workspace.favorites} recent={workspace.recent} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-consig-symbol.svg'} /> : <Sidebar
+          {newUI ? <PreviewSidebar favorites={workspace.favorites} recent={workspace.recent} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-symbol-v5.png'} /> : <Sidebar
             currentView={effectiveView}
             currentPath={pathname}
             preferenceKey={preferenceKey}

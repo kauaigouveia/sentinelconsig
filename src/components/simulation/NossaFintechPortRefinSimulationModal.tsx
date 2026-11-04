@@ -1,3 +1,5 @@
+import {StorageService} from '../../services/storageService';
+import {contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
 import {EligibilityResult} from './EligibilityResult';
 import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
 import { PortabilityReviewFields } from './PortabilityReviewFields';
@@ -17,7 +19,7 @@ import { getNossaFintechTroco } from '../../lib/nossaFintech';
 import { InssBenefitTypeSelect } from './InssBenefitTypeSelect';
 import { nossaFintechTableRate, ageAt, finantoAgeError, finantoBenefitError, finantoCashOut, finantoCashOutError, finantoInstallmentError, finantoRefinancingChoices, finantoTableLabel, INSS_TERMS } from '../../lib/inssEligibility';
 
-type SimulationRow = { provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
+type SimulationRow = { contractLabel?: string; sourceForm?: any; unified?: boolean; provider: string; table?: any; success: boolean; requiresReview?: boolean; status?: number; data?: any; error?: string; troco?: number | null; skipped?: boolean; term?: number; lender?: string };
 type Props = { onBack?: () => void; happyEnabled?: boolean; isOpen: boolean; onClose: () => void; partners?: Partner[]; onSuccess?: (simulation: SimulationRequest) => void; onContinue?: (draft: { condition: NonNullable<SimulationRequest['selectedCondition']>; values: Record<string, string>; calculation?: any }) => void };
 const currency = (value: unknown) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const inputClass = 'mt-1 block w-full rounded-lg border border-[var(--field-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm dark:border-[var(--field-border)] dark:bg-[var(--bg-canvas)]';
@@ -25,13 +27,36 @@ const labelClass = 'text-xs font-semibold text-[var(--text-secondary)] dark:text
 const itemsOf = (data: any) => Array.isArray(data?.items) ? data.items : Array.isArray(data?.data?.items) ? data.data.items : [];
 const messagesOf = (data: any) => Array.isArray(data?.messages) ? data.messages.map((item: any) => item?.text).filter(Boolean).join(' ') : '';
 
-export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue }) => {
-  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
-  const [form, setForm] = useState({
+const EMPTY_FORM={
     name: '', cpf: '', birthDate: '', benefitNumber: '', benefitType: '',
     originLenderCode: '', originContractNumber: '', originalTerm: '',
     lastDueBalance: '', installmentFaceValue: '', openedInstallmentNumber: '', numberOfInstallments: '108', refinancingRate: '', benefitContractCount:'', legalRepresentative: false,
-  });
+};
+
+export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, onBack, happyEnabled = false, onClose, partners = [], onSuccess, onContinue }) => {
+  const [portabilityContext,setPortabilityContext]=useState<Record<string,string>>({});
+  const [form, setForm] = useState<typeof EMPTY_FORM & {reviewMetadata?:Record<string,string>}>({...EMPTY_FORM});
+  type FormSnapshot=typeof form & {reviewMetadata?:Record<string,string>};
+  const [contractQueue,setContractQueue]=useState<PortabilityContractDraft[]>([]);
+  const [unify,setUnify]=useState(false);
+  const [progress,setProgress]=useState('');
+  const running=React.useRef(false);
+  const identity=()=>`${StorageService.getCurrentTenantId()}:${StorageService.getActiveUser()?.id||''}`;
+  const scope=React.useRef(identity());
+  const transport=React.useRef<AbortController|null>(null);
+  const request:typeof fetch=async(input,init)=>{
+    if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
+    if(transport.current?.signal.aborted)throw Error('Simulação interrompida.');
+    const response=await fetch(input,{...init,signal:transport.current?.signal});
+    if(response.status===401)transport.current?.abort();
+    if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
+    return response;
+  };
+  useEffect(()=>{
+    const check=()=>{if(scope.current!==identity()){transport.current?.abort();setForm({...EMPTY_FORM});setRows([]);setSelected(null);setContractQueue([]);setProviderNotes([]);setError('Empresa ou sessão alterada. Abra uma nova simulação.');}};
+    window.addEventListener('credit_gestao_storage_update',check);window.addEventListener('storage',check);
+    return()=>{transport.current?.abort();window.removeEventListener('credit_gestao_storage_update',check);window.removeEventListener('storage',check);};
+  },[]);
   const [step,setStep]=useState(0);
   const [rows, setRows] = useState<SimulationRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,14 +66,15 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   const [partnerId, setPartnerId] = useState('');
   const [saved, setSaved] = useState(false);
 
-  useEffect(()=>{setPortabilityContext({});},[form.cpf]);
+  useEffect(()=>{if(!isOpen)transport.current?.abort();else if(!running.current)scope.current=identity();},[isOpen]);
+  useEffect(()=>{setPortabilityContext({});setContractQueue([]);},[form.cpf,form.benefitNumber]);
   if (!isOpen) return null;
 
   const update = (key: keyof typeof form, value: string | boolean) => { setForm(current => ({ ...current, [key]: value })); setRows([]); setSelected(null); setProviderNotes([]); setError(''); };
-  const calculateNossaFintech = async (): Promise<SimulationRow[]> => {
-    const response = await fetch('/api/integrations/nossa-fintech/port-refin/simulate-all', {
+  const calculateNossaFintech = async (form:FormSnapshot): Promise<SimulationRow[]> => {
+    const response = await request('/api/integrations/nossa-fintech/port-refin/simulate-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...portabilityContext,originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: parseCurrency(form.lastDueBalance), installmentFaceValue: parseCurrency(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined }),
+      body: JSON.stringify({ ...(form.reviewMetadata??portabilityContext),originalBank:form.originLenderCode,originalTerm:Number(form.originalTerm),lastDueBalance: parseCurrency(form.lastDueBalance), installmentFaceValue: parseCurrency(form.installmentFaceValue), openedInstallmentNumber: Number(form.openedInstallmentNumber), numberOfInstallments: Number(form.numberOfInstallments), legalRepresentative: form.legalRepresentative, birthDate: form.birthDate, benefitType: Number(form.benefitType), refinancingRate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined }),
     });
     const result = await readJsonResponse(response);
     if (response.status === 422) return [];
@@ -61,32 +87,32 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     ];
   };
 
-  const calculateFacta = async (): Promise<SimulationRow[]> => {
+  const calculateFacta = async (form:FormSnapshot): Promise<SimulationRow[]> => {
     const agreement = portabilityEligibility('facta', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)); if (agreement.blocked) throw new Error(agreement.reason);
-    const response = await fetch('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...portabilityContext,cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: parseCurrency(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined, debt: parseCurrency(form.lastDueBalance), originalBank: form.originLenderCode, originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: parseCurrency(form.installmentFaceValue) }) });
+    const response = await request('/api/integrations/facta/inss/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(form.reviewMetadata??portabilityContext),cpf: normalizeCpf(form.cpf), birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), operation: 'PORT_REFIN', mode: 'INSTALLMENT', value: parseCurrency(form.installmentFaceValue), term: Number(form.numberOfInstallments), rate: form.refinancingRate ? parseCurrency(form.refinancingRate) : undefined, debt: parseCurrency(form.lastDueBalance), originalBank: form.originLenderCode, originalTerm: Number(form.originalTerm), remainingTerm: Number(form.openedInstallmentNumber), originalInstallment: parseCurrency(form.installmentFaceValue) }) });
     const result = await readJsonResponse(response);
     if (!response.ok) throw new Error(result.error || 'Falha ao consultar FACTA.');
     if (result.message && !result.offers?.length) throw new Error(result.message);
     return (result.offers || []).map((offer: any) => ({ provider: 'FACTA', table: { name: offer.name, cod_tabela: offer.code, amount: offer.rate }, success: Boolean(offer.amount), term: offer.term, troco: offer.amount, data: offer, error: offer.amount ? undefined : 'O banco não informou troco nesta condição.' }));
   };
 
-  const calculateWorkbook = async (provider:'DAYCOVAL'|'C6'|'PARANA'):Promise<SimulationRow[]> => {
+  const calculateWorkbook = async (provider:'DAYCOVAL'|'C6'|'PARANA',form:FormSnapshot,group:PortabilityContractDraft[]=[form]):Promise<SimulationRow[]> => {
     const route=provider==='DAYCOVAL'?'daycoval':provider==='PARANA'?'parana-spreadsheet':'c6-spreadsheet';
-    const response=await fetch(`/api/${route}/calculate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...portabilityContext,birthDate:form.birthDate,benefitType:Number(form.benefitType),term:Number(form.numberOfInstallments),benefitContractCount:form.benefitContractCount?Number(form.benefitContractCount):undefined,refinanceRate:form.refinancingRate?parseCurrency(form.refinancingRate):undefined,contracts:[{originBank:form.originLenderCode,originalTerm:Number(form.originalTerm),remaining:Number(form.openedInstallmentNumber),balance:parseCurrency(form.lastDueBalance),installment:parseCurrency(form.installmentFaceValue)}]})});
+    const response=await request(`/api/${route}/calculate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(form.reviewMetadata??portabilityContext),birthDate:form.birthDate,benefitType:Number(form.benefitType),term:Number(form.numberOfInstallments),benefitContractCount:form.benefitContractCount?Number(form.benefitContractCount):undefined,refinanceRate:form.refinancingRate?parseCurrency(form.refinancingRate):undefined,contracts:group.map(contract=>({originBank:contract.originLenderCode,originalTerm:Number(contract.originalTerm),remaining:Number(contract.openedInstallmentNumber),balance:parseCurrency(contract.lastDueBalance),installment:parseCurrency(contract.installmentFaceValue)}))})});
     const result=await readJsonResponse(response);if(!response.ok)throw Error(result.error||`Não foi possível calcular ${provider}.`);
     if(!result.offers?.length)throw Error(result.message||'A planilha não retornou condições calculadas.');
     return result.offers.map((offer:any)=>({provider,table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate},success:true,requiresReview:offer.requiresReview,term:offer.term,troco:offer.amount,data:offer,error:offer.requiresReview?'Estimativa calculada; validar condições documentais e vigência antes de salvar.':undefined}));
   };
 
-  const calculateFinanto = async (): Promise<SimulationRow[]> => {
+  const calculateFinanto = async (form:FormSnapshot): Promise<SimulationRow[]> => {
     const agreement = portabilityEligibility('finanto', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)); if (agreement.blocked) throw new Error(agreement.reason);
     const ageError = finantoAgeError(form.birthDate, Number(form.numberOfInstallments),undefined,'PORT_REFIN');
     if (ageError) throw new Error(ageError);
-    const configResponse = await fetch('/api/integrations/finanto/config', { credentials: 'same-origin' });
+    const configResponse = await request('/api/integrations/finanto/config', { credentials: 'same-origin' });
     const config = configResponse.ok ? await configResponse.json() : null;
     if (!config?.isConfigured || !config?.enabled) throw new Error('FINANTO não está configurada e ativada para esta empresa.');
     const call = async (endpoint: string, body: any) => {
-      const response = await fetch('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint, body, clientBirthDate: form.birthDate, benefitType: Number(form.benefitType),portabilityContext }) });
+      const response = await request('/api/integrations/finanto/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'POST', endpoint, body, clientBirthDate: form.birthDate, benefitType: Number(form.benefitType),portabilityContext }) });
       const data = await response.json();
       if (!response.ok || messagesOf(data)) throw new Error(data.error || messagesOf(data) || 'Falha na consulta FINANTO.');
       return data;
@@ -136,32 +162,62 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
   };
 
   const calculate = async (event: React.FormEvent) => {
-    event.preventDefault(); setSelected(null); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
-    if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false); return; }
-    if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false); return; }
+    event.preventDefault(); if(running.current)return;transport.current=new AbortController();running.current=true; setSelected(null); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
+    if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false);running.current=false; return; }
+    if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false);running.current=false; return; }
     try {
-      const calls = await Promise.allSettled([calculateNossaFintech(), calculateFinanto(), calculateFacta(), calculateWorkbook('DAYCOVAL'), calculateWorkbook('C6'), calculateWorkbook('PARANA')]);
-      const combined: SimulationRow[] = [];
-      const notes: string[] = [];
-      calls.forEach((result, index) => {
-        const provider = ['Nossa Fintech', 'FINANTO', 'FACTA', 'DAYCOVAL', 'C6', 'PARANA'][index];
-        if (result.status === 'fulfilled') combined.push(...result.value);
-        else notes.push(`${provider}: ${result.reason?.message || 'não foi possível simular'}`);
-      });
-      const eligible = combined.filter(row => row.troco == null || row.troco >= 0);
-      setRows(eligible);
-      setProviderNotes(notes);
-      if (!eligible.length) setError('Nenhuma simulação elegível com troco não negativo foi retornada para os dados informados.');
-    } finally { setLoading(false); }
+      const currentKey=contractKey(form);
+      const contracts=[...contractQueue.filter(c=>contractKey(c)!==currentKey),contractDraft({...form,reviewMetadata:portabilityContext})];
+      validateSimulationContracts(contracts);
+      const combined:SimulationRow[]=[],notes:string[]=[];
+      for(const [index,contract] of contracts.entries()){
+        if(transport.current?.signal.aborted)throw Error('Simulação interrompida. Verifique a sessão e as permissões.');
+        const snapshot={...form,...contract};
+        const label=`Contrato ${index+1} · banco ${contract.originLenderCode} · parcela ${currency(parseCurrency(contract.installmentFaceValue))}`;
+        setProgress(`Simulando contrato ${index+1} de ${contracts.length}`);
+        const calls=await Promise.allSettled([calculateNossaFintech(snapshot),calculateFinanto(snapshot),calculateFacta(snapshot),calculateWorkbook('DAYCOVAL',snapshot),calculateWorkbook('C6',snapshot),calculateWorkbook('PARANA',snapshot)]);
+        calls.forEach((result,index)=>{
+          const provider=['Nossa Fintech','FINANTO','FACTA','DAYCOVAL','C6','PARANA'][index];
+          if(result.status==='fulfilled')combined.push(...result.value.map(row=>({...row,contractLabel:label,sourceForm:snapshot})));
+          else notes.push(`${label} · ${provider}: ${result.reason?.message||'não foi possível simular'}`);
+        });
+        if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
+        setRows(combined.filter(row=>row.troco==null||row.troco>=0));setProviderNotes([...notes]);
+      }
+      if(transport.current?.signal.aborted)throw Error('Simulação interrompida. Verifique a sessão e as permissões.');
+      if(unify&&contracts.length>1){
+        setProgress('Calculando combinações Daycoval pela planilha');
+        let offset=0;
+        while(true){
+        setProgress(`Calculando unificações Daycoval · bloco ${Math.floor(offset/35)+1}`);
+        const response=await request('/api/daycoval/calculate-groups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({offset,...(form.reviewMetadata??portabilityContext),birthDate:form.birthDate,benefitType:Number(form.benefitType),term:Number(form.numberOfInstallments),refinanceRate:form.refinancingRate?parseCurrency(form.refinancingRate):undefined,contracts:contracts.map(c=>({reviewMetadata:c.reviewMetadata,contractNumber:c.originContractNumber,originBank:c.originLenderCode,originalTerm:Number(c.originalTerm),remaining:Number(c.openedInstallmentNumber),balance:parseCurrency(c.lastDueBalance),installment:parseCurrency(c.installmentFaceValue)}))})});
+        const data=await readJsonResponse(response);
+        if(!response.ok){notes.push(`Unificação Daycoval: ${data.error||'cálculo indisponível'}`);break;}
+        else for(const result of data.groups||[]){
+          const label=`Unificação Daycoval · contratos ${result.indices.map((index:number)=>index+1).join(' + ')}`;
+          if(result.error||!result.offers?.length)notes.push(`${label}: ${result.error||result.message||'Sem oferta'}`);
+          for(const offer of result.offers||[])combined.push({provider:'DAYCOVAL',contractLabel:label,unified:true,requiresReview:true,success:true,term:offer.term,troco:offer.amount,data:offer,table:{name:offer.name,cod_tabela:offer.code,amount:offer.rate}});
+        }
+        if(scope.current!==identity())throw Error('Empresa ou sessão alterada. Abra uma nova simulação.');
+        setRows(combined.filter(row=>row.troco==null||row.troco>=0));setProviderNotes([...notes]);
+        if(data.nextOffset==null)break;
+        if(!Number.isInteger(data.nextOffset)||data.nextOffset<=offset)throw Error('Resposta inválida no acompanhamento das unificações.');
+        offset=data.nextOffset;
+        }
+      }
+      if(!combined.some(row=>row.success))setError('Nenhuma oferta calculada; confira as pendências por contrato e banco.');
+    } catch(error:any){setError(error.message||'Não foi possível simular os contratos.');}
+    finally { setLoading(false);running.current=false;setProgress(''); }
   };
 
-  const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || parseCurrency(form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : ['FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
-  const draftValues = () => ({ ...Object.fromEntries(Object.entries(form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
+  const conditionFor = (row: SimulationRow): NonNullable<SimulationRequest['selectedCondition']> => ({ provider: row.provider, tableId: String(row.table?.id || row.table?.cod_tabela || ''), tableName: row.table?.name || 'Portabilidade + refinanciamento', amount: Number(row.troco), installment: row.data?.installment || row.data?.refinancing?.installmentValue || parseCurrency(row.sourceForm?.installmentFaceValue??form.installmentFaceValue), term: Number(row.term), rate: row.provider === 'FINANTO' ? Number(row.table?.amount) : ['FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) ? row.data?.rate ?? null : nossaFintechTableRate(row.table || {}) });
+  const draftValues = () => ({ ...Object.fromEntries(Object.entries(selected?.sourceForm||form).filter(([, value]) => typeof value === 'string')) as Record<string, string>, partnerId, rate: String(selected ? conditionFor(selected).rate || form.refinancingRate : form.refinancingRate), term: form.numberOfInstallments });
   const save = async () => {
     if (!selected || selected.requiresReview || !Number.isFinite(selected.troco) || !(Number(selected.troco) > 0) || !partnerId) { setError('Selecione uma oferta e o parceiro responsável.'); return; }
+    const form:FormSnapshot=selected.sourceForm;
     setLoading(true); setError('');
     try {
-      const response = await fetch('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance } } }) });
+      const response = await request('/api/simulations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cpf: normalizeCpf(form.cpf), partnerId, simulationType: 'INSS_MULTI', operationType: 'PORT_REFIN', selectedCondition: conditionFor(selected), customerData: { birthDate: form.birthDate, benefitNumber: form.benefitNumber, benefitType: Number(form.benefitType), originContract: { lenderCode: form.originLenderCode, contractNumber: form.originContractNumber, term: form.originalTerm, installmentsRemaining: form.openedInstallmentNumber, installmentValue: form.installmentFaceValue, dueBalanceValue: form.lastDueBalance } } }) });
       const data = await readJsonResponse(response); if (!response.ok) throw new Error(data.error);
       setSaved(true); onSuccess?.(data);
     } catch (error: any) { setError(error.message); } finally { setLoading(false); }
@@ -179,7 +235,7 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <InssBenefitTypeSelect className={labelClass} required value={form.benefitType} onChange={value => update('benefitType', value)} />
         </div></section>
         <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);setRows([]);setSelected(null);}}/>
-        <SimulationContinue onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset><fieldset hidden={step!==1} disabled={step!==1} className="space-y-5"><section className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">2. Contrato de origem</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SimulationContinue onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset><fieldset hidden={step!==1} disabled={step!==1||loading} className="space-y-5"><section className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">2. Contrato de origem</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <BankCodeSelect label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
           <label className={labelClass}>Número do contrato<input required value={form.originContractNumber} onChange={e => update('originContractNumber', e.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Prazo original (meses)<input required type="number" min="1" value={form.originalTerm} onChange={e => update('originalTerm', e.target.value)} className={inputClass} /></label>
@@ -191,21 +247,32 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
           <label className={labelClass}>Total de contratos no benefício (Paraná)<select value={form.benefitContractCount} onChange={e=>update('benefitContractCount',e.target.value)} className={inputClass}><option value="">Informar para calcular Paraná</option>{Array.from({length:13},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></label>
           <label className="mt-5 inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={form.legalRepresentative} onChange={e => update('legalRepresentative', e.target.checked)} />Possui representante legal</label>
         </div></section>
+        <section className="space-y-3 rounded-xl border p-4">
+          <h3 className="font-semibold">Múltiplos contratos · até {MAX_SIMULATION_CONTRACTS}</h3>
+          <p className="text-xs text-[var(--text-secondary)]">Adicione o contrato atual e preencha o próximo. Ao comparar, o contrato do formulário também será incluído, sem duplicar banco e número.</p>
+          <button type="button" disabled={loading} className="rounded-lg border px-3 py-2 text-sm" onClick={event=>{
+            if(!event.currentTarget.closest('form')?.reportValidity())return;
+            try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setError('');setRows([]);setSelected(null);}catch(error:any){setError(error.message);}
+          }}>Adicionar contrato à lista</button>
+          {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span><button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);}}>Remover</button></div>)}
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unify} disabled={loading} onChange={e=>setUnify(e.target.checked)}/>Calcular também unificações Daycoval de 2 ou 3 contratos</label>
+          <p className="text-xs text-[var(--warning-text)] dark:text-[var(--warning-text)]">Alternativas que usam o mesmo contrato não podem ser somadas. Unificações são estimativas para revisão e não geram propostas.</p>
+        </section>
         <p className="rounded-lg bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">As integrações retornam propostas de simulação separadas. Os dados pessoais são usados para identificar a modalidade; confirme autorização do cliente antes de consultar os bancos.</p>
         {error && <div role="alert" className="rounded-lg bg-[var(--danger-bg)] p-3 text-sm text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]"><AlertCircle className="mr-2 inline h-4 w-4" />{error}</div>}
         <SimulationBack onBack={()=>setStep(0)} disabled={loading} label="Voltar ao cliente"/><button type="submit" disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-[var(--action)] px-4 py-2.5 text-sm font-semibold text-[var(--action-ink)] disabled:opacity-90"><Activity className="h-4 w-4" />{loading ? <><LoaderCircle className="h-4 w-4 animate-spin" />Calculando…</> : 'Comparar ofertas'}</button>
       </fieldset></form>
       {step===2 && <SimulationBack onBack={()=>setStep(1)} disabled={loading} label="Voltar ao contrato"/>}
       {step===2 && error && <p role="alert" className="my-3 rounded-lg bg-[var(--danger-bg)] p-4 text-sm text-[var(--danger-text)]">{error}</p>}
-      <div hidden={step!==2}>{loading && <p role="status" className="my-4 rounded-xl bg-[var(--info-bg)] p-5 text-sm">Consultando as condições disponíveis…</p>}
+      <div hidden={step!==2}>{loading && <p role="status" className="my-4 rounded-xl bg-[var(--info-bg)] p-5 text-sm">{progress||'Consultando as condições disponíveis…'}</p>}
 
       {happyEnabled && portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <p role="status" className="mt-3 text-sm text-[var(--warning-text)]">{portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).reason}</p>}
       {happyEnabled && !portabilityEligibility('happy', form.originLenderCode, paidFromTerms(form.originalTerm, form.openedInstallmentNumber)).blocked && <details className="mt-5 rounded-xl border border-[var(--field-border)] p-3 dark:border-[var(--field-border)]"><summary className="cursor-pointer font-bold">Happy INSS · autorização e simulação</summary><HappyInssSimulationModal embedded initialOperation="PORTABILIDADE_REFIN" isOpen key={`happy-${form.cpf}-${form.benefitNumber}`} initialData={{ cpf: form.cpf, birthDate: form.birthDate, benefit: form.benefitNumber, partnerId }} partners={partners} onClose={() => {}} onSuccess={simulation => onSuccess?.(simulation)} /></details>}
       {rows.some(row=>row.provider==='DAYCOVAL'&&row.success&&row.term!==Number(form.numberOfInstallments))&&<p role="status" className="mt-4 text-sm text-[var(--link)]">Daycoval: condição calculada em {rows.find(row=>row.provider==='DAYCOVAL'&&row.success)?.term} meses. Prazo solicitado: {form.numberOfInstallments} meses.</p>}
       {providerNotes.length > 0 && <div className="mt-4 space-y-1 rounded-lg bg-[var(--warning-bg)] p-3 text-xs text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]">{providerNotes.map(note => <p key={note}>{note}</p>)}</div>}
-      {rows.some(row => !row.skipped) && <section className="mt-6"><h3 className="mb-3 text-sm font-bold">Resultados por integração e tabela</h3><div className="overflow-x-auto rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]"><table className="w-full text-left text-sm"><thead className="bg-[var(--bg-surface-elevated)] text-xs dark:bg-[var(--bg-surface-elevated)]"><tr><th className="p-3">Integração / instituição</th><th className="p-3">Tabela</th><th className="p-3">Taxa refin.</th><th className="p-3">Prazo</th><th className="p-3">Troco retornado</th><th className="p-3">Estado / seleção</th></tr></thead><tbody>{rows.filter(row => !row.skipped).map((row, index) => <tr key={`${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`} className="border-t border-[var(--field-border)] dark:border-[var(--field-border)]"><td className="p-3">{row.provider}{row.lender && <span className="block text-xs text-[var(--text-secondary)]">{row.lender}</span>}</td><td className="p-3 font-medium">{row.table?.name || row.table?.cod_tabela || 'Tabela Port/Refin'}<span className="block text-xs font-normal text-[var(--text-secondary)]">Código: {row.table?.cod_tabela || '—'}{row.table?.originalName ? ` · API: ${row.table.originalName}` : ''}</span></td><td className="p-3">{['FINANTO','FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) && Number(row.table?.amount)>0 ? `${Number(row.table?.amount).toLocaleString('pt-BR')}%` : row.table?.name?.match(/([12][.,]\d+)\s*%/)?.[0] || '—'}</td><td className="p-3">{row.term} meses</td><td className="p-3 font-semibold">{row.success && row.troco !== null && row.troco !== undefined ? currency(row.troco) : '—'}</td><td className="p-3">{row.success ? <><span className="block text-xs text-[var(--text-secondary)]">{row.requiresReview?'Estimativa · análise para contratação pendente':''}</span><button type="button" disabled={row.requiresReview || !(Number(row.troco) > 0)} onClick={() => { setSelected(row); setSaved(false); }} className="rounded-lg border px-3 py-2 text-[var(--success-text)]">{selected === row ? 'Selecionada' : 'Selecionar'}</button></> : <EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error||'Consulta indisponível; tente novamente ou solicite orientação à mesa.'}}/>}</td></tr>)}</tbody></table></div></section>}
+      {rows.some(row => !row.skipped) && <section className="mt-6"><h3 className="mb-3 text-sm font-bold">Resultados por integração e tabela</h3><div className="overflow-x-auto rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)]"><table className="w-full text-left text-sm"><thead className="bg-[var(--bg-surface-elevated)] text-xs dark:bg-[var(--bg-surface-elevated)]"><tr><th className="p-3">Contrato / Integração</th><th className="p-3">Tabela</th><th className="p-3">Taxa refin.</th><th className="p-3">Prazo</th><th className="p-3">Nova parcela</th><th className="p-3">Troco retornado</th><th className="p-3">Estado / seleção</th></tr></thead><tbody>{rows.filter(row => !row.skipped).map((row, index) => <tr key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`} className="border-t border-[var(--field-border)] dark:border-[var(--field-border)]"><td className="p-3"><span className="block text-xs text-[var(--text-secondary)]">{row.contractLabel}</span>{row.provider}{row.lender && <span className="block text-xs text-[var(--text-secondary)]">{row.lender}</span>}</td><td className="p-3 font-medium">{row.table?.name || row.table?.cod_tabela || 'Tabela Port/Refin'}<span className="block text-xs font-normal text-[var(--text-secondary)]">Código: {row.table?.cod_tabela || '—'}{row.table?.originalName ? ` · API: ${row.table.originalName}` : ''}</span></td><td className="p-3">{['FINANTO','FACTA','DAYCOVAL','C6','PARANA'].includes(row.provider) && Number(row.table?.amount)>0 ? `${Number(row.table?.amount).toLocaleString('pt-BR')}%` : row.table?.name?.match(/([12][.,]\d+)\s*%/)?.[0] || '—'}</td><td className="p-3">{row.term} meses</td><td className="p-3">{row.success?currency(conditionFor(row).installment):'—'}</td><td className="p-3 font-semibold">{row.success && row.troco !== null && row.troco !== undefined ? currency(row.troco) : '—'}</td><td className="p-3">{row.success ? <><span className="block text-xs text-[var(--text-secondary)]">{row.requiresReview?'Estimativa · análise para contratação pendente':''}</span><button type="button" disabled={row.requiresReview || !(Number(row.troco) > 0)} onClick={() => { setSelected(row); setSaved(false); }} className="rounded-lg border px-3 py-2 text-[var(--success-text)]">{selected === row ? 'Selecionada' : 'Selecionar'}</button></> : <EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error||'Consulta indisponível; tente novamente ou solicite orientação à mesa.'}}/>}</td></tr>)}</tbody></table></div></section>}
       {selected && <section className="mt-4 space-y-3 rounded-xl border p-4"><p className="font-semibold">Oferta selecionada: {selected.table?.name} · {selected.provider}</p><label className={labelClass}>Parceiro responsável<select className={inputClass} value={partnerId} onChange={e => setPartnerId(e.target.value)}><option value="">Selecione</option>{partners.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.name || p.fullName}</option>)}</select></label>{saved ? <p role="status" className="text-[var(--success-text)]">Simulação salva na esteira, aguardando digitação pela mesa.</p> : <div className="flex gap-3"><button type="button" disabled={loading} onClick={save} className="rounded-lg border px-4 py-2">{loading ? 'Salvando...' : 'Salvar simulação'}</button>{onContinue && <button type="button" disabled={loading} onClick={() => { if (!partnerId) { setError('Selecione o parceiro responsável.'); return; } onContinue({ condition: conditionFor(selected), values: draftValues(), calculation: selected.provider === 'FINANTO' ? selected.data : undefined }); }} className="rounded-lg bg-[var(--action)] px-4 py-2 text-[var(--action-ink)]">Seguir para digitação</button>}</div>}</section>}
-      {rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
+      {rows.some(row => row.skipped) && <details className="mt-4 rounded-xl border border-[var(--warning-border)] p-4 text-sm dark:border-[var(--warning-border)]"><summary className="cursor-pointer font-semibold">Tabelas sem oferta ou com validação pendente ({rows.filter(row => row.skipped).length})</summary><div className="mt-3 space-y-2">{rows.filter(row => row.skipped).map((row, index) => <div key={`${row.contractLabel}-${row.provider}-${row.table?.cod_tabela || index}-${row.table?.amount || index}`}><strong>{row.contractLabel} · {row.provider} · {row.table?.name || row.table?.cod_tabela}</strong><EligibilityResult input={{bank:row.provider,product:'INSS',operation:'PORT_REFIN',table:row.table?.name,message:row.error}}/></div>)}</div></details>}
       <BankPlaybooksPanel input={{ ...portabilityReviewMetadata(portabilityContext),originBank: form.originLenderCode, paidInstallments: paidFromTerms(form.originalTerm, form.openedInstallmentNumber), birthDate: form.birthDate, species: String(form.benefitType), operation: 'PORT_REFIN', term: Number(form.numberOfInstallments), debt: parseCurrency(form.lastDueBalance), originalInstallment: parseCurrency(form.installmentFaceValue), remainingInstallments: form.openedInstallmentNumber.trim()?Number(form.openedInstallmentNumber):undefined }} />
       </div>
       </div>

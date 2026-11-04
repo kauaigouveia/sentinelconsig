@@ -270,7 +270,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
     }
   };
 
-  const items = getHierarchy();
+  const items = getHierarchy().filter(item=>item.label.trim().toLocaleLowerCase('pt-BR')!=='início');
 
   return (
     <nav

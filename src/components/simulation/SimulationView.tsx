@@ -1062,7 +1062,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             <Plus className="h-4 w-4" />
             <span>Nova simulação</span>
           </button>
-          <button type="button" onClick={() => setActiveTab('PORT_REFIN_PLANILHAS')} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-bold text-[var(--info-text)] dark:border-[var(--border-default)] dark:text-[var(--info-text)]"><FileSpreadsheet size={16} />PORT + REFIN · Planilhas</button>
+          <button type="button" onClick={() => setIsNossaFintechPortRefinOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-bold text-[var(--info-text)] dark:border-[var(--border-default)] dark:text-[var(--info-text)]"><FileSpreadsheet size={16} />Multissimulação INSS</button>
         </div>
       </div>
 

@@ -390,7 +390,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-system-status"
             onClick={() => setIsSystemStatusOpen(!isSystemStatusOpen)}
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] transition-transform cursor-pointer"
+            className="flex items-center gap-1.5 h-[var(--header-control-height)] px-2.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] transition-transform cursor-pointer"
             title="Status dos Serviços"
           >
             <span
@@ -475,7 +475,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="btn-notifications-header"
           onClick={onOpenNotifications}
-          className="relative h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
+          className="relative h-[var(--header-control-height)] w-[var(--header-control-height)] flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
           title="Notificações do Sistema"
         >
           <Bell className="h-4 w-4" />
@@ -491,7 +491,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-toggle-focus"
             onClick={onToggleFocusMode}
-            className="h-8 w-8 hidden md:flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
+            className="h-[var(--header-control-height)] w-[var(--header-control-height)] hidden md:flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
             title="Modo Foco (Alt+F)"
           >
             <Maximize2 className="h-3.5 w-3.5" />
@@ -502,7 +502,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="btn-theme-toggle"
           onClick={toggleTheme}
-          className="h-8 w-8 flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
+          className="h-[var(--header-control-height)] w-[var(--header-control-height)] flex items-center justify-center rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
           title={isDark ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
         >
           {isDark ? <Sun className="h-4 w-4 text-[var(--warning-text)]" /> : <Moon className="h-4 w-4 text-[var(--text-secondary)]" />}
@@ -513,7 +513,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-user-profile-menu"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 h-8.5 px-2.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
+            className="flex items-center gap-2 h-[var(--header-control-height)] px-2.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer "
             title={getUserDisplayTitle()}
           >
             <div className="h-5.5 w-5.5 rounded-md    text-[var(--text-primary)] text-[10px] font-black flex items-center justify-center shrink-0 ">

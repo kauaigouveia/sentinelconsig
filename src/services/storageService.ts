@@ -4896,7 +4896,7 @@ export class StorageService {
       whiteLabel: {
         companyName: 'SENTINEL CONSIG',
         tradeName: 'Gestão de Produção de Consignado',
-        logoUrl: '/branding/sentinel-consig-logo-transparent.png',
+        logoUrl: '/branding/sentinel-symbol-v5.png',
         primaryColor: '#2563eb',
         supportEmail: 'suporte@sentinelconsig.com.br',
         footerText: 'SENTINEL CONSIG © 2026 - Central de Produção de Consignado',
@@ -4909,7 +4909,7 @@ export class StorageService {
       wl.companyName = 'SENTINEL CONSIG';
     }
     if (!wl.logoUrl || wl.logoUrl === '/evolve_logo.png' || wl.logoUrl === '/app_logo.png' || wl.logoUrl === '/sentinel_logo.png') {
-      wl.logoUrl = '/branding/sentinel-consig-logo-transparent.png';
+      wl.logoUrl = '/branding/sentinel-symbol-v5.png';
     }
     if (!wl.supportEmail || wl.supportEmail.includes('evolvegestao') || wl.supportEmail.includes('creditpro')) {
       wl.supportEmail = 'suporte@sentinelconsig.com.br';
@@ -4932,7 +4932,7 @@ export class StorageService {
     return this.getConfig().whiteLabel || {
       companyName: 'SENTINEL CONSIG',
       tradeName: 'Gestão de Produção de Consignado',
-      logoUrl: '/branding/sentinel-consig-logo-transparent.png',
+      logoUrl: '/branding/sentinel-symbol-v5.png',
       primaryColor: '#2563eb',
       supportEmail: 'suporte@sentinelconsig.com.br',
       footerText: 'SENTINEL CONSIG © 2026 - Central de Produção de Consignado',

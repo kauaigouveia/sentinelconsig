@@ -70,7 +70,7 @@ export class BrandingService {
       }
       iconLink.removeAttribute('type');
       const favicon = branding.faviconUrl || branding.logoUrl;
-      iconLink.href = !favicon || favicon.startsWith('/branding/sentinel-') ? '/branding/sentinel-icon-transparent-v3.png' : favicon;
+      iconLink.href = !favicon || favicon.startsWith('/branding/sentinel-') ? '/branding/sentinel-favicon-v5.png' : favicon;
     }
   }
 }

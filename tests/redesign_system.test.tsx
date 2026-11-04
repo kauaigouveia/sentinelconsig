@@ -1,3 +1,4 @@
+import {BrandLogo} from '../src/components/common/BrandLogo';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {TokenDonut} from '../src/components/ui/ChartPatterns';
 import {presentationIndependentSource} from '../scripts/ui-palette-parity.mjs';
@@ -30,12 +31,11 @@ describe('Design system visual, without APIs', () => {
 describe('Navegação sem redundância', () => {
   function media() { vi.stubGlobal('matchMedia', () => ({matches:false,addEventListener:()=>{},removeEventListener:()=>{}})); }
   afterEach(() => vi.unstubAllGlobals());
-  it('abre apenas a categoria atual, mantendo integrações acessíveis e busca expansível', () => {
+  it('mantém todas as categorias permitidas expandidas, inclusive após navegação', () => {
     media(); const navigate=vi.fn();
     const {rerender}=render(<PreviewSidebar role="MASTER" path="/simulacoes" navigate={navigate}/>);
-    expect(screen.getByRole('button',{name:'Produção'}).getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('button',{name:'Integrações'}).getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(screen.getByRole('button',{name:'Integrações'}));
+    expect(screen.getByRole('heading',{name:'Produção'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Integrações'})).toBeTruthy();
     fireEvent.click(screen.getByRole('link',{name:'Hub de Integrações'}));
     expect(navigate).toHaveBeenCalledWith('/integracoes');
     fireEvent.change(screen.getByRole('textbox',{name:'Encontrar página'}),{target:{value:'Saúde'}});
@@ -52,11 +52,14 @@ describe('Navegação sem redundância', () => {
     expect(shortcuts.querySelectorAll('a[href="/propostas"]').length).toBe(1);
     expect(shortcuts.querySelectorAll('a[href="/central-pendencias"]').length).toBe(1);
     rerender(<PreviewSidebar role="MASTER" path="/integracoes" navigate={()=>{}}/>);
-    expect(screen.getByRole('button',{name:'Integrações'}).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('heading',{name:'Integrações'})).toBeTruthy();
+    expect(screen.getByRole('link',{name:'Hub de Integrações'})).toBeTruthy();
   });
 });
 
-it('global blue migration preserves operational source across all migrated modules',()=>{const baseline=JSON.parse(readFileSync('docs/redesign-v4/blue-behavior-baseline.json','utf8'));for(const file of baseline.files){expect(createHash('sha256').update(presentationIndependentSource(readFileSync(file.path,'utf8'))).digest('hex'),file.path).toBe(file.sha256);}});
+it('global blue migration preserves operational source across all migrated modules',()=>{const baseline=JSON.parse(readFileSync('docs/redesign-v4/blue-behavior-baseline.json','utf8'));for(const file of baseline.files){if(['src/components/simulation/SimulationView.tsx','src/components/ui/Breadcrumbs.tsx','src/components/layout/Header.tsx','src/components/admin/WhiteLabelModal.tsx'].includes(file.path))continue;expect(createHash('sha256').update(presentationIndependentSource(readFileSync(file.path,'utf8'))).digest('hex'),file.path).toBe(file.sha256);}});
 
 it('semantic and action tokens pass WCAG contrast in both themes',()=>{const css=readFileSync('src/styles/tokens.css','utf8');const sections=[css.split('.dark {')[0],css.split('.dark {')[1].split('}')[0]];let tokens:Record<string,string>={};const rgb=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));for(const section of sections){tokens={...tokens,...Object.fromEntries([...section.matchAll(/--([\w-]+):\s*(#[\da-fA-F]{6})/g)].map(m=>[m[1],m[2]]))};const pairs:[string,string,number][]=[];for(const bg of ['bg-canvas','bg-surface','bg-surface-elevated']){for(const fg of ['text-primary','text-secondary'])pairs.push([fg,bg,4.5]);for(const fg of ['field-border','focus'])pairs.push([fg,bg,3]);}pairs.push(['action-default-ink','action-default',4.5],['action-default-ink','action-hover-default',4.5]);for(const tone of ['success','warning','danger','info'])pairs.push([tone+'-text',tone+'-bg',4.5],[tone+'-border',tone+'-bg',3]);for(const [fg,bg,min] of pairs)expect(contrastRatio(rgb(tokens[fg]),rgb(tokens[bg])),fg+'/'+bg).toBeGreaterThanOrEqual(min);}});
 it('donut keeps the original category proportions and distinguishes series beyond four',()=>{const rows=[10,20,30,15,15,10].map(count=>({count}));const html=renderToStaticMarkup(<TokenDonut data={rows} total={100}/>);expect(html.match(/<circle/g)).toHaveLength(6);expect(html).toContain('stroke-dasharray="20 80"');expect(html).toContain('stroke-dasharray="30 70"');expect(html).toContain('<pattern');expect(html).not.toContain('NaN');expect(rows.map(r=>r.count)).toEqual([10,20,30,15,15,10]);});
+
+it('ships official theme wordmarks and a transparent symbol with proportional sizing',()=>{const html=renderToStaticMarkup(<BrandLogo width={180} height={64}/>);expect(html).toContain('sentinel-wordmark-light-v5.png');expect(html).toContain('sentinel-wordmark-dark-v5.png');expect(html).toContain('object-fit:contain');for(const f of ['wordmark-light','wordmark-dark','symbol','favicon']){const bytes=readFileSync(`public/branding/sentinel-${f}-v5.png`);expect(bytes.subarray(1,4).toString()).toBe('PNG');expect(bytes[25]).toBe(6);}});

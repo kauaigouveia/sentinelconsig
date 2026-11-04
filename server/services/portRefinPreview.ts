@@ -42,10 +42,10 @@ function previewAtTerm(bank:SpreadsheetBank,book:any,raw:any,today:string){
   const originBank=resolveInstitutionCode(String(contract.originBank||'')),originalTerm=Number(contract.originalTerm),remaining=Number(contract.remaining),balance=parseCurrency(contract.balance),installment=parseCurrency(contract.installment);
   const paidInstallments=paidFromTerms(originalTerm,remaining);
   if(!originBank||!Number.isInteger(originalTerm)||!Number.isInteger(remaining)||remaining<1||remaining>originalTerm||paidInstallments==null||!Number.isFinite(balance)||balance==null||balance<=0||!Number.isFinite(installment)||installment==null||installment<=0)throw Error('Revise banco de origem, prazo original, restantes, saldo e parcela.');
-  return {originBank,term:originalTerm,paidInstallments,remaining,balance,installment};
+  return {originBank,term:originalTerm,paidInstallments,remaining,balance,installment,...(contract.reviewMetadata?{reviewMetadata:portabilityReviewMetadata(contract.reviewMetadata)}:{})};
  });
  const input={...portabilityReviewMetadata(raw),product:'INSS',operation:'PORT_REFIN',birthDate:raw.birthDate,benefitType,simulationDate:today,term,contracts,additionalMargin:0,benefitContractCount:Number(raw.benefitContractCount),refinanceRate:raw.refinanceRate==null||raw.refinanceRate===''?undefined:parseCurrency(raw.refinanceRate)};
- const check=simulationPortabilityCheck(bank,input);if(check.blocked)throw new DocumentaryRestriction(check.reasons?.join(' ')||'Restrição confirmada no roteiro deste banco.');
+ const check=simulationPortabilityCheck(bank,input);if(check.blocked)throw new DocumentaryRestriction(check.contracts.filter(contract=>contract.blocked).map(contract=>contract.reason).join(' ')||'Restrição confirmada no roteiro deste banco.');
  if(bank==='PARANA'&&(!Number.isInteger(input.benefitContractCount)||input.benefitContractCount<1||input.benefitContractCount>13))throw Error('Paraná: informe a quantidade total de contratos no benefício (1 a 13), sem presumir que existe apenas um.');
  const rates=bank==='PARANA'?selectablePortRefinRates(portRefinRatePolicies(bank,book),term,contracts.reduce((sum,c)=>sum+c.installment!,0),[32,92].includes(benefitType)?15:undefined):[input.refinanceRate];
  const selectedRates=bank==='PARANA'&&input.refinanceRate!=null?rates.filter(rate=>Math.abs(rate-input.refinanceRate!)<0.000001):rates;

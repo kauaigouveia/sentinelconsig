@@ -1,0 +1,2 @@
+throw new Error('ISOLATED_TEST_OPERATIONAL_BOOTSTRAP_DENIED');
+export {};

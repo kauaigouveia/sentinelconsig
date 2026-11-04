@@ -40,7 +40,7 @@ function checkContract(bank: string, raw: any, offer?: any) {
 export function simulationPortabilityCheck(bank:string,raw:any,offer?:any) {
  if(raw.product&&raw.product!=='INSS'||raw.operation&&!['PORT','PORT_REFIN','PORTABILIDADE'].includes(raw.operation))return {blocked:false,review:false,status:'NÃO APLICÁVEL',reason:'Política INSS fora do escopo.',contracts:[]};
  const contracts=Array.isArray(raw.contracts)&&raw.contracts.length?raw.contracts:[null];
- const checks=contracts.map((contract:any)=>checkContract(bank,contract?{...raw,originContract:contract,
+ const checks=contracts.map((contract:any)=>checkContract(bank,contract?{...raw,...(contract.reviewMetadata?portabilityReviewMetadata(contract.reviewMetadata):{}),originContract:contract,
   originalBank:contract.originBank??contract.lenderCode,originLenderCode:undefined,paidInstallments:contract.paidInstallments,
   originalTerm:contract.term,remainingTerm:contract.installmentsRemaining??contract.remaining,openedInstallmentNumber:undefined,
   debt:contract.dueBalanceValue??contract.balance,lastDueBalance:undefined,saldo_devedor:undefined,

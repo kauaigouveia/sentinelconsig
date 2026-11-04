@@ -1,0 +1,51 @@
+{
+  "method": "Built-in image_gen background extraction. Original JPG artwork is the reference. Login background and social banner copied unchanged. CSS object-fit:contain preserves layout proportions.",
+  "promptSet": [
+    "Extract the supplied SC shield or horizontal SENTINEL CONSIG mark; preserve geometry, lettering, colors and proportions; remove background inside and outside; transparent PNG; no redesign or extra effects.",
+    "Favicon: remove only outer background, preserve rounded tile and all original artwork."
+  ],
+  "assets": [
+    {
+      "asset": "public/branding/sentinel-banner-v5.jpg",
+      "bytes": 75589,
+      "sha256": "be1b95a51325184d9db3bae7805593b79f6d8cd3cf00795a655a47ed8f73070d"
+    },
+    {
+      "asset": "public/branding/sentinel-favicon-v5.png",
+      "bytes": 1220561,
+      "sha256": "87767bc08d039a17c508583c20f06c128f02a74944dc31a19f755065a4b44990",
+      "width": 1254,
+      "height": 1254,
+      "alpha": true
+    },
+    {
+      "asset": "public/branding/sentinel-login-background-v5.jpg",
+      "bytes": 99510,
+      "sha256": "29dcca511e97d229d7b3703b22da59aec8f101dc67182d63e235c918ab46788a"
+    },
+    {
+      "asset": "public/branding/sentinel-symbol-v5.png",
+      "bytes": 982062,
+      "sha256": "f7d7d7c1a84693be387ebf3d9f23b5e5fa5c27e006b4d7db7d3e97f25880d4a5",
+      "width": 1254,
+      "height": 1254,
+      "alpha": true
+    },
+    {
+      "asset": "public/branding/sentinel-wordmark-dark-v5.png",
+      "bytes": 807190,
+      "sha256": "d634872e7c4c663132d5bcd437dd89d51b6a9ca7cd9e04a40220cf1843a94256",
+      "width": 2108,
+      "height": 746,
+      "alpha": true
+    },
+    {
+      "asset": "public/branding/sentinel-wordmark-light-v5.png",
+      "bytes": 465552,
+      "sha256": "119b0377646760f698850e5cca84343c7a47845ef49e5a16c508961a916443b0",
+      "width": 1942,
+      "height": 809,
+      "alpha": true
+    }
+  ]
+}

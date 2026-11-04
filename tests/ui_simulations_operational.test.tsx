@@ -16,7 +16,7 @@ vi.mock('../src/components/simulation/ProductSimulationModal', () => ({ ProductS
 vi.mock('../src/components/simulation/HappyInssSimulationModal', () => ({ HappyInssSimulationModal: () => null }));
 vi.mock('../src/components/simulation/HappyCltSimulationModal', () => ({ HappyCltSimulationModal: () => null }));
 vi.mock('../src/components/simulation/FinantoInssSimulationModal', () => ({ FinantoInssSimulationModal: () => null }));
-vi.mock('../src/components/simulation/NossaFintechPortRefinSimulationModal', () => ({ NossaFintechPortRefinSimulationModal: () => null }));
+vi.mock('../src/components/simulation/NossaFintechPortRefinSimulationModal', () => ({ NossaFintechPortRefinSimulationModal: ({isOpen}:any) => isOpen?<div data-testid="multi-contract-form"/>:null }));
 vi.mock('../src/components/simulation/PartnerSimulationMonthlyReport', () => ({ PartnerSimulationMonthlyReport: () => <div>Relatório mensal preservado</div> }));
 
 import { SimulationView } from '../src/components/simulation/SimulationView';
@@ -79,3 +79,5 @@ describe('Simulações reais com transporte local isolado', () => {
     expect(screen.getByTestId('sheet-form').textContent).toContain('portal');
   });
 });
+
+it('opens the multi-contract entry directly without a banking request',async()=>{render(<SimulationView premium/>);await screen.findByText('Parceiro fictício');fireEvent.click(screen.getByRole('button',{name:'Multissimulação INSS'}));expect(screen.getByTestId('multi-contract-form')).toBeTruthy();expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method||options.method==='GET')).toBe(true);});

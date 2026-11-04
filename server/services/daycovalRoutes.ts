@@ -1,3 +1,4 @@
+import {contractKey,daycovalContractGroups,MAX_SIMULATION_CONTRACTS} from '../../src/lib/multiContractSimulation.js';
 import { parseIlliteracy,portabilityReviewMetadata } from '../../src/lib/portabilitySimulationPolicy.js';
 import { nossaWorkbookTables } from './nossaFintechWorkbook.js';
 import { portabilityEligibility } from '../../src/lib/portabilityEligibility.js';
@@ -19,6 +20,8 @@ import { SPREADSHEET_MODELS, importPortRefin, calculatePortRefin, portRefinRateP
 export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSession: (req: Request) => Promise<any>) {
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3500000, files: 1, fields: 2 } }).single('workbook');
   const limiter = rateLimit({ windowMs: 60000, limit: 12, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Aguarde um momento antes de simular novamente.' } });
+  // Read-only calculation budget: 13 contracts x 3 workbooks + 11 group pages.
+  const calculationLimiter=rateLimit({windowMs:60000,limit:60,standardHeaders:true,legacyHeaders:false});
   const read = async (tenantId: string, bank: SpreadsheetBank) => {
     const row = await prisma.systemConfig.findUnique({ where: { tenantId_configKey: { tenantId, configKey: SPREADSHEET_MODELS[bank].key } } });
     return row ? decodeDaycoval(row.configValue) : null;
@@ -41,7 +44,27 @@ export function registerDaycovalRoutes(app: Express, prisma: PrismaClient, getSe
   const model=SPREADSHEET_MODELS[bank], KEY=model.key, routeName=bank==='DAYCOVAL'?'daycoval':`${bank.toLowerCase()}-spreadsheet`;
   for (const portal of [false, true]) {
     const path = portal ? `/api/partner-portal/${routeName}` : `/api/${routeName}`;
-    app.post(`${path}/calculate`,limiter,async(req,res)=>{
+    if(bank==='DAYCOVAL')app.post(`${path}/calculate-groups`,calculationLimiter,async(req,res)=>{
+      res.setHeader('Cache-Control','no-store');
+      try{
+        const ctx=await context(req,portal,'simulations.create');if(!ctx)return res.status(403).json({error:'Sessão e permissão para simular são necessárias.'});
+        const contracts=req.body?.contracts;
+        if(!Array.isArray(contracts)||contracts.length<2||contracts.length>MAX_SIMULATION_CONTRACTS)return res.status(400).json({error:`Informe de 2 a ${MAX_SIMULATION_CONTRACTS} contratos.`});
+        const keys=contracts.map((c:any)=>contractKey({originLenderCode:String(c?.originBank||''),originContractNumber:String(c?.contractNumber||'')}));
+        if(contracts.some((c:any)=>!c?.originBank||!String(c?.contractNumber||'').trim())||new Set(keys).size!==keys.length)return res.status(400).json({error:'Informe contratos distintos, com banco e número.'});
+        const book=await read(ctx.tenantId,bank);
+        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        const combinations=daycovalContractGroups(contracts),offset=req.body?.offset??0;
+        if(!Number.isInteger(offset)||offset<0||offset>=combinations.length)return res.status(400).json({error:'Página de unificações inválida.'});
+        const groups=combinations.slice(offset,offset+35).map(group=>{
+          const indices=group.map(contract=>contracts.indexOf(contract));
+          try{return {indices,...previewPortRefin(bank,book,{...req.body,contracts:group},today)};}
+          catch(error:any){return {indices,offers:[],error:error.message||'Cálculo indisponível para este grupo.'};}
+        });
+        return res.json({groups,total:combinations.length,nextOffset:offset+groups.length<combinations.length?offset+groups.length:null});
+      }catch{return res.status(422).json({error:'Não foi possível calcular as unificações.'});}
+    });
+    app.post(`${path}/calculate`,calculationLimiter,async(req,res)=>{
       res.setHeader('Cache-Control','no-store');
       try{
         const ctx=await context(req,portal,'simulations.create');if(!ctx)return res.status(403).json({error:'Sessão e permissão para simular são necessárias.'});

@@ -1,3 +1,4 @@
+import {daycovalContractGroups,validateSimulationContracts} from '../src/lib/multiContractSimulation';
 import {afterEach,expect,it,vi} from 'vitest';
 import {simulationPortabilityCheck} from '../src/lib/portabilitySimulationPolicy';
 import {paidFromTerms} from '../src/lib/portabilityEligibility';
@@ -61,4 +62,35 @@ it('uses only Paraná rates from the workbook and requires the total number of b
  expect(result.offers[0]).toMatchObject({provider:'PARANA',term:84,amount:200});
  expect(result.offers[0].rate).toBeCloseTo(1.85,8);
  expect(()=>previewPortRefin('PARANA',b,{...raw,benefitContractCount:1,refinanceRate:1.7},'2026-10-30')).toThrow(/nenhuma taxa/);
+});
+
+it('enumerates unique groups of two and three without merging the original contracts',()=>{
+ const contracts=Array.from({length:5},(_,index)=>({originLenderCode:'001',originContractNumber:`SYNTHETIC-${index}`,originalTerm:'84',openedInstallmentNumber:'57',lastDueBalance:'3.481,19',installmentFaceValue:'43,00'}));
+ validateSimulationContracts(contracts);
+ const groups=daycovalContractGroups(contracts);expect(groups).toHaveLength(20);
+ expect(new Set(groups.map(group=>group.map(c=>c.originContractNumber).join('|'))).size).toBe(20);
+ expect(groups.every(group=>group.length===2||group.length===3)).toBe(true);
+ expect(()=>validateSimulationContracts([contracts[0],contracts[0]])).toThrow(/repetido/);
+ expect(()=>validateSimulationContracts([contracts[0],{...contracts[0],originLenderCode:'1'}])).toThrow(/repetido/);
+ expect(()=>validateSimulationContracts([{...contracts[0],lastDueBalance:'inválido'}])).toThrow(/Revise/);
+ expect(()=>validateSimulationContracts(Array.from({length:14},(_,index)=>({...contracts[0],originContractNumber:String(index)})))).toThrow(/13/);
+});
+
+it('uses the real interpreter for a three-contract Daycoval calculation, preserving individual debts and restrictions',()=>{
+ const b=book();const cells=b.sheets['SIMULADOR COM SALDO'].cells as Record<string,any>;
+ cells.K29={formula:'SUM(E17:G17)+300'};cells.L29={formula:'SUM(E17:G17)'};cells.E25={formula:'SUM(E19:G19)'};
+ const contracts=Array.from({length:3},()=>({...request().contracts[0]}));
+ const result=previewPortRefin('DAYCOVAL',b,{...request(),contracts},'2026-10-30');
+ expect(result.offers[0]).toMatchObject({amount:300,installment:129,term:84});
+ expect(result.paidInstallments).toEqual([27,27,27]);
+ expect(()=>previewPortRefin('DAYCOVAL',b,{...request(),contracts:[...contracts,{...contracts[0]}]},'2026-10-30')).toThrow(/1 a 3/);
+ expect(()=>previewPortRefin('DAYCOVAL',b,{...request(),contracts:[contracts[0],{...contracts[1],originBank:'626'}]},'2026-10-30')).toThrow(/origem/);
+});
+
+it('accepts thirteen individual contracts and generates 364 distinct Daycoval combinations of at most three',()=>{
+ const contracts=Array.from({length:13},(_,index)=>({originLenderCode:'001',originContractNumber:`SYNTHETIC-${index}`,originalTerm:'84',openedInstallmentNumber:'57',lastDueBalance:'3.481,19',installmentFaceValue:'43,00'}));
+ expect(()=>validateSimulationContracts(contracts)).not.toThrow();
+ const groups=daycovalContractGroups(contracts);expect(groups).toHaveLength(364);
+ expect(groups.every(group=>group.length===2||group.length===3)).toBe(true);
+ expect(new Set(groups.map(group=>group.map(c=>c.originContractNumber).join('|'))).size).toBe(364);
 });

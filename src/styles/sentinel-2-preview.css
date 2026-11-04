@@ -38,7 +38,7 @@
 }
 .s2-root .sentinel-header {
   height: var(--header-height);
-  min-height: var(--header-height);
+  min-height: var(--header-control-height);
   padding: 0 28px;
   gap: 22px;
   background: var(--s2-sidebar);
@@ -321,7 +321,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 34px;
+  min-height: var(--header-control-height);
   padding: 8px 12px;
   border: 1px solid var(--s2-border);
   border-radius: var(--radius-control);
@@ -1057,7 +1057,7 @@
 
 @media (max-width: 767px) {
   .s2-root .sentinel-header .s2-button {
-    min-height: var(--header-height);
+    min-height: var(--header-control-height);
     padding: 6px;
   }
   .s2-root .sentinel-header .s2-button:last-child > span {
@@ -2221,7 +2221,7 @@ button.s2-bank-row {
     padding: 0 10px;
     gap: 7px;
     height: var(--header-height);
-    min-height: var(--header-height);
+    min-height: var(--header-control-height);
   }
   .s2-root .s2-company-selector {
     display: none;
@@ -2236,7 +2236,7 @@ button.s2-bank-row {
   }
   .s2-root .sentinel-header .s2-button {
     padding: 7px;
-    min-height: var(--header-height);
+    min-height: var(--header-control-height);
   }
   .s2-root .sentinel-header .p2-actions {
     gap: 4px;

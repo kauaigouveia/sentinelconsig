@@ -1,9 +1,10 @@
+import {StorageService} from '../src/services/storageService';
 // @vitest-environment jsdom
 import React from 'react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {NossaFintechPortRefinSimulationModal} from '../src/components/simulation/NossaFintechPortRefinSimulationModal';
-afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 it('calls Daycoval/C6 read-only calculators from the real form, keeps estimates despite independent FACTA failure, and never saves automatically',async()=>{
  const fetch=vi.fn(async(url:any,init?:RequestInit)=>{
   if(url==='/api/bank-playbooks')return new Response(JSON.stringify({canDiagnose:false}));
@@ -58,4 +59,41 @@ it('filters lower FINANTO tiers before requesting calculations for an installmen
  const requests=fetch.mock.calls.filter(([url])=>url==='/api/integrations/finanto/request').map(([,init])=>JSON.parse(String(init?.body))).filter(row=>row.endpoint.endsWith('/calculation'));
  expect(requests.map(row=>row.body.ruleId).sort()).toEqual(['rule-2','rule-3']);
  expect(screen.getAllByRole('button',{name:'Selecionar'})).toHaveLength(2);
+});
+
+it('runs all six individual bank paths for two contracts and one explicit Daycoval group request',async()=>{
+ const fetch=vi.fn(async(url:any,init?:RequestInit)=>{
+  if(url==='/api/bank-playbooks')return new Response(JSON.stringify({canDiagnose:false}));
+  if(url==='/api/integrations/finanto/config')return new Response(JSON.stringify({enabled:false}));
+  if(url==='/api/daycoval/calculate-groups')return new Response(JSON.stringify({groups:[{indices:[0,1],offers:[{code:'UNIFIED',name:'Synthetic unified',amount:600,installment:80,term:84,rate:1.85}]}]}));
+  if(url==='/api/daycoval/calculate')return new Response(JSON.stringify({offers:[{code:'INDIVIDUAL',name:'Synthetic individual',amount:100,installment:43,term:84,rate:1.85,requiresReview:true}]}));
+  return new Response(JSON.stringify({offers:[],success:false,error:'Synthetic unavailable bank'}));
+ });vi.stubGlobal('fetch',fetch);
+ render(<NossaFintechPortRefinSimulationModal isOpen onClose={()=>{}}/>);
+ const change=(label:string,value:string)=>fireEvent.change(screen.getByLabelText(label),{target:{value}});
+ change('CPF','00000000191');change('Data de nascimento','1980-01-01');change('Número do benefício','123456789');
+ fireEvent.change(screen.getByRole('combobox',{name:/Espécie/}),{target:{value:'41'}});fireEvent.click(screen.getByRole('button',{name:'41 - Aposentadoria por Idade'}));
+ fireEvent.click(screen.getByRole('button',{name:'Continuar'}));
+ change('Banco de origem','001');change('Número do contrato','SYNTHETIC-A');change('Prazo original (meses)','84');change('Parcelas restantes','57');change('Saldo devedor (R$)','3.481,19');change('Parcela atual (R$)','43,00');change('Prazo do novo refinanciamento','84');
+ fireEvent.click(screen.getByRole('button',{name:'Adicionar contrato à lista'}));
+ change('Número do contrato','SYNTHETIC-B');change('Parcela atual (R$)','48,00');
+ fireEvent.click(screen.getByRole('checkbox',{name:/Calcular também unificações/}));
+ const submit=screen.getByRole('button',{name:'Comparar ofertas'}).closest('form')!;
+ fireEvent.submit(submit);fireEvent.submit(submit);
+ await screen.findByText('Synthetic unified');
+ for(const url of ['/api/daycoval/calculate','/api/c6-spreadsheet/calculate','/api/parana-spreadsheet/calculate','/api/integrations/finanto/config','/api/integrations/facta/inss/simulate','/api/integrations/nossa-fintech/port-refin/simulate-all'])expect(fetch.mock.calls.filter(([path])=>path===url)).toHaveLength(2);
+ const groups=fetch.mock.calls.filter(([path])=>path==='/api/daycoval/calculate-groups');expect(groups).toHaveLength(1);
+ expect(JSON.parse(String(groups[0][1]?.body)).contracts.map((c:any)=>c.contractNumber)).toEqual(['SYNTHETIC-A','SYNTHETIC-B']);
+ expect(screen.getAllByRole('button',{name:'Selecionar'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
+ expect(fetch.mock.calls.some(([path])=>path==='/api/simulations')).toBe(false);
+});
+
+it('clears personal fields and queued contracts when the selected company changes',()=>{
+ let tenant='synthetic-a';vi.spyOn(StorageService,'getCurrentTenantId').mockImplementation(()=>tenant);
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({canDiagnose:false}))));
+ render(<NossaFintechPortRefinSimulationModal isOpen onClose={()=>{}}/>);
+ fireEvent.change(screen.getByLabelText('CPF'),{target:{value:'00000000191'}});
+ tenant='synthetic-b';fireEvent(window,new Event('credit_gestao_storage_update'));
+ expect((screen.getByLabelText('CPF') as HTMLInputElement).value).toBe('');
+ expect(screen.queryByText(/Contrato 1 · banco/)).toBeNull();
 });

@@ -1,3 +1,4 @@
+import {BrandLogo} from "../common/BrandLogo";
 import React, { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
@@ -15,7 +16,6 @@ import {
   PanelLeftOpen,
   Search,
   X,
-  ChevronDown,
   ListChecks,
   ShieldCheck,
   Workflow,
@@ -47,7 +47,7 @@ export function PreviewSidebar({
   navigate,
   mobileOpen = false,
   closeMobile,
-  brandLogo = "/branding/sentinel-consig-symbol.svg",
+  brandLogo = "/branding/sentinel-symbol-v5.png",
   brandName = "Sentinel Consig",
   favorites = [],
   recent = [],
@@ -65,10 +65,6 @@ export function PreviewSidebar({
 }) {
   const [compact, setCompact] = useState(false),
     [query, setQuery] = useState(""),
-    [closed, setClosed] = useState<string[]>(() => {
-      const activeGroup = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
-      return GROUPS.filter(group => group !== activeGroup);
-    }),
     [hint, setHint] = useState<{ label: string; x: number; y: number } | null>(
       null,
     );
@@ -90,10 +86,6 @@ export function PreviewSidebar({
   const items = permitted.filter(route=>!hasHub || route.path!=='/saude-apis').filter(route=>
     `${route.title}${route.path==='/integracoes'?' Saúde das APIs':''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR'))
   );
-  useEffect(() => {
-    const group = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
-    if (group) setClosed(GROUPS.filter(item => item !== group));
-  }, [path, role, permissions.join("|")]);
   useEffect(() => {
     if (!mobileOpen) return;
     opener.current = document.activeElement as HTMLElement;
@@ -135,17 +127,7 @@ export function PreviewSidebar({
         aria-label="Navegação principal"
       >
         <div className="s2-brand">
-          <img
-            src={brandLogo}
-            alt=""
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "/branding/sentinel-consig-symbol.svg";
-            }}
-          />
-          <div>
-            <strong>{brandName}</strong>
-          </div>
+          {brandName==='Sentinel Consig'&&brandLogo.startsWith('/branding/sentinel-')?<BrandLogo width={152} height={54}/>:<><img src={brandLogo} alt="" onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src='/branding/sentinel-symbol-v5.png';}}/><div><strong>{brandName}</strong></div></>}
           <button
             className="s2-mobile-close"
             aria-label="Fechar navegação"
@@ -211,22 +193,8 @@ export function PreviewSidebar({
                 key={group}
                 style={{ "--nav-color": "var(--text-secondary)" } as React.CSSProperties}
               >
-                <button
-                  className="s2-group"
-                  aria-expanded={Boolean(query) || compact || !closed.includes(group)}
-                  onClick={() =>
-                    setClosed((current) =>
-                      current.includes(group)
-                        ? current.filter((v) => v !== group)
-                        : [...current, group],
-                    )
-                  }
-                >
-                  <span>{group}</span>
-                  <ChevronDown size={12} />
-                </button>
-                {(!closed.includes(group) || compact || query) &&
-                  entries.map((route) => {
+                <div className="s2-group" role="heading" aria-level={2}><span>{group}</span></div>
+                {entries.map((route) => {
                     const Icon =
                       icons[route.path] ||
                       {
