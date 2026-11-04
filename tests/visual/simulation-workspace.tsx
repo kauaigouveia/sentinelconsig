@@ -1,4 +1,6 @@
 /// <reference types="vite/client" />
+import {ThemeProvider,useTheme} from '../../src/context/ThemeContext';
+import {RedesignGallery,ShellGallery} from './RedesignGallery';
 /* Standalone development harness. Never imported by the authenticated application. */
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -17,7 +19,9 @@ const partners = [{id:'visual-partner', login:'DEMO', fullName:'Parceiro de demo
 const users = [{id:'visual-user', name:'Atendente de demonstração', role:'MASTER', customPermissions:[]}];
 const simulations = Array.from({length:4},(_,index)=>({id:`visual-${index}`,cpf:'00000000000',partnerId:'visual-partner',createdById:'visual-user',simulationType:'PORT_REFIN',operationType:'PORT_REFIN',status:index===3?'DIGITADA PELA MESA':'SIMULAÇÃO ENVIADA',createdAt:new Date(Date.now()-index*3600000).toISOString(),selectedCondition:{amount:2500+index*1000},matchedProposalNumber:index===3?'DEMO-004':undefined}));
 StorageService.getActiveUser = () => users[0] as any;
-StorageService.getCurrentTenant = () => null;
+StorageService.getCurrentTenant = () => ({id:'visual-tenant',name:'Empresa de demonstração'}) as any;
+StorageService.getCurrentTenantId=()=> 'visual-tenant';
+StorageService.getWhiteLabel=()=>({companyName:'Empresa de demonstração'}) as any;
 StorageService.getPartners = () => partners as any;
 StorageService.getUsers = () => users as any;
 StorageService.getProducts = () => [];
@@ -69,20 +73,22 @@ const {CentralAdministracao} = await import('../../src/components/admin/CentralA
 const {CentralAutomacoes} = await import('../../src/components/admin/CentralAutomacoes');
 const {SentinelIntelligenceDashboard} = await import('../../src/components/intelligence/SentinelIntelligenceDashboard');
 function LocalReview() {
-  const [dark,setDark] = useState(true);
+  const {isDark:dark,toggleTheme}=useTheme();
   const [premium,setPremium] = useState(true);
   const [module,setModule] = useState('Simulações');
   const [newProposal,setNewProposal] = useState(false);
-  document.documentElement.classList.toggle('dark',dark);
-  return <main className={premium?'s2-root':'sentinel-app'} style={{minHeight:'100vh',padding:24,background:dark?'#080f1e':'#f1f5fc'}}>
-    <header style={{display:'flex',gap:16,alignItems:'center',marginBottom:24,color:dark?'#f8fafc':'#14243b'}}>
+
+  return <main className={premium?'s2-root':'sentinel-app'} style={{minHeight:'100vh',padding:24,background:'var(--bg-canvas)'}}>
+    <header style={{display:'flex',gap:16,alignItems:'center',marginBottom:24,color:'var(--text-primary)'}}>
       <strong>REVISÃO LOCAL · Dados fictícios · Sem autenticação</strong>
-      <button onClick={()=>setDark(!dark)}>Alternar tema</button>
+      <button onClick={toggleTheme}>Alternar tema</button>
       <button onClick={()=>setPremium(!premium)}>Comparar {premium?'legado':'V2'}</button>
       <span>Rede externa e gravações bloqueadas</span>
     </header>
-    <nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid #64748b',borderRadius:8,color:dark?'#f8fafc':'#14243b',background:module===name?(dark?'#1b2e48':'#dbeafe'):'transparent'}}>{name}</button>)}</nav>
+    <nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Design system','Shell','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav>
     <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
+    {module==='Design system'&&<RedesignGallery/>}
+    {module==='Shell'&&<ShellGallery/>}
     {module==='Propostas' && <ProductionList premium={premium} onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>setModule('Kanban')} />}
     {module==='Simulações' && <SimulationView premium={premium} />}
     {module==='Kanban' && <KanbanBoard premium={premium} />}
@@ -97,4 +103,4 @@ function LocalReview() {
     <NewProductionModal isOpen={newProposal} onClose={()=>setNewProposal(false)} onSuccess={()=>{}} />
   </main>;
 }
-createRoot(document.getElementById('root')!).render(<LocalReview />);
+createRoot(document.getElementById('root')!).render(<ThemeProvider><LocalReview /></ThemeProvider>);

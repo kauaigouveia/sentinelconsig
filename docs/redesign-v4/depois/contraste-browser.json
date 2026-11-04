@@ -1,0 +1,6156 @@
+[
+  {
+    "label": "Login-light-final",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Usar tema escuro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "seu.email@empresa.com.br",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Esqueceu a senha?",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "INPUT",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Mostrar senha",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Entrar no Sentinel",
+        "textRatio": 11.434905245426028
+      }
+    ]
+  },
+  {
+    "label": "Login-dark-final",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Usar tema claro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "seu.email@empresa.com.br",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Esqueceu a senha?",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "INPUT",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Mostrar senha",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 1,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Entrar no Sentinel",
+        "textRatio": 7.638459693764599
+      }
+    ]
+  },
+  {
+    "label": "Shell-light-delivery",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Encontrar página",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Início",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Produção",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Selecionar empresa",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 1.3092263345442412,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abrir busca universal",
+        "textRatio": 5.828934315443122
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Atenção",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "AMASTER - Atendente de demonstração",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Início",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 19.56595185058723,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ativar tema escuro",
+        "textRatio": 6.457091994189569
+      }
+    ]
+  },
+  {
+    "label": "Shell-dark-delivery",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Encontrar página",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Início",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Produção",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Selecionar empresa",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 1.5228046487373952,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abrir busca universal",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Atenção",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "AMASTER - Atendente de demonstração",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Início",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.2792690399076168,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ativar tema claro",
+        "textRatio": 6.709159522280302
+      }
+    ]
+  },
+  {
+    "label": "Simulações-light-delivery",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Exportar CSV",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          224,
+          233,
+          228
+        ],
+        "borderRatio": 1.256062116594458,
+        "color": "rgb(37, 77, 61)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Importar em Lote",
+        "textRatio": 7.675903762724467
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 11.434905245426028,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Nova simulação",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 1.3092263345442412,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "PORT + REFIN · Planilhas",
+        "textRatio": 7.2858080640026355
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "PORT + REFIN · Planilhas",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 17.41312686560638,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Solicitações4",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Fila de digitação3",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Resultados e parceiros",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Filtros",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Tabela",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Cartões",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Ex: 01138777498...",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os FluxosManualHappy INSSHappy CLTINSS · simulaçãoFGTS · oferta ",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar código ou nome...",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os UsuáriosAtendente de demonstração (MASTER)",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os StatusSIMULAÇÃO ENVIADADIGITADA PELA MESANÃO PASSÍVEL DE CONT",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "INPUT",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "INPUT",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          225,
+          232,
+          237
+        ],
+        "borderRatio": 1.257672766661906,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Definir Status",
+        "textRatio": 6.998913895519553
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          225,
+          232,
+          237
+        ],
+        "borderRatio": 1.257672766661906,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Definir Status",
+        "textRatio": 6.998913895519553
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          225,
+          232,
+          237
+        ],
+        "borderRatio": 1.257672766661906,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Definir Status",
+        "textRatio": 6.998913895519553
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          224,
+          233,
+          228
+        ],
+        "borderRatio": 7.675903762724467,
+        "color": "rgb(37, 77, 61)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-004",
+        "textRatio": 7.675903762724467
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      }
+    ]
+  },
+  {
+    "label": "Simulações-dark-delivery",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Exportar CSV",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          22,
+          46,
+          41
+        ],
+        "borderRatio": 1.1744355949947898,
+        "color": "rgb(184, 210, 193)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Importar em Lote",
+        "textRatio": 8.94122734594865
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Nova simulação",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 1.5228046487373952,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "PORT + REFIN · Planilhas",
+        "textRatio": 11.469824757161703
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "PORT + REFIN · Planilhas",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 10.545727527073772,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Solicitações4",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Fila de digitação3",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Resultados e parceiros",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Filtros",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Tabela",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Cartões",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Ex: 01138777498...",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os FluxosManualHappy INSSHappy CLTINSS · simulaçãoFGTS · oferta ",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar código ou nome...",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os UsuáriosAtendente de demonstração (MASTER)",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os StatusSIMULAÇÃO ENVIADADIGITADA PELA MESANÃO PASSÍVEL DE CONT",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "INPUT",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "INPUT",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          24,
+          45,
+          60
+        ],
+        "borderRatio": 1.1565666410952375,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Definir Status",
+        "textRatio": 8.71130561910252
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          24,
+          45,
+          60
+        ],
+        "borderRatio": 1.1565666410952375,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Definir Status",
+        "textRatio": 8.71130561910252
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          24,
+          45,
+          60
+        ],
+        "borderRatio": 1.1565666410952375,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Definir Status",
+        "textRatio": 8.71130561910252
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Enviada (Pendente)Inviável (Recusada)Digitada pela MesaPerdida (72h)",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          22,
+          46,
+          41
+        ],
+        "borderRatio": 8.94122734594865,
+        "color": "rgb(184, 210, 193)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-004",
+        "textRatio": 8.94122734594865
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      }
+    ]
+  },
+  {
+    "label": "Kanban-light-delivery",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar ADE, CPF ou Parceiro...",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os ProdutosINSS · Portabilidade",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "SLA: Todos (3)⚠️ Críticos (3)🔴 Estourados (3)🟠 Próximos 75% (0)🟢 No",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 8.07096638516449,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Urgência",
+        "textRatio": 8.07096638516449
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Recentes",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 17.41312686560638,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar retorno CIP: 2 propostas",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 17.41312686560638,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar formalização: 1 propostas",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          225,
+          232,
+          237
+        ],
+        "borderRatio": 6.998913895519553,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.998913895519553
+      },
+      {
+        "background": [
+          225,
+          232,
+          237
+        ],
+        "borderRatio": 6.998913895519553,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.998913895519553
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      }
+    ]
+  },
+  {
+    "label": "Kanban-dark-delivery",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar ADE, CPF ou Parceiro...",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os ProdutosINSS · Portabilidade",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "SLA: Todos (3)⚠️ Críticos (3)🔴 Estourados (3)🟠 Próximos 75% (0)🟢 No",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 7.532039494804336,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Urgência",
+        "textRatio": 7.532039494804336
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Recentes",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 10.545727527073772,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar retorno CIP: 2 propostas",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 10.545727527073772,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar formalização: 1 propostas",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          24,
+          45,
+          60
+        ],
+        "borderRatio": 8.71130561910252,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 8.71130561910252
+      },
+      {
+        "background": [
+          24,
+          45,
+          60
+        ],
+        "borderRatio": 8.71130561910252,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 8.71130561910252
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 7.884424982919785,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 7.884424982919785
+      }
+    ]
+  },
+  {
+    "label": "Pendências-light-delivery",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Configurar SLA",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 11.434905245426028,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Nova Pendência",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 11.434905245426028,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Todos",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abertas",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Em Atendimento",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardando",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Resolvidas",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Canceladas",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 11.434905245426028,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Todos",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "No Prazo",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Crítico",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Estourado",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Minhas pendências",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar pendências por contrato, cliente, CPF ou título",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Buscar pendências",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "TodasCrítica / UrgenteAltaNormalBaixa",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todas as CategoriasDocumentaçãoDocumentoAssinatura / FormalizaçãoDiver",
+        "textRatio": 18.68938792092341
+      }
+    ]
+  },
+  {
+    "label": "Pendências-dark-delivery",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Configurar SLA",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Nova Pendência",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Todos",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abertas",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Em Atendimento",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardando",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Resolvidas",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Canceladas",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Todos",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "No Prazo",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Crítico",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Estourado",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Minhas pendências",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar pendências por contrato, cliente, CPF ou título",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Buscar pendências",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "TodasCrítica / UrgenteAltaNormalBaixa",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todas as CategoriasDocumentaçãoDocumentoAssinatura / FormalizaçãoDiver",
+        "textRatio": 7.884424982919785
+      }
+    ]
+  },
+  {
+    "label": "Design system-light-delivery",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abrir modal",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abrir painel",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Controles",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Estados",
+        "textRatio": 5.828934315443122
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar registros fictícios",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "CompactaConfortável",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ação principal",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ação secundária",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(74, 92, 106)",
+        "disabled": true,
+        "kind": "BUTTON",
+        "label": "Indisponível",
+        "textRatio": 6.930351915074923
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "TEXTAREA",
+        "label": "Digite uma observação",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Registro ↕",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Valor ↕",
+        "textRatio": 6.457091994189569
+      }
+    ]
+  },
+  {
+    "label": "Design system-dark-delivery",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 1,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abrir modal",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Abrir painel",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Controles",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Estados",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar registros fictícios",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "CompactaConfortável",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 1,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ação principal",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ação secundária",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": true,
+        "kind": "BUTTON",
+        "label": "Indisponível",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "TEXTAREA",
+        "label": "Digite uma observação",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Registro ↕",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Valor ↕",
+        "textRatio": 6.709159522280302
+      }
+    ]
+  },
+  {
+    "label": "Propostas-light-delivery-corrected",
+    "rows": [
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 15.719146144647246,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          233,
+          236,
+          235
+        ],
+        "borderRatio": 5.828934315443122,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 15.719146144647246
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Atualizar propostas via APIs",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Confortável",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 1.5566137382670842,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Exportar",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 11.434905245426028,
+        "color": "rgb(246, 247, 247)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Nova PropostaCtrl+N",
+        "textRatio": 11.434905245426028
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Aplicar visualização salva de propostas",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Salvar filtros atuais",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 8.07096638516449,
+        "color": "rgb(48, 79, 99)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Por Status",
+        "textRatio": 8.07096638516449
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Por Banco",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 21,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Todos3",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar retorno CIP2",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar formalização1",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Filtros avançados",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Configurar colunas",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Tabela",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Cartões",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar CPF, Nome, ADE ou Parceiro...",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os StatusAguardar retorno CIPAguardar formalização",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todas as AlçadasCLIENTEPARCEIROBANCONOSSA EQUIPESISTEMA",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os BancosBanco fictício",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todas PromotorasPromotora fictícia",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os DigitadoresAtendente de demonstração",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os ProdutosINSS · Portabilidade",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Filtrar por Agente...",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "SLA: TodasSLA: No PrazoSLA: No Dia LimiteSLA: Atrasadas",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Selecionar todas as propostas que você pode operar",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "ADE / Proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Cliente",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CPF",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Banco / Promotora",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Valores (R$)",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Data",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 17.41312686560638,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-1",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar ADE",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar CPF",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ver detalhes da proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Excluir proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 17.41312686560638,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-2",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar ADE",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar CPF",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ver detalhes da proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Excluir proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 17.41312686560638,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-3",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar ADE",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar CPF",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ver detalhes da proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 6.457091994189569,
+        "color": "rgb(74, 92, 106)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Excluir proposta",
+        "textRatio": 6.457091994189569
+      },
+      {
+        "background": [
+          255,
+          255,
+          255
+        ],
+        "borderRatio": 6.930351915074923,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Propostas por página",
+        "textRatio": 18.68938792092341
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": true,
+        "kind": "BUTTON",
+        "label": "Página anterior de propostas",
+        "textRatio": 17.41312686560638
+      },
+      {
+        "background": [
+          246,
+          247,
+          247
+        ],
+        "borderRatio": 1.45031568823316,
+        "color": "rgb(6, 20, 27)",
+        "disabled": true,
+        "kind": "BUTTON",
+        "label": "Próxima página de propostas",
+        "textRatio": 17.41312686560638
+      }
+    ]
+  },
+  {
+    "label": "Propostas-dark-delivery-corrected",
+    "rows": [
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Alternar tema",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 12.006439016611504,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Comparar legado",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Design system",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Shell",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Propostas",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Simulações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Clientes 360°",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CIP",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Pendências",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Financeiro",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Administração",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Automações",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          6,
+          20,
+          27
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Intelligence",
+        "textRatio": 12.006439016611504
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Atualizar propostas via APIs",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Confortável",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Exportar",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          155,
+          168,
+          171
+        ],
+        "borderRatio": 7.638459693764599,
+        "color": "rgb(6, 20, 27)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Nova PropostaCtrl+N",
+        "textRatio": 7.638459693764599
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Aplicar visualização salva de propostas",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Salvar filtros atuais",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 7.532039494804336,
+        "color": "rgb(189, 205, 216)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Por Status",
+        "textRatio": 7.532039494804336
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Por Banco",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 5.016047002547493
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1.7110724951930516,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Todos3",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar retorno CIP2",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 1,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Aguardar formalização1",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Filtros avançados",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Configurar colunas",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Tabela",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Cartões",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Kanban",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Buscar CPF, Nome, ADE ou Parceiro...",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os StatusAguardar retorno CIPAguardar formalização",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todas as AlçadasCLIENTEPARCEIROBANCONOSSA EQUIPESISTEMA",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os BancosBanco fictício",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todas PromotorasPromotora fictícia",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os DigitadoresAtendente de demonstração",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Todos os ProdutosINSS · Portabilidade",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "INPUT",
+        "label": "Filtrar por Agente...",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "SLA: TodasSLA: No PrazoSLA: No Dia LimiteSLA: Atrasadas",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Selecionar todas as propostas que você pode operar",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "ADE / Proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Cliente",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "CPF",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Banco / Promotora",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Valores (R$)",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Data",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 10.545727527073772,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-1",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar ADE",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar CPF",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ver detalhes da proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Excluir proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 10.545727527073772,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-2",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar ADE",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar CPF",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ver detalhes da proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Excluir proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "BUTTON",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 10.545727527073772,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "DEMO-3",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar ADE",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Copiar CPF",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Ver detalhes da proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 6.709159522280302,
+        "color": "rgb(155, 168, 171)",
+        "disabled": false,
+        "kind": "BUTTON",
+        "label": "Excluir proposta",
+        "textRatio": 6.709159522280302
+      },
+      {
+        "background": [
+          37,
+          55,
+          69
+        ],
+        "borderRatio": 5.016047002547493,
+        "color": "rgb(204, 208, 207)",
+        "disabled": false,
+        "kind": "SELECT",
+        "label": "Propostas por página",
+        "textRatio": 7.884424982919785
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": true,
+        "kind": "BUTTON",
+        "label": "Página anterior de propostas",
+        "textRatio": 10.545727527073772
+      },
+      {
+        "background": [
+          17,
+          33,
+          45
+        ],
+        "borderRatio": 1.3375392054486193,
+        "color": "rgb(204, 208, 207)",
+        "disabled": true,
+        "kind": "BUTTON",
+        "label": "Próxima página de propostas",
+        "textRatio": 10.545727527073772
+      }
+    ]
+  }
+]

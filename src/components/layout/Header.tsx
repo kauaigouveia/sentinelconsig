@@ -633,7 +633,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                 <button
                   onClick={handleResetData}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--action)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold text-left transition-transform cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-semibold text-left transition-transform cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Redefinir Dados (Seed)</span>
@@ -644,7 +644,7 @@ export const Header: React.FC<HeaderProps> = ({
                     StorageService.logout();
                     window.location.reload();
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--action)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold text-left transition-transform cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold text-left transition-transform cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   <span>Sair do Sistema</span>

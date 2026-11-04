@@ -15,7 +15,7 @@ export interface PremiumRecordWorkspaceProps {
 export function PremiumRecordWorkspace({ filters, summary, count, mode, onMode, children }: PremiumRecordWorkspaceProps) {
   const [filtersOpen, setFiltersOpen] = useState(true);
   return <section className="p2-operational-workspace" aria-label="Workspace de registros">
-    {summary && <div className="p2-operational-summary">{summary}</div>}
+    {summary && <details className="ui-operational-insights"><summary>Visão operacional</summary><div className="p2-operational-summary">{summary}</div></details>}
     <div className="p2-operational-toolbar">
       <strong>{count} registros encontrados</strong>
       <div className="p2-actions">

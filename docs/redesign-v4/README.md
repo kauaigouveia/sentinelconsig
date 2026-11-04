@@ -43,4 +43,4 @@ Imagens reais locais. Login: entrada real sem autenticação. Demais telas: comp
 
 O IAB exige viewport inteiro e sua escala faz o alvo 1366 resultar em 1365 CSS. O manifesto registra a medição; não tratar o nome do arquivo como certificação do breakpoint exato. Imagens incluem a superfície da captura e não foram fabricadas, recortadas ou redesenhadas.
 
-Não houve alteração visual nesta fase. Não existem screenshots “depois” ainda.
+A Fase 0 foi preservada. As Fases 1 e 2 estão em [entrega-fases-1-2.md](entrega-fases-1-2.md), com [comparação antes/depois](comparacao.html) e capturas em `depois/`.

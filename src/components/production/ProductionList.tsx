@@ -476,11 +476,11 @@ export const ProductionList: React.FC<ProductionListProps> = ({
   }, [proposalIdsList, canUpdateProposals, canDeleteProposals]);
 
   const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />;
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-[var(--text-secondary)] opacity-60" />;
     return sortDirection === 'asc' ? (
-      <ArrowUp className="h-3 w-3 text-blue-600 dark:text-blue-400 font-bold" />
+      <ArrowUp className="h-3 w-3 text-[var(--info-text)] dark:text-[var(--info-text)] font-bold" />
     ) : (
-      <ArrowDown className="h-3 w-3 text-blue-600 dark:text-blue-400 font-bold" />
+      <ArrowDown className="h-3 w-3 text-[var(--info-text)] dark:text-[var(--info-text)] font-bold" />
     );
   };
 
@@ -491,17 +491,17 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
   const proposalFilters = <>
       {/* Filter Bar */}
-      <div className="bg-white dark:bg-[#0c1220] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-2xs space-y-3">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5 rounded-xl border border-[var(--border-default)] dark:border-[var(--border-default)]  space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
           {/* Quick Search */}
           <div className="relative col-span-1 sm:col-span-2">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Buscar CPF, Nome, ADE ou Parceiro..."
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:outline-hidden transition-colors"
+              className="ui-input-icon ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--border-default)] focus:outline-hidden transition-transform"
             />
           </div>
 
@@ -510,7 +510,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="">Todos os Status</option>
               {statuses.map(s => (
@@ -526,7 +526,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterAlçada}
               onChange={e => setFilterAlçada(e.target.value as any)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="">Todas as Alçadas</option>
               <option value="CLIENTE">CLIENTE</option>
@@ -542,7 +542,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterBank}
               onChange={e => setFilterBank(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="">Todos os Bancos</option>
               {banks.map(b => (
@@ -558,7 +558,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterPromoter}
               onChange={e => setFilterPromoter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="">Todas Promotoras</option>
               {promoters.map(pr => (
@@ -574,7 +574,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterDigitizer}
               onChange={e => setFilterDigitizer(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="">Todos os Digitadores</option>
               {users.map(user => (
@@ -588,7 +588,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterProduct}
               onChange={e => setFilterProduct(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="">Todos os Produtos</option>
               {products.map(p => (
@@ -617,7 +617,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <select
               value={filterSla}
               onChange={e => setFilterSla(e.target.value as any)}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              className="ui-input w-full rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-hidden"
             >
               <option value="TODOS">SLA: Todas</option>
               <option value="NO_PRAZO">SLA: No Prazo</option>
@@ -631,7 +631,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <div className="flex items-center">
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 font-bold px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-xs text-[var(--danger-text)] dark:text-[var(--danger-text)] hover:text-[var(--danger-text)] font-bold px-2.5 py-1 bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] transition-transform cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
                 <span>Limpar Filtros</span>
@@ -642,7 +642,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       </div>
 
   </>;
-  const proposalSummary = <div className="record-stat-stack"><div className="record-stat-featured"><span>Valor liberado na seleção</span><strong className="!text-xl">{totalDisbursedFiltered}</strong><p>{filteredProposals.length} propostas encontradas</p></div>{statuses.filter(status => filteredProposals.some(proposal => proposal.statusId === status.id)).slice(0, 7).map(status => <div className="record-stat-row" key={status.id}><span className="record-stat-dot" style={{ background: status.color || '#5c8dff' }} /><span>{status.name}</span><strong>{filteredProposals.filter(proposal => proposal.statusId === status.id).length}</strong></div>)}</div>;
+  const proposalSummary = <div className="ui-summary-inline"><span>Valor liberado na seleção</span><strong>{totalDisbursedFiltered}</strong></div>;
 
   return (
     <div className={premium ? "p2-live-production space-y-3.5" : "space-y-3.5"}>
@@ -650,8 +650,8 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       <ActionBar
         title={premium ? "Propostas" : "Operações de crédito"}
         subtitle={premium ? 'Carteira da empresa atual · consulta e operações autorizadas' : undefined}
-        count={filteredProposals.length}
-        financialTotal={totalDisbursedFiltered}
+        count={premium?undefined:filteredProposals.length}
+        financialTotal={premium?undefined:totalDisbursedFiltered}
         rightActions={
           <>
             {canSyncProposals && <ProposalBatchSyncButton proposals={proposals} banks={banks} onCompleted={async () => { await StorageService.syncSpecificEntity('Proposal'); refreshData(); }} />}
@@ -659,9 +659,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <button
               onClick={toggleDensity}
               title={`Densidade: ${tableDensity} (clique para alternar)`}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-slate-500" />
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <span className="hidden sm:inline text-[11px]">{tableDensity === 'COMPACTA' ? 'Compacta' : 'Confortável'}</span>
             </button>
 
@@ -670,15 +670,15 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                 id="btn-production-focus-mode"
                 onClick={onToggleFocusMode}
                 title={isFocusMode ? 'Sair do Modo Foco (Esc)' : 'Modo Foco: Oculta barra lateral e cabeçalho (Alt+F)'}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-transform cursor-pointer ${
                   isFocusMode
-                    ? 'bg-blue-600 text-white border-blue-700'
-                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--action)] text-[var(--action-ink)] border-[var(--border-default)]'
+                    : 'border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
-                {isFocusMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5 text-blue-500" />}
+                {isFocusMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5 text-[var(--info-text)]" />}
                 <span>{isFocusMode ? 'Sair do Foco' : 'Modo Foco'}</span>
-                <kbd className={`ml-1 rounded px-1 text-[9px] font-mono ${isFocusMode ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                <kbd className={`ml-1 rounded px-1 text-[9px] font-mono ${isFocusMode ? 'bg-[var(--action)] text-[var(--action-ink)]' : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'}`}>
                   Alt+F
                 </kbd>
               </button>
@@ -688,9 +688,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               <button
                 id="btn-open-import-excel"
                 onClick={onOpenImportExcel}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer"
               >
-                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                <FileSpreadsheet className="h-3.5 w-3.5 text-[var(--success-text)]" />
                 <span>Importar</span>
               </button>
             )}
@@ -698,20 +698,20 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             <button
               id="btn-open-export"
               onClick={() => setExportModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer"
             >
-              <Download className="h-3.5 w-3.5 text-slate-500" />
+              <Download className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <span>Exportar</span>
             </button>
 
             {onOpenNewProduction && <button
               id="btn-open-new-production"
               onClick={onOpenNewProduction}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--action)] bg-[var(--action)] px-3 py-1.5 text-xs font-bold text-[var(--action-ink)]  transition-transform cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Nova Proposta</span>
-              <kbd className="ml-1 rounded bg-blue-700/60 px-1 text-[9px] font-mono text-blue-100">Ctrl+N</kbd>
+              <kbd className="ml-1 rounded bg-[var(--action)] px-1 text-[9px] font-mono text-[var(--action-ink)]">Ctrl+N</kbd>
             </button>}
           </>
         }
@@ -732,33 +732,33 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       }} />
 
       {/* Horizontal Scrollable Filter Chips Bar */}
-      <div className="bg-white dark:bg-[#0c1220] rounded-xl border border-slate-200 dark:border-slate-800/80 p-3 shadow-2xs space-y-2">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+      <div className="bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] rounded-xl border border-[var(--border-default)] dark:border-[var(--border-default)] p-3  space-y-2">
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--border-default)] dark:border-[var(--border-default)] pb-2">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-400 mr-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] mr-1">
               Filtro Rápido:
             </span>
-            <div className="flex rounded-lg bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-800">
+            <div className="flex rounded-lg bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-0.5 border border-[var(--border-default)] dark:border-[var(--border-default)]">
               <button
                 onClick={() => setChipMode('STATUS')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-md transition-transform cursor-pointer ${
                   chipMode === 'STATUS'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--info-text)] dark:text-[var(--info-text)] '
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
-                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                <CheckCircle2 className="h-3 w-3 text-[var(--success-text)]" />
                 <span>Por Status</span>
               </button>
               <button
                 onClick={() => setChipMode('BANK')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-md transition-transform cursor-pointer ${
                   chipMode === 'BANK'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--info-text)] dark:text-[var(--info-text)] '
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Building2 className="h-3 w-3 text-indigo-500" />
+                <Building2 className="h-3 w-3 text-[var(--info-text)]" />
                 <span>Por Banco</span>
               </button>
             </div>
@@ -768,14 +768,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           <div className="flex items-center gap-1">
             <button
               onClick={() => handleScrollChips('left')}
-              className="p-1 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer"
               title="Rolar para a esquerda"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => handleScrollChips('right')}
-              className="p-1 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer"
               title="Rolar para a direita"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -794,18 +794,18 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               {/* All Statuses Chip */}
               <button
                 onClick={() => setFilterStatus('')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-transform border cursor-pointer ${
                   filterStatus === ''
-                    ? 'bg-slate-900 text-white dark:bg-blue-600 dark:text-white border-transparent shadow-xs ring-2 ring-blue-500/30'
-                    : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border-transparent  ring-2 ring-[var(--field-border)]'
+                    : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 <span>Todos</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
                     filterStatus === ''
-                      ? 'bg-slate-700 dark:bg-blue-800 text-slate-100'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      ? 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]'
+                      : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)]'
                   }`}
                 >
                   {proposals.length}
@@ -820,22 +820,22 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                   <button
                     key={s.id}
                     onClick={() => setFilterStatus(isSelected ? '' : s.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border cursor-pointer ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-transform border cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-blue-400 dark:border-blue-500/60 shadow-xs ring-2 ring-blue-500/20'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--info-text)] dark:text-[var(--info-text)] border-[var(--border-default)] dark:border-[var(--border-default)]  ring-2 ring-[var(--field-border)]'
+                        : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]'
                     }`}
                   >
                     <span
                       className="h-2 w-2 rounded-full shrink-0"
-                      style={{ backgroundColor: s.color || '#3b82f6' }}
+                      style={{ backgroundColor: s.color || 'var(--info-text)' }}
                     />
                     <span className="whitespace-nowrap">{s.name}</span>
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                         isSelected
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-[var(--action)] text-[var(--action-ink)]'
+                          : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
                       {count}
@@ -849,18 +849,18 @@ export const ProductionList: React.FC<ProductionListProps> = ({
               {/* All Banks Chip */}
               <button
                 onClick={() => setFilterBank('')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-transform border cursor-pointer ${
                   filterBank === ''
-                    ? 'bg-slate-900 text-white dark:bg-blue-600 dark:text-white border-transparent shadow-xs ring-2 ring-blue-500/30'
-                    : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:bg-[var(--bg-surface-elevated)] dark:text-[var(--text-primary)] border-transparent  ring-2 ring-[var(--field-border)]'
+                    : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 <span>Todos</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
                     filterBank === ''
-                      ? 'bg-slate-700 dark:bg-blue-800 text-slate-100'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      ? 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]'
+                      : 'bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)]'
                   }`}
                 >
                   {proposals.length}
@@ -875,23 +875,23 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                   <button
                     key={b.id}
                     onClick={() => setFilterBank(isSelected ? '' : b.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border cursor-pointer ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-transform border cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-blue-400 dark:border-blue-500/60 shadow-xs ring-2 ring-blue-500/20'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--info-text)] dark:text-[var(--info-text)] border-[var(--border-default)] dark:border-[var(--border-default)]  ring-2 ring-[var(--field-border)]'
+                        : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] border-[var(--border-default)] dark:border-[var(--border-default)] hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)]'
                     }`}
                   >
                     <Building2
                       className={`h-3.5 w-3.5 ${
-                        isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
+                        isSelected ? 'text-[var(--info-text)] dark:text-[var(--info-text)]' : 'text-[var(--text-secondary)]'
                       }`}
                     />
                     <span className="whitespace-nowrap">{b.name}</span>
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                         isSelected
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-[var(--action)] text-[var(--action-ink)]'
+                          : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]'
                       }`}
                     >
                       {count}
@@ -907,9 +907,9 @@ export const ProductionList: React.FC<ProductionListProps> = ({
       <Workspace page={pagination.current} pages={pagination.pages} onPage={setPage} pageSize={pageSize} onPageSize={(size:number)=>{setPageSize(size);setPage(0);}} hiddenColumns={hiddenColumns} onHiddenColumns={setHiddenColumns} onKanban={onKanban} filters={proposalFilters} summary={proposalSummary} count={filteredProposals.length} mode={presentation} onMode={setPresentation}>
       {/* Batch Action Floating / Sticky Bar */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl bg-slate-900 dark:bg-[#070c17] text-white p-3 px-5 shadow-xl border border-blue-500/30 animate-in fade-in slide-in-from-top-2">
+        <div className="flex items-center justify-between rounded-xl bg-[var(--bg-surface-elevated)] dark:bg-[var(--bg-surface)] text-[var(--text-primary)] p-3 px-5  border border-[var(--border-default)] animate-in fade-in slide-in-">
           <div className="flex items-center gap-3">
-            <span className="h-6 w-6 rounded-full bg-blue-500 text-xs font-black flex items-center justify-center">
+            <span className="h-6 w-6 rounded-full bg-[var(--action)] text-xs font-black flex items-center justify-center">
               {selectedIds.length}
             </span>
             <span className="text-xs font-semibold">
@@ -920,14 +920,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedIds([])}
-              className="text-xs text-slate-300 hover:text-white px-2 py-1 cursor-pointer"
+              className="text-xs text-[var(--text-primary)] hover:text-[var(--text-primary)] px-2 py-1 cursor-pointer"
             >
               Desmarcar Todas
             </button>
             {canUpdateProposals && <button
               id="btn-open-bulk-status"
               onClick={() => setBulkModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--action)] bg-[var(--action)] px-3 py-1.5 text-xs font-bold text-[var(--action-ink)]  cursor-pointer"
             >
               <Layers className="h-3.5 w-3.5" />
               <span>ALTERAR STATUS EM LOTE</span>
@@ -935,7 +935,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
             {canDeleteProposals && <button
               id="btn-bulk-delete"
               onClick={handleBulkDelete}
-              className="flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--action)] bg-[var(--action)] px-3 py-1.5 text-xs font-bold text-[var(--action-ink)]  cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>EXCLUIR SELECIONADAS</span>
@@ -970,47 +970,47 @@ export const ProductionList: React.FC<ProductionListProps> = ({
         />
       ) : (
         /* Main Proposals Table */
-        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="overflow-hidden rounded-xl border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] ">
           <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
-            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xs text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 select-none">
+            <table className="ui-table w-full text-left text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)]">
+              <thead className="sticky top-0 z-10 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] backdrop-blur-xs text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] dark:text-[var(--text-secondary)] border-b border-[var(--border-default)] dark:border-[var(--border-default)] select-none">
                 <tr>
                   <th className="px-3 py-2.5 w-10 text-center">
-                    <button onClick={handleSelectAll} disabled={!canUpdateProposals && !canDeleteProposals} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Selecionar todas as propostas que você pode operar">
+                    <button onClick={handleSelectAll} disabled={!canUpdateProposals && !canDeleteProposals} className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Selecionar todas as propostas que você pode operar">
                       {selectedIds.length === filteredProposals.length && filteredProposals.length > 0 && (canUpdateProposals || canDeleteProposals) ? (
-                        <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <CheckSquare className="h-4 w-4 text-[var(--info-text)] dark:text-[var(--info-text)]" />
                       ) : (
                         <Square className="h-4 w-4" />
                       )}
                     </button>
                   </th>
                   <th aria-sort={getAriaSort('proposalNumber')} className="px-3 py-2.5">
-                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('proposalNumber')}>
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]" onClick={() => handleSort('proposalNumber')}>
                       <span>ADE / Proposta</span>
                       {getSortIcon('proposalNumber')}
                     </button>
                   </th>
                   <th aria-sort={getAriaSort('clientName')} className="px-3 py-2.5">
-                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('clientName')}>
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]" onClick={() => handleSort('clientName')}>
                       <span>Cliente</span>
                       {getSortIcon('clientName')}
                     </button>
                   </th>
                   <th aria-sort={getAriaSort('cpf')} className="px-3 py-2.5">
-                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('cpf')}>
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]" onClick={() => handleSort('cpf')}>
                       <span>CPF</span>
                       {getSortIcon('cpf')}
                     </button>
                   </th>
                   <th className="px-3 py-2.5">Produto</th>
                   <th aria-sort={getAriaSort('bank')} className="px-3 py-2.5">
-                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('bank')}>
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]" onClick={() => handleSort('bank')}>
                       <span>Banco / Promotora</span>
                       {getSortIcon('bank')}
                     </button>
                   </th>
                   <th aria-sort={getAriaSort('disbursedValue')} className="px-3 py-2.5 text-right">
-                    <button type="button" className="flex w-full items-center justify-end gap-1 text-right hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('disbursedValue')}>
+                    <button type="button" className="flex w-full items-center justify-end gap-1 text-right hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]" onClick={() => handleSort('disbursedValue')}>
                       <span>Valores (R$)</span>
                       {getSortIcon('disbursedValue')}
                     </button>
@@ -1019,7 +1019,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                   <th className="px-3 py-2.5">Alçada</th>
                   <th className="px-3 py-2.5">Status Atual</th>
                   <th aria-sort={getAriaSort('createdAt')} className="px-3 py-2.5">
-                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-slate-800 dark:hover:text-slate-200" onClick={() => handleSort('createdAt')}>
+                    <button type="button" className="flex w-full items-center gap-1 text-left hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)]" onClick={() => handleSort('createdAt')}>
                       <span>Data</span>
                       {getSortIcon('createdAt')}
                     </button>
@@ -1028,7 +1028,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                   <th className="px-3 py-2.5 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+              <tbody className="divide-y divide-[var(--field-border)] dark:divide-[var(--field-border)] font-medium">
                 {displayedProposals.map(p => {
                   const clientInfo = getProposalClientInfo(p);
                   const client = clientInfo.client;
@@ -1045,8 +1045,8 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                     <tr
                       key={p.id}
                       onDoubleClick={() => setDetailProposalId(p.id)}
-                      className={`hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer select-none ${
-                        isSelected ? 'bg-blue-50/50 dark:bg-blue-950/40' : ''
+                      className={`hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer select-none ${
+                        isSelected ? 'bg-[var(--info-bg)] dark:bg-[var(--info-bg)]' : ''
                       }`}
                       title="Clique duas vezes para abrir detalhes completos"
                     >
@@ -1054,10 +1054,10 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                         <button
                           onClick={() => toggleSelect(p.id)}
                           disabled={!canUpdateProposals && !canDeleteProposals}
-                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {isSelected ? (
-                            <CheckSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <CheckSquare className="h-4 w-4 text-[var(--info-text)] dark:text-[var(--info-text)]" />
                           ) : (
                             <Square className="h-4 w-4" />
                           )}
@@ -1066,10 +1066,10 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
                       {/* ADE */}
                       <td className={cellPadding}>
-                        <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 dark:text-slate-100">
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                           <button
                             onClick={() => setDetailProposalId(p.id)}
-                            className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            className="hover:text-[var(--info-text)] dark:hover:text-[var(--info-text)] hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <span>{p.proposalNumber}</span>
                           </button>
@@ -1078,7 +1078,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                               e.stopPropagation();
                               toastService.copyToClipboard(p.proposalNumber, 'ADE');
                             }}
-                            className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                            className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)] rounded hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform"
                             title="Copiar ADE"
                             aria-label="Copiar ADE"
                           >
@@ -1086,7 +1086,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                           </button>
                           {p.relatedPortabilityId && (
                             <span title="Vinculada a uma portabilidade">
-                              <Link2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                              <Link2 className="h-3 w-3 text-[var(--info-text)] dark:text-[var(--info-text)]" />
                             </span>
                           )}
                         </div>
@@ -1095,7 +1095,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       {/* Cliente */}
                       <td className={cellPadding}>
                         <span
-                          className="font-semibold text-slate-900 dark:text-slate-100 block max-w-[150px] truncate"
+                          className="font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] block max-w-[150px] truncate"
                           title={clientFullName}
                         >
                           {clientFullName || '—'}
@@ -1105,14 +1105,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       {/* CPF */}
                       <td className={cellPadding}>
                         {clientCpf ? (
-                          <div className="flex items-center gap-1 font-mono text-slate-600 dark:text-slate-400">
+                          <div className="flex items-center gap-1 font-mono text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                             <span>{formatCpf(clientCpf)}</span>
                             <button
                               onClick={e => {
                                 e.stopPropagation();
                                 toastService.copyToClipboard(clientCpf, 'CPF');
                               }}
-                              className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                              className="p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)] rounded hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform"
                               title="Copiar CPF"
                               aria-label="Copiar CPF"
                             >
@@ -1120,21 +1120,21 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <span className="text-slate-400 font-mono">—</span>
+                          <span className="text-[var(--text-secondary)] font-mono">—</span>
                         )}
                       </td>
 
                       {/* Produto */}
-                      <td className={`${cellPadding} font-semibold text-slate-800 dark:text-slate-200`}>
+                      <td className={`${cellPadding} font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]`}>
                         {product?.name || '—'}
                       </td>
 
                       {/* Banco / Promotora */}
                       <td className={cellPadding}>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate max-w-[140px]" title={bank?.name}>
+                        <span className="font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)] block truncate max-w-[140px]" title={bank?.name}>
                           {bank?.name || '—'}
                         </span>
-                        <span className="text-slate-400 dark:text-slate-500 block text-[10.5px] truncate max-w-[140px]" title={promoter?.name}>
+                        <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] block text-[10.5px] truncate max-w-[140px]" title={promoter?.name}>
                           {promoter?.name || '—'}
                         </span>
                       </td>
@@ -1143,14 +1143,14 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       <td className={`${cellPadding} text-right whitespace-nowrap`}>
                         <div className="flex flex-col text-[11px] font-mono">
                           {p.disbursedValue !== undefined ? (
-                            <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                            <span className="font-bold text-[var(--success-text)] dark:text-[var(--success-text)]">
                               {formatCurrency(p.disbursedValue)}
                             </span>
                           ) : (
-                            <span className="text-slate-400 dark:text-slate-500">—</span>
+                            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">—</span>
                           )}
                           {p.type === 'PORTABILIDADE' && p.contractBalance !== undefined ? (
-                            <span className="font-semibold text-indigo-600 dark:text-indigo-400 text-[10px]">
+                            <span className="font-semibold text-[var(--info-text)] dark:text-[var(--info-text)] text-[10px]">
                               Saldo: {formatCurrency(p.contractBalance)}
                             </span>
                           ) : null}
@@ -1159,11 +1159,11 @@ export const ProductionList: React.FC<ProductionListProps> = ({
 
                       {/* Parceiro */}
                       <td className={cellPadding}>
-                        <span className="font-mono text-blue-700 dark:text-blue-400 font-bold block">
+                        <span className="font-mono text-[var(--info-text)] dark:text-[var(--info-text)] font-bold block">
                           {partner?.login || '—'}
                         </span>
                         <span
-                          className="text-slate-400 dark:text-slate-500 text-[10px] block truncate max-w-[110px]"
+                          className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] text-[10px] block truncate max-w-[110px]"
                           title={premium ? partner?.fullName || partner?.login : partner?.login}
                         >
                           {premium ? partner?.fullName || partner?.login || '—' : partner?.login || '—'}
@@ -1181,7 +1181,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                       </td>
 
                       {/* Data */}
-                      <td className={`${cellPadding} text-slate-500 dark:text-slate-400 whitespace-nowrap text-[11px] font-mono`}>
+                      <td className={`${cellPadding} text-[var(--text-secondary)] dark:text-[var(--text-secondary)] whitespace-nowrap text-[11px] font-mono`}>
                         {formatDate(p.createdAt)}
                       </td>
 
@@ -1191,7 +1191,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => setDetailProposalId(p.id)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--info-text)] dark:hover:text-[var(--info-text)] rounded-lg hover:bg-[var(--bg-surface)] dark:hover:bg-[var(--bg-surface-elevated)] transition-transform cursor-pointer"
                             title="Ver detalhes da proposta"
                             aria-label="Ver detalhes da proposta"
                           >
@@ -1199,7 +1199,7 @@ export const ProductionList: React.FC<ProductionListProps> = ({
                           </button>
                           {canDeleteProposals && <button
                             onClick={() => handleDeleteProposal(p)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--danger-text)] dark:hover:text-[var(--danger-text)] rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] transition-transform cursor-pointer"
                             title="Excluir proposta"
                             aria-label="Excluir proposta"
                           >

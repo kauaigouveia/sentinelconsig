@@ -653,7 +653,7 @@ function AppMainContent() {
                 <Maximize2 className="h-3.5 w-3.5" />
                 <span>Modo Foco Ativo</span>
               </div>
-              <span className="text-xs text-[var(--info-text)] hidden sm:inline">
+              <span className="text-xs text-[var(--action-ink)] hidden sm:inline">
                 Barra lateral e cabeçalho ocultados para análise ampliada de dados
               </span>
             </div>

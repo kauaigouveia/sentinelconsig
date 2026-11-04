@@ -329,7 +329,7 @@ describe("Propostas operacional V2 — serviços inteiramente isolados", () => {
     ))
       expect(
         createHash("sha256")
-          .update(readFileSync(file.path, "utf8"))
+          .update(readFileSync(file.path, "utf8").replace(/\r\n/g,"\n"))
           .digest("hex"),
       ).toBe(file.sha256);
   });

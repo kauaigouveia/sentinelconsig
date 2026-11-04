@@ -3,11 +3,20 @@ import ts from 'typescript';
 import { createHash } from 'node:crypto';
 
 // Read-only source inspection. This script never imports application services.
-export function inspectModule(path) {
-  const text = fs.readFileSync(path, 'utf8');
+export function inspectModule(path, sourceText, normalizeVisualClasses = false) {
+  const text = sourceText ?? fs.readFileSync(path, 'utf8');
   const tree = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const printer = ts.createPrinter({ removeComments: true });
   const controls = [], expressions = {};
+  const printable = node => {
+    if (!normalizeVisualClasses) return printer.printNode(ts.EmitHint.Unspecified,node,tree);
+    const result=ts.transform(node,[context=>root=>{
+      const visit=item=>ts.isStringLiteral(item)&&/(?:^|\s)(?:dark:|hover:)?(?:bg-|text-|border-|ring-|shadow-)/.test(item.text)
+        ?context.factory.createStringLiteral('<visual-classes>'):ts.visitEachChild(item,visit,context);
+      return ts.visitNode(root,visit);
+    }]);
+    const output=printer.printNode(ts.EmitHint.Unspecified,result.transformed[0],tree);result.dispose();return output;
+  };
   const hasJsx = node => {
     let found = false;
     const visit = item => {
@@ -24,7 +33,7 @@ export function inspectModule(path) {
     }
     if (ts.isVariableDeclaration(node) && node.initializer && !hasJsx(node.initializer)) {
       const name = node.name.getText(tree);
-      (expressions[name] ||= []).push(createHash('sha256').update(printer.printNode(ts.EmitHint.Unspecified,node.initializer,tree)).digest('hex'));
+      (expressions[name] ||= []).push(createHash('sha256').update(printable(node.initializer)).digest('hex'));
     }
     ts.forEachChild(node,visit);
   };

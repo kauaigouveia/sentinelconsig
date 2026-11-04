@@ -1,0 +1,506 @@
+[
+  {
+    "module": "Shell",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-shell-light-390.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-shell-light-1024.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1343,
+    "width": 1365,
+    "file": "depois-shell-light-1366.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1897,
+    "width": 1920,
+    "file": "depois-shell-light-1920.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-shell-dark-390.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-shell-dark-1024.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1343,
+    "width": 1365,
+    "file": "depois-shell-dark-1366.jpg"
+  },
+  {
+    "module": "Shell",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1897,
+    "width": 1920,
+    "file": "depois-shell-dark-1920.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-propostas-light-390.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-propostas-light-1024.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1343,
+    "width": 1365,
+    "file": "depois-propostas-light-1366.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1897,
+    "width": 1920,
+    "file": "depois-propostas-light-1920.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-propostas-dark-390.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-propostas-dark-1024.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1343,
+    "width": 1365,
+    "file": "depois-propostas-dark-1366.jpg"
+  },
+  {
+    "module": "Propostas",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1897,
+    "width": 1920,
+    "file": "depois-propostas-dark-1920.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-simulacoes-light-390.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-simulacoes-light-1024.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1343,
+    "width": 1365,
+    "file": "depois-simulacoes-light-1366.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-simulacoes-light-1920.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-simulacoes-dark-390.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-simulacoes-dark-1024.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1343,
+    "width": 1365,
+    "file": "depois-simulacoes-dark-1366.jpg"
+  },
+  {
+    "module": "Simulações",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-simulacoes-dark-1920.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-kanban-light-390.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1024,
+    "width": 1024,
+    "file": "depois-kanban-light-1024.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-kanban-light-1366.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-kanban-light-1920.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-kanban-dark-390.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1024,
+    "width": 1024,
+    "file": "depois-kanban-dark-1024.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-kanban-dark-1366.jpg"
+  },
+  {
+    "module": "Kanban",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-kanban-dark-1920.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-pendencias-light-390.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1024,
+    "width": 1024,
+    "file": "depois-pendencias-light-1024.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-pendencias-light-1366.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-pendencias-light-1920.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-pendencias-dark-390.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1024,
+    "width": 1024,
+    "file": "depois-pendencias-dark-1024.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-pendencias-dark-1366.jpg"
+  },
+  {
+    "module": "Pendências",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-pendencias-dark-1920.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-primitivas-light-390.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-primitivas-light-1024.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-primitivas-light-1366.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-primitivas-light-1920.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 367,
+    "width": 390,
+    "file": "depois-primitivas-dark-390.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1001,
+    "width": 1024,
+    "file": "depois-primitivas-dark-1024.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-primitivas-dark-1366.jpg"
+  },
+  {
+    "module": "Design system",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-primitivas-dark-1920.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "light",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 390,
+    "width": 390,
+    "file": "depois-login-light-390.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "light",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1024,
+    "width": 1024,
+    "file": "depois-login-light-1024.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "light",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-login-light-1366.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "light",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-login-light-1920.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "dark",
+    "requestedWidth": 390,
+    "height": 955,
+    "scrollWidth": 390,
+    "width": 390,
+    "file": "depois-login-dark-390.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "dark",
+    "requestedWidth": 1024,
+    "height": 955,
+    "scrollWidth": 1024,
+    "width": 1024,
+    "file": "depois-login-dark-1024.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "dark",
+    "requestedWidth": 1366,
+    "height": 955,
+    "scrollWidth": 1365,
+    "width": 1365,
+    "file": "depois-login-dark-1366.jpg"
+  },
+  {
+    "module": "Login",
+    "theme": "dark",
+    "requestedWidth": 1920,
+    "height": 955,
+    "scrollWidth": 1920,
+    "width": 1920,
+    "file": "depois-login-dark-1920.jpg"
+  }
+]

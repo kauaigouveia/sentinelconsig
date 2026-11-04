@@ -217,11 +217,11 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
   }, [proposals, statuses, historyList]);
 
   const alcadaColors: Record<ResponsibleAlçada, string> = {
-    CLIENTE: 'bg-orange-50 text-orange-700 border-orange-200',
-    PARCEIRO: 'bg-amber-50 text-amber-700 border-amber-200',
-    BANCO: 'bg-blue-50 text-blue-700 border-blue-200',
-    'NOSSA EQUIPE': 'bg-purple-50 text-purple-700 border-purple-200',
-    SISTEMA: 'bg-slate-100 text-slate-700 border-slate-200',
+    CLIENTE: 'bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--border-default)]',
+    PARCEIRO: 'bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--border-default)]',
+    BANCO: 'bg-[var(--info-bg)] text-[var(--info-text)] border-[var(--border-default)]',
+    'NOSSA EQUIPE': 'bg-[var(--info-bg)] text-[var(--info-text)] border-[var(--border-default)]',
+    SISTEMA: 'bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-default)]',
   };
 
   return (
@@ -231,16 +231,16 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
         title="Esteira Kanban"
         count={filteredProposals.length}
         rightActions={
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="ui-filter-bar">
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar ADE, CPF ou Parceiro..."
-                className="w-44 sm:w-52 h-7.5 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:outline-none"
+                className="ui-input-icon ui-input w-44 sm:w-52 h-7.5 rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] pl-8 pr-3 text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)] placeholder-slate-400 focus:bg-[var(--bg-surface)] dark:focus:bg-[var(--bg-surface-elevated)] focus:border-[var(--border-default)] focus:outline-none"
               />
             </div>
 
@@ -248,7 +248,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
             <select
               value={productFilter}
               onChange={e => setProductFilter(e.target.value)}
-              className="h-7.5 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
+              className="ui-input h-7.5 rounded-md border border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] px-2 text-xs font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]"
             >
               <option value="">Todos os Produtos</option>
               {products.map(p => (
@@ -262,13 +262,13 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
             <select
               value={slaFilter}
               onChange={e => setSlaFilter(e.target.value as any)}
-              className={`h-7.5 rounded-md border px-2 text-xs font-bold ${
+              className={`ui-input ${`h-7.5 rounded-md border px-2 text-xs font-bold ${
                 slaFilter === 'OVERDUE'
-                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                  ? 'bg-[var(--danger-bg)] dark:bg-[var(--danger-bg)] border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--danger-text)] dark:text-[var(--danger-text)]'
                   : slaFilter === 'WARNING' || slaFilter === 'WARNING_AND_OVERDUE'
-                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-              }`}
+                  ? 'bg-[var(--warning-bg)] dark:bg-[var(--warning-bg)] border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--warning-text)] dark:text-[var(--warning-text)]'
+                  : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border-[var(--border-default)] dark:border-[var(--border-default)] text-[var(--text-primary)] dark:text-[var(--text-primary)]'
+              }`}`}
             >
               <option value="ALL">SLA: Todos ({slaCounts.total})</option>
               <option value="WARNING_AND_OVERDUE">⚠️ Críticos ({slaCounts.overdue + slaCounts.warning})</option>
@@ -278,13 +278,13 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
             </select>
 
             {/* Sort */}
-            <div className="flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-1 rounded-md bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] p-0.5 border border-[var(--border-default)] dark:border-[var(--border-default)]">
               <button
                 onClick={() => setSortBy('SLA_URGENCY')}
-                className={`px-2 py-1 text-xs font-bold rounded transition-all ${
+                className={`px-2 py-1 text-xs font-bold rounded transition-transform ${
                   sortBy === 'SLA_URGENCY'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--info-text)] dark:text-[var(--info-text)] '
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
                 title="Ordenar por maior urgência de SLA"
               >
@@ -292,10 +292,10 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
               </button>
               <button
                 onClick={() => setSortBy('RECENT')}
-                className={`px-2 py-1 text-xs font-bold rounded transition-all ${
+                className={`px-2 py-1 text-xs font-bold rounded transition-transform ${
                   sortBy === 'RECENT'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    ? 'bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--info-text)] dark:text-[var(--info-text)] '
+                    : 'text-[var(--text-secondary)] dark:text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 Recentes
@@ -323,21 +323,21 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                 id={premium ? `p2-stage-${status.id}` : undefined}
                 tabIndex={premium ? -1 : undefined}
                 aria-label={premium ? `Etapa ${status.name}` : undefined}
-                className="w-80 shrink-0 flex flex-col rounded-xl bg-slate-100/80 dark:bg-[#0c1220] border border-slate-200/90 dark:border-slate-800/80 overflow-hidden shadow-xs"
+                className="w-80 shrink-0 flex flex-col rounded-xl bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] border border-[var(--border-default)] dark:border-[var(--border-default)] overflow-hidden "
               >
                 {/* Column Header */}
-                <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-[#0e1626]">
+                <div className="p-3 border-b border-[var(--border-default)] dark:border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)]">
                   <div className="min-w-0 pr-2">
                     <div className="flex items-center gap-2">
                       <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0 shadow-xs"
-                        style={{ backgroundColor: status.color || '#3b82f6' }}
+                        className="h-2.5 w-2.5 rounded-full shrink-0 "
+                        style={{ backgroundColor: status.color || 'var(--info-text)' }}
                       />
-                      <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 truncate tracking-tight" title={status.name}>
+                      <h3 className="text-xs font-black text-[var(--text-primary)] dark:text-[var(--text-primary)] truncate tracking-tight" title={status.name}>
                         {status.name}
                       </h3>
                       {status.slaHours && (
-                        <span className="text-[10px] text-slate-400 font-mono font-bold" title={`SLA padrão: ${status.slaHours} horas`}>
+                        <span className="text-[10px] text-[var(--text-secondary)] font-mono font-bold" title={`SLA padrão: ${status.slaHours} horas`}>
                           ({status.slaHours}h)
                         </span>
                       )}
@@ -346,7 +346,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                       <AuthorityBadge authority={status.responsibleGroup || status.responsible} />
                     </div>
                   </div>
-                  <span className="h-5.5 min-w-5.5 px-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black text-[11px] flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                  <span className="h-5.5 min-w-5.5 px-1.5 rounded-md bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] dark:text-[var(--text-primary)] font-mono font-black text-[11px] flex items-center justify-center shrink-0 border border-[var(--border-default)] dark:border-[var(--border-default)]">
                     {colProps.length}
                   </span>
                 </div>
@@ -354,9 +354,9 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                 {/* Column Cards */}
                 <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 max-h-[calc(100vh-280px)]">
                   {colProps.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 px-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/20 text-center space-y-1.5">
-                      <FolderOpen className="h-5 w-5 text-slate-300 dark:text-slate-600" />
-                      <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                    <div className="flex flex-col items-center justify-center py-12 px-3 rounded-xl border border-dashed border-[var(--border-default)] dark:border-[var(--border-default)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] text-center space-y-1.5">
+                      <FolderOpen className="h-5 w-5 text-[var(--text-primary)] dark:text-[var(--text-secondary)]" />
+                      <p className="text-[11px] font-semibold text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                         Nenhuma proposta nesta etapa
                       </p>
                     </div>
@@ -372,22 +372,22 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                       return (
                         <div
                           key={p.id}
-                          className={`rounded-xl border bg-white dark:bg-[#11192a] p-3.5 shadow-2xs hover:shadow-md transition-all space-y-2 cursor-pointer group relative ${
+                          className={`rounded-xl border bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-3.5  hover: transition-transform space-y-2 cursor-pointer group relative ${
                             sla.health === 'OVERDUE'
-                              ? 'border-rose-400 dark:border-rose-500/70 ring-1 ring-rose-300 dark:ring-rose-500/30'
+                              ? 'border-[var(--border-default)] dark:border-[var(--border-default)] ring-1 ring-[var(--field-border)] dark:ring-[var(--field-border)]'
                               : sla.health === 'WARNING'
-                              ? 'border-amber-400 dark:border-amber-500/70 ring-1 ring-amber-300 dark:ring-amber-500/30'
-                              : 'border-slate-200 dark:border-slate-800/90 hover:border-blue-400 dark:hover:border-blue-500/50'
+                              ? 'border-[var(--border-default)] dark:border-[var(--border-default)] ring-1 ring-[var(--field-border)] dark:ring-[var(--field-border)]'
+                              : 'border-[var(--border-default)] dark:border-[var(--border-default)] hover:border-[var(--border-default)] dark:hover:border-[var(--border-default)]'
                           }`}
                           onClick={() => setSelectedProposalId(p.id)}
                         >
                           {/* Top: ADE + Product + SLA Status Badge */}
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className="font-mono text-xs font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">
+                            <span className="font-mono text-xs font-black text-[var(--text-primary)] dark:text-[var(--text-primary)] group-hover:text-[var(--info-text)] dark:group-hover:text-[var(--info-text)] truncate">
                               ADE {p.proposalNumber}
                             </span>
                             <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-[9.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded">
+                              <span className="text-[9.5px] font-bold text-[var(--info-text)] dark:text-[var(--info-text)] bg-[var(--info-bg)] dark:bg-[var(--info-bg)] border border-[var(--border-default)] dark:border-[var(--border-default)] px-1.5 py-0.5 rounded">
                                 {prod?.name}
                               </span>
                             </div>
@@ -395,23 +395,23 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
 
                           {/* Client info */}
                           <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" title={client?.fullName}>
+                            <p className="text-xs font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] truncate" title={client?.fullName}>
                               {client?.fullName}
                             </p>
-                            <p className="text-[10.5px] font-mono font-medium text-slate-400 dark:text-slate-500">
+                            <p className="text-[10.5px] font-mono font-medium text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
                               {formatCpf(client?.cpf || '')}
                             </p>
                           </div>
 
                           {/* Bank & Promoter */}
-                          <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)] pt-1.5 border-t border-[var(--border-default)] dark:border-[var(--border-default)]">
                             <span className="font-semibold truncate">{bank?.name}</span>
-                            <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0 ml-1">{promoter?.name}</span>
+                            <span className="text-[var(--text-secondary)] dark:text-[var(--text-secondary)] font-medium shrink-0 ml-1">{promoter?.name}</span>
                           </div>
 
                           {/* Partner & Code */}
-                          <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
-                            <span className="font-bold text-blue-700 dark:text-blue-400 font-mono">
+                          <div className="flex items-center justify-between text-[10.5px] text-[var(--text-secondary)] dark:text-[var(--text-secondary)]">
+                            <span className="font-bold text-[var(--info-text)] dark:text-[var(--info-text)] font-mono">
                               Identificador: {partner?.login || ''}
                             </span>
                             <span className="truncate max-w-[120px] font-medium" title={partner?.login}>
@@ -421,14 +421,14 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
 
                           {/* Financial Values Pill */}
                           {(p.disbursedValue || p.contractBalance) && (
-                            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 text-[10px]">
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-[var(--border-default)] dark:border-[var(--border-default)] text-[10px]">
                               {p.disbursedValue ? (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-mono font-bold border border-emerald-200 dark:border-emerald-800/50">
+                                <span className="px-1.5 py-0.5 rounded bg-[var(--success-bg)] dark:bg-[var(--success-bg)] text-[var(--success-text)] dark:text-[var(--success-text)] font-mono font-bold border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                   Lib: {formatCurrency(p.disbursedValue)}
                                 </span>
                               ) : null}
                               {p.contractBalance ? (
-                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-mono font-medium border border-indigo-200 dark:border-indigo-800/50">
+                                <span className="px-1.5 py-0.5 rounded bg-[var(--info-bg)] dark:bg-[var(--info-bg)] text-[var(--info-text)] dark:text-[var(--info-text)] font-mono font-medium border border-[var(--border-default)] dark:border-[var(--border-default)]">
                                   Saldo: {formatCurrency(p.contractBalance)}
                                 </span>
                               ) : null}
@@ -440,10 +440,10 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                             <span
                               className={`px-1.5 py-0.5 rounded font-bold ${
                                 sla.health === 'OVERDUE'
-                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                  ? 'bg-[var(--danger-bg)] text-[var(--danger-text)] dark:bg-[var(--danger-bg)] dark:text-[var(--danger-text)]'
                                   : sla.health === 'WARNING'
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                  ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] dark:bg-[var(--warning-bg)] dark:text-[var(--warning-text)]'
+                                  : 'bg-[var(--success-bg)] text-[var(--success-text)] dark:bg-[var(--success-bg)] dark:text-[var(--success-text)]'
                               }`}
                             >
                               {sla.health === 'OVERDUE' ? `Atrasado (+${Math.round(sla.overdueHours)}h)` : `${sla.progressPct}% SLA`}
@@ -458,7 +458,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                                     void handleMoveStatus(p.id, 'PREV');
                                   }}
                                   disabled={Boolean(updatingProposalId)}
-                                  className="p-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+                                  className="p-1 rounded bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-elevated)] dark:hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] dark:text-[var(--text-primary)] cursor-pointer"
                                   title="Mover para etapa anterior"
                                 >
                                   <ChevronLeft className="h-3 w-3" />
@@ -471,7 +471,7 @@ export const KanbanBoard: React.FC<{ premium?: boolean }> = ({ premium = false }
                                     void handleMoveStatus(p.id, 'NEXT');
                                   }}
                                   disabled={Boolean(updatingProposalId)}
-                                  className="p-1 rounded bg-blue-50 dark:bg-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-300 cursor-pointer"
+                                  className="p-1 rounded bg-[var(--info-bg)] dark:bg-[var(--info-bg)] hover:bg-[var(--info-bg)] dark:hover:bg-[var(--info-bg)] text-[var(--info-text)] dark:text-[var(--info-text)] cursor-pointer"
                                   title="Avançar para próxima etapa"
                                 >
                                   <ChevronRight className="h-3 w-3" />
