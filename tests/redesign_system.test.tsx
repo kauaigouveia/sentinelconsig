@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React, { useState } from 'react';
+import {PreviewSidebar} from '../src/components/redesign/PreviewSidebar';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { Button, Input, Tabs, Modal, Table } from '../src/components/ui/DesignSystem';
@@ -20,4 +21,29 @@ describe('Design system visual, without APIs', () => {
                 const ink = style['--brand-ink'].includes('dark') ? [0, 0, 0] : [255, 255, 255];
                 expect(contrastRatio([r, g, b], ink)).toBeGreaterThanOrEqual(4.5);
             } });
+});
+
+describe('Navegação sem redundância', () => {
+  function media() { vi.stubGlobal('matchMedia', () => ({matches:false,addEventListener:()=>{},removeEventListener:()=>{}})); }
+  afterEach(() => vi.unstubAllGlobals());
+  it('abre apenas a categoria atual, mantendo integrações acessíveis e busca expansível', () => {
+    media(); const navigate=vi.fn();
+    render(<PreviewSidebar role="MASTER" path="/simulacoes" navigate={navigate}/>);
+    expect(screen.getByRole('button',{name:'Produção'}).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button',{name:'Integrações'}).getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button',{name:'Integrações'}));
+    fireEvent.click(screen.getByRole('link',{name:'Hub de Integrações'}));
+    expect(navigate).toHaveBeenCalledWith('/integracoes');
+    fireEvent.change(screen.getByRole('textbox',{name:'Encontrar página'}),{target:{value:'Saúde'}});
+    expect(screen.getByRole('link',{name:'Saúde das APIs'})).toBeTruthy();
+  });
+  it('recolhe os atalhos e não repete favoritos na lista de recentes', () => {
+    media(); const {container,rerender}=render(<PreviewSidebar role="MASTER" path="/simulacoes" navigate={()=>{}} favorites={['/propostas']} recent={['/propostas','/propostas','/central-pendencias']}/>);
+    const shortcuts=container.querySelector('details')!;
+    expect(shortcuts.open).toBe(false);
+    expect(shortcuts.querySelectorAll('a[href="/propostas"]').length).toBe(1);
+    expect(shortcuts.querySelectorAll('a[href="/central-pendencias"]').length).toBe(1);
+    rerender(<PreviewSidebar role="MASTER" path="/integracoes" navigate={()=>{}}/>);
+    expect(screen.getByRole('button',{name:'Integrações'}).getAttribute('aria-expanded')).toBe('true');
+  });
 });

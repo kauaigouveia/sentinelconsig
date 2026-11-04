@@ -40,7 +40,6 @@ const icons: Record<string, React.ElementType> = {
   "/esteira": Workflow,
   "/agenda-operacional": CalendarDays,
 };
-const colors = Array(8).fill("var(--text-secondary)");
 export function PreviewSidebar({
   role,
   permissions = [],
@@ -66,11 +65,10 @@ export function PreviewSidebar({
 }) {
   const [compact, setCompact] = useState(false),
     [query, setQuery] = useState(""),
-    [closed, setClosed] = useState<string[]>([
-      "Gestão",
-      "Administração",
-      "Plataforma",
-    ]),
+    [closed, setClosed] = useState<string[]>(() => {
+      const activeGroup = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
+      return GROUPS.filter(group => group !== activeGroup);
+    }),
     [hint, setHint] = useState<{ label: string; x: number; y: number } | null>(
       null,
     );
@@ -92,6 +90,10 @@ export function PreviewSidebar({
       .toLocaleLowerCase("pt-BR")
       .includes(query.toLocaleLowerCase("pt-BR")),
   );
+  useEffect(() => {
+    const group = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
+    if (group) setClosed(current => current.filter(item => item !== group));
+  }, [path, role, permissions.join("|")]);
   useEffect(() => {
     if (!mobileOpen) return;
     opener.current = document.activeElement as HTMLElement;
@@ -143,7 +145,6 @@ export function PreviewSidebar({
           />
           <div>
             <strong>{brandName}</strong>
-            <small>OPERAÇÃO E GESTÃO</small>
           </div>
           <button
             className="s2-mobile-close"
@@ -163,13 +164,12 @@ export function PreviewSidebar({
           />
         </div>
         <nav>
-          {!compact &&
-            !query &&
-            [
+          {!compact && !query && (favorites.length > 0 || recent.length > 0) && <details className="s2-quick-access"><summary>Acesso rápido</summary>{[
+
               ["Favoritos", favorites],
-              ["Recentes", recent.slice(0, 2)],
+              ["Recentes", [...new Set(recent)].filter(item => !favorites.includes(item)).slice(0, 2)],
             ].map(([title, paths]) => {
-              const shortcuts = (paths as string[])
+              const shortcuts = [...new Set(paths as string[])]
                 .map((p) => items.find((r) => r.path === p))
                 .filter(Boolean);
               return shortcuts.length ? (
@@ -202,18 +202,18 @@ export function PreviewSidebar({
                   )}
                 </section>
               ) : null;
-            })}
-          {GROUPS.map((group, index) => {
+            })}</details>}
+          {GROUPS.map(group => {
             const entries = items.filter((item) => item.group === group);
             if (!entries.length) return null;
             return (
               <section
                 key={group}
-                style={{ "--nav-color": colors[index] } as React.CSSProperties}
+                style={{ "--nav-color": "var(--text-secondary)" } as React.CSSProperties}
               >
                 <button
                   className="s2-group"
-                  aria-expanded={!closed.includes(group)}
+                  aria-expanded={Boolean(query) || compact || !closed.includes(group)}
                   onClick={() =>
                     setClosed((current) =>
                       current.includes(group)

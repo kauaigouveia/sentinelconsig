@@ -2547,3 +2547,5 @@ button.s2-bank-row {
     gap: 8px;
   }
 }
+
+.s2-quick-access > summary {padding:10px 8px;font-size:var(--text-xs);color:var(--text-secondary);cursor:pointer}

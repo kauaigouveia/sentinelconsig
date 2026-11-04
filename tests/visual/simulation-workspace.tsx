@@ -75,7 +75,7 @@ const {SentinelIntelligenceDashboard} = await import('../../src/components/intel
 function LocalReview() {
   const {isDark:dark,toggleTheme}=useTheme();
   const [premium,setPremium] = useState(true);
-  const [module,setModule] = useState('Simulações');
+  const [module,setModule] = useState('Shell');
   const [newProposal,setNewProposal] = useState(false);
 
   return <main className={premium?'s2-root':'sentinel-app'} style={{minHeight:'100vh',padding:24,background:'var(--bg-canvas)'}}>
@@ -85,10 +85,10 @@ function LocalReview() {
       <button onClick={()=>setPremium(!premium)}>Comparar {premium?'legado':'V2'}</button>
       <span>Rede externa e gravações bloqueadas</span>
     </header>
-    <nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Design system','Shell','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav>
+    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Design system','Shell','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
     <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
     {module==='Design system'&&<RedesignGallery/>}
-    {module==='Shell'&&<ShellGallery/>}
+    {module==='Shell'&&<ShellGallery renderContent={(path,navigate)=>path==='/simulacoes'?<SimulationView premium/>:path==='/propostas'?<ProductionList premium onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>navigate('/esteira')}/>:path==='/esteira'?<KanbanBoard premium/>:path==='/central-pendencias'?<CentralPendencias premium/>:null}/>}
     {module==='Propostas' && <ProductionList premium={premium} onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>setModule('Kanban')} />}
     {module==='Simulações' && <SimulationView premium={premium} />}
     {module==='Kanban' && <KanbanBoard premium={premium} />}
