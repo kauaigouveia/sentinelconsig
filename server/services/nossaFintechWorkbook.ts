@@ -3,23 +3,36 @@ import { addMonths, parseDate, type DaycovalWorkbook } from './daycovalWorkbook.
 
 export const NOSSA_WORKBOOK_KEY = 'NOSSA_FINTECH_PORT_REFIN_WORKBOOK_V7';
 
-/** V.07: rates come from TABELAS; 218004 corrected to 1.72% by the operator. */
+/** Rates come from TABELAS. B is the active catalog, not the complete auxiliary rate register. */
 export function nossaWorkbookTables(book: DaycovalWorkbook) {
   const cells = book.sheets.TABELAS?.cells;
   if (!cells) throw new Error('A aba TABELAS não foi encontrada.');
+  if (!Number.isInteger(book.sheets.TABELAS.rows) || book.sheets.TABELAS.rows < 2 || book.sheets.TABELAS.rows > 5000) throw new Error('A aba TABELAS excede a estrutura de leitura suportada.');
   const rates = new Map<string, number>();
-  for (let row = 5; row <= 51; row++) rates.set(String(cells[`E${row}`]), Number(cells[`H${row}`]));
+  const ambiguousRates = new Set<string>();
+  for (let row = 5; row <= book.sheets.TABELAS.rows; row++) {
+    const code = String(cells[`E${row}`]), rate = Number(cells[`H${row}`]);
+    if (rates.has(code) && rates.get(code) !== rate) ambiguousRates.add(code);
+    rates.set(code, rate);
+  }
   const tables: { id: string; code: string; name: string; rate: number; term: number; invalidity: boolean }[] = [];
-  for (let row = 2; row <= 48; row++) {
-    const name = String(cells[`B${row}`] || '');
-    const code = name.match(/^\d{6}/)?.[0];
+  const seen = new Set<string>();
+  for (let row = 2; row <= book.sheets.TABELAS.rows; row++) {
+    const rawName = cells[`B${row}`];
+    if (rawName == null || typeof rawName === 'string' && !rawName.trim()) continue;
+    const name = typeof rawName === 'string' ? rawName.trim() : '';
+    const code = name.match(/^\d{6}(?=\s*-)/)?.[0];
     if (!code) throw new Error('A estrutura das tabelas Nossa Fintech mudou.');
+    if (seen.has(code)) throw new Error(`Código de tabela Nossa Fintech duplicado: ${code}.`);
+    seen.add(code);
+    if (ambiguousRates.has(code)) throw new Error(`Taxas conflitantes na tabela ${code}.`);
     const rate = code === '218004' ? 0.0172 : rates.get(code);
     if (!Number.isFinite(rate) || rate! <= 0 || rate! > 0.0185) throw new Error(`Taxa inválida na tabela ${code}.`);
     for (const term of name.includes('108x') ? [108] : [84, 96]) {
       tables.push({ id: `${code}:${term}`, code, name, rate: rate!, term, invalidity: name.includes('INVALIDEZ') });
     }
   }
+  if (!tables.length) throw new Error('Nenhuma tabela Nossa Fintech foi encontrada na lista ativa.');
   return tables;
 }
 

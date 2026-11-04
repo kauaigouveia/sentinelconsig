@@ -1,3 +1,4 @@
+import {DAYCOVAL_FORMULA_HASHES} from './daycovalModelVersions.js';
 import {portabilityRuleSources} from '../../src/lib/portabilityRuleSources.js';
 import { simulateNossaWorkbook, nossaWorkbookTables, NOSSA_WORKBOOK_KEY } from './nossaFintechWorkbook.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
@@ -12,12 +13,13 @@ export const SPREADSHEET_MODELS = {
   C6: { key: 'C6_PORT_REFIN_WORKBOOK_V1', label: 'C6', extensions: ['.xlsx', '.xlsm'], hash: 'db9afab9b88a4dcf391b704642f3534e9d4d9f81dc21e473a1940656821a5aef', sheets: ['Simulador Port','Planilha 1','PZO','VL_PARC'] },
   PARANA: { key: 'PARANA_PORT_REFIN_WORKBOOK_V1', label: 'Paraná', extensions: ['.xlsx'], hash: 'b2b070b28d91c88e71708351d45a49175a5cad79defbe6af2c00d792253effda', sheets: ['Simulador Portabilidade e Refin','Premissas Convênios','Build Up'] },
 };
+export function isPortRefinModelCompatible(bank:SpreadsheetBank,hash:string):boolean{return bank==='DAYCOVAL'?DAYCOVAL_FORMULA_HASHES.includes(hash):hash===SPREADSHEET_MODELS[bank].hash;}
 export async function importPortRefin(bank: SpreadsheetBank, buffer: Buffer, name: string) {
   const model=SPREADSHEET_MODELS[bank];
   if(!model.extensions.some(extension=>name.toLowerCase().endsWith(extension)))throw new Error('Formato de arquivo inválido para este banco.');
-  const book=await importDaycoval(buffer,name,model.hash,model.sheets);
+  const book=await importDaycoval(buffer,name,bank==='DAYCOVAL'?DAYCOVAL_FORMULA_HASHES:model.hash,model.sheets);
   if(bank==='C6')book.terms=[108];
-  if(bank==='NOSSA_FINTECH') { book.terms=[108,96,84]; if(!nossaWorkbookTables(book).length)throw new Error('Nenhuma tabela Nossa Fintech encontrada.'); }
+  if(bank==='NOSSA_FINTECH') book.terms=[...new Set(nossaWorkbookTables(book).map(table=>table.term))].sort((a,b)=>b-a);
   if(bank==='PARANA') {
     const s=book.sheets['Premissas Convênios'];
     if(s.cells.A8!=='INSS')throw new Error('A linha INSS da planilha Paraná mudou.');

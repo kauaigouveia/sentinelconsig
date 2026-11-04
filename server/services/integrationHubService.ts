@@ -1,3 +1,4 @@
+import {classifyIntegrationMonitoring} from './integrationMonitoringState.js';
 import {readCatalogConnections,type CatalogSlug} from './integrationCatalogConnections.js';
 import { PrismaClient, IncidentSeverity, IncidentStatus, PriorityLevel } from '@prisma/client';
 import { logger } from '../logger.js';
@@ -18,6 +19,7 @@ export interface IntegrationDefinition {
   code: string;
   slug: CatalogSlug;
   configured?: boolean;
+  monitoringReason?: string;
   configurationUnavailable?: boolean;
   connectionCount?: number;
   enabledConnectionCount?: number;
@@ -26,7 +28,7 @@ export interface IntegrationDefinition {
   protocol: string;
   environment: 'production' | 'staging' | 'homologation' | 'unknown';
   active: boolean;
-  status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING';
+  status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING' | 'UNKNOWN';
   maskedBaseUrl: string;
   capabilities: string[];
   lastHealthCheck?: {
@@ -216,6 +218,7 @@ export class IntegrationHubService {
     summary: {
       total: number;
       online: number;
+      unknown: number;
       attention: number;
       offline: number;
       disabled: number;
@@ -277,6 +280,7 @@ export class IntegrationHubService {
 
     const integrations: IntegrationDefinition[] = [];
     let onlineCount = 0;
+    let unknownCount = 0;
     let attentionCount = 0;
     let offlineCount = 0;
     let disabledCount = 0;
@@ -306,36 +310,9 @@ export class IntegrationHubService {
       // Último Health Check
       const lastCheck = healthLogs.find((l) => l.bank.toUpperCase().replace(/[^A-Z0-9]/g,'') === normalizedBank);
 
-      // Determinar status baseado em dados reais
-      let status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING' = 'ONLINE';
-
-      if (metadata.unavailable || (isActive && enabled.some(c=>!c.configured)) || enabled.length>1) {
-        status='ATTENTION'; attentionCount++;
-      } else if (!isActive) {
-        status = 'DISABLED';
-        disabledCount++;
-      } else if (activeIncidentsByBank.has(slug)) {
-        status = 'OFFLINE';
-        offlineCount++;
-      } else if (lastCheck && !lastCheck.success) {
-        // Se a última checagem falhou
-        if (lastCheck.httpStatus === 403 || lastCheck.rayId || errors >= 5) {
-          status = 'OFFLINE';
-          offlineCount++;
-        } else {
-          status = 'ATTENTION';
-          attentionCount++;
-        }
-      } else if (!lastCheck || Date.now() - lastCheck.timestamp.getTime() > 86400000) {
-        status = 'ATTENTION';
-        attentionCount++;
-      } else if (totalReqs > 0 && errors > 0 && successRate! < 90) {
-        status = 'ATTENTION';
-        attentionCount++;
-      } else {
-        status = 'ONLINE';
-        onlineCount++;
-      }
+      const monitoring=classifyIntegrationMonitoring({unavailable:metadata.unavailable,active:isActive,enabledCount:enabled.length,missingCredentials:enabled.some(c=>!c.configured),incident:activeIncidentsByBank.has(slug),lastCheck,errors,successRate});
+      const status=monitoring.status;
+      if(status==='ONLINE')onlineCount++;else if(status==='OFFLINE')offlineCount++;else if(status==='ATTENTION')attentionCount++;else if(status==='DISABLED')disabledCount++;else unknownCount++;
 
       // Sincronização
       let lastSyncAt: string | null = null;
@@ -354,6 +331,7 @@ export class IntegrationHubService {
         active: isActive,
         configured, configurationUnavailable:metadata.unavailable,connectionCount:connections.filter(c=>c.configured).length,enabledConnectionCount:enabled.length,environments,
         status,
+        monitoringReason:monitoring.reason,
         maskedBaseUrl: this.maskUrl(baseUrl),
         capabilities: base.capabilities,
         lastHealthCheck: lastCheck
@@ -379,12 +357,12 @@ export class IntegrationHubService {
     const vctexUnavailable=connectionResults.some(result=>result.status==='rejected');
     const connections=connectionResults.flatMap(result=>result.status==='fulfilled'?[result.value]:[]);
     const active = connections.filter(c=>c.enabled);
-    const status = vctexUnavailable ? 'ATTENTION' : !active.length ? 'DISABLED' : active.some(c=>c.status==='OFFLINE') ? 'OFFLINE' : active.every(c=>c.status==='ONLINE') ? 'ONLINE' : 'ATTENTION';
-    if(status==='DISABLED')disabledCount++;else if(status==='OFFLINE')offlineCount++;else if(status==='ONLINE')onlineCount++;else attentionCount++;
     const diagnostics=active.flatMap(c=>c.history).sort((a,b)=>b.timestamp.localeCompare(a.timestamp)),last=diagnostics[0];
+    const status = vctexUnavailable ? 'ATTENTION' : !active.length ? 'DISABLED' : active.some(c=>!c.hasCredentials) ? 'ATTENTION' : active.some(c=>c.status==='OFFLINE') ? 'OFFLINE' : active.some(c=>!c.history.length) ? 'UNKNOWN' : active.every(c=>c.status==='ONLINE') ? 'ONLINE' : 'ATTENTION';
+    if(status==='DISABLED')disabledCount++;else if(status==='OFFLINE')offlineCount++;else if(status==='ONLINE')onlineCount++;else if(status==='UNKNOWN')unknownCount++;else attentionCount++;
     const errors=connections.reduce((n,c)=>n+c.metrics.errors24h,0),requests=connections.reduce((n,c)=>n+c.metrics.requests24h,0);
     totalErrors24h+=errors;
-    integrations.push({id:'vctex',name:'VCTEX CLT',code:'VCTEX',slug:'vctex',type:'FINTECH',protocol:'REST via Oracle',environment:'production',active:!!active.length,status,configurationUnavailable:vctexUnavailable,configured:connections.some(c=>c.hasCredentials),connectionCount:connections.filter(c=>c.hasCredentials).length,enabledConnectionCount:active.length,
+    integrations.push({id:'vctex',name:'VCTEX CLT',code:'VCTEX',slug:'vctex',type:'FINTECH',protocol:'REST via Oracle',environment:'production',active:!!active.length,status,monitoringReason:status==='UNKNOWN'?'Há conexão VCTEX sem diagnóstico registrado.':status==='ATTENTION'?'Verifique o diagnóstico e a habilitação CLT de cada conexão.':undefined,configurationUnavailable:vctexUnavailable,configured:connections.some(c=>c.hasCredentials),connectionCount:connections.filter(c=>c.hasCredentials).length,enabledConnectionCount:active.length,
       maskedBaseUrl:'Oracle · /vctex',capabilities:['AUTH','CLT'],lastHealthCheck:last?{timestamp:last.timestamp,success:last.authenticationRecognized,latencyMs:last.latencyMs,httpStatus:last.httpStatus,errorMessage:last.error}:null,
       totalRequests24h:requests,errorCount24h:errors,successRate24h:requests?Math.round((requests-errors)*100/requests):undefined,metricsPartial:connections.some(c=>!c.metrics.complete)});
     return {
@@ -392,6 +370,7 @@ export class IntegrationHubService {
       summary: {
         total: integrations.length,
         online: onlineCount,
+        unknown: unknownCount,
         attention: attentionCount,
         offline: offlineCount,
         disabled: disabledCount,

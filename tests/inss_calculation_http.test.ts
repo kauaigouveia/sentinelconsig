@@ -2,7 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import {beforeEach,expect,it,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({calculate:vi.fn()}));
-vi.mock('../server/services/portRefinWorkbooks',()=>({SPREADSHEET_MODELS:{DAYCOVAL:{key:'DAYCOVAL_INSS_WORKBOOK_V1',hash:'synthetic'}},calculatePortRefin:mocks.calculate,portRefinRatePolicies:()=>[],importPortRefin:vi.fn()}));
+vi.mock('../server/services/portRefinWorkbooks',()=>({SPREADSHEET_MODELS:{DAYCOVAL:{key:'DAYCOVAL_INSS_WORKBOOK_V1',hash:'synthetic'}},calculatePortRefin:mocks.calculate,isPortRefinModelCompatible:(_bank:string,hash:string)=>hash==='synthetic',portRefinRatePolicies:()=>[],importPortRefin:vi.fn()}));
 vi.mock('../server/services/daycovalWorkbook',()=>({decodeDaycoval:JSON.parse,encodeDaycoval:JSON.stringify,parseDate:(value:string)=>{const date=new Date(value);if(!Number.isFinite(date.getTime()))throw Error('Data inválida');return date;}}));
 vi.mock('../server/services/partnerPortalService',()=>({PartnerPortalService:{getPartnerSession:async()=>null}}));
 vi.mock('../server/services/auditLogService',()=>({AuditLogService:{record:vi.fn()}}));

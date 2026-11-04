@@ -47,6 +47,7 @@ export interface IntegrationDefinition {
   code: string;
   slug: Exclude<HubTab,'overview'|'telegram'|'health'|'incidents'|'logs'>;
   configured?:boolean;
+  monitoringReason?:string;
   configurationUnavailable?:boolean;
   connectionCount?:number;
   enabledConnectionCount?:number;
@@ -55,7 +56,7 @@ export interface IntegrationDefinition {
   protocol: string;
   environment: 'production' | 'staging' | 'homologation' | 'unknown';
   active: boolean;
-  status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING';
+  status: 'ONLINE' | 'ATTENTION' | 'OFFLINE' | 'DISABLED' | 'CHECKING' | 'UNKNOWN';
   maskedBaseUrl: string;
   capabilities: string[];
   lastHealthCheck?: {
@@ -75,6 +76,7 @@ export interface IntegrationDefinition {
 }
 
 export interface HubSummary {
+  unknown?: number;
   total: number;
   online: number;
   attention: number;
@@ -471,7 +473,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
               : overallStatus === 'CHECKING'
               ? 'Verificando integrações'
               : overallStatus === 'UNKNOWN'
-              ? 'Status indisponível'
+              ? 'Sem verificação completa'
               : 'Indisponibilidade Detectada'}
           </span>
           <button
@@ -505,6 +507,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
             <CheckCircle2 className="w-4 h-4 text-[var(--success-text)]" />
           </div>
           <div className="text-2xl font-bold text-[var(--success-text)]">{isLoading || catalogError ? '—' : summary.online}</div>
+          {!isLoading&&!catalogError&&<p className="text-xs text-[var(--text-secondary)]">{summary.unknown??integrations.filter(bank=>bank.status==='UNKNOWN').length} sem verificação confirmada</p>}
         </div>
 
         <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
@@ -596,10 +599,11 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
           {key:'name',label:'Instituição',render:bank=><strong>{bank.name}</strong>,compare:(a,b)=>a.name.localeCompare(b.name,'pt-BR')},
           {key:'configured',label:'Configuração',render:bank=>bank.configurationUnavailable?'Não conferida':bank.configured?'Configurada':'Pendente'},
           {key:'enabled',label:'Habilitação',render:bank=>bank.active?'Habilitada':'Desabilitada'},
-          {key:'status',label:'Monitoramento',render:bank=><Badge tone={bank.status==='ONLINE'?'success':bank.status==='OFFLINE'?'danger':bank.status==='ATTENTION'?'warning':'neutral'}>{bank.status==='ONLINE'?'Última verificação OK':bank.status==='OFFLINE'?'Falha registrada':bank.status==='ATTENTION'?'Atenção / não verificada':'Desabilitada'}</Badge>},
-          {key:'checked',label:'Última verificação',render:bank=>bank.lastHealthCheck?new Date(bank.lastHealthCheck.timestamp).toLocaleString('pt-BR'):'Não aferida'},
+          {key:'status',label:'Monitoramento',render:bank=><span title={bank.monitoringReason}><Badge tone={bank.status==='ONLINE'?'success':bank.status==='OFFLINE'?'danger':bank.status==='ATTENTION'?'warning':'neutral'}>{bank.status==='ONLINE'?'Última verificação OK':bank.status==='OFFLINE'?'Falha registrada':bank.status==='ATTENTION'?'Falha ou pendência registrada':bank.status==='UNKNOWN'?'Sem verificação confirmada':'Desabilitada'}</Badge></span>},
+          {key:'checked',label:'Último registro',render:bank=>bank.lastHealthCheck?new Date(bank.lastHealthCheck.timestamp).toLocaleString('pt-BR'):'Não aferida'},
           {key:'action',label:'Ação',render:bank=><Button onClick={()=>setActiveTab(bank.slug)}>Abrir conexão</Button>},
         ]}/>}
+        <p className="text-xs text-[var(--text-secondary)]">Sem verificação confirmada não significa falha: atualizar este painel apenas lê registros existentes e não testa os bancos. Quando há várias promotoras, o histórico precisa identificar cada conexão.</p>
         <details><summary>Diagnósticos e ações detalhadas</summary>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {integrations.map((bank) => {
@@ -656,7 +660,7 @@ export const HubIntegracoes: React.FC<HubIntegracoesProps> = ({ initialSubTab = 
                         ? 'ATENÇÃO'
                         : bank.status === 'OFFLINE'
                         ? 'OFFLINE'
-                        : 'DESABILITADA'}
+                        : bank.status === 'UNKNOWN' ? 'SEM VERIFICAÇÃO CONFIRMADA' : 'DESABILITADA'}
                     </span>
                   </div>
 

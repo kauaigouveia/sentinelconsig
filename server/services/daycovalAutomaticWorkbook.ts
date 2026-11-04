@@ -1,7 +1,7 @@
 import { paidFromTerms } from '../../src/lib/portabilityEligibility.js';
 import { simulationPortabilityCheck } from '../../src/lib/portabilitySimulationPolicy.js';
 import { type DaycovalWorkbook, parseDate } from './daycovalWorkbook.js';
-import { calculatePortRefin, SPREADSHEET_MODELS } from './portRefinWorkbooks.js';
+import { calculatePortRefin, isPortRefinModelCompatible } from './portRefinWorkbooks.js';
 
 type AutomaticDaycovalWorkbook = DaycovalWorkbook & { validFrom?: string; validUntil?: string };
 
@@ -10,7 +10,7 @@ export function prepareDaycovalWorkbook(book: AutomaticDaycovalWorkbook | null, 
   const pending = (code: string, reason: string) => ({ ready: false as const, code, reason, result: null });
   if (!book || book.enabled === false) return pending('WORKBOOK_UNAVAILABLE', 'Planilha Daycoval ausente ou desativada para a empresa.');
   if (input.product !== 'INSS' || input.operation !== 'PORT_REFIN') return pending('WORKBOOK_OPERATION_UNSUPPORTED', 'O calculador disponível atende INSS Portabilidade + Refinanciamento.');
-  if (book.formulaHash !== SPREADSHEET_MODELS.DAYCOVAL.hash) return pending('WORKBOOK_INCOMPATIBLE', 'A estrutura de fórmulas não corresponde ao modelo Daycoval homologado no código.');
+  if (!isPortRefinModelCompatible('DAYCOVAL',book.formulaHash)) return pending('WORKBOOK_INCOMPATIBLE', 'A estrutura de fórmulas não corresponde ao modelo Daycoval homologado no código.');
   const validity = book;
   try {
     parseDate(today);

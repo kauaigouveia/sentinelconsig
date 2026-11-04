@@ -1,3 +1,4 @@
+import {integrationOverallStatus} from './server/services/integrationMonitoringState.js';
 import {factaCredentialPatch} from './src/lib/factaCredentialIntent.js';
 import {publicPortabilityRows,routingAuditConstraint} from './server/services/portabilityRouting.js';
 import {CltJourneyService} from './server/services/cltJourneyService.js';
@@ -17681,7 +17682,7 @@ async function auditAndEnsureMasterUser() {
 
       return res.json({
         timestamp: new Date().toISOString(),
-        overallStatus: catalogResult.summary.offline > 0 ? 'DEGRADED' : catalogResult.summary.attention > 0 ? 'ATTENTION' : 'OPERATIONAL',
+        overallStatus: integrationOverallStatus(catalogResult.summary),
         ...catalogResult,
       });
     } catch (err: any) {

@@ -730,7 +730,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
                   <h2 className="text-base font-black">Banco C6 S.A. (Código 336)</h2>
                   {c6Config.isConfigured ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]">
-                      Conectado & Habilitado
+                      Credenciais cadastradas
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]">
@@ -1153,7 +1153,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
                   <h2 className="text-base font-black">FACTA Financeira (Código 149)</h2>
                   {factaConfig.isConfigured ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]">
-                      Conectado & Habilitado
+                      Credenciais cadastradas
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]">

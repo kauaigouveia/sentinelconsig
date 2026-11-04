@@ -3,7 +3,7 @@ import {resolveInstitutionCode} from '../../src/lib/strParticipants.js';
 import {portabilityReviewMetadata,simulationPortabilityCheck} from '../../src/lib/portabilitySimulationPolicy.js';
 import {paidFromTerms} from '../../src/lib/portabilityEligibility.js';
 import {parseDate} from './daycovalWorkbook.js';
-import {calculatePortRefin,SPREADSHEET_MODELS,portRefinRatePolicies,type SpreadsheetBank} from './portRefinWorkbooks.js';
+import {calculatePortRefin,isPortRefinModelCompatible,portRefinRatePolicies,type SpreadsheetBank} from './portRefinWorkbooks.js';
 import {selectablePortRefinRates} from '../../src/lib/portRefinRates.js';
 
 class DocumentaryRestriction extends Error {}
@@ -30,7 +30,7 @@ export function previewPortRefin(bank:SpreadsheetBank,book:any,raw:any,today:str
 /** Read-only calculation: no customer lookup, persistence, events or external API. */
 function previewAtTerm(bank:SpreadsheetBank,book:any,raw:any,today:string){
  if(!book||book.enabled===false)throw Error('Planilha ausente ou desativada para esta empresa.');
- if(book.formulaHash!==SPREADSHEET_MODELS[bank].hash)throw Error('Estrutura da planilha incompatível com o modelo validado.');
+ if(!isPortRefinModelCompatible(bank,book.formulaHash))throw Error('Estrutura da planilha incompatível com o modelo validado.');
  const term=Number(raw.term),benefitType=Number(raw.benefitType);
  if(!Number.isInteger(term)||term<1||term>120||!Number.isInteger(benefitType)||benefitType<1||benefitType>99)throw Error('Informe prazo e espécie válidos.');
  parseDate(raw.birthDate);parseDate(today);

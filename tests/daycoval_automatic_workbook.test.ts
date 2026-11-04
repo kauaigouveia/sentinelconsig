@@ -1,3 +1,4 @@
+import {DAYCOVAL_FORMULA_HASHES} from '../server/services/daycovalModelVersions';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 const policy=vi.hoisted(()=>({blocked:false,review:false}));
 vi.mock('../src/lib/portabilitySimulationPolicy',()=>({simulationPortabilityCheck:()=>({...policy,status:policy.blocked?'NÃO ELEGÍVEL':policy.review?'PENDENTE DE DADOS':'ELEGÍVEL',reason:'Critério sintético'})}));
@@ -10,8 +11,8 @@ const workbook=()=>({enabled:true,formulaHash:SPREADSHEET_MODELS.DAYCOVAL.hash,h
 const input={product:'INSS',operation:'PORT_REFIN',birthDate:'1980-01-01',benefitType:41,state:'SP',originalBank:'001',originalTerm:60,remainingTerm:36,originalInstallment:35,debt:900,term:36};
 beforeEach(()=>{policy.blocked=false;policy.review=false;});
 describe('automatic Daycoval worksheet with synthetic inputs and real interpreter',()=>{
- it('calculates in backend without API, manual spreadsheet input, rate or value',()=>{
-  const fetch=vi.spyOn(globalThis,'fetch');try{const prepared=prepareDaycovalWorkbook(workbook(),input,'2026-10-30');
+ it.each(DAYCOVAL_FORMULA_HASHES)('calculates in backend for reviewed model %s without API or manual spreadsheet input',(formulaHash)=>{
+  const fetch=vi.spyOn(globalThis,'fetch');try{const prepared=prepareDaycovalWorkbook({...workbook(),formulaHash},input,'2026-10-30');
    expect(prepared.ready).toBe(true);expect(prepared.result?.offers[0]).toMatchObject({amount:100,installment:35,balance:900,term:36,rate:1,eligible:true});expect(fetch).not.toHaveBeenCalled();
   }finally{fetch.mockRestore();}
  });

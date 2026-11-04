@@ -76,6 +76,8 @@ export class DaycovalCalculator {
   private stack = new Set<string>();
   private parsed = new Map<string, Node>();
   private budget = 300000;
+  private pivotCounts = new Map<any, Map<any, number>>();
+  private lookupRows = new Map<string, Map<any, number>>();
   constructor(private book: DaycovalWorkbook, private overrides: Record<string, Cell>, private main = MAIN) {}
   private range(reference: string, sheet: string): Range {
     const index = reference.lastIndexOf('!');
@@ -187,11 +189,18 @@ export class DaycovalCalculator {
       case 'VLOOKUP': {
         const key = val(0), range = raw(1) as Range, column = num(val(2)); const approximate = args[3] ? Boolean(val(3)) : true;
         if (!range || column < 1 || column > range.c2 - range.c1 + 1) throw new CalculationError('PROCV inválido.');
-        let match = -1;
-        for (let r = range.r1; r <= range.r2; r++) {
-          const item = this.cell(`${colName(range.c1)}${r}`, range.sheet);
-          if (item === key || typeof item === 'string' && typeof key === 'string' && item.toUpperCase() === key.toUpperCase()) { match = r; break; }
-          if (approximate && typeof item === typeof key && item <= key) match = r;
+        const lookupKey = JSON.stringify([range.sheet,range.r1,range.r2,range.c1,approximate]);
+        let matches = this.lookupRows.get(lookupKey);
+        if (!matches) { matches = new Map<any, number>(); this.lookupRows.set(lookupKey,matches); }
+        let match = matches.get(key);
+        if (match === undefined) {
+          match = -1;
+          for (let r = range.r1; r <= range.r2; r++) {
+            const item = this.cell(`${colName(range.c1)}${r}`, range.sheet);
+            if (item === key || typeof item === 'string' && typeof key === 'string' && item.toUpperCase() === key.toUpperCase()) { match = r; break; }
+            if (approximate && typeof item === typeof key && item <= key) match = r;
+          }
+          matches.set(key,match);
         }
         if (match < 0) throw new CalculationError('Condição não encontrada na planilha.');
         return this.cell(`${colName(range.c1 + column - 1)}${match}`, range.sheet);
@@ -216,8 +225,19 @@ export class DaycovalCalculator {
       case 'GETPIVOTDATA': {
         // This workbook's pivot counts employer/term rows from Consulta1.
         if (val(0) !== 'EMPREGADOR' || val(2) !== 'EMPREGADOR' || val(4) !== 'PRAZO') throw new UnsupportedFormula('Tabela dinâmica não suportada.');
-        const employer = val(3), term = val(5), base = this.book.sheets['Base tabelas']; let count = 0;
-        for (let r = 2; r <= base.rows; r++) if (this.cell(`A${r}`, 'Base tabelas') === employer && this.cell(`G${r}`, 'Base tabelas') === term) count++;
+        const employer = val(3), term = val(5), base = this.book.sheets['Base tabelas'];
+        let counts = this.pivotCounts.get(employer);
+        if (!counts) {
+          counts = new Map<any, number>();
+          // Same source/count semantics, indexed once per employer and calculator.
+          // All cell reads still consume the unchanged resource budget.
+          for (let r = 2; r <= base.rows; r++) if (this.cell(`A${r}`, 'Base tabelas') === employer) {
+            const availableTerm = this.cell(`G${r}`, 'Base tabelas');
+            counts.set(availableTerm, (counts.get(availableTerm) || 0) + 1);
+          }
+          this.pivotCounts.set(employer, counts);
+        }
+        const count = counts.get(term) || 0;
         if (!count) throw new CalculationError('Prazo indisponível.'); return count;
       }
       case 'XIRR': {
@@ -235,7 +255,7 @@ export class DaycovalCalculator {
   }
 }
 
-export async function importDaycoval(buffer: Buffer, fileName: string, expectedFormulaHash?: string, sheetNames = SHEETS): Promise<DaycovalWorkbook> {
+export async function importDaycoval(buffer: Buffer, fileName: string, expectedFormulaHash?: string | readonly string[], sheetNames = SHEETS): Promise<DaycovalWorkbook> {
   if (buffer.length > 3500000) throw new CalculationError('Envie uma planilha de até 3,5 MB.');
   // Bound ZIP expansion before ExcelJS allocates the worksheet XML.
   let end = buffer.length - 22;
@@ -280,7 +300,7 @@ export async function importDaycoval(buffer: Buffer, fileName: string, expectedF
     }
   }
   const formulaHash = createHash('sha256').update(formulas.sort().join('\n')).digest('hex');
-  if (expectedFormulaHash && formulaHash !== expectedFormulaHash) throw new CalculationError('As fórmulas ou a estrutura mudaram. Esta versão precisa ser adaptada antes de ativar.');
+  if (expectedFormulaHash && !(typeof expectedFormulaHash === 'string' ? [expectedFormulaHash] : expectedFormulaHash).includes(formulaHash)) throw new CalculationError('As fórmulas ou a estrutura mudaram. Esta versão precisa ser adaptada antes de ativar.');
   const base = sheets['Base tabelas'], terms = new Set<number>();
   if (base) for (let row = 2; row <= base.rows; row++) if (base.cells[`A${row}`] === 'INSS' && typeof base.cells[`G${row}`] === 'number') terms.add(base.cells[`G${row}`] as number);
   if (!terms.size && sheetNames === SHEETS) throw new CalculationError('Nenhuma tabela INSS encontrada.');
