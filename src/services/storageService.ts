@@ -1725,19 +1725,23 @@ export class StorageService {
     window.dispatchEvent(new Event('credit_gestao_storage_update'));
   }
 
-  public static logout(): void {
-    const active = this.getActiveUser();
-    try {
-      this.addAuditLog({
-        action: 'LOGOUT_SISTEMA',
-        entity: 'User',
-        entityId: active?.id || 'unknown',
-        previousData: JSON.stringify({ email: active?.email, name: active?.name, role: active?.role }),
-      });
-    } catch {}
-    this.clearBusinessCache();
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
-    window.dispatchEvent(new Event('credit_gestao_storage_update'));
+  private static logoutInFlight: Promise<void> | null = null;
+
+  public static logout(): Promise<void> {
+    if (this.logoutInFlight) return this.logoutInFlight;
+    this.logoutInFlight = (async () => {
+      const active = this.getActiveUser();
+      try {
+        this.addAuditLog({action:'LOGOUT_SISTEMA',entity:'User',entityId:active?.id || 'unknown',previousData:JSON.stringify({email:active?.email,name:active?.name,role:active?.role})});
+      } catch {}
+      // Finish server-side revocation/cookie expiry before any page navigation.
+      const response = await fetch('/api/auth/logout', {method:'POST',credentials:'include',keepalive:true});
+      if (!response.ok) throw new Error('Não foi possível encerrar a sessão. Tente sair novamente.');
+      this.clearBusinessCache();
+      localStorage.setItem('cg_is_authenticated','false');
+      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+    })().finally(() => { this.logoutInFlight = null; });
+    return this.logoutInFlight;
   }
 
   // Active User & Auth

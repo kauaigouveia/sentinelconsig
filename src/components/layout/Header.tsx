@@ -132,6 +132,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   // User Menu Popover state
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const logoutPending = useRef(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -640,14 +643,25 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
 
                 <button
-                  onClick={() => {
-                    StorageService.logout();
-                    window.location.reload();
+                  disabled={isLoggingOut}
+                  onClick={async () => {
+                    if (logoutPending.current) return;
+                    logoutPending.current = true;
+                    setIsLoggingOut(true);
+                    setLogoutError(null);
+                    try {
+                      await StorageService.logout();
+                      window.location.reload();
+                    } catch {
+                      setLogoutError('Não foi possível encerrar a sessão. Verifique sua conexão e tente novamente.');
+                      logoutPending.current = false;
+                      setIsLoggingOut(false);
+                    }
                   }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--danger-bg)] dark:hover:bg-[var(--danger-bg)] text-[var(--danger-text)] dark:text-[var(--danger-text)] font-bold text-left transition-transform cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  <span>Sair do Sistema</span>
+                  <span>{isLoggingOut ? 'Encerrando sessão…' : 'Sair do Sistema'}</span>
                 </button>
               </div>
             </div>
@@ -655,6 +669,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
+      {logoutError && <div role="alert" className="absolute top-14 right-4 z-50 max-w-sm rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger-text)]">{logoutError}</div>}
       {/* Floating Cron Toast */}
       {isChangePasswordOpen && <ChangePasswordModal onClose={() => setIsChangePasswordOpen(false)} />}
       {cronMessage && (
