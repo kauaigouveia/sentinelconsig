@@ -187,6 +187,8 @@ function AppMainContent() {
     verifyServerSession();
   }, [verifyServerSession]);
 
+  useEffect(()=>{if(isAuthenticated)void StorageService.syncWithPostgreSQL();},[pathname,isAuthenticated,preferenceKey]);
+
   // Listen for storage / login state updates and initialize/sync data
   useEffect(() => {
     StorageService.initialize();
@@ -229,7 +231,7 @@ function AppMainContent() {
           console.warn('[REALTIME] Erro no sync targeted:', err);
         });
       } else {
-        StorageService.syncWithPostgreSQL().catch((err) => {
+        StorageService.syncWithPostgreSQL({force:true}).catch((err) => {
           console.warn('[REALTIME] Erro no sync global fallback:', err);
         });
       }
@@ -609,7 +611,7 @@ function AppMainContent() {
               onClick={() => setIsMobileNavigationOpen(false)}
             />
           )}
-          {newUI ? <PreviewSidebar favorites={workspace.favorites} recent={workspace.recent} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-symbol-v5.png'} /> : <Sidebar
+          {newUI ? <PreviewSidebar favorites={workspace.favorites} recent={workspace.recent} key={preferenceKey} role={activeUser?.role} permissions={activeUser?.customPermissions} path={pathname} navigate={handleNavigate} mobileOpen={isMobileNavigationOpen} closeMobile={() => setIsMobileNavigationOpen(false)} brandName={branding?.companyName || 'Sentinel Consig'} brandLogo={branding?.logoUrl && branding.logoUrl !== '/branding/sentinel-mark-v2.svg' ? branding.logoUrl : '/branding/sentinel-symbol-v6.png'} /> : <Sidebar
             currentView={effectiveView}
             currentPath={pathname}
             preferenceKey={preferenceKey}

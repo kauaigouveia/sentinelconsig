@@ -1,3 +1,4 @@
+import {PortabilityResults} from '../../src/components/simulation/PortabilityResults';
 /// <reference types="vite/client" />
 import {paletteStyle} from '../../src/lib/presentationPalette';
 import {ChartPatternDefinitions} from '../../src/components/ui/ChartPatterns';
@@ -101,11 +102,13 @@ function LocalReview() {
       <button onClick={()=>setPremium(!premium)}>Comparar {premium?'legado':'V2'}</button>
       <span>Rede externa e gravações bloqueadas</span>
     </header>
-    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Login','Portal do parceiro','Design system','Shell','Hub de Integrações','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
+    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Login','Portal do parceiro','Design system','Resultados múltiplos','Shell','Hub de Integrações','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
     <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
     {module==='Login'&&<LoginView onLoginSuccess={()=>{}}/>}
     {module==='Portal do parceiro'&&<PartnerPortalLayout/>}
     {module==='Design system'&&<RedesignGallery/>}
+    {module==='Resultados múltiplos'&&<div className="mx-auto max-w-5xl"><p className="mb-4 text-sm">INSS · Portabilidade + Refinanciamento · Dados sintéticos</p><PortabilityResults rows={Array.from({length:13},(_,i)=>['DAYCOVAL','PARANA','C6'].flatMap(provider=>[1,2,3].map(n=>({contractLabel:`Contrato ${i+1} · Banco de origem sintético`,provider,success:true,troco:100+n*150+i,term:84,table:{name:`Tabela sintética ${n}`}})))).flat().concat(Array.from({length:6},(_,i)=>({contractLabel:`Contratos 1 + ${i+2}`,provider:'DAYCOVAL',unified:true,requiresReview:true,success:true,troco:500+i*100,term:84,table:{name:'Unificação sintética'}})) as any)} selected={null} onSelect={()=>{}} conditionFor={()=>({installment:65.5,rate:1.85})}/></div>}
+
     {module==='Hub de Integrações'&&<HubIntegracoes premium/>}
     {module==='Shell'&&<ShellGallery renderContent={(path,navigate)=>path==='/integracoes'?<HubIntegracoes premium/>:path==='/simulacoes'?<SimulationView premium/>:path==='/propostas'?<ProductionList premium onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>navigate('/esteira')}/>:path==='/esteira'?<KanbanBoard premium/>:path==='/central-pendencias'?<CentralPendencias premium/>:null}/>}
     {module==='Propostas' && <ProductionList premium={premium} onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>setModule('Kanban')} />}

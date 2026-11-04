@@ -1,7 +1,7 @@
 /* Official blue palette. All themes, paint and legacy aliases are defined here. */
 :root {
  --brand-artwork-text:#C1E8FF;--brand-artwork-bg:#021024;
- --bg-canvas:#EEF7FF; --bg-surface:#FFFFFF; --bg-surface-elevated:#E2EFFB;
+ --bg-canvas:#F3F7FC; --bg-surface:#FFFFFF; --bg-surface-elevated:#EDF3FA;
  --border-default:#8BAAC7; --border-strong:#7DA0CA; --field-border:#5483B3;
  --text-primary:#021024; --text-secondary:#052659; --text-muted:var(--text-secondary);
  --action-default:#052659; --action-default-ink:#C1E8FF; --action-hover-default:#021024;
@@ -28,9 +28,9 @@
  --sentinel-accent:var(--link); --sentinel-accent-soft:var(--bg-surface-elevated); --sentinel-shadow:none; --sentinel-sidebar:var(--bg-surface);
 }
 .dark {
- --bg-canvas:#021024; --bg-surface:#041B3F; --bg-surface-elevated:#052659;
- --border-default:rgb(84 131 179 / .30); --border-strong:#5483B3; --field-border:#7DA0CA;
- --text-primary:#C1E8FF; --text-secondary:#7DA0CA; --text-muted:var(--text-secondary);
+ --bg-canvas:#081423; --bg-surface:#101F33; --bg-surface-elevated:#172C46;
+ --border-default:#3B5269; --border-strong:#718EA9; --field-border:#718EA9;
+ --text-primary:#D4E4F1; --text-secondary:#AAC0D5; --text-muted:var(--text-secondary);
  --action-default:#5483B3; --action-default-ink:#021024; --action-hover-default:#7DA0CA;
  --link:#7DA0CA; --focus:#7DA0CA;
  --success-bg:#0C2C36; --success-border:#7EA99C; --success-text:#B6DACF;

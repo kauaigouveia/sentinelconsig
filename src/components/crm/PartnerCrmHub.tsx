@@ -68,28 +68,33 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
   const [deletingPartner, setDeletingPartner] = useState<any | null>(null);
 
   // Load Promoters & Users for dropdowns
+  const tenantScope=StorageService.getSyncScope();
+  const partnersAbortRef=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{partnersAbortRef.current?.abort();partnersRequestRef.current++;},[tenantScope]);
   const loadAuxData = useCallback(async () => {
     try {
       const [promRes, usersRes] = await Promise.all([
-        fetch('/api/promoters'),
-        fetch('/api/users'),
+        StorageService.readCatalog('/api/promoters'),
+        StorageService.readCatalog('/api/users'),
       ]);
-      if (promRes.ok) {
-        const data = await promRes.json();
+      if (promRes) {
+        const data = promRes;
         setPromoters(Array.isArray(data) ? data : []);
       }
-      if (usersRes.ok) {
-        const data = await usersRes.json();
+      if (usersRes) {
+        const data = usersRes;
         setInternalUsers(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Error loading aux data:', err);
     }
-  }, []);
+  }, [tenantScope]);
 
   // Load Partners with CRM aggregates
   const loadPartners = useCallback(async () => {
     const requestId = ++partnersRequestRef.current;
+    partnersAbortRef.current?.abort();
+    const controller=new AbortController();partnersAbortRef.current=controller;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -102,12 +107,12 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
       if (promoterFilter !== 'ALL') params.append('promoterId', promoterFilter);
       if (operationalFilter !== 'ALL') params.append('operationalStatus', operationalFilter);
 
-      const res = await fetch(`/api/partners?${params.toString()}`);
+      const res = await fetch(`/api/partners?${params.toString()}`,{signal:controller.signal});
       if (!res.ok) {
         throw new Error(`Erro ao carregar parceiros (HTTP ${res.status})`);
       }
       const json = await res.json();
-      if (requestId !== partnersRequestRef.current) return;
+      if (requestId !== partnersRequestRef.current || controller.signal.aborted || tenantScope!==StorageService.getSyncScope()) return;
       if (json && Array.isArray(json.data)) {
         const availablePages = Math.max(1, Number(json.pagination?.totalPages) || 1);
         setTotalPages(availablePages);
@@ -119,13 +124,13 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
         setPartners([]);
       }
     } catch (err: any) {
-      if (requestId === partnersRequestRef.current) {
+      if (!controller.signal.aborted && requestId === partnersRequestRef.current && tenantScope===StorageService.getSyncScope()) {
         setErrorMsg(err.message || 'Falha ao buscar dados do CRM de parceiros.');
       }
     } finally {
       if (requestId === partnersRequestRef.current) setLoading(false);
     }
-  }, [searchTerm, statusFilter, promoterFilter, operationalFilter, page]);
+  }, [searchTerm, statusFilter, promoterFilter, operationalFilter, page,tenantScope]);
 
   useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [searchTerm, statusFilter, promoterFilter, operationalFilter]);
 
@@ -137,7 +142,7 @@ export const PartnerCrmHub: React.FC<{ premium?: boolean }> = ({ premium = false
     const timer = setTimeout(() => {
       loadPartners();
     }, 200);
-    return () => clearTimeout(timer);
+    return () => {clearTimeout(timer);partnersAbortRef.current?.abort();partnersRequestRef.current++;};
   }, [loadPartners]);
 
   useEffect(() => {

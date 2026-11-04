@@ -80,6 +80,8 @@ it('runs all six individual bank paths for two contracts and one explicit Daycov
  fireEvent.click(screen.getByRole('checkbox',{name:/Calcular também unificações/}));
  const submit=screen.getByRole('button',{name:'Comparar ofertas'}).closest('form')!;
  fireEvent.submit(submit);fireEvent.submit(submit);
+ await screen.findByRole('button',{name:/Unificações Daycoval/});
+ fireEvent.click(screen.getByRole('button',{name:/Unificações Daycoval/}));
  await screen.findByText('Synthetic unified');
  for(const url of ['/api/daycoval/calculate','/api/c6-spreadsheet/calculate','/api/parana-spreadsheet/calculate','/api/integrations/finanto/config','/api/integrations/facta/inss/simulate','/api/integrations/nossa-fintech/port-refin/simulate-all'])expect(fetch.mock.calls.filter(([path])=>path===url)).toHaveLength(2);
  const groups=fetch.mock.calls.filter(([path])=>path==='/api/daycoval/calculate-groups');expect(groups).toHaveLength(1);

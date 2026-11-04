@@ -1,0 +1,690 @@
+{
+  "scope": "Local production build only; no live APIs or database",
+  "javascript": [
+    {
+      "name": "index-BngM8i9L.js",
+      "bytes": 983122,
+      "gzip": 278459
+    },
+    {
+      "name": "exceljs.min-Dw6E8SuP.js",
+      "bytes": 940196,
+      "gzip": 271329
+    },
+    {
+      "name": "portabilityPolicy-Be58zp93.js",
+      "bytes": 221559,
+      "gzip": 36316
+    },
+    {
+      "name": "BankIntegrationsView-Dj_QY-yj.js",
+      "bytes": 171683,
+      "gzip": 32288
+    },
+    {
+      "name": "PartnerManagement-qyT1LFHE.js",
+      "bytes": 169313,
+      "gzip": 28566
+    },
+    {
+      "name": "ExecutiveBIDashboard-0yYFKf44.js",
+      "bytes": 122507,
+      "gzip": 24472
+    },
+    {
+      "name": "ProposalDetailModal-CJOoi4Dt.js",
+      "bytes": 118559,
+      "gzip": 19350
+    },
+    {
+      "name": "SimulationView-BfmNbA8U.js",
+      "bytes": 111111,
+      "gzip": 20726
+    },
+    {
+      "name": "PartnerPortalLayout-DRsp2Ou1.js",
+      "bytes": 91430,
+      "gzip": 20479
+    },
+    {
+      "name": "CltJourneyWorkspace-B4kjAsZB.js",
+      "bytes": 85840,
+      "gzip": 24603
+    },
+    {
+      "name": "HubIntegracoes-CxnjaAGk.js",
+      "bytes": 82251,
+      "gzip": 17487
+    },
+    {
+      "name": "ProductManagement-DehPErmK.js",
+      "bytes": 76317,
+      "gzip": 13090
+    },
+    {
+      "name": "UserManagement-VTLS4Qkd.js",
+      "bytes": 76281,
+      "gzip": 13796
+    },
+    {
+      "name": "OperationsCentral-DB92CrQm.js",
+      "bytes": 71674,
+      "gzip": 13326
+    },
+    {
+      "name": "PlatformMasterCentral-rFPSNr0H.js",
+      "bytes": 69623,
+      "gzip": 12086
+    },
+    {
+      "name": "CentralAutomacoes-BVtwAP4v.js",
+      "bytes": 66117,
+      "gzip": 12424
+    },
+    {
+      "name": "pusher-Cf-et4Ve.js",
+      "bytes": 62314,
+      "gzip": 18921
+    },
+    {
+      "name": "FinantoInssSimulationModal-B4NW8Pgr.js",
+      "bytes": 60269,
+      "gzip": 17080
+    },
+    {
+      "name": "ProductionList-ulh90nd1.js",
+      "bytes": 59903,
+      "gzip": 14779
+    },
+    {
+      "name": "AuditLogView-DNN8DRTi.js",
+      "bytes": 51187,
+      "gzip": 9105
+    },
+    {
+      "name": "CommandCenterView-CUgeZUkp.js",
+      "bytes": 47853,
+      "gzip": 7358
+    },
+    {
+      "name": "TestRunnerModal-BkL-tvX7.js",
+      "bytes": 46622,
+      "gzip": 13228
+    },
+    {
+      "name": "CentralPendencias-Clm188MF.js",
+      "bytes": 45667,
+      "gzip": 8695
+    },
+    {
+      "name": "Client360View-DAQd-j1o.js",
+      "bytes": 41890,
+      "gzip": 8616
+    },
+    {
+      "name": "NewProductionModal-C3Uc3N25.js",
+      "bytes": 36741,
+      "gzip": 7853
+    },
+    {
+      "name": "SentinelIntelligenceDashboard-kLU_z0gl.js",
+      "bytes": 36738,
+      "gzip": 6706
+    },
+    {
+      "name": "NossaFintechPortRefinSimulationModal-B7TrQi9l.js",
+      "bytes": 34153,
+      "gzip": 10167
+    },
+    {
+      "name": "StatusImport-CNa3ibd3.js",
+      "bytes": 33925,
+      "gzip": 8168
+    },
+    {
+      "name": "HappyInssSimulationModal-DP0H0dYm.js",
+      "bytes": 30707,
+      "gzip": 5659
+    },
+    {
+      "name": "ExcelImportModal-Dk2B3rXv.js",
+      "bytes": 30681,
+      "gzip": 6992
+    },
+    {
+      "name": "CentralAtendimentoView-iy9c9Dtm.js",
+      "bytes": 29877,
+      "gzip": 8128
+    },
+    {
+      "name": "BackupManagementModal-CXlyUK7G.js",
+      "bytes": 29761,
+      "gzip": 6503
+    },
+    {
+      "name": "StatusManagement-DghSnbNC.js",
+      "bytes": 26326,
+      "gzip": 5693
+    },
+    {
+      "name": "HappyCltSimulationModal-BbDT7ops.js",
+      "bytes": 25587,
+      "gzip": 5580
+    },
+    {
+      "name": "OperationalAgendaView-B-bSJdSf.js",
+      "bytes": 23636,
+      "gzip": 5420
+    },
+    {
+      "name": "GeneralFinanceView-Cb9DPf4r.js",
+      "bytes": 22870,
+      "gzip": 5652
+    },
+    {
+      "name": "CentralAdministracao-QAmTrgXw.js",
+      "bytes": 22341,
+      "gzip": 5505
+    },
+    {
+      "name": "ProductSimulationModal-CSp6hVIo.js",
+      "bytes": 22074,
+      "gzip": 6973
+    },
+    {
+      "name": "BankPromoterManagement-Df8HwShR.js",
+      "bytes": 21820,
+      "gzip": 5679
+    },
+    {
+      "name": "SpreadsheetPortRefinWorkspace-Bnl_nFmf.js",
+      "bytes": 19139,
+      "gzip": 6638
+    },
+    {
+      "name": "TenantSaaSCapacityView-Cok8lL7Q.js",
+      "bytes": 19125,
+      "gzip": 3827
+    },
+    {
+      "name": "WhiteLabelModal-C_6v1kRN.js",
+      "bytes": 18023,
+      "gzip": 4083
+    },
+    {
+      "name": "PortabilityView-BODN1Y1Y.js",
+      "bytes": 17089,
+      "gzip": 4628
+    },
+    {
+      "name": "KanbanBoard-BraXT04F.js",
+      "bytes": 16321,
+      "gzip": 4996
+    },
+    {
+      "name": "excelService-BAeUK4kh.js",
+      "bytes": 16218,
+      "gzip": 6223
+    },
+    {
+      "name": "ExcelExportModal-DNNtF4ZV.js",
+      "bytes": 15557,
+      "gzip": 3815
+    },
+    {
+      "name": "SimulationImportModal-8m3mGo6l.js",
+      "bytes": 15027,
+      "gzip": 4673
+    },
+    {
+      "name": "DomainManagement-C-vBohT4.js",
+      "bytes": 14832,
+      "gzip": 3634
+    },
+    {
+      "name": "TVOperationsMonitor-BkVHIXjI.js",
+      "bytes": 14779,
+      "gzip": 3175
+    },
+    {
+      "name": "BankPlaybooksPanel-D2C_WNq-.js",
+      "bytes": 14757,
+      "gzip": 5374
+    },
+    {
+      "name": "StatusBottleneckReport-nnhiNaYy.js",
+      "bytes": 13245,
+      "gzip": 3142
+    },
+    {
+      "name": "CommercialRadarView-Dw2CIU6q.js",
+      "bytes": 13013,
+      "gzip": 3004
+    },
+    {
+      "name": "BmgCustomerAuthorization-CNkAlpFW.js",
+      "bytes": 12894,
+      "gzip": 4525
+    },
+    {
+      "name": "MyTaskQueueView-DwCgPL3a.js",
+      "bytes": 12844,
+      "gzip": 4285
+    },
+    {
+      "name": "SupportCenter-DyEU9OWp.js",
+      "bytes": 12601,
+      "gzip": 3712
+    },
+    {
+      "name": "HolidayManagement-BWL-Uhhb.js",
+      "bytes": 12451,
+      "gzip": 2981
+    },
+    {
+      "name": "NotificationsDrawer-CFtB6qEs.js",
+      "bytes": 11773,
+      "gzip": 3163
+    },
+    {
+      "name": "GamificationCenter-DxTM5WIA.js",
+      "bytes": 11715,
+      "gzip": 2992
+    },
+    {
+      "name": "DigitizerHome-CJ6cVsz_.js",
+      "bytes": 10660,
+      "gzip": 2917
+    },
+    {
+      "name": "UniversalCommandPalette-DpPFR9f2.js",
+      "bytes": 10427,
+      "gzip": 2736
+    },
+    {
+      "name": "CommandPaletteModal-CyHgIgP2.js",
+      "bytes": 9923,
+      "gzip": 3356
+    },
+    {
+      "name": "ControlTower-CLz4_yXh.js",
+      "bytes": 9846,
+      "gzip": 3442
+    },
+    {
+      "name": "CltCustomerDataCard-AVRcpENd.js",
+      "bytes": 9604,
+      "gzip": 3372
+    },
+    {
+      "name": "BankPlaybooksView-BcMl-Glz.js",
+      "bytes": 9192,
+      "gzip": 3386
+    },
+    {
+      "name": "InteractiveTourModal-bOMC4Q7l.js",
+      "bytes": 9015,
+      "gzip": 3373
+    },
+    {
+      "name": "PartnerSearchSelect-Bhh73IPZ.js",
+      "bytes": 8275,
+      "gzip": 2578
+    },
+    {
+      "name": "AnnouncementsManagement-CG8Rt5HW.js",
+      "bytes": 8253,
+      "gzip": 2443
+    },
+    {
+      "name": "InssBenefitTypeSelect-CheAimyp.js",
+      "bytes": 7963,
+      "gzip": 3196
+    },
+    {
+      "name": "PresencaCltSimulation-Vz7yYTK6.js",
+      "bytes": 7800,
+      "gzip": 3033
+    },
+    {
+      "name": "LoginView-Dyn929Kw.js",
+      "bytes": 7758,
+      "gzip": 2449
+    },
+    {
+      "name": "ParanaCltSimulation-DF4Ulofl.js",
+      "bytes": 7466,
+      "gzip": 2974
+    },
+    {
+      "name": "SimulationFlowSelectorModal-BgZ3Nb29.js",
+      "bytes": 5803,
+      "gzip": 2322
+    },
+    {
+      "name": "DeleteConfirmationModal-D_bAB6oW.js",
+      "bytes": 5635,
+      "gzip": 1632
+    },
+    {
+      "name": "ForcePasswordChangeModal-8Tb1XRjl.js",
+      "bytes": 5378,
+      "gzip": 1718
+    },
+    {
+      "name": "KeyboardShortcutsModal-C1ADe8Ew.js",
+      "bytes": 5154,
+      "gzip": 1593
+    },
+    {
+      "name": "inssEligibility-C4hFHSqW.js",
+      "bytes": 4479,
+      "gzip": 2031
+    },
+    {
+      "name": "RecordWorkspace-IDM-ocA6.js",
+      "bytes": 4203,
+      "gzip": 1401
+    },
+    {
+      "name": "PortabilityReviewFields-BXlItyVt.js",
+      "bytes": 3979,
+      "gzip": 1283
+    },
+    {
+      "name": "PartnerSimulationMonthlyReport-iHI1zER8.js",
+      "bytes": 3694,
+      "gzip": 1782
+    },
+    {
+      "name": "TenantSelectionView-DdMcEKkS.js",
+      "bytes": 3257,
+      "gzip": 1286
+    },
+    {
+      "name": "BankCodeSelect-B1J6rHzN.js",
+      "bytes": 2401,
+      "gzip": 1290
+    },
+    {
+      "name": "SimulationSteps-B3G6T1Sa.js",
+      "bytes": 2211,
+      "gzip": 1033
+    },
+    {
+      "name": "AuthFrame-Dsn9WFVi.js",
+      "bytes": 1965,
+      "gzip": 866
+    },
+    {
+      "name": "SimulationOfferCard-inllxRdM.js",
+      "bytes": 1840,
+      "gzip": 737
+    },
+    {
+      "name": "SimulationCustomerSummary-Bow9aJWq.js",
+      "bytes": 1618,
+      "gzip": 859
+    },
+    {
+      "name": "CurrencyInput-B189d5St.js",
+      "bytes": 1583,
+      "gzip": 853
+    },
+    {
+      "name": "nossaFintech-ZcCfqF9k.js",
+      "bytes": 1140,
+      "gzip": 490
+    },
+    {
+      "name": "list-eZESJ5sY.js",
+      "bytes": 945,
+      "gzip": 396
+    },
+    {
+      "name": "OrderedSimulationBanks-udBHqGlN.js",
+      "bytes": 853,
+      "gzip": 528
+    },
+    {
+      "name": "portabilitySimulationPolicy-CvYTWCau.js",
+      "bytes": 749,
+      "gzip": 373
+    },
+    {
+      "name": "building-CaaL5Ph6.js",
+      "bytes": 736,
+      "gzip": 391
+    },
+    {
+      "name": "power-BUL7p-bd.js",
+      "bytes": 712,
+      "gzip": 357
+    },
+    {
+      "name": "square-DhY4mwM9.js",
+      "bytes": 673,
+      "gzip": 358
+    },
+    {
+      "name": "simulationBankOrder-CGUOkIFu.js",
+      "bytes": 636,
+      "gzip": 442
+    },
+    {
+      "name": "landmark-CI4akzH5.js",
+      "bytes": 573,
+      "gzip": 368
+    },
+    {
+      "name": "megaphone-B4-1BCvV.js",
+      "bytes": 519,
+      "gzip": 348
+    },
+    {
+      "name": "trash-2-BJeGqZ22.js",
+      "bytes": 501,
+      "gzip": 318
+    },
+    {
+      "name": "save-NMIkR6fY.js",
+      "bytes": 500,
+      "gzip": 329
+    },
+    {
+      "name": "phone-DVyJl6I0.js",
+      "bytes": 495,
+      "gzip": 333
+    },
+    {
+      "name": "ActionBar-Cnrropx1.js",
+      "bytes": 476,
+      "gzip": 313
+    },
+    {
+      "name": "send-CcBVZHQT.js",
+      "bytes": 463,
+      "gzip": 335
+    },
+    {
+      "name": "pen-line-wec-3c_U.js",
+      "bytes": 450,
+      "gzip": 329
+    },
+    {
+      "name": "award-DGrNAyUw.js",
+      "bytes": 442,
+      "gzip": 328
+    },
+    {
+      "name": "file-check-C8y68pT9.js",
+      "bytes": 439,
+      "gzip": 303
+    },
+    {
+      "name": "httpJson-D4F4WHq4.js",
+      "bytes": 431,
+      "gzip": 313
+    },
+    {
+      "name": "calendar-DDubzeq7.js",
+      "bytes": 430,
+      "gzip": 305
+    },
+    {
+      "name": "file-check-2-Dixvu6y4.js",
+      "bytes": 430,
+      "gzip": 304
+    },
+    {
+      "name": "archive-D3h97m5t.js",
+      "bytes": 426,
+      "gzip": 312
+    },
+    {
+      "name": "external-link-D3EKH-DG.js",
+      "bytes": 424,
+      "gzip": 303
+    },
+    {
+      "name": "funnel-C3n6NgDI.js",
+      "bytes": 424,
+      "gzip": 313
+    },
+    {
+      "name": "circle-question-mark-C65JsVz9.js",
+      "bytes": 416,
+      "gzip": 311
+    },
+    {
+      "name": "link-2-2hO1prOK.js",
+      "bytes": 415,
+      "gzip": 308
+    },
+    {
+      "name": "user-check-BPyQ9kMq.js",
+      "bytes": 411,
+      "gzip": 306
+    },
+    {
+      "name": "history-ByKMxvyV.js",
+      "bytes": 410,
+      "gzip": 301
+    },
+    {
+      "name": "pen-rW5UOzev.js",
+      "bytes": 408,
+      "gzip": 307
+    },
+    {
+      "name": "message-square-Dfhe6jxy.js",
+      "bytes": 406,
+      "gzip": 305
+    },
+    {
+      "name": "download-j92WBcIO.js",
+      "bytes": 405,
+      "gzip": 297
+    },
+    {
+      "name": "copy-B5jCY5Y5.js",
+      "bytes": 404,
+      "gzip": 310
+    },
+    {
+      "name": "upload-DdEKVV-E.js",
+      "bytes": 403,
+      "gzip": 297
+    },
+    {
+      "name": "briefcase-CJG_9oXg.js",
+      "bytes": 393,
+      "gzip": 301
+    },
+    {
+      "name": "dollar-sign-D5I26Zaq.js",
+      "bytes": 392,
+      "gzip": 295
+    },
+    {
+      "name": "mail-0ya-6Uf8.js",
+      "bytes": 386,
+      "gzip": 305
+    },
+    {
+      "name": "circle-plus-7eNr202H.js",
+      "bytes": 375,
+      "gzip": 280
+    },
+    {
+      "name": "circle-x-Dl_4aGEV.js",
+      "bytes": 375,
+      "gzip": 280
+    },
+    {
+      "name": "flame-B8Ay44_M.js",
+      "bytes": 367,
+      "gzip": 286
+    },
+    {
+      "name": "user-0mmxaI82.js",
+      "bytes": 364,
+      "gzip": 284
+    },
+    {
+      "name": "kanban-BLemj7Xt.js",
+      "bytes": 363,
+      "gzip": 272
+    },
+    {
+      "name": "circle-check-big-D5Lss1qI.js",
+      "bytes": 362,
+      "gzip": 283
+    },
+    {
+      "name": "tv-bFF1QrWn.js",
+      "bytes": 358,
+      "gzip": 283
+    },
+    {
+      "name": "configurationColorValues-CR8XdHcI.js",
+      "bytes": 348,
+      "gzip": 185
+    },
+    {
+      "name": "trending-up-c6ZGOy4q.js",
+      "bytes": 348,
+      "gzip": 273
+    },
+    {
+      "name": "arrow-down-right-C4VuWXEf.js",
+      "bytes": 342,
+      "gzip": 267
+    },
+    {
+      "name": "arrow-down-BLAVEWEo.js",
+      "bytes": 338,
+      "gzip": 264
+    },
+    {
+      "name": "arrow-up-DZGvyvjk.js",
+      "bytes": 335,
+      "gzip": 264
+    },
+    {
+      "name": "loader-circle-C8_QHJne.js",
+      "bytes": 312,
+      "gzip": 257
+    },
+    {
+      "name": "chevron-up-CyEdWkN4.js",
+      "bytes": 301,
+      "gzip": 249
+    },
+    {
+      "name": "check-CJLTUbAm.js",
+      "bytes": 292,
+      "gzip": 243
+    }
+  ]
+}

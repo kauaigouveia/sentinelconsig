@@ -291,8 +291,9 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   useEffect(() => {
-    checkServerHealth();
-    const handleOnline = () => checkServerHealth();
+    const refreshVisible=()=>{if(document.visibilityState==='visible')void checkServerHealth();};
+    refreshVisible();
+    const handleOnline = refreshVisible;
     const handleOffline = () => {
       setServerHealth({ status: 'offline', api: 'unreachable', database: 'unreachable', realtime: 'unreachable', storage: 'unreachable' });
       setDatabaseStatus('offline');
@@ -300,11 +301,13 @@ export const Header: React.FC<HeaderProps> = ({
     };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    const interval = setInterval(checkServerHealth, 30000);
+    const interval = setInterval(refreshVisible, 30000);
+    document.addEventListener('visibilitychange',refreshVisible);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
+      document.removeEventListener('visibilitychange',refreshVisible);
     };
   }, []);
 

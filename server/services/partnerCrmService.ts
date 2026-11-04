@@ -173,23 +173,14 @@ export class PartnerCrmService {
         },
         _count: { _all: true },
       }),
-      prisma.proposal.findMany({
-        where: { tenantId, partnerId: { in: partnerIds }, deletedAt: null },
-        select: { partnerId: true, createdAt: true, updatedAt: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.simulationRequest.findMany({
-        where: { tenantId, partnerId: { in: partnerIds } },
-        select: { partnerId: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.partnerInteraction.findMany({
-        where: { tenantId, partnerId: { in: partnerIds } },
-        select: { partnerId: true, date: true, createdAt: true },
-        orderBy: { date: 'desc' },
-      }),
+      prisma.proposal.groupBy({by:['partnerId'],where:{tenantId,partnerId:{in:partnerIds},deletedAt:null},_max:{createdAt:true}}),
+      prisma.simulationRequest.groupBy({by:['partnerId'],where:{tenantId,partnerId:{in:partnerIds}},_max:{createdAt:true}}),
+      prisma.partnerInteraction.groupBy({by:['partnerId'],where:{tenantId,partnerId:{in:partnerIds}},_max:{date:true}}),
     ]);
 
+    const latestProposalByPartner = new Map(latestProposals.map(row=>[row.partnerId,row._max.createdAt]));
+    const latestSimulationByPartner = new Map(latestSimulations.map(row=>[row.partnerId,row._max.createdAt]));
+    const latestInteractionByPartner = new Map(latestInteractions.map(row=>[row.partnerId,row._max.date]));
     // Map aggregates
     const items = partners.map(p => {
       const pProposals = proposalsGroup.filter(g => g.partnerId === p.id);
@@ -207,11 +198,8 @@ export class PartnerCrmService {
       const openTasksCount = openTask?._count?._all || 0;
 
       // Find last activity
-      const propDates = latestProposals.filter(x => x.partnerId === p.id).map(x => x.createdAt);
-      const simDates = latestSimulations.filter(x => x.partnerId === p.id).map(x => x.createdAt);
-      const intDates = latestInteractions.filter(x => x.partnerId === p.id).map(x => x.date || x.createdAt);
-      const allDates = [...propDates, ...simDates, ...intDates, p.updatedAt].map(d => new Date(d).getTime());
-      const maxDate = allDates.length > 0 ? new Date(Math.max(...allDates)) : p.createdAt;
+      const dates=[latestProposalByPartner.get(p.id),latestSimulationByPartner.get(p.id),latestInteractionByPartner.get(p.id),p.updatedAt].filter((date):date is Date=>!!date);
+      const maxDate=dates.length?new Date(Math.max(...dates.map(date=>new Date(date).getTime()))):p.createdAt;
 
       const operationalStatus = this.calculateOperationalStatus(
         p.status,

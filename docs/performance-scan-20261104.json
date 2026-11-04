@@ -1,0 +1,71 @@
+{
+  "scope": "Local production build; no live customer data or database query",
+  "javascript": [
+    {
+      "name": "index-ukfCcw7W.js",
+      "bytes": 979191,
+      "gzip": 276878
+    },
+    {
+      "name": "exceljs.min-DS2b9OKf.js",
+      "bytes": 940196,
+      "gzip": 271329
+    },
+    {
+      "name": "SimulationView-XMK2R51Q.js",
+      "bytes": 403229,
+      "gzip": 92642
+    },
+    {
+      "name": "portabilityPolicy-Be58zp93.js",
+      "bytes": 221559,
+      "gzip": 36316
+    },
+    {
+      "name": "BankIntegrationsView-BZYAn6yn.js",
+      "bytes": 171683,
+      "gzip": 32287
+    },
+    {
+      "name": "PartnerManagement-CzNxGHgk.js",
+      "bytes": 168974,
+      "gzip": 28422
+    },
+    {
+      "name": "ExecutiveBIDashboard-BC2V_EWf.js",
+      "bytes": 122507,
+      "gzip": 24468
+    },
+    {
+      "name": "ProposalDetailModal-DcZtx3EX.js",
+      "bytes": 118559,
+      "gzip": 19350
+    }
+  ],
+  "brandAssets": [
+    {
+      "name": "sentinel-banner-v5.jpg",
+      "bytes": 75589
+    },
+    {
+      "name": "sentinel-favicon-v5.png",
+      "bytes": 1220561
+    },
+    {
+      "name": "sentinel-login-background-v5.jpg",
+      "bytes": 99510
+    },
+    {
+      "name": "sentinel-symbol-v5.png",
+      "bytes": 982062
+    },
+    {
+      "name": "sentinel-wordmark-dark-v5.png",
+      "bytes": 807190
+    },
+    {
+      "name": "sentinel-wordmark-light-v5.png",
+      "bytes": 465552
+    }
+  ]
+}

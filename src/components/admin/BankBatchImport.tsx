@@ -47,7 +47,7 @@ export function BankBatchImport({ onCompleted }: { onCompleted: () => void }) {
   };
   return <>
     <button type="button" onClick={() => { setOpen(true); setRows([]); setMatrix([]); setError(''); setProgress(''); }} className="rounded-xl border border-[var(--field-border)] dark:border-[var(--field-border)] px-3 py-2 text-xs font-bold text-[var(--link)] dark:text-[var(--link)]">Cadastrar bancos em lote</button>
-    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4"><section role="dialog" aria-modal="true" aria-labelledby="bank-import-title" className="w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-4 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--scrim)] dark:bg-[var(--scrim)] p-6">
+    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4"><section role="dialog" aria-modal="true" aria-labelledby="bank-import-title" className="w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-4 rounded-2xl border border-[var(--field-border)] dark:border-[var(--field-border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] p-6">
       <h2 id="bank-import-title" className="text-lg font-bold">Cadastrar bancos em lote</h2>
       <p className="text-sm">Colunas: Nome e Código FEBRABAN. Bancos existentes serão ignorados. O cadastro não ativa APIs nem configura credenciais.</p>
       <label className="block text-sm">Arquivo Excel ou CSV<input disabled={busy} type="file" accept=".xlsx,.csv" onChange={e => { void upload(e.target.files?.[0]); e.target.value = ''; }} className="mt-2 block w-full" /></label>

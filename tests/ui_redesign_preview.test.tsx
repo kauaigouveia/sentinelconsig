@@ -59,8 +59,8 @@ describe("Prévia visual 2.0 sem banco ou APIs", () => {
     const html = renderToStaticMarkup(
       <PreviewSidebar role="DIGITADOR" path="/propostas" navigate={noop} />,
     );
-    expect(html).toContain("/branding/sentinel-wordmark-light-v5.png");
-    expect(html).toContain("/branding/sentinel-wordmark-dark-v5.png");
+    expect(html).toContain("/branding/sentinel-wordmark-light-v6.png");
+    expect(html).not.toContain("/branding/sentinel-wordmark-dark-v6.png");
     expect(html).not.toContain("sentinel-mark-v2");
     expect(html).toContain("Recolher sidebar");
     expect(html).not.toContain("Central de Administração");

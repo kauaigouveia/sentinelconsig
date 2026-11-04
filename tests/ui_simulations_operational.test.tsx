@@ -49,10 +49,10 @@ describe('Simulações reais com transporte local isolado', () => {
     expect(screen.getAllByRole('columnheader')).toHaveLength(8);
     expect(screen.getByText('Usuário fictício')).toBeTruthy();
     fireEvent.click(navigation.getByRole('button', {name: /Resultados e parceiros/}));
-    expect(screen.getByText('Relatório mensal preservado')).toBeTruthy();
+    expect(await screen.findByText('Relatório mensal preservado')).toBeTruthy();
     expect(container.querySelector('.p2-simulation-analytics')).toBeTruthy();
     fireEvent.click(navigation.getByRole('button', {name: /Planilhas/}));
-    expect(screen.getByTestId('sheet-form').textContent).toContain('DAYCOVAL');
+    expect((await screen.findByTestId('sheet-form')).textContent).toContain('DAYCOVAL');
     fireEvent.click(screen.getByRole('tab', {name: 'C6'}));
     expect(screen.getByTestId('sheet-form').textContent).toContain('C6');
     fireEvent.click(screen.getByRole('tab', {name: 'Paraná'}));
@@ -63,9 +63,9 @@ describe('Simulações reais com transporte local isolado', () => {
     render(<SimulationView premium />);
     await screen.findByText('Parceiro fictício');
     fireEvent.click(screen.getByRole('button', {name: 'Importar em Lote'}));
-    expect(screen.getByTestId('import-form')).toBeTruthy();
+    expect(await screen.findByTestId('import-form')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', {name: 'Nova simulação'}));
-    expect(screen.getByTestId('flow-selector')).toBeTruthy();
+    expect(await screen.findByTestId('flow-selector')).toBeTruthy();
   });
   it('mantém a restrição de DIGITADOR sem buscar dados', () => {
     context.role = 'DIGITADOR';
@@ -80,4 +80,4 @@ describe('Simulações reais com transporte local isolado', () => {
   });
 });
 
-it('opens the multi-contract entry directly without a banking request',async()=>{render(<SimulationView premium/>);await screen.findByText('Parceiro fictício');fireEvent.click(screen.getByRole('button',{name:'Multissimulação INSS'}));expect(screen.getByTestId('multi-contract-form')).toBeTruthy();expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method||options.method==='GET')).toBe(true);});
+it('opens the multi-contract entry directly without a banking request',async()=>{render(<SimulationView premium/>);await screen.findByText('Parceiro fictício');fireEvent.click(screen.getByRole('button',{name:'Multissimulação INSS'}));expect(await screen.findByTestId('multi-contract-form')).toBeTruthy();expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method||options.method==='GET')).toBe(true);});

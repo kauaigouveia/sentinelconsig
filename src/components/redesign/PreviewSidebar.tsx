@@ -47,7 +47,7 @@ export function PreviewSidebar({
   navigate,
   mobileOpen = false,
   closeMobile,
-  brandLogo = "/branding/sentinel-symbol-v5.png",
+  brandLogo = "/branding/sentinel-symbol-v6.png",
   brandName = "Sentinel Consig",
   favorites = [],
   recent = [],
@@ -127,7 +127,7 @@ export function PreviewSidebar({
         aria-label="Navegação principal"
       >
         <div className="s2-brand">
-          {brandName==='Sentinel Consig'&&brandLogo.startsWith('/branding/sentinel-')?<BrandLogo width={152} height={54}/>:<><img src={brandLogo} alt="" onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src='/branding/sentinel-symbol-v5.png';}}/><div><strong>{brandName}</strong></div></>}
+          {brandName==='Sentinel Consig'&&brandLogo.startsWith('/branding/sentinel-')?<BrandLogo width={152} height={54}/>:<><img src={brandLogo} alt="" onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src='/branding/sentinel-symbol-v6.png';}}/><div><strong>{brandName}</strong></div></>}
           <button
             className="s2-mobile-close"
             aria-label="Fechar navegação"

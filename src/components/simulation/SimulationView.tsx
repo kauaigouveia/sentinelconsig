@@ -1,3 +1,4 @@
+import {DeferredPanel} from '../ui/DeferredPanel';
 import { BankPlaybooksPanel } from './BankPlaybooksPanel';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PartnerSearchSelect } from '../common/PartnerSearchSelect';
@@ -38,16 +39,16 @@ import { StorageService } from '../../services/storageService';
 import { RecordWorkspace, OperationCard, operationLabel, type RecordPresentation } from '../ui/RecordWorkspace';
 import { SimulationRequest, SimulationStatus, SimulationType, Partner, User as UserType, Convenio, Product } from '../../types';
 import { formatCpf, normalizeCpf, isValidCpf, extractPartnerCode } from '../../lib/utils';
-import { SimulationImportModal } from './SimulationImportModal';
-import { PartnerSimulationMonthlyReport } from './PartnerSimulationMonthlyReport';
-import { SimulationFlowSelectorModal } from './SimulationFlowSelectorModal';
-import { SpreadsheetPortRefinWorkspace } from './SpreadsheetPortRefinWorkspace';
-import { ProductSimulationModal } from './ProductSimulationModal';
-import { CltJourneyWorkspace } from './CltJourneyWorkspace';
-import { HappyInssSimulationModal } from './HappyInssSimulationModal';
-import { HappyCltSimulationModal } from './HappyCltSimulationModal';
-import { FinantoInssSimulationModal } from './FinantoInssSimulationModal';
-import { NossaFintechPortRefinSimulationModal } from './NossaFintechPortRefinSimulationModal';
+const SimulationImportModal=React.lazy(()=>import('./SimulationImportModal').then(module=>({default:module.SimulationImportModal})));
+const PartnerSimulationMonthlyReport=React.lazy(()=>import('./PartnerSimulationMonthlyReport').then(module=>({default:module.PartnerSimulationMonthlyReport})));
+const SimulationFlowSelectorModal=React.lazy(()=>import('./SimulationFlowSelectorModal').then(module=>({default:module.SimulationFlowSelectorModal})));
+const SpreadsheetPortRefinWorkspace=React.lazy(()=>import('./SpreadsheetPortRefinWorkspace').then(module=>({default:module.SpreadsheetPortRefinWorkspace})));
+const ProductSimulationModal=React.lazy(()=>import('./ProductSimulationModal').then(module=>({default:module.ProductSimulationModal})));
+const CltJourneyWorkspace=React.lazy(()=>import('./CltJourneyWorkspace').then(module=>({default:module.CltJourneyWorkspace})));
+const HappyInssSimulationModal=React.lazy(()=>import('./HappyInssSimulationModal').then(module=>({default:module.HappyInssSimulationModal})));
+const HappyCltSimulationModal=React.lazy(()=>import('./HappyCltSimulationModal').then(module=>({default:module.HappyCltSimulationModal})));
+const FinantoInssSimulationModal=React.lazy(()=>import('./FinantoInssSimulationModal').then(module=>({default:module.FinantoInssSimulationModal})));
+const NossaFintechPortRefinSimulationModal=React.lazy(()=>import('./NossaFintechPortRefinSimulationModal').then(module=>({default:module.NossaFintechPortRefinSimulationModal})));
 import { toastService } from '../ui/toastService';
 import { hasPermission } from '../../lib/permissions';
 
@@ -1120,7 +1121,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       </div>
 
       {/* TAB 1: VISÃO GERAL & SOLICITAÇÕES */}
-      {(activeTab === 'PORT_REFIN_PLANILHAS' || spreadsheetVisited) && <div hidden={activeTab !== 'PORT_REFIN_PLANILHAS'}><button type="button" onClick={()=>setActiveTab('VISAO_GERAL')} className="mb-4 rounded-lg border px-4 py-2 text-sm font-semibold">← Voltar às simulações</button><SpreadsheetPortRefinWorkspace premium={premium} partners={partners} onSuccess={() => { void loadData(); }} /></div>}
+      {(activeTab === 'PORT_REFIN_PLANILHAS' || spreadsheetVisited) && <div hidden={activeTab !== 'PORT_REFIN_PLANILHAS'}><button type="button" onClick={()=>setActiveTab('VISAO_GERAL')} className="mb-4 rounded-lg border px-4 py-2 text-sm font-semibold">← Voltar às simulações</button><DeferredPanel active={true}><SpreadsheetPortRefinWorkspace premium={premium} partners={partners} onSuccess={() => { void loadData(); }} /></DeferredPanel></div>}
       {activeTab === 'VISAO_GERAL' && (
         <div className="p2-simulation-requests space-y-6 animate-in fade-in">
           <RecordWorkspace premium={premium} filters={simulationFilters} summary={simulationSummary} count={filteredSimulations.length} mode={presentation} onMode={setPresentation}>
@@ -1591,7 +1592,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       {/* TAB 3: DASHBOARD & ANÁLISES */}
       {activeTab === 'DASHBOARD_ANALISES' && (
         <div className="p2-simulation-analytics space-y-6 animate-in fade-in">
-          <PartnerSimulationMonthlyReport simulations={simulations} partners={partners} />
+          <DeferredPanel active={true}><PartnerSimulationMonthlyReport simulations={simulations} partners={partners} /></DeferredPanel>
           {/* Top Summary Banner */}
           <div className="p2-simulation-funnel bg-[var(--bg-surface)] dark:bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] dark:border-[var(--border-default)] rounded-xl p-5 ">
             <h3 className="text-sm font-bold text-[var(--text-primary)] dark:text-[var(--text-primary)] mb-3 flex items-center gap-2">
@@ -2536,14 +2537,14 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
       )}
 
       {/* Modal de Importação de Simulações em Lote */}
-      <SimulationImportModal
+      <DeferredPanel active={isImportModalOpen}><SimulationImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportCompleted={() => loadData()}
-      />
+      /></DeferredPanel>
 
       {/* Modal Seletor de Fluxo de Simulação */}
-      <SimulationFlowSelectorModal
+      <DeferredPanel active={isFlowSelectorOpen}><SimulationFlowSelectorModal
         isOpen={isFlowSelectorOpen}
         onClose={() => setIsFlowSelectorOpen(false)}
         happySimulationAccessEnabled={happySimulationAccessEnabled}
@@ -2572,13 +2573,13 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
             setIsNossaFintechPortRefinOpen(true);
           }
         }}
-      />
+      /></DeferredPanel>
 
-      <CltJourneyWorkspace key={journeyScope} scope={journeyScope} partners={partners} happyEnabled={happySimulationAccessEnabled} onSuccess={async () => { await loadData(); }} isOpen={multiProduct === 'CLT'} onBack={() => { setMultiProduct(null); setIsFlowSelectorOpen(true); }} onClose={() => setMultiProduct(null)} />
-      <ProductSimulationModal partners={partners} onSuccess={async () => { await loadData(); }} product="FGTS" isOpen={multiProduct === 'FGTS'} onBack={() => setIsFlowSelectorOpen(true)} onClose={() => setMultiProduct(null)} />
+      <DeferredPanel active={multiProduct === 'CLT'}><CltJourneyWorkspace key={journeyScope} scope={journeyScope} partners={partners} happyEnabled={happySimulationAccessEnabled} onSuccess={async () => { await loadData(); }} isOpen={multiProduct === 'CLT'} onBack={() => { setMultiProduct(null); setIsFlowSelectorOpen(true); }} onClose={() => setMultiProduct(null)} /></DeferredPanel>
+      <DeferredPanel active={multiProduct === 'FGTS'}><ProductSimulationModal partners={partners} onSuccess={async () => { await loadData(); }} product="FGTS" isOpen={multiProduct === 'FGTS'} onBack={() => setIsFlowSelectorOpen(true)} onClose={() => setMultiProduct(null)} /></DeferredPanel>
 
       {/* Modal Simulação Happy INSS */}
-      <HappyInssSimulationModal
+      <DeferredPanel active={isHappyInssModalOpen}><HappyInssSimulationModal
         onBack={()=>setIsFlowSelectorOpen(true)}
         isOpen={isHappyInssModalOpen}
         onClose={() => setIsHappyInssModalOpen(false)}
@@ -2586,10 +2587,10 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onSuccess={async () => {
           await loadData();
         }}
-      />
+      /></DeferredPanel>
 
       {/* Modal Simulação Happy CLT (Consignado Privado) */}
-      <HappyCltSimulationModal
+      <DeferredPanel active={isHappyCltModalOpen}><HappyCltSimulationModal
         onBack={()=>setIsFlowSelectorOpen(true)}
         isOpen={isHappyCltModalOpen}
         onClose={() => setIsHappyCltModalOpen(false)}
@@ -2597,9 +2598,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onSuccess={async () => {
           await loadData();
         }}
-      />
+      /></DeferredPanel>
 
-      <FinantoInssSimulationModal
+      <DeferredPanel active={isFinantoInssModalOpen}><FinantoInssSimulationModal
         onBack={()=>setIsFlowSelectorOpen(true)}
         happyEnabled={happySimulationAccessEnabled}
         isOpen={isFinantoInssModalOpen}
@@ -2608,9 +2609,9 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onClose={() => setIsFinantoInssModalOpen(false)}
         partners={partners}
         onSuccess={async () => { await loadData(); }}
-      />
+      /></DeferredPanel>
 
-      <NossaFintechPortRefinSimulationModal
+      <DeferredPanel active={isNossaFintechPortRefinOpen}><NossaFintechPortRefinSimulationModal
         onBack={()=>setIsFlowSelectorOpen(true)}
         happyEnabled={happySimulationAccessEnabled}
         isOpen={isNossaFintechPortRefinOpen}
@@ -2618,7 +2619,7 @@ const SimulationWorkspace: React.FC<SimulationViewProps> = ({ onOpenProposalDeta
         onSuccess={async () => { await loadData(); }}
         onContinue={draft => { setIsNossaFintechPortRefinOpen(false); setInssInitialDraft(draft); setFinantoOperationCode('4'); setIsFinantoInssModalOpen(true); }}
         onClose={() => setIsNossaFintechPortRefinOpen(false)}
-      />
+      /></DeferredPanel>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+import {scopedReads,syncEndpoints} from '../lib/scopedReads';
 import { normalizeProposalType } from '../lib/proposalTypeNormalizer';
 import {
   User,
@@ -961,6 +962,9 @@ const INITIAL_ACHIEVEMENTS: GamificationAchievement[] = [
 
 export class StorageService {
   public static clearBusinessCache(): void {
+    scopedReads.reset();
+    this.syncJobs.clear();
+    this.syncRefreshJobs.clear();
     const businessKeys = [
       'cg_users',
       'cg_active_user',
@@ -1048,7 +1052,9 @@ export class StorageService {
 
   private static set<T>(key: string, value: T): void {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      const serialized=JSON.stringify(value);
+      if(localStorage.getItem(key)!==serialized)scopedReads.reset();
+      localStorage.setItem(key, serialized);
       window.dispatchEvent(new Event('credit_gestao_storage_update'));
     } catch (e) {
       console.error(`Failed to write to localStorage for key ${key}:`, e);
@@ -1186,21 +1192,39 @@ export class StorageService {
     };
   }
 
-  public static async syncWithPostgreSQL(): Promise<void> {
+  private static syncJobs=new Map<string,Promise<void>>();
+  private static syncRefreshJobs=new Map<string,Promise<void>>();
+  public static getSyncScope():string {const user=this.getActiveUser();return [user?.id||'',this.getCurrentTenantId()||'',user?.role||'',...(user?.customPermissions||[])].join('|');}
+  public static async readCatalog(url:'/api/promoters'|'/api/users'):Promise<any>{
+    if(!this.isAuthenticated())return null;
+    const scope=this.getSyncScope();const value=await scopedReads.read(scope,url);return this.isAuthenticated()&&scope===this.getSyncScope()?value:null;
+  }
+  public static syncWithPostgreSQL(options:{force?:boolean}={}):Promise<void>{
+    if(typeof window==='undefined'||!this.isAuthenticated())return Promise.resolve();
+    const scope=this.getSyncScope(),endpoints=syncEndpoints(window.location.pathname),key=scope+'|'+endpoints.join(',');
+    const previous=this.syncJobs.get(key);
+    if(previous){
+      if(!options.force)return previous;
+      const queued=this.syncRefreshJobs.get(key);if(queued)return queued;
+      const epoch=scopedReads.version;
+      const refresh=previous.then(()=>{if(this.isAuthenticated()&&scope===this.getSyncScope()&&epoch===scopedReads.version)return this.syncWithPostgreSQL({force:true});}).finally(()=>{if(this.syncRefreshJobs.get(key)===refresh)this.syncRefreshJobs.delete(key);});
+      this.syncRefreshJobs.set(key,refresh);return refresh;
+    }
+    const promise=this.performPostgreSQLSync(scope,endpoints,!!options.force).finally(()=>{if(this.syncJobs.get(key)===promise)this.syncJobs.delete(key);});
+    this.syncJobs.set(key,promise);return promise;
+  }
+  private static async performPostgreSQLSync(scope:string,endpoints:string[],force:boolean): Promise<void> {
+
     try {
       if (typeof window === 'undefined' || typeof window.location === 'undefined') {
         return;
       }
 
-      const safeFetch = async (url: string) => {
-        try {
-          const res = await fetch(url, { credentials: 'include' });
-          if (res.ok) return await res.json();
-        } catch (e) {
-          console.warn(`[STORAGE] Fail to fetch ${url}`, e);
-        }
-        return null;
-      };
+      scopedReads.activate(scope);const epoch=scopedReads.version;
+      const valid=()=>this.isAuthenticated()&&this.getSyncScope()===scope&&scopedReads.version===epoch;
+      const reads=new Map(endpoints.map(url=>[url,scopedReads.read(scope,url,force).catch(()=>null)]));
+      const safeFetch=async(url:string)=>{const value=await reads.get(url);return valid()?value:null;};
+      const writeCache=(key:string,value:any)=>{if(!valid())return;const serialized=JSON.stringify(value);if(localStorage.getItem(key)!==serialized)localStorage.setItem(key,serialized);};
 
       // 1. Fetch Clients
       const dbClients = await safeFetch('/api/clients');
@@ -1220,17 +1244,17 @@ export class StorageService {
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(formatted));
+        writeCache(STORAGE_KEYS.CLIENTS, formatted);
       }
 
       // 2. Fetch Proposals
       const dbProposals = await safeFetch('/api/proposals');
       if (Array.isArray(dbProposals)) {
         const formattedProps = dbProposals.map((p: any) => this.mapDbProposalToFrontend(p));
-        localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify(formattedProps));
+        writeCache(STORAGE_KEYS.PROPOSALS, formattedProps);
       }
 
-      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+      if(valid())window.dispatchEvent(new Event('credit_gestao_storage_update'));
 
       // 3. Fetch Tasks
       const dbTasks = await safeFetch('/api/tasks');
@@ -1248,7 +1272,7 @@ export class StorageService {
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.OPERATIONAL_TASKS, JSON.stringify(formattedTasks));
+        writeCache(STORAGE_KEYS.OPERATIONAL_TASKS, formattedTasks);
       }
 
       // 3.1 Fetch Notifications
@@ -1264,7 +1288,7 @@ export class StorageService {
           read: n.read,
           createdAt: n.createdAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(formattedNotifs));
+        writeCache(STORAGE_KEYS.NOTIFICATIONS, formattedNotifs);
       }
 
       // 4. Fetch Banks
@@ -1278,7 +1302,7 @@ export class StorageService {
           createdAt: b.createdAt,
           updatedAt: b.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(formattedBanks));
+        writeCache(STORAGE_KEYS.BANKS, formattedBanks);
       }
 
       // 5. Fetch Promoters
@@ -1291,7 +1315,7 @@ export class StorageService {
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.PROMOTERS, JSON.stringify(formattedPromoters));
+        writeCache(STORAGE_KEYS.PROMOTERS, formattedPromoters);
       }
 
       // 6. Fetch Partners
@@ -1309,7 +1333,7 @@ export class StorageService {
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(formattedPartners));
+        writeCache(STORAGE_KEYS.PARTNERS, formattedPartners);
       }
 
       // 7. Fetch Products
@@ -1330,7 +1354,7 @@ export class StorageService {
           createdAt: pr.createdAt,
           updatedAt: pr.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(formattedProducts));
+        writeCache(STORAGE_KEYS.PRODUCTS, formattedProducts);
       }
 
       // 7.1 Fetch Convenios
@@ -1347,13 +1371,13 @@ export class StorageService {
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.CONVENIOS, JSON.stringify(formattedConvenios));
+        writeCache(STORAGE_KEYS.CONVENIOS, formattedConvenios);
       }
 
       // 7.2 Fetch Operational Rules for the active tenant (including inactive rules for administration).
       const dbOperationalRules = await safeFetch('/api/operational-rules');
       if (Array.isArray(dbOperationalRules)) {
-        localStorage.setItem(STORAGE_KEYS.OPERATIONAL_RULES, JSON.stringify(dbOperationalRules));
+        writeCache(STORAGE_KEYS.OPERATIONAL_RULES, dbOperationalRules);
       }
 
       // 8. Fetch BankPromoters (Matrix)
@@ -1367,7 +1391,7 @@ export class StorageService {
           createdAt: bp.createdAt,
           updatedAt: bp.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.BANK_PROMOTERS, JSON.stringify(formattedBankPromoters));
+        writeCache(STORAGE_KEYS.BANK_PROMOTERS, formattedBankPromoters);
       }
 
       // 9. Fetch White Label Settings
@@ -1384,7 +1408,7 @@ export class StorageService {
           supportPhone: dbWL.supportPhone || '',
           footerText: dbWL.footerText || '',
         };
-        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify({ whiteLabel: formattedWL }));
+        writeCache(STORAGE_KEYS.CONFIG, { whiteLabel: formattedWL });
       }
 
       // 10. Fetch Documents
@@ -1404,7 +1428,7 @@ export class StorageService {
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(formattedDocs));
+        writeCache(STORAGE_KEYS.DOCUMENTS, formattedDocs);
       }
 
       // 10.1 Fetch Financial Entries for tenants with access to finance
@@ -1416,8 +1440,8 @@ export class StorageService {
           dueDate: entry.dueDate ? String(entry.dueDate).slice(0, 10) : '',
           paymentDate: entry.paymentDate ? String(entry.paymentDate).slice(0, 10) : undefined,
         }));
-        localStorage.setItem(STORAGE_KEYS.FINANCIAL_ENTRIES, JSON.stringify(formattedFinancialEntries));
-        window.dispatchEvent(new Event('credit_gestao_financial_update'));
+        writeCache(STORAGE_KEYS.FINANCIAL_ENTRIES, formattedFinancialEntries);
+        if(valid())window.dispatchEvent(new Event('credit_gestao_financial_update'));
       }
 
       // 11. Fetch Audit Logs
@@ -1435,7 +1459,7 @@ export class StorageService {
           previousData: a.previousData || '',
           createdAt: a.createdAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(formattedAudit));
+        writeCache(STORAGE_KEYS.AUDIT_LOGS, formattedAudit);
       }
 
       // 11. Fetch Users
@@ -1450,7 +1474,7 @@ export class StorageService {
           createdAt: u.createdAt,
           updatedAt: u.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(formattedUsers));
+        writeCache(STORAGE_KEYS.USERS, formattedUsers);
       }
 
       // 12. Fetch Tenants
@@ -1474,10 +1498,10 @@ export class StorageService {
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
         }));
-        localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(formattedTenants));
+        writeCache(STORAGE_KEYS.TENANTS, formattedTenants);
       }
 
-      window.dispatchEvent(new Event('credit_gestao_storage_update'));
+      if(valid())window.dispatchEvent(new Event('credit_gestao_storage_update'));
     } catch (err) {
       console.warn('[STORAGE] Erro ao sincronizar com PostgreSQL:', err);
     }
@@ -1488,19 +1512,13 @@ export class StorageService {
    * Ensures zero full-table thrash while keeping PostgreSQL as the single source of truth.
    */
   public static async syncSpecificEntity(entity: string, entityId?: string): Promise<void> {
-    // If executing in Node.js / non-browser without origin, skip relative HTTP fetches
-    if (typeof window === 'undefined' || typeof window.location === 'undefined') {
-      return;
-    }
-
-    const safeFetch = async (url: string) => {
-      try {
-        const res = await fetch(url, { credentials: 'include' });
-        if (res.ok) return await res.json();
-      } catch (e) {
-        console.warn(`[STORAGE TARGETED SYNC] Failed: ${url}`, e);
-      }
-      return null;
+    if (typeof window === 'undefined' || typeof window.location === 'undefined' || !this.isAuthenticated()) return;
+    // A fresh event supersedes any cached or in-flight global snapshot.
+    scopedReads.reset();
+    const scope=this.getSyncScope();
+    const safeFetch=async(url:string)=>{
+      try {const value=await scopedReads.read(scope,url,true);return this.isAuthenticated()&&scope===this.getSyncScope()?value:null;}
+      catch{return null;}
     };
 
     try {
@@ -4900,7 +4918,7 @@ export class StorageService {
       whiteLabel: {
         companyName: 'SENTINEL CONSIG',
         tradeName: 'Gestão de Produção de Consignado',
-        logoUrl: '/branding/sentinel-symbol-v5.png',
+        logoUrl: '/branding/sentinel-symbol-v6.png',
         primaryColor: '#2563eb',
         supportEmail: 'suporte@sentinelconsig.com.br',
         footerText: 'SENTINEL CONSIG © 2026 - Central de Produção de Consignado',
@@ -4913,7 +4931,7 @@ export class StorageService {
       wl.companyName = 'SENTINEL CONSIG';
     }
     if (!wl.logoUrl || wl.logoUrl === '/evolve_logo.png' || wl.logoUrl === '/app_logo.png' || wl.logoUrl === '/sentinel_logo.png') {
-      wl.logoUrl = '/branding/sentinel-symbol-v5.png';
+      wl.logoUrl = '/branding/sentinel-symbol-v6.png';
     }
     if (!wl.supportEmail || wl.supportEmail.includes('evolvegestao') || wl.supportEmail.includes('creditpro')) {
       wl.supportEmail = 'suporte@sentinelconsig.com.br';
@@ -4936,7 +4954,7 @@ export class StorageService {
     return this.getConfig().whiteLabel || {
       companyName: 'SENTINEL CONSIG',
       tradeName: 'Gestão de Produção de Consignado',
-      logoUrl: '/branding/sentinel-symbol-v5.png',
+      logoUrl: '/branding/sentinel-symbol-v6.png',
       primaryColor: '#2563eb',
       supportEmail: 'suporte@sentinelconsig.com.br',
       footerText: 'SENTINEL CONSIG © 2026 - Central de Produção de Consignado',

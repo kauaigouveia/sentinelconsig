@@ -366,5 +366,5 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sentinel-accen
 
 .p2-donut {position:relative}.p2-donut > div {position:relative;z-index:1}.ui-donut-paint {position:absolute;inset:0;width:100%;height:100%}
 
-.sentinel-logo-dark{display:none}.dark .sentinel-logo-dark{display:block}.dark .sentinel-logo-light{display:none}
+
 .sentinel-auth-story .sentinel-eyebrow,.sentinel-auth-story li {color:var(--brand-artwork-text)}

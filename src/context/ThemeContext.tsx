@@ -65,3 +65,6 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
+
+/** Optional theme access for standalone brand previews and SSR. */
+export const useOptionalTheme = () => useContext(ThemeContext);
