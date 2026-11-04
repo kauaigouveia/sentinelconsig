@@ -76,7 +76,12 @@ it('runs all six individual bank paths for two contracts and one explicit Daycov
  fireEvent.click(screen.getByRole('button',{name:'Continuar'}));
  change('Banco de origem','001');change('Número do contrato','SYNTHETIC-A');change('Prazo original (meses)','84');change('Parcelas restantes','57');change('Saldo devedor (R$)','3.481,19');change('Parcela atual (R$)','43,00');change('Prazo do novo refinanciamento','84');
  fireEvent.click(screen.getByRole('button',{name:'Adicionar contrato à lista'}));
- change('Número do contrato','SYNTHETIC-B');change('Parcela atual (R$)','48,00');
+ for(const label of ['Banco de origem','Número do contrato','Prazo original (meses)','Parcelas restantes','Saldo devedor (R$)','Parcela atual (R$)'])expect((screen.getByLabelText(label) as HTMLInputElement).value).toBe('');
+ expect((screen.getByLabelText('CPF') as HTMLInputElement).value.replace(/\D/g,'')).toBe('00000000191');
+ change('Banco de origem','001');change('Número do contrato','SYNTHETIC-B');change('Prazo original (meses)','84');change('Parcelas restantes','57');change('Saldo devedor (R$)','3.481,19');change('Parcela atual (R$)','48,00');
+ fireEvent.click(screen.getByRole('button',{name:'Adicionar contrato à lista'}));
+ expect((screen.getByLabelText('Número do contrato') as HTMLInputElement).value).toBe('');
+ expect((screen.getByRole('button',{name:'Comparar ofertas'}).closest('form') as HTMLFormElement).checkValidity()).toBe(true);
  fireEvent.click(screen.getByRole('checkbox',{name:/Calcular também unificações/}));
  const submit=screen.getByRole('button',{name:'Comparar ofertas'}).closest('form')!;
  fireEvent.submit(submit);fireEvent.submit(submit);

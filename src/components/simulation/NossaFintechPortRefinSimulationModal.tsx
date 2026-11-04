@@ -1,6 +1,6 @@
 import {PortabilityResults} from './PortabilityResults';
 import {StorageService} from '../../services/storageService';
-import {contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
+import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts,contractDraft,contractKey,validateSimulationContracts,MAX_SIMULATION_CONTRACTS,type PortabilityContractDraft} from '../../lib/multiContractSimulation';
 import {EligibilityResult} from './EligibilityResult';
 import { portabilityReviewMetadata } from '../../lib/portabilitySimulationPolicy';
 import { PortabilityReviewFields } from './PortabilityReviewFields';
@@ -162,13 +162,13 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
     return results;
   };
 
+  const contractRequired=contractQueue.length===0||hasOriginContractDraft(form);
   const calculate = async (event: React.FormEvent) => {
     event.preventDefault(); if(running.current)return;transport.current=new AbortController();running.current=true; setSelected(null); setSaved(false); setLoading(true); setRows([]); setError(''); setProviderNotes([]);
     if (!isValidCpf(normalizeCpf(form.cpf))) { setError('Informe um CPF válido.'); setLoading(false);running.current=false; return; }
     if (ageAt(form.birthDate) === null) { setError('Informe uma data de nascimento válida.'); setLoading(false);running.current=false; return; }
     try {
-      const currentKey=contractKey(form);
-      const contracts=[...contractQueue.filter(c=>contractKey(c)!==currentKey),contractDraft({...form,reviewMetadata:portabilityContext})];
+      const contracts=simulationContracts(contractQueue,{...form,reviewMetadata:portabilityContext});
       validateSimulationContracts(contracts);
       const combined:SimulationRow[]=[],notes:string[]=[];
       for(const [index,contract] of contracts.entries()){
@@ -237,12 +237,12 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         </div></section>
         <PortabilityReviewFields value={portabilityContext} onChange={value=>{setPortabilityContext(value);setRows([]);setSelected(null);}}/>
         <SimulationContinue onClick={event=>continueSimulation(event,()=>setStep(1))}/></fieldset><fieldset hidden={step!==1} disabled={step!==1||loading} className="space-y-5"><section className="rounded-xl border border-[var(--field-border)] p-4 dark:border-[var(--field-border)]"><h3 className="mb-3 text-sm font-bold">2. Contrato de origem</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <BankCodeSelect label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
-          <label className={labelClass}>Número do contrato<input required value={form.originContractNumber} onChange={e => update('originContractNumber', e.target.value)} className={inputClass} /></label>
-          <label className={labelClass}>Prazo original (meses)<input required type="number" min="1" value={form.originalTerm} onChange={e => update('originalTerm', e.target.value)} className={inputClass} /></label>
-          <label className={labelClass}>Parcelas restantes<input required type="number" min="1" value={form.openedInstallmentNumber} onChange={e => update('openedInstallmentNumber', e.target.value)} className={inputClass} /></label>
-          <label className={labelClass}>Saldo devedor (R$)<CurrencyInput required min="0.01" step="0.01" value={form.lastDueBalance} onValueChange={value => update('lastDueBalance', value)} className={inputClass} /></label>
-          <label className={labelClass}>Parcela atual (R$)<CurrencyInput required min="0.01" step="0.01" value={form.installmentFaceValue} onValueChange={value => update('installmentFaceValue', value)} className={inputClass} /></label>
+          <BankCodeSelect required={contractRequired} label="Banco de origem" value={form.originLenderCode} onChange={value => update('originLenderCode', value)} className={inputClass} labelClassName={labelClass} />
+          <label className={labelClass}>Número do contrato<input required={contractRequired} value={form.originContractNumber} onChange={e => update('originContractNumber', e.target.value)} className={inputClass} /></label>
+          <label className={labelClass}>Prazo original (meses)<input required={contractRequired} type="number" min="1" value={form.originalTerm} onChange={e => update('originalTerm', e.target.value)} className={inputClass} /></label>
+          <label className={labelClass}>Parcelas restantes<input required={contractRequired} type="number" min="1" value={form.openedInstallmentNumber} onChange={e => update('openedInstallmentNumber', e.target.value)} className={inputClass} /></label>
+          <label className={labelClass}>Saldo devedor (R$)<CurrencyInput required={contractRequired} min="0.01" step="0.01" value={form.lastDueBalance} onValueChange={value => update('lastDueBalance', value)} className={inputClass} /></label>
+          <label className={labelClass}>Parcela atual (R$)<CurrencyInput required={contractRequired} min="0.01" step="0.01" value={form.installmentFaceValue} onValueChange={value => update('installmentFaceValue', value)} className={inputClass} /></label>
           <label className={labelClass}>Prazo do novo refinanciamento<select value={form.numberOfInstallments} onChange={e => update('numberOfInstallments', e.target.value)} className={inputClass}>{INSS_TERMS.map(term => <option key={term} value={term}>{term} meses</option>)}</select></label>
           <label className={labelClass}>Taxa da tabela oficial (opcional)<input type="number" min="0" step="0.01" value={form.refinancingRate} onChange={e=>update('refinancingRate',e.target.value)} className={inputClass} placeholder="Em branco: condições retornadas pelo banco"/></label>
           <label className={labelClass}>Total de contratos no benefício (Paraná)<select value={form.benefitContractCount} onChange={e=>update('benefitContractCount',e.target.value)} className={inputClass}><option value="">Informar para calcular Paraná</option>{Array.from({length:13},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></label>
@@ -250,10 +250,10 @@ export const NossaFintechPortRefinSimulationModal: React.FC<Props> = ({ isOpen, 
         </div></section>
         <section className="space-y-3 rounded-xl border p-4">
           <h3 className="font-semibold">Múltiplos contratos · até {MAX_SIMULATION_CONTRACTS}</h3>
-          <p className="text-xs text-[var(--text-secondary)]">Adicione o contrato atual e preencha o próximo. Ao comparar, o contrato do formulário também será incluído, sem duplicar banco e número.</p>
+          <p className="text-xs text-[var(--text-secondary)]">Adicione o contrato atual e preencha o próximo. Ao adicionar, os campos são limpos para o próximo contrato. Você pode comparar somente os contratos da lista; um novo contrato preenchido também será incluído, sem duplicar banco e número.</p>
           <button type="button" disabled={loading} className="rounded-lg border px-3 py-2 text-sm" onClick={event=>{
             if(!event.currentTarget.closest('form')?.reportValidity())return;
-            try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setError('');setRows([]);setSelected(null);}catch(error:any){setError(error.message);}
+            try{const next=[...contractQueue.filter(c=>contractKey(c)!==contractKey(form)),contractDraft({...form,reviewMetadata:portabilityContext})];validateSimulationContracts(next);setContractQueue(next);setForm(current=>({...current,...EMPTY_ORIGIN_CONTRACT}));setError('');setRows([]);setSelected(null);}catch(error:any){setError(error.message);}
           }}>Adicionar contrato à lista</button>
           {contractQueue.map((c,index)=><div key={contractKey(c)} className="flex items-center justify-between gap-3 text-sm"><span>Contrato {index+1} · banco {c.originLenderCode} · {currency(parseCurrency(c.installmentFaceValue))}</span><button type="button" disabled={loading} aria-label={`Remover contrato ${index+1}`} onClick={()=>{setContractQueue(contractQueue.filter(row=>row!==c));setRows([]);setSelected(null);}}>Remover</button></div>)}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unify} disabled={loading} onChange={e=>setUnify(e.target.checked)}/>Calcular também unificações Daycoval de 2 ou 3 contratos</label>

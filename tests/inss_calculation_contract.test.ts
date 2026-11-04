@@ -94,3 +94,12 @@ it('accepts thirteen individual contracts and generates 364 distinct Daycoval co
  expect(groups.every(group=>group.length===2||group.length===3)).toBe(true);
  expect(new Set(groups.map(group=>group.map(c=>c.originContractNumber).join('|'))).size).toBe(364);
 });
+import {EMPTY_ORIGIN_CONTRACT,hasOriginContractDraft,simulationContracts} from '../src/lib/multiContractSimulation';
+it('compares queued contracts with an empty draft and still rejects partial drafts',()=>{
+ const saved={originLenderCode:'001',originContractNumber:'SYNTHETIC-A',originalTerm:'84',openedInstallmentNumber:'57',lastDueBalance:'3.481,19',installmentFaceValue:'43,00'};
+ expect(hasOriginContractDraft(EMPTY_ORIGIN_CONTRACT)).toBe(false);
+ expect(simulationContracts([saved],EMPTY_ORIGIN_CONTRACT)).toEqual([saved]);
+ expect(()=>validateSimulationContracts(simulationContracts([saved],{...EMPTY_ORIGIN_CONTRACT,originContractNumber:'PARTIAL'}))).toThrow(/Revise/);
+ expect(()=>validateSimulationContracts(simulationContracts([],EMPTY_ORIGIN_CONTRACT))).toThrow(/1 a 13/);
+ expect(simulationContracts([saved],{...saved,installmentFaceValue:'48,00'})).toEqual([{...saved,installmentFaceValue:'48,00'}]);
+});

@@ -21,3 +21,8 @@ export function daycovalContractGroups<T>(contracts:T[]):T[][]{
  }
  return groups;
 }
+
+/** Only origin-contract fields are cleared; customer and shared calculation settings remain. */
+export const EMPTY_ORIGIN_CONTRACT={originLenderCode:'',originContractNumber:'',originalTerm:'',openedInstallmentNumber:'',lastDueBalance:'',installmentFaceValue:''};
+export function hasOriginContractDraft(contract:PortabilityContractDraft):boolean{return Object.keys(EMPTY_ORIGIN_CONTRACT).some(key=>String(contract[key as keyof typeof EMPTY_ORIGIN_CONTRACT]??'').trim()!=='');}
+export function simulationContracts(queue:PortabilityContractDraft[],current:PortabilityContractDraft):PortabilityContractDraft[]{return hasOriginContractDraft(current)?[...queue.filter(c=>contractKey(c)!==contractKey(current)),contractDraft(current)]:[...queue];}
