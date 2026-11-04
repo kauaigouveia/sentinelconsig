@@ -817,7 +817,9 @@ function AppMainContent() {
               {effectiveView === 'admin-auditoria' && <AuditLogView />}
 
               {(effectiveView === 'admin-c6-bank' || effectiveView === 'admin-integracoes-bancos') && (
-                <BankIntegrationsView />
+                hasPermission(activeUser?.role,activeUser?.customPermissions,'integrations.view')
+                  ? <HubIntegracoes key={preferenceKey} premium={newUI} initialSubTab="c6"/>
+                  : <BankIntegrationsView />
               )}
 
               {effectiveView === 'admin-comunicados' && (<AnnouncementsManagement />)}

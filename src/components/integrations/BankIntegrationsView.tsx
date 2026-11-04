@@ -180,9 +180,10 @@ async function safeFetchJson<T = any>(
 
 export interface BankIntegrationsViewProps {
   initialTab?: BankTab;
+  embedded?:boolean;
 }
 
-const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId: string }> = ({ initialTab = 'c6', promoterId }) => {
+const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId: string }> = ({ initialTab = 'c6', promoterId, embedded=false }) => {
   const [activeTab, setActiveTab] = useState<BankTab>(initialTab);
   const activeUser = StorageService.getActiveUser();
   const canSync = hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.sync') || hasPermission(activeUser?.role, activeUser?.customPermissions, 'integrations.manage');
@@ -555,6 +556,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto text-xs animate-in fade-in duration-150">
+      {!embedded && <>
       {/* Cabeçalho da Central de Integrações */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
@@ -703,6 +705,7 @@ const BankIntegrationsContent: React.FC<BankIntegrationsViewProps & { promoterId
         })}
       </div>
 
+      </>}
       {/* CONTEÚDO DA ABA ATIVA */}
       {canManageConfig && <SimulationBankOrderSettings />}
       {canManageConfig && activeTab !== 'daycoval' && activeTab !== 'outros' && activeTab !== 'presenca' && activeTab !== 'v8' && activeTab !== 'vctex' && <BankStatusMappingSettings key={`${activeTab}:${promoterId}`} promoterId={promoterId} initialProvider={activeTab} />}

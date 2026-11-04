@@ -85,14 +85,14 @@ export function PreviewSidebar({
   }, []);
   const ref = useRef<HTMLElement>(null),
     opener = useRef<HTMLElement | null>(null);
-  const items = visibleNavigation(role, permissions).filter((route) =>
-    route.title
-      .toLocaleLowerCase("pt-BR")
-      .includes(query.toLocaleLowerCase("pt-BR")),
+  const permitted = visibleNavigation(role, permissions);
+  const hasHub=permitted.some(route=>route.path==='/integracoes');
+  const items = permitted.filter(route=>!hasHub || route.path!=='/saude-apis').filter(route=>
+    `${route.title}${route.path==='/integracoes'?' Saúde das APIs':''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR'))
   );
   useEffect(() => {
     const group = visibleNavigation(role, permissions).find(route => route.path === path || (route.path !== "/" && path.startsWith(route.path + "/")))?.group;
-    if (group) setClosed(current => current.filter(item => item !== group));
+    if (group) setClosed(GROUPS.filter(item => item !== group));
   }, [path, role, permissions.join("|")]);
   useEffect(() => {
     if (!mobileOpen) return;
@@ -169,7 +169,7 @@ export function PreviewSidebar({
               ["Favoritos", favorites],
               ["Recentes", [...new Set(recent)].filter(item => !favorites.includes(item)).slice(0, 2)],
             ].map(([title, paths]) => {
-              const shortcuts = [...new Set(paths as string[])]
+              const shortcuts = [...new Set((paths as string[]).map(p=>hasHub&&p==='/saude-apis'?'/integracoes':p))]
                 .map((p) => items.find((r) => r.path === p))
                 .filter(Boolean);
               return shortcuts.length ? (
@@ -237,6 +237,7 @@ export function PreviewSidebar({
                       }[group] ||
                       Star;
                     const active =
+                      route.path === '/integracoes' && path === '/saude-apis' ? true :
                       route.path === "/"
                         ? path === "/" || path === "/dashboard"
                         : path === route.path ||

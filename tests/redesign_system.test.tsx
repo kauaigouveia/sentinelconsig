@@ -28,14 +28,18 @@ describe('Navegação sem redundância', () => {
   afterEach(() => vi.unstubAllGlobals());
   it('abre apenas a categoria atual, mantendo integrações acessíveis e busca expansível', () => {
     media(); const navigate=vi.fn();
-    render(<PreviewSidebar role="MASTER" path="/simulacoes" navigate={navigate}/>);
+    const {rerender}=render(<PreviewSidebar role="MASTER" path="/simulacoes" navigate={navigate}/>);
     expect(screen.getByRole('button',{name:'Produção'}).getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('button',{name:'Integrações'}).getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(screen.getByRole('button',{name:'Integrações'}));
     fireEvent.click(screen.getByRole('link',{name:'Hub de Integrações'}));
     expect(navigate).toHaveBeenCalledWith('/integracoes');
     fireEvent.change(screen.getByRole('textbox',{name:'Encontrar página'}),{target:{value:'Saúde'}});
+    expect(screen.getByRole('link',{name:'Hub de Integrações'})).toBeTruthy();
+    expect(screen.queryByRole('link',{name:'Saúde das APIs'})).toBeNull();
+    rerender(<PreviewSidebar role="MASTER" permissions={['integrations.health']} path="/saude-apis" navigate={navigate}/>);
     expect(screen.getByRole('link',{name:'Saúde das APIs'})).toBeTruthy();
+    expect(screen.queryByRole('link',{name:'Hub de Integrações'})).toBeNull();
   });
   it('recolhe os atalhos e não repete favoritos na lista de recentes', () => {
     media(); const {container,rerender}=render(<PreviewSidebar role="MASTER" path="/simulacoes" navigate={()=>{}} favorites={['/propostas']} recent={['/propostas','/propostas','/central-pendencias']}/>);

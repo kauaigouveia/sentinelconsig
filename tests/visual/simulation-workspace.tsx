@@ -50,6 +50,11 @@ realtimeHub.subscribe = () => () => {};
 window.fetch = async (input, options) => {
   const path = typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url;
   if (options?.method && options.method !== 'GET') throw new Error('Escrita bloqueada nesta revisão local');
+  if(path==='/api/integrations/health') {
+    const banks=[['c6','C6 Bank'],['facta','FACTA'],['bmg','BMG'],['happy','Happy'],['finanto','FINANTO'],['nossa-fintech','Nossa Fintech'],['workbank','WorkBank'],['parana','Paraná Banco'],['presenca','Presença Bank'],['v8','V8 Digital'],['vctex','VCTEX CLT']];
+    const integrations=banks.map(([slug,name],index)=>({id:slug,slug,name,code:slug.toUpperCase(),type:'FINTECH',protocol:'Dados sintéticos',environment:'production',active:index<8,configured:index<9,connectionCount:index<9?1:0,enabledConnectionCount:index<8?1:0,status:index===0?'ONLINE':index<8?'ATTENTION':'DISABLED',maskedBaseUrl:'Endereço fictício · sem acesso externo',capabilities:[],lastHealthCheck:index===0?{timestamp:new Date().toISOString(),success:true,latencyMs:12,httpStatus:200}:null,metricsPartial:true}));
+    return new Response(JSON.stringify({timestamp:new Date().toISOString(),overallStatus:'ATTENTION',integrations,summary:{total:11,online:1,attention:7,offline:0,disabled:3,errors24h:0,requests24h:0,metricsPartial:true}}),{status:200,headers:{'Content-Type':'application/json'}});
+  }
   const payloads: Record<string,unknown> = {'/api/simulations':simulations,'/api/partners':partners,'/api/users':users,'/api/products':[],'/api/convenios':[],'/api/settings/simulation-access':{happySimulationAccessEnabled:false},'/api/integrations/finanto/config':{enabled:false},'/api/integrations/nossa-fintech/config':{enabled:false},'/api/simulation-spreadsheets/active?bank=DAYCOVAL':null};
   if (['/api/daycoval','/api/c6-spreadsheet','/api/parana-spreadsheet'].includes(path)) return new Response(JSON.stringify({fileName:'Arquivo fictício para revisão visual.xlsx',versionDate:'2026-10-14',terms:[108,96,84],ratePolicies:[]}),{status:200,headers:{'Content-Type':'application/json'}});
   if (path === '/api/financial') return new Response(JSON.stringify([{id:'visual-entry',title:'Receita fictícia',type:'ENTRADA',amount:1500,category:'SERVICO',status:'REALIZADO',dueDate:'2026-10-14',paymentDate:'2026-10-14'}]),{status:200,headers:{'Content-Type':'application/json'}});
@@ -66,6 +71,7 @@ const {ProductionList} = await import('../../src/components/production/Productio
 const {KanbanBoard} = await import('../../src/components/production/KanbanBoard');
 const {Client360View} = await import('../../src/components/clients/Client360View');
 const {PortabilityView} = await import('../../src/components/production/PortabilityView');
+const {HubIntegracoes} = await import('../../src/components/admin/HubIntegracoes');
 const {CentralPendencias} = await import('../../src/components/admin/CentralPendencias');
 const {GeneralFinanceView} = await import('../../src/components/finance/GeneralFinanceView');
 const {NewProductionModal} = await import('../../src/components/production/NewProductionModal');
@@ -85,10 +91,11 @@ function LocalReview() {
       <button onClick={()=>setPremium(!premium)}>Comparar {premium?'legado':'V2'}</button>
       <span>Rede externa e gravações bloqueadas</span>
     </header>
-    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Design system','Shell','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
+    <details><summary>Ferramentas da revisão local</summary><nav aria-label="Módulos da revisão local" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>{['Design system','Shell','Hub de Integrações','Propostas','Simulações','Kanban','Clientes 360°','CIP','Pendências','Financeiro','Administração','Automações','Intelligence'].map(name=><button key={name} aria-pressed={module===name} onClick={()=>setModule(name)} style={{padding:'8px 14px',border:'1px solid var(--field-border)',borderRadius:8,color:'var(--text-primary)',background:module===name?'var(--bg-surface-elevated)':'transparent'}}>{name}</button>)}</nav></details>
     <div className="sentinel-view-body" data-ui-family={premium ? module==='Administração'?'administration':module==='Automações'?'automation':module==='Intelligence'?'analytics':undefined : undefined}>
     {module==='Design system'&&<RedesignGallery/>}
-    {module==='Shell'&&<ShellGallery renderContent={(path,navigate)=>path==='/simulacoes'?<SimulationView premium/>:path==='/propostas'?<ProductionList premium onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>navigate('/esteira')}/>:path==='/esteira'?<KanbanBoard premium/>:path==='/central-pendencias'?<CentralPendencias premium/>:null}/>}
+    {module==='Hub de Integrações'&&<HubIntegracoes premium/>}
+    {module==='Shell'&&<ShellGallery renderContent={(path,navigate)=>path==='/integracoes'?<HubIntegracoes premium/>:path==='/simulacoes'?<SimulationView premium/>:path==='/propostas'?<ProductionList premium onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>navigate('/esteira')}/>:path==='/esteira'?<KanbanBoard premium/>:path==='/central-pendencias'?<CentralPendencias premium/>:null}/>}
     {module==='Propostas' && <ProductionList premium={premium} onOpenNewProduction={()=>setNewProposal(true)} onKanban={()=>setModule('Kanban')} />}
     {module==='Simulações' && <SimulationView premium={premium} />}
     {module==='Kanban' && <KanbanBoard premium={premium} />}
