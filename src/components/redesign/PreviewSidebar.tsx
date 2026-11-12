@@ -136,7 +136,7 @@ export function PreviewSidebar({
         aria-label="Navegação principal"
       >
         <div className="s2-brand">
-          {brandName==='Sentinel Consig'&&brandLogo.startsWith('/branding/sentinel-')?<BrandLogo width={152} height={54}/>:<><img src={brandLogo} alt="" onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src='/branding/sentinel-symbol-v6.png';}}/><div><strong>{brandName}</strong></div></>}
+          {brandName==='Sentinel Consig'&&brandLogo.startsWith('/branding/sentinel-')?<BrandLogo variant={compact && !mobileOpen ? 'symbol' : 'transparent'} width={compact && !mobileOpen ? 32 : 152} height={compact && !mobileOpen ? 32 : 54}/>:<><img src={brandLogo} alt="" onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src='/branding/sentinel-symbol-v6.png';}}/><div><strong>{brandName}</strong></div></>}
           <button
             className="s2-mobile-close"
             aria-label="Fechar navegação"

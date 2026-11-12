@@ -22,6 +22,13 @@
 .s2-root .s2-sidebar nav a[aria-current="page"] svg {color:inherit}
 .s2-root .s2-sidebar nav a[aria-current="page"] i {display:none}
 .s2-root .s2-collapse {margin:8px;min-height:44px;border-top:1px solid var(--border-default)}
+.s2-root .s2-sidebar[data-compact="true"] {width:64px;min-width:64px;padding:6px;flex-shrink:0}
+.s2-root .s2-sidebar[data-compact="true"] .s2-brand {padding:16px 0;min-height:76px;justify-content:center;overflow:hidden}
+.s2-root .s2-sidebar[data-compact="true"] nav {padding:0;overflow-x:hidden}
+.s2-root .s2-sidebar[data-compact="true"] nav a {padding:10px;min-height:44px;justify-content:center}
+.s2-root .s2-sidebar[data-compact="true"] .s2-collapse {margin:8px 0;padding:12px 0;justify-content:center;width:100%}
+.s2-root .s2-sidebar .s2-brand > :is(img,.sentinel-logo) {max-width:100%}
+.s2-root .sentinel-stage {min-width:0;flex:1 1 0%;width:0}
 .s2-root .sentinel-header {background:var(--bg-surface);padding-inline:30px;border-bottom:1px solid var(--border-default)}
 .s2-root .sentinel-main {padding:24px 32px 40px}
 .s2-root .ui-context-row {padding-bottom:18px;color:var(--text-secondary)}
